@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Contains composite transformations, upon which higher compiler levels depend."""
+
 from typing import Mapping
 
 from absl import logging
@@ -20,12 +21,13 @@ from absl import logging
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
-from tensorflow_federated.python.core.impl import transformations
+from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 
 
 def prepare_for_rebinding(comp):
@@ -52,10 +54,10 @@ def prepare_for_rebinding(comp):
   # TODO(b/146430051): Follow up here and consider removing or enforcing more
   # strict output invariants when `remove_lambdas_and_blocks` is moved in here.
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  comp, _ = transformations.uniquify_reference_names(comp)
-  comp, _ = transformations.replace_called_lambda_with_block(comp)
-  block_inliner = transformations.InlineBlock(comp)
-  selection_replacer = transformations.ReplaceSelectionFromTuple()
+  comp, _ = tree_transformations.uniquify_reference_names(comp)
+  comp, _ = tree_transformations.replace_called_lambda_with_block(comp)
+  block_inliner = tree_transformations.InlineBlock(comp)
+  selection_replacer = tree_transformations.ReplaceSelectionFromTuple()
   transforms = [block_inliner, selection_replacer]
   symbol_tree = transformation_utils.SymbolTree(
       transformation_utils.ReferenceCounter)
@@ -100,21 +102,21 @@ def remove_lambdas_and_blocks(comp):
   # pressing issue.
   modified = False
   for fn in [
-      transformations.remove_unused_block_locals,
-      transformations.inline_selections_from_tuple,
-      transformations.replace_called_lambda_with_block,
+      tree_transformations.remove_unused_block_locals,
+      tree_transformations.inline_selections_from_tuple,
+      tree_transformations.replace_called_lambda_with_block,
   ] * 2:
     comp, inner_modified = fn(comp)
     modified = inner_modified or modified
   for fn in [
-      transformations.remove_unused_block_locals,
-      transformations.uniquify_reference_names,
+      tree_transformations.remove_unused_block_locals,
+      tree_transformations.uniquify_reference_names,
   ]:
     comp, inner_modified = fn(comp)
     modified = inner_modified or modified
 
-  block_inliner = transformations.InlineBlock(comp)
-  selection_replacer = transformations.ReplaceSelectionFromTuple()
+  block_inliner = tree_transformations.InlineBlock(comp)
+  selection_replacer = tree_transformations.ReplaceSelectionFromTuple()
   transforms = [block_inliner, selection_replacer]
 
   def _transform_fn(comp, symbol_tree):
@@ -195,8 +197,8 @@ def construct_tensorflow_calling_lambda_on_concrete_arg(
                                     concrete_arg.type_signature)
 
   def _generate_simple_tensorflow(comp):
-    tf_parser_callable = transformations.TFParser()
-    comp, _ = transformations.insert_called_tf_identity_at_leaves(comp)
+    tf_parser_callable = tree_to_cc_transformations.TFParser()
+    comp, _ = tree_transformations.insert_called_tf_identity_at_leaves(comp)
     comp, _ = transformation_utils.transform_postorder(comp, tf_parser_callable)
     return comp
 
@@ -365,7 +367,8 @@ def create_tensorflow_representing_block(block):
     return building_blocks.Reference(arg_name, arg_type)
 
   top_level_ref = _get_unbound_ref(block)
-  named_comp_classes = transformations.group_block_locals_by_namespace(block)
+  named_comp_classes = tree_transformations.group_block_locals_by_namespace(
+      block)
 
   if top_level_ref:
     first_comps = [x[1] for x in named_comp_classes[0]]
@@ -412,7 +415,7 @@ def create_tensorflow_representing_block(block):
   return comp_called, True
 
 
-class IntermediateParser(transformations.TFParser):
+class IntermediateParser(tree_to_cc_transformations.TFParser):
 
   def __init__(self):
     """Populates the parser library with first-pass transforms."""
@@ -492,8 +495,8 @@ def remove_duplicate_called_graphs(comp):
     parsed, _ = create_tensorflow_representing_block(packed_into_block)
     tff_func = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
                                       parsed)
-    tf_parser_callable = transformations.TFParser()
-    comp, _ = transformations.insert_called_tf_identity_at_leaves(tff_func)
+    tf_parser_callable = tree_to_cc_transformations.TFParser()
+    comp, _ = tree_transformations.insert_called_tf_identity_at_leaves(tff_func)
     tf_generated, _ = transformation_utils.transform_postorder(
         comp, tf_parser_callable)
   else:
@@ -577,7 +580,7 @@ class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
 
 def dedupe_and_merge_tuple_intrinsics(comp, uri):
   r"""Merges tuples of called intrinsics into one called intrinsic."""
-  transform_spec = transformations.MergeTupleIntrinsics(comp, uri)
+  transform_spec = tree_transformations.MergeTupleIntrinsics(comp, uri)
   dedupe_and_merger = RemoveDuplicatesAndApplyTransform(comp, transform_spec)
 
   def _transform(comp):

@@ -67,7 +67,7 @@ import collections
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import transformations
+from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -75,8 +75,9 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
+from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 
 
 class CanonicalFormCompilationError(Exception):
@@ -218,7 +219,7 @@ def consolidate_and_extract_local_processing(comp):
     produced by this extraction step, as described above.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  comp, _ = compiler_transformations.remove_lambdas_and_blocks(comp)
+  comp, _ = transformations.remove_lambdas_and_blocks(comp)
   if isinstance(comp.type_signature, computation_types.FunctionType):
     if isinstance(comp, building_blocks.CompiledComputation):
       return comp
@@ -230,8 +231,9 @@ def consolidate_and_extract_local_processing(comp):
                        '`building_blocks.Lambda`; you have passed a {} of type '
                        '{}.'.format(type(comp), comp.type_signature))
     if isinstance(comp.result.type_signature, computation_types.FederatedType):
-      comp, _ = transformations.merge_chained_federated_maps_or_applys(comp)
-      unwrapped, _ = transformations.unwrap_placement(comp.result)
+      comp, _ = tree_transformations.merge_chained_federated_maps_or_applys(
+          comp)
+      unwrapped, _ = tree_transformations.unwrap_placement(comp.result)
       # Unwrapped can be a call to `federated_value_at_P`, or
       # `federated_apply/map`.
       if unwrapped.function.uri in (intrinsic_defs.FEDERATED_APPLY.uri,
@@ -240,7 +242,7 @@ def consolidate_and_extract_local_processing(comp):
         check_extraction_result(unwrapped.argument[0], extracted)
         return extracted
       else:
-        decorated_result, _ = transformations.insert_called_tf_identity_at_leaves(
+        decorated_result, _ = tree_transformations.insert_called_tf_identity_at_leaves(
             unwrapped.argument)
         member_type = None if comp.parameter_type is None else comp.parameter_type.member
         rebound = building_blocks.Lambda(comp.parameter_name, member_type,
@@ -253,8 +255,8 @@ def consolidate_and_extract_local_processing(comp):
       check_extraction_result(comp, extracted)
       return extracted
   elif isinstance(comp.type_signature, computation_types.FederatedType):
-    comp, _ = transformations.merge_chained_federated_maps_or_applys(comp)
-    unwrapped, _ = transformations.unwrap_placement(comp)
+    comp, _ = tree_transformations.merge_chained_federated_maps_or_applys(comp)
+    unwrapped, _ = tree_transformations.unwrap_placement(comp)
     # Unwrapped can be a call to `federated_value_at_P`, or
     # `federated_apply/map`.
     if unwrapped.function.uri in (intrinsic_defs.FEDERATED_APPLY.uri,
@@ -263,7 +265,7 @@ def consolidate_and_extract_local_processing(comp):
       check_extraction_result(unwrapped.argument[0], extracted)
       return extracted
     else:
-      decorated, _ = transformations.insert_called_tf_identity_at_leaves(
+      decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
           unwrapped.argument)
       extracted = parse_tff_to_tf(decorated)
       check_extraction_result(decorated, extracted)
@@ -292,11 +294,11 @@ def parse_tff_to_tf(comp):
     of this function, but rather its callers, to check that the result of this
     parse is as expected.
   """
-  parser_callable = transformations.TFParser()
-  comp, _ = compiler_transformations.remove_lambdas_and_blocks(comp)
+  parser_callable = tree_to_cc_transformations.TFParser()
+  comp, _ = transformations.remove_lambdas_and_blocks(comp)
   # Parsing all the way up from the leaves can be expensive, so we check whether
   # inserting called identities at the leaves is necessary first.
-  preprocessed, _ = compiler_transformations.preprocess_for_tf_parse(comp)
+  preprocessed, _ = transformations.preprocess_for_tf_parse(comp)
   new_comp, _ = transformation_utils.transform_postorder(
       preprocessed, parser_callable)
   if isinstance(new_comp, building_blocks.CompiledComputation) or isinstance(
@@ -304,13 +306,13 @@ def parse_tff_to_tf(comp):
           new_comp.function, building_blocks.CompiledComputation):
     return new_comp
   if isinstance(new_comp, building_blocks.Lambda):
-    leaves_decorated, _ = transformations.insert_called_tf_identity_at_leaves(
+    leaves_decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
         new_comp)
     parsed_comp, _ = transformation_utils.transform_postorder(
         leaves_decorated, parser_callable)
     return parsed_comp
   elif isinstance(new_comp, building_blocks.Call):
-    leaves_decorated, _ = transformations.insert_called_tf_identity_at_leaves(
+    leaves_decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
         new_comp)
     parsed_comp, _ = transformation_utils.transform_postorder(
         leaves_decorated, parser_callable)
@@ -449,9 +451,9 @@ def _force_align_intrinsics_to_top_level_lambda(comp, uri):
   for x in uri:
     py_typecheck.check_type(x, str)
 
-  comp, _ = transformations.uniquify_reference_names(comp)
+  comp, _ = tree_transformations.uniquify_reference_names(comp)
   if not _can_extract_intrinsics_to_top_level_lambda(comp, uri):
-    comp, _ = transformations.replace_called_lambda_with_block(comp)
+    comp, _ = tree_transformations.replace_called_lambda_with_block(comp)
   comp = _inline_block_variables_required_to_align_intrinsics(comp, uri)
   comp, modified = _extract_intrinsics_to_top_level_lambda(comp, uri)
   if modified:
@@ -459,12 +461,12 @@ def _force_align_intrinsics_to_top_level_lambda(comp, uri):
       comp, _ = _group_by_intrinsics_in_top_level_lambda(comp)
     modified = False
     for intrinsic_uri in uri:
-      comp, transform_modified = compiler_transformations.dedupe_and_merge_tuple_intrinsics(
+      comp, transform_modified = transformations.dedupe_and_merge_tuple_intrinsics(
           comp, intrinsic_uri)
       if transform_modified:
         # Required because merging called intrinsics invokes building block
         # factories that do not name references uniquely.
-        comp, _ = transformations.uniquify_reference_names(comp)
+        comp, _ = tree_transformations.uniquify_reference_names(comp)
       modified = modified or transform_modified
     if modified:
       # Required because merging called intrinsics will nest the called
@@ -556,17 +558,17 @@ def _inline_block_variables_required_to_align_intrinsics(comp, uri):
       names.discard(comp.parameter_name)
       variable_names.update(names)
     if not variable_names:
-      raise transformations.TransformationError(
+      raise tree_transformations.TransformationError(
           'Inlining `Block` variables has failed. Expected to find unbound '
           'references for called `Intrisic`s matching the URI: \'{}\', but '
           'none were found in the AST: \n{}'.format(
               uri, comp.formatted_representation()))
-    comp, modified = transformations.inline_block_locals(
+    comp, modified = tree_transformations.inline_block_locals(
         comp, variable_names=variable_names)
     if modified:
-      comp, _ = transformations.uniquify_reference_names(comp)
+      comp, _ = tree_transformations.uniquify_reference_names(comp)
     else:
-      raise transformations.TransformationError(
+      raise tree_transformations.TransformationError(
           'Inlining `Block` variables has failed, this will result in an '
           'infinite loop. Expected to modify the AST by inlining the variable '
           'names: \'{}\', but no transformations to the AST: \n{}'.format(
@@ -884,10 +886,9 @@ def _construct_selection_from_federated_tuple(federated_tuple, selected_index,
 def _prepare_for_rebinding(comp):
   """Replaces `comp` with semantically equivalent version for rebinding."""
   all_equal_normalized = normalize_all_equal_bit(comp)
-  identities_removed, _ = transformations.remove_mapped_or_applied_identity(
+  identities_removed, _ = tree_transformations.remove_mapped_or_applied_identity(
       all_equal_normalized)
-  for_rebind, _ = compiler_transformations.prepare_for_rebinding(
-      identities_removed)
+  for_rebind, _ = transformations.prepare_for_rebinding(identities_removed)
   return for_rebind
 
 
@@ -1147,7 +1148,7 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
   constructed_lambda = building_blocks.Lambda(comp.parameter_name,
                                               comp.parameter_type,
                                               zipped_lambda_called)
-  names_uniquified, _ = transformations.uniquify_reference_names(
+  names_uniquified, _ = tree_transformations.uniquify_reference_names(
       constructed_lambda)
   return names_uniquified
 
@@ -1259,7 +1260,8 @@ def concatenate_function_outputs(first_function, second_function):
       second_function.parameter_name, second_function.parameter_type,
       building_blocks.Tuple([first_function.result, second_function.result]))
 
-  renamed, _ = transformations.uniquify_reference_names(concatenated_function)
+  renamed, _ = tree_transformations.uniquify_reference_names(
+      concatenated_function)
 
   return renamed
 

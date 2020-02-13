@@ -29,12 +29,12 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl import reference_executor
-from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks as bb
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -1271,7 +1271,7 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
-    placement_unwrapped, modified = transformations.unwrap_placement(
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
         second_applied_id)
     self.assertTrue(modified)
     lambda_wrapping_id = bb.Lambda('x', fed_ref.type_signature,
@@ -1295,7 +1295,7 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
-    placement_unwrapped, modified = transformations.unwrap_placement(
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
         second_applied_id)
     self.assertTrue(modified)
     lambda_wrapping_id = bb.Lambda('x', fed_ref.type_signature,
@@ -1318,7 +1318,8 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
                                         placements.SERVER))
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     zipped = building_block_factory.create_federated_zip(unzipped)
-    placement_unwrapped, modified = transformations.unwrap_placement(zipped)
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
+        zipped)
     self.assertTrue(modified)
 
     lambda_wrapping_zip = bb.Lambda('tup', fed_tuple.type_signature, zipped)
@@ -1343,7 +1344,8 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
                                         placements.CLIENTS))
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     zipped = building_block_factory.create_federated_zip(unzipped)
-    placement_unwrapped, modified = transformations.unwrap_placement(zipped)
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
+        zipped)
     self.assertTrue(modified)
     lambda_wrapping_zip = bb.Lambda('tup', fed_tuple.type_signature, zipped)
     lambda_wrapping_placement_unwrapped = bb.Lambda('tup',
@@ -1381,7 +1383,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
         value, zero, accumulate, merge, report)
     tup = bb.Tuple((called_intrinsic, called_intrinsic))
     comp = bb.Lambda(ref.name, ref.type_signature, tup)
-    transformed_comp, _ = transformations.merge_tuple_intrinsics(
+    transformed_comp, _ = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
     comp_impl = computation_wrapper_instances.building_block_to_computation(
@@ -1401,7 +1403,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     called_intrinsic = building_block_factory.create_federated_apply(fn, arg)
     tup = bb.Tuple((called_intrinsic, called_intrinsic))
     comp = bb.Lambda(ref.name, ref.type_signature, tup)
-    transformed_comp, _ = transformations.merge_tuple_intrinsics(
+    transformed_comp, _ = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_APPLY.uri)
 
     comp_impl = computation_wrapper_instances.building_block_to_computation(
@@ -1418,7 +1420,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     called_intrinsic = building_block_factory.create_federated_broadcast(ref)
     tup = bb.Tuple((called_intrinsic, called_intrinsic))
     comp = bb.Lambda(ref.name, ref.type_signature, tup)
-    transformed_comp, _ = transformations.merge_tuple_intrinsics(
+    transformed_comp, _ = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_BROADCAST.uri)
 
     comp_impl = computation_wrapper_instances.building_block_to_computation(
@@ -1436,7 +1438,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     called_intrinsic = building_block_factory.create_federated_map(fn, arg)
     tup = bb.Tuple((called_intrinsic, called_intrinsic))
     comp = bb.Lambda(ref.name, ref.type_signature, tup)
-    transformed_comp, _ = transformations.merge_tuple_intrinsics(
+    transformed_comp, _ = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     comp_impl = computation_wrapper_instances.building_block_to_computation(

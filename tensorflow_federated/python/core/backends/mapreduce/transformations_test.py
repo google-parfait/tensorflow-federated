@@ -22,15 +22,15 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
-from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
-from tensorflow_federated.python.core.impl import transformations
+from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import test_utils
+from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
@@ -70,10 +70,10 @@ class CheckExtractionResultTest(absltest.TestCase):
 
   def test_raises_on_none_args(self):
     with self.assertRaisesRegex(TypeError, 'None'):
-      mapreduce_transformations.check_extraction_result(
+      transformations.check_extraction_result(
           None, building_blocks.Reference('x', tf.int32))
     with self.assertRaisesRegex(TypeError, 'None'):
-      mapreduce_transformations.check_extraction_result(
+      transformations.check_extraction_result(
           building_blocks.Reference('x', tf.int32), None)
 
   def test_raises_function_and_call(self):
@@ -81,21 +81,18 @@ class CheckExtractionResultTest(absltest.TestCase):
         'f', computation_types.FunctionType(tf.int32, tf.int32))
     integer_ref = building_blocks.Reference('x', tf.int32)
     call = building_blocks.Call(function, integer_ref)
-    with self.assertRaisesRegex(
-        mapreduce_transformations.CanonicalFormCompilationError,
-        'we have the functional type'):
-      mapreduce_transformations.check_extraction_result(function, call)
+    with self.assertRaisesRegex(transformations.CanonicalFormCompilationError,
+                                'we have the functional type'):
+      transformations.check_extraction_result(function, call)
 
   def test_raises_non_function_and_compiled_computation(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = self.compiled_computation_for_initialize(init)
     integer_ref = building_blocks.Reference('x', tf.int32)
-    with self.assertRaisesRegex(
-        mapreduce_transformations.CanonicalFormCompilationError,
-        'we have the non-functional type'):
-      mapreduce_transformations.check_extraction_result(integer_ref,
-                                                        compiled_computation)
+    with self.assertRaisesRegex(transformations.CanonicalFormCompilationError,
+                                'we have the non-functional type'):
+      transformations.check_extraction_result(integer_ref, compiled_computation)
 
   def test_raises_function_and_compiled_computation_of_different_type(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
@@ -103,20 +100,18 @@ class CheckExtractionResultTest(absltest.TestCase):
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference(
         'f', computation_types.FunctionType(tf.int32, tf.int32))
-    with self.assertRaisesRegex(
-        mapreduce_transformations.CanonicalFormCompilationError,
-        'incorrect TFF type'):
-      mapreduce_transformations.check_extraction_result(function,
-                                                        compiled_computation)
+    with self.assertRaisesRegex(transformations.CanonicalFormCompilationError,
+                                'incorrect TFF type'):
+      transformations.check_extraction_result(function, compiled_computation)
 
   def test_raises_tensor_and_call_to_not_compiled_computation(self):
     function = building_blocks.Reference(
         'f', computation_types.FunctionType(tf.int32, tf.int32))
     ref_to_int = building_blocks.Reference('x', tf.int32)
     called_fn = building_blocks.Call(function, ref_to_int)
-    with self.assertRaisesRegex(
-        mapreduce_transformations.CanonicalFormCompilationError, 'missing'):
-      mapreduce_transformations.check_extraction_result(ref_to_int, called_fn)
+    with self.assertRaisesRegex(transformations.CanonicalFormCompilationError,
+                                'missing'):
+      transformations.check_extraction_result(ref_to_int, called_fn)
 
   def test_passes_function_and_compiled_computation_of_same_type(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
@@ -124,21 +119,20 @@ class CheckExtractionResultTest(absltest.TestCase):
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference('f',
                                          compiled_computation.type_signature)
-    mapreduce_transformations.check_extraction_result(function,
-                                                      compiled_computation)
+    transformations.check_extraction_result(function, compiled_computation)
 
 
 class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      mapreduce_transformations.consolidate_and_extract_local_processing(None)
+      transformations.consolidate_and_extract_local_processing(None)
 
   def test_raises_reference_to_functional_type(self):
     function_type = computation_types.FunctionType(tf.int32, tf.int32)
     ref = building_blocks.Reference('x', function_type)
     with self.assertRaisesRegex(ValueError, 'of functional type passed'):
-      mapreduce_transformations.consolidate_and_extract_local_processing(ref)
+      transformations.consolidate_and_extract_local_processing(ref)
 
   def test_already_reduced_case(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
@@ -146,8 +140,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
     comp = mapreduce_test_utils.computation_to_building_block(init)
 
-    result = mapreduce_transformations.consolidate_and_extract_local_processing(
-        comp)
+    result = transformations.consolidate_and_extract_local_processing(comp)
 
     self.assertIsInstance(result, building_blocks.CompiledComputation)
     self.assertIsInstance(result.proto, computation_pb2.Computation)
@@ -156,16 +149,14 @@ class ConsolidateAndExtractTest(absltest.TestCase):
   def test_reduces_unplaced_lambda_leaving_type_signature_alone(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', tf.int32))
-    extracted_tf = mapreduce_transformations.consolidate_and_extract_local_processing(
-        lam)
+    extracted_tf = transformations.consolidate_and_extract_local_processing(lam)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     self.assertEqual(extracted_tf.type_signature, lam.type_signature)
 
   def test_reduces_unplaced_lambda_to_equivalent_tf(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', tf.int32))
-    extracted_tf = mapreduce_transformations.consolidate_and_extract_local_processing(
-        lam)
+    extracted_tf = transformations.consolidate_and_extract_local_processing(lam)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
     executable_lam = computation_wrapper_instances.building_block_to_computation(
@@ -177,8 +168,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     fed_int_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     lam = building_blocks.Lambda('x', fed_int_type,
                                  building_blocks.Reference('x', fed_int_type))
-    extracted_tf = mapreduce_transformations.consolidate_and_extract_local_processing(
-        lam)
+    extracted_tf = transformations.consolidate_and_extract_local_processing(lam)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     unplaced_function_type = computation_types.FunctionType(
         fed_int_type.member, fed_int_type.member)
@@ -190,7 +180,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     arg = building_blocks.Reference(
         'arg', computation_types.FederatedType(tf.int32, placements.CLIENTS))
     mapped_fn = building_block_factory.create_federated_map_or_apply(lam, arg)
-    extracted_tf = mapreduce_transformations.consolidate_and_extract_local_processing(
+    extracted_tf = transformations.consolidate_and_extract_local_processing(
         mapped_fn)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
@@ -206,7 +196,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     arg = building_blocks.Reference(
         'arg', computation_types.FederatedType(tf.int32, placements.CLIENTS))
     mapped_fn = building_block_factory.create_federated_map_or_apply(lam, arg)
-    extracted_tf = mapreduce_transformations.consolidate_and_extract_local_processing(
+    extracted_tf = transformations.consolidate_and_extract_local_processing(
         mapped_fn)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
@@ -218,7 +208,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_reduces_federated_value_at_server_to_equivalent_noarg_function(self):
     federated_value = intrinsics.federated_value(0, placements.SERVER)._comp
-    extracted_tf = mapreduce_transformations.consolidate_and_extract_local_processing(
+    extracted_tf = transformations.consolidate_and_extract_local_processing(
         federated_value)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
@@ -227,7 +217,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
   def test_reduces_federated_value_at_clients_to_equivalent_noarg_function(
       self):
     federated_value = intrinsics.federated_value(0, placements.CLIENTS)._comp
-    extracted_tf = mapreduce_transformations.consolidate_and_extract_local_processing(
+    extracted_tf = transformations.consolidate_and_extract_local_processing(
         federated_value)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
@@ -237,8 +227,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     self.skipTest('Depends on a lower level fix, currently in review.')
     empty_tuple = building_blocks.Tuple([])
     lam = building_blocks.Lambda('x', tf.int32, empty_tuple)
-    extracted_tf = mapreduce_transformations.consolidate_and_extract_local_processing(
-        lam)
+    extracted_tf = transformations.consolidate_and_extract_local_processing(lam)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
 
 
@@ -250,7 +239,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         iterative_process.next)
     uri = [intrinsic_defs.FEDERATED_BROADCAST.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     def _predicate(comp):
@@ -271,7 +260,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         iterative_process.next)
     uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     def _predicate(comp):
@@ -287,7 +276,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertEqual(after.result.type_signature, comp.result.type_signature)
 
   def test_returns_trees_with_federated_aggregate_no_unbound_references(self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -298,7 +287,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = building_blocks.Lambda('d', tf.int32, tup)
     uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     def _predicate(comp):
@@ -314,7 +303,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertEqual(after.result.type_signature, comp.result.type_signature)
 
   def test_returns_trees_with_one_federated_aggregate(self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -324,11 +313,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = fn
     uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -339,7 +328,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '  (_var4 -> data)\n'
         '>)'
     )
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -352,7 +341,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_trees_with_two_federated_aggregates(self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -365,11 +354,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = fn
     uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -416,7 +405,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '    _var10[0](_var11[0])\n'
         '  >))\n'
         '>)')
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -443,18 +432,19 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_trees_with_one_federated_secure_sum(self):
-    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
+    )
     called_intrinsics = building_blocks.Tuple([federated_secure_sum])
     fn = building_blocks.Lambda('a', called_intrinsics.type_signature,
                                 called_intrinsics)
     comp = fn
     uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -462,7 +452,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '  data\n'
         '>)'
     )
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -475,7 +465,8 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_trees_with_two_federated_secure_sums(self):
-    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
+    )
     called_intrinsics = building_blocks.Tuple([
         federated_secure_sum,
         federated_secure_sum,
@@ -485,11 +476,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = fn
     uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -505,7 +496,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '    data\n'
         '  >\n'
         '>)')
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -533,11 +524,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_aggregate_only(
       self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
+    )
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
         federated_secure_sum,
@@ -547,11 +539,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = fn
     uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -562,7 +554,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '  (_var4 -> data)\n'
         '>)'
     )
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -580,11 +572,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_secure_sum_only(
       self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
+    )
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
         federated_secure_sum,
@@ -594,11 +587,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = fn
     uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -606,7 +599,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '  data\n'
         '>)'
     )
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -627,11 +620,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_aggregate_first(
       self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
+    )
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
         federated_secure_sum,
@@ -644,11 +638,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -665,7 +659,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '  >\n'
         '>)'
     )
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -680,11 +674,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_secure_sum_first(
       self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
+    )
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
         federated_secure_sum,
@@ -697,11 +692,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
     ]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -718,7 +713,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '  >\n'
         '>)'
     )
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -733,11 +728,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def test_returns_trees_with_two_federated_aggregates_and_one_federated_secure_sum(
       self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
+    )
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
         federated_aggregate,
@@ -751,11 +747,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -808,7 +804,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '    data\n'
         '  >\n'
         '>)')
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -845,11 +841,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def test_returns_trees_with_one_federated_aggregate_and_two_federated_secure_sums(
       self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
+    )
     called_intrinsics = building_blocks.Tuple([
         federated_aggregate,
         federated_secure_sum,
@@ -863,11 +860,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -893,7 +890,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '  >\n'
         '>)'
     )
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -930,11 +927,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def test_returns_trees_with_two_federated_secure_sums_and_one_federated_aggregate(
       self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
+    )
     called_intrinsics = building_blocks.Tuple([
         federated_secure_sum,
         federated_secure_sum,
@@ -948,11 +946,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -978,7 +976,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '  >\n'
         '>)'
     )
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -1015,11 +1013,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
 
   def test_returns_trees_with_one_federated_secure_sum_and_two_federated_aggregates(
       self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+    federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
+    )
     called_intrinsics = building_blocks.Tuple([
         federated_secure_sum,
         federated_aggregate,
@@ -1033,11 +1032,11 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         intrinsic_defs.FEDERATED_SECURE_SUM.uri,
     ]
 
-    before, after = mapreduce_transformations.force_align_and_split_by_intrinsics(
+    before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
 
     # pyformat: disable
-    before, _ = transformations.uniquify_reference_names(before)
+    before, _ = tree_transformations.uniquify_reference_names(before)
     self.assertEqual(
         before.formatted_representation(),
         '(_var1 -> <\n'
@@ -1091,7 +1090,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         '  >\n'
         '>)'
     )
-    after, _ = transformations.uniquify_reference_names(after)
+    after, _ = tree_transformations.uniquify_reference_names(after)
     self.assertEqual(
         after.formatted_representation(),
         '(_var1 -> (let\n'
@@ -1127,7 +1126,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     # pyformat: enable
 
   def test_raises_value_error_for_expected_uri(self):
-    federated_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    federated_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -1141,62 +1140,58 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     ]
 
     with self.assertRaises(ValueError):
-      mapreduce_transformations.force_align_and_split_by_intrinsics(comp, uri)
+      transformations.force_align_and_split_by_intrinsics(comp, uri)
 
 
 class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
-          None, [0])
+      transformations.zip_selection_as_argument_to_lower_level_lambda(None, [0])
 
   def test_raises_on_non_lambda_comp(self):
     ref = building_blocks.Reference('x', [tf.int32])
     with self.assertRaises(TypeError):
-      mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
-          ref, [0])
+      transformations.zip_selection_as_argument_to_lower_level_lambda(ref, [0])
 
   def test_raises_on_none_selections(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', [tf.int32]))
     with self.assertRaises(TypeError):
-      mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
-          lam, None)
+      transformations.zip_selection_as_argument_to_lower_level_lambda(lam, None)
 
   def test_raises_on_selection_tuple(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', [tf.int32]))
     with self.assertRaises(TypeError):
-      mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
-          lam, (0))
+      transformations.zip_selection_as_argument_to_lower_level_lambda(lam, (0))
 
   def test_raises_on_non_tuple_parameter(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', tf.int32))
     with self.assertRaises(TypeError):
-      mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
+      transformations.zip_selection_as_argument_to_lower_level_lambda(
           lam, [[0]])
 
   def test_raises_on_selection_from_non_tuple(self):
     lam = building_blocks.Lambda('x', [tf.int32],
                                  building_blocks.Reference('x', [tf.int32]))
     with self.assertRaisesRegex(TypeError, 'nonexistent index'):
-      mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
+      transformations.zip_selection_as_argument_to_lower_level_lambda(
           lam, [[0, 0]])
 
   def test_raises_on_non_int_index(self):
     lam = building_blocks.Lambda(
         'x', [tf.int32], building_blocks.Reference('x', [('a', tf.int32)]))
     with self.assertRaises(TypeError):
-      mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
+      transformations.zip_selection_as_argument_to_lower_level_lambda(
           lam, [['a']])
 
   def test_raises_on_non_federated_selection(self):
     lam = building_blocks.Lambda('x', [tf.int32],
                                  building_blocks.Reference('x', [tf.int32]))
     with self.assertRaises(TypeError):
-      mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
+      transformations.zip_selection_as_argument_to_lower_level_lambda(
           lam, [[0]])
 
   def test_raises_on_selections_at_different_placements(self):
@@ -1210,7 +1205,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
         building_blocks.Selection(
             building_blocks.Reference('x', tuple_of_federated_types), index=0))
     with self.assertRaisesRegex(ValueError, 'at the same placement.'):
-      mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
+      transformations.zip_selection_as_argument_to_lower_level_lambda(
           lam, [[0], [1]])
 
   def test_binds_single_element_tuple_to_lower_lambda(self):
@@ -1224,8 +1219,8 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
         building_blocks.Selection(
             building_blocks.Reference('x', tuple_of_federated_types), index=0))
     zeroth_index_extracted = (
-        mapreduce_transformations
-        .zip_selection_as_argument_to_lower_level_lambda(lam, [[0]]))
+        transformations.zip_selection_as_argument_to_lower_level_lambda(
+            lam, [[0]]))
     self.assertEqual(zeroth_index_extracted.type_signature, lam.type_signature)
     self.assertIsInstance(zeroth_index_extracted, building_blocks.Lambda)
     self.assertIsInstance(zeroth_index_extracted.result, building_blocks.Call)
@@ -1248,7 +1243,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
         'x', tuple_of_federated_types,
         building_blocks.Selection(
             building_blocks.Reference('x', tuple_of_federated_types), index=0))
-    zeroth_index_extracted = mapreduce_transformations.bind_single_selection_as_argument_to_lower_level_lambda(
+    zeroth_index_extracted = transformations.bind_single_selection_as_argument_to_lower_level_lambda(
         lam, 0)
     self.assertEqual(zeroth_index_extracted.type_signature, lam.type_signature)
     self.assertIsInstance(zeroth_index_extracted, building_blocks.Lambda)
@@ -1269,7 +1264,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
         'x', tuple_of_federated_types,
         building_blocks.Selection(
             building_blocks.Reference('x', tuple_of_federated_types), index=0))
-    zeroth_index_extracted = mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
+    zeroth_index_extracted = transformations.zip_selection_as_argument_to_lower_level_lambda(
         lam, [[0]])
     unbound_references = transformation_utils.get_map_of_unbound_references(
         zeroth_index_extracted)[zeroth_index_extracted]
@@ -1288,7 +1283,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
                 building_blocks.Reference('x', tuple_of_federated_types),
                 index=0),
             index=0))
-    deep_zeroth_index_extracted = mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
+    deep_zeroth_index_extracted = transformations.zip_selection_as_argument_to_lower_level_lambda(
         lam, [[0, 0]])
     self.assertEqual(deep_zeroth_index_extracted.type_signature,
                      lam.type_signature)
@@ -1322,7 +1317,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
         building_blocks.Tuple([first_selection, second_selection]))
-    deep_zeroth_index_extracted = mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
+    deep_zeroth_index_extracted = transformations.zip_selection_as_argument_to_lower_level_lambda(
         lam, [[0, 0], [2, 0]])
     self.assertEqual(deep_zeroth_index_extracted.type_signature,
                      lam.type_signature)
@@ -1357,7 +1352,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
         building_blocks.Tuple([first_selection, second_selection]))
-    deep_zeroth_index_extracted = mapreduce_transformations.zip_selection_as_argument_to_lower_level_lambda(
+    deep_zeroth_index_extracted = transformations.zip_selection_as_argument_to_lower_level_lambda(
         lam, [[0, 0], [2, 0]])
     tree_analysis.check_has_unique_names(deep_zeroth_index_extracted)
 
@@ -1366,27 +1361,27 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      mapreduce_transformations.select_output_from_lambda(None, 0)
+      transformations.select_output_from_lambda(None, 0)
 
   def test_raises_on_non_lambda(self):
     fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     ref = building_blocks.Reference('x', [fed_type])
     with self.assertRaises(TypeError):
-      mapreduce_transformations.select_output_from_lambda(ref, 0)
+      transformations.select_output_from_lambda(ref, 0)
 
   def test_raises_on_string_indices(self):
     fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     ref = building_blocks.Reference('x', [('a', fed_type)])
     lam = building_blocks.Lambda('x', ref.type_signature, ref)
     with self.assertRaises(TypeError):
-      mapreduce_transformations.select_output_from_lambda(lam, 'a')
+      transformations.select_output_from_lambda(lam, 'a')
 
   def test_raises_on_list_of_strings(self):
     fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     ref = building_blocks.Reference('x', [[('a', fed_type)]])
     lam = building_blocks.Lambda('x', ref.type_signature, ref)
     with self.assertRaises(TypeError):
-      mapreduce_transformations.select_output_from_lambda(lam, ['a'])
+      transformations.select_output_from_lambda(lam, ['a'])
 
   def test_selects_single_federated_output(self):
     fed_at_clients = computation_types.FederatedType(tf.int32,
@@ -1394,7 +1389,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
     ref = building_blocks.Reference('x', [fed_at_clients, fed_at_server])
     lam = building_blocks.Lambda('x', ref.type_signature, ref)
-    zero_selected = mapreduce_transformations.select_output_from_lambda(lam, 0)
+    zero_selected = transformations.select_output_from_lambda(lam, 0)
     self.assertEqual(zero_selected.type_signature.parameter,
                      lam.type_signature.parameter)
     self.assertEqual(zero_selected.type_signature.result,
@@ -1408,8 +1403,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
     ref = building_blocks.Reference(
         'x', [fed_at_clients, fed_at_clients, fed_at_server])
     lam = building_blocks.Lambda('x', ref.type_signature, ref)
-    tuple_selected = mapreduce_transformations.select_output_from_lambda(
-        lam, (0, 1))
+    tuple_selected = transformations.select_output_from_lambda(lam, (0, 1))
     self.assertEqual(tuple_selected.type_signature.parameter,
                      lam.type_signature.parameter)
     self.assertEqual(
@@ -1425,8 +1419,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
     ref = building_blocks.Reference(
         'x', [fed_at_clients, fed_at_clients, fed_at_server])
     lam = building_blocks.Lambda('x', ref.type_signature, ref)
-    tuple_selected = mapreduce_transformations.select_output_from_lambda(
-        lam, [0, 1])
+    tuple_selected = transformations.select_output_from_lambda(lam, [0, 1])
     self.assertEqual(tuple_selected.type_signature.parameter,
                      lam.type_signature.parameter)
     self.assertEqual(
@@ -1438,7 +1431,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
   def test_selects_single_unplaced_output(self):
     ref = building_blocks.Reference('x', [tf.int32, tf.float32, tf.int32])
     lam = building_blocks.Lambda('x', ref.type_signature, ref)
-    int_selected = mapreduce_transformations.select_output_from_lambda(lam, 0)
+    int_selected = transformations.select_output_from_lambda(lam, 0)
     self.assertEqual(int_selected.type_signature.parameter,
                      lam.type_signature.parameter)
     self.assertEqual(int_selected.type_signature.result,
@@ -1447,8 +1440,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
   def test_selects_multiple_unplaced_outputs(self):
     ref = building_blocks.Reference('x', [tf.int32, tf.float32, tf.int32])
     lam = building_blocks.Lambda('x', ref.type_signature, ref)
-    tuple_selected = mapreduce_transformations.select_output_from_lambda(
-        lam, [0, 1])
+    tuple_selected = transformations.select_output_from_lambda(lam, [0, 1])
     self.assertEqual(tuple_selected.type_signature.parameter,
                      lam.type_signature.parameter)
     self.assertEqual(
@@ -1464,22 +1456,18 @@ class ConcatenateFunctionOutputsTest(absltest.TestCase):
     reference = building_blocks.Reference('x', tf.int32)
     tff_lambda = building_blocks.Lambda('x', tf.int32, reference)
     with self.assertRaises(TypeError):
-      mapreduce_transformations.concatenate_function_outputs(
-          tff_lambda, reference)
+      transformations.concatenate_function_outputs(tff_lambda, reference)
     with self.assertRaises(TypeError):
-      mapreduce_transformations.concatenate_function_outputs(
-          reference, tff_lambda)
+      transformations.concatenate_function_outputs(reference, tff_lambda)
 
   def test_raises_on_non_unique_names(self):
     reference = building_blocks.Reference('x', tf.int32)
     good_lambda = building_blocks.Lambda('x', tf.int32, reference)
     bad_lambda = building_blocks.Lambda('x', tf.int32, good_lambda)
     with self.assertRaises(ValueError):
-      mapreduce_transformations.concatenate_function_outputs(
-          good_lambda, bad_lambda)
+      transformations.concatenate_function_outputs(good_lambda, bad_lambda)
     with self.assertRaises(ValueError):
-      mapreduce_transformations.concatenate_function_outputs(
-          bad_lambda, good_lambda)
+      transformations.concatenate_function_outputs(bad_lambda, good_lambda)
 
   def test_raises_on_different_parameter_types(self):
     int_reference = building_blocks.Reference('x', tf.int32)
@@ -1487,15 +1475,14 @@ class ConcatenateFunctionOutputsTest(absltest.TestCase):
     float_reference = building_blocks.Reference('x', tf.float32)
     float_lambda = building_blocks.Lambda('x', tf.float32, float_reference)
     with self.assertRaises(TypeError):
-      mapreduce_transformations.concatenate_function_outputs(
-          int_lambda, float_lambda)
+      transformations.concatenate_function_outputs(int_lambda, float_lambda)
 
   def test_parameters_are_mapped_together(self):
     x_reference = building_blocks.Reference('x', tf.int32)
     x_lambda = building_blocks.Lambda('x', tf.int32, x_reference)
     y_reference = building_blocks.Reference('y', tf.int32)
     y_lambda = building_blocks.Lambda('y', tf.int32, y_reference)
-    concatenated = mapreduce_transformations.concatenate_function_outputs(
+    concatenated = transformations.concatenate_function_outputs(
         x_lambda, y_lambda)
     parameter_name = concatenated.parameter_name
 
@@ -1514,7 +1501,7 @@ class ConcatenateFunctionOutputsTest(absltest.TestCase):
     x_lambda = building_blocks.Lambda('x', tf.int32, x_reference)
     y_reference = building_blocks.Reference('y', tf.int32)
     y_lambda = building_blocks.Lambda('y', tf.int32, y_reference)
-    concatenated = mapreduce_transformations.concatenate_function_outputs(
+    concatenated = transformations.concatenate_function_outputs(
         x_lambda, y_lambda)
     self.assertEqual(str(concatenated), '(_var1 -> <_var1,_var1>)')
 
@@ -1523,12 +1510,12 @@ class NormalizedBitTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      mapreduce_transformations.normalize_all_equal_bit(None)
+      transformations.normalize_all_equal_bit(None)
 
   def test_converts_all_equal_at_clients_reference_to_not_equal(self):
     fed_type_all_equal = computation_types.FederatedType(
         tf.int32, placements.CLIENTS, all_equal=True)
-    normalized_comp = mapreduce_transformations.normalize_all_equal_bit(
+    normalized_comp = transformations.normalize_all_equal_bit(
         building_blocks.Reference('x', fed_type_all_equal))
     self.assertEqual(
         normalized_comp.type_signature,
@@ -1540,7 +1527,7 @@ class NormalizedBitTest(absltest.TestCase):
   def test_converts_not_all_equal_at_server_reference_to_equal(self):
     fed_type_not_all_equal = computation_types.FederatedType(
         tf.int32, placements.SERVER, all_equal=False)
-    normalized_comp = mapreduce_transformations.normalize_all_equal_bit(
+    normalized_comp = transformations.normalize_all_equal_bit(
         building_blocks.Reference('x', fed_type_not_all_equal))
     self.assertEqual(
         normalized_comp.type_signature,
@@ -1556,7 +1543,7 @@ class NormalizedBitTest(absltest.TestCase):
         tf.int32, placements.CLIENTS)
     ref = building_blocks.Reference('x', fed_type_all_equal)
     lam = building_blocks.Lambda('x', fed_type_all_equal, ref)
-    normalized_lambda = mapreduce_transformations.normalize_all_equal_bit(lam)
+    normalized_lambda = transformations.normalize_all_equal_bit(lam)
     self.assertEqual(
         lam.type_signature,
         computation_types.FunctionType(fed_type_all_equal, fed_type_all_equal))
@@ -1574,7 +1561,7 @@ class NormalizedBitTest(absltest.TestCase):
         tf.int32, placements.SERVER)
     ref = building_blocks.Reference('x', fed_type_not_all_equal)
     lam = building_blocks.Lambda('x', fed_type_not_all_equal, ref)
-    normalized_lambda = mapreduce_transformations.normalize_all_equal_bit(lam)
+    normalized_lambda = transformations.normalize_all_equal_bit(lam)
     self.assertEqual(
         lam.type_signature,
         computation_types.FunctionType(fed_type_not_all_equal,
@@ -1596,7 +1583,7 @@ class NormalizedBitTest(absltest.TestCase):
     federated_int_ref = building_blocks.Reference('y', fed_type_all_equal)
     called_federated_map_all_equal = building_block_factory.create_federated_map_all_equal(
         int_identity, federated_int_ref)
-    normalized_federated_map = mapreduce_transformations.normalize_all_equal_bit(
+    normalized_federated_map = transformations.normalize_all_equal_bit(
         called_federated_map_all_equal)
     self.assertEqual(called_federated_map_all_equal.function.uri,
                      intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri)

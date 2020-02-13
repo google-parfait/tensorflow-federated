@@ -20,8 +20,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import tensorflow_serialization
-from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -30,8 +28,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 
 
 def _create_chained_dummy_federated_applys(functions, arg):
@@ -71,12 +68,6 @@ def _create_lambda_to_dummy_cast(parameter_name, parameter_type, result_type):
   return building_blocks.Lambda(parameter_name, parameter_type, arg)
 
 
-def _create_compiled_computation(py_fn, arg_type):
-  proto, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-      py_fn, arg_type, context_stack_impl.context_stack)
-  return building_blocks.CompiledComputation(proto)
-
-
 def _count_called_intrinsics(comp, uri=None):
 
   def _predicate(comp):
@@ -103,20 +94,20 @@ class ExtractComputationsTest(common_test.TestCase):
 
   def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
-      transformations.extract_computations(None)
+      tree_transformations.extract_computations(None)
 
   def test_raises_value_error_with_non_unique_variable_names(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('a', data), ('a', data)], data)
     with self.assertRaises(ValueError):
-      transformations.extract_computations(block)
+      tree_transformations.extract_computations(block)
 
   def test_extracts_from_block_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('a', data)], data)
     comp = block
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), '(let a=data in data)')
     self.assertEqual(transformed_comp.compact_representation(),
@@ -132,7 +123,7 @@ class ExtractComputationsTest(common_test.TestCase):
     block = building_blocks.Block([('a', data_1)], tup)
     comp = block
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(let a=data in <data,data>)')
@@ -160,7 +151,7 @@ class ExtractComputationsTest(common_test.TestCase):
     call = building_blocks.Call(fn, data)
     comp = call
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), '(a -> a)(data)')
     # pyformat: disable
@@ -184,7 +175,7 @@ class ExtractComputationsTest(common_test.TestCase):
     call = building_blocks.Call(fn, tup)
     comp = call
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), '(a -> a)(<data,data>)')
     # pyformat: disable
@@ -211,7 +202,7 @@ class ExtractComputationsTest(common_test.TestCase):
     fn = building_blocks.Lambda('a', tf.int32, data)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), '(a -> data)')
     # pyformat: disable
@@ -233,7 +224,7 @@ class ExtractComputationsTest(common_test.TestCase):
     fn = building_blocks.Lambda('a', tf.int32, tup)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), '(a -> <data,data>)')
     # pyformat: disable
@@ -260,7 +251,7 @@ class ExtractComputationsTest(common_test.TestCase):
     sel = building_blocks.Selection(tup, index=0)
     comp = sel
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), '<data>[0]')
     # pyformat: disable
@@ -286,7 +277,7 @@ class ExtractComputationsTest(common_test.TestCase):
     sel = building_blocks.Selection(tup, index=0)
     comp = sel
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), '<data,data>[0]')
     # pyformat: disable
@@ -312,7 +303,7 @@ class ExtractComputationsTest(common_test.TestCase):
     tup = building_blocks.Tuple([data])
     comp = tup
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), '<data>')
     self.assertEqual(transformed_comp.compact_representation(),
@@ -326,7 +317,7 @@ class ExtractComputationsTest(common_test.TestCase):
     tup = building_blocks.Tuple([data_1, data_2])
     comp = tup
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), '<data,data>')
     self.assertEqual(
@@ -344,7 +335,7 @@ class ExtractComputationsTest(common_test.TestCase):
     ])
     comp = tup
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), '<a=data,b=data>')
     self.assertEqual(
@@ -360,7 +351,7 @@ class ExtractComputationsTest(common_test.TestCase):
         report_parameter_name='c')
     comp = called_intrinsic
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(
         comp.compact_representation(),
@@ -400,7 +391,7 @@ class ExtractComputationsTest(common_test.TestCase):
     called_intrinsic = test_utils.create_dummy_called_federated_broadcast()
     comp = called_intrinsic
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     self.assertEqual(comp.compact_representation(), 'federated_broadcast(data)')
     # pyformat: disable
@@ -420,7 +411,7 @@ class ExtractComputationsTest(common_test.TestCase):
     complex_comp = _create_complex_computation()
     comp = complex_comp
 
-    transformed_comp, modified = transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
 
     # pyformat: disable
     self.assertEqual(
@@ -485,13 +476,13 @@ class ExtractIntrinsicsTest(common_test.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
-      transformations.extract_intrinsics(None)
+      tree_transformations.extract_intrinsics(None)
 
   def test_raises_value_error_with_non_unique_variable_names(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('a', data), ('a', data)], data)
     with self.assertRaises(ValueError):
-      transformations.extract_intrinsics(block)
+      tree_transformations.extract_intrinsics(block)
 
   def test_extracts_from_block_result_intrinsic(self):
     data = building_blocks.Data('data', tf.int32)
@@ -500,7 +491,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     block = building_blocks.Block((('a', data),), called_intrinsic)
     comp = block
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(let a=data in intrinsic(a))')
@@ -518,7 +509,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     block_2 = building_blocks.Block((('a', data),), block_1)
     comp = block_2
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(let a=data in (let b=intrinsic(a) in b))')
@@ -539,7 +530,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     block_2 = building_blocks.Block((('a', data),), block_1)
     comp = block_2
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(
         comp.compact_representation(),
@@ -558,7 +549,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     block_2 = building_blocks.Block((('c', block_1),), ref_2)
     comp = block_2
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(let c=(let b=intrinsic(a) in b) in c)')
@@ -579,7 +570,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     block_2 = building_blocks.Block((('d', block_1),), ref_2)
     comp = block_2
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(let d=(let b=intrinsic(a),c=intrinsic(a) in b) in d)')
@@ -598,7 +589,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('a', tf.int32, block_2)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(a -> (let c=(let b=intrinsic(a) in b) in c))')
@@ -621,7 +612,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('a', tf.int32, block_2)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(
         comp.compact_representation(),
@@ -644,7 +635,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     ), ref_2)
     comp = block_2
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(let a=data,c=(let b=intrinsic(a) in b) in c)')
@@ -670,7 +661,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     ), ref_2)
     comp = block_2
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(
         comp.compact_representation(),
@@ -687,7 +678,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     call = building_blocks.Call(fn, called_intrinsic)
     comp = call
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(), '(a -> a)(intrinsic(b))')
     self.assertEqual(transformed_comp.compact_representation(),
@@ -704,7 +695,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     call = building_blocks.Call(fn, block)
     comp = call
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(a -> a)((let c=intrinsic(b) in c))')
@@ -725,7 +716,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     call = building_blocks.Call(fn, block)
     comp = call
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(a -> a)((let c=intrinsic(b),d=intrinsic(b) in c))')
@@ -740,7 +731,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('b', tf.int32, called_intrinsic)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(), '(b -> intrinsic(a))')
     self.assertEqual(transformed_comp.compact_representation(),
@@ -754,7 +745,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('a', tf.int32, called_intrinsic)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(), '(a -> intrinsic(a))')
     self.assertEqual(transformed_comp.compact_representation(),
@@ -770,7 +761,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('c', tf.int32, block)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(c -> (let b=intrinsic(a) in b))')
@@ -790,7 +781,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('d', tf.int32, block)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(d -> (let b=intrinsic(a),c=intrinsic(a) in b))')
@@ -812,7 +803,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('b', tf.int32, block)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(b -> (let c=intrinsic(a),d=intrinsic(b) in c))')
@@ -835,7 +826,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('a', tf.int32, block)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(a -> (let c=intrinsic(a),d=intrinsic(b) in c))')
@@ -857,7 +848,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('c', tf.int32, block)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(c -> (let a=data,b=intrinsic(a) in b))')
@@ -881,7 +872,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('d', tf.int32, block)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(d -> (let a=data,b=intrinsic(a),c=intrinsic(b) in c))')
@@ -897,7 +888,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     sel = building_blocks.Selection(called_intrinsic, index=0)
     comp = sel
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(), 'intrinsic(a)[0]')
     self.assertEqual(transformed_comp.compact_representation(),
@@ -915,7 +906,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     sel = building_blocks.Selection(called_intrinsic, index=0)
     comp = sel
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(), 'intrinsic(c)[0]')
     self.assertEqual(transformed_comp.compact_representation(),
@@ -932,7 +923,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     sel = building_blocks.Selection(block, index=0)
     comp = sel
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(let b=intrinsic(a) in b)[0]')
@@ -953,7 +944,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     sel = building_blocks.Selection(block, index=0)
     comp = sel
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(let b=intrinsic(a),c=intrinsic(a) in b)[0]')
@@ -968,7 +959,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     tup = building_blocks.Tuple((called_intrinsic,))
     comp = tup
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(), '<intrinsic(a)>')
     self.assertEqual(transformed_comp.compact_representation(),
@@ -982,7 +973,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     tup = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = tup
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '<intrinsic(a),intrinsic(a)>')
@@ -1001,7 +992,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     ))
     comp = tup
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '<b=intrinsic(a),c=intrinsic(a)>')
@@ -1019,7 +1010,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     tup = building_blocks.Tuple((block,))
     comp = tup
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '<(let b=intrinsic(a) in b)>')
@@ -1039,7 +1030,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     tup = building_blocks.Tuple((block,))
     comp = tup
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '<(let b=intrinsic(a),c=intrinsic(a) in b)>')
@@ -1058,7 +1049,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     tup = building_blocks.Tuple((block_1, block_2))
     comp = tup
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '<(let b=intrinsic(a) in b),(let d=intrinsic(a) in d)>')
@@ -1084,7 +1075,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     tup = building_blocks.Tuple((block_1, block_2))
     comp = tup
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(
         comp.compact_representation(),
@@ -1111,7 +1102,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn_3 = building_blocks.Lambda('e', tf.int32, call_2)
     comp = fn_3
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(
         comp.compact_representation(),
@@ -1140,7 +1131,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn_3 = building_blocks.Lambda('f', tf.int32, call_2)
     comp = fn_3
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(
         comp.compact_representation(),
@@ -1165,7 +1156,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn_2 = building_blocks.Lambda('b', tf.int32, called_intrinsic_2)
     comp = fn_2
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(b -> intrinsic((a -> intrinsic(a))(data)))')
@@ -1183,7 +1174,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     block = building_blocks.Block((('b', called_intrinsic),), ref)
     comp = block
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
                      comp.compact_representation())
@@ -1200,7 +1191,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('a', tf.int32, block)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
                      comp.compact_representation())
@@ -1221,7 +1212,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     fn = building_blocks.Lambda('a', tf.int32, block)
     comp = fn
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
                      comp.compact_representation())
@@ -1236,7 +1227,7 @@ class ExtractIntrinsicsTest(common_test.TestCase):
     call = building_blocks.Call(fn, arg)
     comp = call
 
-    transformed_comp, modified = transformations.extract_intrinsics(comp)
+    transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
                      comp.compact_representation())
@@ -1250,25 +1241,25 @@ class InlineBlockLocalsTest(common_test.TestCase):
 
   def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
-      transformations.inline_block_locals(None)
+      tree_transformations.inline_block_locals(None)
 
   def test_raises_type_error_with_wrong_type_variable_names(self):
     block = test_utils.create_identity_block_with_dummy_data(variable_name='a')
     comp = block
     with self.assertRaises(TypeError):
-      transformations.inline_block_locals(comp, 1)
+      tree_transformations.inline_block_locals(comp, 1)
 
   def test_raises_value_error_with_non_unique_variable_names(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('a', data), ('a', data)], data)
     with self.assertRaises(ValueError):
-      transformations.inline_block_locals(block)
+      tree_transformations.inline_block_locals(block)
 
   def test_noops_with_unbound_reference(self):
     ref = building_blocks.Reference('x', tf.int32)
     lambda_binding_y = building_blocks.Lambda('y', tf.float32, ref)
 
-    transformed_comp, modified = transformations.inline_block_locals(
+    transformed_comp, modified = tree_transformations.inline_block_locals(
         lambda_binding_y)
 
     self.assertEqual(lambda_binding_y.compact_representation(), '(y -> x)')
@@ -1281,7 +1272,7 @@ class InlineBlockLocalsTest(common_test.TestCase):
     block = test_utils.create_identity_block_with_dummy_data(variable_name='a')
     comp = block
 
-    transformed_comp, modified = transformations.inline_block_locals(comp)
+    transformed_comp, modified = tree_transformations.inline_block_locals(comp)
 
     self.assertEqual(comp.compact_representation(), '(let a=data in a)')
     self.assertEqual(transformed_comp.compact_representation(), 'data')
@@ -1295,7 +1286,7 @@ class InlineBlockLocalsTest(common_test.TestCase):
     block = building_blocks.Block((('a', data),), tup)
     comp = block
 
-    transformed_comp, modified = transformations.inline_block_locals(comp)
+    transformed_comp, modified = tree_transformations.inline_block_locals(comp)
 
     self.assertEqual(comp.compact_representation(), '(let a=data in <a,a>)')
     self.assertEqual(transformed_comp.compact_representation(), '<data,data>')
@@ -1310,7 +1301,7 @@ class InlineBlockLocalsTest(common_test.TestCase):
     block = building_blocks.Block((('a', data), ('b', data)), tup)
     comp = block
 
-    transformed_comp, modified = transformations.inline_block_locals(
+    transformed_comp, modified = tree_transformations.inline_block_locals(
         comp, variable_names=('a',))
 
     self.assertEqual(comp.compact_representation(),
@@ -1327,7 +1318,7 @@ class InlineBlockLocalsTest(common_test.TestCase):
     block_2 = building_blocks.Block((('b', block_1),), ref)
     comp = block_2
 
-    transformed_comp, modified = transformations.inline_block_locals(comp)
+    transformed_comp, modified = tree_transformations.inline_block_locals(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(let b=(let a=data in a) in b)')
@@ -1343,7 +1334,7 @@ class InlineBlockLocalsTest(common_test.TestCase):
     block_2 = building_blocks.Block([('a', data)], block_1)
     comp = block_2
 
-    transformed_comp, modified = transformations.inline_block_locals(comp)
+    transformed_comp, modified = tree_transformations.inline_block_locals(comp)
 
     self.assertEqual(comp.compact_representation(),
                      '(let a=data in (let b=a in b))')
@@ -1360,7 +1351,7 @@ class InlineBlockLocalsTest(common_test.TestCase):
                                   ref_1)
     comp = block
 
-    transformed_comp, modified = transformations.inline_block_locals(comp)
+    transformed_comp, modified = tree_transformations.inline_block_locals(comp)
 
     self.assertEqual(comp.compact_representation(), '(let b=data,c=b,a=c in a)')
     self.assertEqual(transformed_comp.compact_representation(), 'data')
@@ -1371,7 +1362,7 @@ class InlineBlockLocalsTest(common_test.TestCase):
     fn = test_utils.create_identity_function('a', tf.int32)
     comp = fn
 
-    transformed_comp, modified = transformations.inline_block_locals(comp)
+    transformed_comp, modified = tree_transformations.inline_block_locals(comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
                      comp.compact_representation())
@@ -1383,7 +1374,7 @@ class InlineBlockLocalsTest(common_test.TestCase):
     block = test_utils.create_identity_block_with_dummy_data(variable_name='a')
     comp = block
 
-    transformed_comp, modified = transformations.inline_block_locals(
+    transformed_comp, modified = tree_transformations.inline_block_locals(
         comp, variable_names=('b',))
 
     self.assertEqual(comp.compact_representation(), '(let a=data in a)')
@@ -1398,7 +1389,7 @@ class InlineSelectionsFromTuplesTest(common_test.TestCase):
   def test_should_transform_selection_from_tuple(self):
     tup = building_blocks.Tuple([building_blocks.Data('x', tf.int32)])
     sel = building_blocks.Selection(tup, index=0)
-    selection_inliner = transformations.InlineSelectionsFromTuples()
+    selection_inliner = tree_transformations.InlineSelectionsFromTuples()
     symbol_tree = transformation_utils.SymbolTree(
         transformation_utils.ReferenceCounter)
     self.assertTrue(selection_inliner.should_transform(sel, symbol_tree))
@@ -1410,7 +1401,7 @@ class InlineSelectionsFromTuplesTest(common_test.TestCase):
     symbol_tree = transformation_utils.SymbolTree(
         transformation_utils.ReferenceCounter)
     symbol_tree.ingest_variable_binding('a', tup)
-    selection_inliner = transformations.InlineSelectionsFromTuples()
+    selection_inliner = tree_transformations.InlineSelectionsFromTuples()
     self.assertTrue(selection_inliner.should_transform(sel, symbol_tree))
 
   def test_should_not_transform_selection_from_unbound_reference(self):
@@ -1420,14 +1411,14 @@ class InlineSelectionsFromTuplesTest(common_test.TestCase):
     symbol_tree = transformation_utils.SymbolTree(
         transformation_utils.ReferenceCounter)
     symbol_tree.ingest_variable_binding('a', tup)
-    selection_inliner = transformations.InlineSelectionsFromTuples()
+    selection_inliner = tree_transformations.InlineSelectionsFromTuples()
     self.assertTrue(selection_inliner.should_transform(sel, symbol_tree))
 
   def test_reduces_selection_from_direct_tuple_by_index(self):
     data = building_blocks.Data('x', tf.int32)
     tup = building_blocks.Tuple([data])
     sel = building_blocks.Selection(tup, index=0)
-    collapsed, modified = transformations.inline_selections_from_tuple(sel)
+    collapsed, modified = tree_transformations.inline_selections_from_tuple(sel)
     self.assertTrue(modified)
     self.assertEqual(data.compact_representation(),
                      collapsed.compact_representation())
@@ -1436,7 +1427,7 @@ class InlineSelectionsFromTuplesTest(common_test.TestCase):
     data = building_blocks.Data('x', tf.int32)
     tup = building_blocks.Tuple([('a', data)])
     sel = building_blocks.Selection(tup, name='a')
-    collapsed, modified = transformations.inline_selections_from_tuple(sel)
+    collapsed, modified = tree_transformations.inline_selections_from_tuple(sel)
     self.assertTrue(modified)
     self.assertEqual(data.compact_representation(),
                      collapsed.compact_representation())
@@ -1447,7 +1438,7 @@ class InlineSelectionsFromTuplesTest(common_test.TestCase):
     ref_to_b = building_blocks.Reference('b', tup.type_signature)
     sel = building_blocks.Selection(ref_to_b, index=0)
     blk = building_blocks.Block([('b', tup)], sel)
-    collapsed, modified = transformations.inline_selections_from_tuple(blk)
+    collapsed, modified = tree_transformations.inline_selections_from_tuple(blk)
 
     expected_blk = building_blocks.Block([('b', tup)], data)
 
@@ -1461,7 +1452,7 @@ class InlineSelectionsFromTuplesTest(common_test.TestCase):
     ref_to_b = building_blocks.Reference('b', tup.type_signature)
     sel = building_blocks.Selection(ref_to_b, name='a')
     blk = building_blocks.Block([('b', tup)], sel)
-    collapsed, modified = transformations.inline_selections_from_tuple(blk)
+    collapsed, modified = tree_transformations.inline_selections_from_tuple(blk)
 
     expected_blk = building_blocks.Block([('b', tup)], data)
 
@@ -1474,7 +1465,7 @@ class MergeChainedBlocksTest(common_test.TestCase):
 
   def test_fails_on_none(self):
     with self.assertRaises(TypeError):
-      transformations.merge_chained_blocks(None)
+      tree_transformations.merge_chained_blocks(None)
 
   def test_single_level_of_nesting(self):
     input1 = building_blocks.Reference('input1', tf.int32)
@@ -1484,7 +1475,7 @@ class MergeChainedBlocksTest(common_test.TestCase):
     block2 = building_blocks.Block([('input1', input2)], block1)
     self.assertEqual(block2.compact_representation(),
                      '(let input1=input2 in (let result=input1 in result))')
-    merged_blocks, modified = transformations.merge_chained_blocks(block2)
+    merged_blocks, modified = tree_transformations.merge_chained_blocks(block2)
     self.assertEqual(merged_blocks.compact_representation(),
                      '(let input1=input2,result=input1 in result)')
     self.assertTrue(modified)
@@ -1502,7 +1493,7 @@ class MergeChainedBlocksTest(common_test.TestCase):
     self.assertEqual(
         block2.compact_representation(),
         '(let y=input2 in (let x=input1 in <a=result_a,b=result_b>))')
-    merged, modified = transformations.merge_chained_blocks(block2)
+    merged, modified = tree_transformations.merge_chained_blocks(block2)
     self.assertEqual(merged.compact_representation(),
                      '(let y=input2,x=input1 in <a=result_a,b=result_b>)')
     self.assertTrue(modified)
@@ -1517,7 +1508,7 @@ class MergeChainedBlocksTest(common_test.TestCase):
     block2 = building_blocks.Block([('y', input2)], result_tuple)
     self.assertEqual(block2.compact_representation(),
                      '(let y=input2 in <(let x=input1 in result)>)')
-    merged, modified = transformations.merge_chained_blocks(block2)
+    merged, modified = tree_transformations.merge_chained_blocks(block2)
     self.assertEqual(merged.compact_representation(),
                      '(let y=input2 in <(let x=input1 in result)>)')
     self.assertFalse(modified)
@@ -1534,7 +1525,7 @@ class MergeChainedBlocksTest(common_test.TestCase):
         block3.compact_representation(),
         '(let input2=input3 in (let input1=input2 in (let result=input1 in result)))'
     )
-    merged_blocks, modified = transformations.merge_chained_blocks(block3)
+    merged_blocks, modified = tree_transformations.merge_chained_blocks(block3)
     self.assertEqual(
         merged_blocks.compact_representation(),
         '(let input2=input3,input1=input2,result=input1 in result)')
@@ -1545,7 +1536,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
-      transformations.merge_chained_federated_maps_or_applys(None)
+      tree_transformations.merge_chained_federated_maps_or_applys(None)
 
   def test_merges_federated_applys(self):
     fn = test_utils.create_identity_function('a', tf.int32)
@@ -1554,7 +1545,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     call = _create_chained_dummy_federated_applys([fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+    transformed_comp, modified = tree_transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1575,7 +1566,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+    transformed_comp, modified = tree_transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1597,7 +1588,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+    transformed_comp, modified = tree_transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1619,7 +1610,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+    transformed_comp, modified = tree_transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1642,7 +1633,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+    transformed_comp, modified = tree_transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1665,7 +1656,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+    transformed_comp, modified = tree_transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1687,7 +1678,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     block = test_utils.create_dummy_block(call, variable_name='b')
     comp = block
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+    transformed_comp, modified = tree_transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1709,7 +1700,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     call = _create_chained_dummy_federated_maps([fn, fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+    transformed_comp, modified = tree_transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(
@@ -1746,7 +1737,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     call = building_block_factory.create_federated_map(fn, arg)
     comp = call
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+    transformed_comp, modified = tree_transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
@@ -1766,7 +1757,7 @@ class MergeChainedFederatedMapOrApplysTest(common_test.TestCase):
     call_2 = building_block_factory.create_federated_map(fn, block)
     comp = call_2
 
-    transformed_comp, modified = transformations.merge_chained_federated_maps_or_applys(
+    transformed_comp, modified = tree_transformations.merge_chained_federated_maps_or_applys(
         comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
@@ -1784,8 +1775,8 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
 
   def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
-      transformations.merge_tuple_intrinsics(None,
-                                             intrinsic_defs.FEDERATED_MAP.uri)
+      tree_transformations.merge_tuple_intrinsics(
+          None, intrinsic_defs.FEDERATED_MAP.uri)
 
   def test_raises_type_error_with_none_uri(self):
     called_intrinsic = test_utils.create_dummy_called_federated_map(
@@ -1793,7 +1784,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = calls
     with self.assertRaises(TypeError):
-      transformations.merge_tuple_intrinsics(comp, None)
+      tree_transformations.merge_tuple_intrinsics(comp, None)
 
   def test_raises_value_error(self):
     called_intrinsic = test_utils.create_dummy_called_federated_map(
@@ -1801,7 +1792,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = calls
     with self.assertRaises(ValueError):
-      transformations.merge_tuple_intrinsics(comp, 'dummy')
+      tree_transformations.merge_tuple_intrinsics(comp, 'dummy')
 
   def test_merges_federated_aggregates(self):
     called_intrinsic = test_utils.create_dummy_called_federated_aggregate(
@@ -1811,7 +1802,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
     # pyformat: disable
@@ -1953,7 +1944,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
         (called_intrinsic, called_intrinsic, called_intrinsic))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
     # pyformat: disable
@@ -2168,7 +2159,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_APPLY.uri)
 
     self.assertEqual(
@@ -2232,7 +2223,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_BROADCAST.uri)
 
     self.assertEqual(comp.compact_representation(),
@@ -2286,7 +2277,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
@@ -2354,7 +2345,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic_1, called_intrinsic_2))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
@@ -2422,7 +2413,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic_1, called_intrinsic_2))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
@@ -2488,7 +2479,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
         parameter_name='a', parameter_type=parameter_type)
     calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = calls
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
@@ -2557,7 +2548,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
         parameter_name='d', parameter_type=parameter_type_2)
     calls = building_blocks.Tuple((called_intrinsic_1, called_intrinsic_2))
     comp = calls
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
@@ -2626,7 +2617,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
@@ -2693,7 +2684,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
         (('b', called_intrinsic), ('c', called_intrinsic)))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
@@ -2760,7 +2751,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     block = test_utils.create_dummy_block(calls, variable_name='a')
     comp = block
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
@@ -2830,7 +2821,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
         (called_intrinsic, called_intrinsic, called_intrinsic))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(
@@ -2918,7 +2909,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic,))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(comp.compact_representation(),
@@ -2968,7 +2959,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic_1, called_intrinsic_2))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
 
     self.assertEqual(transformed_comp.compact_representation(),
@@ -2988,7 +2979,7 @@ class MergeTupleIntrinsicsTest(common_test.TestCase):
     calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
     comp = calls
 
-    transformed_comp, modified = transformations.merge_tuple_intrinsics(
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
     self.assertEqual(transformed_comp.compact_representation(),
@@ -3007,13 +2998,13 @@ class RemoveDuplicateBlockLocals(common_test.TestCase):
 
   def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
-      transformations.remove_duplicate_block_locals(None)
+      tree_transformations.remove_duplicate_block_locals(None)
 
   def test_raises_value_error_with_non_unique_variable_names(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('a', data), ('a', data)], data)
     with self.assertRaises(ValueError):
-      transformations.remove_duplicate_block_locals(block)
+      tree_transformations.remove_duplicate_block_locals(block)
 
   def test_removes_federated_aggregate(self):
     called_intrinsic = test_utils.create_dummy_called_federated_aggregate(
@@ -3026,12 +3017,12 @@ class RemoveDuplicateBlockLocals(common_test.TestCase):
     ])
     comp = tup
 
-    intermediate_comp, _ = transformations.uniquify_reference_names(comp)
-    intermediate_comp, _ = transformations.extract_computations(
+    intermediate_comp, _ = tree_transformations.uniquify_reference_names(comp)
+    intermediate_comp, _ = tree_transformations.extract_computations(
         intermediate_comp)
-    transformed_comp, modified = transformations.remove_duplicate_block_locals(
+    transformed_comp, modified = tree_transformations.remove_duplicate_block_locals(
         intermediate_comp)
-    transformed_comp, _ = transformations.uniquify_reference_names(
+    transformed_comp, _ = tree_transformations.uniquify_reference_names(
         transformed_comp)
 
     # pyformat: disable
@@ -3090,8 +3081,8 @@ class RemoveDuplicateBlockLocals(common_test.TestCase):
     ])
     comp = tup
 
-    intermediate_comp, _ = transformations.extract_computations(comp)
-    transformed_comp, modified = transformations.remove_duplicate_block_locals(
+    intermediate_comp, _ = tree_transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.remove_duplicate_block_locals(
         intermediate_comp)
 
     # pyformat: disable
@@ -3122,8 +3113,8 @@ class RemoveDuplicateBlockLocals(common_test.TestCase):
     complex_comp = _create_complex_computation()
     comp = complex_comp
 
-    intermediate_comp, _ = transformations.extract_computations(comp)
-    transformed_comp, modified = transformations.remove_duplicate_block_locals(
+    intermediate_comp, _ = tree_transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.remove_duplicate_block_locals(
         intermediate_comp)
 
     # pyformat: disable
@@ -3172,8 +3163,8 @@ class RemoveDuplicateBlockLocals(common_test.TestCase):
     fn = building_blocks.Lambda(ref_1.name, ref_1.type_signature, block)
     comp = fn
 
-    intermediate_comp, _ = transformations.extract_computations(comp)
-    transformed_comp, modified = transformations.remove_duplicate_block_locals(
+    intermediate_comp, _ = tree_transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.remove_duplicate_block_locals(
         intermediate_comp)
 
     # pyformat: disable
@@ -3209,7 +3200,7 @@ class DeduplicateBuildingBlocksTest(common_test.TestCase):
     sel_0 = building_blocks.Selection(called_id, index=0)
     tup = building_blocks.Tuple([sel_0, sel_0])
     fake_lam = building_blocks.Lambda('a', [tf.int32, tf.float32], tup)
-    dups_removed, modified = transformations.remove_duplicate_building_blocks(
+    dups_removed, modified = tree_transformations.remove_duplicate_building_blocks(
         fake_lam)
     self.assertTrue(modified)
     self.assertEqual(
@@ -3220,7 +3211,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
-      transformations.remove_mapped_or_applied_identity(None)
+      tree_transformations.remove_mapped_or_applied_identity(None)
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -3242,7 +3233,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     call = factory(parameter_name='a')
     comp = call
 
-    transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
+    transformed_comp, modified = tree_transformations.remove_mapped_or_applied_identity(
         comp)
 
     self.assertEqual(comp.compact_representation(),
@@ -3260,7 +3251,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     call = building_block_factory.create_federated_map(fn, arg)
     comp = call
 
-    transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
+    transformed_comp, modified = tree_transformations.remove_mapped_or_applied_identity(
         comp)
 
     self.assertEqual(comp.compact_representation(),
@@ -3275,7 +3266,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     block = test_utils.create_dummy_block(called_intrinsic, variable_name='b')
     comp = block
 
-    transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
+    transformed_comp, modified = tree_transformations.remove_mapped_or_applied_identity(
         comp)
 
     self.assertEqual(comp.compact_representation(),
@@ -3292,7 +3283,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
+    transformed_comp, modified = tree_transformations.remove_mapped_or_applied_identity(
         comp)
 
     self.assertEqual(
@@ -3305,7 +3296,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
   def test_does_not_remove_dummy_intrinsic(self):
     comp = test_utils.create_dummy_called_intrinsic(parameter_name='a')
 
-    transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
+    transformed_comp, modified = tree_transformations.remove_mapped_or_applied_identity(
         comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
@@ -3320,7 +3311,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     call = building_blocks.Call(fn, arg)
     comp = call
 
-    transformed_comp, modified = transformations.remove_mapped_or_applied_identity(
+    transformed_comp, modified = tree_transformations.remove_mapped_or_applied_identity(
         comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
@@ -3335,7 +3326,7 @@ class RemoveUnusedBlockLocalsTest(common_test.TestCase):
 
   def setUp(self):
     super().setUp()
-    self._unused_block_remover = transformations.RemoveUnusedBlockLocals()
+    self._unused_block_remover = tree_transformations.RemoveUnusedBlockLocals()
 
   def test_should_transform_block(self):
     blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
@@ -3350,7 +3341,7 @@ class RemoveUnusedBlockLocalsTest(common_test.TestCase):
     input_data = building_blocks.Data('b', tf.int32)
     blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
                                 input_data)
-    data, modified = transformations._apply_transforms(
+    data, modified = tree_transformations._apply_transforms(
         blk, self._unused_block_remover)
     self.assertTrue(modified)
     self.assertEqual(data.compact_representation(),
@@ -3359,7 +3350,7 @@ class RemoveUnusedBlockLocalsTest(common_test.TestCase):
   def test_unwraps_block_with_empty_locals(self):
     input_data = building_blocks.Data('b', tf.int32)
     blk = building_blocks.Block([], input_data)
-    data, modified = transformations._apply_transforms(
+    data, modified = tree_transformations._apply_transforms(
         blk, self._unused_block_remover)
     self.assertTrue(modified)
     self.assertEqual(data.compact_representation(),
@@ -3370,7 +3361,7 @@ class RemoveUnusedBlockLocalsTest(common_test.TestCase):
     blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
                                 input_data)
     higher_level_blk = building_blocks.Block([('y', input_data)], blk)
-    data, modified = transformations._apply_transforms(
+    data, modified = tree_transformations._apply_transforms(
         higher_level_blk, self._unused_block_remover)
     self.assertTrue(modified)
     self.assertEqual(data.compact_representation(),
@@ -3379,7 +3370,7 @@ class RemoveUnusedBlockLocalsTest(common_test.TestCase):
   def test_leaves_single_used_reference(self):
     blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32))],
                                 building_blocks.Reference('x', tf.int32))
-    transformed_blk, modified = transformations._apply_transforms(
+    transformed_blk, modified = tree_transformations._apply_transforms(
         blk, self._unused_block_remover)
     self.assertFalse(modified)
     self.assertEqual(transformed_blk.compact_representation(),
@@ -3390,7 +3381,7 @@ class RemoveUnusedBlockLocalsTest(common_test.TestCase):
         [('x', building_blocks.Data('a', tf.int32)),
          ('y', building_blocks.Reference('x', tf.int32))],
         building_blocks.Reference('y', tf.int32))
-    transformed_blk, modified = transformations._apply_transforms(
+    transformed_blk, modified = tree_transformations._apply_transforms(
         blk, self._unused_block_remover)
     self.assertFalse(modified)
     self.assertEqual(transformed_blk.compact_representation(),
@@ -3402,7 +3393,7 @@ class RemoveUnusedBlockLocalsTest(common_test.TestCase):
     blk = building_blocks.Block(
         [('x', building_blocks.Data('a', tf.int32)),
          ('y', building_blocks.Reference('x', tf.int32))], input_data)
-    transformed_blk, modified = transformations._apply_transforms(
+    transformed_blk, modified = tree_transformations._apply_transforms(
         blk, self._unused_block_remover)
     self.assertTrue(modified)
     self.assertEqual(transformed_blk.compact_representation(),
@@ -3413,7 +3404,7 @@ class RemoveUnusedBlockLocalsTest(common_test.TestCase):
     blk = building_blocks.Block([('x', building_blocks.Data('a', tf.int32)),
                                  ('y', building_blocks.Data('b', tf.int32))],
                                 ref)
-    transformed_blk, modified = transformations._apply_transforms(
+    transformed_blk, modified = tree_transformations._apply_transforms(
         blk, self._unused_block_remover)
     self.assertTrue(modified)
     self.assertEqual(transformed_blk.compact_representation(), '(let y=b in y)')
@@ -3423,7 +3414,7 @@ class ReplaceCalledLambdaWithBlockTest(common_test.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
-      transformations.replace_called_lambda_with_block(None)
+      tree_transformations.replace_called_lambda_with_block(None)
 
   def test_replaces_called_lambda(self):
     fn = test_utils.create_identity_function('a', tf.int32)
@@ -3431,7 +3422,7 @@ class ReplaceCalledLambdaWithBlockTest(common_test.TestCase):
     call = building_blocks.Call(fn, arg)
     comp = call
 
-    transformed_comp, modified = transformations.replace_called_lambda_with_block(
+    transformed_comp, modified = tree_transformations.replace_called_lambda_with_block(
         comp)
 
     self.assertEqual(comp.compact_representation(), '(a -> a)(data)')
@@ -3447,7 +3438,7 @@ class ReplaceCalledLambdaWithBlockTest(common_test.TestCase):
     call = building_blocks.Call(ref, arg)
     blk = building_blocks.Block([('x', fn)], call)
 
-    transformed_comp, modified = transformations.replace_called_lambda_with_block(
+    transformed_comp, modified = tree_transformations.replace_called_lambda_with_block(
         blk)
 
     self.assertEqual(blk.compact_representation(),
@@ -3464,7 +3455,7 @@ class ReplaceCalledLambdaWithBlockTest(common_test.TestCase):
     block = test_utils.create_dummy_block(call, variable_name='b')
     comp = block
 
-    transformed_comp, modified = transformations.replace_called_lambda_with_block(
+    transformed_comp, modified = tree_transformations.replace_called_lambda_with_block(
         comp)
 
     self.assertEqual(comp.compact_representation(),
@@ -3480,7 +3471,7 @@ class ReplaceCalledLambdaWithBlockTest(common_test.TestCase):
     call = test_utils.create_chained_calls([fn, fn], arg)
     comp = call
 
-    transformed_comp, modified = transformations.replace_called_lambda_with_block(
+    transformed_comp, modified = tree_transformations.replace_called_lambda_with_block(
         comp)
 
     self.assertEqual(comp.compact_representation(), '(a -> a)((a -> a)(data))')
@@ -3493,7 +3484,7 @@ class ReplaceCalledLambdaWithBlockTest(common_test.TestCase):
     fn = test_utils.create_identity_function('a', tf.int32)
     comp = fn
 
-    transformed_comp, modified = transformations.replace_called_lambda_with_block(
+    transformed_comp, modified = tree_transformations.replace_called_lambda_with_block(
         comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
@@ -3509,7 +3500,7 @@ class ReplaceCalledLambdaWithBlockTest(common_test.TestCase):
     call = building_blocks.Call(block, arg)
     comp = call
 
-    transformed_comp, modified = transformations.replace_called_lambda_with_block(
+    transformed_comp, modified = tree_transformations.replace_called_lambda_with_block(
         comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
@@ -3524,7 +3515,7 @@ class ReplaceSelectionFromTupleWithElementTest(common_test.TestCase):
 
   def test_fails_on_none_comp(self):
     with self.assertRaises(TypeError):
-      transformations.replace_selection_from_tuple_with_element(None)
+      tree_transformations.replace_selection_from_tuple_with_element(None)
 
   def test_leaves_selection_from_ref_by_index_alone(self):
     ref_to_tuple = building_blocks.Reference('tup', [('a', tf.int32),
@@ -3532,9 +3523,9 @@ class ReplaceSelectionFromTupleWithElementTest(common_test.TestCase):
     a_selected = building_blocks.Selection(ref_to_tuple, index=0)
     b_selected = building_blocks.Selection(ref_to_tuple, index=1)
 
-    a_returned, a_transformed = transformations.replace_selection_from_tuple_with_element(
+    a_returned, a_transformed = tree_transformations.replace_selection_from_tuple_with_element(
         a_selected)
-    b_returned, b_transformed = transformations.replace_selection_from_tuple_with_element(
+    b_returned, b_transformed = tree_transformations.replace_selection_from_tuple_with_element(
         b_selected)
 
     self.assertFalse(a_transformed)
@@ -3548,9 +3539,9 @@ class ReplaceSelectionFromTupleWithElementTest(common_test.TestCase):
     a_selected = building_blocks.Selection(ref_to_tuple, name='a')
     b_selected = building_blocks.Selection(ref_to_tuple, name='b')
 
-    a_returned, a_transformed = transformations.replace_selection_from_tuple_with_element(
+    a_returned, a_transformed = tree_transformations.replace_selection_from_tuple_with_element(
         a_selected)
-    b_returned, b_transformed = transformations.replace_selection_from_tuple_with_element(
+    b_returned, b_transformed = tree_transformations.replace_selection_from_tuple_with_element(
         b_selected)
 
     self.assertFalse(a_transformed)
@@ -3565,9 +3556,9 @@ class ReplaceSelectionFromTupleWithElementTest(common_test.TestCase):
     x_selected = building_blocks.Selection(tup, index=0)
     y_selected = building_blocks.Selection(tup, index=1)
 
-    collapsed_selection_x, x_transformed = transformations.replace_selection_from_tuple_with_element(
+    collapsed_selection_x, x_transformed = tree_transformations.replace_selection_from_tuple_with_element(
         x_selected)
-    collapsed_selection_y, y_transformed = transformations.replace_selection_from_tuple_with_element(
+    collapsed_selection_y, y_transformed = tree_transformations.replace_selection_from_tuple_with_element(
         y_selected)
 
     self.assertTrue(x_transformed)
@@ -3582,9 +3573,9 @@ class ReplaceSelectionFromTupleWithElementTest(common_test.TestCase):
     x_selected = building_blocks.Selection(tup, name='a')
     y_selected = building_blocks.Selection(tup, name='b')
 
-    collapsed_selection_x, x_transformed = transformations.replace_selection_from_tuple_with_element(
+    collapsed_selection_x, x_transformed = tree_transformations.replace_selection_from_tuple_with_element(
         x_selected)
-    collapsed_selection_y, y_transformed = transformations.replace_selection_from_tuple_with_element(
+    collapsed_selection_y, y_transformed = tree_transformations.replace_selection_from_tuple_with_element(
         y_selected)
 
     self.assertTrue(x_transformed)
@@ -3597,13 +3588,13 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
-      transformations.uniquify_compiled_computation_names(None)
+      tree_transformations.uniquify_compiled_computation_names(None)
 
   def test_replaces_name(self):
     compiled_comp = building_block_factory.create_compiled_identity(tf.int32)
     comp = compiled_comp
 
-    transformed_comp, modified = transformations.uniquify_compiled_computation_names(
+    transformed_comp, modified = tree_transformations.uniquify_compiled_computation_names(
         comp)
 
     self.assertNotEqual(transformed_comp._name, comp._name)
@@ -3618,7 +3609,7 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
     compiled_comps = building_blocks.Tuple(elements)
     comp = compiled_comps
 
-    transformed_comp, modified = transformations.uniquify_compiled_computation_names(
+    transformed_comp, modified = tree_transformations.uniquify_compiled_computation_names(
         comp)
 
     comp_names = [element._name for element in comp]
@@ -3634,7 +3625,7 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
   def test_does_not_replace_other_name(self):
     comp = building_blocks.Reference('name', tf.int32)
 
-    transformed_comp, modified = transformations.uniquify_compiled_computation_names(
+    transformed_comp, modified = tree_transformations.uniquify_compiled_computation_names(
         comp)
 
     self.assertEqual(transformed_comp._name, comp._name)
@@ -3646,13 +3637,13 @@ class UniquifyReferenceNamesTest(common_test.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
-      transformations.uniquify_reference_names(None)
+      tree_transformations.uniquify_reference_names(None)
 
   def test_renames_lambda_but_not_unbound_reference(self):
     ref = building_blocks.Reference('x', tf.int32)
     lambda_binding_y = building_blocks.Lambda('y', tf.float32, ref)
 
-    transformed_comp, modified = transformations.uniquify_reference_names(
+    transformed_comp, modified = tree_transformations.uniquify_reference_names(
         lambda_binding_y)
 
     self.assertEqual(lambda_binding_y.compact_representation(), '(y -> x)')
@@ -3666,7 +3657,8 @@ class UniquifyReferenceNamesTest(common_test.TestCase):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block((('a', data), ('a', ref), ('a', ref)), ref)
 
-    transformed_comp, modified = transformations.uniquify_reference_names(block)
+    transformed_comp, modified = tree_transformations.uniquify_reference_names(
+        block)
 
     self.assertEqual(block.compact_representation(),
                      '(let a=data,a=a,a=a in a)')
@@ -3681,7 +3673,7 @@ class UniquifyReferenceNamesTest(common_test.TestCase):
     block1 = building_blocks.Block([('a', data), ('a', x_ref)], x_ref)
     block2 = building_blocks.Block([('a', data), ('a', x_ref)], block1)
 
-    transformed_comp, modified = transformations.uniquify_reference_names(
+    transformed_comp, modified = tree_transformations.uniquify_reference_names(
         block2)
 
     self.assertEqual(block2.compact_representation(),
@@ -3702,7 +3694,7 @@ class UniquifyReferenceNamesTest(common_test.TestCase):
         building_blocks.Lambda('b', input2.type_signature, input2),
         first_level_call)
 
-    transformed_comp, modified = transformations.uniquify_reference_names(
+    transformed_comp, modified = tree_transformations.uniquify_reference_names(
         second_level_call)
 
     self.assertEqual(transformed_comp.compact_representation(),
@@ -3721,7 +3713,7 @@ class UniquifyReferenceNamesTest(common_test.TestCase):
     data = building_blocks.Data('data', tf.int32)
     last_block = building_blocks.Block([('a', data), ('a', x_ref)], second_call)
 
-    transformed_comp, modified = transformations.uniquify_reference_names(
+    transformed_comp, modified = tree_transformations.uniquify_reference_names(
         last_block)
 
     self.assertEqual(
@@ -3749,7 +3741,7 @@ class UniquifyReferenceNamesTest(common_test.TestCase):
         [('a', higher_block),
          ('a', higher_block_with_y_ref)], higher_block_with_y_ref)
 
-    transformed_comp, modified = transformations.uniquify_reference_names(
+    transformed_comp, modified = tree_transformations.uniquify_reference_names(
         multiple_bindings_highest_block)
 
     self.assertEqual(higher_block.compact_representation(),
@@ -3775,7 +3767,8 @@ class UniquifyReferenceNamesTest(common_test.TestCase):
     block = building_blocks.Block([('a', data), ('b', data)], data)
     comp = block
 
-    transformed_comp, modified = transformations.uniquify_reference_names(comp)
+    transformed_comp, modified = tree_transformations.uniquify_reference_names(
+        comp)
 
     self.assertEqual(block.compact_representation(),
                      '(let a=data,b=data in data)')
@@ -3783,307 +3776,12 @@ class UniquifyReferenceNamesTest(common_test.TestCase):
                      '(let _var1=data,_var2=data in data)')
     self.assertTrue(modified)
 
-    transformed_comp, modified = transformations.uniquify_reference_names(comp)
+    transformed_comp, modified = tree_transformations.uniquify_reference_names(
+        comp)
 
     self.assertEqual(transformed_comp.compact_representation(),
                      '(let _var1=data,_var2=data in data)')
     self.assertTrue(modified)
-
-
-def parse_tff_to_tf(comp):
-  comp, _ = transformations.insert_called_tf_identity_at_leaves(comp)
-  parser_callable = transformations.TFParser()
-  comp, _ = transformations.replace_called_lambda_with_block(comp)
-  comp, _ = transformations.inline_block_locals(comp)
-  comp, _ = transformations.replace_selection_from_tuple_with_element(comp)
-  new_comp, transformed = transformation_utils.transform_postorder(
-      comp, parser_callable)
-  return new_comp, transformed
-
-
-class ParseTFFToTFTest(common_test.TestCase):
-
-  def test_raises_on_none(self):
-    with self.assertRaises(TypeError):
-      parse_tff_to_tf(None)
-
-  def test_does_not_transform_standalone_intrinsic(self):
-    standalone_intrinsic = building_blocks.Intrinsic('dummy', tf.int32)
-    non_transformed, _ = parse_tff_to_tf(standalone_intrinsic)
-    self.assertEqual(standalone_intrinsic.compact_representation(),
-                     non_transformed.compact_representation())
-
-  def test_replaces_lambda_to_selection_from_called_graph_with_tf_of_same_type(
-      self):
-    identity_tf_block = building_block_factory.create_compiled_identity(
-        [tf.int32, tf.float32])
-    tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32])
-    called_tf_block = building_blocks.Call(identity_tf_block, tuple_ref)
-    selection_from_call = building_blocks.Selection(called_tf_block, index=1)
-    lambda_wrapper = building_blocks.Lambda('x', [tf.int32, tf.float32],
-                                            selection_from_call)
-
-    parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-
-    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
-    self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    self.assertEqual(exec_lambda([0, 1.]), exec_tf([0, 1.]))
-
-  def test_replaces_lambda_to_called_graph_with_tf_of_same_type(self):
-    identity_tf_block = building_block_factory.create_compiled_identity(
-        tf.int32)
-    int_ref = building_blocks.Reference('x', tf.int32)
-    called_tf_block = building_blocks.Call(identity_tf_block, int_ref)
-    lambda_wrapper = building_blocks.Lambda('x', tf.int32, called_tf_block)
-
-    parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-
-    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
-    self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    self.assertEqual(exec_lambda(2), exec_tf(2))
-
-  def test_replaces_lambda_to_called_graph_on_selection_from_arg_with_tf_of_same_type(
-      self):
-    identity_tf_block = building_block_factory.create_compiled_identity(
-        tf.int32)
-    tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32])
-    selected_int = building_blocks.Selection(tuple_ref, index=0)
-    called_tf_block = building_blocks.Call(identity_tf_block, selected_int)
-    lambda_wrapper = building_blocks.Lambda('x', [tf.int32, tf.float32],
-                                            called_tf_block)
-
-    parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-
-    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
-    self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-    self.assertEqual(exec_lambda([3, 4.]), exec_tf([3, 4.]))
-
-  def test_replaces_lambda_to_called_graph_on_selection_from_arg_with_tf_of_same_type_with_names(
-      self):
-    identity_tf_block = building_block_factory.create_compiled_identity(
-        tf.int32)
-    tuple_ref = building_blocks.Reference('x', [('a', tf.int32),
-                                                ('b', tf.float32)])
-    selected_int = building_blocks.Selection(tuple_ref, index=0)
-    called_tf_block = building_blocks.Call(identity_tf_block, selected_int)
-    lambda_wrapper = building_blocks.Lambda('x', [('a', tf.int32),
-                                                  ('b', tf.float32)],
-                                            called_tf_block)
-
-    parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-
-    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
-    self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    self.assertEqual(exec_lambda({'a': 5, 'b': 6.}), exec_tf({'a': 5, 'b': 6.}))
-
-  def test_replaces_lambda_to_called_graph_on_tuple_of_selections_from_arg_with_tf_of_same_type(
-      self):
-    identity_tf_block = building_block_factory.create_compiled_identity(
-        [tf.int32, tf.bool])
-    tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32, tf.bool])
-    selected_int = building_blocks.Selection(tuple_ref, index=0)
-    selected_bool = building_blocks.Selection(tuple_ref, index=2)
-    created_tuple = building_blocks.Tuple([selected_int, selected_bool])
-    called_tf_block = building_blocks.Call(identity_tf_block, created_tuple)
-    lambda_wrapper = building_blocks.Lambda('x',
-                                            [tf.int32, tf.float32, tf.bool],
-                                            called_tf_block)
-
-    parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-
-    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
-    self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-    self.assertEqual(exec_lambda([7, 8., True]), exec_tf([7, 8., True]))
-
-  def test_replaces_lambda_to_called_graph_on_tuple_of_selections_from_arg_with_tf_of_same_type_with_names(
-      self):
-    identity_tf_block = building_block_factory.create_compiled_identity(
-        [tf.int32, tf.bool])
-    tuple_ref = building_blocks.Reference('x', [('a', tf.int32),
-                                                ('b', tf.float32),
-                                                ('c', tf.bool)])
-    selected_int = building_blocks.Selection(tuple_ref, index=0)
-    selected_bool = building_blocks.Selection(tuple_ref, index=2)
-    created_tuple = building_blocks.Tuple([selected_int, selected_bool])
-    called_tf_block = building_blocks.Call(identity_tf_block, created_tuple)
-    lambda_wrapper = building_blocks.Lambda('x', [('a', tf.int32),
-                                                  ('b', tf.float32),
-                                                  ('c', tf.bool)],
-                                            called_tf_block)
-
-    parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-
-    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
-    self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-    self.assertEqual(
-        exec_lambda({
-            'a': 9,
-            'b': 10.,
-            'c': False
-        }), exec_tf({
-            'a': 9,
-            'b': 10.,
-            'c': False
-        }))
-
-  def test_replaces_lambda_to_unnamed_tuple_of_called_graphs_with_tf_of_same_type(
-      self):
-    int_identity_tf_block = building_block_factory.create_compiled_identity(
-        tf.int32)
-    float_identity_tf_block = building_block_factory.create_compiled_identity(
-        tf.float32)
-    tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32])
-    selected_int = building_blocks.Selection(tuple_ref, index=0)
-    selected_float = building_blocks.Selection(tuple_ref, index=1)
-
-    called_int_tf_block = building_blocks.Call(int_identity_tf_block,
-                                               selected_int)
-    called_float_tf_block = building_blocks.Call(float_identity_tf_block,
-                                                 selected_float)
-    tuple_of_called_graphs = building_blocks.Tuple(
-        [called_int_tf_block, called_float_tf_block])
-    lambda_wrapper = building_blocks.Lambda('x', [tf.int32, tf.float32],
-                                            tuple_of_called_graphs)
-
-    parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-
-    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
-    self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-    self.assertEqual(exec_lambda([11, 12.]), exec_tf([11, 12.]))
-
-  def test_replaces_lambda_to_named_tuple_of_called_graphs_with_tf_of_same_type(
-      self):
-    int_identity_tf_block = building_block_factory.create_compiled_identity(
-        tf.int32)
-    float_identity_tf_block = building_block_factory.create_compiled_identity(
-        tf.float32)
-    tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32])
-    selected_int = building_blocks.Selection(tuple_ref, index=0)
-    selected_float = building_blocks.Selection(tuple_ref, index=1)
-
-    called_int_tf_block = building_blocks.Call(int_identity_tf_block,
-                                               selected_int)
-    called_float_tf_block = building_blocks.Call(float_identity_tf_block,
-                                                 selected_float)
-    tuple_of_called_graphs = building_blocks.Tuple([('a', called_int_tf_block),
-                                                    ('b', called_float_tf_block)
-                                                   ])
-    lambda_wrapper = building_blocks.Lambda('x', [tf.int32, tf.float32],
-                                            tuple_of_called_graphs)
-
-    parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-
-    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
-    self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    self.assertEqual(exec_lambda([13, 14.]), exec_tf([13, 14.]))
-
-  def test_replaces_lambda_to_called_composition_of_tf_blocks_with_tf_of_same_type_named_param(
-      self):
-    selection_tf_block = _create_compiled_computation(lambda x: x[0],
-                                                      [('a', tf.int32),
-                                                       ('b', tf.float32)])
-    add_one_int_tf_block = _create_compiled_computation(lambda x: x + 1,
-                                                        tf.int32)
-    int_ref = building_blocks.Reference('x', [('a', tf.int32),
-                                              ('b', tf.float32)])
-    called_selection = building_blocks.Call(selection_tf_block, int_ref)
-    one_added = building_blocks.Call(add_one_int_tf_block, called_selection)
-    lambda_wrapper = building_blocks.Lambda('x', [('a', tf.int32),
-                                                  ('b', tf.float32)], one_added)
-
-    parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-
-    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
-    self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    self.assertEqual(
-        exec_lambda({
-            'a': 15,
-            'b': 16.
-        }), exec_tf({
-            'a': 15,
-            'b': 16.
-        }))
-
-  def test_replaces_lambda_to_called_tf_block_with_replicated_lambda_arg_with_tf_block_of_same_type(
-      self):
-    sum_and_add_one = _create_compiled_computation(lambda x: x[0] + x[1] + 1,
-                                                   [tf.int32, tf.int32])
-    int_ref = building_blocks.Reference('x', tf.int32)
-    tuple_of_ints = building_blocks.Tuple((int_ref, int_ref))
-    summed = building_blocks.Call(sum_and_add_one, tuple_of_ints)
-    lambda_wrapper = building_blocks.Lambda('x', tf.int32, summed)
-
-    parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-
-    self.assertIsInstance(parsed, building_blocks.CompiledComputation)
-    self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    self.assertEqual(exec_lambda(17), exec_tf(17))
 
 
 def _is_called_graph_pattern(comp):
@@ -4096,12 +3794,12 @@ class InsertTensorFlowIdentityAtLeavesTest(common_test.TestCase):
 
   def test_rasies_on_none(self):
     with self.assertRaises(TypeError):
-      transformations.insert_called_tf_identity_at_leaves(None)
+      tree_transformations.insert_called_tf_identity_at_leaves(None)
 
   def test_transforms_simple_lambda(self):
     identity_lam = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
-    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+    new_lambda, modified = tree_transformations.insert_called_tf_identity_at_leaves(
         identity_lam)
     self.assertTrue(modified)
     self.assertEqual(new_lambda.type_signature, identity_lam.type_signature)
@@ -4114,7 +3812,7 @@ class InsertTensorFlowIdentityAtLeavesTest(common_test.TestCase):
   def test_transforms_reference_under_tuple(self):
     one_element_tuple = building_blocks.Tuple(
         [building_blocks.Reference('x', tf.int32)])
-    transformed_tuple, _ = transformations.insert_called_tf_identity_at_leaves(
+    transformed_tuple, _ = tree_transformations.insert_called_tf_identity_at_leaves(
         one_element_tuple)
     self.assertIsInstance(transformed_tuple[0], building_blocks.Call)
     self.assertIsInstance(transformed_tuple[0].function,
@@ -4129,7 +3827,7 @@ class InsertTensorFlowIdentityAtLeavesTest(common_test.TestCase):
     fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     identity_lam = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', fed_type))
-    untransformed_lam, _ = transformations.insert_called_tf_identity_at_leaves(
+    untransformed_lam, _ = tree_transformations.insert_called_tf_identity_at_leaves(
         identity_lam)
     self.assertEqual(identity_lam.compact_representation(),
                      untransformed_lam.compact_representation())
@@ -4138,7 +3836,7 @@ class InsertTensorFlowIdentityAtLeavesTest(common_test.TestCase):
     ref_to_x = building_blocks.Reference('x', [tf.int32])
     sel = building_blocks.Selection(ref_to_x, index=0)
     lam = building_blocks.Lambda('x', [tf.int32], sel)
-    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+    new_lambda, modified = tree_transformations.insert_called_tf_identity_at_leaves(
         lam)
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
@@ -4152,7 +3850,7 @@ class InsertTensorFlowIdentityAtLeavesTest(common_test.TestCase):
     ref_to_x = building_blocks.Reference('x', tf.int32)
     tup = building_blocks.Tuple([ref_to_x, ref_to_x])
     lam = building_blocks.Lambda('x', tf.int32, tup)
-    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+    new_lambda, modified = tree_transformations.insert_called_tf_identity_at_leaves(
         lam)
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
@@ -4166,7 +3864,7 @@ class InsertTensorFlowIdentityAtLeavesTest(common_test.TestCase):
     ref_to_x = building_blocks.Reference('x', tf.int32)
     block = building_blocks.Block([], ref_to_x)
     lam = building_blocks.Lambda('x', tf.int32, block)
-    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+    new_lambda, modified = tree_transformations.insert_called_tf_identity_at_leaves(
         lam)
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
@@ -4181,7 +3879,7 @@ class InsertTensorFlowIdentityAtLeavesTest(common_test.TestCase):
     data = building_blocks.Data('x', tf.int32)
     block = building_blocks.Block([('y', ref_to_x)], data)
     lam = building_blocks.Lambda('x', tf.int32, block)
-    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+    new_lambda, modified = tree_transformations.insert_called_tf_identity_at_leaves(
         lam)
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
@@ -4197,7 +3895,7 @@ class InsertTensorFlowIdentityAtLeavesTest(common_test.TestCase):
     lam = building_blocks.Lambda('x', [tf.int32], sel)
     call = building_blocks.Call(lam, ref_to_x)
     lam = building_blocks.Lambda('x', [tf.int32], call)
-    new_lambda, modified = transformations.insert_called_tf_identity_at_leaves(
+    new_lambda, modified = tree_transformations.insert_called_tf_identity_at_leaves(
         lam)
     self.assertTrue(modified)
     self.assertEqual(lam.type_signature, new_lambda.type_signature)
@@ -4212,7 +3910,7 @@ class InsertTensorFlowIdentityAtLeavesTest(common_test.TestCase):
     compiled_comp = building_block_factory.create_compiled_identity(tf.int32)
     call = building_blocks.Call(compiled_comp, ref_to_x)
     lam = building_blocks.Lambda('x', tf.int32, call)
-    _, modified = transformations.insert_called_tf_identity_at_leaves(lam)
+    _, modified = tree_transformations.insert_called_tf_identity_at_leaves(lam)
     self.assertFalse(modified)
 
 
@@ -4220,11 +3918,11 @@ class UnwrapPlacementTest(parameterized.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      transformations.unwrap_placement(None)
+      tree_transformations.unwrap_placement(None)
 
   def test_raises_computation_non_federated_type(self):
     with self.assertRaises(TypeError):
-      transformations.unwrap_placement(building_blocks.Data('x', tf.int32))
+      tree_transformations.unwrap_placement(building_blocks.Data('x', tf.int32))
 
   def test_raises_unbound_reference_non_federated_type(self):
     block = building_blocks.Block(
@@ -4232,7 +3930,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         building_blocks.Reference(
             'x', computation_types.FederatedType(tf.int32, placements.CLIENTS)))
     with self.assertRaisesRegex(TypeError, 'lone unbound reference'):
-      transformations.unwrap_placement(block)
+      tree_transformations.unwrap_placement(block)
 
   def test_raises_two_unbound_references(self):
     ref_to_x = building_blocks.Reference(
@@ -4241,7 +3939,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         'y', computation_types.FunctionType(tf.int32, tf.float32))
     applied = building_block_factory.create_federated_apply(ref_to_y, ref_to_x)
     with self.assertRaises(ValueError):
-      transformations.unwrap_placement(applied)
+      tree_transformations.unwrap_placement(applied)
 
   def test_raises_disallowed_intrinsic(self):
     fed_ref = building_blocks.Reference(
@@ -4256,7 +3954,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
                 all_equal=True)))
     called_broadcast = building_blocks.Call(broadcaster, fed_ref)
     with self.assertRaises(ValueError):
-      transformations.unwrap_placement(called_broadcast)
+      tree_transformations.unwrap_placement(called_broadcast)
 
   def test_raises_multiple_placements(self):
     server_placed_data = building_blocks.Data(
@@ -4266,7 +3964,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
     block_holding_both = building_blocks.Block([('x', server_placed_data)],
                                                clients_placed_data)
     with self.assertRaisesRegex(ValueError, 'contains a placement other than'):
-      transformations.unwrap_placement(block_holding_both)
+      tree_transformations.unwrap_placement(block_holding_both)
 
   def test_passes_unbound_type_signature_obscured_under_block(self):
     fed_ref = building_blocks.Reference(
@@ -4275,7 +3973,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         [('y', fed_ref), ('x', building_blocks.Data('dummy', tf.int32)),
          ('z', building_blocks.Reference('x', tf.int32))],
         building_blocks.Reference('y', fed_ref.type_signature))
-    transformations.unwrap_placement(block)
+    tree_transformations.unwrap_placement(block)
 
   def test_removes_federated_types_under_function(self):
     int_ref = building_blocks.Reference('x', tf.int32)
@@ -4286,7 +3984,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
-    placement_unwrapped, modified = transformations.unwrap_placement(
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
         second_applied_id)
     self.assertTrue(modified)
 
@@ -4308,7 +4006,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
-    placement_unwrapped, modified = transformations.unwrap_placement(
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
         second_applied_id)
     self.assertTrue(modified)
 
@@ -4346,7 +4044,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         int_id, applied_id)
     third_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, second_applied_id)
-    placement_unwrapped, modified = transformations.unwrap_placement(
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
         second_applied_id)
     self.assertTrue(modified)
 
@@ -4366,7 +4064,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, applied_id)
-    placement_unwrapped, modified = transformations.unwrap_placement(
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
         second_applied_id)
     self.assertTrue(modified)
 
@@ -4403,7 +4101,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         int_id, applied_id)
     third_applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, second_applied_id)
-    placement_unwrapped, modified = transformations.unwrap_placement(
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
         third_applied_id)
     self.assertTrue(modified)
 
@@ -4421,7 +4119,8 @@ class UnwrapPlacementTest(parameterized.TestCase):
                                         placements.SERVER))
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     zipped = building_block_factory.create_federated_zip(unzipped)
-    placement_unwrapped, modified = transformations.unwrap_placement(zipped)
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
+        zipped)
     self.assertTrue(modified)
 
     self.assertIsInstance(zipped.type_signature,
@@ -4440,7 +4139,8 @@ class UnwrapPlacementTest(parameterized.TestCase):
                                         placements.CLIENTS))
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     zipped = building_block_factory.create_federated_zip(unzipped)
-    placement_unwrapped, modified = transformations.unwrap_placement(zipped)
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
+        zipped)
     self.assertTrue(modified)
 
     self.assertIsInstance(zipped.type_signature,
@@ -4464,7 +4164,8 @@ class UnwrapPlacementTest(parameterized.TestCase):
         float_data, placements.SERVER)
     tup = building_blocks.Tuple([fed_int, fed_float])
     zipped = building_block_factory.create_federated_zip(tup)
-    placement_unwrapped, modified = transformations.unwrap_placement(zipped)
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
+        zipped)
     self.assertTrue(modified)
 
     self.assertEqual(zipped.type_signature, placement_unwrapped.type_signature)
@@ -4489,7 +4190,8 @@ class UnwrapPlacementTest(parameterized.TestCase):
         float_data, placements.CLIENTS)
     tup = building_blocks.Tuple([fed_int, fed_float])
     zipped = building_block_factory.create_federated_zip(tup)
-    placement_unwrapped, modified = transformations.unwrap_placement(zipped)
+    placement_unwrapped, modified = tree_transformations.unwrap_placement(
+        zipped)
     self.assertTrue(modified)
     # These two types are no longer literally equal, since we have unwrapped the
     # `fedreated_value_at_clients` all the way to the top of the tree and
@@ -4520,7 +4222,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
                                              inner_federated_ref.type_signature,
                                              inner_federated_ref)
     called_lambda = building_blocks.Call(identity_lambda, federated_ref)
-    unwrapped, modified = transformations.unwrap_placement(called_lambda)
+    unwrapped, modified = tree_transformations.unwrap_placement(called_lambda)
     self.assertTrue(modified)
     self.assertIsInstance(unwrapped.function, building_blocks.Intrinsic)
     self.assertEqual(unwrapped.function.uri, intrinsic_defs.FEDERATED_APPLY.uri)
@@ -4537,7 +4239,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
                                              inner_federated_ref.type_signature,
                                              inner_federated_ref)
     called_lambda = building_blocks.Call(identity_lambda, federated_ref)
-    unwrapped, modified = transformations.unwrap_placement(called_lambda)
+    unwrapped, modified = tree_transformations.unwrap_placement(called_lambda)
     self.assertTrue(modified)
     self.assertEqual(unwrapped.argument[0].type_signature,
                      computation_types.FunctionType(tf.int32, tf.int32))
@@ -4548,12 +4250,12 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
   def test_raises_non_block(self):
     ref = building_blocks.Reference('x', tf.int32)
     with self.assertRaises(TypeError):
-      transformations.group_block_locals_by_namespace(ref)
+      tree_transformations.group_block_locals_by_namespace(ref)
 
   def test_constructs_single_empty_list_with_no_block_locals(self):
     single_data = building_blocks.Data('a', tf.int32)
     block = building_blocks.Block([], single_data)
-    classes = transformations.group_block_locals_by_namespace(block)
+    classes = tree_transformations.group_block_locals_by_namespace(block)
     self.assertLen(classes, 1)
     self.assertLen(classes[0], 0)
 
@@ -4561,7 +4263,7 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
     single_data = building_blocks.Data('a', tf.int32)
     ref_to_x = building_blocks.Reference('x', tf.int32)
     block = building_blocks.Block([('x', single_data)], ref_to_x)
-    classes = transformations.group_block_locals_by_namespace(block)
+    classes = tree_transformations.group_block_locals_by_namespace(block)
     self.assertLen(classes, 2)
     self.assertLen(classes[0], 1)
     self.assertEqual(classes[0][0][0], 'x')
@@ -4573,7 +4275,7 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
     second_data = building_blocks.Data('a', tf.int32)
     block = building_blocks.Block([('x', first_data), ('y', second_data)],
                                   ref_to_x)
-    classes = transformations.group_block_locals_by_namespace(block)
+    classes = tree_transformations.group_block_locals_by_namespace(block)
     self.assertLen(classes, 3)
     self.assertLen(classes[0], 2)
     self.assertEqual(classes[0][0][0], 'x')
@@ -4586,7 +4288,7 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
     data = building_blocks.Data('a', tf.int32)
     ref_to_x = building_blocks.Reference('x', tf.int32)
     block = building_blocks.Block([('x', data), ('y', data)], ref_to_x)
-    classes = transformations.group_block_locals_by_namespace(block)
+    classes = tree_transformations.group_block_locals_by_namespace(block)
     self.assertLen(classes, 3)
     self.assertLen(classes[0], 2)
     self.assertEqual(classes[0][0][0], 'x')
@@ -4601,7 +4303,7 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
     ref_to_y = building_blocks.Reference('y', tf.int32)
     block = building_blocks.Block([('x', data), ('y', ref_to_x),
                                    ('z', ref_to_y)], ref_to_x)
-    classes = transformations.group_block_locals_by_namespace(block)
+    classes = tree_transformations.group_block_locals_by_namespace(block)
     self.assertLen(classes, 4)
     self.assertLen(classes[0], 1)
     self.assertLen(classes[1], 1)
@@ -4620,7 +4322,7 @@ class GroupBlockLocalsByNamespaceTest(common_test.TestCase):
     second_data = building_blocks.Data('y', tf.int32)
     block = building_blocks.Block([('x', first_data), ('y', ref_to_x),
                                    ('z', second_data)], ref_to_x)
-    classes = transformations.group_block_locals_by_namespace(block)
+    classes = tree_transformations.group_block_locals_by_namespace(block)
     self.assertLen(classes, 4)
     self.assertLen(classes[0], 2)
     self.assertLen(classes[1], 1)

@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
-from tensorflow_federated.python.common_libs import test as common_test
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -28,11 +28,11 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
-from tensorflow_federated.python.core.backends.mapreduce import transformations as mapreduce_transformations
+from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl import reference_executor
-from tensorflow_federated.python.core.impl import transformations as impl_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
@@ -484,7 +484,7 @@ def get_iterative_process_for_minimal_sum_example():
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
-class CanonicalFormTestCase(common_test.TestCase):
+class CanonicalFormTestCase(test.TestCase):
   """A base class that overrides evaluate to handle various executors."""
 
   def evaluate(self, value):
@@ -525,7 +525,7 @@ class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
     self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
 
 
-class CreateNextWithFakeClientOutputTest(common_test.TestCase):
+class CreateNextWithFakeClientOutputTest(test.TestCase):
 
   def test_returns_tree(self):
     ip = get_iterative_process_for_sum_example_with_no_client_output()
@@ -551,7 +551,7 @@ class CreateNextWithFakeClientOutputTest(common_test.TestCase):
     # pyformat: enable
 
 
-class CreateBeforeAndAfterBroadcastForNoBroadcastTest(common_test.TestCase):
+class CreateBeforeAndAfterBroadcastForNoBroadcastTest(test.TestCase):
 
   def test_returns_tree(self):
     ip = get_iterative_process_for_sum_example_with_no_server_state()
@@ -581,8 +581,7 @@ class CreateBeforeAndAfterBroadcastForNoBroadcastTest(common_test.TestCase):
     # pyformat: enable
 
 
-class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
-    common_test.TestCase):
+class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(test.TestCase):
 
   def test_returns_tree(self):
     ip = get_iterative_process_for_sum_example_with_no_federated_aggregate()
@@ -593,7 +592,7 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
         next_tree)
 
     before_federated_secure_sum, after_federated_secure_sum = (
-        mapreduce_transformations.force_align_and_split_by_intrinsics(
+        transformations.force_align_and_split_by_intrinsics(
             next_tree, [intrinsic_defs.FEDERATED_SECURE_SUM.uri]))
     self.assertIsInstance(before_aggregate, building_blocks.Lambda)
     self.assertIsInstance(before_aggregate.result, building_blocks.Tuple)
@@ -618,9 +617,9 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
 
     self.assertIsInstance(after_aggregate, building_blocks.Lambda)
     self.assertIsInstance(after_aggregate.result, building_blocks.Call)
-    actual_tree, _ = impl_transformations.uniquify_reference_names(
+    actual_tree, _ = tree_transformations.uniquify_reference_names(
         after_aggregate.result.function)
-    expected_tree, _ = impl_transformations.uniquify_reference_names(
+    expected_tree, _ = tree_transformations.uniquify_reference_names(
         after_federated_secure_sum)
     self.assertEqual(actual_tree.formatted_representation(),
                      expected_tree.formatted_representation())
@@ -636,7 +635,7 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
     # pyformat: enable
 
 
-class CreateBeforeAndAfterAggregateForNoSecureSumTest(common_test.TestCase):
+class CreateBeforeAndAfterAggregateForNoSecureSumTest(test.TestCase):
 
   def test_returns_tree(self):
     ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum()
@@ -648,7 +647,7 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(common_test.TestCase):
         next_tree)
 
     before_federated_aggregate, after_federated_aggregate = (
-        mapreduce_transformations.force_align_and_split_by_intrinsics(
+        transformations.force_align_and_split_by_intrinsics(
             next_tree, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
     self.assertIsInstance(before_aggregate, building_blocks.Lambda)
     self.assertIsInstance(before_aggregate.result, building_blocks.Tuple)
@@ -669,9 +668,9 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(common_test.TestCase):
 
     self.assertIsInstance(after_aggregate, building_blocks.Lambda)
     self.assertIsInstance(after_aggregate.result, building_blocks.Call)
-    actual_tree, _ = impl_transformations.uniquify_reference_names(
+    actual_tree, _ = tree_transformations.uniquify_reference_names(
         after_aggregate.result.function)
-    expected_tree, _ = impl_transformations.uniquify_reference_names(
+    expected_tree, _ = tree_transformations.uniquify_reference_names(
         after_federated_aggregate)
     self.assertEqual(actual_tree.formatted_representation(),
                      expected_tree.formatted_representation())
@@ -687,7 +686,7 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(common_test.TestCase):
     # pyformat: enable
 
 
-class GetTypeInfoTest(common_test.TestCase):
+class GetTypeInfoTest(test.TestCase):
 
   def test_returns_type_info_for_sum_example(self):
     ip = get_iterative_process_for_sum_example()
@@ -699,10 +698,10 @@ class GetTypeInfoTest(common_test.TestCase):
         initialize_tree)
     next_tree = canonical_form_utils._replace_intrinsics_with_bodies(next_tree)
     before_broadcast, after_broadcast = (
-        mapreduce_transformations.force_align_and_split_by_intrinsics(
+        transformations.force_align_and_split_by_intrinsics(
             next_tree, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
     before_aggregate, after_aggregate = (
-        mapreduce_transformations.force_align_and_split_by_intrinsics(
+        transformations.force_align_and_split_by_intrinsics(
             after_broadcast, [
                 intrinsic_defs.FEDERATED_AGGREGATE.uri,
                 intrinsic_defs.FEDERATED_SECURE_SUM.uri,
@@ -954,4 +953,4 @@ if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
   reference_executor = reference_executor.ReferenceExecutor()
   with context_stack_impl.context_stack.install(reference_executor):
-    common_test.main()
+    test.main()

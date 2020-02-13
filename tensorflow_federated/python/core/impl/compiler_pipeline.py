@@ -19,9 +19,9 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import context_stack_base
-from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 
 
 class CompilerPipeline(object):
@@ -72,6 +72,6 @@ class CompilerPipeline(object):
     # does not rely on manual maintenance.
     comp, _ = value_transformations.replace_intrinsics_with_bodies(
         comp, self._context_stack)
-    comp, _ = transformations.remove_duplicate_building_blocks(comp)
+    comp, _ = tree_transformations.remove_duplicate_building_blocks(comp)
 
     return computation_impl.ComputationImpl(comp.proto, self._context_stack)

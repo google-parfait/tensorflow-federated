@@ -20,8 +20,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import transforming_executor
@@ -64,7 +64,7 @@ class TransformingExecutorTest(absltest.TestCase):
       return intrinsics.federated_map(_identity, x)
 
     def transformation_fn(x):
-      x, _ = transformations.remove_mapped_or_applied_identity(x)
+      x, _ = tree_transformations.remove_mapped_or_applied_identity(x)
       return x
 
     self.assertEqual(
@@ -80,9 +80,9 @@ class TransformingExecutorTest(absltest.TestCase):
     # TODO(b/134543154): Slide in something more powerful so that this test
     # doesn't break when the implementation changes; for now, this will do.
     def transformation_fn(x):
-      x, _ = transformations.remove_mapped_or_applied_identity(x)
-      x, _ = transformations.inline_block_locals(x)
-      x, _ = transformations.replace_selection_from_tuple_with_element(x)
+      x, _ = tree_transformations.remove_mapped_or_applied_identity(x)
+      x, _ = tree_transformations.inline_block_locals(x)
+      x, _ = tree_transformations.replace_selection_from_tuple_with_element(x)
       return x
 
     self.assertIn('federated_zip_at_server(<FEDERATED_arg,FEDERATED_arg>)',

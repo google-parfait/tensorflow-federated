@@ -27,9 +27,9 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import reference_executor
-from tensorflow_federated.python.core.impl import transformations
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 
@@ -377,7 +377,7 @@ class ValueImplTest(parameterized.TestCase):
       return value_impl.to_value(cbb, None, context_stack_impl.context_stack)
 
     t = sequence_type(range(0, 50, 10))
-    comp, _ = transformations.uniquify_compiled_computation_names(
+    comp, _ = tree_transformations.uniquify_compiled_computation_names(
         value_impl.ValueImpl.get_comp(_to_value(t)))
     v = _to_value(comp)
 
