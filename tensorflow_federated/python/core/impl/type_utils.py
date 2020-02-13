@@ -1370,51 +1370,6 @@ def reconcile_value_type_with_type_spec(value_type, type_spec):
           type_spec, value_type))
 
 
-def get_function_type(type_spec):
-  """Constructs a functional type signature for `type_spec`.
-
-  Given `type_spec` that is `T`, a functional type signature may be either `T`
-  itself if it is a function, or `( -> T)` otherwise. This allows types from
-  protos to be matched to how types are represented at the level of the Python
-  wrapping.
-
-  Args:
-    type_spec: An instance of `tff.Type` of something convertible to it.
-
-  Returns:
-    An instance of `tff.FunctionType`, possibly with no argument if `type_spec`
-    is not functional.
-  """
-  type_spec = computation_types.to_type(type_spec)
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.FunctionType):
-    return type_spec
-  else:
-    return computation_types.FunctionType(None, type_spec)
-
-
-def get_argument_type(type_spec):
-  """Constructs a type signature for functional `type_spec`.
-
-  Given `type_spec` of the form `(T -> U)`, an argument type signature is
-  simple `type_spec` itself. Given `type_spec` of the form `( -> U)`, however,
-  the argument type signature is simply `U`. This allows types constructed
-  to match Python wrappers (with no arguments) to be projected back into a form
-  compatible with how they're represented in protos.
-
-  Args:
-    type_spec: An instance of `tff.FunctionType`.
-
-  Returns:
-    An instance of `tff.Type` as described above.
-  """
-  py_typecheck.check_type(type_spec, computation_types.FunctionType)
-  if type_spec.parameter is not None:
-    return type_spec
-  else:
-    return type_spec.result
-
-
 def to_non_all_equal(type_spec):
   """Constructs a non-`all_equal` version of the federated type `type_spec`.
 

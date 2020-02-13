@@ -304,8 +304,9 @@ class LambdaExecutorTest(absltest.TestCase):
     v2 = loop.run_until_complete(
         ex.create_value([0, 0],
                         [tf.int32, type_factory.at_server(tf.int32)]))
-    with self.assertRaisesRegex(ValueError,
-                                'concretize all unbound references'):
+    with self.assertRaisesRegex(
+        RuntimeError,
+        'lambda passed to intrinsic contains references to captured variables'):
       loop.run_until_complete(ex.create_call(v1, v2))
 
   def test_runs_tf(self):

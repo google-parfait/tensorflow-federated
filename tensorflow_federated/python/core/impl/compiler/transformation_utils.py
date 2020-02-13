@@ -18,7 +18,7 @@ import abc
 import collections
 import itertools
 import operator
-from typing import Callable, Tuple
+from typing import Callable, Dict, Set, Tuple
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -1154,7 +1154,9 @@ def has_unique_names(comp):
   return unique[0]
 
 
-def get_map_of_unbound_references(comp):
+def get_map_of_unbound_references(
+    comp: building_blocks.ComputationBuildingBlock
+) -> Dict[building_blocks.ComputationBuildingBlock, Set[str]]:
   """Gets a Python `dict` of the unbound references in `comp`.
 
   Compuations that are equal will have the same collections of unbounded
