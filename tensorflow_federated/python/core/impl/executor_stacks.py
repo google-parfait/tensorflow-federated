@@ -14,6 +14,8 @@
 # limitations under the License.
 """A collection of constructors for basic types of executor stacks."""
 
+import functools
+import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import composite_executor
 from tensorflow_federated.python.core.impl import concurrent_executor
@@ -33,14 +35,15 @@ def _complete_stack(ex):
           concurrent_executor.ConcurrentExecutor(ex)))
 
 
-def _create_bottom_stack():
-  return _complete_stack(eager_executor.EagerExecutor())
+def _create_bottom_stack(device=None):
+  return _complete_stack(eager_executor.EagerExecutor(device=device))
 
 
-def _create_federated_stack(num_clients, clients_per_thread):
+def _create_federated_stack(num_clients, clients_per_thread, device_scheduler):
   """Constructs local federated stack."""
   bottom_stacks = [
-      _create_bottom_stack() for _ in range(num_clients // clients_per_thread)
+      _create_bottom_stack(device=device_scheduler.next_device())
+      for _ in range(num_clients // clients_per_thread)
   ]
   executor_dict = {
       placement_literals.CLIENTS: [
@@ -189,10 +192,37 @@ def _create_inferred_cardinality_factory(
       executor_stack_fn=_create_variable_clients_executors)
 
 
+class _DeviceScheduler():
+  """Assign clients to devices. Useful in multi-GPU environment."""
+
+  def __init__(self, devices):
+    """Initialize with device list.
+
+    Args:
+      devices: List of `tf.config.PhysicalDevice` returned by
+        `tf.config.experimental.list_physical_devices()`.
+    """
+    py_typecheck.check_type(devices, (list, tuple))
+    for device in devices:
+      py_typecheck.check_type(device, tf.config.PhysicalDevice)
+    self.devices = [
+        d.name.replace('physical_device', 'device') for d in devices
+    ]
+    self.idx = 0
+
+  def next_device(self):
+    """Get a device to place the next client in cyclic order."""
+    if len(self.devices) < 1:
+      return None
+    self.idx = (self.idx + 1) % len(self.devices)
+    return self.devices[self.idx]
+
+
 def local_executor_factory(
     num_clients=None,
     max_fanout=100,
-    clients_per_thread=1) -> executor_factory.ExecutorFactory:
+    clients_per_thread=1,
+    tf_devices=tuple()) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally.
 
   NOTE: The `tff.federated_secure_sum()` intrinsic is not implemented by this
@@ -211,6 +241,9 @@ def local_executor_factory(
     clients_per_thread: The number of clients which will share a single thread.
       Adjusting this parameter away from 1 can be useful if clients work is
       light.
+    tf_devices: The list of devices to run clients for simulation. The
+      `tf.config.PhysicalDevice` list can often be returned by
+      `tf.config.experimental.list_physical_devices()`.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -219,7 +252,12 @@ def local_executor_factory(
   Raises:
     ValueError: If the number of clients is specified and not one or larger.
   """
-  stack_func = _create_federated_stack
+  py_typecheck.check_type(tf_devices, (list, tuple))
+  for device in tf_devices:
+    py_typecheck.check_type(device, tf.config.PhysicalDevice)
+  device_scheduler = _DeviceScheduler(tf_devices)
+  stack_func = functools.partial(
+      _create_federated_stack, device_scheduler=device_scheduler)
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   if num_clients is not None:
