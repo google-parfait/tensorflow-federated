@@ -15,6 +15,7 @@
 """Libraries for the Stackoverflow dataset for federated learning simulation."""
 
 import collections
+import json
 import os.path
 
 import tensorflow as tf
@@ -23,7 +24,7 @@ from tensorflow_federated.python.simulation import hdf5_client_data
 
 
 def load_data(cache_dir=None):
-  """Loads the federated Stackoverflow dataset.
+  """Loads the federated Stack Overflow dataset.
 
   Downloads and caches the dataset locally. If previously downloaded, tries to
   load the dataset from cache.
@@ -112,7 +113,7 @@ def load_data(cache_dir=None):
 
 
 def load_word_counts(cache_dir=None):
-  """Loads the word counts for the Stackoverflow dataset.
+  """Loads the word counts for the Stack Overflow dataset.
 
   Args:
     cache_dir: (Optional) directory to cache the downloaded file. If `None`,
@@ -124,16 +125,49 @@ def load_word_counts(cache_dir=None):
     set containing that token in the body text.
   """
   path = tf.keras.utils.get_file(
-      'stackoverflow.word_count',
-      origin='https://storage.googleapis.com/tff-datasets-public/stackoverflow.word_count',
-      file_hash='c07f12295c4772e2c0447cf2a9565ad42435b94563c6a06a9173e59421278938',
+      'stackoverflow.word_count.tar.bz2',
+      origin='https://storage.googleapis.com/tff-datasets-public/stackoverflow.word_count.tar.bz2',
+      file_hash='1dc00256d6e527c54b9756d968118378ae14e6692c0b3b6cad470cdd3f0c519c',
       hash_algorithm='sha256',
+      extract=True,
+      archive_format='tar',
       cache_dir=cache_dir)
 
   word_counts = collections.OrderedDict()
-  with open(path) as f:
+  dir_path = os.path.dirname(path)
+  file_path = os.path.join(dir_path, 'stackoverflow.word_count')
+  with open(file_path) as f:
     for line in f:
       word, count = line.split()
       word_counts[word] = int(count)
-
   return word_counts
+
+
+def load_tag_counts(cache_dir=None):
+  """Loads the tag counts for the Stack Overflow dataset.
+
+  Args:
+    cache_dir: (Optional) directory to cache the downloaded file. If `None`,
+      caches in Keras' default cache directory.
+
+  Returns:
+    A collections.OrderedDict where the keys are string tags, and the values
+    are the counts of unique users who have at least one example in the training
+    set containing with that tag. The dictionary items are in decreasing order
+    of tag frequency.
+  """
+  path = tf.keras.utils.get_file(
+      'stackoverflow.tag_count.tar.bz2',
+      origin='https://storage.googleapis.com/tff-datasets-public/stackoverflow.tag_count.tar.bz2',
+      file_hash='6fe281cec490d9384a290d560072438e7e2b377bbb823876ce7bd6f82696772d',
+      hash_algorithm='sha256',
+      extract=True,
+      archive_format='tar',
+      cache_dir=cache_dir)
+
+  dir_path = os.path.dirname(path)
+  file_path = os.path.join(dir_path, 'stackoverflow.tag_count')
+  with open(file_path) as f:
+    tag_counts = json.load(f)
+  return collections.OrderedDict(
+      sorted(tag_counts.items(), key=lambda item: item[1], reverse=True))
