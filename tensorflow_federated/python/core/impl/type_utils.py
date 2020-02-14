@@ -57,7 +57,7 @@ def infer_type(arg):
     return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)
   elif isinstance(arg, TF_DATASET_REPRESENTATION_TYPES):
     return computation_types.SequenceType(
-        computation_types.to_type(tf.data.experimental.get_structure(arg)))
+        computation_types.to_type(arg.element_spec))
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     return computation_types.NamedTupleType([
         (k, infer_type(v)) if k else infer_type(v)

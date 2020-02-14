@@ -88,9 +88,8 @@ class IntegrationTest(test.TestCase):
 
     x = executable_return_dataset()
     self.assertAllEqual(x[0], [0., 0.])
-    self.assertEqual(
-        tf.data.experimental.get_structure(x[1]),
-        tf.TensorSpec(shape=(None, 2), dtype=tf.int32))
+    self.assertEqual(x[1].element_spec,
+                     tf.TensorSpec(shape=(None, 2), dtype=tf.int32))
     with self.assertRaises(StopIteration):
       _ = next(iter(x[1]))
 
@@ -109,7 +108,7 @@ class IntegrationTest(test.TestCase):
     x = executable_return_dataset()
     self.assertAllEqual(x[0], [0., 0.])
     self.assertEqual(
-        tf.data.experimental.get_structure(x[1]),
+        x[1].element_spec,
         collections.OrderedDict([
             ('a', tf.TensorSpec(shape=(None,), dtype=tf.int32)),
             ('b', tf.TensorSpec(shape=(None,), dtype=tf.int32)),

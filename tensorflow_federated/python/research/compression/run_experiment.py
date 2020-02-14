@@ -185,10 +185,8 @@ def run_experiment():
 
   def preprocess_train_dataset(dataset):
     """Preprocess training dataset."""
-    return dataset.map(element_fn).apply(
-        tf.data.experimental.shuffle_and_repeat(
-            buffer_size=10000,
-            count=FLAGS.client_epochs_per_round)).batch(FLAGS.batch_size)
+    return (dataset.map(element_fn).shuffle(buffer_size=10000).repeat(
+        FLAGS.client_epochs_per_round).batch(FLAGS.batch_size))
 
   def preprocess_test_dataset(dataset):
     """Preprocess testing dataset."""

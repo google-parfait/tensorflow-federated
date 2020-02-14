@@ -256,8 +256,7 @@ def to_representation_for_type(value, type_spec=None, device=None):
       value = tensorflow_utils.make_data_set_from_elements(
           None, value, type_spec.element)
     py_typecheck.check_type(value, type_utils.TF_DATASET_REPRESENTATION_TYPES)
-    element_type = computation_types.to_type(
-        tf.data.experimental.get_structure(value))
+    element_type = computation_types.to_type(value.element_spec)
     value_type = computation_types.SequenceType(element_type)
     type_utils.check_assignable_from(type_spec, value_type)
     return value

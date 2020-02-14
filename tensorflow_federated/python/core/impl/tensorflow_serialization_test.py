@@ -127,9 +127,7 @@ class DatasetSerializationTest(test.TestCase):
     serialized_bytes = tensorflow_serialization.serialize_dataset(x)
     y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
 
-    self.assertEqual(
-        tf.data.experimental.get_structure(x),
-        tf.data.experimental.get_structure(y))
+    self.assertEqual(x.element_spec, y.element_spec)
     self.assertAllEqual([y_val for y_val in y], [x * 2 for x in range(5)])
 
   def test_roundtrip_sequence_of_tuples(self):
@@ -138,9 +136,7 @@ class DatasetSerializationTest(test.TestCase):
     serialized_bytes = tensorflow_serialization.serialize_dataset(x)
     y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
 
-    self.assertEqual(
-        tf.data.experimental.get_structure(x),
-        tf.data.experimental.get_structure(y))
+    self.assertEqual(x.element_spec, y.element_spec)
     self.assertAllEqual(
         self.evaluate([y_val for y_val in y]),
         [(x * 2, x, x - 1.) for x in range(5)])
@@ -150,9 +146,7 @@ class DatasetSerializationTest(test.TestCase):
     serialized_bytes = tensorflow_serialization.serialize_dataset(x)
     y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
 
-    self.assertEqual(
-        tf.data.experimental.get_structure(x),
-        tf.data.experimental.get_structure(y))
+    self.assertEqual(x.element_spec, y.element_spec)
     expected_values = [(x,) for x in range(5)]
     actual_values = self.evaluate([y_val for y_val in y])
     self.assertAllEqual(expected_values, actual_values)
@@ -168,9 +162,7 @@ class DatasetSerializationTest(test.TestCase):
     serialized_bytes = tensorflow_serialization.serialize_dataset(x)
     y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
 
-    self.assertEqual(
-        tf.data.experimental.get_structure(x),
-        tf.data.experimental.get_structure(y))
+    self.assertEqual(x.element_spec, y.element_spec)
     self.assertAllEqual(
         self.evaluate([y_val for y_val in y]),
         [test_tuple_type(a=x * 2, b=x, c=x - 1.) for x in range(5)])
@@ -196,7 +188,7 @@ class DatasetSerializationTest(test.TestCase):
     # NOTE: TF loses the `OrderedDict` during serialization, so the expectation
     # here is for a `dict` in the result.
     self.assertEqual(
-        tf.data.experimental.get_structure(y), {
+        y.element_spec, {
             'b':
                 tf.TensorSpec([], tf.int32),
             'a':

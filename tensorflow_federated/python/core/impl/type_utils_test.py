@@ -623,7 +623,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
       ds = tf.data.experimental.from_variant(
           tf.compat.v1.placeholder(tf.variant, shape=[]),
           structure=tf_structure)
-      actual_structure = tf.data.experimental.get_structure(ds)
+      actual_structure = ds.element_spec
       self.assertEqual(expected_structure, actual_structure)
 
   def test_type_to_tf_structure_without_names(self):
@@ -637,7 +637,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
       ds = tf.data.experimental.from_variant(
           tf.compat.v1.placeholder(tf.variant, shape=[]),
           structure=tf_structure)
-      actual_structure = tf.data.experimental.get_structure(ds)
+      actual_structure = ds.element_spec
       self.assertEqual(expected_structure, actual_structure)
 
   def test_type_to_tf_structure_with_none(self):

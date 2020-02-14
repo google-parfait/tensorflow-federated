@@ -133,8 +133,7 @@ def serialize_sequence_value(value):
   # names for `tf.data.Dataset` that return elements of `collections.Mapping`
   # type. This allows TFF to preserve and restore the key ordering upon
   # deserialization.
-  element_type = computation_types.to_type(
-      tf.data.experimental.get_structure(value))
+  element_type = computation_types.to_type(value.element_spec)
   return executor_pb2.Value(
       sequence=executor_pb2.Value.Sequence(
           zipped_saved_model=tensorflow_serialization.serialize_dataset(value),
@@ -227,7 +226,7 @@ def serialize_value(value, type_spec=None):
               type_spec if type_spec is not None else 'unknown'))
 
     value_type = computation_types.SequenceType(
-        computation_types.to_type(tf.data.experimental.get_structure(value)))
+        computation_types.to_type(value.element_spec))
     if not type_utils.is_assignable_from(type_spec, value_type):
       raise TypeError(
           'Cannot serialize dataset with elements of type {!s} as TFF type {!s}.'

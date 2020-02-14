@@ -245,8 +245,7 @@ class ConcreteClientData(ClientData):
     self._create_tf_dataset_for_client_fn = create_tf_dataset_for_client_fn
 
     example_dataset = create_tf_dataset_for_client_fn(client_ids[0])
-    self._element_type_structure = tf.data.experimental.get_structure(
-        example_dataset)
+    self._element_type_structure = example_dataset.element_spec
 
   @property
   def client_ids(self):

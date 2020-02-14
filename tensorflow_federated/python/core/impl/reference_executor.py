@@ -189,7 +189,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   elif isinstance(type_spec, computation_types.SequenceType):
     if isinstance(value, tf.data.Dataset):
       inferred_type_spec = computation_types.SequenceType(
-          computation_types.to_type(tf.data.experimental.get_structure(value)))
+          computation_types.to_type(value.element_spec))
       if not type_utils.is_assignable_from(type_spec, inferred_type_spec):
         raise TypeError(
             'Value of type {!s} not assignable to expected type {!s}'.format(

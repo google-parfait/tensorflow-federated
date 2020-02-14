@@ -481,7 +481,7 @@ def capture_result_from_graph(result, graph):
   elif isinstance(result,
                   (tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset)):
     variant_tensor = tf.data.experimental.to_variant(result)
-    element_structure = tf.data.experimental.get_structure(result)
+    element_structure = result.element_spec
     try:
       element_type = computation_types.to_type(element_structure)
     except TypeError as e:
@@ -988,12 +988,13 @@ def make_data_set_from_elements(graph, elements, element_type):
         # process of constructing and joining data sets from singletons. Not
         # optimizing this for now, as it's very unlikely in scenarios
         # we're targeting.
-        ds = None
+        #
+        # Note: this will not remain `None` because `element`s is not empty.
+        ds = None  # type: tf.data.Dataset
         for i in range(len(elements)):
           singleton_ds = _make(elements[i:i + 1])
           ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
-    ds_element_type = computation_types.to_type(
-        tf.data.experimental.get_structure(ds))
+    ds_element_type = computation_types.to_type(ds.element_spec)
     if not type_utils.is_assignable_from(element_type, ds_element_type):
       raise TypeError(
           'Failure during data set construction, expected elements of type {}, '
@@ -1050,7 +1051,7 @@ def fetch_value_in_session(sess, value):
         if not dataset_tensors:
           # An empty list has been returned; we must pack the shape information
           # back in or the result won't typecheck.
-          element_structure = tf.data.experimental.get_structure(v)
+          element_structure = v.element_spec
           dummy_elem = make_dummy_element_for_type_spec(element_structure)
           dataset_tensors = [dummy_elem]
         dataset_results[idx] = dataset_tensors
