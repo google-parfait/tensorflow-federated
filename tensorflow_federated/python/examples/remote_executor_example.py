@@ -133,9 +133,8 @@ def main(argv):
       client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02))
 
   # Set the default executor to be a RemoteExecutor
-  # TODO(b/149208347): this line must wrap `make_remote_executor` in an
-  # ExecutorFactory to work, this will fail.
-  tff.framework.set_default_executor(make_remote_executor)
+  tff.framework.set_default_executor(
+      tff.framework.create_executor_factory(make_remote_executor))
 
   state = iterative_process.initialize()
 
