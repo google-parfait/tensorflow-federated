@@ -17,6 +17,8 @@
 import asyncio
 from typing import Set, Union
 
+import cachetools
+
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -31,6 +33,11 @@ from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 
 
+def _hash_proto(comp: pb.Computation) -> int:
+  """Hash the `pb.Computation` for use as a cache key."""
+  return hash(comp.SerializeToString())
+
+
 class _UnboundRefChecker():
   """Callable implementing memoized checks for unbound references."""
 
@@ -39,26 +46,25 @@ class _UnboundRefChecker():
   # something declared outside of its scope. Notice that it is
   # safe to keep this global cache around, since the check here is for a static
   # property of the proto.
-  #
-  # TODO(b/149491317) this should be a cache with a fixed size so that we're
-  # not storing arbitrary amounts of proto keys here.
 
   def __init__(self):
     super().__init__()
-    self._evaluated_comps = {}
+    # NOTE: this must be at least as large as the number of refs in any single
+    # computation, otherwise the lookup after the update below might fail.
+    ref_cache_size = 10000
+    self._evaluated_comps = cachetools.LRUCache(ref_cache_size)
 
   def __call__(self, proto: pb.Computation) -> Set[str]:
     """Returns the names of any unbound references in `proto`."""
     py_typecheck.check_type(proto, pb.Computation)
-    evaluated = self._evaluated_comps.get(proto.SerializeToString())
+    evaluated = self._evaluated_comps.get(_hash_proto(proto))
     if evaluated is not None:
       return evaluated
-    else:
-      tree = building_blocks.ComputationBuildingBlock.from_proto(proto)
-      unbound_ref_map = transformation_utils.get_map_of_unbound_references(tree)
-      self._evaluated_comps.update(
-          {k.proto.SerializeToString(): v for k, v in unbound_ref_map.items()})
-      return unbound_ref_map[tree]
+    tree = building_blocks.ComputationBuildingBlock.from_proto(proto)
+    unbound_ref_map = transformation_utils.get_map_of_unbound_references(tree)
+    self._evaluated_comps.update(
+        {_hash_proto(k.proto): v for k, v in unbound_ref_map.items()})
+    return unbound_ref_map[tree]
 
 
 _unbound_refs = _UnboundRefChecker()

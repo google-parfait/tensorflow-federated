@@ -210,19 +210,14 @@ class CachingExecutor(executor_base.Executor):
     py_typecheck.check_type(type_spec, computation_types.Type)
     hashable_key = _get_hashable_key(value, type_spec)
     try:
-      identifier = self._cache[hashable_key]
-    except KeyError:
-      identifier = None
+      identifier = self._cache.get(hashable_key)
     except TypeError as err:
       raise RuntimeError(
           'Failed to perform a hash table lookup with a value of Python '
           'type {} and TFF type {}, and payload {}: {}'.format(
               py_typecheck.type_string(type(value)), type_spec, value, err))
     if isinstance(identifier, CachedValueIdentifier):
-      try:
-        cached_value = self._cache[identifier]
-      except KeyError:
-        cached_value = None
+      cached_value = self._cache.get(identifier)
       # If may be that the same payload appeared with a mismatching type spec,
       # which may be a legitimate use case if (as it happens) the payload alone
       # does not uniquely determine the type, so we simply opt not to reuse the
