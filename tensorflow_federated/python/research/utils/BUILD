@@ -3,6 +3,12 @@ package(default_visibility = ["//tensorflow_federated/python/research"])
 licenses(["notice"])
 
 py_library(
+    name = "adapters",
+    srcs = ["adapters.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
     name = "checkpoint_manager",
     srcs = ["checkpoint_manager.py"],
     srcs_version = "PY3",
