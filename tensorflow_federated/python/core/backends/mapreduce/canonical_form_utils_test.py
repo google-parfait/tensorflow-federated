@@ -862,6 +862,22 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     self.assertAllClose(state, alt_state)
     self.assertAllClose(metrics, alt_metrics)
 
+  def test_canonical_form_from_tff_learning_structure_type_spec(self):
+    it = test_utils.construct_example_training_comp()
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
+
+    work_type_spec = cf.work.type_signature
+
+    # This type spec test actually carries the meaning that TFF's vanilla path
+    # to canonical form will broadcast and aggregate exactly one copy of the
+    # parameters. So the type test below in fact functions as a regression test
+    # for the TFF compiler pipeline.
+    # pyformat: disable
+    expected_type_string = '(<<x=float32[?,2],y=int32[?,1]>*,<<trainable=<float32[2,1],float32[1]>,non_trainable=<>>>> -> <<<<<float32[2,1],float32[1]>,float32>,<float32,float32>,<float32,float32>,<float32>>,<>>,<>>)'
+    # pyformat: enable
+    self.assertEqual(work_type_spec.compact_representation(),
+                     expected_type_string)
+
   def test_returns_canonical_form_from_tff_learning_structure(self):
     it = test_utils.construct_example_training_comp()
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
