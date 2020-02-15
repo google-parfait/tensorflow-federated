@@ -85,8 +85,8 @@ The high-performance TFF runtime is enabled by default.
 Research on federated optimization algorithms can be done in different ways in
 TFF, depending on the desired level of customization.
 
-A minimal implementation of the Federated
-Averaging](https://arxiv.org/abs/1602.05629) algorithm is provided
+A minimal implementation of the
+[Federated Averaging](https://arxiv.org/abs/1602.05629) algorithm is provided
 [here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py),
 along with an example
 [federated EMNIST experiment](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/emnist_fedavg.py).
