@@ -67,10 +67,10 @@ from tensorflow_federated.python.core.impl.executors.executor_service import Exe
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.executors.federating_executor import FederatingExecutor
 from tensorflow_federated.python.core.impl.executors.reference_resolving_executor import ReferenceResolvingExecutor
+from tensorflow_federated.python.core.impl.executors.remote_executor import RemoteExecutor
 from tensorflow_federated.python.core.impl.executors.thread_delegating_executor import ThreadDelegatingExecutor
 from tensorflow_federated.python.core.impl.executors.transforming_executor import TransformingExecutor
 from tensorflow_federated.python.core.impl.reference_executor import ReferenceExecutor
-from tensorflow_federated.python.core.impl.remote_executor import RemoteExecutor
 from tensorflow_federated.python.core.impl.tree_to_cc_transformations import TFParser
 from tensorflow_federated.python.core.impl.type_utils import are_equivalent_types
 from tensorflow_federated.python.core.impl.type_utils import is_assignable_from

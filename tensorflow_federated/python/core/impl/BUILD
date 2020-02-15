@@ -517,47 +517,6 @@ py_test(
 )
 
 py_library(
-    name = "remote_executor",
-    srcs = ["remote_executor.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":execution_context",
-        ":executor_service_utils",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_utils",
-        "//tensorflow_federated/python/core/impl/executors:executor_value_base",
-    ],
-)
-
-py_test(
-    name = "remote_executor_test",
-    size = "small",
-    srcs = ["remote_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":execution_context",
-        ":executor_stacks",
-        ":executor_test_utils",
-        ":remote_executor",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/api:placements",
-        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_service",
-        "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
-        "@com_google_protobuf//:protobuf_python",
-    ],
-)
-
-py_library(
     name = "tensorflow_deserialization",
     srcs = ["tensorflow_deserialization.py"],
     srcs_version = "PY3",

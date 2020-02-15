@@ -30,15 +30,13 @@ from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import execution_context
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import executor_test_utils
-from tensorflow_federated.python.core.impl import remote_executor
-from tensorflow_federated.python.core.impl.context_stack import set_default_executor
-from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
+from tensorflow_federated.python.core.impl.executors import remote_executor
 
 tf.compat.v1.enable_v2_behavior()
 
@@ -46,8 +44,7 @@ tf.compat.v1.enable_v2_behavior()
 def create_remote_executor():
   port = portpicker.pick_unused_port()
   channel = grpc.insecure_channel('localhost:{}'.format(port))
-  executor = remote_executor.RemoteExecutor(channel, 'REQUEST_REPLY')
-  return executor
+  return remote_executor.RemoteExecutor(channel, 'REQUEST_REPLY')
 
 
 @contextlib.contextmanager
@@ -66,18 +63,29 @@ def test_context(rpc_mode='REQUEST_REPLY'):
   remote_exec = remote_executor.RemoteExecutor(channel, rpc_mode)
   executor = reference_resolving_executor.ReferenceResolvingExecutor(
       remote_exec)
-  set_default_executor.set_default_executor(
-      executor_factory.ExecutorFactoryImpl(lambda _: executor))
   try:
     yield collections.namedtuple('_', 'executor tracer')(executor, tracer)
   finally:
-    set_default_executor.set_default_executor()
+    executor.close()
+    tracer.close()
     try:
       channel.close()
     except AttributeError:
       pass  # Public gRPC channel doesn't support close()
     finally:
       server.stop(None)
+
+
+def _invoke(ex, comp, arg=None):
+  loop = asyncio.get_event_loop()
+  v1 = loop.run_until_complete(ex.create_value(comp))
+  if arg is not None:
+    type_spec = v1.type_signature.parameter
+    v2 = loop.run_until_complete(ex.create_value(arg, type_spec))
+  else:
+    v2 = None
+  v3 = loop.run_until_complete(ex.create_call(v1, v2))
+  return loop.run_until_complete(v3.compute())
 
 
 def _raise_grpc_error_unavailable(*args):
@@ -383,31 +391,34 @@ class RemoteExecutorTest(absltest.TestCase):
 class RemoteExecutorIntegrationTest(absltest.TestCase):
 
   def test_no_arg_tf_computation(self):
-    with test_context():
+    with test_context() as context:
 
       @computations.tf_computation
       def comp():
         return 10
 
-      self.assertEqual(comp(), 10)
+      result = _invoke(context.executor, comp)
+      self.assertEqual(result, 10)
 
   def test_one_arg_tf_computation(self):
-    with test_context():
+    with test_context() as context:
 
       @computations.tf_computation(tf.int32)
       def comp(x):
         return x + 1
 
-      self.assertEqual(comp(10), 11)
+      result = _invoke(context.executor, comp, 10)
+      self.assertEqual(result, 11)
 
   def test_two_arg_tf_computation(self):
-    with test_context():
+    with test_context() as context:
 
       @computations.tf_computation(tf.int32, tf.int32)
       def comp(x, y):
         return x + y
 
-      self.assertEqual(comp(10, 20), 30)
+      result = _invoke(context.executor, comp, (10, 20))
+      self.assertEqual(result, 30)
 
   def test_with_selection(self):
     with test_context() as context:
@@ -431,11 +442,13 @@ class RemoteExecutorIntegrationTest(absltest.TestCase):
     def baz(x):
       return bar(foo(x).A, foo(x).B)
 
-    self.assertEqual(baz(100), 230)
+    result = _invoke(context.executor, baz, 100)
+    self.assertEqual(result, 230)
 
     # Make sure exactly two selections happened.
-    self.assertLen(
-        [x for x in context.tracer.trace if x[0] == 'create_selection'], 2)
+    seletions = [x for x in context.tracer.trace
+                 if x[0] == 'create_selection']
+    self.assertLen(seletions, 2)
 
   def test_runs_tf(self):
     with test_context() as context:
@@ -446,30 +459,39 @@ class RemoteExecutorIntegrationTest(absltest.TestCase):
       executor_test_utils.test_runs_tf(self, context.executor)
 
   def test_with_federated_computations(self):
-    with test_context():
+    with test_context() as context:
 
       @computations.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.CLIENTS))
+          computation_types.FederatedType(tf.int32,
+                                          placement_literals.CLIENTS))
       def foo(x):
         return intrinsics.federated_sum(x)
 
-      self.assertEqual(foo([10, 20, 30]), 60)
+      result = _invoke(context.executor, foo, [10, 20, 30])
+      self.assertEqual(result, 60)
 
       @computations.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.SERVER))
+          computation_types.FederatedType(tf.int32,
+                                          placement_literals.SERVER))
       def bar(x):
         return intrinsics.federated_broadcast(x)
 
-      self.assertEqual(bar(50), 50)
+      result = _invoke(context.executor, bar, 50)
+      self.assertEqual(result, 50)
+
+      @computations.tf_computation(tf.int32)
+      def add_one(x):
+        return x + 1
 
       @computations.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.SERVER))
+          computation_types.FederatedType(tf.int32,
+                                          placement_literals.SERVER))
       def baz(x):
-        return intrinsics.federated_map(
-            computations.tf_computation(lambda y: y + 1, tf.int32),
-            intrinsics.federated_broadcast(x))
+        value = intrinsics.federated_broadcast(x)
+        return intrinsics.federated_map(add_one, value)
 
-      self.assertEqual(baz(50), [51, 51, 51])
+      result = _invoke(context.executor, baz, 50)
+      self.assertEqual(result, [51, 51, 51])
 
 
 if __name__ == '__main__':

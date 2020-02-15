@@ -122,31 +122,6 @@ py_test(
 )
 
 py_library(
-    name = "thread_delegating_executor",
-    srcs = ["thread_delegating_executor.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":executor_base",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-    ],
-)
-
-py_test(
-    name = "thread_delegating_executor_test",
-    size = "small",
-    srcs = ["thread_delegating_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":caching_executor",
-        ":eager_tf_executor",
-        ":executor_base",
-        ":thread_delegating_executor",
-        "//tensorflow_federated/python/core/api:computations",
-    ],
-)
-
-py_library(
     name = "eager_tf_executor",
     srcs = ["eager_tf_executor.py"],
     srcs_version = "PY3",
@@ -373,6 +348,45 @@ py_test(
 )
 
 py_library(
+    name = "remote_executor",
+    srcs = ["remote_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        ":executor_utils",
+        ":executor_value_base",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:execution_context",
+        "//tensorflow_federated/python/core/impl:executor_service_utils",
+    ],
+)
+
+py_test(
+    name = "remote_executor_test",
+    size = "small",
+    srcs = ["remote_executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":executor_service",
+        ":reference_resolving_executor",
+        ":remote_executor",
+        "//tensorflow_federated/proto/v0:executor_py_pb2",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl:execution_context",
+        "//tensorflow_federated/python/core/impl:executor_stacks",
+        "//tensorflow_federated/python/core/impl:executor_test_utils",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "@com_google_protobuf//:protobuf_python",
+    ],
+)
+
+py_library(
     name = "sizing_executor",
     srcs = ["sizing_executor.py"],
     srcs_version = "PY3",
@@ -400,6 +414,31 @@ py_test(
         ":sizing_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+    ],
+)
+
+py_library(
+    name = "thread_delegating_executor",
+    srcs = ["thread_delegating_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "thread_delegating_executor_test",
+    size = "small",
+    srcs = ["thread_delegating_executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":caching_executor",
+        ":eager_tf_executor",
+        ":executor_base",
+        ":thread_delegating_executor",
         "//tensorflow_federated/python/core/api:computations",
     ],
 )
