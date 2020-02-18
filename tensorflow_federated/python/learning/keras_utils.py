@@ -68,6 +68,11 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
 
 
 def _preprocess_dummy_batch(dummy_batch):
+  # TODO(b/149774163): this should be removed in favor of obtaining the types
+  # from `tf.keras.Model.input`. However, that does not include the type of the
+  # label needed for the loss function (which may differ from the model output,
+  # see `tf.keras.losses.CategoricalCrossentropy()` versus
+  # `tf.keras.losses.SparseCategoricalCrossentropy()`).
   """Converts a batch (a nested structure of Python objects) to tensors."""
   dummy_tensors = tf.nest.map_structure(tf.convert_to_tensor, dummy_batch)
   if isinstance(dummy_tensors, (list, tuple, collections.OrderedDict)):
@@ -123,13 +128,11 @@ def from_keras_model(keras_model,
       `keras_model.outputs`.
   """
   py_typecheck.check_type(keras_model, tf.keras.Model)
-  py_typecheck.check_type(
-      loss, (tf.keras.losses.Loss, collections.Sequence, collections.Mapping))
-
+  py_typecheck.check_type(loss, (tf.keras.losses.Loss, collections.Sequence))
+  dummy_tensors = _preprocess_dummy_batch(dummy_batch)
   if loss_weights is not None:
-    py_typecheck.check_type(loss, (collections.Sequence, collections.Mapping))
-
-  if isinstance(loss, (collections.Mapping, collections.Sequence)):
+    py_typecheck.check_type(loss, collections.Sequence)
+  if isinstance(loss, collections.Sequence):
     if len(loss) != len(keras_model.outputs):
       raise ValueError('`keras_model` must have equal number of '
                        'outputs and losses.\nloss: {}\noutputs: {}'.format(
@@ -143,80 +146,20 @@ def from_keras_model(keras_model,
   if keras_model._is_compiled:  # pylint: disable=protected-access
     raise ValueError('`keras_model` must not be compiled. Use '
                      'from_compiled_keras_model() instead.')
+  if optimizer is not None:
+    warnings.warn('optimizer parameter is deprecated.')
 
-  dummy_tensors = _preprocess_dummy_batch(dummy_batch)
-  if optimizer is None:
-    if isinstance(loss, collections.Mapping):
-      loss_functions = []
-      for name in keras_model.output_names:
-        if name not in loss:
-          raise KeyError('Output missing from loss dictionary'
-                         '\nlosses: {}\noutputs: {}'.format(
-                             list(loss.keys()), keras_model.output_names))
-        loss_functions.append(loss[name])
-    elif isinstance(loss, collections.Sequence):
-      loss_functions = loss
-    else:
-      loss_functions = [loss]
-
-    return model_utils.enhance(
-        _KerasModel(keras_model, dummy_tensors, loss_functions, loss_weights,
-                    metrics))
-
-  keras_model.compile(
-      loss=loss,
-      optimizer=optimizer,
-      loss_weights=loss_weights,
-      metrics=metrics)
-  # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
-  # until the model has been called on input. The work-around is to call
-  # Model.test_on_batch() once before asking for metrics.
-  if isinstance(dummy_tensors, collections.Mapping):
-    keras_model.test_on_batch(**dummy_tensors)
+  if isinstance(loss, collections.Sequence):
+    loss_functions = loss
   else:
-    keras_model.test_on_batch(*dummy_tensors)
-  return model_utils.enhance(_TrainableKerasModel(keras_model, dummy_tensors))
-
-
-def from_compiled_keras_model(keras_model, dummy_batch):
-  """Builds a `tff.learning.Model` for an example mini batch.
-
-  **WARNING: DEPRECATED**. Migrate to `tff.learning.from_keras_model`.
-
-  Args:
-    keras_model: A `tf.keras.Model` object that was compiled.
-    dummy_batch: A nested structure of values that are convertible to *batched*
-      tensors with the same shapes and types as expected by `forward_pass()`.
-      The values of the tensors are not important and can be filled with any
-      reasonable input value.
-
-  Returns:
-    A `tff.learning.Model`.
-
-  Raises:
-    TypeError: If `keras_model` is not an instance of `tf.keras.Model`.
-    ValueError: If `keras_model` was *not* compiled.
-  """
-  # TODO(b/148576550): remove after sufficient notice.
-  warnings.warn(
-      'from_compiled_keras_model is deprecated, use from_keras_model '
-      'with an uncompiled model',
-      DeprecationWarning,
-      stacklevel=2)
-  py_typecheck.check_type(keras_model, tf.keras.Model)
-  # Optimizer attribute is only set after calling tf.keras.Model.compile().
-  if not keras_model.optimizer:
-    raise ValueError('`keras_model` must be compiled. Use from_keras_model() '
-                     'instead.')
-  dummy_tensors = _preprocess_dummy_batch(dummy_batch)
-  # NOTE: A sub-classed tf.keras.Model does not produce the compiled metrics
-  # until the model has been called on input. The work-around is to call
-  # Model.test_on_batch() once before asking for metrics.
-  if isinstance(dummy_tensors, collections.Mapping):
-    keras_model.test_on_batch(**dummy_tensors)
-  else:
-    keras_model.test_on_batch(*dummy_tensors)
-  return model_utils.enhance(_TrainableKerasModel(keras_model, dummy_tensors))
+    loss_functions = [loss]
+  return model_utils.enhance(
+      _KerasModel(
+          keras_model,
+          dummy_batch=dummy_tensors,
+          loss_fns=loss_functions,
+          loss_weights=loss_weights,
+          metrics=metrics))
 
 
 def federated_aggregate_keras_metric(metric_type, metric_config,
@@ -299,14 +242,19 @@ class _KerasModel(model_lib.Model):
                loss_fns,
                loss_weights=None,
                metrics=None):
-
     # NOTE: sub-classed `tf.keras.Model`s do not have fully initialized
-    # variables until they are called on input. We forced that here.
+    # variables until they are called on input. Force construction here so
+    # that TFF can reasonable about shapes and types.
     if isinstance(dummy_batch, collections.Mapping):
       inner_model(dummy_batch['x'])
     else:
       inner_model(dummy_batch[0])
 
+    # TODO(b/149774163): this should be removed in favor of obtaining the types
+    # from `tf.keras.Model.input`. However, that does not include the type of
+    # the label needed for the loss function (which may differ from the model
+    # output, see `tf.keras.losses.CategoricalCrossentropy()` versus
+    # `tf.keras.losses.SparseCategoricalCrossentropy()`).
     def _tensor_spec_with_undefined_batch_dim(tensor):
       # Remove the batch dimension and leave it unspecified.
       spec = tf.TensorSpec(
@@ -316,26 +264,31 @@ class _KerasModel(model_lib.Model):
     self._input_spec = tf.nest.map_structure(
         _tensor_spec_with_undefined_batch_dim, dummy_batch)
 
-    self._keras_model = inner_model
+    if not loss_fns:
+      raise ValueError(
+          'Must specify at least one loss_fns, got: {l}'.format(l=loss_fns))
+    if (bool(len(loss_fns) == 1) != tf.is_tensor(inner_model.output) or
+        (isinstance(inner_model.output, list) and
+         len(loss_fns) != len(inner_model.output))):
+      raise ValueError('Must specify the same number of loss_fns as model '
+                       'outputs.\nloss_fns: {l}\nmodel outputs: {o}'.format(
+                           l=loss_fns, o=inner_model.output))
     self._loss_fns = loss_fns
 
-    if isinstance(loss_weights, collections.Mapping):
-      self._loss_weights = []
-      for name in inner_model.output_names:
-        if name not in loss_weights:
-          raise KeyError('Output missing from loss_weights dictionary'
-                         '\nloss_weights: {}\noutputs: {}'.format(
-                             list(loss_weights.keys()),
-                             inner_model.output_names))
-        else:
-          self._loss_weights.append(loss_weights[name])
+    if loss_weights is None:
+      loss_weights = [1.0] * len(loss_fns)
     else:
-      if loss_weights is None:
-        self._loss_weights = [1.0 for _ in range(len(loss_fns))]
-      else:
-        self._loss_weights = loss_weights
-
-    loss_weights = self._loss_weights
+      py_typecheck.check_type(loss_weights, collections.Sequence)
+      if len(loss_weights) != len(loss_fns):
+        raise ValueError('Must specify the same number of '
+                         'loss_weights (got {llw}) as loss_fns (got {llf}).\n'
+                         'loss_weights: {lw}\nloss_fns: {lf}'.format(
+                             lw=loss_weights,
+                             llw=len(loss_weights),
+                             lf=loss_fns,
+                             llf=len(loss_fns)))
+    self._loss_weights = loss_weights
+    self._keras_model = inner_model
     self._metrics = metrics if metrics is not None else []
 
     # This is defined here so that it closes over the `loss_fn`.
@@ -440,7 +393,6 @@ class _KerasModel(model_lib.Model):
     if inputs is None:
       raise KeyError('Received a batch_input that is missing required key `x`. '
                      'Instead have keys {}'.format(list(batch_input.keys())))
-
     predictions = self._keras_model(inputs, training=training)
 
     if isinstance(batch_input, collections.Mapping):
@@ -495,27 +447,3 @@ class _KerasModel(model_lib.Model):
   @classmethod
   def make_batch(cls, x, y):
     return cls.Batch(x=x, y=y)
-
-
-class _TrainableKerasModel(_KerasModel, model_lib.TrainableModel):
-  """Wrapper class for `tf.keras.Model`s that can be trained."""
-
-  def __init__(self, inner_model, dummy_batch):
-    super(_TrainableKerasModel,
-          self).__init__(inner_model, dummy_batch, inner_model.loss_functions,
-                         inner_model.loss_weights, inner_model.metrics)
-
-  @property
-  def local_variables(self):
-    return (super(_TrainableKerasModel, self).local_variables +
-            self._keras_model.optimizer.variables())
-
-  @tf.function
-  def train_on_batch(self, batch_input):
-    train_start = tf.timestamp()
-    batch_output = self._forward_pass(batch_input)
-    _ = self._keras_model.optimizer.get_updates(
-        loss=batch_output.loss, params=self.trainable_variables)
-    train_end = tf.timestamp()
-    self._training_timing.log_time(train_end - train_start)
-    return batch_output

@@ -20,7 +20,6 @@ from tensorflow_federated.python.learning.federated_evaluation import build_fede
 from tensorflow_federated.python.learning.federated_sgd import build_federated_sgd_process
 from tensorflow_federated.python.learning.framework.optimizer_utils import state_with_new_model_weights
 from tensorflow_federated.python.learning.keras_utils import assign_weights_to_keras_model
-from tensorflow_federated.python.learning.keras_utils import from_compiled_keras_model
 from tensorflow_federated.python.learning.keras_utils import from_keras_model
 from tensorflow_federated.python.learning.model import BatchOutput
 from tensorflow_federated.python.learning.model import Model
@@ -38,7 +37,6 @@ _allowed_symbols = [
     "build_federated_sgd_process",
     "build_personalization_eval",
     "framework",
-    "from_compiled_keras_model",
     "from_keras_model",
     "state_with_new_model_weights",
 ]

@@ -138,8 +138,6 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
        model_examples.build_linear_regression_keras_functional_model),
       ('sequential_model',
        model_examples.build_linear_regression_keras_sequential_model),
-      ('subclass_model',
-       model_examples.build_linear_regression_keras_subclass_model),
   ])
   def test_orchestration_execute_from_keras(self, build_keras_model_fn):
     dummy_batch = collections.OrderedDict([
