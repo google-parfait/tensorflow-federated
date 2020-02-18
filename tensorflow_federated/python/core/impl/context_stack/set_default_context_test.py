@@ -16,9 +16,9 @@
 from absl.testing import absltest
 
 from tensorflow_federated.python.core.impl import context_stack_test_utils
-from tensorflow_federated.python.core.impl import execution_context
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
+from tensorflow_federated.python.core.impl.executors import execution_context
 
 
 class SetDefaultContextTest(absltest.TestCase):

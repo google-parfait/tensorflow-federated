@@ -161,6 +161,40 @@ py_test(
 )
 
 py_library(
+    name = "execution_context",
+    srcs = ["execution_context.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":cardinalities_utils",
+        ":executor_base",
+        ":executor_factory",
+        ":executor_value_base",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:typed_object",
+        "//tensorflow_federated/python/core/impl:context_base",
+        "//tensorflow_federated/python/core/impl:type_utils",
+    ],
+)
+
+py_test(
+    name = "execution_context_test",
+    size = "small",
+    srcs = ["execution_context_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":execution_context",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl:executor_stacks",
+        "//tensorflow_federated/python/core/impl/compiler:type_factory",
+    ],
+)
+
+py_library(
     name = "executor_base",
     srcs = ["executor_base.py"],
     srcs_version = "PY3",
@@ -359,8 +393,8 @@ py_library(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl:execution_context",
         "//tensorflow_federated/python/core/impl:executor_service_utils",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
     ],
 )
 
@@ -378,10 +412,10 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl:execution_context",
         "//tensorflow_federated/python/core/impl:executor_stacks",
         "//tensorflow_federated/python/core/impl:executor_test_utils",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
         "@com_google_protobuf//:protobuf_python",
     ],
 )

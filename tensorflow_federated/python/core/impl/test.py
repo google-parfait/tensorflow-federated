@@ -20,10 +20,10 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import context_base
-from tensorflow_federated.python.core.impl import execution_context
 from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.executors import execution_context
 
 tf.compat.v1.enable_v2_behavior()  # Required to create a local executor.
 

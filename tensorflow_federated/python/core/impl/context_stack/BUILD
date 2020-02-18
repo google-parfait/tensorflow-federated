@@ -28,8 +28,8 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:context_stack_base",
-        "//tensorflow_federated/python/core/impl:execution_context",
         "//tensorflow_federated/python/core/impl:executor_stacks",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
     ],
 )
 
@@ -42,7 +42,7 @@ py_test(
     deps = [
         ":context_stack_impl",
         "//tensorflow_federated/python/core/impl:context_stack_test_utils",
-        "//tensorflow_federated/python/core/impl:execution_context",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
     ],
 )
 
@@ -52,8 +52,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
-        "//tensorflow_federated/python/core/impl:execution_context",
         "//tensorflow_federated/python/core/impl:reference_executor",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
     ],
 )
@@ -92,7 +92,7 @@ py_test(
         ":context_stack_impl",
         ":get_context_stack",
         "//tensorflow_federated/python/core/impl:context_stack_test_utils",
-        "//tensorflow_federated/python/core/impl:execution_context",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
     ],
 )
 
@@ -113,6 +113,6 @@ py_test(
         ":get_context_stack",
         ":set_default_context",
         "//tensorflow_federated/python/core/impl:context_stack_test_utils",
-        "//tensorflow_federated/python/core/impl:execution_context",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
     ],
 )

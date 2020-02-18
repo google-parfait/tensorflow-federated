@@ -14,9 +14,9 @@
 # limitations under the License.
 """A utility to change the default executor."""
 
-from tensorflow_federated.python.core.impl import execution_context
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
 
