@@ -25,7 +25,7 @@
 set -e
 
 main() {
-  local artifacts_dir="$2"
+  local artifacts_dir="$1"
 
   if [[ -z "${artifacts_dir}" ]]; then
     artifacts_dir="$(mktemp -d)"
