@@ -18,8 +18,8 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import values
-from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl.context_stack import set_default_executor
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.templates import iterative_process
 
 tf.compat.v1.enable_v2_behavior()

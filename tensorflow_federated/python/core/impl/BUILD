@@ -235,44 +235,6 @@ py_test(
 )
 
 py_library(
-    name = "executor_stacks",
-    srcs = ["executor_stacks.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
-        "//tensorflow_federated/python/core/impl/executors:caching_executor",
-        "//tensorflow_federated/python/core/impl/executors:composing_executor",
-        "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:federating_executor",
-        "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
-        "//tensorflow_federated/python/core/impl/executors:sizing_executor",
-        "//tensorflow_federated/python/core/impl/executors:thread_delegating_executor",
-    ],
-)
-
-py_test(
-    name = "executor_stacks_test",
-    size = "small",
-    srcs = ["executor_stacks_test.py"],
-    python_version = "PY3",
-    shard_count = 5,
-    srcs_version = "PY3",
-    deps = [
-        ":executor_stacks",
-        ":executor_test_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
-        "//tensorflow_federated/python/core/impl/compiler:type_factory",
-        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
-    ],
-)
-
-py_library(
     name = "executor_test_utils",
     testonly = True,
     srcs = ["executor_test_utils.py"],
@@ -551,11 +513,11 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":context_base",
-        ":executor_stacks",
         ":reference_executor",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )
 

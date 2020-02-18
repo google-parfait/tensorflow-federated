@@ -35,7 +35,7 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:values",
-        "//tensorflow_federated/python/core/impl:executor_stacks",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
+        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )

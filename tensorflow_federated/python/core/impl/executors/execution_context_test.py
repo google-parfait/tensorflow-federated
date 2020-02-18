@@ -23,9 +23,9 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.executors import execution_context
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 tf.compat.v1.enable_v2_behavior()
 

@@ -9,7 +9,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:context_stack_base",
-        "//tensorflow_federated/python/core/impl:executor_stacks",
         "//tensorflow_federated/python/core/impl:reference_executor",
         "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",
         "//tensorflow_federated/python/core/impl:type_utils",
@@ -31,6 +30,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_service",
+        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
         "//tensorflow_federated/python/core/impl/executors:executor_value_base",
         "//tensorflow_federated/python/core/impl/executors:federating_executor",
         "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",

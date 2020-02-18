@@ -23,8 +23,8 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl.context_stack import set_default_executor
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.utils import computation_utils
 
 tf.compat.v1.enable_v2_behavior()

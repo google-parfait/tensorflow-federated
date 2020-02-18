@@ -54,9 +54,6 @@ from tensorflow_federated.python.core.impl.context_stack.get_context_stack impor
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context
 from tensorflow_federated.python.core.impl.context_stack.set_default_executor import set_default_executor
 from tensorflow_federated.python.core.impl.context_stack_base import ContextStack
-from tensorflow_federated.python.core.impl.executor_stacks import local_executor_factory
-from tensorflow_federated.python.core.impl.executor_stacks import sizing_executor_factory
-from tensorflow_federated.python.core.impl.executor_stacks import worker_pool_executor_factory
 from tensorflow_federated.python.core.impl.executors.caching_executor import CachingExecutor
 from tensorflow_federated.python.core.impl.executors.composing_executor import ComposingExecutor
 from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
@@ -64,6 +61,9 @@ from tensorflow_federated.python.core.impl.executors.executor_base import Execut
 from tensorflow_federated.python.core.impl.executors.executor_factory import create_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_service import ExecutorService
+from tensorflow_federated.python.core.impl.executors.executor_stacks import local_executor_factory
+from tensorflow_federated.python.core.impl.executors.executor_stacks import sizing_executor_factory
+from tensorflow_federated.python.core.impl.executors.executor_stacks import worker_pool_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.executors.federating_executor import FederatingExecutor
 from tensorflow_federated.python.core.impl.executors.reference_resolving_executor import ReferenceResolvingExecutor

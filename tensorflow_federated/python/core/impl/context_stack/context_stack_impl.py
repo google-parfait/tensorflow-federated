@@ -20,8 +20,8 @@ import threading
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import context_stack_base
-from tensorflow_federated.python.core.impl import executor_stacks
 from tensorflow_federated.python.core.impl.executors import execution_context
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
 def _make_default_context():

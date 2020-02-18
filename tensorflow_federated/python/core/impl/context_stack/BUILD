@@ -28,8 +28,8 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:context_stack_base",
-        "//tensorflow_federated/python/core/impl:executor_stacks",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )
 

@@ -4,6 +4,7 @@ package(default_visibility = [
     "//tensorflow_federated/python/core/framework:__subpackages__",
     "//tensorflow_federated/python/core/impl/context_stack:__subpackages__",
     "//tensorflow_federated/python/core/impl/wrappers:__subpackages__",
+    "//tensorflow_federated/python/core/templates:__subpackages__",
     "//tensorflow_federated/python/core/utils:__subpackages__",
     # TODO(b/143772942): This package is temporary and can be removed once all
     # the appropriate  modules have been moved out of the `impl` package.
@@ -186,10 +187,10 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":execution_context",
+        ":executor_stacks",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl:executor_stacks",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
     ],
 )
@@ -255,6 +256,45 @@ py_test(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl:executor_service_utils",
+    ],
+)
+
+py_library(
+    name = "executor_stacks",
+    srcs = ["executor_stacks.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":caching_executor",
+        ":composing_executor",
+        ":eager_tf_executor",
+        ":executor_base",
+        ":executor_factory",
+        ":federating_executor",
+        ":reference_resolving_executor",
+        ":sizing_executor",
+        ":thread_delegating_executor",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+    ],
+)
+
+py_test(
+    name = "executor_stacks_test",
+    size = "small",
+    srcs = ["executor_stacks_test.py"],
+    python_version = "PY3",
+    shard_count = 5,
+    srcs_version = "PY3",
+    deps = [
+        ":execution_context",
+        ":executor_factory",
+        ":executor_stacks",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl:executor_test_utils",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/compiler:type_factory",
     ],
 )
 
@@ -406,13 +446,13 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":executor_service",
+        ":executor_stacks",
         ":reference_resolving_executor",
         ":remote_executor",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl:executor_stacks",
         "//tensorflow_federated/python/core/impl:executor_test_utils",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/executors:execution_context",

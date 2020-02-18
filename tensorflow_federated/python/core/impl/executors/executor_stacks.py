@@ -15,6 +15,7 @@
 """A collection of constructors for basic types of executor stacks."""
 
 import functools
+
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
