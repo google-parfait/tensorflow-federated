@@ -724,7 +724,7 @@ class GetTypeInfoTest(test.TestCase):
     # `canonical_form_utils._get_type_info`, but instead to act as a signal when
     # refactoring the code involved in compiling an `tff.utils.IterativeProcess`
     # into a `tff.backends.mapreduce.CanonicalForm`. If you are sure this needs
-    # to be updated, one recommendation is to print k=\'v\' while iterating
+    # to be updated, one recommendation is to print 'k=\'v\',' while iterating
     # over the k-v pairs of the ordereddict.
     # pyformat: disable
     expected = collections.OrderedDict(
@@ -735,22 +735,22 @@ class GetTypeInfoTest(test.TestCase):
         s2_type='<<int32,int32>>@SERVER',
         c2_type='<<int32,int32>>@CLIENTS',
         c3_type='{<int32,<<int32,int32>>>}@CLIENTS',
-        work_type='(<int32,<<int32,int32>>> -> <<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>,<>>)',
-        c4_type='{<<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>,<>>}@CLIENTS',
-        c5_type='{<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>}@CLIENTS',
-        c6_type='{<int32,int32,int32,int32,int32,int32>}@CLIENTS',
-        c7_type='{<int32,int32,int32,int32,int32,int32>}@CLIENTS',
+        work_type='(<int32,<<int32,int32>>> -> <<<int32>,<int32>>,<>>)',
+        c4_type='{<<<int32>,<int32>>,<>>}@CLIENTS',
+        c5_type='{<<int32>,<int32>>}@CLIENTS',
+        c6_type='{<int32>}@CLIENTS',
+        c7_type='{<int32>}@CLIENTS',
         c8_type='{<>}@CLIENTS',
-        zero_type='( -> <int32,int32,int32,int32,int32,int32>)',
-        accumulate_type='(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
-        merge_type='(<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>> -> <int32,int32,int32,int32,int32,int32>)',
-        report_type='(<int32,int32,int32,int32,int32,int32> -> <int32,int32,int32,int32,int32,int32>)',
-        s3_type='<int32,int32,int32,int32,int32,int32>@SERVER',
-        bitwidth_type='( -> <int32,int32,int32,int32,int32,int32>)',
-        s4_type='<int32,int32,int32,int32,int32,int32>@SERVER',
-        s5_type='<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>@SERVER',
-        s6_type='<<int32,int32>,<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>>@SERVER',
-        update_type='(<<int32,int32>,<<int32,int32,int32,int32,int32,int32>,<int32,int32,int32,int32,int32,int32>>> -> <<int32,int32>,<>>)',
+        zero_type='( -> <int32>)',
+        accumulate_type='(<<int32>,<int32>> -> <int32>)',
+        merge_type='(<<int32>,<int32>> -> <int32>)',
+        report_type='(<int32> -> <int32>)',
+        s3_type='<int32>@SERVER',
+        bitwidth_type='( -> <int32>)',
+        s4_type='<int32>@SERVER',
+        s5_type='<<int32>,<int32>>@SERVER',
+        s6_type='<<int32,int32>,<<int32>,<int32>>>@SERVER',
+        update_type='(<<int32,int32>,<<int32>,<int32>>> -> <<int32,int32>,<>>)',
         s7_type='<<int32,int32>,<>>@SERVER',
         s8_type='<int32,int32>@SERVER',
         s9_type='<>@SERVER',

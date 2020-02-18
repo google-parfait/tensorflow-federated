@@ -778,6 +778,98 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
     self.assertEqual(deduped_and_merged_comp.formatted_representation(),
                      directly_merged_comp.formatted_representation())
 
+  def test_aggregate_with_selection_from_block_by_index_results_in_single_aggregate(
+      self):
+    data = building_blocks.Reference(
+        'a', computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    tup_of_data = building_blocks.Tuple([data, data])
+    block_holding_tup = building_blocks.Block([], tup_of_data)
+    index_0_from_block = building_blocks.Selection(
+        source=block_holding_tup, index=0)
+    index_1_from_block = building_blocks.Selection(
+        source=block_holding_tup, index=1)
+
+    result = building_blocks.Data('aggregation_result', tf.int32)
+    zero = building_blocks.Data('zero', tf.int32)
+    accumulate = building_blocks.Lambda('accumulate_param',
+                                        [tf.int32, tf.int32], result)
+    merge = building_blocks.Lambda('merge_param', [tf.int32, tf.int32], result)
+    report = building_blocks.Lambda('report_param', tf.int32, result)
+
+    called_intrinsic0 = building_block_factory.create_federated_aggregate(
+        index_0_from_block, zero, accumulate, merge, report)
+    called_intrinsic1 = building_block_factory.create_federated_aggregate(
+        index_1_from_block, zero, accumulate, merge, report)
+    calls = building_blocks.Tuple((called_intrinsic0, called_intrinsic1))
+    comp = calls
+
+    deduped_and_merged_comp, deduped_modified = transformations.dedupe_and_merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
+
+    self.assertTrue(deduped_modified)
+
+    fed_agg = []
+
+    def _find_called_federated_aggregate(comp):
+      if (isinstance(comp, building_blocks.Call) and
+          isinstance(comp.function, building_blocks.Intrinsic) and
+          comp.function.uri == intrinsic_defs.FEDERATED_AGGREGATE.uri):
+        fed_agg.append(comp.function)
+      return comp, False
+
+    transformation_utils.transform_postorder(deduped_and_merged_comp,
+                                             _find_called_federated_aggregate)
+    self.assertLen(fed_agg, 1)
+    self.assertEqual(
+        fed_agg[0].type_signature.parameter[0].compact_representation(),
+        '{<int32>}@CLIENTS')
+
+  def test_aggregate_with_selection_from_block_by_name_results_in_single_aggregate(
+      self):
+    data = building_blocks.Reference(
+        'a', computation_types.FederatedType(tf.int32, placements.CLIENTS))
+    tup_of_data = building_blocks.Tuple([('a', data), ('b', data)])
+    block_holding_tup = building_blocks.Block([], tup_of_data)
+    index_0_from_block = building_blocks.Selection(
+        source=block_holding_tup, name='a')
+    index_1_from_block = building_blocks.Selection(
+        source=block_holding_tup, name='b')
+
+    result = building_blocks.Data('aggregation_result', tf.int32)
+    zero = building_blocks.Data('zero', tf.int32)
+    accumulate = building_blocks.Lambda('accumulate_param',
+                                        [tf.int32, tf.int32], result)
+    merge = building_blocks.Lambda('merge_param', [tf.int32, tf.int32], result)
+    report = building_blocks.Lambda('report_param', tf.int32, result)
+
+    called_intrinsic0 = building_block_factory.create_federated_aggregate(
+        index_0_from_block, zero, accumulate, merge, report)
+    called_intrinsic1 = building_block_factory.create_federated_aggregate(
+        index_1_from_block, zero, accumulate, merge, report)
+    calls = building_blocks.Tuple((called_intrinsic0, called_intrinsic1))
+    comp = calls
+
+    deduped_and_merged_comp, deduped_modified = transformations.dedupe_and_merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
+
+    self.assertTrue(deduped_modified)
+
+    fed_agg = []
+
+    def _find_called_federated_aggregate(comp):
+      if (isinstance(comp, building_blocks.Call) and
+          isinstance(comp.function, building_blocks.Intrinsic) and
+          comp.function.uri == intrinsic_defs.FEDERATED_AGGREGATE.uri):
+        fed_agg.append(comp.function)
+      return comp, False
+
+    transformation_utils.transform_postorder(deduped_and_merged_comp,
+                                             _find_called_federated_aggregate)
+    self.assertLen(fed_agg, 1)
+    self.assertEqual(
+        fed_agg[0].type_signature.parameter[0].compact_representation(),
+        '{<int32>}@CLIENTS')
+
 
 if __name__ == '__main__':
   test.main()

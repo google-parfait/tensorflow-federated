@@ -18,6 +18,7 @@ from typing import Mapping
 
 from absl import logging
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
@@ -580,6 +581,34 @@ class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
 
 def dedupe_and_merge_tuple_intrinsics(comp, uri):
   r"""Merges tuples of called intrinsics into one called intrinsic."""
+  # TODO(b/147359721): The application of the function below is a workaround to
+  # a known pattern preventing TFF from deduplicating, effectively because tree
+  # equality won't determine that [a, a][0] and [a, a][1] are actually the same
+  # thing. A fuller fix is planned, but requires increasing the invariants
+  # respected further up the TFF compilation pipelines. That is, in order to
+  # reason about sufficiency of our ability to detect duplicates at this layer,
+  # we would very much prefer to be operating in the subset of TFF effectively
+  # representing local computation.
+
+  def _remove_selection_from_block_holding_tuple(comp):
+    """Reduces selection from a block holding a tuple."""
+    if (isinstance(comp, building_blocks.Selection) and
+        isinstance(comp.source, building_blocks.Block) and
+        isinstance(comp.source.result, building_blocks.Tuple)):
+      if comp.index is None:
+        names = [
+            x[0]
+            for x in anonymous_tuple.iter_elements(comp.source.type_signature)
+        ]
+        index = names.index(comp.name)
+      else:
+        index = comp.index
+      return building_blocks.Block(comp.source.locals,
+                                   comp.source.result[index]), True
+    return comp, False
+
+  comp, _ = transformation_utils.transform_postorder(
+      comp, _remove_selection_from_block_holding_tuple)
   transform_spec = tree_transformations.MergeTupleIntrinsics(comp, uri)
   dedupe_and_merger = RemoveDuplicatesAndApplyTransform(comp, transform_spec)
 
