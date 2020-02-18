@@ -34,37 +34,24 @@ def setup_toy_data():
 
   def build_dataset(i):
     return tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([('x', data[i:i + 1]),
-                                 ('y', labels[i:i + 1])])).batch(1)
+        collections.OrderedDict(x=data[i:i + 1], y=labels[i:i + 1])).batch(1)
 
   return [build_dataset(i) for i in range(data.shape[0])]
 
 
 def get_model_fn():
   """Return a function which creates a TFF model."""
-
-  def create_compiled_keras_model():
-    model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(
-            1,
-            activation=None,
-            kernel_initializer='zeros',
-            use_bias=False,
-            input_shape=(DIM,))
-    ])
-
-    model.compile(
-        loss='mse', optimizer=tf.keras.optimizers.SGD(learning_rate=1e-20))
-    # only to get the model to compile. We will not actually train this model
-    return model
-
   sample_dataset = setup_toy_data()[0]
   sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
                                        next(iter(sample_dataset)))
 
   def model_fn():
-    keras_model = create_compiled_keras_model()
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+    keras_model = tf.keras.models.Sequential([
+        tf.keras.layers.Input(shape=(DIM,)),
+        tf.keras.layers.Dense(1, kernel_initializer='zeros', use_bias=False)
+    ])
+    return tff.learning.from_keras_model(
+        keras_model, sample_batch, loss=tf.keras.losses.MeanSquaredError())
 
   return model_fn
 
@@ -84,8 +71,7 @@ class DummyClientComputation(tff.learning.framework.ClientDeltaFn):
     """
     del client_weight_fn
     self._model = tff.learning.framework.enhance(model)
-    py_typecheck.check_type(self._model,
-                            tff.learning.framework.EnhancedTrainableModel)
+    py_typecheck.check_type(self._model, tff.learning.framework.EnhancedModel)
     self._client_weight_fn = None
 
   @property
@@ -111,7 +97,6 @@ class DummyClientComputation(tff.learning.framework.ClientDeltaFn):
 
     num_examples_sum = dataset.reduce(
         initial_state=tf.constant(0), reduce_func=reduce_fn_num_examples)
-
     example_vector_sum = dataset.reduce(
         initial_state=tf.zeros((DIM, 1)), reduce_func=reduce_fn_dataset_mean)
 
@@ -119,19 +104,17 @@ class DummyClientComputation(tff.learning.framework.ClientDeltaFn):
     # containing a mean of all the examples in the local dataset. Note: this
     # works for a linear model only (as in the example above)
     weights_delta = [example_vector_sum / tf.cast(num_examples_sum, tf.float32)]
-
     aggregated_outputs = model.report_local_outputs()
     weights_delta, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(weights_delta))
-
     weights_delta_weight = tf.cast(num_examples_sum, tf.float32)
 
     return tff.learning.framework.ClientOutput(
         weights_delta, weights_delta_weight, aggregated_outputs,
-        collections.OrderedDict([
-            ('num_examples', num_examples_sum),
-            ('has_non_finite_delta', has_non_finite_delta),
-        ]))
+        collections.OrderedDict(
+            num_examples=num_examples_sum,
+            has_non_finite_delta=has_non_finite_delta,
+        ))
 
 
 def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
@@ -150,7 +133,6 @@ def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
   Returns:
     A `tff.utils.IterativeProcess`.
   """
-
   server_optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
   def client_fed_avg(model_fn):

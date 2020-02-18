@@ -129,11 +129,12 @@ def server_update(model, server_optimizer, server_optimizer_vars, server_state,
 
 
 @tf.function
-def client_update(model, dataset, initial_weights):
+def client_update(model, optimizer, dataset, initial_weights):
   """Updates client model.
 
   Args:
     model: A `tff.learning.Model`.
+    optimizer: A `tf.keras.optimizers.Optimizer`.
     dataset: A 'tf.data.Dataset'.
     initial_weights: A `tff.learning.Model.weights` from server.
 
@@ -154,35 +155,23 @@ def client_update(model, dataset, initial_weights):
     # training so we can send back the norms to the server.
     with tf.GradientTape() as tape:
       output = model.forward_pass(batch)
-
-    model_weights = _get_weights(model)
-    flat_grads = tape.gradient(output.loss,
-                               tf.nest.flatten(model_weights.trainable))
-
-    grads_and_vars = list(
-        zip(flat_grads, tf.nest.flatten(model_weights.trainable)))
-
-    # Support keras model only for now.
-    model._model._keras_model.optimizer.apply_gradients(grads_and_vars)  # pylint: disable=protected-access
-
+    flat_grads = tape.gradient(output.loss, flat_trainable_weights)
+    optimizer.apply_gradients(zip(flat_grads, flat_trainable_weights))
     batch_weight = tf.cast(tf.shape(output.predictions)[0], dtype=tf.float32)
-
     flat_accumulated_grads = tuple(
         accumulator + batch_weight * grad
         for accumulator, grad in zip(flat_accumulated_grads, flat_grads))
-
     flat_accumulated_grads_norm = tuple(
         norm_accumulator + batch_weight * tf.norm(grad)
         for norm_accumulator, grad in zip(flat_accumulated_grads_norm,
                                           flat_grads))
-
     return (flat_accumulated_grads, flat_accumulated_grads_norm,
             batch_weight_sum + batch_weight)
 
   def _zero_initial_state():
     """Create a tuple of (tuple of gradient accumulators, batch weight sum)."""
     return (
-        tuple(tf.zeros_like(w, dtype=w.dtype) for w in flat_trainable_weights),
+        tuple(tf.zeros_like(w) for w in flat_trainable_weights),
         tuple(tf.constant(0, dtype=w.dtype) for w in flat_trainable_weights),
         tf.constant(0, dtype=tf.float32),
     )
@@ -190,15 +179,11 @@ def client_update(model, dataset, initial_weights):
   flat_grads_sum, flat_grads_norm_sum, batch_weight_sum = dataset.reduce(
       initial_state=_zero_initial_state(), reduce_func=reduce_fn)
 
-  grads_sum = tf.nest.pack_sequence_as(
-      _get_weights(model).trainable, flat_grads_sum)
+  grads_sum = tf.nest.pack_sequence_as(model_weights.trainable, flat_grads_sum)
   weights_delta = tf.nest.map_structure(
       lambda gradient: -1.0 * gradient / batch_weight_sum, grads_sum)
-
   flat_grads_norm_sum = tf.nest.map_structure(
       lambda grad_norm: grad_norm / batch_weight_sum, flat_grads_norm_sum)
-
-  aggregated_outputs = model.report_local_outputs()
 
   weights_delta, has_non_finite_delta = (
       tensor_utils.zero_all_if_any_non_finite(weights_delta))
@@ -211,11 +196,10 @@ def client_update(model, dataset, initial_weights):
   return ClientOutput(
       weights_delta,
       weights_delta_weight,
-      model_output=aggregated_outputs,
-      optimizer_output=collections.OrderedDict([
-          ('num_examples', batch_weight_sum),
-          ('flat_grads_norm_sum', flat_grads_norm_sum),
-      ]))
+      model_output=model.report_local_outputs(),
+      optimizer_output=collections.OrderedDict(
+          num_examples=batch_weight_sum,
+          flat_grads_norm_sum=flat_grads_norm_sum))
 
 
 def build_server_init_fn(model_fn, server_optimizer_fn):
@@ -284,11 +268,14 @@ def build_server_update_fn(model_fn, server_optimizer_fn, server_state_type,
   return server_update_tf
 
 
-def build_client_update_fn(model_fn, tf_dataset_type, model_weights_type):
+def build_client_update_fn(model_fn, client_optimizer_fn, tf_dataset_type,
+                           model_weights_type):
   """Builds a `tff.tf_computation` for local model optimization.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    client_optimizer_fn: A no-arg function that returns a
+      `tf.keras.optimizers.Optimizer`.
     tf_dataset_type: type_signature of dataset.
     model_weights_type: type_signature of model weights.
 
@@ -308,7 +295,9 @@ def build_client_update_fn(model_fn, tf_dataset_type, model_weights_type):
     Returns:
       A `ClientOutput`.
     """
-    return client_update(model_fn(), tf_dataset, initial_model_weights)
+    model = model_fn()
+    optimizer = client_optimizer_fn()
+    return client_update(model, optimizer, tf_dataset, initial_model_weights)
 
   return client_delta_tf
 
@@ -369,20 +358,22 @@ def build_run_one_round_fn(server_update_fn, client_update_fn,
 
 def build_federated_averaging_process(
     model_fn,
+    client_optimizer_fn,
     server_optimizer_fn=lambda: flars_optimizer.FLARSOptimizer(learning_rate=1.0
                                                               )):
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    client_optimizer_fn: A no-arg function that returns a
+      `tf.keras.optimizers.Optimizer` for the local client training.
     server_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer`.
+      `tf.keras.optimizers.Optimizer` for applying updates on the server.
 
   Returns:
     A `tff.utils.IterativeProcess`.
   """
   dummy_model_for_metadata = model_fn()
-
   type_signature_grads_norm = tff.NamedTupleType([
       weight.dtype for weight in tf.nest.flatten(
           _get_weights(dummy_model_for_metadata).trainable)
@@ -396,7 +387,8 @@ def build_federated_averaging_process(
                                             type_signature_grads_norm)
 
   tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
-  client_update_fn = build_client_update_fn(model_fn, tf_dataset_type,
+  client_update_fn = build_client_update_fn(model_fn, client_optimizer_fn,
+                                            tf_dataset_type,
                                             server_state_type.model)
 
   federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)
