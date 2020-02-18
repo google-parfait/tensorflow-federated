@@ -5,7 +5,7 @@ Whereas the primary focus is on simulations, the interfaces and tools we provide
 are more general. This document outlines the options for deployment to various
 types of platform.
 
-NOTE: This document is still under construction.
+Note: This document is still under construction.
 
 ## Overview
 

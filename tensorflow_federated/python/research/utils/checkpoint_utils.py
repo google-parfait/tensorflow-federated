@@ -63,7 +63,7 @@ def latest_checkpoint(root_output_dir, prefix='ckpt_'):
 def save(obj, export_dir, prefix=None):
   r"""Save a nested structure to `export_dir`.
 
-  NOTE: to be compatible with `latest_checkpoint`, the basename of `export_dir`
+  Note: to be compatible with `latest_checkpoint`, the basename of `export_dir`
   must follow the regular expression pattern `<prefix>\d+`, where the final
   digit matcher  determines the ordering of the checkpoints.
 

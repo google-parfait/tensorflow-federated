@@ -29,7 +29,7 @@ def get_curried(fn):
   For functions `fn` of types <T1,T2,....,Tn> -> U, the result is a function
   of the form T1 -> (T2 -> (T3 -> .... (Tn -> U) ... )).
 
-  NOTE: No attempt is made at avoiding naming conflicts in cases where `fn`
+  Note: No attempt is made at avoiding naming conflicts in cases where `fn`
   contains references. The arguments of the curriend function are named `argN`
   with `N` starting at 0.
 

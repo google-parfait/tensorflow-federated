@@ -1079,7 +1079,7 @@ def convert_to_py_container(value, type_spec):
                        'elements.'.format(anon_tuple, container_type))
     if (num_named_elements > 0 and
         is_container_type_without_names(container_type)):
-      # NOTE: This could be relaxed in some cases if needed.
+      # Note: This could be relaxed in some cases if needed.
       raise ValueError(
           'Cannot represent value {} with named elements '
           'using container type {} which does not support names.'.format(

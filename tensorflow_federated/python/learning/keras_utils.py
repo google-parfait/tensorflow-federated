@@ -206,7 +206,7 @@ def federated_aggregate_keras_metric(metric_type, metric_config,
   @tff.tf_computation(member_type)
   def report(accumulators):
     """Insert `accumulators` back into the keras metric to obtain result."""
-    # NOTE: the following call requires that `metric_type` have a no argument
+    # Note: the following call requires that `metric_type` have a no argument
     # __init__ method, which will restrict the types of metrics that can be
     # used. This is somewhat limiting, but the pattern to use default arguments
     # and export the values in `get_config()` (see
@@ -242,7 +242,7 @@ class _KerasModel(model_lib.Model):
                loss_fns,
                loss_weights=None,
                metrics=None):
-    # NOTE: sub-classed `tf.keras.Model`s do not have fully initialized
+    # Note: sub-classed `tf.keras.Model`s do not have fully initialized
     # variables until they are called on input. Force construction here so
     # that TFF can reasonable about shapes and types.
     if isinstance(dummy_batch, collections.Mapping):

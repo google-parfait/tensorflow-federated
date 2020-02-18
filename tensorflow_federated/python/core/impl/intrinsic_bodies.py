@@ -271,7 +271,7 @@ def get_intrinsic_bodies(context_stack):
   #     GENERIC_MAP(GENERIC_DIVIDE, GENERIC_SUM(
   #       GENERIC_MAP(GENERIC_MULTIPLY, GENERIC_ZIP(x, w)), p))
   #
-  #     NOTE: The above formula does not account for type casting issues that
+  #     Note: The above formula does not account for type casting issues that
   #     arise due to the interplay betwen the types of values and weights and
   #     how they relate to types of products and ratios, and either the formula
   #     or the type signatures may need to be tweaked.

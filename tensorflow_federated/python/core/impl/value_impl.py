@@ -38,7 +38,7 @@ from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
-# NOTE: not a `ValueImpl` method because of the `__setattr__` override
+# Note: not a `ValueImpl` method because of the `__setattr__` override
 def _is_federated_named_tuple(vimpl: 'ValueImpl') -> bool:
   return (isinstance(
       vimpl._comp.type_signature,  # pylint: disable=protected-access
@@ -47,7 +47,7 @@ def _is_federated_named_tuple(vimpl: 'ValueImpl') -> bool:
           computation_types.NamedTupleType))
 
 
-# NOTE: not a `ValueImpl` method because of the `__setattr__` override
+# Note: not a `ValueImpl` method because of the `__setattr__` override
 def _is_named_tuple(vimpl: 'ValueImpl') -> bool:
   return isinstance(
       vimpl._comp.type_signature,  # pylint: disable=protected-access

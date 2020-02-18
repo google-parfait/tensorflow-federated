@@ -925,7 +925,7 @@ def to_tensor_slices_from_list_structure_for_element_type_spec(
 def make_data_set_from_elements(graph, elements, element_type):
   """Creates a `tf.data.Dataset` in `graph` from explicitly listed `elements`.
 
-  NOTE: The underlying implementation attempts to use the
+  Note: The underlying implementation attempts to use the
   `tf.data.Dataset.from_tensor_slices() method to build the data set quickly,
   but this doesn't always work. The typical scenario where it breaks is one
   with data set being composed of unequal batches. Typically, only the last
@@ -950,7 +950,7 @@ def make_data_set_from_elements(graph, elements, element_type):
     ValueError: If the elements are of incompatible types and shapes, or if
       no graph was specified outside of the eager context.
   """
-  # NOTE: We allow the graph to be `None` to allow this function to be used in
+  # Note: We allow the graph to be `None` to allow this function to be used in
   # the eager context.
   if graph is not None:
     py_typecheck.check_type(graph, tf.Graph)

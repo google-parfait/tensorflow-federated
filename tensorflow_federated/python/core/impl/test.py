@@ -70,7 +70,7 @@ def tf2(fn):
 def executors(*args):
   """A decorator for creating tests parameterized by executors.
 
-  NOTE: To use this decorator your test is required to inherit from
+  Note: To use this decorator your test is required to inherit from
   `parameterized.TestCase`.
 
   1.  The decorator can be specified without arguments:

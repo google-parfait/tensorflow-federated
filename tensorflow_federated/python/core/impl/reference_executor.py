@@ -115,7 +115,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       For those types that have `all_equal_` set to `False`, the representation
       is a Python list of member constituents.
 
-      NOTE: This function does not attempt at validating that the sizes of lists
+      Note: This function does not attempt at validating that the sizes of lists
       that represent federated values match the corresponding placemenets. The
       cardinality analysis is a separate step, handled by the reference executor
       at a different point. As long as values can be packed into a Python list,
@@ -144,7 +144,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   if callable_handler is not None:
     py_typecheck.check_callable(callable_handler)
 
-  # NOTE: We do not simply call `type_utils.infer_type()` on `value`, as the
+  # Note: We do not simply call `type_utils.infer_type()` on `value`, as the
   # representations of values in the reference executor are only a subset of
   # the Python types recognized by that helper function.
 
@@ -371,7 +371,7 @@ def numpy_cast(value, dtype, shape):
               shape.dims[i].value is None) for i in range(len(shape.dims))):
     raise TypeError('Expected shape {}, found {}.'.format(
         shape.dims, value_as_numpy_array.shape))
-  # NOTE: We don't want to make things more complicated than necessary by
+  # Note: We don't want to make things more complicated than necessary by
   # returning the result as an array if it's just a plain scalar, so we
   # special-case this by pulling the singleton `np.ndarray`'s element out.
   if len(value_as_numpy_array.shape) > 0:  # pylint: disable=g-explicit-length-test
@@ -572,7 +572,7 @@ class ReferenceExecutor(context_base.Context):
   separate executor optimized for performance. This executor is plugged in as
   the handler of computation invocations at the top level of the context stack.
 
-  NOTE: The `tff.federated_secure_sum()` intrinsic is implemented using a
+  Note: The `tff.federated_secure_sum()` intrinsic is implemented using a
   non-secure algorithm in order to enable testing of the semantics of federated
   computaitons using the  secure sum intrinsic.
   """

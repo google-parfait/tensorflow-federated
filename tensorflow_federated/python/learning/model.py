@@ -23,7 +23,7 @@ class BatchOutput(
                            ['loss', 'predictions', 'num_examples'])):
   """A structure that holds the output of a `tff.learning.Model`.
 
-  NOTE: All fields are optional (may be None).
+  Note: All fields are optional (may be None).
 
   -   `loss`: The scalar mean loss on the examples in the batch. If the model
       has multiple losses, it is the sum of all the individual losses.

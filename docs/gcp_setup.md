@@ -11,7 +11,7 @@ high-performance simulations with TFF on GCP.
 
         1.  [Create a Compute Engine instance](https://cloud.google.com/endpoints/docs/grpc/get-started-compute-engine-docker#create_vm).
 
-            NOTE: To have Docker pre-installed, selected a "Container-Optimized"
+            Note: To have Docker pre-installed, selected a "Container-Optimized"
             boot disk when starting the VM.
 
         1.  `ssh` into the instance.

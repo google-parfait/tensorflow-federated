@@ -181,7 +181,7 @@ def define_optimizer_flags(prefix: str) -> None:
   must be called before `absl.app.run(main)`, and is recommened to be called
   next to other flag definitions at the top of a py_binary.
 
-  NOTE: This method does not create a flag for `kwargs` of the Optimizer
+  Note: This method does not create a flag for `kwargs` of the Optimizer
   constructor. However, `kwargs` can be set using the `overrides` parameter of
   `create_optimizer_from_flags` below.
 
@@ -263,7 +263,7 @@ def create_optimizer_from_flags(
   If the optimizer flag is `'sgd'`, then a `tf.keras.optimizer.SGD` optimizer is
   constructed using the values in the flags prefixed with  `--client_sgd_`.
 
-  NOTE: `kwargs` can be set using the `overrides` parameter.
+  Note: `kwargs` can be set using the `overrides` parameter.
 
   Args:
     prefix: The same string prefix passed to `define_optimizer_flags`.

@@ -997,7 +997,7 @@ def create_federated_map_all_equal(fn, arg):
                  |
                  [Comp, Comp]
 
-  NOTE: The `fn` is required to be deterministic and therefore should contain no
+  Note: The `fn` is required to be deterministic and therefore should contain no
   `building_blocks.CompiledComputations`.
 
   Args:
@@ -1514,7 +1514,7 @@ def _create_chain_zipped_values(value):
                                                 \             \
                                                  Ref(value)    Ref(value)
 
-  NOTE: This function is intended to be used in conjunction with
+  Note: This function is intended to be used in conjunction with
   `_create_fn_to_append_chain_zipped_values` and will drop the tuple names. The
   names will be added back to the resulting computation when the zipped values
   are mapped to a function that flattens the chain. This nested zip -> flatten

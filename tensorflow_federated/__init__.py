@@ -49,14 +49,14 @@ from tensorflow_federated.python.core.api.typed_object import TypedObject
 from tensorflow_federated.python.core.api.value_base import Value
 from tensorflow_federated.python.core.api.values import to_value
 
-# NOTE: These imports must happen after the API imports.
+# Note: These imports must happen after the API imports.
 # pylint: disable=g-bad-import-order
 from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import backends
 from tensorflow_federated.python.core import utils
 # pylint: enable=g-bad-import-order
 
-# NOTE: These imports must happen after the Core imports.
+# Note: These imports must happen after the Core imports.
 # pylint: disable=g-bad-import-order
 from tensorflow_federated.python import learning
 from tensorflow_federated.python import simulation

@@ -1151,7 +1151,7 @@ def _structural_representation(comp):
                                     minimum_content_padding):
     """Calculates the inset for the given padding.
 
-    NOTE: This function is intended to only be called from `_fit_with_padding`.
+    Note: This function is intended to only be called from `_fit_with_padding`.
 
     Args:
       left: A `list` of strings.
@@ -1180,7 +1180,7 @@ def _structural_representation(comp):
   def _fit_with_inset(left, right, inset):
     r"""Concatenates the lines of two `list`s of strings.
 
-    NOTE: This function is intended to only be called from `_fit_with_padding`.
+    Note: This function is intended to only be called from `_fit_with_padding`.
 
     Args:
       left: A `list` of strings.

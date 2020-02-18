@@ -278,7 +278,7 @@ def federated_secure_sum(value, bitwidth):
   result = tff.federated_secure_sum(value, [2, [4, 8]])
   ```
 
-  NOTE: To sum non-integer values or to sum integers with fewer constraints and
+  Note: To sum non-integer values or to sum integers with fewer constraints and
   weaker privacy properties, consider using `federated_sum`.
 
   Args:

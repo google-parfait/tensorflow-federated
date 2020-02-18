@@ -9,7 +9,7 @@ training baseline federated and non-federated models on the
 [Federated EMNIST](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/emnist/load_data)
 dataset.
 
-NOTE: The model architecture from the paper
+Note: The model architecture from the paper
 [Communication-Efficient Learning of Deep Networks from Decentralized Data](https://arxiv.org/abs/1602.05629),
 is exactly reproduced (`models.original_fedavg_cnn_model`). However, since we
 use the Federated EMNIST dataset (with its natural user partitioning), rather

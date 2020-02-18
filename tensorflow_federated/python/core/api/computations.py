@@ -159,7 +159,7 @@ def tf2_computation(*args):
   have already been created; with `tff.tf_computation` all graph mutation
   (including variable creation) must happen inside the function being wrapped.
 
-  NOTE: This decorator is still experimental, and does not support all features,
+  Note: This decorator is still experimental, and does not support all features,
   most noteably `tf.Variable` initialization and `tf.data.Dataset`s (and their
   conversion to TFF sequences).
 

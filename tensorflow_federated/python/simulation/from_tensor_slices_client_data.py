@@ -26,7 +26,7 @@ class FromTensorSlicesClientData(client_data.ClientData):
   def __init__(self, tensor_slices_dict):
     """Constructs the object from a dictionary of client data.
 
-    NOTE: All clients are required to have non-empty data.
+    Note: All clients are required to have non-empty data.
 
     Args:
       tensor_slices_dict: A dictionary keyed by client_id, where values are

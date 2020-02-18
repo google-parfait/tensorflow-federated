@@ -185,7 +185,7 @@ class DatasetSerializationTest(test.TestCase):
     serialzied_bytes = tensorflow_serialization.serialize_dataset(x)
     y = tensorflow_serialization.deserialize_dataset(serialzied_bytes)
 
-    # NOTE: TF loses the `OrderedDict` during serialization, so the expectation
+    # Note: TF loses the `OrderedDict` during serialization, so the expectation
     # here is for a `dict` in the result.
     self.assertEqual(
         y.element_spec, {

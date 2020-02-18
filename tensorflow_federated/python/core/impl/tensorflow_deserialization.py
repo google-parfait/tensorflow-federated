@@ -14,7 +14,7 @@
 # limitations under the License.
 """Utilities for deserializing TensorFlow computations.
 
-NOTE: This is separate from `tensorflow_serialization.py` to avoid a circular
+Note: This is separate from `tensorflow_serialization.py` to avoid a circular
 dependency through `tf_computation_context.py`. The context code depends on
 the deserialization code (to implement invocation), whereas the serialization
 code depends on the context code (to invoke the Python function in context).

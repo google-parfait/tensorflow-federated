@@ -187,7 +187,7 @@ class StatefulAggregateFnTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  # NOTE: num_clients must be explicit here to correctly test the broadcast
+  # Note: num_clients must be explicit here to correctly test the broadcast
   # behavior. Otherwise TFF will infer there are zero clients, which is an
   # error.
   set_default_executor.set_default_executor(

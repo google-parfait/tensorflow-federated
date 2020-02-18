@@ -80,7 +80,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
   any variable defined by a `building_blocks.Block` can affect the scope in
   which a reference in computation is bound.
 
-  NOTE: This function extracts `computation_building_block.Block` because block
+  Note: This function extracts `computation_building_block.Block` because block
   variables can restrict the scope in which computations are bound.
   """
 
@@ -704,7 +704,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
   The functional computations `f1`, `f2`, etc..., and the computations `v1`,
   `v2`, etc... are retained; the other computations are replaced.
 
-  NOTE: This is just an example of what this transformation would look like when
+  Note: This is just an example of what this transformation would look like when
   applied to a tuple of federated maps. The components `f1`, `f2`, `v1`, and
   `v2` and the number of those components are not important.
 

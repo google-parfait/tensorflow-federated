@@ -105,7 +105,7 @@ class CanonicalForm(object):
     weights would be updated in each rounds as the model is trained on more and
     more of the clients' data, and hence the server state would evolve as well.
 
-    NOTE: This is also the type of the output of the `initialize` that produces
+    Note: This is also the type of the output of the `initialize` that produces
     the server state to feed into the first round (see the constructor argument
     list below).
 
@@ -251,7 +251,7 @@ class CanonicalForm(object):
                bitwidth, update):
     """Constructs a representation of a MapReduce-like iterative process.
 
-    NOTE: All the computations supplied here as arguments must be TensorFlow
+    Note: All the computations supplied here as arguments must be TensorFlow
     computations, i.e., instances of `tff.Computation` constructed by the
     `tff.tf_computation` decorator/wrapper.
 

@@ -92,7 +92,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
     models (num_clients=1). This can be useful as a point of comparison
     against federated models.
 
-    NOTE: the returned `tf.data.Dataset` is not serializable and runnable on
+    Note: the returned `tf.data.Dataset` is not serializable and runnable on
     other devices, as it uses `tf.py_func` internally.
 
     Currently, the implementation produces a dataset that contains
@@ -108,9 +108,9 @@ class ClientData(object, metaclass=abc.ABCMeta):
       A `tf.data.Dataset` object.
     """
 
-    # NOTE: simply calling Dataset.concatenate() will result in too deep
+    # Note: simply calling Dataset.concatenate() will result in too deep
     # recursion depth.
-    # NOTE: Tests are via the simple concrete from_tensor_slices_client_data.
+    # Note: Tests are via the simple concrete from_tensor_slices_client_data.
     def _generator():
       for dataset in self.datasets(seed=seed):
         for example in dataset:

@@ -610,7 +610,7 @@ class FederatingExecutor(executor_base.Executor):
                             anonymous_tuple.AnonymousTuple)
     py_typecheck.check_len(arg.internal_representation, 5)
 
-    # NOTE: This is a simple initial implementation that simply forwards this
+    # Note: This is a simple initial implementation that simply forwards this
     # to `federated_reduce()`. The more complete implementation would be able
     # to take advantage of the parallelism afforded by `merge` to reduce the
     # cost from liner (with respect to the number of clients) to sub-linear.

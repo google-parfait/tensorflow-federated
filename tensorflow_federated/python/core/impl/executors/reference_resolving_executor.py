@@ -49,7 +49,7 @@ class _UnboundRefChecker():
 
   def __init__(self):
     super().__init__()
-    # NOTE: this must be at least as large as the number of refs in any single
+    # Note: this must be at least as large as the number of refs in any single
     # computation, otherwise the lookup after the update below might fail.
     ref_cache_size = 10000
     self._evaluated_comps = cachetools.LRUCache(ref_cache_size)
@@ -243,7 +243,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
   the execution of these constructs, while delegating all the non-compositional
   constructs (tensorflow, intrinsics, data, or placement) to a target executor.
 
-  NOTE: Not all lambda expressions are executed by this lambda executor. If the
+  Note: Not all lambda expressions are executed by this lambda executor. If the
   computation contains a call to an instrinsic that takes a functional argument,
   that functional argument is fed in its entirety to the target executor rather
   than being parsed by the lambda executor (since its execution needs to happen

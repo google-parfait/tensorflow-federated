@@ -31,7 +31,7 @@ from tensorflow_federated.python.core.impl.compiler import type_factory
 class IntrinsicFactory(object):
   """A factory that can constructs intrinsics over the given context stack."""
 
-  # NOTE: Tests for this class currently go to `api/intrinsics_test.py`.
+  # Note: Tests for this class currently go to `api/intrinsics_test.py`.
   # For more documentation on the specific behaviors of each intrinsic, see
   # `api/intrinsics.py`.
 

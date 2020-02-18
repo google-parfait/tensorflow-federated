@@ -226,7 +226,7 @@ def local_executor_factory(
     tf_devices=tuple()) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally.
 
-  NOTE: The `tff.federated_secure_sum()` intrinsic is not implemented by this
+  Note: The `tff.federated_secure_sum()` intrinsic is not implemented by this
   executor.
 
   Args:

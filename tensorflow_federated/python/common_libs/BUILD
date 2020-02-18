@@ -2,7 +2,7 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
-# NOTE: TFF code outside this directory can depend on libraries defined in this
+# Note: TFF code outside this directory can depend on libraries defined in this
 # directory, but not the other way round. In particular, utility classes and
 # functions that depend on interfaces defined in the Core API belong in `core`,
 # and those that deal with TensorFlow belong in `tensorflow_libs`.
