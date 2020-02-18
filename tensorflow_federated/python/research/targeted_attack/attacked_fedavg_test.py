@@ -35,9 +35,12 @@ def _create_random_batch():
 
 def _model_fn():
   keras_model = tff.simulation.models.mnist.create_keras_model(
-      compile_model=True)
+      compile_model=False)
   batch = _create_random_batch()
-  return tff.learning.from_compiled_keras_model(keras_model, batch)
+  return tff.learning.from_keras_model(
+      keras_model,
+      dummy_batch=batch,
+      loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
 
 MnistVariables = collections.namedtuple(
@@ -61,8 +64,7 @@ def create_mnist_variables():
 
 def mnist_forward_pass(variables, batch):
   y = tf.nn.softmax(tf.matmul(batch['x'], variables.weights) + variables.bias)
-  predictions = tf.cast(tf.argmax(y, 1), tf.int32)
-
+  predictions = tf.cast(tf.argmax(y, 1), tf.int64)
   flat_labels = tf.reshape(batch['y'], [-1])
   loss = -tf.reduce_mean(
       tf.reduce_sum(tf.one_hot(flat_labels, 10) * tf.math.log(y), axis=[1]))
@@ -117,9 +119,9 @@ class MnistModel(tff.learning.Model):
 
   @property
   def input_spec(self):
-    return collections.OrderedDict([('x', tf.TensorSpec([None, 784],
-                                                        tf.float32)),
-                                    ('y', tf.TensorSpec([None, 1], tf.int32))])
+    return collections.OrderedDict(
+        x=tf.TensorSpec([None, 784], tf.float32),
+        y=tf.TensorSpec([None, 1], tf.int64))
 
   @tf.function
   def forward_pass(self, batch, training=True):
@@ -139,28 +141,12 @@ class MnistModel(tff.learning.Model):
     return aggregate_mnist_metrics_across_clients
 
 
-class MnistTrainableModel(MnistModel, tff.learning.TrainableModel):
-
-  @tf.function
-  def train_on_batch(self, batch):
-    output = self.forward_pass(batch)
-    optimizer = tf.compat.v1.train.GradientDescentOptimizer(0.02)
-    optimizer.minimize(output.loss, var_list=self.trainable_variables)
-    return output
-
-
 def create_client_data():
-  emnist_batch = collections.OrderedDict([('label', [5]),
-                                          ('pixels', np.random.rand(28, 28))])
-
-  output_types = collections.OrderedDict([('label', tf.int32),
-                                          ('pixels', tf.float32)])
-
-  output_shapes = collections.OrderedDict([
-      ('label', tf.TensorShape([1])),
-      ('pixels', tf.TensorShape([28, 28])),
-  ])
-
+  emnist_batch = collections.OrderedDict(
+      label=[5], pixels=np.random.rand(28, 28))
+  output_types = collections.OrderedDict(label=tf.int64, pixels=tf.float32)
+  output_shapes = collections.OrderedDict(
+      label=tf.TensorShape([1]), pixels=tf.TensorShape([28, 28]))
   dataset = tf.data.Dataset.from_generator(lambda: (yield emnist_batch),
                                            output_types, output_shapes)
 
@@ -186,65 +172,46 @@ class ClientAttackTest(tf.test.TestCase):
     self.assertEqual(str(federated_bool_type), '{bool}@CLIENTS')
 
   def test_self_contained_example_keras_model(self):
-
-    def model_fn():
-      return tff.learning.from_compiled_keras_model(
-          tff.simulation.models.mnist.create_simple_keras_model(), sample_batch)
-
     client_data = create_client_data()
     batch = client_data()
     train_data = [batch]
     malicious_data = [batch]
     client_type_list = [tf.constant(False)]
-
-    sample_batch = self.evaluate(next(iter(train_data[0])))
-
-    trainer = build_federated_averaging_process_attacked(model_fn)
+    trainer = build_federated_averaging_process_attacked(_model_fn)
     state = trainer.initialize()
     losses = []
     for _ in range(2):
       state, outputs = trainer.next(state, train_data, malicious_data,
                                     client_type_list)
-      # Track the loss.
       losses.append(outputs.loss)
     self.assertLess(losses[1], losses[0])
 
   def test_self_contained_example_custom_model(self):
-
     client_data = create_client_data()
     batch = client_data()
     train_data = [batch]
     malicious_data = [batch]
     client_type_list = [tf.constant(False)]
-
-    trainer = build_federated_averaging_process_attacked(MnistTrainableModel)
+    trainer = build_federated_averaging_process_attacked(MnistModel)
     state = trainer.initialize()
     losses = []
     for _ in range(2):
       state, outputs = trainer.next(state, train_data, malicious_data,
                                     client_type_list)
-      # Track the loss.
       losses.append(outputs.loss)
     self.assertLess(losses[1], losses[0])
 
   def test_attack(self):
     """Test whether an attacker is doing the right attack."""
-
-    def model_fn():
-      return tff.learning.from_compiled_keras_model(
-          tff.simulation.models.mnist.create_simple_keras_model(), sample_batch)
-
     client_data = create_client_data()
     batch = client_data()
     train_data = [batch]
     malicious_data = [batch]
     client_type_list = [tf.constant(True)]
-    sample_batch = self.evaluate(next(iter(train_data[0])))
     trainer = build_federated_averaging_process_attacked(
-        model_fn,
+        _model_fn,
         client_update_tf=attacked_fedavg.ClientExplicitBoosting(
             boost_factor=-1.0))
-
     state = trainer.initialize()
     initial_weights = state.model.trainable
     for _ in range(2):
@@ -276,7 +243,12 @@ class ServerTest(tf.test.TestCase):
 
   def _assert_server_update_with_all_ones(self, model_fn):
     optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
-    model = model_fn()
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Input(shape=(784,)),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(units=10, kernel_initializer='zeros'),
+        tf.keras.layers.Softmax(),
+    ])
     optimizer = optimizer_fn()
     state, optimizer_vars = server_init(model, optimizer)
     weights_delta = tf.nest.map_structure(
@@ -289,7 +261,6 @@ class ServerTest(tf.test.TestCase):
 
     model_vars = self.evaluate(state.model)
     train_vars = model_vars.trainable
-    self.assertLen(train_vars, 2)
     # weights are initialized with all-zeros, weights_delta is all ones,
     # SGD learning rate is 0.1. Updating server for 2 steps.
     values = list(train_vars.values())
@@ -298,33 +269,22 @@ class ServerTest(tf.test.TestCase):
                  np.ones_like(values[1]) * 0.2])
 
   def test_self_contained_example_keras_model(self):
-
-    def model_fn():
-      return tff.learning.from_compiled_keras_model(
-          tff.simulation.models.mnist.create_simple_keras_model(), sample_batch)
-
-    client_data = create_client_data()
-    sample_batch = self.evaluate(next(iter(client_data())))
-
-    self._assert_server_update_with_all_ones(model_fn)
+    self._assert_server_update_with_all_ones(_model_fn)
 
   def test_self_contained_example_custom_model(self):
-    model_fn = MnistTrainableModel
-
-    self._assert_server_update_with_all_ones(model_fn)
+    self._assert_server_update_with_all_ones(MnistModel)
 
 
 class ClientTest(tf.test.TestCase):
 
   def test_self_contained_example(self):
-
     client_data = create_client_data()
-
-    model = MnistTrainableModel()
+    model = MnistModel()
+    optimizer = tf.keras.optimizers.SGD(0.1)
     losses = []
     client_update = attacked_fedavg.ClientExplicitBoosting(boost_factor=1.0)
     for _ in range(2):
-      outputs = client_update(model, client_data(), client_data(),
+      outputs = client_update(model, optimizer, client_data(), client_data(),
                               tf.constant(False),
                               attacked_fedavg._get_weights(model))
       losses.append(outputs.model_output['loss'].numpy())
@@ -337,62 +297,40 @@ class AggregationTest(tf.test.TestCase):
 
   def test_dp_fed_mean(self):
     """Test whether the norm clipping is done successfully."""
-
-    def model_fn():
-      return tff.learning.from_compiled_keras_model(
-          tff.simulation.models.mnist.create_simple_keras_model(), sample_batch)
-
     client_data = create_client_data()
     batch = client_data()
     train_data = [batch]
     malicious_data = [batch]
     client_type_list = [tf.constant(False)]
-
-    sample_batch = self.evaluate(next(iter(train_data[0])))
     l2_norm = 0.01
     dp_aggregate_fn = aggregate_fn.build_dp_aggregate(l2_norm, 0.0, 1.0)
     trainer = build_federated_averaging_process_attacked(
-        model_fn, stateful_delta_aggregate_fn=dp_aggregate_fn)
-
+        _model_fn, stateful_delta_aggregate_fn=dp_aggregate_fn)
     state = trainer.initialize()
     initial_weights = state.model.trainable
-
     state, _ = trainer.next(state, train_data, malicious_data, client_type_list)
-
     weights_delta = tf.nest.map_structure(tf.subtract,
                                           state.model.trainable._asdict(),
                                           initial_weights._asdict())
-
     self.assertLess(attacked_fedavg._get_norm(weights_delta), l2_norm * 1.1)
 
   def test_aggregate_and_clip(self):
     """Test whether the norm clipping is done successfully."""
-
-    def model_fn():
-      return tff.learning.from_compiled_keras_model(
-          tff.simulation.models.mnist.create_simple_keras_model(), sample_batch)
-
     client_data = create_client_data()
     batch = client_data()
     train_data = [batch]
     malicious_data = [batch]
     client_type_list = [tf.constant(False)]
-
-    sample_batch = self.evaluate(next(iter(train_data[0])))
     l2_norm = 0.01
     aggregate_clip = aggregate_fn.build_aggregate_and_clip(norm_bound=l2_norm)
     trainer = build_federated_averaging_process_attacked(
-        model_fn, stateful_delta_aggregate_fn=aggregate_clip)
-
+        _model_fn, stateful_delta_aggregate_fn=aggregate_clip)
     state = trainer.initialize()
     initial_weights = state.model.trainable
-
     state, _ = trainer.next(state, train_data, malicious_data, client_type_list)
-
     weights_delta = tf.nest.map_structure(tf.subtract,
                                           state.model.trainable._asdict(),
                                           initial_weights._asdict())
-
     self.assertLess(attacked_fedavg._get_norm(weights_delta), l2_norm * 1.01)
 
 

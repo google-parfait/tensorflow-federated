@@ -150,12 +150,13 @@ class ClientExplicitBoosting:
     self.boost_factor = boost_factor
 
   @tf.function
-  def __call__(self, model, benign_dataset, malicious_dataset, client_type,
-               initial_weights):
+  def __call__(self, model, optimizer, benign_dataset, malicious_dataset,
+               client_type, initial_weights):
     """Updates client model with client potentially being malicious.
 
     Args:
       model: A `tff.learning.Model`.
+      optimizer: A 'tf.keras.optimizers.Optimizer'.
       benign_dataset: A 'tf.data.Dataset' consisting of benign dataset.
       malicious_dataset: A 'tf.data.Dataset' consisting of malicious dataset.
       client_type: A 'tf.bool' indicating whether the client is malicious; iff
@@ -171,7 +172,10 @@ class ClientExplicitBoosting:
     @tf.function
     def reduce_fn(num_examples_sum, batch):
       """Runs `tff.learning.Model.train_on_batch` on local client batch."""
-      output = model.train_on_batch(batch)
+      with tf.GradientTape() as tape:
+        output = model.forward_pass(batch)
+      gradients = tape.gradient(output.loss, model.trainable_variables)
+      optimizer.apply_gradients(zip(gradients, model.trainable_variables))
       return num_examples_sum + tf.shape(output.predictions)[0]
 
     @tf.function
@@ -304,12 +308,14 @@ def build_server_update_fn(model_fn, server_optimizer_fn, server_state_type,
   return server_update_tf
 
 
-def build_client_update_fn(model_fn, client_update_tf, tf_dataset_type,
-                           model_weights_type):
+def build_client_update_fn(model_fn, optimizer_fn, client_update_tf,
+                           tf_dataset_type, model_weights_type):
   """Builds a `tff.tf_computation` in the presense of malicious clients.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    optimizer_fn: A no-arg function that returns a
+      `tf.keras.optimizers.Optimizer`.
     client_update_tf: A 'tf.function' that computes the ClientOutput
     tf_dataset_type: type_signature of dataset.
     model_weights_type: type_signature of model weights.
@@ -335,7 +341,11 @@ def build_client_update_fn(model_fn, client_update_tf, tf_dataset_type,
     Returns:
       A 'ClientOutput`.
     """
-    return client_update_tf(model_fn(), benign_dataset, malicious_dataset,
+    # Create variables here in the graph context, before calling the tf.function
+    # below.
+    model = model_fn()
+    optimizer = optimizer_fn()
+    return client_update_tf(model, optimizer, benign_dataset, malicious_dataset,
                             client_type, initial_model_weights)
 
   return client_delta_tf
@@ -410,18 +420,21 @@ def build_run_one_round_fn_attacked(server_update_fn, client_update_fn,
 
 def build_federated_averaging_process_attacked(
     model_fn,
+    client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
+    server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
     stateful_delta_aggregate_fn=build_stateless_mean(),
-    client_update_tf=ClientExplicitBoosting(boost_factor=1.0),
-    server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0)):
+    client_update_tf=ClientExplicitBoosting(boost_factor=1.0)):
   """Builds the TFF computations for optimization using federated averaging with potentially malicious clients.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    client_optimizer_fn: A no-arg function that returns a
+      `tf.keras.optimizers.Optimizer`, use during local client training.
+    server_optimizer_fn: A no-arg function that returns a
+      `tf.keras.optimizers.Optimizer`, use to apply updates to the global model.
     stateful_delta_aggregate_fn: A 'tff.computation' that aggregates model
       deltas placed@CLIENTS to an aggregated model delta placed@SERVER.
     client_update_tf: a 'tf.function' computes the ClientOutput.
-    server_optimizer_fn: A no-arg function that returns a
-      `tf.keras.optimizers.Optimizer`.
 
   Returns:
     A `tff.utils.IterativeProcess`.
@@ -437,8 +450,8 @@ def build_federated_averaging_process_attacked(
                                             server_state_type.model)
   tf_dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
 
-  client_update_fn = build_client_update_fn(model_fn, client_update_tf,
-                                            tf_dataset_type,
+  client_update_fn = build_client_update_fn(model_fn, client_optimizer_fn,
+                                            client_update_tf, tf_dataset_type,
                                             server_state_type.model)
 
   federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)
@@ -472,12 +485,13 @@ class ClientProjectBoost:
     self.round_num = round_num
 
   @tf.function
-  def __call__(self, model, benign_dataset, malicious_dataset,
+  def __call__(self, model, optimizer, benign_dataset, malicious_dataset,
                client_is_malicious, initial_weights):
     """Updates client model with client potentially being malicious.
 
     Args:
       model: A `tff.learning.Model`.
+      optimizer: A 'tf.keras.optimizers.Optimizer'.
       benign_dataset: A 'tf.data.Dataset' consisting of benign dataset.
       malicious_dataset: A 'tf.data.Dataset' consisting of malicious dataset.
       client_is_malicious: A 'tf.bool' showing whether the client is malicious.
@@ -516,7 +530,10 @@ class ClientProjectBoost:
     @tf.function
     def reduce_fn(num_examples_sum, batch):
       """Runs `tff.learning.Model.train_on_batch` on local client batch."""
-      output = model.train_on_batch(batch)
+      with tf.GradientTape() as tape:
+        output = model.forward_pass(batch)
+      gradients = tape.gradient(output.loss, model.trainable_variables)
+      optimizer.apply_gradients(zip(gradients, model.trainable_variables))
       return num_examples_sum + tf.shape(output.predictions)[0]
 
     @tf.function
