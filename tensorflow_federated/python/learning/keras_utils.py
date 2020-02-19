@@ -144,8 +144,7 @@ def from_keras_model(keras_model,
               loss, loss_weights))
 
   if keras_model._is_compiled:  # pylint: disable=protected-access
-    raise ValueError('`keras_model` must not be compiled. Use '
-                     'from_compiled_keras_model() instead.')
+    raise ValueError('`keras_model` must not be compiled')
   if optimizer is not None:
     warnings.warn('optimizer parameter is deprecated.')
 
