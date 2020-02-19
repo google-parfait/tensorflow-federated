@@ -46,12 +46,12 @@ py_test(
         ":caching_executor",
         ":eager_tf_executor",
         ":executor_base",
+        ":executor_test_utils",
         ":reference_resolving_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl:computation_impl",
-        "//tensorflow_federated/python/core/impl:executor_test_utils",
     ],
 )
 
@@ -153,11 +153,11 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":eager_tf_executor",
+        ":executor_test_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl:computation_impl",
-        "//tensorflow_federated/python/core/impl:executor_test_utils",
     ],
 )
 
@@ -289,12 +289,42 @@ py_test(
         ":execution_context",
         ":executor_factory",
         ":executor_stacks",
+        ":executor_test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl:executor_test_utils",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
+    ],
+)
+
+py_library(
+    name = "executor_test_utils",
+    testonly = True,
+    srcs = ["executor_test_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":execution_context",
+        ":executor_base",
+        ":executor_factory",
+        ":executor_value_base",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+    ],
+)
+
+py_test(
+    name = "executor_test_utils_test",
+    size = "small",
+    srcs = ["executor_test_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":eager_tf_executor",
+        ":executor_test_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computations",
     ],
 )
 
@@ -362,6 +392,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":eager_tf_executor",
+        ":executor_test_utils",
         ":federating_executor",
         ":reference_resolving_executor",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -371,7 +402,6 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl:computation_impl",
-        "//tensorflow_federated/python/core/impl:executor_test_utils",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
@@ -408,13 +438,13 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":eager_tf_executor",
+        ":executor_test_utils",
         ":federating_executor",
         ":reference_resolving_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl:executor_test_utils",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
@@ -447,13 +477,13 @@ py_test(
     deps = [
         ":executor_service",
         ":executor_stacks",
+        ":executor_test_utils",
         ":reference_resolving_executor",
         ":remote_executor",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl:executor_test_utils",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
         "@com_google_protobuf//:protobuf_python",

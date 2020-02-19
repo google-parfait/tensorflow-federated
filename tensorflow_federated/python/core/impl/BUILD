@@ -235,36 +235,6 @@ py_test(
 )
 
 py_library(
-    name = "executor_test_utils",
-    testonly = True,
-    srcs = ["executor_test_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
-        "//tensorflow_federated/python/core/impl/executors:executor_base",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
-        "//tensorflow_federated/python/core/impl/executors:executor_value_base",
-    ],
-)
-
-py_test(
-    name = "executor_test_utils_test",
-    size = "small",
-    srcs = ["executor_test_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":executor_test_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
-    ],
-)
-
-py_library(
     name = "federated_computation_context",
     srcs = ["federated_computation_context.py"],
     srcs_version = "PY3",

@@ -32,8 +32,8 @@ tf.compat.v1.enable_v2_behavior()
 
 @contextlib.contextmanager
 def _execution_context(num_clients=None):
-  executor = executor_stacks.local_executor_factory(num_clients)
-  yield execution_context.ExecutionContext(executor)
+  executor_factory = executor_stacks.local_executor_factory(num_clients)
+  yield execution_context.ExecutionContext(executor_factory)
 
 
 class RetryableErrorTest(absltest.TestCase):
