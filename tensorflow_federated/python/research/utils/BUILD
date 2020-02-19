@@ -38,6 +38,29 @@ py_test(
 )
 
 py_library(
+    name = "fed_avg_schedule",
+    srcs = ["fed_avg_schedule.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":adapters",
+        "//tensorflow_federated",
+    ],
+)
+
+py_test(
+    name = "fed_avg_schedule_test",
+    size = "large",
+    srcs = ["fed_avg_schedule_test.py"],
+    python_version = "PY3",
+    shard_count = 2,
+    srcs_version = "PY3",
+    deps = [
+        ":fed_avg_schedule",
+        "//tensorflow_federated",
+    ],
+)
+
+py_library(
     name = "metrics_manager",
     srcs = ["metrics_manager.py"],
     srcs_version = "PY3",
@@ -52,6 +75,34 @@ py_test(
     deps = [
         ":metrics_manager",
         ":utils_impl",
+    ],
+)
+
+py_library(
+    name = "training_loop",
+    srcs = ["training_loop.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":adapters",
+        ":checkpoint_manager",
+        ":fed_avg_schedule",
+        ":utils_impl",
+        "//tensorflow_federated",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "training_loop_test",
+    size = "large",
+    srcs = ["training_loop_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":checkpoint_manager",
+        ":fed_avg_schedule",
+        ":training_loop",
+        "//tensorflow_federated",
     ],
 )
 
