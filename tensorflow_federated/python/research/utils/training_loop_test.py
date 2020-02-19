@@ -22,8 +22,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.utils import checkpoint_manager
-from tensorflow_federated.python.research.utils import fed_avg_schedule
 from tensorflow_federated.python.research.utils import training_loop
 
 _Batch = collections.namedtuple('Batch', ['x', 'y'])
