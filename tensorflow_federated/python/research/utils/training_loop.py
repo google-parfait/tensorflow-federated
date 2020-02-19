@@ -18,7 +18,7 @@ import collections
 import os.path
 import pprint
 import time
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from absl import flags
 from absl import logging
@@ -27,10 +27,8 @@ import tensorflow as tf
 import tensorflow_federated as tff
 import tree
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.research.utils import checkpoint_manager
-from tensorflow_federated.python.research.utils import fed_avg_schedule
 from tensorflow_federated.python.research.utils import utils_impl
 
 # Defining training loop flags
@@ -84,9 +82,12 @@ def _setup_metrics(experiment_name, root_output_dir, hparam_dict):
 def _write_metrics(train_metrics, eval_metrics, round_num, summary_writer,
                    metrics_file):
   """Atomic metrics writer which inlines logic from MetricsHook class."""
-  py_typecheck.check_type(train_metrics, dict)
-  py_typecheck.check_type(eval_metrics, dict)
-  py_typecheck.check_type(round_num, int)
+  if not isinstance(train_metrics, dict):
+    raise TypeError('train_metrics should be type `dict`.')
+  if not isinstance(eval_metrics, dict):
+    raise TypeError('eval_metrics should be type `dict`.')
+  if not isinstance(round_num, int):
+    raise TypeError('round_num should be type `int`.')
   metrics = {
       'train': train_metrics,
       'eval': eval_metrics,
@@ -125,8 +126,7 @@ def _compute_numpy_l2_difference(model, previous_model):
 def run(iterative_process: adapters.IterativeProcessPythonAdapter,
         client_datasets_fn: Callable[[int], Tuple[List[tf.data.Dataset],
                                                   List[str]]],
-        evaluate_fn: Callable[[fed_avg_schedule.ServerState, Optional[bool]],
-                              Dict[str, float]]):
+        evaluate_fn: Callable[[Any, Optional[bool]], Dict[str, float]]):
   """Runs federated training for the given TFF `IterativeProcess` instance.
 
   Args:
@@ -134,16 +134,21 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     client_datasets_fn: Function accepting an integer argument (the round
       number) and returning a list of client datasets to use as federated data
       for that round, and a list of the corresponding client ids.
-    evaluate_fn: Callable accepting `fed_avg_schedule.ServerState` and an
-      optional `bool` and returning a dict of evaluation metrics.
+    evaluate_fn: Callable accepting a server state (the `state` of the
+      `IterationResult`) and an optional `bool` and returning a dict of
+      evaluation metrics.
 
   Returns:
-    Instance of `fed_avg_schedule.ServerState`, the result of the training loop.
+    The `state` of the `IterationResult` representing the result of the training
+      loop.
   """
-  py_typecheck.check_type(iterative_process,
-                          adapters.IterativeProcessPythonAdapter)
-  py_typecheck.check_callable(client_datasets_fn)
-  py_typecheck.check_callable(evaluate_fn)
+  if not isinstance(iterative_process, adapters.IterativeProcessPythonAdapter):
+    raise TypeError('iterative_process should be type '
+                    '`adapters.IterativeProcessPythonAdapter`.')
+  if not callable(client_datasets_fn):
+    raise TypeError('client_datasets_fn should be callable.')
+  if not callable(evaluate_fn):
+    raise TypeError('evaluate_fn should be callable.')
   total_rounds = FLAGS.total_rounds
 
   logging.info('Starting iterative_process_training_loop')

@@ -49,7 +49,10 @@ class IterativeProcessPythonAdapter(metaclass=abc.ABCMeta):
 
 @attr.s(eq=False)
 class IterationResult(object):
-  """Holds the results of an iteration: the state, metrics and output."""
+  """Holds the results of an iteration: the state, metrics and output.
+
+  These should be pure-python containers, not `AnonymousTuple`s.
+  """
   state = attr.ib()
   metrics = attr.ib()
   output = attr.ib()

@@ -85,10 +85,8 @@ py_library(
     deps = [
         ":adapters",
         ":checkpoint_manager",
-        ":fed_avg_schedule",
         ":utils_impl",
         "//tensorflow_federated",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 
