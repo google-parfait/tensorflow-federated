@@ -125,11 +125,11 @@ def run_experiment():
         metrics.MaskedCategoricalAccuracy(
             name='accuracy_no_oov_no_eos', masked_tokens=[pad, oov, eos]),
     ]
-    keras_model.compile(
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        optimizer=utils_impl.create_optimizer_from_flags('client'),
+    return tff.learning.from_keras_model(
+        keras_model,
+        sample_batch,
+        tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=train_metrics)
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
 
   def server_optimizer_fn():
     return utils_impl.create_optimizer_from_flags('server')
@@ -138,11 +138,13 @@ def run_experiment():
     num_tokens = tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
     return 1.0 if FLAGS.uniform_weighting else num_tokens
 
+  client_optimizer_fn = lambda: utils_impl.create_optimizer_from_flags('client')
   iterative_process = (
       tff.learning.federated_averaging.build_federated_averaging_process(
           model_fn=model_fn,
           server_optimizer_fn=server_optimizer_fn,
-          client_weight_fn=client_weight_fn))
+          client_weight_fn=client_weight_fn,
+          client_optimizer_fn=client_optimizer_fn))
 
   server_state = iterative_process.initialize()
   for round_num in range(1, FLAGS.total_rounds+1):
