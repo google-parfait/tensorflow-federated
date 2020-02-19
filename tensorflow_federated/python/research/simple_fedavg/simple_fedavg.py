@@ -32,7 +32,7 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-@attr.s(eq=False, frozen=True)
+@attr.s(eq=False, frozen=True, slots=True)
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
 
@@ -50,16 +50,33 @@ class ClientOutput(object):
   model_output = attr.ib()
 
 
-@attr.s(eq=False, frozen=True)
+@attr.s(eq=False, frozen=True, slots=True)
 class ServerState(object):
   """Structure for state on the server.
 
   Fields:
-  -   `model`: A dictionary of model's trainable variables.
+  -   `model_weights`: A dictionary of model's trainable variables.
   -   `optimizer_state`: Variables of optimizer.
+  -   'round_num': Current round index
   """
-  model = attr.ib()
+  model_weights = attr.ib()
   optimizer_state = attr.ib()
+  round_num = attr.ib()
+
+
+@attr.s(eq=False, frozen=True, slots=True)
+class BroadcastMessage(object):
+  """Structure for messages broadcasted by server during federated optimization.
+
+  Fields:
+  -   `model_weights`: A dictionary of model's trainable variables.
+  -   `round_num`: Round index to broadcast. We use `round_num` as an example to
+          show how to broadcast auxiliary information that can be helpful on
+          clients. It is not explicitly used, but can be applied to enable
+          learning rate scheduling.
+  """
+  model_weights = attr.ib()
+  round_num = attr.ib()
 
 
 @tf.function
@@ -79,7 +96,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   """
   # Initialize the model with the current state.
   model_weights = model.weights
-  tff.utils.assign(model_weights, server_state.model)
+  tff.utils.assign(model_weights, server_state.model_weights)
   tff.utils.assign(server_optimizer.variables(), server_state.optimizer_state)
 
   # Apply the update to the model.
@@ -91,24 +108,43 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   # Create a new state based on the updated model.
   return tff.utils.update_state(
       server_state,
-      model=model_weights,
-      optimizer_state=server_optimizer.variables())
+      model_weights=model_weights,
+      optimizer_state=server_optimizer.variables(),
+      round_num=server_state.round_num + 1)
 
 
 @tf.function
-def client_update(model, dataset, initial_weights, client_optimizer):
+def build_server_broadcast_message(server_state):
+  """Build `BroadcastMessage` for broadcasting.
+
+  This method can be used to process `ServerState` before broadcasting.
+  For example, perform model compression.
+  Args:
+    server_state: A `ServerState`.
+
+  Returns:
+    A `BroadcastMessage`.
+  """
+  return BroadcastMessage(
+      model_weights=server_state.model_weights,
+      round_num=server_state.round_num)
+
+
+@tf.function
+def client_update(model, dataset, server_message, client_optimizer):
   """Updates client model.
 
   Args:
     model: A `tff.learning.Model`.
     dataset: A 'tf.data.Dataset'.
-    initial_weights: A `tff.learning.Model.weights` from server.
+    server_message: A `BroadcastMessage` from server.
     client_optimizer: A `tf.keras.optimizers.Optimizer`.
 
   Returns:
     A 'ClientOutput`.
   """
   model_weights = model.weights
+  initial_weights = server_message.model_weights
   tff.utils.assign(model_weights, initial_weights)
 
   num_examples = tf.constant(0, dtype=tf.int32)
@@ -171,10 +207,13 @@ def build_federated_averaging_process(
     server_optimizer = server_optimizer_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(
-        model=model.weights, optimizer_state=server_optimizer.variables())
+        model_weights=model.weights,
+        optimizer_state=server_optimizer.variables(),
+        round_num=0)
 
   server_state_type = server_init_tf.type_signature.result
-  model_weights_type = server_state_type.model
+
+  model_weights_type = server_state_type.model_weights
 
   @tff.tf_computation(server_state_type, model_weights_type.trainable)
   def server_update_fn(server_state, model_delta):
@@ -183,14 +222,18 @@ def build_federated_averaging_process(
     _initialize_optimizer_vars(model, server_optimizer)
     return server_update(model, server_optimizer, server_state, model_delta)
 
+  @tff.tf_computation(server_state_type)
+  def server_message_fn(server_state):
+    return build_server_broadcast_message(server_state)
+
+  server_message_type = server_message_fn.type_signature.result
   tf_dataset_type = tff.SequenceType(dummy_model.input_spec)
 
-  @tff.tf_computation(tf_dataset_type, model_weights_type)
-  def client_update_fn(tf_dataset, initial_model_weights):
+  @tff.tf_computation(tf_dataset_type, server_message_type)
+  def client_update_fn(tf_dataset, server_message):
     model = model_fn()
     client_optimizer = client_optimizer_fn()
-    return client_update(model, tf_dataset, initial_model_weights,
-                         client_optimizer)
+    return client_update(model, tf_dataset, server_message, client_optimizer)
 
   federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)
   federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
@@ -208,10 +251,11 @@ def build_federated_averaging_process(
       A tuple of updated `ServerState` and the result of
       `tff.learning.Model.federated_output_computation`.
     """
-    client_model = tff.federated_broadcast(server_state.model)
+    server_message = tff.federated_map(server_message_fn, server_state)
+    server_message_at_client = tff.federated_broadcast(server_message)
 
-    client_outputs = tff.federated_map(client_update_fn,
-                                       (federated_dataset, client_model))
+    client_outputs = tff.federated_map(
+        client_update_fn, (federated_dataset, server_message_at_client))
 
     weight_denom = client_outputs.client_weight
     round_model_delta = tff.federated_mean(
@@ -219,7 +263,6 @@ def build_federated_averaging_process(
 
     server_state = tff.federated_map(server_update_fn,
                                      (server_state, round_model_delta))
-
     aggregated_outputs = dummy_model.federated_output_computation(
         client_outputs.model_output)
     aggregated_outputs = tff.federated_zip(aggregated_outputs)

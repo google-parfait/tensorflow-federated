@@ -195,7 +195,8 @@ class SimpleFedAvgTest(tf.test.TestCase):
     federated_data = [[batch]]
 
     def keras_evaluate(state):
-      tff.learning.assign_weights_to_keras_model(keras_model, state.model)
+      tff.learning.assign_weights_to_keras_model(keras_model,
+                                                 state.model_weights)
       keras_model.predict(batch.x)
 
     loss_list = []
@@ -223,18 +224,20 @@ class SimpleFedAvgTest(tf.test.TestCase):
 
 
 def server_init(model, optimizer):
-  """Returns initial `tff.learning.framework.ServerState`.
+  """Returns initial `ServerState`.
 
   Args:
     model: A `tff.learning.Model`.
     optimizer: A `tf.train.Optimizer`.
 
   Returns:
-    A `tff.learning.framework.ServerState` namedtuple.
+    A `ServerState` namedtuple.
   """
   simple_fedavg._initialize_optimizer_vars(model, optimizer)
   return simple_fedavg.ServerState(
-      model=model.weights, optimizer_state=optimizer.variables())
+      model_weights=model.weights,
+      optimizer_state=optimizer.variables(),
+      round_num=0)
 
 
 class ServerTest(tf.test.TestCase):
@@ -251,9 +254,10 @@ class ServerTest(tf.test.TestCase):
       state = simple_fedavg.server_update(model, optimizer, state,
                                           weights_delta)
 
-    model_vars = self.evaluate(state.model)
+    model_vars = self.evaluate(state.model_weights)
     train_vars = model_vars.trainable
     self.assertLen(train_vars, 2)
+    self.assertEqual(state.round_num, 2)
     # weights are initialized with all-zeros, weights_delta is all ones,
     # SGD learning rate is 0.1. Updating server for 2 steps.
     self.assertAllClose(train_vars, [np.ones_like(v) * 0.2 for v in train_vars])
@@ -271,11 +275,13 @@ class ClientTest(tf.test.TestCase):
     model = MnistModel()
     optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
     losses = []
-    for _ in range(2):
+    for r in range(2):
       optimizer = optimizer_fn()
       simple_fedavg._initialize_optimizer_vars(model, optimizer)
-      outputs = simple_fedavg.client_update(model, client_data(), model.weights,
-                                            optimizer)
+      server_message = simple_fedavg.BroadcastMessage(
+          model_weights=model.weights, round_num=r)
+      outputs = simple_fedavg.client_update(model, client_data(),
+                                            server_message, optimizer)
       losses.append(outputs.model_output['loss'].numpy())
 
     self.assertAllEqual(int(outputs.client_weight.numpy()), 2)
