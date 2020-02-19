@@ -25,10 +25,10 @@ from absl import logging
 import pandas as pd
 import tensorflow as tf
 import tensorflow_federated as tff
-import tree
 
 from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.research.utils import checkpoint_manager
+from tensorflow_federated.python.research.utils import metrics_manager
 from tensorflow_federated.python.research.utils import utils_impl
 
 # Defining training loop flags
@@ -60,60 +60,50 @@ def create_if_not_exists(path):
     logging.info('Skipping creation of directory [%s], already exists', path)
 
 
-def _setup_metrics(experiment_name, root_output_dir, hparam_dict):
+def _setup_outputs(root_output_dir, experiment_name, hparam_dict):
   """Set up directories for experiment loops, write hyperparameters to disk."""
-  summary_logdir = os.path.join(root_output_dir, 'logdir', experiment_name)
-  results_dir = os.path.join(root_output_dir, 'results', experiment_name)
 
-  create_if_not_exists(summary_logdir)
+  create_if_not_exists(root_output_dir)
+
+  checkpoint_dir = os.path.join(root_output_dir, 'checkpoints', experiment_name)
+  create_if_not_exists(checkpoint_dir)
+  checkpoint_mngr = checkpoint_manager.FileCheckpointManager(checkpoint_dir)
+
+  results_dir = os.path.join(root_output_dir, 'results', experiment_name)
   create_if_not_exists(results_dir)
+  metrics_mngr = metrics_manager.ScalarMetricsManager(results_dir)
+
+  summary_logdir = os.path.join(root_output_dir, 'logdir', experiment_name)
+  create_if_not_exists(summary_logdir)
+  summary_writer = tf.compat.v2.summary.create_file_writer(summary_logdir)
+
+  hparam_dict['metrics_file'] = metrics_mngr.metrics_filename
+  hparams_file = os.path.join(results_dir, 'hparams.csv')
+  utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
   logging.info('Writing...')
-  logging.info('    results to: %s', results_dir)
+  logging.info('    checkpoints to: %s', checkpoint_dir)
+  logging.info('    metrics csv to: %s', metrics_mngr.metrics_filename)
   logging.info('    summaries to: %s', summary_logdir)
-  metrics_file = os.path.join(results_dir, 'metrics.csv')
-  if hparam_dict is not None:
-    hparam_dict['metrics_file'] = metrics_file
-    hparams_file = os.path.join(results_dir, 'hparams.csv')
-    utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
-  return tf.compat.v2.summary.create_file_writer(summary_logdir), metrics_file
+
+  return checkpoint_mngr, metrics_mngr, summary_writer
 
 
-def _write_metrics(train_metrics, eval_metrics, round_num, summary_writer,
-                   metrics_file):
+def _write_metrics(metrics_mngr, summary_writer, metrics, round_num):
   """Atomic metrics writer which inlines logic from MetricsHook class."""
-  if not isinstance(train_metrics, dict):
-    raise TypeError('train_metrics should be type `dict`.')
-  if not isinstance(eval_metrics, dict):
-    raise TypeError('eval_metrics should be type `dict`.')
+  if not isinstance(metrics, dict):
+    raise TypeError('metrics should be type `dict`.')
   if not isinstance(round_num, int):
     raise TypeError('round_num should be type `int`.')
-  metrics = {
-      'train': train_metrics,
-      'eval': eval_metrics,
-      'round': round_num,
-  }
-  flat_metrics = tree.flatten_with_path(metrics)
-  flat_metrics = [
-      ('/'.join(map(str, path)), item) for path, item in flat_metrics
-  ]
-  flat_metrics = collections.OrderedDict(flat_metrics)
+
+  flat_metrics = metrics_mngr.update_metrics(round_num, metrics)
   logging.info('Evaluation at round {:d}:\n{!s}'.format(
       round_num, pprint.pformat(flat_metrics)))
 
+  # Also write metrics to a tf.summary logdir
   with summary_writer.as_default():
     for name, val in flat_metrics.items():
       tf.compat.v2.summary.scalar(name, val, step=round_num)
-
-  if tf.io.gfile.exists(metrics_file):
-    with tf.io.gfile.GFile(metrics_file) as results_csv:
-      metrics = pd.read_csv(results_csv, header=0, index_col=0, engine='c')
-    metrics = metrics[:round_num]
-    metrics = metrics.append(flat_metrics, ignore_index=True)
-  else:
-    metrics = pd.DataFrame(flat_metrics, index=[0])
-
-  utils_impl.atomic_write_to_csv(metrics, metrics_file)
 
 
 def _compute_numpy_l2_difference(model, previous_model):
@@ -159,27 +149,22 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
       (name, FLAGS[name].value) for name in hparam_flags
   ])
 
-  checkpoint_dir = os.path.join(FLAGS.root_output_dir, 'checkpoints',
-                                FLAGS.experiment_name)
-  create_if_not_exists(checkpoint_dir)
+  checkpoint_mngr, metrics_mngr, summary_writer = _setup_outputs(
+      FLAGS.root_output_dir, FLAGS.experiment_name, hparam_dict)
 
-  logging.info('Writing and reading checkpoints from: %s', checkpoint_dir)
-  checkpoint_manager_instance = checkpoint_manager.FileCheckpointManager(
-      checkpoint_dir)
   logging.info('Asking checkpoint manager to load checkpoint.')
-  state, round_num = checkpoint_manager_instance.load_latest_checkpoint(
-      initial_state)
+  state, round_num = checkpoint_mngr.load_latest_checkpoint(initial_state)
 
   if state is None:
     logging.info('Initializing experiment from scratch.')
     state = initial_state
     round_num = 0
+    metrics_mngr.clear_all_rounds()
   else:
     logging.info('Restarted from checkpoint round %d', round_num)
     round_num += 1  # Increment to avoid overwriting current checkpoint
-  summary_writer, metrics_file = _setup_metrics(FLAGS.experiment_name,
-                                                FLAGS.root_output_dir,
-                                                hparam_dict)
+    metrics_mngr.clear_rounds_after(last_valid_round_num=round_num - 1)
+
   unique_clients = set()
   loop_start_time = time.time()
   while round_num < total_rounds:
@@ -223,23 +208,30 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     if (round_num % FLAGS.rounds_per_checkpoint == 0 or
         round_num == total_rounds - 1):
       save_checkpoint_start_time = time.time()
-      checkpoint_manager_instance.save_checkpoint(state, round_num)
+      checkpoint_mngr.save_checkpoint(state, round_num)
       train_metrics['save_checkpoint_secs'] = (
           time.time() - save_checkpoint_start_time)
+
+    metrics = {
+        'train': train_metrics,
+        'round': round_num,
+    }
 
     if round_num % FLAGS.rounds_per_eval == 0:
       evaluate_start_time = time.time()
       eval_metrics = evaluate_fn(state, use_test_dataset=False)  # pytype: disable=wrong-keyword-args
       eval_metrics['evaluate_secs'] = time.time() - evaluate_start_time
-      _write_metrics(train_metrics, eval_metrics, round_num, summary_writer,
-                     metrics_file)
+
+      metrics['eval'] = eval_metrics
+
+    _write_metrics(metrics_mngr, summary_writer, metrics, round_num)
     round_num += 1
 
   test_start_time = time.time()
   test_metrics = evaluate_fn(state, use_test_dataset=True)  # pytype: disable=wrong-keyword-args
   test_metrics['evaluate_secs'] = time.time() - test_start_time
-  # Use total_rounds as indicator that we are are evaluating on the test
-  # dataset.
-  _write_metrics({}, test_metrics, total_rounds, summary_writer, metrics_file)
+
+  metrics = {'test': test_metrics}
+  _write_metrics(metrics_mngr, summary_writer, metrics, total_rounds)
 
   return state

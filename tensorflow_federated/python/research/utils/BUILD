@@ -62,6 +62,7 @@ py_library(
     deps = [
         ":adapters",
         ":checkpoint_manager",
+        ":metrics_manager",
         ":utils_impl",
         "//tensorflow_federated",
     ],
