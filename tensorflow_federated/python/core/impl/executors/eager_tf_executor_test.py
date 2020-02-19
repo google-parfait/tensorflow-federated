@@ -165,28 +165,28 @@ class EagerTFExecutorTest(parameterized.TestCase):
     self.assertAlmostEqual(results[1].numpy(), 1.2)
 
   def test_to_representation_for_type_with_int(self):
-    v = eager_tf_executor.to_representation_for_type(10, tf.int32)
+    v = eager_tf_executor.to_representation_for_type(10, {}, tf.int32)
     self.assertIsInstance(v, tf.Tensor)
     self.assertEqual(v.numpy(), 10)
     self.assertEqual(v.dtype, tf.int32)
 
   def test_to_representation_for_tf_variable(self):
     v = eager_tf_executor.to_representation_for_type(
-        tf.Variable(10, dtype=tf.int32),
+        tf.Variable(10, dtype=tf.int32), {},
         type_spec=computation_types.TensorType(tf.int32))
     self.assertIsInstance(v, tf.Tensor)
     self.assertEqual(v.numpy(), 10)
     self.assertEqual(v.dtype, tf.int32)
 
   def test_to_representation_for_type_with_int_on_specific_device(self):
-    v = eager_tf_executor.to_representation_for_type(10, tf.int32, '/CPU:0')
+    v = eager_tf_executor.to_representation_for_type(10, {}, tf.int32, '/CPU:0')
     self.assertIsInstance(v, tf.Tensor)
     self.assertEqual(v.numpy(), 10)
     self.assertEqual(v.dtype, tf.int32)
     self.assertTrue(v.device.endswith('CPU:0'))
 
   def test_eager_value_constructor_with_int_constant(self):
-    v = eager_tf_executor.EagerValue(10, tf.int32)
+    v = eager_tf_executor.EagerValue(10, {}, tf.int32)
     self.assertEqual(str(v.type_signature), 'int32')
     self.assertIsInstance(v.internal_representation, tf.Tensor)
     self.assertEqual(v.internal_representation.numpy(), 10)
@@ -499,7 +499,7 @@ class EagerTFExecutorTest(parameterized.TestCase):
     comp_proto = computation_impl.ComputationImpl.get_proto(comp)
 
     fn = eager_tf_executor.to_representation_for_type(
-        comp_proto, comp.type_signature, device='/{}'.format(device))
+        comp_proto, {}, comp.type_signature, device='/{}'.format(device))
     result = fn(tf.constant(20))
     self.assertTrue(result.device.endswith(device))
 

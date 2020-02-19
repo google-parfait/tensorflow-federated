@@ -14,6 +14,7 @@
 # limitations under the License.
 """A simple executor that operates synchronously in eager TensorFlow mode."""
 
+import cachetools
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -31,6 +32,10 @@ from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
+
+
+# Cache size here is simply heuristic, no formal analysis.
+_TF_FUNCTION_CACHE_SIZE = 100
 
 
 def embed_tensorflow_computation(comp, type_spec=None, device=None):
@@ -180,7 +185,10 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     return lambda: fn_to_return(None)
 
 
-def to_representation_for_type(value, type_spec=None, device=None):
+def to_representation_for_type(value,
+                               tf_function_cache,
+                               type_spec=None,
+                               device=None):
   """Verifies or converts the `value` to an eager object matching `type_spec`.
 
   WARNING: This function is only partially implemented. It does not support
@@ -197,6 +205,8 @@ def to_representation_for_type(value, type_spec=None, device=None):
   Args:
     value: The raw representation of a value to compare against `type_spec` and
       potentially to be converted.
+    tf_function_cache: A cache obeying `dict` semantics that can be used to look
+      up previously embedded TensorFlow functions.
     type_spec: An instance of `tff.Type`, can be `None` for values that derive
       from `typed_object.TypedObject`.
     device: The optional device to place the value on (for tensor-level values).
@@ -210,9 +220,16 @@ def to_representation_for_type(value, type_spec=None, device=None):
   type_spec = type_utils.reconcile_value_with_type_spec(value, type_spec)
   if isinstance(value, computation_base.Computation):
     return to_representation_for_type(
-        computation_impl.ComputationImpl.get_proto(value), type_spec, device)
+        computation_impl.ComputationImpl.get_proto(value), tf_function_cache,
+        type_spec, device)
   elif isinstance(value, pb.Computation):
-    return embed_tensorflow_computation(value, type_spec, device)
+    key = (value.SerializeToString(), str(type_spec), device)
+    cached_fn = tf_function_cache.get(key)
+    if cached_fn:
+      return cached_fn
+    embedded_fn = embed_tensorflow_computation(value, type_spec, device)
+    tf_function_cache[key] = embedded_fn
+    return embedded_fn
   elif isinstance(type_spec, computation_types.NamedTupleType):
     type_elem = anonymous_tuple.to_elements(type_spec)
     value_elem = (
@@ -226,13 +243,15 @@ def to_representation_for_type(value, type_spec=None, device=None):
         raise TypeError(
             'Mismatching element names in type vs. value: {} vs. {}.'.format(
                 t_name, v_name))
-      el_repr = to_representation_for_type(el_val, el_type, device)
+      el_repr = to_representation_for_type(el_val, tf_function_cache, el_type,
+                                           device)
       result_elem.append((t_name, el_repr))
     return anonymous_tuple.AnonymousTuple(result_elem)
   elif device is not None:
     py_typecheck.check_type(device, str)
     with tf.device(device):
-      return to_representation_for_type(value, type_spec=type_spec, device=None)
+      return to_representation_for_type(
+          value, tf_function_cache, type_spec=type_spec, device=None)
   elif isinstance(value, EagerValue):
     return value.internal_representation
   elif isinstance(value, executor_value_base.ExecutorValue):
@@ -267,12 +286,14 @@ def to_representation_for_type(value, type_spec=None, device=None):
 class EagerValue(executor_value_base.ExecutorValue):
   """A representation of an eager value managed by the eager executor."""
 
-  def __init__(self, value, type_spec=None, device=None):
+  def __init__(self, value, tf_function_cache, type_spec=None, device=None):
     """Creates an instance of a value in this executor.
 
     Args:
       value: Depending on `type_spec`, either a `tf.Tensor`, `tf.data.Dataset`,
         or a nested structure of these stored in an `AnonymousTuple`.
+      tf_function_cache: A cache obeying `dict` semantics that can be used to
+        look up previously embedded TensorFlow functions.
       type_spec: An instance of `tff.Type` that represents a tensor, a dataset,
         or a nested structure of these.
       device: The optional device on which to place the value.
@@ -284,7 +305,8 @@ class EagerValue(executor_value_base.ExecutorValue):
       type_spec = computation_types.to_type(type_spec)
       py_typecheck.check_type(type_spec, computation_types.Type)
     self._type_signature = type_spec
-    self._value = to_representation_for_type(value, type_spec, device)
+    self._value = to_representation_for_type(value, tf_function_cache,
+                                             type_spec, device)
 
   @property
   def internal_representation(self):
@@ -356,6 +378,7 @@ class EagerTFExecutor(executor_base.Executor):
       self._device = device
     else:
       self._device = None
+    self._tf_function_cache = cachetools.LRUCache(_TF_FUNCTION_CACHE_SIZE)
 
   @executor_utils.log_async
   async def create_value(self, value, type_spec=None):
@@ -378,7 +401,7 @@ class EagerTFExecutor(executor_base.Executor):
     """
     if not tf.executing_eagerly():
       raise RuntimeError('The eager executor may only be used in eager mode.')
-    return EagerValue(value, type_spec, self._device)
+    return EagerValue(value, self._tf_function_cache, type_spec, self._device)
 
   @executor_utils.log_async
   async def create_call(self, comp, arg=None):
@@ -404,10 +427,11 @@ class EagerTFExecutor(executor_base.Executor):
     if comp.type_signature.parameter is not None:
       return EagerValue(
           comp.internal_representation(arg.internal_representation),  # pytype: disable=attribute-error
+          self._tf_function_cache,
           comp.type_signature.result,
           self._device)
     elif arg is None:
-      return EagerValue(comp.internal_representation(),
+      return EagerValue(comp.internal_representation(), self._tf_function_cache,
                         comp.type_signature.result, self._device)
     else:
       raise TypeError('Cannot pass an argument to a no-argument function.')
@@ -431,7 +455,7 @@ class EagerTFExecutor(executor_base.Executor):
       val_elements.append((k, v.internal_representation))
       type_elements.append((k, v.type_signature))
     return EagerValue(
-        anonymous_tuple.AnonymousTuple(val_elements),
+        anonymous_tuple.AnonymousTuple(val_elements), self._tf_function_cache,
         computation_types.NamedTupleType([
             (k, v) if k is not None else v for k, v in type_elements
         ]))
@@ -465,12 +489,12 @@ class EagerTFExecutor(executor_base.Executor):
                 name, index))
       else:
         return EagerValue(source.internal_representation[index],
-                          source.type_signature[index])
+                          self._tf_function_cache, source.type_signature[index])
     elif name is not None:
       py_typecheck.check_type(name, str)
       return EagerValue(
           getattr(source.internal_representation, str(name)),
-          getattr(source.type_signature, str(name)))
+          self._tf_function_cache, getattr(source.type_signature, str(name)))
     else:
       raise ValueError('Must specify either name or index.')
 
