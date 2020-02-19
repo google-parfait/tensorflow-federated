@@ -27,7 +27,6 @@ def create_token_vocab(vocab_size):
   return list(vocab_dict.keys())[:vocab_size]
 
 
-# TODO(b/149245294): Add 'load_tag_counts' utility to StackOverflow.
 def create_tag_vocab(vocab_size):
   """Creates vocab from `vocab_size` most common tags in Stackoverflow."""
   tag_dict = tff.simulation.datasets.stackoverflow.load_tag_counts()
