@@ -34,7 +34,6 @@ from tensorboard.plugins.hparams import api as hp
 from tensorflow_federated.python.research.baselines.emnist import models
 from tensorflow_federated.python.research.flars import flars_fedavg
 from tensorflow_federated.python.research.flars import flars_optimizer
-from tensorflow_federated.python.research.simple_fedavg import simple_fedavg
 from tensorflow_federated.python.research.utils import checkpoint_manager
 from tensorflow_federated.python.research.utils import utils_impl
 
@@ -129,9 +128,7 @@ def _federated_averaging_training_loop(model_fn,
       checkpoint_dir)
 
   if FLAGS.server_optimizer != 'flars':
-    iterative_process = simple_fedavg.build_federated_averaging_process(
-        model_fn, server_optimizer_fn=server_optimizer_fn)
-    ServerState = simple_fedavg.ServerState  # pylint: disable=invalid-name
+    logging.error('Unsupported server_optimzier: %s', FLAGS.server_optimizer)
   else:
     iterative_process = flars_fedavg.build_federated_averaging_process(
         model_fn, server_optimizer_fn=server_optimizer_fn)

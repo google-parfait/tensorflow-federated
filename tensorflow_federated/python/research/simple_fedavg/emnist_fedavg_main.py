@@ -15,8 +15,7 @@
 """Simple FedAvg to train EMNIST.
 
 This is intended to be a minimal stand-alone experiment script built on top of
-core TFF. For a more complete example that uses tff.learning and incorporates
-more convenience utilities, see baselines/emnist/run_federated.py
+core TFF.
 """
 
 import collections
@@ -27,7 +26,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.simple_fedavg import simple_fedavg
+from tensorflow_federated.python.research.simple_fedavg import simple_fedavg_tf
+from tensorflow_federated.python.research.simple_fedavg import simple_fedavg_tff
 
 # Training hyperparameters
 flags.DEFINE_integer('total_rounds', 256, 'Number of total training rounds.')
@@ -47,7 +47,13 @@ FLAGS = flags.FLAGS
 
 
 def get_emnist_dataset():
-  """Load EMNIST model."""
+  """Load the EMNIST dataset.
+
+  Preprocess the training and testing dataset.
+  Returns:
+    Tuple of (train, test) where the tuple elements are
+    `tff.simulation.ClientData` objects.
+  """
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
       only_digits=True)
 
@@ -56,15 +62,13 @@ def get_emnist_dataset():
         x=tf.expand_dims(element['pixels'], -1), y=element['label'])
 
   def preprocess_train_dataset(dataset):
-    """Preprocess training dataset."""
-    # Use buffer_size slightly larger than the maximum client datset size,
+    # Use buffer_size same as the maximum client datset size,
     # 418 for Federated EMNIST
-    return dataset.map(element_fn).shuffle(buffer_size=512).repeat(
+    return dataset.map(element_fn).shuffle(buffer_size=418).repeat(
         count=FLAGS.client_epochs_per_round).batch(
             FLAGS.batch_size, drop_remainder=False)
 
   def preprocess_test_dataset(dataset):
-    """Preprocess testing dataset."""
     return dataset.map(element_fn).batch(
         FLAGS.test_batch_size, drop_remainder=False)
 
@@ -85,7 +89,7 @@ def create_original_fedavg_cnn_model(only_digits=True):
       dataset.
 
   Returns:
-    A `tf.keras.Model`.
+    An uncompiled `tf.keras.Model`.
   """
   data_format = 'channels_last'
   input_shape = [28, 28, 1]
@@ -116,20 +120,6 @@ def create_original_fedavg_cnn_model(only_digits=True):
   return model
 
 
-def tff_model_fn(sample_batch):
-  keras_model = create_original_fedavg_cnn_model(only_digits=True)
-  loss = tf.keras.losses.SparseCategoricalCrossentropy()
-  metrics = [tf.keras.metrics.SparseCategoricalAccuracy()]
-  return tff.learning.from_keras_model(
-      keras_model,
-      sample_batch,
-      loss,
-      loss_weights=None,
-      metrics=metrics,
-      optimizer=None
-  )  # TODO(b/144510813): define and directly use KerasModelWrapper
-
-
 def server_optimizer_fn():
   return tf.keras.optimizers.SGD(learning_rate=FLAGS.server_learning_rate)
 
@@ -146,16 +136,27 @@ def main(argv):
   train_data, test_data = get_emnist_dataset()
   del test_data  # TODO(b/144510813): add evaluation on test data
 
-  # TODO(b/144510813): sample_batch to be simplified
-  example_dataset = train_data.create_tf_dataset_for_client(
-      train_data.client_ids[0])
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(example_dataset)))
+  @tf.function
+  def get_sample_batch():
+    """Return a sample batch to prepare model for TFF.
 
-  model_fn = functools.partial(tff_model_fn, sample_batch)
+    Sample batch is used to enforce construction of model variables,
+    and define data type in TFF. The returned sampled batch can be eager
+    or non-eager depending on the contex.
+    """
+    example_dataset = train_data.create_tf_dataset_for_client(
+        train_data.client_ids[0])
+    return next(iter(example_dataset))
 
-  iterative_process = simple_fedavg.build_federated_averaging_process(
-      model_fn, server_optimizer_fn, client_optimizer_fn)
+  def tff_model_fn():
+    """Construct a fully initialized model for use in federated averaging."""
+    sample_batch = get_sample_batch()
+    keras_model = create_original_fedavg_cnn_model(only_digits=True)
+    loss = tf.keras.losses.SparseCategoricalCrossentropy()
+    return simple_fedavg_tf.KerasModelWrapper(keras_model, sample_batch, loss)
+
+  iterative_process = simple_fedavg_tff.build_federated_averaging_process(
+      tff_model_fn, server_optimizer_fn, client_optimizer_fn)
   server_state = iterative_process.initialize()
 
   for round_num in range(FLAGS.total_rounds):
@@ -169,7 +170,7 @@ def main(argv):
     ]
     server_state, train_metrics = iterative_process.next(
         server_state, sampled_train_data)
-    print('round {} training metrics: {}'.format(round_num, train_metrics))
+    print('Round {} training loss: {}'.format(round_num, train_metrics))
 
 
 if __name__ == '__main__':
