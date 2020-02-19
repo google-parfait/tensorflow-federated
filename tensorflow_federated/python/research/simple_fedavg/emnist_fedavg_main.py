@@ -62,7 +62,7 @@ def get_emnist_dataset():
         x=tf.expand_dims(element['pixels'], -1), y=element['label'])
 
   def preprocess_train_dataset(dataset):
-    # Use buffer_size same as the maximum client datset size,
+    # Use buffer_size same as the maximum client dataset size,
     # 418 for Federated EMNIST
     return dataset.map(element_fn).shuffle(buffer_size=418).repeat(
         count=FLAGS.client_epochs_per_round).batch(
@@ -128,13 +128,20 @@ def client_optimizer_fn():
   return tf.keras.optimizers.SGD(learning_rate=FLAGS.client_learning_rate)
 
 
+def keras_evaluate(model, test_data, metric):
+  metric.reset_states()
+  for batch in test_data:
+    preds = model(batch['x'], training=False)
+    metric(batch['y'], preds)
+  return metric.result()
+
+
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
   tf.compat.v1.enable_v2_behavior()
 
   train_data, test_data = get_emnist_dataset()
-  del test_data  # TODO(b/144510813): add evaluation on test data
 
   @tf.function
   def get_sample_batch():
@@ -159,6 +166,8 @@ def main(argv):
       tff_model_fn, server_optimizer_fn, client_optimizer_fn)
   server_state = iterative_process.initialize()
 
+  metric = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
+  model = tff_model_fn()
   for round_num in range(FLAGS.total_rounds):
     sampled_clients = np.random.choice(
         train_data.client_ids,
@@ -170,7 +179,11 @@ def main(argv):
     ]
     server_state, train_metrics = iterative_process.next(
         server_state, sampled_train_data)
-    print('Round {} training loss: {}'.format(round_num, train_metrics))
+    print(f'Round {round_num} training loss: {train_metrics}')
+    if round_num % FLAGS.rounds_per_eval == 0:
+      model.from_weights(server_state.model_weights)
+      accuracy = keras_evaluate(model.keras_model, test_data, metric)
+      print(f'Round {round_num} validation accuracy: {accuracy * 100.0}')
 
 
 if __name__ == '__main__':

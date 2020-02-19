@@ -94,6 +94,12 @@ class KerasModelWrapper(object):
         trainable=self.keras_model.trainable_variables,
         non_trainable=self.keras_model.non_trainable_variables)
 
+  def from_weights(self, model_weights):
+    tff.utils.assign(self.keras_model.trainable_variables,
+                     list(model_weights.trainable))
+    tff.utils.assign(self.keras_model.non_trainable_variables,
+                     list(model_weights.non_trainable))
+
 
 @attr.s(eq=False, frozen=True, slots=True)
 class ClientOutput(object):
@@ -148,8 +154,8 @@ def server_update(model, server_optimizer, server_state, weights_delta):
 
   Args:
     model: A `KerasModelWrapper` or `tff.learning.Model`.
-    server_optimizer: A `tf.keras.optimizers.Optimizer`.
-      If the optimizer creates variables, they must have already been created.
+    server_optimizer: A `tf.keras.optimizers.Optimizer`. If the optimizer
+      creates variables, they must have already been created.
     server_state: A `ServerState`, the state to be updated.
     weights_delta: A nested structure of tensors holding the updates to the
       trainable variables of the model.
