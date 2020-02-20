@@ -15,6 +15,7 @@
 """A local proxy for a remote executor service hosted on a separate machine."""
 
 import asyncio
+import functools
 import itertools
 import queue
 import threading
@@ -176,6 +177,56 @@ class _BidiStream:
       logging.debug('Closing unused bidi stream')
 
 
+def _request(rpc_func, request):
+  wrapped_fn = _wrap_with_grpc_handling(functools.partial(rpc_func, request))
+  return wrapped_fn()
+
+
+def _is_retryable_grpc_error(error):
+  """Predicate defining what is a retryable gRPC error."""
+  non_retryable_errors = {
+      grpc.StatusCode.INVALID_ARGUMENT,
+      grpc.StatusCode.NOT_FOUND,
+      grpc.StatusCode.ALREADY_EXISTS,
+      grpc.StatusCode.PERMISSION_DENIED,
+      grpc.StatusCode.FAILED_PRECONDITION,
+      grpc.StatusCode.ABORTED,
+      grpc.StatusCode.OUT_OF_RANGE,
+      grpc.StatusCode.UNIMPLEMENTED,
+      grpc.StatusCode.DATA_LOSS,
+      grpc.StatusCode.UNAUTHENTICATED,
+  }
+  return (isinstance(error, grpc.RpcError) and
+          error.code() not in non_retryable_errors)
+
+
+def _wrap_with_grpc_handling(func):
+  """Decorates a function with gRPC error handling functionality.
+
+  Specifically, gRPC errors that are determined to be retryable are rethrown as
+  RetryableErrors.
+
+  Args:
+    func: Function to decorate.
+
+  Returns:
+    Decorated function.
+  """
+
+  @functools.wraps(func)
+  def wrapped_fn():
+    try:
+      return func()
+    except grpc.RpcError as e:
+      if _is_retryable_grpc_error(e):
+        logging.info('Received retryable gRPC error: %s', e)
+        raise execution_context.RetryableError(e)
+      else:
+        raise e
+
+  return wrapped_fn
+
+
 class RemoteExecutor(executor_base.Executor):
   """The remote executor is a local proxy for a remote executor instance."""
 
@@ -233,10 +284,7 @@ class RemoteExecutor(executor_base.Executor):
     dispose_request = self._dispose_request
     self._dispose_request = executor_pb2.DisposeRequest()
     if not self._bidi_stream:
-      try:
-        self._stub.Dispose(dispose_request)
-      except grpc.RpcError as e:
-        self._handle_grpc_error(e)
+      _request(self._stub.Dispose, dispose_request)
     else:
       send_request_fut = self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(dispose=dispose_request))
@@ -250,10 +298,7 @@ class RemoteExecutor(executor_base.Executor):
         executor_service_utils.serialize_value(value, type_spec))
     create_value_request = executor_pb2.CreateValueRequest(value=value_proto)
     if not self._bidi_stream:
-      try:
-        response = self._stub.CreateValue(create_value_request)
-      except grpc.RpcError as e:
-        self._handle_grpc_error(e)
+      response = _request(self._stub.CreateValue, create_value_request)
     else:
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(create_value=create_value_request)
@@ -271,10 +316,7 @@ class RemoteExecutor(executor_base.Executor):
         function_ref=comp.value_ref,
         argument_ref=(arg.value_ref if arg is not None else None))
     if not self._bidi_stream:
-      try:
-        response = self._stub.CreateCall(create_call_request)
-      except grpc.RpcError as e:
-        self._handle_grpc_error(e)
+      response = _request(self._stub.CreateCall, create_call_request)
     else:
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(create_call=create_call_request)
@@ -296,10 +338,7 @@ class RemoteExecutor(executor_base.Executor):
     result_type = computation_types.NamedTupleType(type_elem)
     request = executor_pb2.CreateTupleRequest(element=proto_elem)
     if not self._bidi_stream:
-      try:
-        response = self._stub.CreateTuple(request)
-      except grpc.RpcError as e:
-        self._handle_grpc_error(e)
+      response = _request(self._stub.CreateTuple, request)
     else:
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(create_tuple=request))).create_tuple
@@ -321,10 +360,7 @@ class RemoteExecutor(executor_base.Executor):
     request = executor_pb2.CreateSelectionRequest(
         source_ref=source.value_ref, name=name, index=index)
     if not self._bidi_stream:
-      try:
-        response = self._stub.CreateSelection(request)
-      except grpc.RpcError as e:
-        self._handle_grpc_error(e)
+      response = _request(self._stub.CreateSelection, request)
     else:
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(create_selection=request)
@@ -337,37 +373,10 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
     request = executor_pb2.ComputeRequest(value_ref=value_ref)
     if not self._bidi_stream:
-      try:
-        response = self._stub.Compute(request)
-      except grpc.RpcError as e:
-        self._handle_grpc_error(e)
+      response = _request(self._stub.Compute, request)
     else:
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(compute=request))).compute
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
     value, _ = executor_service_utils.deserialize_value(response.value)
     return value
-
-  def _is_retryable_grpc_error(self, error):
-    non_retryable_errors = set([
-        grpc.StatusCode.INVALID_ARGUMENT,
-        grpc.StatusCode.NOT_FOUND,
-        grpc.StatusCode.ALREADY_EXISTS,
-        grpc.StatusCode.PERMISSION_DENIED,
-        grpc.StatusCode.FAILED_PRECONDITION,
-        grpc.StatusCode.ABORTED,
-        grpc.StatusCode.OUT_OF_RANGE,
-        grpc.StatusCode.UNIMPLEMENTED,
-        grpc.StatusCode.DATA_LOSS,
-        grpc.StatusCode.UNAUTHENTICATED,
-    ])
-    return (isinstance(error, grpc.RpcError) and
-            error.code() not in non_retryable_errors)
-
-  def _handle_grpc_error(self, error):
-    py_typecheck.check_type(error, grpc.RpcError)
-    if self._is_retryable_grpc_error(error):
-      logging.info('Received retryable gRPC error: %s', error)
-      raise execution_context.RetryableError(error)
-    else:
-      raise error
