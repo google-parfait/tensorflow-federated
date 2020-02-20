@@ -16,7 +16,6 @@
 
 import collections
 import itertools
-import warnings
 
 import tensorflow as tf
 
@@ -92,8 +91,7 @@ def from_keras_model(keras_model,
                      dummy_batch,
                      loss,
                      loss_weights=None,
-                     metrics=None,
-                     optimizer=None):
+                     metrics=None):
   """Builds a `tff.learning.Model` for an example mini batch.
 
   Args:
@@ -115,8 +113,6 @@ def from_keras_model(keras_model,
         mapping to the model's outputs. If a tensor, it is expected to map
         output names (strings) to scalar coefficients.
     metrics: (Optional) a list of `tf.keras.metrics.Metric` objects.
-    optimizer: (Optional) a `tf.keras.optimizer.Optimizer`. If None, returned
-      model cannot be used for training.
 
   Returns:
     A `tff.learning.Model` object.
@@ -145,8 +141,6 @@ def from_keras_model(keras_model,
 
   if keras_model._is_compiled:  # pylint: disable=protected-access
     raise ValueError('`keras_model` must not be compiled')
-  if optimizer is not None:
-    warnings.warn('optimizer parameter is deprecated.')
 
   if isinstance(loss, collections.Sequence):
     loss_functions = loss
