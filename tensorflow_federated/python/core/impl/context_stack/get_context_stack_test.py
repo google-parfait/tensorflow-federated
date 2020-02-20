@@ -15,36 +15,15 @@
 
 from absl.testing import absltest
 
-from tensorflow_federated.python.core.impl import context_stack_test_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
-from tensorflow_federated.python.core.impl.executors import execution_context
 
 
 class GetContextStackTest(absltest.TestCase):
 
-  def test_basic_functionality(self):
-    ctx_stack = get_context_stack.get_context_stack()
-    self.assertIsInstance(ctx_stack, context_stack_impl.ContextStackImpl)
-    self.assertIsInstance(ctx_stack.current, execution_context.ExecutionContext)
-
-    with ctx_stack.install(context_stack_test_utils.TestContext('foo')):
-      self.assertIsInstance(get_context_stack.get_context_stack().current,
-                            context_stack_test_utils.TestContext)
-      self.assertEqual(get_context_stack.get_context_stack().current.name,
-                       'foo')
-
-      with ctx_stack.install(context_stack_test_utils.TestContext('bar')):
-        self.assertIsInstance(get_context_stack.get_context_stack().current,
-                              context_stack_test_utils.TestContext)
-        self.assertEqual(get_context_stack.get_context_stack().current.name,
-                         'bar')
-
-      self.assertEqual(get_context_stack.get_context_stack().current.name,
-                       'foo')
-
-    self.assertIsInstance(get_context_stack.get_context_stack().current,
-                          execution_context.ExecutionContext)
+  def test_returns_context(self):
+    context_stack = get_context_stack.get_context_stack()
+    self.assertIsInstance(context_stack, context_stack_impl.ContextStackImpl)
 
 
 if __name__ == '__main__':

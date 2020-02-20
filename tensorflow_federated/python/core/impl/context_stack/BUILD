@@ -41,8 +41,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
+        "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:context_stack_test_utils",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
     ],
 )
 
@@ -67,10 +67,10 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":set_default_executor",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl:context_base",
+        "//tensorflow_federated/python/core/impl:context_stack_test_utils",
         "//tensorflow_federated/python/core/impl:reference_executor",
-        "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
     ],
 )
@@ -91,8 +91,6 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":get_context_stack",
-        "//tensorflow_federated/python/core/impl:context_stack_test_utils",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
     ],
 )
 
@@ -110,9 +108,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":get_context_stack",
+        ":context_stack_impl",
         ":set_default_context",
+        "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:context_stack_test_utils",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
     ],
 )

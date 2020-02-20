@@ -15,53 +15,57 @@
 
 from absl.testing import absltest
 
-import numpy as np
-import tensorflow as tf
-
-from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl import context_base
+from tensorflow_federated.python.core.impl import context_stack_test_utils
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.context_stack import set_default_executor
-from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_factory
-
-tf.compat.v1.enable_v2_behavior()
 
 
 class TestSetDefaultExecutor(absltest.TestCase):
 
-  def test_basic_functionality(self):
+  def test_with_none(self):
+    context = context_stack_test_utils.TestContext('test')
+    context_stack = context_stack_impl.context_stack
+    context_stack.set_default_context(context)
+    self.assertIs(context_stack.current, context)
 
-    @computations.tf_computation(computation_types.SequenceType(tf.int32))
-    def comp(ds):
-      return ds.take(5).reduce(np.int32(0), lambda x, y: x + y)
+    set_default_executor.set_default_executor(None)
 
-    set_default_executor.set_default_executor(
-        executor_factory.ExecutorFactoryImpl(
-            lambda _: eager_tf_executor.EagerTFExecutor()))
+    self.assertIsNot(context_stack.current, context)
+    self.assertIsInstance(context_stack.current, context_base.Context)
 
-    ds = tf.data.Dataset.range(1).map(lambda x: tf.constant(5)).repeat()
-    v = comp(ds)
-    self.assertEqual(v, 25)
+  def test_with_executor_factory(self):
+    context_stack = context_stack_impl.context_stack
+    executor_factory_impl = executor_factory.ExecutorFactoryImpl(lambda _: None)
+    self.assertIsNot(context_stack.current._executor_factory,
+                     executor_factory_impl)
 
-    set_default_executor.set_default_executor()
-    self.assertIn('ExecutionContext',
-                  str(type(context_stack_impl.context_stack.current).__name__))
+    set_default_executor.set_default_executor(executor_factory_impl)
 
-  def test_reference_executor(self):
-    set_default_executor.set_default_executor(
-        reference_executor.ReferenceExecutor())
-    self.assertIsInstance(context_stack_impl.context_stack.current,
-                          reference_executor.ReferenceExecutor)
+    self.assertIsInstance(context_stack.current,
+                          execution_context.ExecutionContext)
+    self.assertIs(context_stack.current._executor_factory,
+                  executor_factory_impl)
 
-    @computations.tf_computation(computation_types.SequenceType(tf.int32))
-    def comp(ds):
-      return ds.take(5).reduce(np.int32(0), lambda x, y: x + y)
+  # TODO(b/148233458): ReferenceExecutor is special cased by the implementation
+  # of `set_default_executor.set_default_executor`. This test exists to ensure
+  # that this case is handled well, but can be removed when that special casing
+  # is removed.
+  def test_with_reference_executor(self):
+    context_stack = context_stack_impl.context_stack
+    executor = reference_executor.ReferenceExecutor()
+    self.assertIsNot(context_stack.current, executor)
 
-    ds = tf.data.Dataset.range(1).map(lambda x: tf.constant(5)).repeat(10)
-    v = comp(ds)
-    self.assertEqual(v, 25)
+    set_default_executor.set_default_executor(executor)
+
+    self.assertIs(context_stack.current, executor)
+
+  def test_raises_type_error_with_int(self):
+    with self.assertRaises(TypeError):
+      set_default_executor.set_default_executor(1)
 
 
 if __name__ == '__main__':

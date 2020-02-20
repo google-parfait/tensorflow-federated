@@ -15,41 +15,48 @@
 
 from absl.testing import absltest
 
+from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import context_stack_test_utils
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.executors import execution_context
 
 
 class ContextStackTest(absltest.TestCase):
 
-  def test_basic_functionality(self):
-    ctx_stack = context_stack_impl.context_stack
-    self.assertIsInstance(ctx_stack, context_stack_impl.ContextStackImpl)
-    self.assertIsInstance(ctx_stack.current, execution_context.ExecutionContext)
+  def test_set_default_context_with_none(self):
+    context = context_stack_test_utils.TestContext('test')
+    context_stack = context_stack_impl.ContextStackImpl()
+    context_stack.set_default_context(context)
+    self.assertIs(context_stack.current, context)
 
-    with ctx_stack.install(context_stack_test_utils.TestContext('foo')):
-      self.assertIsInstance(ctx_stack.current,
-                            context_stack_test_utils.TestContext)
-      self.assertEqual(ctx_stack.current.name, 'foo')
+    context_stack.set_default_context(None)
 
-      with ctx_stack.install(context_stack_test_utils.TestContext('bar')):
-        self.assertIsInstance(ctx_stack.current,
-                              context_stack_test_utils.TestContext)
-        self.assertEqual(ctx_stack.current.name, 'bar')
+    self.assertIsNot(context_stack.current, context)
+    self.assertIsInstance(context_stack.current, context_base.Context)
 
-      self.assertEqual(ctx_stack.current.name, 'foo')
+  def test_set_default_context_with_context(self):
+    context = context_stack_test_utils.TestContext('test')
+    context_stack = context_stack_impl.ContextStackImpl()
+    self.assertIsNot(context_stack.current, context)
 
-    self.assertIsInstance(ctx_stack.current, execution_context.ExecutionContext)
+    context_stack.set_default_context(context)
 
-  def test_set_default_context(self):
+    self.assertIs(context_stack.current, context)
 
-    ctx_stack = context_stack_impl.context_stack
-    self.assertIsInstance(ctx_stack.current, execution_context.ExecutionContext)
-    foo = context_stack_test_utils.TestContext('foo')
-    ctx_stack.set_default_context(foo)
-    self.assertIs(ctx_stack.current, foo)
-    ctx_stack.set_default_context()
-    self.assertIsInstance(ctx_stack.current, execution_context.ExecutionContext)
+  def test_install_pushes_context_on_stack(self):
+    context_stack = context_stack_impl.ContextStackImpl()
+    self.assertIsInstance(context_stack.current, context_base.Context)
+
+    context_one = context_stack_test_utils.TestContext('test')
+    with context_stack.install(context_one):
+      self.assertIs(context_stack.current, context_one)
+
+      context_two = context_stack_test_utils.TestContext('test')
+      with context_stack.install(context_two):
+        self.assertIs(context_stack.current, context_two)
+
+      self.assertIs(context_stack.current, context_one)
+
+    self.assertIsInstance(context_stack.current, context_base.Context)
 
 
 if __name__ == '__main__':
