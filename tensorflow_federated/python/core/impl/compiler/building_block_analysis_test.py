@@ -19,6 +19,8 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import type_serialization
@@ -55,6 +57,24 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     tf_ops_in_graph = building_block_analysis.count_tensorflow_ops_in(
         building_block)
     self.assertEqual(tf_ops_in_graph, 3)
+
+  def test_counts_correct_number_of_ops_swith_function(self):
+
+    @computations.tf_computation(
+        computation_types.TensorType(tf.int32, shape=[]))
+    def foo(x):
+
+      @tf.function
+      def bar(x):
+        return x + 1
+
+      return bar(bar(x))
+
+    proto = computation_impl.ComputationImpl.get_proto(foo)
+    building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
+    tf_ops_in_graph = building_block_analysis.count_tensorflow_ops_in(
+        building_block)
+    self.assertEqual(tf_ops_in_graph, 6)
 
 
 class CountTensorFlowVariablesTest(absltest.TestCase):
@@ -122,6 +142,27 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     tf_vars_in_graph = building_block_analysis.count_tensorflow_variables_in(
         building_block)
     self.assertEqual(tf_vars_in_graph, 2)
+
+  def test_counts_correct_variables_with_function(self):
+
+    @computations.tf_computation(tf.int32)
+    def foo(x):
+
+      y = tf.Variable(initial_value=0)
+
+      @tf.function
+      def bar(x):
+        y.assign_add(1)
+        return x + y, tf.shape(y)
+
+      z = bar(x)
+      return bar(z[0])
+
+    proto = computation_impl.ComputationImpl.get_proto(foo)
+    building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
+    tf_vars_in_graph = building_block_analysis.count_tensorflow_variables_in(
+        building_block)
+    self.assertEqual(tf_vars_in_graph, 1)
 
 
 if __name__ == '__main__':

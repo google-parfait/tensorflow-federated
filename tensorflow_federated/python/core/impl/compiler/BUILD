@@ -45,6 +45,8 @@ py_test(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl:computation_impl",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
