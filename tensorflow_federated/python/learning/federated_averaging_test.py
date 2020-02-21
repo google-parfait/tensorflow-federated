@@ -35,7 +35,7 @@ class FederatedAveragingClientWithModelTest(test.TestCase,
   def create_dataset(self):
     # Create a dataset with 4 examples:
     dataset = tf.data.Dataset.from_tensor_slices(
-        model_examples.TrainableLinearRegression.make_batch(
+        model_examples.LinearRegression.make_batch(
             x=[[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
             y=[[0.0], [0.0], [1.0], [1.0]]))
     # Repeat the dataset 2 times with batches of 3 examples,
