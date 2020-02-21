@@ -97,21 +97,6 @@ class FileCheckpointManagerLoadLatestCheckpointTest(tf.test.TestCase):
     self.assertEqual(state, expected_state)
     self.assertEqual(round_num, 3)
 
-  def test_returns_state_and_round_num_with_special_characters(self):
-    temp_dir = self.get_temp_dir()
-    special_char_dir = 'subdir(subdir_number=1*)/sub.dir(subdir_number=2?)'
-    path = os.path.join(temp_dir, special_char_dir)
-    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(path)
-    state = _create_dummy_state()
-    checkpoint_mngr.save_checkpoint(state, 1)
-    structure = _create_dummy_structure()
-
-    state, round_num = checkpoint_mngr.load_latest_checkpoint(structure)
-
-    expected_state = _create_dummy_state()
-    self.assertEqual(state, expected_state)
-    self.assertEqual(round_num, 1)
-
   def test_raises_value_error_with_bad_structure(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
