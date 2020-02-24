@@ -53,8 +53,8 @@ py_binary(
         "//tensorflow_federated",
         "//tensorflow_federated/python/research/optimization/shared:iterative_process_builder",
         "//tensorflow_federated/python/research/optimization/shared:keras_metrics",
-        "//tensorflow_federated/python/research/optimization/shared:training_utils",
         "//tensorflow_federated/python/research/utils:training_loop",
+        "//tensorflow_federated/python/research/utils:training_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",
     ],
 )

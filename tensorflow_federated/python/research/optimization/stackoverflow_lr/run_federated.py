@@ -24,10 +24,10 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
-from tensorflow_federated.python.research.optimization.shared import training_utils
 from tensorflow_federated.python.research.optimization.stackoverflow_lr import dataset
 from tensorflow_federated.python.research.optimization.stackoverflow_lr import models
 from tensorflow_federated.python.research.utils import training_loop
+from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
 
 
@@ -107,19 +107,21 @@ def main(argv):
       model_builder=model_builder,
       eval_dataset=stackoverflow_validation,
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder,
+      metrics_builder=metrics_builder)
+
+  test_fn = training_utils.build_evaluate_fn(
+      model_builder=model_builder,
       # Use both val and test for symmetry with other experiments, which
       # evaluate on the entire test set.
-      test_dataset=stackoverflow_validation.concatenate(stackoverflow_test))
+      eval_dataset=stackoverflow_validation.concatenate(stackoverflow_test),
+      loss_builder=loss_builder,
+      metrics_builder=metrics_builder)
 
   logging.info('Training model:')
   logging.info(model_builder().summary())
 
   training_loop.run(
-      iterative_process=training_process,
-      client_datasets_fn=client_datasets_fn,
-      evaluate_fn=evaluate_fn,
-  )
+      training_process, client_datasets_fn, evaluate_fn, test_fn=test_fn)
 
 
 if __name__ == '__main__':

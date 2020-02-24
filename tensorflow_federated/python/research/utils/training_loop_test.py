@@ -64,10 +64,10 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
     def client_datasets_fn(round_num):
       del round_num
-      return federated_data, []
+      return federated_data
 
-    def evaluate_fn(state, use_test_dataset):
-      del state, use_test_dataset
+    def evaluate_fn(state):
+      del state
       return {}
 
     temp_filepath = self.get_temp_dir()
@@ -101,7 +101,7 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
     def client_datasets_fn(round_num):
       del round_num
-      return federated_data, []
+      return federated_data
 
     metrics_dict = {}
 
@@ -119,7 +119,7 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
     def client_datasets_fn(round_num):
       del round_num
-      return federated_data, []
+      return federated_data
 
     def eval_fn(state):
       del state
@@ -137,10 +137,9 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
     def client_datasets_fn(round_num):
       del round_num
-      return federated_data, []
+      return federated_data
 
-    def evaluate(state, use_test_dataset=False):
-      del use_test_dataset
+    def evaluate(state):
       keras_model = tff.simulation.models.mnist.create_keras_model(
           compile_model=True)
       state = fed_avg_schedule.ServerState.from_tff_result(state)
@@ -165,10 +164,10 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
     def client_datasets_fn(round_num):
       del round_num
-      return federated_data, []
+      return federated_data
 
-    def evaluate_fn(state, use_test_dataset):
-      del state, use_test_dataset
+    def evaluate_fn(state):
+      del state
       return {}
 
     temp_filepath = self.get_temp_dir()

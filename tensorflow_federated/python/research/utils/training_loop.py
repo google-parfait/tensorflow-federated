@@ -18,7 +18,7 @@ import collections
 import os.path
 import pprint
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 from absl import flags
 from absl import logging
@@ -114,9 +114,9 @@ def _compute_numpy_l2_difference(model, previous_model):
 
 
 def run(iterative_process: adapters.IterativeProcessPythonAdapter,
-        client_datasets_fn: Callable[[int], Tuple[List[tf.data.Dataset],
-                                                  List[str]]],
-        evaluate_fn: Callable[[Any, Optional[bool]], Dict[str, float]]):
+        client_datasets_fn: Callable[[int], List[tf.data.Dataset]],
+        evaluate_fn: Callable[[Any], Dict[str, float]],
+        test_fn: Optional[Callable[[Any], Dict[str, float]]] = None):
   """Runs federated training for the given TFF `IterativeProcess` instance.
 
   Args:
@@ -125,8 +125,11 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
       number) and returning a list of client datasets to use as federated data
       for that round, and a list of the corresponding client ids.
     evaluate_fn: Callable accepting a server state (the `state` of the
-      `IterationResult`) and an optional `bool` and returning a dict of
-      evaluation metrics.
+      `IterationResult`) and returning a dict of evaluation metrics. Used to
+      compute validation metrics throughout the training process.
+    test_fn: An optional callable accepting a server state (the `state` of the
+      `IterationResult`) and returning a dict of test metrics. Used to compute
+      test metrics at the end of the training process.
 
   Returns:
     The `state` of the `IterationResult` representing the result of the training
@@ -139,6 +142,8 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     raise TypeError('client_datasets_fn should be callable.')
   if not callable(evaluate_fn):
     raise TypeError('evaluate_fn should be callable.')
+  if test_fn is not None and not callable(test_fn):
+    raise TypeError('test_fn should be callable.')
   total_rounds = FLAGS.total_rounds
 
   logging.info('Starting iterative_process_training_loop')
@@ -165,11 +170,10 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     round_num += 1  # Increment to avoid overwriting current checkpoint
     metrics_mngr.clear_rounds_after(last_valid_round_num=round_num - 1)
 
-  unique_clients = set()
   loop_start_time = time.time()
   while round_num < total_rounds:
     data_prep_start_time = time.time()
-    federated_train_data, sampled_clients = client_datasets_fn(round_num)
+    federated_train_data = client_datasets_fn(round_num)
     train_metrics = {
         'prepare_datasets_secs': time.time() - data_prep_start_time
     }
@@ -195,8 +199,6 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     train_metrics['training_secs'] = time.time() - training_start_time
     train_metrics['model_delta_l2_norm'] = _compute_numpy_l2_difference(
         state.model, prev_model)
-    unique_clients.update(sampled_clients)
-    train_metrics['num_unique_clients'] = len(unique_clients)
     train_metrics.update(round_metrics)
     # TODO(b/148576550): Wire in client training time metrics into custom
     # training loops.
@@ -219,7 +221,7 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
 
     if round_num % FLAGS.rounds_per_eval == 0:
       evaluate_start_time = time.time()
-      eval_metrics = evaluate_fn(state, use_test_dataset=False)  # pytype: disable=wrong-keyword-args
+      eval_metrics = evaluate_fn(state)
       eval_metrics['evaluate_secs'] = time.time() - evaluate_start_time
 
       metrics['eval'] = eval_metrics
@@ -227,11 +229,12 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     _write_metrics(metrics_mngr, summary_writer, metrics, round_num)
     round_num += 1
 
-  test_start_time = time.time()
-  test_metrics = evaluate_fn(state, use_test_dataset=True)  # pytype: disable=wrong-keyword-args
-  test_metrics['evaluate_secs'] = time.time() - test_start_time
+  if test_fn:
+    test_start_time = time.time()
+    test_metrics = test_fn(state)
+    test_metrics['test_evaluate_secs'] = time.time() - test_start_time
 
-  metrics = {'test': test_metrics}
-  _write_metrics(metrics_mngr, summary_writer, metrics, total_rounds)
+    metrics = {'test': test_metrics}
+    _write_metrics(metrics_mngr, summary_writer, metrics, total_rounds)
 
   return state

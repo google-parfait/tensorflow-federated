@@ -15,14 +15,13 @@
 """Tests for shared training utilities."""
 
 import collections
-import functools
 
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
-from tensorflow_federated.python.research.optimization.shared import training_utils
+from tensorflow_federated.python.research.utils import training_utils
 
 
 def model_builder():
@@ -60,41 +59,10 @@ class TrainingUtilsTest(tf.test.TestCase):
     tff_dataset = tff.simulation.client_data.ConcreteClientData(
         [2], create_tf_dataset_for_client)
     client_datasets_fn = training_utils.build_client_datasets_fn(tff_dataset, 1)
-    client_datasets, client_ids = client_datasets_fn(7)
+    client_datasets = client_datasets_fn(7)
     sample_batch = next(iter(client_datasets[0]))
     reference_batch = next(iter(create_tf_dataset_for_client(2)))
     self.assertAllClose(sample_batch, reference_batch)
-    self.assertEqual(client_ids, [2])
-
-  def test_build_scheduled_client_datasets_fn(self):
-    single_client_dataset_fn = functools.partial(
-        create_tf_dataset_for_client, batch_data=False)
-    tff_dataset = tff.simulation.client_data.ConcreteClientData(
-        [2], single_client_dataset_fn)
-    client_datasets_fn = training_utils.build_scheduled_client_datasets_fn(
-        tff_dataset,
-        clients_per_round=1,
-        client_batch_size=2,
-        client_epochs_per_round=3,
-        total_rounds=2,
-        num_stages=2,
-        batch_growth_factor=2,
-        epochs_decrease_amount=1)
-    # This should be a dataset with 3 batches of size 4, with client ids [2]
-    client_datasets, client_ids = client_datasets_fn(round_num=2)
-    self.assertEqual(client_ids, [2])
-
-    client_dataset = client_datasets[0]
-    sample_batch = next(iter(client_dataset))
-    self.assertEqual(sample_batch['x'].shape[0], 4)
-
-    num_batches = 0
-    num_examples = 0
-    for batch in client_dataset:
-      num_batches += 1
-      num_examples += batch['x'].shape[0]
-    self.assertEqual(num_batches, 3)
-    self.assertEqual(num_examples, 12)
 
   def test_build_evaluate_fn(self):
 

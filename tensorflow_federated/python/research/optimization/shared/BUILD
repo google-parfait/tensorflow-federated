@@ -117,20 +117,19 @@ py_test(
 )
 
 py_library(
-    name = "training_utils",
-    srcs = ["training_utils.py"],
+    name = "schedule_utils",
+    srcs = ["schedule_utils.py"],
     srcs_version = "PY3",
 )
 
 py_test(
-    name = "training_utils_test",
-    size = "large",
-    srcs = ["training_utils_test.py"],
+    name = "schedule_utils_test",
+    size = "small",
+    srcs = ["schedule_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":fed_avg_schedule",
-        ":training_utils",
+        ":schedule_utils",
         "//tensorflow_federated",
     ],
 )
