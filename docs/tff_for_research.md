@@ -41,7 +41,7 @@ types of logic.
 ## Federated learning datasets
 
 TensorFlow federated
-[hosts multiple datasets](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/da tasets)
+[hosts multiple datasets](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets)
 that are representative of the characteristics of real-world problems that could
 be solved with federated learning. Datasets include:
 
@@ -60,6 +60,13 @@ be solved with federated learning. Datasets include:
     Shakespeare. The data set consists of 715 users (characters of Shakespeare
     plays), where each example corresponds to a contiguous set of lines spoken
     by the character in a given play.
+
+*   [**CIFAR-100**.](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/cifar100/load_data)
+    A federated partitioning of the CIFAR-100 dataset across 500 training
+    clients and 100 test clients. Each client has 100 unique examples. The
+    partitioning is done in a way to create more realistic heterogeneity between
+    clients. For more details, see the
+    [API](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/cifar100/load_data).
 
 ## High performance simulations
 
