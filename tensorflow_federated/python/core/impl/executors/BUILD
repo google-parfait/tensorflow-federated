@@ -91,6 +91,7 @@ py_library(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:type_utils",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
@@ -128,12 +129,12 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
-        ":executor_utils",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:typed_object",
@@ -172,6 +173,7 @@ py_library(
         ":executor_value_base",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:typed_object",
         "//tensorflow_federated/python/core/impl:context_base",
@@ -237,6 +239,7 @@ py_library(
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/impl:executor_service_utils",
     ],
 )
@@ -347,15 +350,6 @@ py_library(
     ],
 )
 
-py_test(
-    name = "executor_utils_test",
-    size = "small",
-    srcs = ["executor_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":executor_utils"],
-)
-
 py_library(
     name = "executor_value_base",
     srcs = ["executor_value_base.py"],
@@ -374,6 +368,7 @@ py_library(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:computation_impl",
         "//tensorflow_federated/python/core/impl:type_utils",
@@ -416,11 +411,11 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
-        ":executor_utils",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:computation_impl",
         "//tensorflow_federated/python/core/impl:type_utils",
@@ -456,15 +451,15 @@ py_library(
     srcs = ["remote_executor.py"],
     srcs_version = "PY3",
     deps = [
+        ":execution_context",
         ":executor_base",
-        ":executor_utils",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:executor_service_utils",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
     ],
 )
 
@@ -529,6 +524,7 @@ py_library(
     deps = [
         ":executor_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:tracing",
     ],
 )
 

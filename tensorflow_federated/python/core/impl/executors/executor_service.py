@@ -31,6 +31,7 @@ from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl import executor_service_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 
@@ -61,6 +62,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       loop.close()
 
     self._event_loop = asyncio.new_event_loop()
+    self._event_loop.set_task_factory(
+        tracing.propagate_trace_context_task_factory)
     self._thread = threading.Thread(
         target=functools.partial(run_loop, self._event_loop), daemon=True)
     self._thread.start()
@@ -160,10 +163,11 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     """Creates a value embedded in the executor."""
     py_typecheck.check_type(request, executor_pb2.CreateValueRequest)
     try:
-      value, value_type = (
-          executor_service_utils.deserialize_value(request.value))
+      with tracing.span('ExecutorService.CreateValue', 'deserialize_value'):
+        value, value_type = (
+            executor_service_utils.deserialize_value(request.value))
       value_id = str(uuid.uuid4())
-      future_val = asyncio.run_coroutine_threadsafe(
+      future_val = tracing.run_coroutine_threadsafe_in_ambient_trace_context(
           self._executor.create_value(value, value_type), self._event_loop)
       with self._lock:
         self._values[value_id] = future_val
@@ -193,7 +197,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
             argument_val) if argument_val is not None else None
         return await self._executor.create_call(function, argument)
 
-      result_fut = self._event_loop.create_task(_processing())
+      result_fut = tracing.run_coroutine_threadsafe_in_ambient_trace_context(
+          _processing(), self._event_loop)
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
@@ -224,7 +229,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         anon_tuple = anonymous_tuple.AnonymousTuple(elements)
         return await self._executor.create_tuple(anon_tuple)
 
-      result_fut = self._event_loop.create_task(_processing())
+      result_fut = tracing.run_coroutine_threadsafe_in_ambient_trace_context(
+          _processing(), self._event_loop)
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
@@ -254,7 +260,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
           coro = self._executor.create_selection(source, index=request.index)
         return await coro
 
-      result_fut = self._event_loop.create_task(_processing())
+      result_fut = tracing.run_coroutine_threadsafe_in_ambient_trace_context(
+          _processing(), self._event_loop)
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
@@ -270,7 +277,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       context: grpc.ServicerContext,
   ) -> executor_pb2.ComputeResponse:
     """Computes a value embedded in the executor."""
-    return asyncio.run_coroutine_threadsafe(
+    return tracing.run_coroutine_threadsafe_in_ambient_trace_context(
         self._Compute(request, context), self._event_loop).result()
 
   async def _Compute(

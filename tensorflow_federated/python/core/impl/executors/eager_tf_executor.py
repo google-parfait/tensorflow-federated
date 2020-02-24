@@ -21,6 +21,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
@@ -28,7 +29,6 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
@@ -321,6 +321,7 @@ class EagerValue(executor_value_base.ExecutorValue):
   def type_signature(self):
     return self._type_signature
 
+  @tracing.trace
   async def compute(self):
     return self._value
 
@@ -380,7 +381,7 @@ class EagerTFExecutor(executor_base.Executor):
       self._device = None
     self._tf_function_cache = cachetools.LRUCache(_TF_FUNCTION_CACHE_SIZE)
 
-  @executor_utils.log_async
+  @tracing.trace(span=True)
   async def create_value(self, value, type_spec=None):
     """Embeds `value` of type `type_spec` within this executor.
 
@@ -401,9 +402,11 @@ class EagerTFExecutor(executor_base.Executor):
     """
     if not tf.executing_eagerly():
       raise RuntimeError('The eager executor may only be used in eager mode.')
-    return EagerValue(value, self._tf_function_cache, type_spec, self._device)
 
-  @executor_utils.log_async
+    with tracing.task_trace_context():
+      return EagerValue(value, self._tf_function_cache, type_spec, self._device)
+
+  @tracing.trace
   async def create_call(self, comp, arg=None):
     """Creates a call to `comp` with optional `arg`.
 
@@ -436,7 +439,7 @@ class EagerTFExecutor(executor_base.Executor):
     else:
       raise TypeError('Cannot pass an argument to a no-argument function.')
 
-  @executor_utils.log_async
+  @tracing.trace
   async def create_tuple(self, elements):
     """Creates a tuple of `elements`.
 
@@ -460,7 +463,7 @@ class EagerTFExecutor(executor_base.Executor):
             (k, v) if k is not None else v for k, v in type_elements
         ]))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def create_selection(self, source, index=None, name=None):
     """Creates a selection from `source`.
 

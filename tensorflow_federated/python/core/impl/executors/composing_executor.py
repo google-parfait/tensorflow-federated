@@ -22,6 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -80,7 +81,7 @@ class CompositeValue(executor_value_base.ExecutorValue):
   def type_signature(self):
     return self._type_signature
 
-  @executor_utils.log_async
+  @tracing.trace
   async def compute(self):
     if isinstance(self._value, executor_value_base.ExecutorValue):
       return await self._value.compute()
@@ -217,7 +218,7 @@ class ComposingExecutor(executor_base.Executor):
           _get_cardinalities_helper())
     return await self._cardinalities_task
 
-  @executor_utils.log_async
+  @tracing.trace(span=True)
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
     py_typecheck.check_type(type_spec, computation_types.Type)
@@ -288,7 +289,7 @@ class ComposingExecutor(executor_base.Executor):
       return CompositeValue(
           await self._parent_executor.create_value(value, type_spec), type_spec)
 
-  @executor_utils.log_async
+  @tracing.trace
   async def create_call(self, comp, arg=None):
     py_typecheck.check_type(comp, CompositeValue)
     if arg is not None:
@@ -331,6 +332,7 @@ class ComposingExecutor(executor_base.Executor):
       raise ValueError('Calling objects of type {} is unsupported.'.format(
           py_typecheck.type_string(type(comp.internal_representation))))
 
+  @tracing.trace
   async def create_tuple(self, elements):
     values = []
     type_specs = []
@@ -347,6 +349,7 @@ class ComposingExecutor(executor_base.Executor):
         anonymous_tuple.AnonymousTuple(values),
         computation_types.NamedTupleType(type_specs))
 
+  @tracing.trace
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, CompositeValue)
     py_typecheck.check_type(source.type_signature,
@@ -367,7 +370,7 @@ class ComposingExecutor(executor_base.Executor):
             getattr(source.internal_representation, name),
             getattr(source.type_signature, name))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_aggregate(self, arg):
     value_type, zero_type, accumulate_type, merge_type, report_type = (
         executor_utils.parse_federated_aggregate_argument_types(
@@ -419,7 +422,7 @@ class ComposingExecutor(executor_base.Executor):
         await self._parent_executor.create_call(parent_report, merge_result),
         type_factory.at_server(report_type.result))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_apply(self, arg):
     py_typecheck.check_type(arg.internal_representation,
                             anonymous_tuple.AnonymousTuple)
@@ -438,13 +441,13 @@ class ComposingExecutor(executor_base.Executor):
             await self._parent_executor.create_value(fn, fn_type), val),
         type_factory.at_server(fn_type.result))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_broadcast(self, arg):
     return await self.create_value(
         await arg.compute(),
         type_factory.at_clients(arg.type_signature.member, all_equal=True))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _eval(self, arg, intrinsic, placement, all_equal):
     py_typecheck.check_type(arg.type_signature, computation_types.FunctionType)
     py_typecheck.check_type(arg.internal_representation, pb.Computation)
@@ -471,17 +474,17 @@ class ComposingExecutor(executor_base.Executor):
         fn_type.result, placement, all_equal=all_equal)
     return CompositeValue(result_vals, result_type)
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_eval_at_server(self, arg):
     return await self._eval(arg, intrinsic_defs.FEDERATED_EVAL_AT_SERVER,
                             placement_literals.SERVER, True)
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_eval_at_clients(self, arg):
     return await self._eval(arg, intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS,
                             placement_literals.CLIENTS, False)
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_map(self, arg):
     py_typecheck.check_type(arg.internal_representation,
                             anonymous_tuple.AnonymousTuple)
@@ -513,7 +516,7 @@ class ComposingExecutor(executor_base.Executor):
         *[_child_fn(c, v) for c, v in zip(self._child_executors, val)])
     return CompositeValue(result_vals, type_factory.at_clients(fn_type.result))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_mean(self, arg):
     member_type = arg.type_signature.member
     ones = await self.create_value(
@@ -536,7 +539,7 @@ class ComposingExecutor(executor_base.Executor):
     result = await self._parent_executor.create_call(multiply, multiply_arg)
     return CompositeValue(result, type_factory.at_server(member_type))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_sum(self, arg):
     type_utils.check_federated_type(
         arg.type_signature, placement=placement_literals.CLIENTS)
@@ -552,22 +555,22 @@ class ComposingExecutor(executor_base.Executor):
     aggregate_args = await self.create_tuple([arg, zero, plus, plus, identity])
     return await self._compute_intrinsic_federated_aggregate(aggregate_args)
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_value_at_clients(self, arg):
     return await self.create_value(
         await arg.compute(),
         type_factory.at_clients(arg.type_signature, all_equal=True))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_value_at_server(self, arg):
     return await self.create_value(await arg.compute(),
                                    type_factory.at_server(arg.type_signature))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_weighted_mean(self, arg):
     return await executor_utils.compute_federated_weighted_mean(self, arg)
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_zip_at_clients(self, arg):
     py_typecheck.check_type(arg.type_signature,
                             computation_types.NamedTupleType)
@@ -609,7 +612,7 @@ class ComposingExecutor(executor_base.Executor):
     ])
     return CompositeValue(result, result_type)
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_zip_at_server(self, arg):
     py_typecheck.check_type(arg.type_signature,
                             computation_types.NamedTupleType)
@@ -629,7 +632,7 @@ class ComposingExecutor(executor_base.Executor):
             computation_types.NamedTupleType(
                 [arg.type_signature[0].member, arg.type_signature[1].member])))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _compute_intrinsic_federated_secure_sum(self, arg):
     raise NotImplementedError('The secure sum intrinsic is not implemented.')
 

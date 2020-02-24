@@ -22,7 +22,7 @@ from absl import logging
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl.executors import executor_utils
+from tensorflow_federated.python.common_libs import tracing
 
 tf.compat.v1.enable_v2_behavior()
 
@@ -52,34 +52,28 @@ class DebugLoggingTest(absltest.TestCase):
     loop.run_until_complete(async_fn())
     self.assertEmpty(''.join(self.log.getvalue()))
 
-  def test_log_async_fails_non_async_fn(self):
-
-    with self.assertRaises(TypeError):
-
-      @executor_utils.log_async
-      def _():
-        return time.sleep(1)
+  def _test_debug_logging_with_sync_function(self, sync_fn, test_regex):
+    try:
+      logging.set_verbosity(1)
+      sync_fn()
+    finally:
+      logging.set_verbosity(0)
+    self.assertRegexMatch(''.join(self.log.getvalue()), [test_regex])
+    self.log.truncate(0)
+    self.assertEmpty(''.join(self.log.getvalue()))
 
   def test_logging_enter_exit(self):
 
-    @executor_utils.log_async
+    @tracing.trace
     async def foo():
       return await asyncio.sleep(1)
 
     self._test_debug_logging_with_async_function(
-        foo, 'Entering .*foo.*\nExiting .*foo.*')
-
-  def test_logging_provenance(self):
-
-    @executor_utils.log_async
-    async def foo():
-      return await asyncio.sleep(1)
-
-    self._test_debug_logging_with_async_function(foo, 'DebugLoggingTest')
+        foo, '.*Entering .*foo.*\n.*Exiting .*foo.*')
 
   def test_logging_timing_captured(self):
 
-    @executor_utils.log_async
+    @tracing.trace
     async def foo():
       return await asyncio.sleep(1)
 
@@ -87,7 +81,7 @@ class DebugLoggingTest(absltest.TestCase):
 
   def test_logging_timing_captures_value_around_async_call(self):
 
-    @executor_utils.log_async
+    @tracing.trace
     async def foo():
       return await asyncio.sleep(1)
 
@@ -95,12 +89,20 @@ class DebugLoggingTest(absltest.TestCase):
 
   def test_logging_non_blocking(self):
 
-    @executor_utils.log_async
+    @tracing.trace
     async def foo():
       return await asyncio.gather(
           asyncio.sleep(1), asyncio.sleep(1), asyncio.sleep(1))
 
     self._test_debug_logging_with_async_function(foo, '1.0')
+
+  def test_logging_blocking(self):
+
+    @tracing.trace
+    def foo():
+      time.sleep(1)
+
+    self._test_debug_logging_with_sync_function(foo, '1.0')
 
 
 if __name__ == '__main__':

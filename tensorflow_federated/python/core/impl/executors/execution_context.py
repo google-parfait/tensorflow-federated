@@ -22,6 +22,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import context_base
@@ -162,27 +163,41 @@ class ExecutionContext(context_base.Context):
   )
   def invoke(self, comp, arg):
 
-    @contextlib.contextmanager
-    def executor_closer(executor):
-      """Wraps an Executor into a closeable resource."""
-      try:
-        yield executor
-      finally:
-        executor.close()
+    with tracing.span('ExecutionContext', 'Invoke'):
 
-    if arg is not None:
-      py_typecheck.check_type(arg, ExecutionContextValue)
-      unwrapped_arg = _unwrap_execution_context_value(arg)
-      cardinalities = cardinalities_utils.infer_cardinalities(
-          unwrapped_arg, arg.type_signature)
-    else:
-      cardinalities = {}
+      @contextlib.contextmanager
+      def executor_closer(wrapped_executor):
+        """Wraps an Executor into a closeable resource."""
+        try:
+          yield wrapped_executor
+        finally:
+          wrapped_executor.close()
 
-    with executor_closer(
-        self._executor_factory.create_executor(cardinalities)) as executor:
-      py_typecheck.check_type(executor, executor_base.Executor)
       if arg is not None:
-        arg = asyncio.get_event_loop().run_until_complete(
-            _ingest(executor, unwrapped_arg, arg.type_signature))
-      return asyncio.get_event_loop().run_until_complete(
-          _invoke(executor, comp, arg))
+        py_typecheck.check_type(arg, ExecutionContextValue)
+        unwrapped_arg = _unwrap_execution_context_value(arg)
+        cardinalities = cardinalities_utils.infer_cardinalities(
+            unwrapped_arg, arg.type_signature)
+      else:
+        cardinalities = {}
+
+      with executor_closer(
+          self._executor_factory.create_executor(cardinalities)) as executor:
+        py_typecheck.check_type(executor, executor_base.Executor)
+
+        def get_event_loop():
+          new_loop = asyncio.new_event_loop()
+          new_loop.set_task_factory(
+              tracing.propagate_trace_context_task_factory)
+          return new_loop
+
+        event_loop = get_event_loop()
+
+        if arg is not None:
+          arg = event_loop.run_until_complete(
+              tracing.run_coroutine_in_ambient_trace_context(
+                  _ingest(executor, unwrapped_arg, arg.type_signature)))
+
+        return event_loop.run_until_complete(
+            tracing.run_coroutine_in_ambient_trace_context(
+                _invoke(executor, comp, arg)))

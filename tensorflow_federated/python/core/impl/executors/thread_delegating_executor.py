@@ -22,6 +22,7 @@ import weakref
 import absl.logging as logging
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_base
 
 
@@ -44,6 +45,8 @@ class ThreadDelegatingExecutor(executor_base.Executor):
     py_typecheck.check_type(target_executor, executor_base.Executor)
     self._target_executor = target_executor
     self._event_loop = asyncio.new_event_loop()
+    self._event_loop.set_task_factory(
+        tracing.propagate_trace_context_task_factory)
 
     def run_loop(loop):
       loop.run_forever()
@@ -71,18 +74,23 @@ class ThreadDelegatingExecutor(executor_base.Executor):
 
   def _delegate(self, coro):
     return asyncio.wrap_future(
-        asyncio.run_coroutine_threadsafe(coro, self._event_loop))
+        tracing.run_coroutine_threadsafe_in_task_trace_context(
+            coro, self._event_loop))
 
+  @tracing.trace
   async def create_value(self, value, type_spec=None):
     return await self._delegate(
         self._target_executor.create_value(value, type_spec))
 
+  @tracing.trace
   async def create_call(self, comp, arg=None):
     return await self._delegate(self._target_executor.create_call(comp, arg))
 
+  @tracing.trace
   async def create_tuple(self, elements):
     return await self._delegate(self._target_executor.create_tuple(elements))
 
+  @tracing.trace
   async def create_selection(self, source, index=None, name=None):
     return await self._delegate(
         self._target_executor.create_selection(source, index=index, name=name))

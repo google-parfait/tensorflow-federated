@@ -15,10 +15,6 @@
 """Utility functions for writing executors."""
 
 import asyncio
-import inspect
-import time
-
-from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -250,22 +246,3 @@ async def compute_federated_weighted_mean(executor, arg):
           await executor.create_value(divide_blk.proto,
                                       divide_blk.type_signature), divide_arg
       ]))))
-
-
-def log_async(func):
-  """Decorator to log async functions."""
-
-  if not inspect.iscoroutinefunction(func):
-    raise TypeError('The `log_async` decorator should only be used with '
-                    'coroutine functions.')
-
-  async def fn_to_return(*args, **kwargs):
-    start_time = time.time()
-    logging.debug('Entering %s.%s', func.__module__, func.__qualname__)
-    to_return = await func(*args, **kwargs)
-    logging.debug('Exiting %s.%s. Elapsed time %f', func.__module__,
-                  func.__qualname__,
-                  time.time() - start_time)
-    return to_return
-
-  return fn_to_return

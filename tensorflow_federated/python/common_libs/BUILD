@@ -85,3 +85,19 @@ py_test(
     srcs_version = "PY3",
     deps = [":test"],
 )
+
+py_library(
+    name = "tracing",
+    srcs = ["tracing.py"],
+    srcs_version = "PY3",
+    deps = [":py_typecheck"],
+)
+
+py_test(
+    name = "tracing_test",
+    size = "small",
+    srcs = ["tracing_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":tracing"],
+)

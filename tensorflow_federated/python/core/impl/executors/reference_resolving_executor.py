@@ -22,6 +22,7 @@ import cachetools
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import type_utils
@@ -29,7 +30,6 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 
 
@@ -216,7 +216,7 @@ class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
   def type_signature(self):
     return self._type_signature
 
-  @executor_utils.log_async
+  @tracing.trace
   async def compute(self):
     if isinstance(self._type_signature, computation_types.FunctionType):
       raise TypeError(
@@ -268,7 +268,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
   def close(self):
     self._target_executor.close()
 
-  @executor_utils.log_async
+  @tracing.trace
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
     if isinstance(value, computation_impl.ComputationImpl):
@@ -289,12 +289,12 @@ class ReferenceResolvingExecutor(executor_base.Executor):
                                              self._target_executor.create_value(
                                                  value, type_spec))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def create_tuple(self, elements):
     return ReferenceResolvingExecutorValue(
         anonymous_tuple.from_container(elements))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, ReferenceResolvingExecutorValue)
     py_typecheck.check_type(source.type_signature,
@@ -317,7 +317,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       else:
         raise ValueError('Either index or name must be present for selection.')
 
-  @executor_utils.log_async
+  @tracing.trace
   async def create_call(self, comp, arg=None):
     py_typecheck.check_type(comp, ReferenceResolvingExecutorValue)
     py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
@@ -350,7 +350,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
           'Unexpected type to ReferenceResolvingExecutor create_call: {}'
           .format(type(comp_repr)))
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _embed_value_in_target_exec(
       self, value: ReferenceResolvingExecutorValue
   ) -> executor_value_base.ExecutorValue:
@@ -405,7 +405,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       return await self._target_executor.create_value(value_repr.comp,
                                                       value.type_signature)
 
-  @executor_utils.log_async
+  @tracing.trace
   async def _evaluate(
       self,
       comp: pb.Computation,

@@ -15,7 +15,6 @@
 """A local proxy for a remote executor service hosted on a separate machine."""
 
 import asyncio
-import functools
 import itertools
 import queue
 import threading
@@ -28,11 +27,11 @@ from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import executor_service_utils
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 
 _STREAM_CLOSE_WAIT_SECONDS = 10
@@ -68,7 +67,7 @@ class RemoteValue(executor_value_base.ExecutorValue):
   def type_signature(self):
     return self._type_signature
 
-  @executor_utils.log_async
+  @tracing.trace(span=True)
   async def compute(self):
     return await self._executor._compute(self._value_ref)  # pylint: disable=protected-access
 
@@ -144,7 +143,7 @@ class _BidiStream:
 
     self._is_initialized = True
 
-  @executor_utils.log_async
+  @tracing.trace(span=True)
   async def send_request(self, request):
     """Send a request on the bidi stream."""
     self._lazy_init()
@@ -178,8 +177,15 @@ class _BidiStream:
 
 
 def _request(rpc_func, request):
-  wrapped_fn = _wrap_with_grpc_handling(functools.partial(rpc_func, request))
-  return wrapped_fn()
+  with tracing.task_trace_context():
+    try:
+      return rpc_func(request)
+    except grpc.RpcError as e:
+      if _is_retryable_grpc_error(e):
+        logging.info('Received retryable gRPC error: %s', e)
+        raise execution_context.RetryableError(e)
+      else:
+        raise e
 
 
 def _is_retryable_grpc_error(error):
@@ -198,33 +204,6 @@ def _is_retryable_grpc_error(error):
   }
   return (isinstance(error, grpc.RpcError) and
           error.code() not in non_retryable_errors)
-
-
-def _wrap_with_grpc_handling(func):
-  """Decorates a function with gRPC error handling functionality.
-
-  Specifically, gRPC errors that are determined to be retryable are rethrown as
-  RetryableErrors.
-
-  Args:
-    func: Function to decorate.
-
-  Returns:
-    Decorated function.
-  """
-
-  @functools.wraps(func)
-  def wrapped_fn():
-    try:
-      return func()
-    except grpc.RpcError as e:
-      if _is_retryable_grpc_error(e):
-        logging.info('Received retryable gRPC error: %s', e)
-        raise execution_context.RetryableError(e)
-      else:
-        raise e
-
-  return wrapped_fn
 
 
 class RemoteExecutor(executor_base.Executor):
@@ -292,10 +271,14 @@ class RemoteExecutor(executor_base.Executor):
       # Just start it as a task so that it runs at some point.
       asyncio.get_event_loop().create_task(send_request_fut)
 
-  @executor_utils.log_async
+  @tracing.trace(span=True)
   async def create_value(self, value, type_spec=None):
-    value_proto, type_spec = (
-        executor_service_utils.serialize_value(value, type_spec))
+
+    @tracing.trace
+    def serialize_value():
+      return executor_service_utils.serialize_value(value, type_spec)
+
+    value_proto, type_spec = serialize_value()
     create_value_request = executor_pb2.CreateValueRequest(value=value_proto)
     if not self._bidi_stream:
       response = _request(self._stub.CreateValue, create_value_request)
@@ -306,7 +289,7 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateValueResponse)
     return RemoteValue(response.value_ref, type_spec, self)
 
-  @executor_utils.log_async
+  @tracing.trace(span=True)
   async def create_call(self, comp, arg=None):
     py_typecheck.check_type(comp, RemoteValue)
     py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
@@ -324,7 +307,7 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateCallResponse)
     return RemoteValue(response.value_ref, comp.type_signature.result, self)
 
-  @executor_utils.log_async
+  @tracing.trace(span=True)
   async def create_tuple(self, elements):
     elem = anonymous_tuple.to_elements(anonymous_tuple.from_container(elements))
     proto_elem = []
@@ -345,7 +328,7 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateTupleResponse)
     return RemoteValue(response.value_ref, result_type, self)
 
-  @executor_utils.log_async
+  @tracing.trace(span=True)
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, RemoteValue)
     py_typecheck.check_type(source.type_signature,
@@ -368,7 +351,7 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(response, executor_pb2.CreateSelectionResponse)
     return RemoteValue(response.value_ref, result_type, self)
 
-  @executor_utils.log_async
+  @tracing.trace(span=True)
   async def _compute(self, value_ref):
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
     request = executor_pb2.ComputeRequest(value_ref=value_ref)
