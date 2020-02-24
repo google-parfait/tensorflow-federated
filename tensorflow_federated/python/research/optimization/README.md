@@ -60,16 +60,15 @@ communication rounds.
 Below we give a summary of the datasets, tasks, and models used in this
 directory.
 
-| Directory        | Dataset        | Model              | Task Summary      |
-| ---------------- | -------------- | ------------------ | ----------------- |
-| cifar100         | CIFAR-100      | ResNet-18 (with    | Image             |
-:                  :                : GroupNorm layers)  : classification    :
-| emnist           | EMNIST         | CNN (with dropout) | Digit recognition |
-| emnist_ae        | EMNIST         | Bottleneck network | Autoencoder       |
-| shakespeare      | Shakespeare    | RNN with 2 LSTM    | Next-character    |
-:                  :                : layers             : prediction        :
-| stackoverflow    | Stack Overflow | RNN with 1 LSTM    | Next-word         |
-:                  :                : layer              : prediction        :
-| stackoverflow_lr | Stack Overflow | Logistic           | Tag prediction    |
-:                  :                : regression         :                   :
-:                  :                : classifier         :                   :
+<!-- mdformat off(This table is sensitive to automatic formatting changes) -->
+
+| Directory        | Dataset        | Model                             | Task Summary              |
+|------------------|----------------|-----------------------------------|---------------------------|
+| cifar100         | CIFAR-100      | ResNet-18 (with GroupNorm layers) | Image classification      |
+| emnist           | EMNIST         | CNN (with dropout)                | Digit recognition         |
+| emnist_ae        | EMNIST         | Bottleneck network                | Autoencoder               |
+| shakespeare      | Shakespeare    | RNN with 2 LSTM layers            | Next-character prediction |
+| stackoverflow    | Stack Overflow | RNN with 1 LSTM layer             | Next-word prediction      |
+| stackoverflow_lr | Stack Overflow | Logistic regression classifier    | Tag prediction            |
+
+<!-- mdformat on -->
