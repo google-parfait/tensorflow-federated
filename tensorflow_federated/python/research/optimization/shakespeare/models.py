@@ -20,7 +20,8 @@ import tensorflow as tf
 
 
 def create_recurrent_model(vocab_size: int,
-                           sequence_length: int) -> tf.keras.Model:
+                           sequence_length: int,
+                           mask_zero: bool = True) -> tf.keras.Model:
   """Creates a RNN model using LSTM layers for Shakespeare language models.
 
   This replicates the model structure in the paper:
@@ -34,6 +35,7 @@ def create_recurrent_model(vocab_size: int,
     vocab_size: the size of the vocabulary, used as a dimension in the input
       embedding.
     sequence_length: the length of input sequences.
+    mask_zero: Whether to mask zero tokens in the input.
 
   Returns:
     An uncompiled `tf.keras.Model`.
@@ -44,7 +46,7 @@ def create_recurrent_model(vocab_size: int,
           input_dim=vocab_size,
           input_length=sequence_length,
           output_dim=8,
-          mask_zero=True))
+          mask_zero=mask_zero))
   lstm_layer_builder = functools.partial(
       tf.keras.layers.LSTM,
       units=256,

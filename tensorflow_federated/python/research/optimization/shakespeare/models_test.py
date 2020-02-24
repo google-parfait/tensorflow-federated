@@ -25,22 +25,23 @@ class ModelsTest(tf.test.TestCase):
 
   def test_run_simple_model(self):
     vocab_size = 6
-    model = models.create_recurrent_model(vocab_size, sequence_length=5)
-    model.compile(
+    mask_model = models.create_recurrent_model(vocab_size, sequence_length=5)
+    mask_model.compile(
         optimizer='sgd',
         loss='sparse_categorical_crossentropy',
         metrics=[keras_metrics.FlattenedCategoricalAccuracy(vocab_size)])
 
-    metrics = model.test_on_batch(
-        x=tf.constant([[1, 2, 3, 4, 5], [1, 2, 3, 4, 5]], dtype=tf.int64),
-        y=tf.constant([[2, 3, 4, 5, 0], [2, 3, 4, 5, 0]], dtype=tf.int64))
-    self.assertAllClose(
-        metrics,
-        [
-            8.886,  # loss
-            0.2,  # accuracy
-        ],
-        atol=1e-3)
+    no_mask_model = models.create_recurrent_model(
+        vocab_size, sequence_length=5, mask_zero=False)
+    no_mask_model.compile(
+        optimizer='sgd',
+        loss='sparse_categorical_crossentropy',
+        metrics=[keras_metrics.FlattenedCategoricalAccuracy(vocab_size)])
+
+    constant_test_weights = tf.nest.map_structure(tf.ones_like,
+                                                  mask_model.weights)
+    mask_model.set_weights(constant_test_weights)
+    no_mask_model.set_weights(constant_test_weights)
 
     # `tf.data.Dataset.from_tensor_slices` aggresively coalesces the input into
     # a single tensor, but we want a tuple of two tensors per example, so we
@@ -52,8 +53,10 @@ class ModelsTest(tf.test.TestCase):
         ([0, 1, 2, 3, 4], [1, 2, 3, 4, 0]),
         ([2, 3, 4, 0, 1], [3, 4, 0, 1, 2]),
     ]).map(split_to_tuple).batch(2)
-    metrics = model.evaluate(data)
-    self.assertAllClose(metrics, [5.085, 0.125], atol=1e-3)
+    mask_metrics = mask_model.evaluate(data)
+    no_mask_metrics = no_mask_model.evaluate(data)
+
+    self.assertNotAllClose(mask_metrics, no_mask_metrics, atol=1e-3)
 
 
 if __name__ == '__main__':
