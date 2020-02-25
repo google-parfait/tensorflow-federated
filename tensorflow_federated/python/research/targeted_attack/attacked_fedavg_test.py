@@ -203,6 +203,8 @@ class ClientAttackTest(tf.test.TestCase):
 
   def test_attack(self):
     """Test whether an attacker is doing the right attack."""
+    self.skipTest('b/150215351 This test became flaky after TF change which '
+                  'removed variable reads from control_outputs.')
     client_data = create_client_data()
     batch = client_data()
     train_data = [batch]
