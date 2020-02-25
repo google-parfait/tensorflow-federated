@@ -23,7 +23,7 @@ types of logic.
     encapsulate logic that runs in a single location (e.g., on clients or on a
     server). This code is typically written and tested without any `tff.*`
     references, and can be re-used outside of TFF. For example, the
-    [client training loop in Federated Averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L99)
+    [client training loop in Federated Averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg_tf.py#L204-L242)
     is implemented at this level.
 
 1.  TensorFlow Federated orchestration logic, which binds together the
@@ -31,12 +31,12 @@ types of logic.
     and then orchestrating them using abstractions like
     `tff.federated_broadcast` and `tff.federated_mean` inside a
     `tff.federated_computation`. See, for example, this
-    [orchestration for Federated Averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L200).
+    [orchestration for Federated Averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg_tff.py#L111-L139).
 
 1.  An outer driver script that simulates the control logic of a production FL
     system, selecting simulated clients from a dataset and then executing
     federated comptuations defined in 2. on those clients. For example,
-    [a Federated EMNIST experiment driver](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/emnist_fedavg.py#L161-L171).
+    [a Federated EMNIST experiment driver](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/emnist_fedavg_main.py#L139).
 
 ## Federated learning datasets
 
@@ -87,41 +87,22 @@ The high-performance TFF runtime is enabled by default.
 
 ### Federated optimization algorithms
 
-<!-- TODO(b/144510813): Change references to the appropriate parts of the new simple fedavg once it is done. -->
-
 Research on federated optimization algorithms can be done in different ways in
 TFF, depending on the desired level of customization.
 
-A minimal implementation of the
+A minimal stand-alone implementation of the
 [Federated Averaging](https://arxiv.org/abs/1602.05629) algorithm is provided
-[here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py),
-along with an example
-[federated EMNIST experiment](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/emnist_fedavg.py).
-The training example can easily be adapted for simple experiment changes:
-
-*   Custom client optimizers can easily be experimented with by passing them
-    directly to the federated averaging algorithm, as in the
-    [federated EMNIST experiment](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/emnist_fedavg.py#L137-L138).
-    Custom server optimizers can be experimented with in the
-    [same way](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/emnist_fedavg.py#L133-L134).
-*   Custom models and loss functions can be immediately used by implementing
-    them using [Keras](https://www.tensorflow.org/guide/keras), and simply
-    wrapping them as a `tff.learning.Model`, as in the
-    [EMNIST training example](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/emnist_fedavg.py#L119-L130).
-
-To implement more complicated federated optimization algorithms, you may need
-customize your federated training loop in order to gain more control over the
-orchestration and optimization logic of the experiment. Again,
-[`simple_fedavg`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py)
-may be a good place to start. For example, you could change the
-[client update](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L98-L134)
-function to implement a custom local training procedure, modify the
-`tff.federated_computation` that controls the
-[orchestration](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L198-L227)
-to change what is broadcast from the server to client and what is aggregated
-back, and alter
-[the server update](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg.py#L65-L95)
-to change how the server model is learned from the client updates.
+[here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg).
+The code includes
+[TF functions](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg_tf.py)
+for local computation,
+[TFF computations](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg_tff.py)
+for orchestration, and a
+[driver script](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/emnist_fedavg_main.py)
+on the EMNIST dataset as an example. These files can easily be adapted for
+customized applciations and algorithmic changes following detailed instructions
+in the
+[README](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/README.md).
 
 ### Model and update compression
 
