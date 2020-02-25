@@ -35,27 +35,31 @@ def build_personalization_eval(model_fn,
   `personalize_fn_dict`. Evaluation metrics from at most `max_num_samples`
   participating clients are collected to the SERVER.
 
+  NOTE: The functions in `personalize_fn_dict` and `baseline_evaluate_fn` are
+  expected to take as input *unbatched* datasets, and are responsible for
+  applying batching, if any, to the provided input datasets.
+
   Args:
     model_fn: A no-argument function that returns a `tff.learning.Model`.
     personalize_fn_dict: An `OrderedDict` that maps a `string` (representing a
       strategy name) to a no-argument function that returns a `tf.function`.
       Each `tf.function` represents a personalization strategy: it accepts a
-      `tff.learning.Model` (with weights already initialized to the provided
-      model weights when users invoke the returned TFF computation), a training
-      `tf.dataset.Dataset`, a test `tf.dataset.Dataset`, and an arbitrary
-      context object (which is used to hold any extra information that a
-      personalization strategy may use), trains a personalized model, and
-      returns the evaluation metrics. The evaluation metrics are usually
-      represented as an `OrderedDict` (or a nested `OrderedDict`) of `string`
-      metric names to scalar `tf.Tensor`s.
+      `tff.learning.Model` (with weights already initialized to the given model
+      weights when users invoke the returned TFF computation), an unbatched
+      `tf.data.Dataset` for train, an unbatched `tf.data.Dataset` for test, and
+      an arbitrary context object (which is used to hold any extra information
+      that a personalization strategy may use), trains a personalized model, and
+      returns the evaluation metrics. The evaluation metrics are represented as
+      an `OrderedDict` (or a nested `OrderedDict`) of `string` metric names to
+      scalar `tf.Tensor`s.
     baseline_evaluate_fn: A `tf.function` that accepts a `tff.learning.Model`
       (with weights already initialized to the provided model weights when users
-      invoke the returned TFF computation), and a `tf.dataset.Dataset`,
+      invoke the returned TFF computation), and an unbatched `tf.data.Dataset`,
       evaluates the model on the dataset, and returns the evaluation metrics.
-      The evaluation metrics are usually represented as an `OrderedDict` (or a
-      nested `OrderedDict`) of `string` metric names to scalar `tf.Tensor`s.
-      This function is *only* used to compute the baseline metrics of the
-      initial model.
+      The evaluation metrics are represented as an `OrderedDict` (or a nested
+      `OrderedDict`) of `string` metric names to scalar `tf.Tensor`s. This
+      function is *only* used to compute the baseline metrics of the initial
+      model.
     max_num_samples: A positive `int` specifying the maximum number of metric
       samples to collect in a round. Each sample contains the personalization
       metrics from a single client. If the number of participating clients in a
@@ -68,14 +72,14 @@ def build_personalization_eval(model_fn,
 
   Returns:
     A federated `tff.Computation` that maps
-    < model_weights@SERVER, input@CLIENTS > -> personalization_metrics@SERVER,
+    <model_weights@SERVER, input@CLIENTS> -> personalization_metrics@SERVER,
     where:
     - model_weights is a `tff.learning.framework.ModelWeights`.
     - each client's input is an `OrderedDict` of at least two keys `train_data`
-      and `test_data`, and each key is mapped to a `tf.dataset.Dataset`. If
-      context is used in `personalize_fn_dict`, then client input has a third
-      key `context` that is mapped to a object whose `tff.Type` is provided by
-      the `context_tff_type` argument.
+      and `test_data`; each key is mapped to an unbatched `tf.data.Dataset`. If
+      extra context is used in `personalize_fn_dict`, then client input has a
+      third key `context` that is mapped to a object whose `tff.Type` is
+      provided by the `context_tff_type` argument.
     - personazliation_metrics is an `OrderedDict` that maps a key
       'baseline_metrics' to the evaluation metrics of the initial model
       (computed by `baseline_evaluate_fn`), and maps keys (strategy names) in
@@ -99,12 +103,16 @@ def build_personalization_eval(model_fn,
     py_typecheck.check_callable(model_fn)
     model = model_utils.enhance(model_fn())
     model_weights_type = tff.framework.type_from_tensors(model.weights)
-    batch_type = tff.to_type(model.input_spec)
+    batch_type = model.input_spec
 
-  # Define the `tff.Type` of each client's input.
+  # Define the `tff.Type` of each client's input. Since batching (as well as
+  # other preprocessing of datasets) is done within each personalization
+  # strategy (i.e., by functions in `personalize_fn_dict`), the client-side
+  # input should contain unbatched elements.
+  element_type = _remove_batch_dim(batch_type)
   client_input_type = collections.OrderedDict([
-      ('train_data', tff.SequenceType(batch_type)),
-      ('test_data', tff.SequenceType(batch_type))
+      ('train_data', tff.SequenceType(element_type)),
+      ('test_data', tff.SequenceType(element_type))
   ])
   if context_tff_type is not None:
     py_typecheck.check_type(context_tff_type, tff.Type)
@@ -141,6 +149,33 @@ def build_personalization_eval(model_fn,
     return results
 
   return personalization_eval
+
+
+def _remove_batch_dim(spec):
+  """Creates a nested `tf.TensorSpec` by removing the batch dimension of `spec`.
+
+  Args:
+    spec: A `tf.TensorSpec` or a nested `tf.TensorSpec`, with the first
+      dimension being the batch dimension.
+
+  Returns:
+    A `tf.TensorSpec` or a nested `tf.TensorSpec` that has the same structure of
+    the input `spec` object, with the batch dimension removed.
+
+  Raises:
+    TypeError: If the argument has the wrong type.
+    ValueError: If the `tf.TensorSpec` does not have the first dimension.
+  """
+
+  def _remove_first_dim_for_tensorspec(ts):
+    """Return a new `tf.TensorSpec` after removing the first dimension."""
+    py_typecheck.check_type(ts, tf.TensorSpec)
+    if (ts.shape.rank is not None) and (ts.shape.rank >= 1):
+      return tf.TensorSpec(shape=ts.shape[1:], dtype=ts.dtype, name=ts.name)
+    else:
+      raise ValueError('Provided shape must have rank 1 or higher.')
+
+  return tf.nest.map_structure(_remove_first_dim_for_tensorspec, spec)
 
 
 @tf.function

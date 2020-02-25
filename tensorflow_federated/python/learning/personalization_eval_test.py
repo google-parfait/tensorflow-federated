@@ -29,7 +29,7 @@ tf.compat.v1.enable_v2_behavior()
 
 
 @tf.function
-def _evaluate_fn(model, dataset):
+def _evaluate_fn(model, dataset, batch_size=1):
   """Evaluates a `tff.learning.Model` on the given dataset."""
   # Reset the local variables so that the returned metrics are computed using
   # the given data. Similar to the `reset_states` method of `tf.metrics.Metric`.
@@ -45,7 +45,8 @@ def _evaluate_fn(model, dataset):
     return dummy_state
 
   # Evaluate on the dataset.
-  dataset.reduce(initial_state=0, reduce_func=eval_fn)
+  batched_dataset = dataset.batch(batch_size)
+  batched_dataset.reduce(initial_state=0, reduce_func=eval_fn)
 
   # Obtain the metrics.
   results = collections.OrderedDict()
@@ -61,7 +62,7 @@ def _evaluate_fn(model, dataset):
   return results
 
 
-def _build_personalize_fn(optimizer_fn):
+def _build_personalize_fn(optimizer_fn, train_batch_size, test_batch_size):
   """Builds a personalization function given an optimizer constructor."""
   optimizer = optimizer_fn()
 
@@ -81,7 +82,9 @@ def _build_personalize_fn(optimizer_fn):
       return num_examples_sum + output.num_examples
 
     # Train a personalized model.
-    num_examples_sum = train_data.reduce(initial_state=0, reduce_func=train_fn)
+    batched_train_data = train_data.batch(train_batch_size)
+    num_examples_sum = batched_train_data.reduce(
+        initial_state=0, reduce_func=train_fn)
 
     # For test coverage, this example uses an optional `int32` as `context`.
     if context is not None:
@@ -89,7 +92,7 @@ def _build_personalize_fn(optimizer_fn):
 
     results = collections.OrderedDict()
     results['num_examples'] = num_examples_sum
-    results['test_outputs'] = _evaluate_fn(model, test_data)
+    results['test_outputs'] = _evaluate_fn(model, test_data, test_batch_size)
     return results
 
   return personalize_fn
@@ -99,29 +102,30 @@ def _create_p13n_fn_dict(learning_rate):
   """Creates a dictionary containing two personalization strategies."""
   p13n_fn_dict = collections.OrderedDict()
 
-  adam_opt_fn = lambda: tf.keras.optimizers.Adam(learning_rate=learning_rate)
-  p13n_fn_dict['adam_opt'] = lambda: _build_personalize_fn(adam_opt_fn)
-
-  sgd_opt_fn = lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
-  p13n_fn_dict['sgd_opt'] = lambda: _build_personalize_fn(sgd_opt_fn)
+  opt_fn = lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
+  # The two personalization strategies use different training batch sizes.
+  p13n_fn_dict['batch_size_1'] = lambda: _build_personalize_fn(opt_fn, 1, 3)
+  p13n_fn_dict['batch_size_2'] = lambda: _build_personalize_fn(opt_fn, 2, 3)
 
   return p13n_fn_dict
 
 
-def _create_dataset(batch_size):
-  """Constructs a batched dataset with three datapoints."""
-  ds = collections.OrderedDict([('x', [[-1.0, -1.0], [1.0, 1.0], [1.0, 1.0]]),
-                                ('y', [[1.0], [1.0], [1.0]])])
-  # Note: batching is needed here as it creates the required batch dimension.
-  # The batch size can be re-set (by `unbatch()` first) in personalization.
-  return tf.data.Dataset.from_tensor_slices(ds).batch(batch_size)
+def _create_dataset(scale):
+  """Constructs a dataset with three datapoints."""
+  x = np.array([[-1.0, -1.0], [1.0, 1.0], [1.0, 1.0]]) * scale
+  y = np.array([[1.0], [1.0], [1.0]]) * scale
+  ds = collections.OrderedDict([('x', x.astype(np.float32)),
+                                ('y', y.astype(np.float32))])
+  # Note: batching is not needed here as the preprocessing of dataset is done
+  # inside the personalization function.
+  return tf.data.Dataset.from_tensor_slices(ds)
 
 
-def _create_client_input(train_batch_size, test_batch_size, context=None):
+def _create_client_input(train_scale, test_scale, context=None):
   """Constructs client datasets for personalization."""
   client_input = collections.OrderedDict()
-  client_input['train_data'] = _create_dataset(train_batch_size)
-  client_input['test_data'] = _create_dataset(test_batch_size)
+  client_input['train_data'] = _create_dataset(train_scale)
+  client_input['test_data'] = _create_dataset(test_scale)
   if context is not None:
     client_input['context'] = context
   return client_input
@@ -205,52 +209,57 @@ class PersonalizationEvalTest(test.TestCase):
     federated_p13n_eval = p13n_eval.build_personalization_eval(
         model_fn, p13n_fn_dict, _evaluate_fn)
 
-    # Perform p13n eval on two clients with different batch sizes.
-    results = federated_p13n_eval(
-        zero_model_weights,
-        [_create_client_input(1, 1),
-         _create_client_input(2, 3)])
+    # Perform p13n eval on two clients: their train data are equivalent, but the
+    # test data have different scales.
+    results = federated_p13n_eval(zero_model_weights, [
+        _create_client_input(train_scale=1.0, test_scale=1.0),
+        _create_client_input(train_scale=1.0, test_scale=2.0)
+    ])
     results = results._asdict(recursive=True)
 
     # Check if the baseline metrics are correct.
     baseline_metrics = results['baseline_metrics']
-    # Average loss is 0.5 * (1 + 1 + 1)/3 = 0.5.
-    self.assertAllEqual(baseline_metrics['loss'], [0.5, 0.5])
     # Number of test examples is 3 for both clients.
     self.assertAllEqual(baseline_metrics['num_examples'], [3, 3])
-    # Number of test batches is 3 and 1.
+    # Number of test batches is 3 for both clients, because the function that
+    # evaluates the baseline metrics `_evaluate_fn` uses a default batch size 1.
+    self.assertAllEqual(sorted(baseline_metrics['num_batches']), [3, 3])
+    # The initial weights are all zeros. The average loss can be computed as:
+    # Client 1, 0.5*(1 + 1 + 1)/3 = 0.5; Client 2, 0.5*(4 + 4 + 4)/3 = 2.0.
     # Note: the order is not preserved due to `federated_sample`.
-    self.assertAllEqual(sorted(baseline_metrics['num_batches']), [1, 3])
-    if baseline_metrics['num_batches'][0] == 3:
+    self.assertAllEqual(sorted(baseline_metrics['loss']), [0.5, 2.0])
+    if baseline_metrics['loss'][0] == 0.5:
       client_1_idx, client_2_idx = 0, 1
     else:
       client_1_idx, client_2_idx = 1, 0
 
-    # Check if the metrics of `sgd_opt` are correct.
-    sgd_metrics = results['sgd_opt']
+    # Check if the metrics of `batch_size_1` are correct.
+    bs1_metrics = results['batch_size_1']
     # Number of training examples is 3 for both clients.
-    self.assertAllEqual(sgd_metrics['num_examples'], [3, 3])
-    sgd_test_outputs = sgd_metrics['test_outputs']
+    self.assertAllEqual(bs1_metrics['num_examples'], [3, 3])
+    bs1_test_outputs = bs1_metrics['test_outputs']
     # Number of test examples is also 3 for both clients.
-    self.assertAllEqual(sgd_test_outputs['num_examples'], [3, 3])
-    # Client 1's weights become [-3, -3, -1], which gives average loss 24.
-    # Client 2's weights become [0, 0, 1], which gives average loss 0.
-    self.assertAlmostEqual(sgd_test_outputs['loss'][client_1_idx], 24.0)
-    self.assertAlmostEqual(sgd_test_outputs['loss'][client_2_idx], 0.0)
-    # Number of test batches should have the same order as baseline metrics.
-    self.assertAllEqual(sgd_test_outputs['num_batches'],
-                        baseline_metrics['num_batches'])
+    self.assertAllEqual(bs1_test_outputs['num_examples'], [3, 3])
+    # Number of test batches is 1 for both clients since test batch size is 3.
+    self.assertAllEqual(bs1_test_outputs['num_batches'], [1, 1])
+    # Both clients's weights become [-3, -3, -1] after training, which gives an
+    # average loss 24 for Client 1 and 88.5 for Client 2.
+    self.assertAlmostEqual(bs1_test_outputs['loss'][client_1_idx], 24.0)
+    self.assertAlmostEqual(bs1_test_outputs['loss'][client_2_idx], 88.5)
 
-    # Check if the metrics of `adam_opt` are correct.
-    adam_metrics = results['adam_opt']
+    # Check if the metrics of `batch_size_2` are correct.
+    bs2_metrics = results['batch_size_2']
     # Number of training examples is 3 for both clients.
-    self.assertAllEqual(adam_metrics['num_examples'], [3, 3])
-    adam_test_outputs = adam_metrics['test_outputs']
+    self.assertAllEqual(bs2_metrics['num_examples'], [3, 3])
+    bs2_test_outputs = bs2_metrics['test_outputs']
     # Number of test examples is also 3 for both clients.
-    self.assertAllEqual(adam_test_outputs['num_examples'], [3, 3])
-    # Number of test batches should have the same order as baseline metrics.
-    self.assertAllEqual(adam_test_outputs['num_batches'],
-                        baseline_metrics['num_batches'])
+    self.assertAllEqual(bs2_test_outputs['num_examples'], [3, 3])
+    # Number of test batches is 1 for both clients since test batch size is 3.
+    self.assertAllEqual(bs2_test_outputs['num_batches'], [1, 1])
+    # Both clients' weights become [0, 0, 1] after training, which gives an
+    # average loss 0 for Client 1 and 0.5 for Client 2.
+    self.assertAlmostEqual(bs2_test_outputs['loss'][client_1_idx], 0.0)
+    self.assertAlmostEqual(bs2_test_outputs['loss'][client_2_idx], 0.5)
 
   def test_success_with_model_constructed_from_keras(self):
 
@@ -271,31 +280,57 @@ class PersonalizationEvalTest(test.TestCase):
     federated_p13n_eval = p13n_eval.build_personalization_eval(
         model_fn, p13n_fn_dict, _evaluate_fn)
 
-    # Perform p13n eval on two clients with different batch sizes.
-    results = federated_p13n_eval(
-        zero_model_weights,
-        [_create_client_input(1, 1),
-         _create_client_input(2, 3)])
+    # Perform p13n eval on two clients: their train data are equivalent, but the
+    # test data have different scales.
+    results = federated_p13n_eval(zero_model_weights, [
+        _create_client_input(train_scale=1.0, test_scale=1.0),
+        _create_client_input(train_scale=1.0, test_scale=2.0)
+    ])
     results = results._asdict(recursive=True)
 
     # Check if the baseline metrics are correct.
     baseline_metrics = results['baseline_metrics']
-    # MeanSquredError(MSE) is (1 + 1 + 1)/3 = 1.0.
-    self.assertAllEqual(baseline_metrics['loss'], [1.0, 1.0])
+    # The initial weights are all zeros. The MeanSquredError(MSE) is:
+    # Client 1, (1 + 1 + 1)/3 = 1.0; Client 2, (4 + 4 + 4)/3 = 4.0.
+    # Note: the order is not preserved due to `federated_sample`.
+    self.assertAllEqual(sorted(baseline_metrics['loss']), [1.0, 4.0])
 
-    # Check if the metrics of `sgd_opt` are correct.
-    sgd_metrics = results['sgd_opt']
+    # Check if the metrics of `batch_size_1` are correct.
+    bs1_metrics = results['batch_size_1']
     # Number of training examples is 3 for both clients.
-    self.assertAllEqual(sgd_metrics['num_examples'], [3, 3])
-    sgd_test_outputs = sgd_metrics['test_outputs']
-    # Client 1's weights become [-3, -3, -1], which gives MSE 48.
-    # Client 2's weights become [0, 0, 1], which gives MSE 0.
-    self.assertAlmostEqual(sorted(sgd_test_outputs['loss']), [0.0, 48.0])
+    self.assertAllEqual(bs1_metrics['num_examples'], [3, 3])
+    bs1_test_outputs = bs1_metrics['test_outputs']
+    # Both clients' weights become [-3, -3, -1] after training, which gives MSE
+    # 48 for Client 1 and 177 for Client 2.
+    self.assertAlmostEqual(sorted(bs1_test_outputs['loss']), [48.0, 177.0])
 
-    # Check if the metrics of `adam_opt` are correct.
-    adam_metrics = results['adam_opt']
+    # Check if the metrics of `batch_size_2` are correct.
+    bs2_metrics = results['batch_size_2']
     # Number of training examples is 3 for both clients.
-    self.assertAllEqual(adam_metrics['num_examples'], [3, 3])
+    self.assertAllEqual(bs2_metrics['num_examples'], [3, 3])
+    bs2_test_outputs = bs2_metrics['test_outputs']
+    # Both clients' weights become [0, 0, 1] after training, which gives MSE 0
+    # for Client 1 and 1.0 for Client 2.
+    self.assertAlmostEqual(sorted(bs2_test_outputs['loss']), [0.0, 1.0])
+
+  def test_failure_with_batched_datasets(self):
+
+    def model_fn():
+      return model_examples.LinearRegression(feature_dim=2)
+
+    zero_model_weights = _create_zero_model_weights(model_fn)
+    p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
+
+    federated_p13n_eval = p13n_eval.build_personalization_eval(
+        model_fn, p13n_fn_dict, _evaluate_fn)
+
+    with self.assertRaises(TypeError):
+      # client_input should not have batched datasets.
+      bad_client_input = collections.OrderedDict([
+          ('train_data', _create_dataset(scale=1.0).batch(1)),
+          ('test_data', _create_dataset(scale=1.0).batch(1))
+      ])
+      federated_p13n_eval(zero_model_weights, [bad_client_input])
 
   def test_failure_with_invalid_context_type(self):
 
@@ -323,8 +358,8 @@ class PersonalizationEvalTest(test.TestCase):
           _evaluate_fn,
           context_tff_type=context_tff_type)
       federated_p13n_eval(zero_model_weights, [
-          _create_client_input(1, 1, context=None),
-          _create_client_input(2, 3, context=None)
+          _create_client_input(train_scale=1.0, test_scale=1.0, context=None),
+          _create_client_input(train_scale=1.0, test_scale=2.0, context=None)
       ])
 
   def test_success_with_valid_context(self):
@@ -342,20 +377,20 @@ class PersonalizationEvalTest(test.TestCase):
 
     # Perform p13n eval on two clients with different `context` values.
     results = federated_p13n_eval(zero_model_weights, [
-        _create_client_input(1, 1, context=2),
-        _create_client_input(2, 3, context=5)
+        _create_client_input(train_scale=1.0, test_scale=1.0, context=2),
+        _create_client_input(train_scale=1.0, test_scale=2.0, context=5)
     ])
     results = results._asdict(recursive=True)
 
-    sgd_metrics = results['sgd_opt']
-    adam_metrics = results['adam_opt']
+    bs1_metrics = results['batch_size_1']
+    bs2_metrics = results['batch_size_2']
 
     # Number of training examples is `3 + context` for both clients.
     # Note: the order is not preserved due to `federated_sample`, but the order
     # should be consistent across different personalization strategies.
-    self.assertAllEqual(sorted(sgd_metrics['num_examples']), [5, 8])
-    self.assertAllEqual(sgd_metrics['num_examples'],
-                        adam_metrics['num_examples'])
+    self.assertAllEqual(sorted(bs1_metrics['num_examples']), [5, 8])
+    self.assertAllEqual(bs1_metrics['num_examples'],
+                        bs2_metrics['num_examples'])
 
   def test_failure_with_invalid_sample_size(self):
 
@@ -387,17 +422,17 @@ class PersonalizationEvalTest(test.TestCase):
     federated_p13n_eval = p13n_eval.build_personalization_eval(
         model_fn, p13n_fn_dict, _evaluate_fn, max_num_samples=1)
 
-    # Perform p13n eval on two clients with different batch sizes.
-    results = federated_p13n_eval(
-        zero_model_weights,
-        [_create_client_input(1, 1),
-         _create_client_input(2, 3)])
+    # Perform p13n eval on two clients.
+    results = federated_p13n_eval(zero_model_weights, [
+        _create_client_input(train_scale=1.0, test_scale=1.0),
+        _create_client_input(train_scale=1.0, test_scale=2.0)
+    ])
     results = results._asdict(recursive=True)
 
     # The results should only contain metrics from one client.
     self.assertAllEqual(len(results['baseline_metrics']['loss']), 1)
-    self.assertAllEqual(len(results['sgd_opt']['test_outputs']['loss']), 1)
-    self.assertAllEqual(len(results['adam_opt']['test_outputs']['loss']), 1)
+    self.assertAllEqual(len(results['batch_size_1']['test_outputs']['loss']), 1)
+    self.assertAllEqual(len(results['batch_size_2']['test_outputs']['loss']), 1)
 
 
 if __name__ == '__main__':
