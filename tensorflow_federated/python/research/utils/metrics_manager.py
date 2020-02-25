@@ -163,16 +163,17 @@ class ScalarMetricsManager():
 
     Raises:
       RuntimeError: If metrics do not exist (none loaded during construction '
-        nor recorded via `update_metrics()`.
+        nor recorded via `update_metrics()` and `last_valid_round_num` is not
+        zero.
       ValueError: If `last_valid_round_num` is negative.
-      ValueError: If metrics do not exist yet but a non-default
-        `last_valid_round_num` value is provided.
     """
-    if self._latest_round_num is None:
-      raise RuntimeError('Metrics do not exist yet.')
     if last_valid_round_num < 0:
       raise ValueError('Attempting to clear metrics after round '
                        f'{last_valid_round_num}, which is negative.')
+    if self._latest_round_num is None:
+      if last_valid_round_num == 0:
+        return
+      raise RuntimeError('Metrics do not exist yet.')
     self._metrics = self._metrics.drop(
         self._metrics[self._metrics.round_num > last_valid_round_num].index)
     utils_impl.atomic_write_to_csv(self._metrics, self._metrics_filename)

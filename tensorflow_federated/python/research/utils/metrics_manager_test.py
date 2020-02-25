@@ -122,8 +122,12 @@ class ScalarMetricsManagerTest(tf.test.TestCase):
   def test_clear_rounds_after_raises_runtime_error_if_no_metrics(self):
     metrics_mngr = metrics_manager.ScalarMetricsManager(self.get_temp_dir())
 
+    # Clear is allowed with no metrics if no rounds have yet completed.
+    metrics_mngr.clear_rounds_after(last_valid_round_num=0)
+
     with self.assertRaises(RuntimeError):
-      metrics_mngr.clear_rounds_after(last_valid_round_num=0)
+      # Raise exception with no metrics if no rounds have yet completed.
+      metrics_mngr.clear_rounds_after(last_valid_round_num=1)
 
   def test_clear_rounds_after_raises_value_error_if_round_num_is_negative(self):
     metrics_mngr = metrics_manager.ScalarMetricsManager(self.get_temp_dir())
