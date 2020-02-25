@@ -64,11 +64,11 @@ directory.
 
 | Directory        | Dataset        | Model                             | Task Summary              |
 |------------------|----------------|-----------------------------------|---------------------------|
-| cifar100         | CIFAR-100      | ResNet-18 (with GroupNorm layers) | Image classification      |
-| emnist           | EMNIST         | CNN (with dropout)                | Digit recognition         |
-| emnist_ae        | EMNIST         | Bottleneck network                | Autoencoder               |
-| shakespeare      | Shakespeare    | RNN with 2 LSTM layers            | Next-character prediction |
-| stackoverflow    | Stack Overflow | RNN with 1 LSTM layer             | Next-word prediction      |
-| stackoverflow_lr | Stack Overflow | Logistic regression classifier    | Tag prediction            |
+| cifar100         | [CIFAR-100](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/cifar100/load_data)      | ResNet-18 (with GroupNorm layers) | Image classification      |
+| emnist           | [EMNIST](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/emnist/load_data)         | CNN (with dropout)                | Digit recognition         |
+| emnist_ae        | [EMNIST](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/emnist/load_data)         | Bottleneck network                | Autoencoder               |
+| shakespeare      | [Shakespeare](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/shakespeare/load_data)    | RNN with 2 LSTM layers            | Next-character prediction |
+| stackoverflow    | [Stack Overflow](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/stackoverflow/load_data) | RNN with 1 LSTM layer             | Next-word prediction      |
+| stackoverflow_lr | [Stack Overflow](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/stackoverflow/load_data) | Logistic regression classifier    | Tag prediction            |
 
 <!-- mdformat on -->
