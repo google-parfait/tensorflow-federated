@@ -1,16 +1,22 @@
-package(default_visibility = [
-    "//tensorflow_federated/python/core/api:__subpackages__",
-    "//tensorflow_federated/python/core/backends:__subpackages__",
-    "//tensorflow_federated/python/core/framework:__subpackages__",
-    "//tensorflow_federated/python/core/impl/compiler:__subpackages__",
-    "//tensorflow_federated/python/core/impl/executors:__subpackages__",
-    "//tensorflow_federated/python/core/impl/utils:__subpackages__",
-    "//tensorflow_federated/python/core/impl/wrappers:__subpackages__",
-    "//tensorflow_federated/python/core/utils:__subpackages__",
-    # TODO(b/143772942): This package is temporary and can be removed once all
-    # the appropriate  modules have been moved out of the `impl` package.
-    "//tensorflow_federated/python/core/impl:__pkg__",
-])
+package_group(
+    name = "default_visibility",
+    includes = ["//tensorflow_federated/python/core/impl:core_visibility"],
+    packages = [
+        # Subpackages
+        "//tensorflow_federated/python/core/impl/utils/...",
+
+        # Impl Dependencies
+        "//tensorflow_federated/python/core/impl/compiler/...",
+        "//tensorflow_federated/python/core/impl/executors/...",
+        "//tensorflow_federated/python/core/impl/wrappers/...",
+
+        # TODO(b/143772942): This package is temporary and can be removed once all
+        # the appropriate  modules have been moved out of the `impl` package.
+        "//tensorflow_federated/python/core/impl",
+    ],
+)
+
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 
