@@ -38,7 +38,7 @@ def _hash_proto(comp: pb.Computation) -> int:
   return hash(comp.SerializeToString())
 
 
-class _UnboundRefChecker():
+class _UnboundRefChecker:
   """Callable implementing memoized checks for unbound references."""
 
   # TODO(b/149315253): This is the place to check for the computation we
@@ -70,7 +70,7 @@ class _UnboundRefChecker():
 _unbound_refs = _UnboundRefChecker()
 
 
-class ReferenceResolvingExecutorScope():
+class ReferenceResolvingExecutorScope:
   """Represents a naming scope for computations in the lambda executor."""
 
   def __init__(self, symbols, parent=None):
@@ -268,7 +268,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
   def close(self):
     self._target_executor.close()
 
-  @tracing.trace
+  @tracing.trace(stats=False)
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
     if isinstance(value, computation_impl.ComputationImpl):
@@ -350,7 +350,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
           'Unexpected type to ReferenceResolvingExecutor create_call: {}'
           .format(type(comp_repr)))
 
-  @tracing.trace
+  @tracing.trace(stats=False)
   async def _embed_value_in_target_exec(
       self, value: ReferenceResolvingExecutorValue
   ) -> executor_value_base.ExecutorValue:
@@ -405,7 +405,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       return await self._target_executor.create_value(value_repr.comp,
                                                       value.type_signature)
 
-  @tracing.trace
+  @tracing.trace(stats=False)
   async def _evaluate(
       self,
       comp: pb.Computation,

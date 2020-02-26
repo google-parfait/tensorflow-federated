@@ -218,7 +218,7 @@ class ComposingExecutor(executor_base.Executor):
           _get_cardinalities_helper())
     return await self._cardinalities_task
 
-  @tracing.trace(span=True)
+  @tracing.trace(span=True, stats=False)
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
     py_typecheck.check_type(type_spec, computation_types.Type)

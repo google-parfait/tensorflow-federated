@@ -209,7 +209,7 @@ class FederatingExecutor(executor_base.Executor):
         logging.debug('Closing child executor for placement: %s', p)
         e.close()
 
-  @tracing.trace
+  @tracing.trace(stats=False)
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
     if isinstance(value, intrinsic_defs.IntrinsicDef):
