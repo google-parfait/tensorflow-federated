@@ -15,7 +15,6 @@
 
 from absl.testing import absltest
 
-from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import context_stack_test_utils
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
@@ -26,22 +25,28 @@ from tensorflow_federated.python.core.impl.executors import executor_factory
 
 class TestSetDefaultExecutor(absltest.TestCase):
 
+  def setUp(self):
+    super().setUp()
+    # In these tests we are setting the default context of the
+    # `context_stack_impl.context_stack`, so here we reset that context back to
+    # some known state.
+    self.context = context_stack_test_utils.TestContext()
+    context_stack_impl.context_stack.set_default_context(self.context)
+
   def test_with_none(self):
-    context = context_stack_test_utils.TestContext()
     context_stack = context_stack_impl.context_stack
-    context_stack.set_default_context(context)
-    self.assertIs(context_stack.current, context)
 
     set_default_executor.set_default_executor(None)
 
-    self.assertIsNot(context_stack.current, context)
-    self.assertIsInstance(context_stack.current, context_base.Context)
+    self.assertIsNot(context_stack.current, self.context)
+    self.assertIsInstance(context_stack.current,
+                          execution_context.ExecutionContext)
 
   def test_with_executor_factory(self):
     context_stack = context_stack_impl.context_stack
     executor_factory_impl = executor_factory.ExecutorFactoryImpl(lambda _: None)
-    self.assertIsNot(context_stack.current._executor_factory,
-                     executor_factory_impl)
+    self.assertNotIsInstance(context_stack.current,
+                             execution_context.ExecutionContext)
 
     set_default_executor.set_default_executor(executor_factory_impl)
 

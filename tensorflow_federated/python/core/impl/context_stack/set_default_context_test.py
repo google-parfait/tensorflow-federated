@@ -23,15 +23,20 @@ from tensorflow_federated.python.core.impl.context_stack import set_default_cont
 
 class SetDefaultContextTest(absltest.TestCase):
 
+  def setUp(self):
+    super().setUp()
+    # In these tests we are setting the default context of the
+    # `context_stack_impl.context_stack`, so here we reset that context back to
+    # some known state.
+    self.context = context_stack_test_utils.TestContext()
+    context_stack_impl.context_stack.set_default_context(self.context)
+
   def test_with_none(self):
-    context = context_stack_test_utils.TestContext()
     context_stack = context_stack_impl.context_stack
-    context_stack.set_default_context(context)
-    self.assertIs(context_stack.current, context)
 
     set_default_context.set_default_context(None)
 
-    self.assertIsNot(context_stack.current, context)
+    self.assertIsNot(context_stack.current, self.context)
     self.assertIsInstance(context_stack.current, context_base.Context)
 
   def test_with_context(self):

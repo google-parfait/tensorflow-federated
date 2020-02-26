@@ -72,7 +72,6 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":set_default_executor",
-        "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:context_stack_test_utils",
         "//tensorflow_federated/python/core/impl:reference_executor",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
