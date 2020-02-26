@@ -70,7 +70,7 @@ def ensure_federated_value(value, placement=None, label=None):
     label: An optional string label that describes `value`.
 
   Returns:
-    The value as a `FederatedValue`, automatically zipping if necessary.
+    The value as a federated value, automatically zipping if necessary.
 
   Raises:
     TypeError: if `value` is not a `FederatedType` and cannot be converted to
