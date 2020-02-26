@@ -194,15 +194,6 @@ py_library(
 )
 
 py_test(
-    name = "context_stack_test_utils_test",
-    size = "small",
-    srcs = ["context_stack_test_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":context_stack_test_utils"],
-)
-
-py_test(
     name = "end_to_end_test",
     size = "small",
     srcs = ["end_to_end_test.py"],

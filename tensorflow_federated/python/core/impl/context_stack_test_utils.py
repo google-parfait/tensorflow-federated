@@ -20,13 +20,6 @@ from tensorflow_federated.python.core.impl import context_base
 class TestContext(context_base.Context):
   """A test context."""
 
-  def __init__(self, name):
-    self._name = name
-
-  @property
-  def name(self):
-    return self._name
-
   def ingest(self, val, type_spec):
     raise NotImplementedError
 

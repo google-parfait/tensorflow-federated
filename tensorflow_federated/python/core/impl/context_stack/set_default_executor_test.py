@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.impl.executors import executor_factory
 class TestSetDefaultExecutor(absltest.TestCase):
 
   def test_with_none(self):
-    context = context_stack_test_utils.TestContext('test')
+    context = context_stack_test_utils.TestContext()
     context_stack = context_stack_impl.context_stack
     context_stack.set_default_context(context)
     self.assertIs(context_stack.current, context)

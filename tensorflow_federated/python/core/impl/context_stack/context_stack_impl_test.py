@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 class ContextStackTest(absltest.TestCase):
 
   def test_set_default_context_with_none(self):
-    context = context_stack_test_utils.TestContext('test')
+    context = context_stack_test_utils.TestContext()
     context_stack = context_stack_impl.ContextStackImpl()
     context_stack.set_default_context(context)
     self.assertIs(context_stack.current, context)
@@ -34,7 +34,7 @@ class ContextStackTest(absltest.TestCase):
     self.assertIsInstance(context_stack.current, context_base.Context)
 
   def test_set_default_context_with_context(self):
-    context = context_stack_test_utils.TestContext('test')
+    context = context_stack_test_utils.TestContext()
     context_stack = context_stack_impl.ContextStackImpl()
     self.assertIsNot(context_stack.current, context)
 
@@ -46,11 +46,11 @@ class ContextStackTest(absltest.TestCase):
     context_stack = context_stack_impl.ContextStackImpl()
     self.assertIsInstance(context_stack.current, context_base.Context)
 
-    context_one = context_stack_test_utils.TestContext('test')
+    context_one = context_stack_test_utils.TestContext()
     with context_stack.install(context_one):
       self.assertIs(context_stack.current, context_one)
 
-      context_two = context_stack_test_utils.TestContext('test')
+      context_two = context_stack_test_utils.TestContext()
       with context_stack.install(context_two):
         self.assertIs(context_stack.current, context_two)
 
