@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
@@ -836,6 +837,11 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     self.assertAllEqual(state, (2,))
     self.assertAllClose(metrics, {'ratio_over_threshold': 0.75})
     self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
+    self.assertEqual(
+        tree_analysis.count_tensorflow_variables_under(
+            test_utils.computation_to_building_block(it.next)),
+        tree_analysis.count_tensorflow_variables_under(
+            test_utils.computation_to_building_block(new_it.next)))
 
   def test_mnist_training_round_trip(self):
     it = canonical_form_utils.get_iterative_process_for_canonical_form(
@@ -861,6 +867,11 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
         anonymous_tuple.name_list(alt_metrics))
     self.assertAllClose(state, alt_state)
     self.assertAllClose(metrics, alt_metrics)
+    self.assertEqual(
+        tree_analysis.count_tensorflow_variables_under(
+            test_utils.computation_to_building_block(it.next)),
+        tree_analysis.count_tensorflow_variables_under(
+            test_utils.computation_to_building_block(new_it.next)))
 
   def test_canonical_form_from_tff_learning_structure_type_spec(self):
     it = test_utils.construct_example_training_comp()
