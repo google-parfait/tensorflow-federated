@@ -158,10 +158,10 @@ class LoggingTracingProvider(TracingProvider):
     Returns:
       The decorated function.
     """
-    if fn is None:
-      return functools.partial(self.trace, **kwargs)
 
     class_name, method_name = func_to_class_and_method(fn)
+
+    logging.debug('Decorating sync method: %s.%s', class_name, method_name)
 
     def _pre_fn():
       # This nonce is used to correlate log messages for a single invocation.
@@ -237,9 +237,52 @@ class LoggingTracingProvider(TracingProvider):
 _global_tracing_provider = LoggingTracingProvider()
 
 
-def trace(fn=None, **kwargs):
-  """Delegates to the current global `TracingProvider`."""
-  return _global_tracing_provider.trace(fn, **kwargs)
+def trace(fn=None, **trace_kwargs):
+  """Delegates to the current global `TracingProvider`.
+
+  Note that this function adds a layer of indirection so that the decoration
+  happens when the method is executed. This is necessary so that the current
+  TracingProvider is used.
+
+  Args:
+    fn: Function to decorate.
+    **trace_kwargs: Tracing options. Supported options differ by tracing
+      provider.
+
+  Returns:
+    Decorated instance of fn.
+  """
+  if fn is None:
+    return functools.partial(trace, **trace_kwargs)
+
+  class MemoizingDecorator():
+    """Decorates a function using the global tracing provider.
+
+    This happens once when the function is invoked and the decorated funciton
+    is reused on future invocations.
+    """
+
+    def __init__(self, decorated):
+      self._decorated = decorated
+      self._fn = None
+
+    def __call__(self, *fn_args, **fn_kwargs):
+      if self._fn is None:
+        self._fn = _global_tracing_provider.trace(self._decorated,
+                                                  **trace_kwargs)
+      return self._fn(*fn_args, **fn_kwargs)
+
+  memoizing_decorator = MemoizingDecorator(fn)
+
+  if inspect.iscoroutinefunction(fn):
+    # The decorator of an async fn needs to return an async fn, so create one
+    # that simply delegates to the memoizing_decorator.
+    async def async_trace(*fn_args, **fn_kwargs):
+      return await memoizing_decorator(*fn_args, **fn_kwargs)
+
+    return async_trace
+  else:
+    return memoizing_decorator
 
 
 def span(scope, sub_scope):
