@@ -21,6 +21,7 @@ from tensorflow_federated.python.learning.framework.optimizer_utils import build
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_stateless_broadcaster
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
+from tensorflow_federated.python.learning.framework.optimizer_utils import ServerState
 from tensorflow_federated.python.learning.model_utils import enhance
 from tensorflow_federated.python.learning.model_utils import EnhancedModel
 from tensorflow_federated.python.learning.model_utils import EnhancedTrainableModel
@@ -33,6 +34,7 @@ _allowed_symbols = [
     "EnhancedModel",
     "EnhancedTrainableModel",
     "ModelWeights",
+    "ServerState",
     "build_encoded_broadcast_from_model",
     "build_encoded_mean_from_model",
     "build_encoded_sum_from_model",

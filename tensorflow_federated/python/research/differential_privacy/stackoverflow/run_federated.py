@@ -23,10 +23,12 @@ from absl import logging
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
+from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.optimization.stackoverflow import dataset
 from tensorflow_federated.python.research.optimization.stackoverflow import models
+from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
@@ -41,9 +43,15 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_integer('sequence_length', 20, 'Max sequence length to use.')
   flags.DEFINE_integer('max_elements_per_user', 1000, 'Max number of training '
                        'sentences to use per user.')
-  flags.DEFINE_integer(
-      'num_validation_examples', 10000, 'Number of examples '
-      'to use from test set for per-round validation.')
+  flags.DEFINE_integer('num_validation_examples', 10000, 'Number of examples '
+                       'to use from test set for per-round validation.')
+  flags.DEFINE_boolean('uniform_weighting', False,
+                       'Whether to weigh clients uniformly. If false, clients '
+                       'are weighted by the number of tokens.')
+
+  # Optimizer configuration (this defines one or more flags per optimizer).
+  utils_impl.define_optimizer_flags('server')
+  utils_impl.define_optimizer_flags('client')
 
   # Modeling flags
   flags.DEFINE_boolean(
@@ -65,11 +73,58 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_float(
       'clipped_count_budget_allocation', 0.1,
       'Fraction of privacy budget to allocate for clipped counts.')
-  flags.DEFINE_boolean('use_per_vector', False, 'Use per-vector clipping.')
+  flags.DEFINE_boolean('per_vector_clipping', False, 'Use per-vector clipping.')
   flags.DEFINE_boolean('geometric_clip_update', True,
                        'Use geometric updating of adaptive clip norm.')
 
 FLAGS = flags.FLAGS
+
+
+class FederatedAveragingProcessAdapter(adapters.IterativeProcessPythonAdapter):
+  """Converts iterative process results from anonymous tuples.
+
+  Converts to ServerState and unpacks metrics. This simplifies tasks such as
+  recording metrics.
+  """
+
+  def __init__(self, iterative_process):
+    self._iterative_process = iterative_process
+
+  def _server_state_from_tff_result(self, result):
+    return tff.learning.framework.ServerState(
+        tff.learning.ModelWeights(tuple(result.model.trainable),
+                                  tuple(result.model.non_trainable)),
+        list(result.optimizer_state),
+        anonymous_tuple.to_odict(result.delta_aggregate_state, True),
+        tuple(result.model_broadcast_state))
+
+  def initialize(self):
+    initial_state = self._iterative_process.initialize()
+    return self._server_state_from_tff_result(initial_state)
+
+  def next(self, state, data):
+    state, metrics = self._iterative_process.next(state, data)
+    state = self._server_state_from_tff_result(state)
+    metrics = metrics._asdict(recursive=True)
+    metrics.update(state.delta_aggregate_state)
+    outputs = None
+    return adapters.IterationResult(state, metrics, outputs)
+
+
+def assign_weights_to_keras_model(state, keras_model):
+  """Assign the model weights to the weights of a `tf.keras.Model`.
+
+  Args:
+    state: The state to assign from.
+    keras_model: the `tf.keras.Model` object to assign weights to.
+  """
+
+  def assign_weights(keras_weights, tff_weights):
+    for k, w in zip(keras_weights, tff_weights):
+      k.assign(w)
+
+  assign_weights(keras_model.trainable_weights, state.model.trainable)
+  assign_weights(keras_model.non_trainable_weights, state.model.non_trainable)
 
 
 def main(argv):
@@ -121,42 +176,80 @@ def main(argv):
             name='num_tokens', mask_zero=True),
     ]
 
-  train_set, validation_set, test_set = dataset.construct_word_level_datasets(
+  datasets = dataset.construct_word_level_datasets(
       FLAGS.vocab_size, FLAGS.client_batch_size, FLAGS.client_epochs_per_round,
       FLAGS.sequence_length, FLAGS.max_elements_per_user,
       FLAGS.num_validation_examples)
+  train_dataset, validation_dataset, test_dataset = datasets
 
   sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(validation_set)))
+                                       next(iter(validation_dataset)))
 
-  def client_weight_fn(local_outputs):
-    # Num_tokens is a tensor with type int64[1], to use as a weight need
-    # a float32 scalar.
-    return tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
+  if FLAGS.uniform_weighting:
+    def client_weight_fn(local_outputs):
+      del local_outputs
+      return 1.0
+  else:
+    def client_weight_fn(local_outputs):
+      return tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
 
-  training_process = iterative_process_builder.from_flags(
-      dummy_batch=sample_batch,
-      model_builder=model_builder,
-      loss_builder=loss_builder,
-      metrics_builder=metrics_builder,
-      client_weight_fn=client_weight_fn)
+  if FLAGS.noise_multiplier:
+    if not FLAGS.uniform_weighting:
+      raise ValueError(
+          'Differential privacy is only implemented for uniform weighting.')
+
+    dp_query = tff.utils.build_dp_query(
+        clip=FLAGS.clip,
+        noise_multiplier=FLAGS.noise_multiplier,
+        expected_total_weight=FLAGS.clients_per_round,
+        adaptive_clip_learning_rate=FLAGS.adaptive_clip_learning_rate,
+        target_unclipped_quantile=FLAGS.target_unclipped_quantile,
+        clipped_count_budget_allocation=FLAGS.clipped_count_budget_allocation,
+        expected_num_clients=FLAGS.clients_per_round,
+        per_vector_clipping=FLAGS.per_vector_clipping,
+        model=model_builder())
+
+    dp_aggregate_fn, _ = tff.utils.build_dp_aggregate(dp_query)
+  else:
+    dp_aggregate_fn = None
+
+  def model_fn():
+    return tff.learning.from_keras_model(
+        model_builder(),
+        sample_batch,
+        tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=metrics_builder())
+
+  server_optimizer_fn = optimizer_utils.create_optimizer_fn_from_flags('server')
+  client_optimizer_fn = optimizer_utils.create_optimizer_fn_from_flags('client')
+  training_process = (
+      tff.learning.federated_averaging.build_federated_averaging_process(
+          model_fn=model_fn,
+          server_optimizer_fn=server_optimizer_fn,
+          client_weight_fn=client_weight_fn,
+          client_optimizer_fn=client_optimizer_fn,
+          stateful_delta_aggregate_fn=dp_aggregate_fn))
+
+  training_process = FederatedAveragingProcessAdapter(training_process)
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
-      train_set, FLAGS.clients_per_round)
+      train_dataset, FLAGS.clients_per_round)
 
   evaluate_fn = training_utils.build_evaluate_fn(
       model_builder=model_builder,
-      eval_dataset=validation_set,
+      eval_dataset=validation_dataset,
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder)
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_to_keras_model)
 
   test_fn = training_utils.build_evaluate_fn(
       model_builder=model_builder,
       # Use both val and test for symmetry with other experiments, which
       # evaluate on the entire test set.
-      eval_dataset=validation_set.concatenate(test_set),
+      eval_dataset=validation_dataset.concatenate(test_dataset),
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder)
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_to_keras_model)
 
   logging.info('Training model:')
   logging.info(model_builder().summary())

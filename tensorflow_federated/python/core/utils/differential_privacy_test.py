@@ -109,7 +109,7 @@ class DpUtilsTest(test.TestCase):
     model = mock_model(mock_weights(vectors))
 
     query = differential_privacy.build_dp_query(
-        1.0, 2.0, 3.0, use_per_vector=True, model=model)
+        1.0, 2.0, 3.0, per_vector_clipping=True, model=model)
 
     self.assertIsInstance(query, tensorflow_privacy.NestedQuery)
 

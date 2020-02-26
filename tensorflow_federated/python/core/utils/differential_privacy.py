@@ -43,7 +43,7 @@ def build_dp_query(clip,
                    target_unclipped_quantile=None,
                    clipped_count_budget_allocation=None,
                    expected_num_clients=None,
-                   use_per_vector=False,
+                   per_vector_clipping=False,
                    model=None):
   """Makes a `DPQuery` to estimate vector averages with differential privacy.
 
@@ -66,13 +66,13 @@ def build_dp_query(clip,
       estimating clipped counts.
     expected_num_clients: The expected number of clients for estimating clipped
       fractions.
-    use_per_vector: If True, clip each weight tensor independently. Otherwise,
-      global clipping is used. The clipping norm for each vector (or the initial
-      clipping norm, in the case of adaptive clipping) is proportional to the
-      sqrt of the vector dimensionality while the total bound still equals
-      `clip`.
+    per_vector_clipping: If True, clip each weight tensor independently.
+      Otherwise, global clipping is used. The clipping norm for each vector (or
+      the initial clipping norm, in the case of adaptive clipping) is
+      proportional to the sqrt of the vector dimensionality while the total
+      bound still equals `clip`.
     model: A `tff.learning.Model` to determine the structure of model weights.
-      Required only if use_per_vector is True.
+      Required only if per_vector_clipping is True.
 
   Returns:
     A `DPQuery` suitable for use in a call to `build_dp_aggregate` to perform
@@ -83,9 +83,9 @@ def build_dp_query(clip,
   py_typecheck.check_type(expected_total_weight, numbers.Number,
                           'expected_total_weight')
 
-  if use_per_vector:
+  if per_vector_clipping:
     # Note we need to keep the structure of vectors (not just the num_vectors)
-    # to create the subqueries below, when use_per_vector is True.
+    # to create the subqueries below, when per_vector_clipping is True.
     vectors = model.weights.trainable
     num_vectors = len(tf.nest.flatten(vectors))
   else:
@@ -121,7 +121,7 @@ def build_dp_query(clip,
           expected_num_records=expected_num_clients,
           denominator=expected_total_weight)
 
-  if use_per_vector:
+  if per_vector_clipping:
 
     def dim(v):
       return math.exp(sum([math.log(d.value) for d in v.shape.dims]))

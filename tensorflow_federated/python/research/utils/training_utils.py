@@ -67,8 +67,11 @@ def convert_to_tuple_dataset(dataset):
         'tuple-like structure, found {} instead.'.format(example_structure))
 
 
-def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
-                      metrics_builder):
+def build_evaluate_fn(eval_dataset,
+                      model_builder,
+                      loss_builder,
+                      metrics_builder,
+                      assign_weights_to_keras_model=None):
   """Builds an evaluation function for a given model and test dataset.
 
   The evaluation function takes as input a fed_avg_schedule.ServerState, and
@@ -82,6 +85,9 @@ def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
     loss_builder: A no-arg function returning a `tf.keras.losses.Loss` object.
     metrics_builder: A no-arg function that returns a list of
       `tf.keras.metrics.Metric` objects.
+    assign_weights_to_keras_model: A function taking arguments (state, model)
+      that assigns the weights of state to the model. If None, it is assumed
+      that the state has a method self.assign_weights_to_keras_model(model).
 
   Returns:
     A function that take as input the state of an iterative process and returns
@@ -101,7 +107,11 @@ def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
   def evaluate_fn(state):
     """Evaluation function to be used during training."""
     keras_model = compiled_eval_keras_model()
-    state.assign_weights_to_keras_model(keras_model)
+    # TODO(b/150233012): Make assign_weights_to_keras_model a required arg.
+    if assign_weights_to_keras_model:
+      assign_weights_to_keras_model(state, keras_model)
+    else:
+      state.assign_weights_to_keras_model(keras_model)
     logging.info('Evaluating the current model')
     eval_metrics = keras_model.evaluate(eval_tuple_dataset, verbose=0)
     return dict(zip(keras_model.metrics_names, eval_metrics))

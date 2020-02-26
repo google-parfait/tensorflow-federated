@@ -60,11 +60,10 @@ FLAGS = flags.FLAGS
 
 def run_experiment():
   """Runs the training experiment."""
-  (_, stackoverflow_validation,
-   stackoverflow_test) = dataset.construct_word_level_datasets(
-       FLAGS.vocab_size, FLAGS.batch_size, 1, FLAGS.sequence_length, -1,
-       FLAGS.num_validation_examples)
-  centralized_train = dataset.get_centralized_train_dataset(
+  _, validation_dataset, test_dataset = dataset.construct_word_level_datasets(
+      FLAGS.vocab_size, FLAGS.batch_size, 1, FLAGS.sequence_length, -1,
+      FLAGS.num_validation_examples)
+  train_dataset = dataset.get_centralized_train_dataset(
       FLAGS.vocab_size, FLAGS.batch_size, FLAGS.sequence_length,
       FLAGS.shuffle_buffer_size)
 
@@ -131,13 +130,13 @@ def run_experiment():
   utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
   model.fit(
-      centralized_train,
+      train_dataset,
       epochs=FLAGS.epochs,
       verbose=0,
-      validation_data=stackoverflow_validation,
+      validation_data=validation_dataset,
       callbacks=[train_csv_logger, train_tensorboard_callback])
   score = model.evaluate(
-      stackoverflow_test,
+      test_dataset,
       verbose=0,
       callbacks=[test_csv_logger, test_tensorboard_callback])
   logging.info('Final test loss: %.4f', score[0])
