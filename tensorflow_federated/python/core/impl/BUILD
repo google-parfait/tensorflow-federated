@@ -26,20 +26,6 @@ package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 
-# TODO(b/143772942): This package group is temporary and can be removed once all
-# the appropriate  modules have been moved to the `compiler` package.
-package_group(
-    name = "compiler_visibility",
-    packages = ["//tensorflow_federated/python/core/..."],
-)
-
-# TODO(b/143772942): This package group is temporary and can be removed once all
-# the appropriate  modules have been moved to the `utils` package.
-package_group(
-    name = "utils_visibility",
-    packages = ["//tensorflow_federated/python/core/..."],
-)
-
 py_library(
     name = "impl",
     srcs = ["__init__.py"],
@@ -65,7 +51,6 @@ py_library(
     name = "compiled_computation_transforms",
     srcs = ["compiled_computation_transforms.py"],
     srcs_version = "PY3",
-    visibility = [":compiler_visibility"],
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -89,7 +74,6 @@ py_test(
     srcs = ["compiled_computation_transforms_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    visibility = [":compiler_visibility"],
     deps = [
         ":compiled_computation_transforms",
         ":tensorflow_serialization",
@@ -425,7 +409,6 @@ py_library(
     name = "tensorflow_deserialization",
     srcs = ["tensorflow_deserialization.py"],
     srcs_version = "PY3",
-    visibility = [":utils_visibility"],
     deps = [
         ":type_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -533,7 +516,6 @@ py_library(
     name = "tree_to_cc_transformations",
     srcs = ["tree_to_cc_transformations.py"],
     srcs_version = "PY3",
-    visibility = [":compiler_visibility"],
     deps = [
         ":compiled_computation_transforms",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -547,7 +529,6 @@ py_test(
     srcs = ["tree_to_cc_transformations_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    visibility = [":compiler_visibility"],
     deps = [
         ":tensorflow_serialization",
         ":type_utils",
@@ -571,7 +552,6 @@ py_library(
     name = "type_utils",
     srcs = ["type_utils.py"],
     srcs_version = "PY3",
-    visibility = [":utils_visibility"],
     deps = [
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -587,7 +567,6 @@ py_test(
     srcs = ["type_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    visibility = [":utils_visibility"],
     deps = [
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
