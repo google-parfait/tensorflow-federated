@@ -46,37 +46,16 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
+        ":context_stack_test_utils",
         "//tensorflow_federated/python/core/impl:context_base",
-        "//tensorflow_federated/python/core/impl:context_stack_test_utils",
     ],
 )
 
 py_library(
-    name = "set_default_executor",
-    srcs = ["set_default_executor.py"],
+    name = "context_stack_test_utils",
+    srcs = ["context_stack_test_utils.py"],
     srcs_version = "PY3",
-    deps = [
-        ":context_stack_impl",
-        "//tensorflow_federated/python/core/impl:reference_executor",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
-    ],
-)
-
-py_test(
-    name = "set_default_executor_test",
-    size = "small",
-    srcs = ["set_default_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":context_stack_impl",
-        ":set_default_executor",
-        "//tensorflow_federated/python/core/impl:context_stack_test_utils",
-        "//tensorflow_federated/python/core/impl:reference_executor",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
-    ],
+    deps = ["//tensorflow_federated/python/core/impl:context_base"],
 )
 
 py_library(
@@ -113,8 +92,36 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":context_stack_impl",
+        ":context_stack_test_utils",
         ":set_default_context",
         "//tensorflow_federated/python/core/impl:context_base",
-        "//tensorflow_federated/python/core/impl:context_stack_test_utils",
+    ],
+)
+
+py_library(
+    name = "set_default_executor",
+    srcs = ["set_default_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":context_stack_impl",
+        "//tensorflow_federated/python/core/impl:reference_executor",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/executors:executor_factory",
+    ],
+)
+
+py_test(
+    name = "set_default_executor_test",
+    size = "small",
+    srcs = ["set_default_executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":context_stack_impl",
+        ":context_stack_test_utils",
+        ":set_default_executor",
+        "//tensorflow_federated/python/core/impl:reference_executor",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/executors:executor_factory",
     ],
 )
