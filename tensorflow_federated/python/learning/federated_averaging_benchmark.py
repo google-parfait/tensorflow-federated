@@ -52,17 +52,19 @@ def executors_benchmark(fn):
 
   def wrapped_fn(self):
     """Runs `fn` against different local executor stacks."""
-    # TODO(b/148233458): Re-enable reference executor benchmarks when possible.
+    tff.framework.set_default_executor(
+        tff.framework.ReferenceExecutor(compiler=None))
+    fn(self, 'reference executor')
     tff.framework.set_default_executor()
-    fn(self, "local executor")
+    fn(self, 'local executor')
     tff.framework.set_default_executor(tff.framework.sizing_executor_factory())
-    fn(self, "sizing executor")
+    fn(self, 'sizing executor')
     tff.framework.set_default_executor(
         tff.framework.local_executor_factory(clients_per_thread=2))
-    fn(self, "local executor, 2 clients per worker")
+    fn(self, 'local executor, 2 clients per worker')
     tff.framework.set_default_executor(
         tff.framework.local_executor_factory(clients_per_thread=4))
-    fn(self, "local executor, 4 clients per worker")
+    fn(self, 'local executor, 4 clients per worker')
     tff.framework.set_default_executor()
 
   return wrapped_fn
@@ -91,22 +93,20 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
         model_fn=model_examples.TrainableLinearRegression)
     build_time_stop = time.time()
     building_time_array.append(build_time_stop - build_time_start)
+    name = ('computation_building_time, simple execution '
+            'TrainableLinearRegression, executor {}'.format(executor_id))
     self.report_benchmark(
-        name="computation_building_time, simple execution "
-        "TrainableLinearRegression, executor {}".format(executor_id),
-        wall_time=np.mean(building_time_array),
-        iters=1)
+        name=name, wall_time=np.mean(building_time_array), iters=1)
 
     initialization_array = []
     initialization_start = time.time()
     initial_state = iterative_process.initialize()
     initialization_stop = time.time()
     initialization_array.append(initialization_stop - initialization_start)
+    name = ('computation_initialization_time, simple execution '
+            'TrainableLinearRegression, executor {}'.format(executor_id))
     self.report_benchmark(
-        name="computation_initialization_time, simple execution "
-        "TrainableLinearRegression, executor {}".format(executor_id),
-        wall_time=np.mean(initialization_array),
-        iters=1)
+        name=name, wall_time=np.mean(initialization_array), iters=1)
 
     next_state = initial_state
 
@@ -116,16 +116,18 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
       next_state, _ = iterative_process.next(next_state, federated_ds)
       round_stop = time.time()
       execution_array.append(round_stop - round_start)
+    name = ('Average per round time, {clients} clients, {examples} examples '
+            'per client, batch size {batch_size}, TrainableLinearRegression, '
+            'executor {executor}'.format(
+                clients=num_clients,
+                examples=num_client_samples,
+                batch_size=batch_size,
+                executor=executor_id))
     self.report_benchmark(
-        name="Average per round time, {} clients, "
-        "{} examples per client, batch size {}, "
-        "TrainableLinearRegression, executor {}".format(num_clients,
-                                                        num_client_samples,
-                                                        batch_size,
-                                                        executor_id),
+        name=name,
         wall_time=np.mean(execution_array),
         iters=num_rounds,
-        extras={"std_dev": np.std(execution_array)})
+        extras={'std_dev': np.std(execution_array)})
 
   @executors_benchmark
   def benchmark_learning_keras_model_mnist(self, executor_id):
@@ -140,8 +142,8 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
           tf.keras.layers.Flatten(input_shape=(784,)),
           tf.keras.layers.Dense(
               10,
-              kernel_initializer="zeros",
-              bias_initializer="zeros",
+              kernel_initializer='zeros',
+              bias_initializer='zeros',
               activation=tf.nn.softmax)
       ])
       return keras_utils.from_keras_model(
@@ -153,11 +155,9 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
         model_fn, client_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1))
     computation_building_stop = time.time()
     building_time = computation_building_stop - computation_building_start
-    self.report_benchmark(
-        name="computation_building_time, "
-        "tff.learning Keras model, executor {}".format(executor_id),
-        wall_time=building_time,
-        iters=1)
+    name = ('computation_building_time, tff.learning Keras model, executor {}'
+            .format(executor_id))
+    self.report_benchmark(name=name, wall_time=building_time, iters=1)
 
     state = iterative_process.initialize()
 
@@ -168,13 +168,14 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
       execution_stop = time.time()
       execution_array.append(execution_stop - execution_start)
 
+    name = ('Average per round execution time, tff.learning Keras model, '
+            'executor {}'.format(executor_id))
     self.report_benchmark(
-        name="Average per round execution time, "
-        "tff.learning Keras model, executor {}".format(executor_id),
+        name=name,
         wall_time=np.mean(execution_array),
         iters=n_rounds,
-        extras={"std_dev": np.std(execution_array)})
+        extras={'std_dev': np.std(execution_array)})
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   test.main()
