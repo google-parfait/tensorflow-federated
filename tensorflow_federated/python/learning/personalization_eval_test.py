@@ -267,12 +267,14 @@ class PersonalizationEvalTest(test.TestCase):
       inputs = tf.keras.Input(shape=(2,))  # feature dim = 2
       outputs = tf.keras.layers.Dense(1)(inputs)
       keras_model = tf.keras.Model(inputs=inputs, outputs=outputs)
-      dummy_batch = collections.OrderedDict([
-          ('x', np.zeros([1, 2], dtype=np.float32)),
-          ('y', np.zeros([1, 1], dtype=np.float32))
+      input_spec = collections.OrderedDict([
+          ('x', tf.TensorSpec([None, 2], dtype=tf.float32)),
+          ('y', tf.TensorSpec([None, 1], dtype=tf.float32))
       ])
-      return keras_utils.from_keras_model(keras_model, dummy_batch,
-                                          tf.keras.losses.MeanSquaredError())
+      return keras_utils.from_keras_model(
+          keras_model,
+          input_spec=input_spec,
+          loss=tf.keras.losses.MeanSquaredError())
 
     zero_model_weights = _create_zero_model_weights(model_fn)
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=0.5)

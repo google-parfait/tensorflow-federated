@@ -173,7 +173,7 @@ def build_linear_regression_keras_sequential_model(feature_dims=2):
 
 def build_linear_regression_keras_functional_model(feature_dims=2):
   """Build a linear regression `tf.keras.Model` using the functional API."""
-  a = tf.keras.layers.Input(shape=(feature_dims,))
+  a = tf.keras.layers.Input(shape=(feature_dims,), dtype=tf.float32)
   b = _dense_all_zeros_layer()(a)
   return tf.keras.Model(inputs=a, outputs=b)
 

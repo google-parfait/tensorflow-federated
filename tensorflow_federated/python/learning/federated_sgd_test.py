@@ -140,20 +140,6 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
        model_examples.build_linear_regression_keras_sequential_model),
   ])
   def test_orchestration_execute_from_keras(self, build_keras_model_fn):
-    dummy_batch = collections.OrderedDict([
-        ('x', np.zeros([1, 2], np.float32)),
-        ('y', np.zeros([1, 1], np.float32)),
-    ])
-
-    def model_fn():
-      # Note: we don't compile with an optimizer here; FedSGD does not use it.
-      keras_model = build_keras_model_fn(feature_dims=2)
-      return keras_utils.from_keras_model(
-          keras_model, dummy_batch, loss=tf.keras.losses.MeanSquaredError())
-
-    iterative_process = federated_sgd.build_federated_sgd_process(
-        model_fn=model_fn)
-
     # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
     # kernel = [1, 2], bias = [3].
     ds1 = tf.data.Dataset.from_tensor_slices(
@@ -167,6 +153,17 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
             ('y', [[8.0], [14.0], [4.00], [0.0]]),
         ])).batch(2)
     federated_ds = [ds1, ds2]
+
+    def model_fn():
+      # Note: we don't compile with an optimizer here; FedSGD does not use it.
+      keras_model = build_keras_model_fn(feature_dims=2)
+      return keras_utils.from_keras_model(
+          keras_model,
+          input_spec=ds1.element_spec,
+          loss=tf.keras.losses.MeanSquaredError())
+
+    iterative_process = federated_sgd.build_federated_sgd_process(
+        model_fn=model_fn)
 
     server_state = iterative_process.initialize()
     prev_loss = np.inf

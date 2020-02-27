@@ -59,6 +59,13 @@ def _create_dummy_batch(feature_dims):
                                   ('y', tf.zeros([1]))])
 
 
+def _create_dummy_types(feature_dims):
+  """Creates a dummy batch of zeros."""
+  return collections.OrderedDict(
+      x=tf.TensorSpec(shape=[1, feature_dims], dtype=tf.float32),
+      y=tf.TensorSpec(shape=[1], dtype=tf.float32))
+
+
 def _create_tff_model_from_keras_model_tuples():
   tuples = []
   for n_dims in [1, 3]:
@@ -77,6 +84,10 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
   def setUp(self):
     tf.keras.backend.clear_session()
     super().setUp()
+
+  def assertIsSubClass(self, cls1, cls2):
+    if not issubclass(cls1, cls2):
+      raise AssertionError('{} is not a subclass of {}'.format(cls1, cls2))
 
   def test_convert_fails_on_non_keras_model(self):
     with self.assertRaisesRegex(TypeError, r'keras\..*\.Model'):
@@ -122,14 +133,12 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertSequenceEqual(
         self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0, 0.0])
 
-    batch = {
-        'x':
-            np.stack([
-                np.zeros(feature_dims, np.float32),
-                np.ones(feature_dims, np.float32)
-            ]),
-        'y': [[0.0], [1.0]],
-    }
+    batch = collections.OrderedDict(
+        x=np.stack([
+            np.zeros(feature_dims, np.float32),
+            np.ones(feature_dims, np.float32)
+        ]),
+        y=[[0.0], [1.0]])
     # from_model() was called without an optimizer which creates a tff.Model.
     # There is no train_on_batch() method available in tff.Model.
     with self.assertRaisesRegex(AttributeError,
@@ -156,6 +165,83 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(metrics['num_examples'], [2])
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2)
+
+  @parameterized.named_parameters(*_create_tff_model_from_keras_model_tuples())
+  def test_tff_model_from_keras_model_input_spec(self, feature_dims, model_fn):
+    keras_model = model_fn(feature_dims)
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[NumBatchesCounter(), NumExamplesCounter()],
+        input_spec=_create_dummy_types(feature_dims))
+    self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+
+    # Metrics should be zero, though the model wrapper internally executes the
+    # forward pass once.
+    self.assertSequenceEqual(
+        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0, 0.0])
+
+    batch = collections.OrderedDict(
+        x=np.stack([
+            np.zeros(feature_dims, np.float32),
+            np.ones(feature_dims, np.float32)
+        ]),
+        y=[[0.0], [1.0]])
+    # from_model() was called without an optimizer which creates a tff.Model.
+    # There is no train_on_batch() method available in tff.Model.
+    with self.assertRaisesRegex(AttributeError,
+                                'no attribute \'train_on_batch\''):
+      tff_model.train_on_batch(batch)
+
+    output = tff_model.forward_pass(batch)
+    # Since the model initializes all weights and biases to zero, we expect
+    # all predictions to be zero:
+    #    0*x1 + 0*x2 + ... + 0 = 0
+    self.assertAllEqual(output.predictions, [[0.0], [0.0]])
+    # For the single batch:
+    #
+    # Example | Prediction | Label | Residual | Loss
+    # --------+------------+-------+----------+ -----
+    #    1    |    0.0     |  0.0  |    0.0   |  0.0
+    #    2    |    0.0     |  1.0  |    1.0   |  1.0
+    #
+    # Total loss: 1.0
+    # Batch average loss: 0.5
+    self.assertEqual(self.evaluate(output.loss), 0.5)
+    metrics = self.evaluate(tff_model.report_local_outputs())
+    self.assertEqual(metrics['num_batches'], [1])
+    self.assertEqual(metrics['num_examples'], [2])
+    self.assertGreater(metrics['loss'][0], 0)
+    self.assertEqual(metrics['loss'][1], 2)
+
+  def test_tff_model_type_spec_from_keras_model_unspecified_sequence_len(self):
+    keras_model = tf.keras.Sequential([
+        tf.keras.layers.Input(shape=(None,)),
+        tf.keras.layers.Embedding(input_dim=10, output_dim=10),
+        tf.keras.layers.LSTM(1)
+    ])
+    input_spec = [
+        tf.TensorSpec(shape=[None, None], dtype=tf.int64),
+        tf.TensorSpec(shape=[None], dtype=tf.float32)
+    ]
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        loss=tf.keras.losses.MeanSquaredError(),
+        input_spec=input_spec)
+    self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+    self.assertAllEqual(tff_model.input_spec, input_spec)
+
+    batch = collections.OrderedDict(x=np.ones([2, 5], np.int64), y=[0.0, 1.0])
+    output = tff_model.forward_pass(batch)
+
+    self.assertAllEqual(output.predictions.shape, [2, 1])
+
+    # A batch with different sequence length should be processed in a similar
+    # way
+    batch = collections.OrderedDict(x=np.ones([2, 10], np.int64), y=[0.0, 1.0])
+    output = tff_model.forward_pass(batch)
+
+    self.assertAllEqual(output.predictions.shape, [2, 1])
 
   def test_keras_model_using_embeddings(self):
     model = model_examples.build_embedding_keras_model()

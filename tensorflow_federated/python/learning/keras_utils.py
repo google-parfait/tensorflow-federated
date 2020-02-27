@@ -16,6 +16,7 @@
 
 import collections
 import itertools
+import warnings
 
 import tensorflow as tf
 
@@ -87,24 +88,99 @@ def _preprocess_dummy_batch(dummy_batch):
             type(dummy_batch)))
 
 
+def _validate_input_spec(dummy_batch, input_spec):
+  """Validates the inferred input spec against model input.
+
+  This function warns if `dummy_batch` is not `None`, as this is a
+  deprecated codepath. If `dummy_batch` is not `None` and `input_spec` is
+  specified, we raise; we do not want a user using these two currently-
+  existing specification methods concurrently.
+
+  Args:
+    dummy_batch: Dummy batch of data as in `from_keras_model`.
+    input_spec: As in `from_keras_model`.
+
+  Returns:
+    input_spec: The `input_spec` for the `tff.learning.Model` we are
+    constructing.
+
+  Raises:
+    ValueError: If the shape of the inferred `input_spec` is wrong (EG, we
+    were provided a batch of x-data for the model but no y-data; if both the
+    `input_spec` and `dummy_batch` are specified, or if neither is; or if
+    the inferred `type_spec` is inconsistent with that declared by `model`.
+  """
+
+  # TODO(b/149774163): Delete this function when we deprecated `dummy_batch` as
+  # an argument to `from_keras_model`.
+
+  def _tensor_spec_with_undefined_batch_dim(tensor):
+    # Remove the batch dimension and leave it unspecified.
+    spec = tf.TensorSpec(
+        shape=[None] + tensor.shape.dims[1:], dtype=tensor.dtype)
+    return spec
+
+  if dummy_batch is not None:
+    warnings.warn(
+        '`dummy_batch` is a deprecated input; please specify an '
+        '`input_spec` going forward instead.', DeprecationWarning)
+    if input_spec is not None:
+      raise ValueError('Please specify exactly one of `dummy_batch` or '
+                       '`input_spec`.')
+    input_spec = tf.nest.map_structure(_tensor_spec_with_undefined_batch_dim,
+                                       _preprocess_dummy_batch(dummy_batch))
+  elif input_spec is None:
+    raise ValueError('Please specify `input_spec` for your Keras model.')
+
+  if len(input_spec) != 2:
+    raise ValueError('The top-level structure in `dummy_batch` or `input_spec` '
+                     'must contain exactly two elements, as it must contain '
+                     'type information for both inputs to and predictions '
+                     'from the model.')
+  return input_spec
+
+
 def from_keras_model(keras_model,
-                     dummy_batch,
                      loss,
+                     input_spec=None,
                      loss_weights=None,
-                     metrics=None):
-  """Builds a `tff.learning.Model` for an example mini batch.
+                     metrics=None,
+                     dummy_batch=None):
+  """Builds a `tff.learning.Model` for a given input type.
+
+  `from_keras_model` validates its arguments, normalizes them as appropriate and
+  instantiates a `tff.learning.Model` backed by `keras_model` for the forward
+  pass and autodifferentiation steps. This function needs three pieces of
+  information in order to accomplish this goal: a `tf.keras.Model` to use for
+  its forward pass; a loss function (or group of loss functions) `loss`; and a
+  way to infer the TFF type signatures for the `tff.Computations` in which this
+  model will appear, the `input_spec`.
+
+  Notice that since TFF couples the `tf.keras.Model` and
+  `loss`, TFF needs a slightly different notion of "fully specified type" than
+  pure Keras does. That is, the model `M` takes inputs of type `x` and
+  produces predictions of type `p`; the loss function `L` takes inputs of type
+  `<p, y>` and produces a scalar. Therefore in order to fully specify the type
+  signatures for computations in which the generated `tff.learning.Model` will
+  appear, TFF needs the type `y` in addition to the type `x`. Currently, TFF
+  allows two methods of specifying this input spec, via an `input_spec` and via
+  a `dummy_batch`. `input_spec` is strictly more general, and TFF is in the
+  process of deprecating `dummy_batch` as an argument to `from_keras_model`.
 
   Args:
     keras_model: A `tf.keras.Model` object that is not compiled.
-    dummy_batch: A nested structure of values that are convertible to *batched*
-      tensors with the same shapes and types as would be input to `keras_model`.
-      The values of the tensors are not important and can be filled with any
-      reasonable input value.
     loss: A callable that takes two batched tensor parameters, `y_true` and
       `y_pred`, and returns the loss. If the model has multiple outputs, you can
       use a different loss on each output by passing a dictionary or a list of
       losses. The loss value that will be minimized by the model will then be
       the sum of all individual losses, each weighted by `loss_weights`.
+    input_spec: (Optional) a value convertible to `tff.Type` specifying the type
+      of arguments the model expects. Notice this must be a compound structure
+      of two elements, specifying both the data fed into the model to generate
+      predictions, as its first element, as well as the expected type of the
+      ground truth as its second. This argument will become required when we
+      remove `dummy_batch`; currently, exactly one of these two must be
+      specified.
     loss_weights: (Optional) a list or dictionary specifying scalar coefficients
       (Python floats) to weight the loss contributions of different model
       outputs. The loss value that will be minimized by the model will then be
@@ -113,6 +189,10 @@ def from_keras_model(keras_model,
         mapping to the model's outputs. If a tensor, it is expected to map
         output names (strings) to scalar coefficients.
     metrics: (Optional) a list of `tf.keras.metrics.Metric` objects.
+    dummy_batch: (Optional, deprecated) a nested structure of values that are
+      convertible to *batched* tensors with the same shapes and types as would
+      be input to `keras_model`. The values of the tensors are not important and
+      can be filled with any reasonable input value.
 
   Returns:
     A `tff.learning.Model` object.
@@ -125,7 +205,9 @@ def from_keras_model(keras_model,
   """
   py_typecheck.check_type(keras_model, tf.keras.Model)
   py_typecheck.check_type(loss, (tf.keras.losses.Loss, collections.Sequence))
-  dummy_tensors = _preprocess_dummy_batch(dummy_batch)
+
+  input_spec = _validate_input_spec(dummy_batch, input_spec)
+
   if loss_weights is not None:
     py_typecheck.check_type(loss, collections.Sequence)
   if isinstance(loss, collections.Sequence):
@@ -146,10 +228,11 @@ def from_keras_model(keras_model,
     loss_functions = loss
   else:
     loss_functions = [loss]
+
   return model_utils.enhance(
       _KerasModel(
           keras_model,
-          dummy_batch=dummy_tensors,
+          input_spec=input_spec,
           loss_fns=loss_functions,
           loss_weights=loss_weights,
           metrics=metrics))
@@ -231,31 +314,11 @@ class _KerasModel(model_lib.Model):
 
   def __init__(self,
                inner_model,
-               dummy_batch,
+               input_spec,
                loss_fns,
                loss_weights=None,
                metrics=None):
-    # Note: sub-classed `tf.keras.Model`s do not have fully initialized
-    # variables until they are called on input. Force construction here so
-    # that TFF can reasonable about shapes and types.
-    if isinstance(dummy_batch, collections.Mapping):
-      inner_model(dummy_batch['x'])
-    else:
-      inner_model(dummy_batch[0])
-
-    # TODO(b/149774163): this should be removed in favor of obtaining the types
-    # from `tf.keras.Model.input`. However, that does not include the type of
-    # the label needed for the loss function (which may differ from the model
-    # output, see `tf.keras.losses.CategoricalCrossentropy()` versus
-    # `tf.keras.losses.SparseCategoricalCrossentropy()`).
-    def _tensor_spec_with_undefined_batch_dim(tensor):
-      # Remove the batch dimension and leave it unspecified.
-      spec = tf.TensorSpec(
-          shape=[None] + tensor.shape.dims[1:], dtype=tensor.dtype)
-      return spec
-
-    self._input_spec = tf.nest.map_structure(
-        _tensor_spec_with_undefined_batch_dim, dummy_batch)
+    self._input_spec = input_spec
 
     if not loss_fns:
       raise ValueError(

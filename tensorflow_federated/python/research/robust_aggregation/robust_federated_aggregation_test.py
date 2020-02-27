@@ -42,8 +42,6 @@ def setup_toy_data():
 def get_model_fn():
   """Return a function which creates a TFF model."""
   sample_dataset = setup_toy_data()[0]
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(sample_dataset)))
 
   def model_fn():
     keras_model = tf.keras.models.Sequential([
@@ -51,7 +49,9 @@ def get_model_fn():
         tf.keras.layers.Dense(1, kernel_initializer='zeros', use_bias=False)
     ])
     return tff.learning.from_keras_model(
-        keras_model, sample_batch, loss=tf.keras.losses.MeanSquaredError())
+        keras_model,
+        input_spec=sample_dataset.element_spec,
+        loss=tf.keras.losses.MeanSquaredError())
 
   return model_fn
 

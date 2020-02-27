@@ -35,7 +35,9 @@ def _keras_model_fn():
       compile_model=False)
   batch = _create_random_batch()
   return tff.learning.from_keras_model(
-      keras_model, batch, loss=tf.keras.losses.SparseCategoricalCrossentropy())
+      keras_model,
+      dummy_batch=batch,
+      loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
 
 def mnist_forward_pass(variables, batch):
