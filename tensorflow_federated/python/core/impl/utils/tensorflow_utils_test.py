@@ -519,6 +519,14 @@ class GraphUtilsTest(test.TestCase):
     correct_elem = np.zeros([0, 10, 0, 10, 10], np.float32)
     self.assertAllClose(elem, correct_elem)
 
+  def test_make_dummy_element_string_tensor(self):
+    type_spec = computation_types.TensorType(tf.string, [None])
+    elem = tensorflow_utils.make_dummy_element_for_type_spec(
+        type_spec, none_dim_replacement=1)
+    self.assertIsInstance(elem, np.ndarray)
+    self.assertAllEqual(elem.shape, [1])
+    self.assertEqual(elem[0], '')
+
   def test_make_dummy_element_tensor_type_none_replaced_by_1(self):
     type_spec = computation_types.TensorType(tf.float32,
                                              [None, 10, None, 10, 10])

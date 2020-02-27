@@ -781,6 +781,8 @@ def make_dummy_element_for_type_spec(type_spec, none_dim_replacement=0):
 
   if isinstance(type_spec, computation_types.TensorType):
     dummy_shape = [_handle_none_dimension(x) for x in type_spec.shape]
+    if type_spec.dtype == tf.string:
+      return np.empty(dummy_shape, dtype=str)
     return np.zeros(dummy_shape, type_spec.dtype.as_numpy_dtype)
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(type_spec)
