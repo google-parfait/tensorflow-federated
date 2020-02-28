@@ -95,6 +95,8 @@ def main(argv):
 
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
 
+  pad_token, _, _, _ = dataset.get_special_tokens()
+
   # Vocabulary with one OOV ID and zero for the mask.
   vocab_size = len(dataset.CHAR_VOCAB) + 2
   model = models.create_recurrent_model(
@@ -103,8 +105,7 @@ def main(argv):
       optimizer=optimizer,
       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
       metrics=[
-          keras_metrics.FlattenedCategoricalAccuracy(
-              vocab_size=vocab_size, mask_zero=True)
+          keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token])
       ])
 
   logging.info('Training model:')

@@ -29,20 +29,14 @@ CHAR_VOCAB = list(
 EVAL_BATCH_SIZE = 10
 
 
-def get_special_tokens(vocab_size):
+def get_special_tokens():
   """Gets tokens dataset preprocessing code will add to Shakespeare.
-
-  Args:
-    vocab_size: An integer specifying the number of characters in the
-      vocabulary.  Here, 0 is used for padding, while range(1, vocab_size+1) are
-      used for in-vocabulary tokens. We create three additional special tokens,
-      used for out-of-vocabulary tokens (vocab_size + 1), beginning of snippet
-      tokens (vocab_size + 2) and end of snippet tokens (vocab_size + 3).
 
   Returns:
     A tuple of the four special characters, (pad, oov, bos, eos).
 
   """
+  vocab_size = len(CHAR_VOCAB)
   pad = 0
   oov = vocab_size + 1
   bos = vocab_size + 2
@@ -66,7 +60,7 @@ def _build_tokenize_fn(split_length=SEQUENCE_LENGTH + 1):
   Returns:
     A `tf.function`.
   """
-  _, _, bos, eos = get_special_tokens(len(CHAR_VOCAB))
+  _, _, bos, eos = get_special_tokens()
 
   ids = tf.range(1, len(CHAR_VOCAB) + 1, dtype=tf.int64)
   lookup_table = tf.lookup.StaticVocabularyTable(

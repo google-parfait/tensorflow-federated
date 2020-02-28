@@ -18,15 +18,19 @@ import functools
 
 from absl import app
 from absl import flags
-
-import numpy as np
+from absl import logging
 
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.baselines.stackoverflow import dataset
-from tensorflow_federated.python.research.baselines.stackoverflow import metrics
-from tensorflow_federated.python.research.baselines.stackoverflow import models
+from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.research.optimization.shared import keras_metrics
+from tensorflow_federated.python.research.optimization.shared import optimizer_utils
+from tensorflow_federated.python.research.optimization.stackoverflow import dataset
+from tensorflow_federated.python.research.optimization.stackoverflow import models
+from tensorflow_federated.python.research.utils import adapters
+from tensorflow_federated.python.research.utils import training_loop
+from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
 
 with utils_impl.record_new_flags() as hparam_flags:
@@ -36,29 +40,24 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_integer('client_epochs_per_round', 1,
                        'Number of epochs in the client to take per round.')
   flags.DEFINE_integer('client_batch_size', 8, 'Batch size used on the client.')
+  flags.DEFINE_integer('sequence_length', 20, 'Max sequence length to use.')
   flags.DEFINE_integer('max_elements_per_user', 1000, 'Max number of training '
                        'sentences to use per user.')
-  flags.DEFINE_integer('sequence_length', 20, 'Max sequence length to use.')
-  flags.DEFINE_integer('num_validation_examples', 10000,
-                       'Number of examples to take for validation set.')
-  flags.DEFINE_integer('num_test_examples', 10000,
-                       'Number of examples to take for test set.')
-  flags.DEFINE_integer('shuffle_buffer_size', 1000,
-                       'Buffer size for data shuffling.')
+  flags.DEFINE_integer(
+      'num_validation_examples', 10000, 'Number of examples '
+      'to use from test set for per-round validation.')
   flags.DEFINE_boolean('uniform_weighting', False,
                        'Whether to weigh clients uniformly. If false, clients '
                        'are weighted by the number of tokens.')
-  flags.DEFINE_integer('total_rounds', 200, 'Number of total training rounds.')
+  flags.DEFINE_integer('shuffle_buffer_size', 10000,
+                       'Buffer size for data shuffling.')
 
   # Optimizer configuration (this defines one or more flags per optimizer).
   utils_impl.define_optimizer_flags('server')
   utils_impl.define_optimizer_flags('client')
 
   # Modeling flags
-  flags.DEFINE_integer(
-      'vocab_size', 10000,
-      'Size of the vocab to use; results in most `vocab_size` number of most '
-      'common words used as vocabulary.')
+  flags.DEFINE_integer('vocab_size', 10000, 'Size of vocab to use.')
   flags.DEFINE_integer('embedding_size', 96,
                        'Dimension of word embedding to use.')
   flags.DEFINE_integer('latent_size', 670,
@@ -66,114 +65,160 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_integer('num_layers', 1,
                        'Number of stacked recurrent layers to use.')
   flags.DEFINE_boolean(
-      'lstm', True,
-      'Boolean indicating LSTM recurrent cell. If False, GRU is used.')
-  flags.DEFINE_boolean(
       'shared_embedding', False,
       'Boolean indicating whether to tie input and output embeddings.')
 
 FLAGS = flags.FLAGS
 
 
-def run_experiment():
-  """Runs the training experiment."""
+class FederatedAveragingProcessAdapter(adapters.IterativeProcessPythonAdapter):
+  """Converts iterative process results from anonymous tuples.
+
+  Converts to ServerState and unpacks metrics. This simplifies tasks such as
+  recording metrics.
+  """
+
+  def __init__(self, iterative_process):
+    self._iterative_process = iterative_process
+
+  def _server_state_from_tff_result(self, result):
+    return tff.learning.framework.ServerState(
+        tff.learning.ModelWeights(
+            tuple(result.model.trainable), tuple(result.model.non_trainable)),
+        list(result.optimizer_state),
+        anonymous_tuple.to_odict(result.delta_aggregate_state, True),
+        tuple(result.model_broadcast_state))
+
+  def initialize(self):
+    initial_state = self._iterative_process.initialize()
+    return self._server_state_from_tff_result(initial_state)
+
+  def next(self, state, data):
+    state, metrics = self._iterative_process.next(state, data)
+    state = self._server_state_from_tff_result(state)
+    metrics = metrics._asdict(recursive=True)
+    metrics.update(state.delta_aggregate_state)
+    outputs = None
+    return adapters.IterationResult(state, metrics, outputs)
+
+
+def assign_weights_to_keras_model(state, keras_model):
+  """Assign the model weights to the weights of a `tf.keras.Model`.
+
+  Args:
+    state: The state to assign from.
+    keras_model: the `tf.keras.Model` object to assign weights to.
+  """
+
+  def assign_weights(keras_weights, tff_weights):
+    for k, w in zip(keras_weights, tff_weights):
+      k.assign(w)
+
+  assign_weights(keras_model.trainable_weights, state.model.trainable)
+  assign_weights(keras_model.non_trainable_weights, state.model.non_trainable)
+
+
+def main(argv):
+  if len(argv) > 1:
+    raise app.UsageError('Expected no command-line arguments, '
+                         'got: {}'.format(argv))
+  tf.compat.v1.enable_v2_behavior()
   tff.framework.set_default_executor(
       tff.framework.local_executor_factory(max_fanout=10))
-
-  def _layer_fn():
-    layer_type = tf.keras.layers.LSTM if FLAGS.lstm else tf.keras.layers.GRU
-    return layer_type(FLAGS.latent_size, return_sequences=True)
 
   model_builder = functools.partial(
       models.create_recurrent_model,
       vocab_size=FLAGS.vocab_size,
       embedding_size=FLAGS.embedding_size,
+      latent_size=FLAGS.latent_size,
       num_layers=FLAGS.num_layers,
-      recurrent_layer_fn=_layer_fn,
-      name='stackoverflow-recurrent',
       shared_embedding=FLAGS.shared_embedding)
 
-  pad, oov, _, eos = dataset.get_special_tokens(FLAGS.vocab_size)
+  loss_builder = functools.partial(
+      tf.keras.losses.SparseCategoricalCrossentropy, from_logits=True)
 
-  train_set, validation_set, _ = (
-      dataset.construct_word_level_datasets(
-          FLAGS.vocab_size,
-          FLAGS.client_batch_size,
-          FLAGS.client_epochs_per_round,
-          FLAGS.sequence_length,
-          FLAGS.max_elements_per_user,
-          False,
-          FLAGS.shuffle_buffer_size,
-          FLAGS.num_validation_examples,
-          FLAGS.num_test_examples))
+  pad_token, oov_token, _, eos_token = dataset.get_special_tokens(
+      FLAGS.vocab_size)
+
+  def metrics_builder():
+    return [
+        keras_metrics.MaskedCategoricalAccuracy(
+            name='accuracy_with_oov', masked_tokens=[pad_token]),
+        keras_metrics.MaskedCategoricalAccuracy(
+            name='accuracy_no_oov', masked_tokens=[pad_token, oov_token]),
+        # Notice BOS never appears in ground truth.
+        keras_metrics.MaskedCategoricalAccuracy(
+            name='accuracy_no_oov_or_eos',
+            masked_tokens=[pad_token, oov_token, eos_token]),
+        keras_metrics.NumBatchesCounter(),
+        keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
+    ]
+
+  datasets = dataset.construct_word_level_datasets(
+      vocab_size=FLAGS.vocab_size,
+      client_batch_size=FLAGS.client_batch_size,
+      client_epochs_per_round=FLAGS.client_epochs_per_round,
+      max_seq_len=FLAGS.sequence_length,
+      max_training_elements_per_user=FLAGS.max_elements_per_user,
+      num_validation_examples=FLAGS.num_validation_examples,
+      max_shuffle_buffer_size=FLAGS.shuffle_buffer_size)
+  train_dataset, validation_dataset, test_dataset = datasets
 
   sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(validation_set)))
+                                       next(iter(validation_dataset)))
+
+  if FLAGS.uniform_weighting:
+
+    def client_weight_fn(local_outputs):
+      del local_outputs
+      return 1.0
+  else:
+
+    def client_weight_fn(local_outputs):
+      return tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
 
   def model_fn():
-    """Defines the model."""
-    keras_model = model_builder()
-    train_metrics = [
-        metrics.NumTokensCounter(name='num_tokens', masked_tokens=[pad]),
-        metrics.NumTokensCounter(
-            name='num_tokens_no_oov', masked_tokens=[pad, oov]),
-        metrics.NumBatchesCounter(),
-        metrics.NumExamplesCounter(),
-        metrics.MaskedCategoricalAccuracy(name='accuracy', masked_tokens=[pad]),
-        metrics.MaskedCategoricalAccuracy(
-            name='accuracy_no_oov', masked_tokens=[pad, oov]),
-        metrics.MaskedCategoricalAccuracy(
-            name='accuracy_no_oov_no_eos', masked_tokens=[pad, oov, eos]),
-    ]
     return tff.learning.from_keras_model(
-        keras_model,
+        model_builder(),
         sample_batch,
         tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics=train_metrics)
+        metrics=metrics_builder())
 
-  def server_optimizer_fn():
-    return utils_impl.create_optimizer_from_flags('server')
-
-  def client_weight_fn(local_outputs):
-    num_tokens = tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
-    return 1.0 if FLAGS.uniform_weighting else num_tokens
-
-  client_optimizer_fn = lambda: utils_impl.create_optimizer_from_flags('client')
-  iterative_process = (
+  server_optimizer_fn = optimizer_utils.create_optimizer_fn_from_flags('server')
+  client_optimizer_fn = optimizer_utils.create_optimizer_fn_from_flags('client')
+  training_process = (
       tff.learning.federated_averaging.build_federated_averaging_process(
           model_fn=model_fn,
           server_optimizer_fn=server_optimizer_fn,
           client_weight_fn=client_weight_fn,
           client_optimizer_fn=client_optimizer_fn))
 
-  server_state = iterative_process.initialize()
-  for round_num in range(1, FLAGS.total_rounds+1):
-    sampled_clients = np.random.choice(
-        train_set.client_ids,
-        size=FLAGS.clients_per_round,
-        replace=False)
-    client_data = [
-        train_set.create_tf_dataset_for_client(client)
-        for client in sampled_clients
-    ]
-    server_state, server_metrics = iterative_process.next(
-        server_state, client_data)
-    print('Round: {}'.format(round_num))
-    print('   Loss: {:.8f}'.format(server_metrics.loss))
-    print('   num_batches: {}'.format(server_metrics.num_batches))
-    print('   num_examples: {}'.format(server_metrics.num_examples))
-    print('   num_tokens: {}'.format(server_metrics.num_tokens))
-    print('   num_tokens_no_oov: {}'.format(server_metrics.num_tokens_no_oov))
-    print('   accuracy: {:.5f}'.format(server_metrics.accuracy))
-    print('   accuracy_no_oov: {:.5f}'.format(server_metrics.accuracy_no_oov))
+  training_process = FederatedAveragingProcessAdapter(training_process)
 
+  client_datasets_fn = training_utils.build_client_datasets_fn(
+      train_dataset, FLAGS.clients_per_round)
 
-def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
+  evaluate_fn = training_utils.build_evaluate_fn(
+      model_builder=model_builder,
+      eval_dataset=validation_dataset,
+      loss_builder=loss_builder,
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_to_keras_model)
 
-  tf.compat.v1.enable_v2_behavior()
-  run_experiment()
+  test_fn = training_utils.build_evaluate_fn(
+      model_builder=model_builder,
+      # Use both val and test for symmetry with other experiments, which
+      # evaluate on the entire test set.
+      eval_dataset=validation_dataset.concatenate(test_dataset),
+      loss_builder=loss_builder,
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_to_keras_model)
+
+  logging.info('Training model:')
+  logging.info(model_builder().summary())
+
+  training_loop.run(
+      training_process, client_datasets_fn, evaluate_fn, test_fn=test_fn)
 
 
 if __name__ == '__main__':

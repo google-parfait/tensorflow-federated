@@ -18,7 +18,6 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 EVAL_BATCH_SIZE = 100
-MAX_SHUFFLE_BUFFER_SIZE = 10000
 
 
 def create_vocab(vocab_size):
@@ -84,11 +83,13 @@ def get_special_tokens(vocab_size):
   return pad, oov, bos, eos
 
 
-def construct_word_level_datasets(vocab_size: int, client_batch_size: int,
+def construct_word_level_datasets(vocab_size: int,
+                                  client_batch_size: int,
                                   client_epochs_per_round: int,
                                   max_seq_len: int,
                                   max_training_elements_per_user: int,
-                                  num_validation_examples: int):
+                                  num_validation_examples: int,
+                                  max_shuffle_buffer_size=10000):
   """Preprocessing for Stackoverflow data.
 
   Notice that this preprocessing function *ignores* the heldout Stackoverflow
@@ -109,6 +110,7 @@ def construct_word_level_datasets(vocab_size: int, client_batch_size: int,
       elements to take per user. If -1, takes all elements for each user.
     num_validation_examples: Number of examples from Stackoverflow test set to
       use for validation on each round.
+    max_shuffle_buffer_size: Maximum shuffle buffer size.
 
   Returns:
     stackoverflow_train: An instance of `tff.simulation.ClientData`
@@ -150,8 +152,8 @@ def construct_word_level_datasets(vocab_size: int, client_batch_size: int,
   vocab = create_vocab(vocab_size)
   to_ids = build_to_ids_fn(vocab, max_seq_len)
   if (max_training_elements_per_user == -1 or
-      max_training_elements_per_user > MAX_SHUFFLE_BUFFER_SIZE):
-    shuffle_buffer_size = MAX_SHUFFLE_BUFFER_SIZE
+      max_training_elements_per_user > max_shuffle_buffer_size):
+    shuffle_buffer_size = max_shuffle_buffer_size
   else:
     shuffle_buffer_size = max_training_elements_per_user
 

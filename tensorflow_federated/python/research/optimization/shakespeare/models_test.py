@@ -29,14 +29,14 @@ class ModelsTest(tf.test.TestCase):
     mask_model.compile(
         optimizer='sgd',
         loss='sparse_categorical_crossentropy',
-        metrics=[keras_metrics.FlattenedCategoricalAccuracy(vocab_size)])
+        metrics=[keras_metrics.MaskedCategoricalAccuracy()])
 
     no_mask_model = models.create_recurrent_model(
         vocab_size, sequence_length=5, mask_zero=False)
     no_mask_model.compile(
         optimizer='sgd',
         loss='sparse_categorical_crossentropy',
-        metrics=[keras_metrics.FlattenedCategoricalAccuracy(vocab_size)])
+        metrics=[keras_metrics.MaskedCategoricalAccuracy()])
 
     constant_test_weights = tf.nest.map_structure(tf.ones_like,
                                                   mask_model.weights)

@@ -22,43 +22,10 @@ from tensorflow_federated.python.research.optimization.stackoverflow import mode
 
 class KerasSequenceModelsTest(absltest.TestCase):
 
-  def test_dense_fn_raises(self):
-
-    def _dense_layer_fn(x):
-      return tf.keras.layers.Dense(x)
-
-    with self.assertRaisesRegex(ValueError, 'tf.keras.layers.RNN'):
-      models.create_recurrent_model(10, _dense_layer_fn, 'dense')
-
-  def test_lstm_constructs(self):
-
-    def _recurrent_layer_fn(x):
-      return tf.keras.layers.LSTM(x, return_sequences=True)
-
-    model = models.create_recurrent_model(10, _recurrent_layer_fn, 'rnn-lstm')
+  def test_constructs(self):
+    model = models.create_recurrent_model(10, name='rnn-lstm')
     self.assertIsInstance(model, tf.keras.Model)
     self.assertEqual('rnn-lstm', model.name)
-
-  def test_gru_constructs(self):
-
-    def _recurrent_layer_fn(x):
-      return tf.keras.layers.GRU(x, return_sequences=True)
-
-    model = models.create_recurrent_model(10, _recurrent_layer_fn, 'rnn-gru')
-    self.assertIsInstance(model, tf.keras.Model)
-    self.assertEqual('rnn-gru', model.name)
-
-  def test_gru_fewer_parameters_than_lstm(self):
-
-    def _gru_fn(x):
-      return tf.keras.layers.GRU(x, return_sequences=True)
-
-    def _lstm_fn(x):
-      return tf.keras.layers.LSTM(x, return_sequences=True)
-
-    gru_model = models.create_recurrent_model(10, _gru_fn, 'gru')
-    lstm_model = models.create_recurrent_model(10, _lstm_fn, 'lstm')
-    self.assertLess(gru_model.count_params(), lstm_model.count_params())
 
 
 if __name__ == '__main__':

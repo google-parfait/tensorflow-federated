@@ -58,13 +58,13 @@ def model_builder():
 
 def metrics_builder():
   """Returns a `list` of `tf.keras.metric.Metric` objects."""
+  pad_token, _, _, _ = dataset.get_special_tokens()
+
   return [
       keras_metrics.NumBatchesCounter(),
       keras_metrics.NumExamplesCounter(),
-      keras_metrics.FlattenedNumExamplesCounter(
-          name='num_tokens', mask_zero=True),
-      keras_metrics.FlattenedCategoricalAccuracy(
-          vocab_size=VOCAB_SIZE, mask_zero=True),
+      keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
+      keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token]),
   ]
 
 

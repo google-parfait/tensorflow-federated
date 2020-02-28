@@ -23,9 +23,9 @@ from absl import logging
 import pandas as pd
 import tensorflow as tf
 
-from tensorflow_federated.python.research.baselines.stackoverflow import dataset
-from tensorflow_federated.python.research.baselines.stackoverflow import metrics
-from tensorflow_federated.python.research.baselines.stackoverflow import models
+from tensorflow_federated.python.research.optimization.shared import keras_metrics
+from tensorflow_federated.python.research.optimization.stackoverflow import dataset
+from tensorflow_federated.python.research.optimization.stackoverflow import models
 from tensorflow_federated.python.research.utils import utils_impl
 
 with utils_impl.record_new_flags() as hparam_flags:
@@ -60,13 +60,10 @@ with utils_impl.record_new_flags() as hparam_flags:
       'common words used as vocabulary.')
   flags.DEFINE_integer('embedding_size', 96,
                        'Dimension of word embedding to use.')
-  flags.DEFINE_integer('latent_size', 512,
+  flags.DEFINE_integer('latent_size', 670,
                        'Dimension of latent size to use in recurrent cell')
   flags.DEFINE_integer('num_layers', 1,
                        'Number of stacked recurrent layers to use.')
-  flags.DEFINE_boolean(
-      'lstm', True,
-      'Boolean indicating LSTM recurrent cell. If False, GRU is used.')
   flags.DEFINE_boolean(
       'shared_embedding', False,
       'Boolean indicating whether to tie input and output embeddings.')
@@ -91,31 +88,25 @@ def run_experiment():
   except tf.errors.OpError:
     pass
 
-  train_set, validation_set, test_set = (
-      dataset.construct_word_level_datasets(
-          vocab_size=FLAGS.vocab_size,
-          client_batch_size=FLAGS.batch_size,
-          client_epochs_per_round=1,
-          max_seq_len=FLAGS.sequence_length,
-          max_elements_per_user=FLAGS.max_elements_per_user,
-          centralized_train=True,
-          shuffle_buffer_size=None,
-          num_validation_examples=FLAGS.num_validation_examples,
-          num_test_examples=FLAGS.num_test_examples))
-
-  recurrent_model = tf.keras.layers.LSTM if FLAGS.lstm else tf.keras.layers.GRU
-
-  def _layer_fn():
-    return recurrent_model(FLAGS.latent_size, return_sequences=True)
+  _, validation_dataset, test_dataset = dataset.construct_word_level_datasets(
+      vocab_size=FLAGS.vocab_size,
+      client_batch_size=FLAGS.batch_size,
+      client_epochs_per_round=1,
+      max_seq_len=FLAGS.sequence_length,
+      max_training_elements_per_user=-1,
+      num_validation_examples=FLAGS.num_validation_examples)
+  train_dataset = dataset.get_centralized_train_dataset(
+      FLAGS.vocab_size, FLAGS.batch_size, FLAGS.sequence_length,
+      FLAGS.shuffle_buffer_size)
 
   pad, oov, _, eos = dataset.get_special_tokens(FLAGS.vocab_size)
 
   model = models.create_recurrent_model(
-      FLAGS.vocab_size,
-      FLAGS.embedding_size,
-      FLAGS.num_layers,
-      _layer_fn,
-      'stackoverflow-recurrent',
+      vocab_size=FLAGS.vocab_size,
+      embedding_size=FLAGS.embedding_size,
+      latent_size=FLAGS.latent_size,
+      num_layers=FLAGS.num_layers,
+      name='stackoverflow-recurrent',
       shared_embedding=FLAGS.shared_embedding)
   logging.info('Training model: %s', model.summary())
   optimizer = utils_impl.create_optimizer_from_flags('centralized')
@@ -123,10 +114,11 @@ def run_experiment():
       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
       optimizer=optimizer,
       metrics=[
-          metrics.MaskedCategoricalAccuracy([pad], 'accuracy_with_oov'),
-          metrics.MaskedCategoricalAccuracy([pad, oov], 'accuracy_no_oov'),
-          metrics.MaskedCategoricalAccuracy([pad, oov, eos],
-                                            'accuracy_no_oov_no_eos')
+          keras_metrics.MaskedCategoricalAccuracy([pad], 'accuracy_with_oov'),
+          keras_metrics.MaskedCategoricalAccuracy([pad, oov],
+                                                  'accuracy_no_oov'),
+          keras_metrics.MaskedCategoricalAccuracy([pad, oov, eos],
+                                                  'accuracy_no_oov_no_eos')
       ])
 
   train_results_path = os.path.join(FLAGS.root_output_dir, FLAGS.exp_name,
@@ -165,14 +157,14 @@ def run_experiment():
   utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
   model.fit(
-      train_set,
+      train_dataset,
       epochs=FLAGS.epochs,
       verbose=1,
       steps_per_epoch=FLAGS.steps_per_epoch,
-      validation_data=validation_set,
+      validation_data=validation_dataset,
       callbacks=[train_csv_logger, train_tensorboard_callback])
   score = model.evaluate(
-      test_set,
+      test_dataset,
       verbose=1,
       callbacks=[test_csv_logger, test_tensorboard_callback])
   logging.info('Final test loss: %.4f', score[0])

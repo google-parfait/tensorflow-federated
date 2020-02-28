@@ -20,17 +20,17 @@ from tensorflow_federated.python.research.optimization.shared import keras_metri
 tf.compat.v1.enable_v2_behavior()
 
 
-class FlattenedNumExamplesTest(tf.test.TestCase):
+class NumTokensCounterTest(tf.test.TestCase):
 
   def test_constructor_no_masked_token(self):
     metric_name = 'my_test_metric'
-    metric = keras_metrics.FlattenedNumExamplesCounter(metric_name)
+    metric = keras_metrics.NumTokensCounter(name=metric_name)
     self.assertIsInstance(metric, tf.keras.metrics.Metric)
     self.assertEqual(metric.name, metric_name)
     self.assertEqual(self.evaluate(metric.result()), 0)
 
   def test_counts_total_examples_without_zero_mask_no_sample_weight(self):
-    metric = keras_metrics.FlattenedNumExamplesCounter()
+    metric = keras_metrics.NumTokensCounter()
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
         y_pred=[
@@ -40,12 +40,12 @@ class FlattenedNumExamplesTest(tf.test.TestCase):
     self.assertEqual(self.evaluate(metric.result()), 8)
 
   def test_counts_total_examples_with_zero_mask_no_sample_weight(self):
-    metric = keras_metrics.FlattenedNumExamplesCounter(mask_zero=True)
+    metric = keras_metrics.NumTokensCounter(masked_tokens=[0])
     metric.update_state(y_true=[[1, 2, 3, 4], [0, 0, 0, 0]], y_pred=[0])
     self.assertEqual(self.evaluate(metric.result()), 4)
 
   def test_counts_total_examples_without_zero_mask_with_sample_weight(self):
-    metric = keras_metrics.FlattenedNumExamplesCounter()
+    metric = keras_metrics.NumTokensCounter()
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
         y_pred=[0],
@@ -53,7 +53,7 @@ class FlattenedNumExamplesTest(tf.test.TestCase):
     self.assertEqual(self.evaluate(metric.result()), 14)
 
   def test_counts_total_examples_with_zero_mask_with_sample_weight(self):
-    metric = keras_metrics.FlattenedNumExamplesCounter(mask_zero=True)
+    metric = keras_metrics.NumTokensCounter(masked_tokens=[0])
     metric.update_state(
         y_true=[[1, 2, 3, 0], [1, 0, 0, 0]],
         y_pred=[0],
@@ -61,30 +61,27 @@ class FlattenedNumExamplesTest(tf.test.TestCase):
     self.assertEqual(self.evaluate(metric.result()), 7)
 
 
-class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
+class MaskedCategoricalAccuracyTest(tf.test.TestCase):
 
   def test_constructor_no_masked_token(self):
     metric_name = 'my_test_metric'
-    metric = keras_metrics.FlattenedCategoricalAccuracy(
-        vocab_size=5, name=metric_name)
+    metric = keras_metrics.MaskedCategoricalAccuracy(name=metric_name)
     self.assertIsInstance(metric, tf.keras.metrics.Metric)
     self.assertEqual(metric.name, metric_name)
-    metric_config = metric.get_config()
-    self.assertEqual(metric_config['vocab_size'], 5)
+    self.assertAllEqual(metric.get_config()['masked_tokens'], [])
     self.assertEqual(self.evaluate(metric.result()), 0.0)
 
   def test_constructor_with_masked_token(self):
     metric_name = 'my_test_metric'
-    metric = keras_metrics.FlattenedCategoricalAccuracy(
-        vocab_size=5, name=metric_name, masked_tokens=100)
+    metric = keras_metrics.MaskedCategoricalAccuracy(
+        name=metric_name, masked_tokens=[100])
     self.assertIsInstance(metric, tf.keras.metrics.Metric)
     self.assertEqual(metric.name, metric_name)
     self.assertAllEqual(metric.get_config()['masked_tokens'], [100])
     self.assertEqual(self.evaluate(metric.result()), 0.0)
 
   def test_update_state_with_special_character(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(
-        vocab_size=5, masked_tokens=4)
+    metric = keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[4])
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
         y_pred=[
@@ -118,7 +115,7 @@ class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
     self.assertAllClose(self.evaluate(metric.result()), 6 / 10.0)
 
   def test_update_state_with_no_special_character(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(vocab_size=5)
+    metric = keras_metrics.MaskedCategoricalAccuracy()
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
         y_pred=[
@@ -152,8 +149,7 @@ class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
     self.assertAllClose(self.evaluate(metric.result()), 8 / 12.0)
 
   def test_weighted_update_state_with_masked_token(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(
-        vocab_size=5, masked_tokens=4)
+    metric = keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[4])
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
         y_pred=[
@@ -173,7 +169,7 @@ class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
             ],
         ],
         # A weight for each `y_true` scalar.
-        sample_weight=[1.0, 2.0, 1.0, 2.0, 1.0, 2.0, 1.0, 2.0])
+        sample_weight=[[1.0, 2.0, 1.0, 2.0], [1.0, 2.0, 1.0, 2.0]])
     self.assertAllClose(self.evaluate(metric.result()), (4 + 4) / 10.0)
     metric.update_state(
         y_true=[[0, 4, 1, 2]],
@@ -190,7 +186,7 @@ class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
     self.assertAllClose(self.evaluate(metric.result()), (4 + 4 + 1) / 15.0)
 
   def test_weighted_update_state_no_special_character(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(vocab_size=5)
+    metric = keras_metrics.MaskedCategoricalAccuracy()
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
         y_pred=[
@@ -228,7 +224,7 @@ class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
 
   def test_weighted_update_state_no_special_character_rank_2_sample_weight(
       self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(vocab_size=5)
+    metric = keras_metrics.MaskedCategoricalAccuracy()
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
         y_pred=[
@@ -252,7 +248,7 @@ class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
     self.assertAllClose(self.evaluate(metric.result()), (6 + 4) / 12.0)
 
   def test_weighted_update_state_with_scalar_weight(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(vocab_size=5)
+    metric = keras_metrics.MaskedCategoricalAccuracy()
     metric.update_state(
         y_true=[[1, 2, 3, 4]],
         y_pred=[
@@ -268,8 +264,7 @@ class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
     self.assertAllClose(self.evaluate(metric.result()), .5)
 
   def test_weighted_update_state_special_character_rank_2_sample_weight(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(
-        vocab_size=5, masked_tokens=4)
+    metric = keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[4])
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
         y_pred=[
@@ -292,55 +287,8 @@ class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
         sample_weight=[[1.0, 2.0, 1.0, 2.0], [1.0, 2.0, 1.0, 2.0]])
     self.assertAllClose(self.evaluate(metric.result()), (6 + 2) / 10.0)
 
-  def test_weighted_update_state_masked_zero(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(
-        vocab_size=5, mask_zero=True)
-    metric.update_state(
-        y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
-        y_pred=[
-            # A batch with 100% accuracy.
-            [
-                [0.1, 0.9, 0.1, 0.1, 0.1],
-                [0.1, 0.1, 0.9, 0.1, 0.1],
-                [0.1, 0.1, 0.1, 0.9, 0.1],
-                [0.1, 0.1, 0.1, 0.1, 0.9],
-            ],
-            # A batch with 0% accuracy, all masked.
-            [
-                [0.1, 0.9, 0.1, 0.1, 0.1],
-                [0.1, 0.1, 0.9, 0.1, 0.1],
-                [0.1, 0.1, 0.1, 0.9, 0.1],
-                [0.1, 0.1, 0.1, 0.1, 0.9],
-            ],
-        ])
-    self.assertAllClose(self.evaluate(metric.result()), 1.)
-
-  def test_weighted_update_state_masked_token_and_masked_zero(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(
-        vocab_size=5, masked_tokens=4, mask_zero=True)
-    metric.update_state(
-        y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
-        y_pred=[
-            # A batch with 50% accuracy.
-            [
-                [0.1, 0.9, 0.1, 0.1, 0.1],
-                [0.1, 0.1, 0.9, 0.1, 0.1],
-                [0.1, 0.1, 0.1, 0.1, 0.9],
-                [0.1, 0.1, 0.1, 0.9, 0.1],
-            ],
-            # A batch with 0% accuracy, all masked.
-            [
-                [0.1, 0.9, 0.1, 0.1, 0.1],
-                [0.1, 0.1, 0.9, 0.1, 0.1],
-                [0.1, 0.1, 0.1, 0.9, 0.1],
-                [0.1, 0.1, 0.1, 0.1, 0.9],
-            ],
-        ])
-    self.assertAllClose(self.evaluate(metric.result()), 1. * 2 / 3)
-
   def test_update_state_with_multiple_tokens_masked(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(
-        vocab_size=5, masked_tokens=[1, 2, 3, 4])
+    metric = keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[1, 2, 3, 4])
     metric.update_state(
         y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
         y_pred=[
@@ -362,8 +310,7 @@ class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
     self.assertAllClose(self.evaluate(metric.result()), 0.5)
 
   def test_update_state_with_all_tokens_masked(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(
-        vocab_size=5, masked_tokens=[1, 2, 3, 4])
+    metric = keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[1, 2, 3, 4])
     metric.update_state(
         # All batches should be masked.
         y_true=[[1, 2, 3, 4], [4, 3, 2, 1]],
@@ -382,31 +329,6 @@ class FlattenedCategoricalAccuracyTest(tf.test.TestCase):
             ],
         ])
     self.assertAllClose(self.evaluate(metric.result()), 0.0)
-
-  def test_weighted_update_state_multiple_masked_tokens_and_masked_zero(self):
-    metric = keras_metrics.FlattenedCategoricalAccuracy(
-        vocab_size=5, masked_tokens=[3, 4], mask_zero=True)
-    metric.update_state(
-        y_true=[[1, 2, 3, 4], [0, 0, 0, 0]],
-        y_pred=[
-            # A batch with 25% accuracy, but 50% accuracy after masking and 66%
-            # accuracy after reweighting.
-            [
-                [0.1, 0.1, 0.9, 0.1, 0.1],
-                [0.1, 0.1, 0.9, 0.1, 0.1],
-                [0.1, 0.1, 0.1, 0.1, 0.9],
-                [0.1, 0.1, 0.1, 0.9, 0.1],
-            ],
-            # A batch with 0% accuracy, all masked.
-            [
-                [0.1, 0.9, 0.1, 0.1, 0.1],
-                [0.1, 0.1, 0.9, 0.1, 0.1],
-                [0.1, 0.1, 0.1, 0.9, 0.1],
-                [0.1, 0.1, 0.1, 0.1, 0.9],
-            ],
-        ],
-        sample_weight=[[1.0, 2.0, 1.0, 2.0], [1.0, 2.0, 1.0, 2.0]])
-    self.assertAllClose(self.evaluate(metric.result()), 1. * 2 / 3)
 
 
 if __name__ == '__main__':

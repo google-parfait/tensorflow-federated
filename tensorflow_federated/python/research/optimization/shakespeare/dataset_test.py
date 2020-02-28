@@ -23,7 +23,7 @@ tf.compat.v1.enable_v2_behavior()
 class DatasetPreprocessingTest(tf.test.TestCase):
 
   def test_to_ids(self):
-    pad, _, bos, eos = dataset.get_special_tokens(len(dataset.CHAR_VOCAB))
+    pad, _, bos, eos = dataset.get_special_tokens()
     to_tokens = dataset._build_tokenize_fn(split_length=5)
     tokens = self.evaluate(to_tokens({'snippets': tf.constant('abc')}))
     self.assertAllEqual(tokens, [bos, 64, 42, 21, eos])
@@ -43,7 +43,7 @@ class DatasetPreprocessingTest(tf.test.TestCase):
     ), example)
 
   def test_convert_snippets_to_character_sequence_examples(self):
-    pad, _, bos, eos = dataset.get_special_tokens(len(dataset.CHAR_VOCAB))
+    pad, _, bos, eos = dataset.get_special_tokens()
     ds = dataset.convert_snippets_to_character_sequence_examples(
         tf.data.Dataset.from_tensor_slices({
             'snippets': ['a snippet', 'different snippet'],

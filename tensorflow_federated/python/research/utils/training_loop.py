@@ -63,6 +63,9 @@ def create_if_not_exists(path):
 def _setup_outputs(root_output_dir, experiment_name, hparam_dict):
   """Set up directories for experiment loops, write hyperparameters to disk."""
 
+  if not experiment_name:
+    raise ValueError('experiment_name must be specified.')
+
   create_if_not_exists(root_output_dir)
 
   checkpoint_dir = os.path.join(root_output_dir, 'checkpoints', experiment_name)

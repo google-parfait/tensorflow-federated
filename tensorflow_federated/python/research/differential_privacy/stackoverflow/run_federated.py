@@ -54,13 +54,16 @@ with utils_impl.record_new_flags() as hparam_flags:
   utils_impl.define_optimizer_flags('client')
 
   # Modeling flags
-  flags.DEFINE_boolean(
-      'lstm', True,
-      'Boolean indicating LSTM recurrent cell. If False, GRU is used.')
+  flags.DEFINE_integer('vocab_size', 10000, 'Size of vocab to use.')
+  flags.DEFINE_integer('embedding_size', 96,
+                       'Dimension of word embedding to use.')
+  flags.DEFINE_integer('latent_size', 670,
+                       'Dimension of latent size to use in recurrent cell')
+  flags.DEFINE_integer('num_layers', 1,
+                       'Number of stacked recurrent layers to use.')
   flags.DEFINE_boolean(
       'shared_embedding', False,
       'Boolean indicating whether to tie input and output embeddings.')
-  flags.DEFINE_integer('vocab_size', 10000, 'Size of vocab to use.')
 
   # Differential privacy flags
   flags.DEFINE_float('clip', 0.05, 'Initial clip.')
@@ -134,19 +137,13 @@ def main(argv):
   tf.compat.v1.enable_v2_behavior()
   tff.framework.set_default_executor(
       tff.framework.local_executor_factory(max_fanout=10))
-  if FLAGS.lstm:
-
-    def _layer_fn(x):
-      return tf.keras.layers.LSTM(x, return_sequences=True)
-  else:
-
-    def _layer_fn(x):
-      return tf.keras.layers.GRU(x, return_sequences=True)
 
   model_builder = functools.partial(
       models.create_recurrent_model,
       vocab_size=FLAGS.vocab_size,
-      recurrent_layer_fn=_layer_fn,
+      embedding_size=FLAGS.embedding_size,
+      latent_size=FLAGS.latent_size,
+      num_layers=FLAGS.num_layers,
       shared_embedding=FLAGS.shared_embedding)
 
   loss_builder = functools.partial(
@@ -157,23 +154,16 @@ def main(argv):
 
   def metrics_builder():
     return [
-        keras_metrics.FlattenedCategoricalAccuracy(
-            # Plus 4 for PAD, OOV, BOS and EOS.
-            vocab_size=FLAGS.vocab_size + 4,
-            name='accuracy_with_oov',
-            masked_tokens=pad_token),
-        keras_metrics.FlattenedCategoricalAccuracy(
-            vocab_size=FLAGS.vocab_size + 4,
-            name='accuracy_no_oov',
-            masked_tokens=[pad_token, oov_token]),
+        keras_metrics.MaskedCategoricalAccuracy(
+            name='accuracy_with_oov', masked_tokens=[pad_token]),
+        keras_metrics.MaskedCategoricalAccuracy(
+            name='accuracy_no_oov', masked_tokens=[pad_token, oov_token]),
         # Notice BOS never appears in ground truth.
-        keras_metrics.FlattenedCategoricalAccuracy(
-            vocab_size=FLAGS.vocab_size + 4,
+        keras_metrics.MaskedCategoricalAccuracy(
             name='accuracy_no_oov_or_eos',
             masked_tokens=[pad_token, oov_token, eos_token]),
         keras_metrics.NumBatchesCounter(),
-        keras_metrics.FlattenedNumExamplesCounter(
-            name='num_tokens', mask_zero=True),
+        keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
     ]
 
   datasets = dataset.construct_word_level_datasets(

@@ -36,10 +36,19 @@ with utils_impl.record_new_flags() as hparam_flags:
       'Unique name for the experiment, suitable for '
       'use in filenames.')
   flags.DEFINE_integer('batch_size', 128, 'Batch size used.')
-  flags.DEFINE_integer('vocab_size', 10000, 'Batch size used.')
+
+  # Modeling flags
+  flags.DEFINE_integer('vocab_size', 10000, 'Size of vocab to use.')
+  flags.DEFINE_integer('embedding_size', 96,
+                       'Dimension of word embedding to use.')
+  flags.DEFINE_integer('latent_size', 670,
+                       'Dimension of latent size to use in recurrent cell')
+  flags.DEFINE_integer('num_layers', 1,
+                       'Number of stacked recurrent layers to use.')
   flags.DEFINE_boolean(
-      'shared_embedding', False, 'Boolean indicating whether or not to tie '
-      'input and output embeddings.')
+      'shared_embedding', False,
+      'Boolean indicating whether to tie input and output embeddings.')
+
   # TODO(b/141867576): TFF currently needs a concrete maximum sequence length.
   # Follow up when this restriction is lifted.
   flags.DEFINE_integer('sequence_length', 20, 'Max sequence length to use.')
@@ -67,14 +76,14 @@ def run_experiment():
       FLAGS.vocab_size, FLAGS.batch_size, FLAGS.sequence_length,
       FLAGS.shuffle_buffer_size)
 
-  def _lstm_fn(latent_size):
-    return tf.keras.layers.LSTM(latent_size, return_sequences=True)
-
   model = models.create_recurrent_model(
-      FLAGS.vocab_size,
-      _lstm_fn,
-      'stackoverflow-lstm',
+      vocab_size=FLAGS.vocab_size,
+      name='stackoverflow-lstm',
+      embedding_size=FLAGS.embedding_size,
+      latent_size=FLAGS.latent_size,
+      num_layers=FLAGS.num_layers,
       shared_embedding=FLAGS.shared_embedding)
+
   logging.info('Training model: %s', model.summary())
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
   pad_token, oov_token, _, eos_token = dataset.get_special_tokens(
@@ -84,16 +93,11 @@ def run_experiment():
       optimizer=optimizer,
       metrics=[
           # Plus 4 for pad, oov, bos, eos
-          keras_metrics.FlattenedCategoricalAccuracy(
-              vocab_size=FLAGS.vocab_size + 4,
-              name='accuracy_with_oov',
-              masked_tokens=pad_token),
-          keras_metrics.FlattenedCategoricalAccuracy(
-              vocab_size=FLAGS.vocab_size + 4,
-              name='accuracy_no_oov',
-              masked_tokens=[pad_token, oov_token]),
-          keras_metrics.FlattenedCategoricalAccuracy(
-              vocab_size=FLAGS.vocab_size + 4,
+          keras_metrics.MaskedCategoricalAccuracy(
+              name='accuracy_with_oov', masked_tokens=[pad_token]),
+          keras_metrics.MaskedCategoricalAccuracy(
+              name='accuracy_no_oov', masked_tokens=[pad_token, oov_token]),
+          keras_metrics.MaskedCategoricalAccuracy(
               name='accuracy_no_oov_or_eos',
               masked_tokens=[pad_token, oov_token, eos_token]),
       ])

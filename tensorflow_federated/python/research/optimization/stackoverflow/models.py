@@ -17,11 +17,6 @@
 import tensorflow as tf
 
 
-EMBEDDING_SIZE = 96
-LATENT_SIZE = 670
-NUM_LAYERS = 1
-
-
 class TransposableEmbedding(tf.keras.layers.Embedding):
   """A Keras Embedding layer implements a transposed projection for output."""
 
@@ -33,18 +28,19 @@ class TransposableEmbedding(tf.keras.layers.Embedding):
     return tf.matmul(inputs, self.transposed_embeddings)
 
 
-def create_recurrent_model(vocab_size,
-                           recurrent_layer_fn,
+def create_recurrent_model(vocab_size=10000,
+                           embedding_size=96,
+                           latent_size=670,
+                           num_layers=1,
                            name='rnn',
                            shared_embedding=False):
   """Constructs zero-padded keras model with the given parameters and cell.
 
   Args:
       vocab_size: Size of vocabulary to use.
-      recurrent_layer_fn: Function taking a single integer parameter, defining
-        the dimension of the latent space, which returns an instance of a
-        subclass of `tf.keras.layers.RNN`, creating the cells of the recurrent
-        model.
+      embedding_size: The size of the embedding.
+      latent_size: The size of the recurrent state.
+      num_layers: The number of layers.
       name: (Optional) string to name the returned `tf.keras.Model`.
       shared_embedding: (Optional) Whether to tie the input and output
         embeddings.
@@ -55,21 +51,15 @@ def create_recurrent_model(vocab_size,
   extended_vocab_size = vocab_size + 4  # For pad/bos/eos/oov.
   inputs = tf.keras.layers.Input(shape=(None,))
   input_embedding = TransposableEmbedding(
-      input_dim=extended_vocab_size, output_dim=EMBEDDING_SIZE, mask_zero=True)
+      input_dim=extended_vocab_size, output_dim=embedding_size, mask_zero=True)
   embedded = input_embedding(inputs)
   projected = embedded
 
-  for _ in range(NUM_LAYERS):
-    layer = recurrent_layer_fn(LATENT_SIZE)
-    if not isinstance(layer, tf.keras.layers.RNN):
-      raise ValueError('The `recurrent_layer_fn` parameter to '
-                       '`create_recurrent_model` should return an instance of '
-                       '`tf.keras.layers.Layer` which inherits from '
-                       '`tf.keras.layers.RNN`; you passed a function returning '
-                       '{}'.format(layer))
+  for _ in range(num_layers):
+    layer = tf.keras.layers.LSTM(latent_size, return_sequences=True)
     processed = layer(projected)
     # A projection changes dimension from rnn_layer_size to input_embedding_size
-    projected = tf.keras.layers.Dense(EMBEDDING_SIZE)(processed)
+    projected = tf.keras.layers.Dense(embedding_size)(processed)
 
   if shared_embedding:
     logits = input_embedding.reverse_project(projected)
