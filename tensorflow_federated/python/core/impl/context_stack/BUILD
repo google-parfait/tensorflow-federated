@@ -8,8 +8,8 @@ package_group(
         # Impl Dependencies
         "//tensorflow_federated/python/core/impl/wrappers/...",
 
-        # TODO(b/143772942): This package is temporary and can be removed once all
-        # the appropriate  modules have been moved out of the `impl` package.
+        # TODO(b/143772942): This package is temporary and can be removed once
+        # all the appropriate modules have been moved out of the `impl` package.
         "//tensorflow_federated/python/core/impl",
     ],
 )
@@ -47,7 +47,6 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":context_stack_test_utils",
-        "//tensorflow_federated/python/core/impl:context_base",
     ],
 )
 
@@ -94,7 +93,6 @@ py_test(
         ":context_stack_impl",
         ":context_stack_test_utils",
         ":set_default_context",
-        "//tensorflow_federated/python/core/impl:context_base",
     ],
 )
 

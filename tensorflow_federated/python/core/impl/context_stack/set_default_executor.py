@@ -20,16 +20,14 @@ from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
 
-def set_default_executor(executor_factory_instance=None):
+def set_default_executor(executor_factory_instance):
   """Places an `executor`-backed execution context at the top of the stack.
 
   Args:
     executor_factory_instance: An instance of
-      `executor_factory.ExecutorFactory`, or `None` for the default executor.
+      `executor_factory.ExecutorFactory`.
   """
-  if executor_factory_instance is None:
-    context = None
-  elif isinstance(executor_factory_instance, executor_factory.ExecutorFactory):
+  if isinstance(executor_factory_instance, executor_factory.ExecutorFactory):
     context = execution_context.ExecutionContext(executor_factory_instance)
   elif isinstance(executor_factory_instance,
                   reference_executor.ReferenceExecutor):
@@ -38,9 +36,7 @@ def set_default_executor(executor_factory_instance=None):
     # and stand it up inside a factory like all other executors.
     context = executor_factory_instance
   else:
-    raise TypeError(
-        '`set_default_executor` expects either an '
-        '`executor_factory.ExecutorFactory` or `None` for the '
-        'default context; you passed an argument of type {}.'.format(
-            type(executor_factory_instance)))
+    raise TypeError('Expected `executor_factory_instance` to be of type '
+                    '`executor_factory.ExecutorFactory`, found {}.'.format(
+                        type(executor_factory_instance)))
   context_stack_impl.context_stack.set_default_context(context)

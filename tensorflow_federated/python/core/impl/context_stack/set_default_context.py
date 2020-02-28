@@ -17,12 +17,10 @@
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 
-def set_default_context(ctx=None):
-  """Places a context at the top of the context stack.
+def set_default_context(ctx):
+  """Places `ctx` at the bottom of the stack.
 
   Args:
-    ctx: Either an instance of `context_base.Context`, or `None`, with the
-      latter resulting in the default reference executor getting installed at
-      the bottom of the stack (as is the default).
+    ctx: An instance of `context_base.Context`.
   """
   context_stack_impl.context_stack.set_default_context(ctx)

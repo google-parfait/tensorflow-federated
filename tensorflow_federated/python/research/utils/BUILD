@@ -64,7 +64,6 @@ py_library(
         ":checkpoint_manager",
         ":metrics_manager",
         ":utils_impl",
-        "//tensorflow_federated",
     ],
 )
 

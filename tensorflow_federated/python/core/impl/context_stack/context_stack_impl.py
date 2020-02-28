@@ -24,30 +24,20 @@ from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
-def _make_default_context():
-  return execution_context.ExecutionContext(
-      executor_stacks.local_executor_factory())
-
-
 class ContextStackImpl(context_stack_base.ContextStack, threading.local):
   """An implementation of a common thread-local context stack to run against."""
 
-  def __init__(self):
+  def __init__(self, default_context):
     super().__init__()
-    self._stack = [_make_default_context()]
+    self._stack = [default_context]
 
-  def set_default_context(self, ctx=None):
+  def set_default_context(self, ctx):
     """Places `ctx` at the bottom of the stack.
 
     Args:
-      ctx: Either an instance of `context_base.Context`, or `None`, with the
-        latter resulting in the default reference executor getting installed at
-        the bottom of the stack (as is the default).
+      ctx: An instance of `context_base.Context`.
     """
-    if ctx is not None:
-      py_typecheck.check_type(ctx, context_base.Context)
-    else:
-      ctx = _make_default_context()
+    py_typecheck.check_type(ctx, context_base.Context)
     assert self._stack
     self._stack[0] = ctx
 
@@ -68,4 +58,6 @@ class ContextStackImpl(context_stack_base.ContextStack, threading.local):
       self._stack.pop()
 
 
-context_stack = ContextStackImpl()
+context_stack = ContextStackImpl(
+    execution_context.ExecutionContext(
+        executor_stacks.local_executor_factory()))

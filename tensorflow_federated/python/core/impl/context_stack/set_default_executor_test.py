@@ -33,15 +33,6 @@ class TestSetDefaultExecutor(absltest.TestCase):
     self.context = context_stack_test_utils.TestContext()
     context_stack_impl.context_stack.set_default_context(self.context)
 
-  def test_with_none(self):
-    context_stack = context_stack_impl.context_stack
-
-    set_default_executor.set_default_executor(None)
-
-    self.assertIsNot(context_stack.current, self.context)
-    self.assertIsInstance(context_stack.current,
-                          execution_context.ExecutionContext)
-
   def test_with_executor_factory(self):
     context_stack = context_stack_impl.context_stack
     executor_factory_impl = executor_factory.ExecutorFactoryImpl(lambda _: None)
@@ -68,9 +59,9 @@ class TestSetDefaultExecutor(absltest.TestCase):
 
     self.assertIs(context_stack.current, executor)
 
-  def test_raises_type_error_with_int(self):
+  def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
-      set_default_executor.set_default_executor(1)
+      set_default_executor.set_default_executor(None)
 
 
 if __name__ == '__main__':

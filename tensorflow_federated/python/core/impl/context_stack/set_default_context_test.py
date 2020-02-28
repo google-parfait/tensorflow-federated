@@ -15,7 +15,6 @@
 
 from absl.testing import absltest
 
-from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
@@ -31,14 +30,6 @@ class SetDefaultContextTest(absltest.TestCase):
     self.context = context_stack_test_utils.TestContext()
     context_stack_impl.context_stack.set_default_context(self.context)
 
-  def test_with_none(self):
-    context_stack = context_stack_impl.context_stack
-
-    set_default_context.set_default_context(None)
-
-    self.assertIsNot(context_stack.current, self.context)
-    self.assertIsInstance(context_stack.current, context_base.Context)
-
   def test_with_context(self):
     context = context_stack_test_utils.TestContext()
     context_stack = context_stack_impl.context_stack
@@ -47,6 +38,10 @@ class SetDefaultContextTest(absltest.TestCase):
     set_default_context.set_default_context(context)
 
     self.assertIs(context_stack.current, context)
+
+  def test_raises_type_error_with_none(self):
+    with self.assertRaises(TypeError):
+      set_default_context.set_default_context(None)
 
 
 if __name__ == '__main__':

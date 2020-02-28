@@ -24,7 +24,6 @@ from absl import flags
 from absl import logging
 import pandas as pd
 import tensorflow as tf
-import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.research.utils import checkpoint_manager
@@ -192,8 +191,6 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
             tf.errors.InternalError) as e:
       logging.warning('Caught %s exception while running round %d:\n\t%s',
                       type(e), round_num, e)
-      logging.info('Rebuilding executor stack and retrying...')
-      tff.framework.set_default_executor()
       continue  # restart the loop without incrementing the round number
 
     state = iteration_result.state
