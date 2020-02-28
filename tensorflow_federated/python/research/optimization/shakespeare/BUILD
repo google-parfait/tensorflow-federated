@@ -1,3 +1,5 @@
+package(default_visibility = ["//tensorflow_federated/python/research"])
+
 licenses(["notice"])
 
 py_binary(
