@@ -15,7 +15,6 @@
 """General utilities specific to the manipulation of tensors and operators."""
 
 import collections
-import functools
 import operator
 
 import tensorflow as tf
@@ -90,7 +89,6 @@ def to_odict(d):
   return collections.OrderedDict(sorted(items))
 
 
-@tf.function
 def zero_all_if_any_non_finite(structure):
   """Zeroes out all entries in input if any are not finite.
 
@@ -104,12 +102,17 @@ def zero_all_if_any_non_finite(structure):
   flat = tf.nest.flatten(structure)
   if not flat:
     return (structure, tf.constant(0))
-  flat_bools = [tf.reduce_all(tf.math.is_finite(t)) for t in flat]
-  all_finite = functools.reduce(tf.logical_and, flat_bools)
-  if all_finite:
+  each_finite = tf.nest.map_structure(
+      lambda x: tf.reduce_all(tf.math.is_finite(x)), flat)
+  all_finite = tf.reduce_all(each_finite)
+
+  def _true_fn():
     return (structure, tf.constant(0))
-  else:
+
+  def _false_fn():
     return (tf.nest.map_structure(tf.zeros_like, structure), tf.constant(1))
+
+  return tf.cond(all_finite, _true_fn, _false_fn)
 
 
 def is_scalar(tensor):
