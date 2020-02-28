@@ -172,9 +172,6 @@ def main(argv):
       FLAGS.num_validation_examples)
   train_dataset, validation_dataset, test_dataset = datasets
 
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(validation_dataset)))
-
   if FLAGS.uniform_weighting:
     def client_weight_fn(local_outputs):
       del local_outputs
@@ -206,8 +203,8 @@ def main(argv):
   def model_fn():
     return tff.learning.from_keras_model(
         model_builder(),
-        sample_batch,
-        tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        loss_builder(),
+        input_spec=validation_dataset.element_spec,
         metrics=metrics_builder())
 
   server_optimizer_fn = optimizer_utils.create_optimizer_fn_from_flags('server')
