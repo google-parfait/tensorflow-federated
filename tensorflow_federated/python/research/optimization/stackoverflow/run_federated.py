@@ -57,21 +57,6 @@ with utils_impl.record_new_flags() as hparam_flags:
       'shared_embedding', False,
       'Boolean indicating whether to tie input and output embeddings.')
 
-  # Differential privacy flags
-  flags.DEFINE_float('clip', 0.05, 'Initial clip.')
-  flags.DEFINE_float('noise_multiplier', None,
-                     'Noise multiplier. If None, no DP is used.')
-  flags.DEFINE_float('adaptive_clip_learning_rate', 0,
-                     'Adaptive clip learning rate.')
-  flags.DEFINE_float('target_unclipped_quantile', 0.5,
-                     'Target unclipped quantile.')
-  flags.DEFINE_float(
-      'clipped_count_budget_allocation', 0.1,
-      'Fraction of privacy budget to allocate for clipped counts.')
-  flags.DEFINE_boolean('use_per_vector', False, 'Use per-vector clipping.')
-  flags.DEFINE_boolean('geometric_clip_update', True,
-                       'Use geometric updating of adaptive clip norm.')
-
 FLAGS = flags.FLAGS
 
 
