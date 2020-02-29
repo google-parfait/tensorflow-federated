@@ -87,7 +87,7 @@ and TensorFlow Python packages.
 
 TensorFlow Federated                                           | TensorFlow
 -------------------------------------------------------------- | ----------
-[0.12.0](https://github.com/tensorflow/federated/tree/v0.12.0) | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.1.0/)
+[0.12.0](https://github.com/tensorflow/federated/tree/v0.12.0) | [tensorflow 2.1.0](https://pypi.org/project/tensorflow/2.1.0/)
 [0.11.0](https://github.com/tensorflow/federated/tree/v0.11.0) | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)
 [0.10.1](https://github.com/tensorflow/federated/tree/v0.10.1) | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)
 [0.10.0](https://github.com/tensorflow/federated/tree/v0.10.0) | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)
