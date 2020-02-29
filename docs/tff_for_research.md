@@ -141,7 +141,7 @@ research in new algorithms for federated training of models with differential
 privacy. For an example of training with DP using
 [the basic DP-FedAvg algorithm](https://arxiv.org/abs/1710.06963) and
 [extensions](https://arxiv.org/abs/1812.06210), see
-[this experiment driver](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/baselines/emnist/run_dp_experiment.py).
+[this experiment driver](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/differential_privacy/stackoverflow/run_federated.py).
 
 If you want to implement a custom DP algorithm and apply it to the aggregate
 updates of federated averaging, you can:
@@ -153,7 +153,7 @@ updates of federated averaging, you can:
     [here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/utils/differential_privacy.py#L37-L134),
 1.  and pass your query instance into `tff.utils.build_dp_aggregate()` similarly
     to
-    [`run_dp_experiment`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/baselines/emnist/run_dp_experiment.py#L158).
+    [`run_federated`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/differential_privacy/stackoverflow/run_federated.py#L199).
 
 Federated GANs (described [below](#generative_adversarial_networks)) are another
 example of a TFF project implementing user-level differential privacy (e.g.,

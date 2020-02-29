@@ -81,7 +81,7 @@ def get_emnist_dataset():
 def create_original_fedavg_cnn_model(only_digits=True):
   """The CNN model used in https://arxiv.org/abs/1602.05629.
 
-  This function is duplicated from research/baselines/emnist/models.py to
+  This function is duplicated from research/optimization/emnist/models.py to
   make this example completely stand-alone.
   Args:
     only_digits: If True, uses a final layer with 10 outputs, for use with the

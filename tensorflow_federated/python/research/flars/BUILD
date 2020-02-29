@@ -49,7 +49,7 @@ py_binary(
         ":flars_fedavg",
         ":flars_optimizer",
         "//tensorflow_federated",
-        "//tensorflow_federated/python/research/baselines/emnist:models",
+        "//tensorflow_federated/python/research/optimization/emnist:models",
         "//tensorflow_federated/python/research/utils:checkpoint_manager",
         "//tensorflow_federated/python/research/utils:utils_impl",
     ],

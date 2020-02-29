@@ -31,9 +31,9 @@ import tensorflow_federated as tff
 import tree
 
 from tensorboard.plugins.hparams import api as hp
-from tensorflow_federated.python.research.baselines.emnist import models
 from tensorflow_federated.python.research.flars import flars_fedavg
 from tensorflow_federated.python.research.flars import flars_optimizer
+from tensorflow_federated.python.research.optimization.emnist import models
 from tensorflow_federated.python.research.utils import checkpoint_manager
 from tensorflow_federated.python.research.utils import utils_impl
 
