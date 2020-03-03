@@ -197,7 +197,7 @@ class LoggingTracingProvider(TracingProvider):
 
       return sync_fn
 
-  def span(self, unused_scope, unused_sub_scope):
+  def span(self, unused_scope, unused_sub_scope, **unused_trace_opts):
     """"No-op implementation of span."""
 
     class NoSuchError(Exception):
@@ -291,9 +291,9 @@ def trace(fn=None, **trace_kwargs):
     return sync_trace
 
 
-def span(scope, sub_scope):
+def span(scope, sub_scope, **trace_opts):
   """Delegates to the current global `TracingProvider`."""
-  return _global_tracing_provider.span(scope, sub_scope)
+  return _global_tracing_provider.span(scope, sub_scope, **trace_opts)
 
 
 def task_trace_context():
