@@ -87,8 +87,9 @@ def ensure_federated_value(value, placement=None, label=None):
       zipped = building_block_factory.create_federated_zip(comp)
     except (TypeError, ValueError):
       raise TypeError(
-          'The {} must be a FederatedType or implicitly convertible '
-          'to a FederatedType.'.format(label if label else 'value'))
+          'The {l} must be a FederatedType or implicitly convertible '
+          'to a FederatedType (got a {t}).'.format(
+              l=label if label else 'value', t=comp.type_signature))
     value = value_impl.ValueImpl(zipped, context_stack)
 
   if placement and value.type_signature.placement is not placement:
