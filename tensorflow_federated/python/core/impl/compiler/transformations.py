@@ -156,6 +156,14 @@ def remove_lambdas_and_blocks(comp):
   return transformed_comp, modified
 
 
+def _generate_simple_tensorflow(comp):
+  """Naively generates TensorFlow to represent `comp`."""
+  tf_parser_callable = tree_to_cc_transformations.TFParser()
+  comp, _ = tree_transformations.insert_called_tf_identity_at_leaves(comp)
+  comp, _ = transformation_utils.transform_postorder(comp, tf_parser_callable)
+  return comp
+
+
 def construct_tensorflow_calling_lambda_on_concrete_arg(
     parameter: building_blocks.Reference,
     body: building_blocks.ComputationBuildingBlock,
@@ -196,12 +204,6 @@ def construct_tensorflow_calling_lambda_on_concrete_arg(
                           building_blocks.ComputationBuildingBlock)
   type_utils.check_equivalent_types(parameter.type_signature,
                                     concrete_arg.type_signature)
-
-  def _generate_simple_tensorflow(comp):
-    tf_parser_callable = tree_to_cc_transformations.TFParser()
-    comp, _ = tree_transformations.insert_called_tf_identity_at_leaves(comp)
-    comp, _ = transformation_utils.transform_postorder(comp, tf_parser_callable)
-    return comp
 
   encapsulating_lambda = _generate_simple_tensorflow(
       building_blocks.Lambda(parameter.name, parameter.type_signature, body))
@@ -374,8 +376,9 @@ def create_tensorflow_representing_block(block):
   if top_level_ref:
     first_comps = [x[1] for x in named_comp_classes[0]]
     tup = building_blocks.Tuple([top_level_ref] + first_comps)
+    graph_tup = _generate_simple_tensorflow(tup)
     output_comp = construct_tensorflow_calling_lambda_on_concrete_arg(
-        top_level_ref, tup, top_level_ref)
+        top_level_ref, graph_tup, top_level_ref)
     name_to_output_index = {top_level_ref.name: 0}
   else:
     output_comp = building_block_factory.create_compiled_empty_tuple()
