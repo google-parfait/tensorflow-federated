@@ -97,6 +97,7 @@ FLAGS = flags.FLAGS
 
 
 def _federated_averaging_training_loop(model_fn,
+                                       client_optimizer_fn,
                                        server_optimizer_fn,
                                        client_datasets_fn,
                                        evaluate_fn,
@@ -107,6 +108,8 @@ def _federated_averaging_training_loop(model_fn,
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
+    client_optimizer_fn: A no-arg function that returns a
+      `tf.keras.optimizers.Optimizer`.
     server_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer`.
     client_datasets_fn: A function that takes the round number, and returns a
@@ -131,7 +134,9 @@ def _federated_averaging_training_loop(model_fn,
     logging.error('Unsupported server_optimzier: %s', FLAGS.server_optimizer)
   else:
     iterative_process = flars_fedavg.build_federated_averaging_process(
-        model_fn, server_optimizer_fn=server_optimizer_fn)
+        model_fn,
+        client_optimizer_fn=client_optimizer_fn,
+        server_optimizer_fn=server_optimizer_fn)
     ServerState = flars_fedavg.ServerState  # pylint: disable=invalid-name
 
   # construct an initial state here to act as a checkpoint template
@@ -289,17 +294,32 @@ class _MetricsHook(object):
     utils_impl.atomic_write_to_csv(metrics, self._results_file)
 
 
-def _create_compiled_keras_model():
+def model_builder():
   """Create compiled keras model."""
   model = models.create_original_fedavg_cnn_model(
       only_digits=FLAGS.digit_only_emnist)
-
-  model.compile(
-      loss=tf.keras.losses.sparse_categorical_crossentropy,
-      optimizer=utils_impl.create_optimizer_from_flags('client'),
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-
   return model
+
+
+def loss_builder():
+  return tf.keras.losses.SparseCategoricalCrossentropy()
+
+
+def metrics_builder():
+  return [tf.keras.metrics.SparseCategoricalAccuracy()]
+
+
+def compiled_eval_keras_model():
+  model = model_builder()
+  model.compile(
+      loss=loss_builder(),
+      optimizer=tf.keras.optimizers.SGD(),  # Dummy optimizer for evaluation
+      metrics=metrics_builder())
+  return model
+
+
+def reshape_emnist_element(element):
+  return (tf.expand_dims(element['pixels'], axis=-1), element['label'])
 
 
 def _run_experiment():
@@ -307,21 +327,15 @@ def _run_experiment():
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
       only_digits=FLAGS.digit_only_emnist)
 
-  example_tuple = collections.namedtuple('Example', ['x', 'y'])
-
-  def element_fn(element):
-    return example_tuple(
-        x=tf.reshape(element['pixels'], [-1]),
-        y=tf.reshape(element['label'], [1]))
-
   def preprocess_train_dataset(dataset):
     """Preprocess training dataset."""
-    return (dataset.map(element_fn).shuffle(buffer_size=10000).repeat(
-        FLAGS.client_epochs_per_round).batch(FLAGS.batch_size))
+    return (dataset.map(reshape_emnist_element).shuffle(
+        buffer_size=10000).repeat(FLAGS.client_epochs_per_round).batch(
+            FLAGS.batch_size))
 
   def preprocess_test_dataset(dataset):
     """Preprocess testing dataset."""
-    return dataset.map(element_fn).batch(100, drop_remainder=False)
+    return dataset.map(reshape_emnist_element).batch(100, drop_remainder=False)
 
   emnist_train = emnist_train.preprocess(preprocess_train_dataset)
   emnist_test = preprocess_test_dataset(
@@ -332,9 +346,13 @@ def _run_experiment():
   sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
                                        next(iter(example_dataset)))
 
-  def model_fn():
-    keras_model = _create_compiled_keras_model()
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+  def tff_model_fn():
+    keras_model = model_builder()
+    return tff.learning.from_keras_model(
+        keras_model,
+        dummy_batch=sample_batch,
+        loss=loss_builder(),
+        metrics=metrics_builder())
 
   def client_datasets_fn(round_num):
     """Returns a list of client datasets."""
@@ -347,9 +365,10 @@ def _run_experiment():
     ]
 
   def evaluate_fn(state):
-    keras_model = _create_compiled_keras_model()
-    tff.learning.assign_weights_to_keras_model(keras_model, state.model)
-    eval_metrics = keras_model.evaluate(emnist_test, verbose=0)
+    compiled_keras_model = compiled_eval_keras_model()
+    tff.learning.assign_weights_to_keras_model(compiled_keras_model,
+                                               state.model)
+    eval_metrics = compiled_keras_model.evaluate(emnist_test, verbose=0)
     return {
         'loss': eval_metrics[0],
         'sparse_categorical_accuracy': eval_metrics[1],
@@ -363,6 +382,8 @@ def _run_experiment():
 
   metrics_hook = _MetricsHook(FLAGS.exp_name, FLAGS.root_output_dir,
                               hparam_dict)
+
+  client_optimizer_fn = lambda: utils_impl.create_optimizer_from_flags('client')
 
   if FLAGS.server_optimizer == 'sgd':
     server_optimizer_fn = functools.partial(
@@ -379,7 +400,8 @@ def _run_experiment():
     raise ValueError('Optimizer %s is not supported.' % FLAGS.server_optimizer)
 
   _federated_averaging_training_loop(
-      model_fn=model_fn,
+      model_fn=tff_model_fn,
+      client_optimizer_fn=client_optimizer_fn,
       server_optimizer_fn=server_optimizer_fn,
       client_datasets_fn=client_datasets_fn,
       evaluate_fn=evaluate_fn,
