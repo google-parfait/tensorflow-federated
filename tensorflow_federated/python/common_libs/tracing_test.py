@@ -40,27 +40,31 @@ class DebugLoggingTest(absltest.TestCase):
     self.handler.close()
     super().tearDown()
 
-  def _test_debug_logging_with_async_function(self, async_fn, test_regex):
+  def _test_debug_logging_with_async_function(self, async_fn, test_regex, *args,
+                                              **kwargs):
     loop = asyncio.get_event_loop()
     try:
       logging.set_verbosity(1)
-      loop.run_until_complete(async_fn())
+      retval = loop.run_until_complete(async_fn(*args, **kwargs))
     finally:
       logging.set_verbosity(0)
     self.assertRegexMatch(''.join(self.log.getvalue()), [test_regex])
     self.log.truncate(0)
-    loop.run_until_complete(async_fn())
+    loop.run_until_complete(async_fn(*args, **kwargs))
     self.assertEmpty(''.join(self.log.getvalue()))
+    return retval
 
-  def _test_debug_logging_with_sync_function(self, sync_fn, test_regex):
+  def _test_debug_logging_with_sync_function(self, sync_fn, test_regex, *args,
+                                             **kwargs):
     try:
       logging.set_verbosity(1)
-      sync_fn()
+      retval = sync_fn(*args, **kwargs)
     finally:
       logging.set_verbosity(0)
     self.assertRegexMatch(''.join(self.log.getvalue()), [test_regex])
     self.log.truncate(0)
     self.assertEmpty(''.join(self.log.getvalue()))
+    return retval
 
   def test_logging_enter_exit(self):
 
@@ -87,22 +91,69 @@ class DebugLoggingTest(absltest.TestCase):
 
     self._test_debug_logging_with_async_function(foo, '1.0')
 
-  def test_logging_non_blocking(self):
+  def test_logging_non_blocking_function(self):
 
-    @tracing.trace
+    @tracing.trace(span=True)
     async def foo():
       return await asyncio.gather(
           asyncio.sleep(1), asyncio.sleep(1), asyncio.sleep(1))
 
     self._test_debug_logging_with_async_function(foo, '1.0')
 
-  def test_logging_blocking(self):
+  def test_logging_non_blocking_method(self):
 
-    @tracing.trace
-    def foo():
+    class AClass(absltest.TestCase):
+
+      @tracing.trace(span=True)
+      async def async_method(self, foo_arg, bar_arg, arg3=None, arg4=None):
+        self.assertEqual('foo', foo_arg)
+        self.assertEqual('bar', bar_arg)
+        self.assertIsNotNone(arg3)
+        self.assertIsNotNone(arg4)
+        await asyncio.sleep(1)
+        return 3
+
+    a_class = AClass()
+
+    result = self._test_debug_logging_with_async_function(
+        a_class.async_method, '1.0', 'foo', 'bar', arg3='baz', arg4=True)
+    self.assertEqual(3, result)
+
+  def test_logging_blocking_method(self):
+
+    class AClass(absltest.TestCase):
+
+      @tracing.trace(span=True)
+      def sync_method(self, foo_arg, bar_arg, arg3=None, arg4=None):
+        self.assertEqual('foo', foo_arg)
+        self.assertEqual('bar', bar_arg)
+        self.assertIsNotNone(arg3)
+        self.assertIsNotNone(arg4)
+        # Sleep for 1s is used to test that we measured runtime correctly
+        time.sleep(1)
+        return 3
+
+    a_class = AClass()
+
+    result = self._test_debug_logging_with_sync_function(
+        a_class.sync_method, '1.0', 'foo', 'bar', arg3='baz', arg4=True)
+    self.assertEqual(3, result)
+
+  def test_logging_blocking_function(self):
+
+    @tracing.trace(span=True)
+    def foo(foo_arg, bar_arg, arg3=None, arg4=None):
+      self.assertEqual('foo', foo_arg)
+      self.assertEqual('bar', bar_arg)
+      self.assertIsNotNone(arg3)
+      self.assertIsNotNone(arg4)
+      # Sleep for 1s is used to test that we measured runtime correctly
       time.sleep(1)
+      return 3
 
-    self._test_debug_logging_with_sync_function(foo, '1.0')
+    result = self._test_debug_logging_with_sync_function(
+        foo, '1.0', 'foo', 'bar', arg3='baz', arg4=True)
+    self.assertEqual(3, result)
 
 
 if __name__ == '__main__':

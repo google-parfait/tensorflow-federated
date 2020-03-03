@@ -255,7 +255,7 @@ def trace(fn=None, **trace_kwargs):
   if fn is None:
     return functools.partial(trace, **trace_kwargs)
 
-  class MemoizingDecorator():
+  class MemoizingDecorator:
     """Decorates a function using the global tracing provider.
 
     This happens once when the function is invoked and the decorated funciton
@@ -282,7 +282,13 @@ def trace(fn=None, **trace_kwargs):
 
     return async_trace
   else:
-    return memoizing_decorator
+    # We need to return an un-bound function from this method, because if we're
+    # decorating a bound function it needs to consume the self pointer, so
+    # create an un-bound wrapper that invokes the memoizing_decorator.
+    def sync_trace(*fn_args, **fn_kwargs):
+      return memoizing_decorator(*fn_args, **fn_kwargs)
+
+    return sync_trace
 
 
 def span(scope, sub_scope):
