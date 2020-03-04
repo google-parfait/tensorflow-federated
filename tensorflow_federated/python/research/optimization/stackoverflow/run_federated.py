@@ -21,7 +21,6 @@ from absl import flags
 from absl import logging
 
 import tensorflow as tf
-import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
@@ -65,8 +64,6 @@ def main(argv):
     raise app.UsageError('Expected no command-line arguments, '
                          'got: {}'.format(argv))
   tf.compat.v1.enable_v2_behavior()
-  tff.framework.set_default_executor(
-      tff.framework.local_executor_factory(max_fanout=10))
 
   model_builder = functools.partial(
       models.create_recurrent_model,

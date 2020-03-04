@@ -20,7 +20,6 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.optimization.shakespeare import dataset
 from tensorflow_federated.python.research.optimization.shakespeare import models
@@ -73,8 +72,6 @@ def main(argv):
     raise app.UsageError('Too many command-line arguments.')
 
   tf.compat.v1.enable_v2_behavior()
-  tff.framework.set_default_executor(
-      tff.framework.local_executor_factory(max_fanout=25))
 
   train_clientdata, test_dataset = dataset.construct_character_level_datasets(
       FLAGS.client_batch_size, FLAGS.client_epochs_per_round,

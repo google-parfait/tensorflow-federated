@@ -20,7 +20,6 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.optimization.emnist import dataset
 from tensorflow_federated.python.research.optimization.emnist import models
@@ -54,9 +53,6 @@ def main(argv):
                          'got: {}'.format(argv))
 
   tf.compat.v1.enable_v2_behavior()
-  # TODO(b/139129100): Remove this once the local executor is the default.
-  tff.framework.set_default_executor(
-      tff.framework.local_executor_factory(max_fanout=25))
 
   emnist_train, emnist_test = dataset.get_emnist_datasets(
       FLAGS.client_batch_size, FLAGS.client_epochs_per_round, only_digits=False)

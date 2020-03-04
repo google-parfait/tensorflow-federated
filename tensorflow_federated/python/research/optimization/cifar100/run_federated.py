@@ -20,7 +20,6 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.optimization.cifar100 import dataset
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
@@ -52,9 +51,6 @@ def main(argv):
                          'got: {}'.format(argv))
 
   tf.compat.v1.enable_v2_behavior()
-  # TODO(b/139129100): Remove this once the local executor is the default.
-  tff.framework.set_default_executor(
-      tff.framework.local_executor_factory(max_fanout=25))
 
   cifar_train, cifar_test = dataset.get_federated_cifar100(
       client_epochs_per_round=FLAGS.client_epochs_per_round,
