@@ -14,10 +14,8 @@
 # limitations under the License.
 
 import collections
-import os
 import os.path
 
-from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.research.utils import checkpoint_manager
@@ -25,97 +23,38 @@ from tensorflow_federated.python.research.utils import checkpoint_manager
 tf.compat.v1.enable_v2_behavior()
 
 
-_NON_POSIX_CHARACTER_NAMED_PARAMETERS = [
-    ('asterisk', '*'),
-    ('close parenthesis', ')'),
-    ('colon', ':'),
-    ('comma', ','),
-    ('open parenthesis', '('),
-]
-
-
-def _create_dummy_state(value=0):
+def _create_dummy_structure():
   return collections.OrderedDict([
       ('a', {
-          'b': tf.constant(value),
-          'c': tf.constant(value),
+          'b': tf.constant(0.0),
+          'c': tf.constant(0.0),
       }),
   ])
 
 
-class FileCheckpointInitTest(tf.test.TestCase, parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ('period', '.'),
-      ('underscore', '_'),
-      ('hyphen', '-'),
-  )
-  def test_does_not_raise_value_error_with_root_dir_contains_posix_characters(
-      self, character):
-    temp_dir = self.get_temp_dir()
-    sub_dir = 'before{}after'.format(character)
-    root_dir = os.path.join(temp_dir, sub_dir)
-
-    try:
-      checkpoint_manager.FileCheckpointManager(root_dir)
-    except ValueError:
-      self.fail('Raised ValueError unexpectedly.')
-
-  @parameterized.named_parameters(
-      ('period', '.'),
-      ('underscore', '_'),
-      ('hyphen', '-'),
-  )
-  def test_does_not_raise_value_error_with_prefix_contains_posix_characters(
-      self, character):
-    temp_dir = self.get_temp_dir()
-    prefix = 'before{}after'.format(character)
-
-    try:
-      checkpoint_manager.FileCheckpointManager(temp_dir, prefix)
-    except ValueError:
-      self.fail('Raised ValueError unexpectedly.')
-
-  @parameterized.named_parameters(_NON_POSIX_CHARACTER_NAMED_PARAMETERS)
-  def test_raises_value_with_root_dir_contains_non_posix_character(
-      self, character):
-    temp_dir = self.get_temp_dir()
-    sub_dir = 'before{}after'.format(character)
-    root_dir = os.path.join(temp_dir, sub_dir)
-
-    with self.assertRaises(ValueError):
-      checkpoint_manager.FileCheckpointManager(root_dir)
-
-  def test_raises_value_with_prefix_starts_with_hypen(self):
-    temp_dir = self.get_temp_dir()
-    prefix = '-after'
-
-    with self.assertRaises(ValueError):
-      checkpoint_manager.FileCheckpointManager(temp_dir, prefix)
-
-  @parameterized.named_parameters(_NON_POSIX_CHARACTER_NAMED_PARAMETERS)
-  def test_raises_value_with_prefix_contains_non_posix_character(
-      self, character):
-    temp_dir = self.get_temp_dir()
-    prefix = 'before{}after'.format(character)
-
-    with self.assertRaises(ValueError):
-      checkpoint_manager.FileCheckpointManager(temp_dir, prefix)
+def _create_dummy_state():
+  return collections.OrderedDict([
+      ('a', {
+          'b': tf.constant(1.0),
+          'c': tf.constant(1.0),
+      }),
+  ])
 
 
 class FileCheckpointManagerLoadLatestCheckpointOrDefaultTest(tf.test.TestCase):
 
-  def test_saves_and_returns_structure_and_zero_with_no_checkpoints(self):
+  def test_returns_default_and_zero_with_no_checkpoints_and_also_saves(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    structure = _create_dummy_state()
+    default = _create_dummy_structure()
 
     state, round_num = checkpoint_mngr.load_latest_checkpoint_or_default(
-        structure)
+        default)
 
-    self.assertEqual(state, structure)
+    self.assertEqual(state, default)
     self.assertEqual(round_num, 0)
-    self.assertCountEqual(os.listdir(temp_dir), ['ckpt_0'])
+
+    self.assertEqual(set(os.listdir(temp_dir)), set(['ckpt_0']))
 
 
 class FileCheckpointManagerLoadLatestCheckpointTest(tf.test.TestCase):
@@ -123,7 +62,7 @@ class FileCheckpointManagerLoadLatestCheckpointTest(tf.test.TestCase):
   def test_returns_none_and_zero_with_no_checkpoints(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    structure = _create_dummy_state()
+    structure = _create_dummy_structure()
 
     state, round_num = checkpoint_mngr.load_latest_checkpoint(structure)
 
@@ -133,127 +72,73 @@ class FileCheckpointManagerLoadLatestCheckpointTest(tf.test.TestCase):
   def test_returns_state_and_round_num_with_one_checkpoint(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
-    structure = _create_dummy_state()
+    state = _create_dummy_state()
+    checkpoint_mngr.save_checkpoint(state, 1)
+    structure = _create_dummy_structure()
 
     state, round_num = checkpoint_mngr.load_latest_checkpoint(structure)
 
-    self.assertEqual(state, dummy_state_1)
+    expected_state = _create_dummy_state()
+    self.assertEqual(state, expected_state)
     self.assertEqual(round_num, 1)
 
   def test_returns_state_and_round_num_with_three_checkpoints(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
-    dummy_state_2 = _create_dummy_state(2)
-    checkpoint_mngr.save_checkpoint(dummy_state_2, 2)
-    dummy_state_3 = _create_dummy_state(3)
-    checkpoint_mngr.save_checkpoint(dummy_state_3, 3)
-    structure = _create_dummy_state()
+    state = _create_dummy_state()
+    checkpoint_mngr.save_checkpoint(state, 1)
+    checkpoint_mngr.save_checkpoint(state, 2)
+    checkpoint_mngr.save_checkpoint(state, 3)
+    structure = _create_dummy_structure()
 
     state, round_num = checkpoint_mngr.load_latest_checkpoint(structure)
 
-    self.assertEqual(state, dummy_state_3)
+    expected_state = _create_dummy_state()
+    self.assertEqual(state, expected_state)
     self.assertEqual(round_num, 3)
 
   def test_raises_value_error_with_bad_structure(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
+    state = _create_dummy_state()
+    checkpoint_mngr.save_checkpoint(state, 1)
     structure = None
 
     with self.assertRaises(ValueError):
-      checkpoint_mngr.load_latest_checkpoint(structure)
+      _, _ = checkpoint_mngr.load_latest_checkpoint(structure)
 
 
 class FileCheckpointManagerLoadCheckpointTest(tf.test.TestCase):
 
-  def test_returns_state_with_one_checkpoint(self):
-    temp_dir = self.get_temp_dir()
-    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
-    structure = _create_dummy_state()
+  def setUp(self):
+    super().setUp()
+    self._checkpoint_mngr = checkpoint_manager.FileCheckpointManager(
+        self.get_temp_dir())
 
-    state = checkpoint_mngr.load_checkpoint(structure, 1)
-
-    self.assertEqual(state, dummy_state_1)
-
-  def test_returns_state_with_three_checkpoint_for_first_round(self):
-    temp_dir = self.get_temp_dir()
-    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
-    dummy_state_2 = _create_dummy_state(2)
-    checkpoint_mngr.save_checkpoint(dummy_state_2, 2)
-    dummy_state_3 = _create_dummy_state(3)
-    checkpoint_mngr.save_checkpoint(dummy_state_3, 3)
-    structure = _create_dummy_state()
-
-    state = checkpoint_mngr.load_checkpoint(structure, 1)
-
-    self.assertEqual(state, dummy_state_1)
-
-  def test_returns_state_with_three_checkpoint_for_second_round(self):
-    temp_dir = self.get_temp_dir()
-    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
-    dummy_state_2 = _create_dummy_state(2)
-    checkpoint_mngr.save_checkpoint(dummy_state_2, 2)
-    dummy_state_3 = _create_dummy_state(3)
-    checkpoint_mngr.save_checkpoint(dummy_state_3, 3)
-    structure = _create_dummy_state()
-
-    state = checkpoint_mngr.load_checkpoint(structure, 2)
-
-    self.assertEqual(state, dummy_state_2)
-
-  def test_returns_state_with_three_checkpoint_for_third_round(self):
-    temp_dir = self.get_temp_dir()
-    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
-    dummy_state_2 = _create_dummy_state(2)
-    checkpoint_mngr.save_checkpoint(dummy_state_2, 2)
-    dummy_state_3 = _create_dummy_state(3)
-    checkpoint_mngr.save_checkpoint(dummy_state_3, 3)
-    structure = _create_dummy_state()
-
-    state = checkpoint_mngr.load_checkpoint(structure, 3)
-
-    self.assertEqual(state, dummy_state_3)
-
-  def test_raises_file_not_found_error_with_no_checkpoint(self):
-    temp_dir = self.get_temp_dir()
-    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    structure = _create_dummy_state()
+  def test_raises_file_not_found_error_for_no_checkpoint(self):
+    structure = _create_dummy_structure()
 
     with self.assertRaises(FileNotFoundError):
-      _ = checkpoint_mngr.load_checkpoint(structure, 0)
+      _ = self._checkpoint_mngr.load_checkpoint(structure, 0)
 
-  def test_raises_file_not_found_error_with_one_checkpoint_for_bad_round(self):
-    temp_dir = self.get_temp_dir()
-    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
-    structure = _create_dummy_state()
+  def test_returns_state_for_checkpoint(self):
+    state = _create_dummy_state()
+    round_num = 1
+    self._checkpoint_mngr.save_checkpoint(state, round_num)
+    structure = _create_dummy_structure()
 
-    with self.assertRaises(FileNotFoundError):
-      _ = checkpoint_mngr.load_checkpoint(structure, 10)
+    loaded_state = self._checkpoint_mngr.load_checkpoint(structure, round_num)
+
+    self.assertEqual(loaded_state, state)
 
   def test_raises_value_error_with_bad_structure(self):
-    temp_dir = self.get_temp_dir()
-    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
+    state = _create_dummy_state()
+    round_num = 1
+    self._checkpoint_mngr.save_checkpoint(state, round_num)
     structure = None
 
     with self.assertRaises(ValueError):
-      checkpoint_mngr.load_checkpoint(structure, 1)
+      _, _ = self._checkpoint_mngr.load_checkpoint(structure, round_num)
 
 
 class FileCheckpointManagerSaveCheckpointTest(tf.test.TestCase):
@@ -261,66 +146,61 @@ class FileCheckpointManagerSaveCheckpointTest(tf.test.TestCase):
   def test_saves_one_checkpoint(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
+    state = _create_dummy_state()
 
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
+    checkpoint_mngr.save_checkpoint(state, 1)
 
-    self.assertCountEqual(os.listdir(temp_dir), ['ckpt_1'])
+    self.assertEqual(set(os.listdir(temp_dir)), set(['ckpt_1']))
 
   def test_saves_three_checkpoints(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
+    state = _create_dummy_state()
 
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
-    dummy_state_2 = _create_dummy_state(2)
-    checkpoint_mngr.save_checkpoint(dummy_state_2, 2)
-    dummy_state_3 = _create_dummy_state(3)
-    checkpoint_mngr.save_checkpoint(dummy_state_3, 3)
+    checkpoint_mngr.save_checkpoint(state, 1)
+    checkpoint_mngr.save_checkpoint(state, 2)
+    checkpoint_mngr.save_checkpoint(state, 3)
 
-    self.assertCountEqual(os.listdir(temp_dir), ['ckpt_1', 'ckpt_2', 'ckpt_3'])
+    self.assertEqual(
+        set(os.listdir(temp_dir)), set(['ckpt_1', 'ckpt_2', 'ckpt_3']))
 
   def test_removes_oldest_with_keep_first_true(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(
         temp_dir, keep_total=3, keep_first=True)
+    state = _create_dummy_state()
 
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
-    dummy_state_2 = _create_dummy_state(2)
-    checkpoint_mngr.save_checkpoint(dummy_state_2, 2)
-    dummy_state_3 = _create_dummy_state(3)
-    checkpoint_mngr.save_checkpoint(dummy_state_3, 3)
-    dummy_state_4 = _create_dummy_state(4)
-    checkpoint_mngr.save_checkpoint(dummy_state_4, 4)
+    checkpoint_mngr.save_checkpoint(state, 1)
+    checkpoint_mngr.save_checkpoint(state, 2)
+    checkpoint_mngr.save_checkpoint(state, 3)
+    checkpoint_mngr.save_checkpoint(state, 4)
 
-    self.assertCountEqual(os.listdir(temp_dir), ['ckpt_1', 'ckpt_3', 'ckpt_4'])
+    self.assertEqual(
+        set(os.listdir(temp_dir)), set(['ckpt_1', 'ckpt_3', 'ckpt_4']))
 
   def test_removes_oldest_with_keep_first_false(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(
         temp_dir, keep_total=3, keep_first=False)
+    state = _create_dummy_state()
 
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
-    dummy_state_2 = _create_dummy_state(2)
-    checkpoint_mngr.save_checkpoint(dummy_state_2, 2)
-    dummy_state_3 = _create_dummy_state(3)
-    checkpoint_mngr.save_checkpoint(dummy_state_3, 3)
-    dummy_state_4 = _create_dummy_state(4)
-    checkpoint_mngr.save_checkpoint(dummy_state_4, 4)
+    checkpoint_mngr.save_checkpoint(state, 1)
+    checkpoint_mngr.save_checkpoint(state, 2)
+    checkpoint_mngr.save_checkpoint(state, 3)
+    checkpoint_mngr.save_checkpoint(state, 4)
 
-    self.assertCountEqual(os.listdir(temp_dir), ['ckpt_2', 'ckpt_3', 'ckpt_4'])
+    self.assertEqual(
+        set(os.listdir(temp_dir)), set(['ckpt_2', 'ckpt_3', 'ckpt_4']))
 
   def test_raises_already_exists_error_with_existing_round_number(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
+    state = _create_dummy_state()
 
-    dummy_state_1 = _create_dummy_state(1)
-    checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
+    checkpoint_mngr.save_checkpoint(state, 1)
 
     with self.assertRaises(tf.errors.AlreadyExistsError):
-      checkpoint_mngr.save_checkpoint(dummy_state_1, 1)
+      checkpoint_mngr.save_checkpoint(state, 1)
 
 
 if __name__ == '__main__':
