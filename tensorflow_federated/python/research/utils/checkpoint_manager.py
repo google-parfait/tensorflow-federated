@@ -23,6 +23,43 @@ from absl import logging
 import tensorflow as tf
 
 
+def _check_is_posix_fully_portable_filename(path):
+  """Checks if `path` is a POSIX fully portable filename.
+
+  This function can be used to validate a fully qualifed path or relative path
+  on the filesystem. Is is not inteded to be used to validate a partial
+  directory name, however, this fucntion can be used to validate the prefix of a
+  directory name. This is because one of the limitations of POSIX is that a
+  Hyphen must not be the first character of a directory.
+
+  * The allowed character set is `A-Za-z0-9._-`.
+  * Reserved characters are `/`.
+  * A Hyphen must not be the first character.
+
+  See https://en.wikipedia.org/wiki/Filename for more information.
+
+  Args:
+    path: A fully qualifed path or relative path on the filesystem.
+
+  Raises:
+    ValueError: if `path` is not a POSIX fully portable filename.
+  """
+  if path.startswith('-'):
+    raise ValueError(
+        'Expected path to be a POSIX fully portable filename, which does not '
+        'include paths that begin with a `-`, found {}.'.format(path))
+  character_pattern = r'[/A-Za-z0-9._-]*'
+  path_pattern = r'^{}$'.format(character_pattern)
+  match = re.match(path_pattern, path)
+  if match is None:
+    unallowed_characters = re.sub(character_pattern, '', path)
+    raise ValueError(
+        'Expected path to be a POSIX fully portable filename, which includes '
+        'the following reserved and allowed characters: `/A-Za-z0-9._-`, found '
+        'the `{unallowed_characters}` in the path \'{path}\'.'.format(
+            unallowed_characters=unallowed_characters, path=path))
+
+
 class CheckpointManager(metaclass=abc.ABCMeta):
   """An abstract interface for `CheckpointManager`s.
 
@@ -111,52 +148,64 @@ class FileCheckpointManager(CheckpointManager):
         keep.
       keep_first: A boolean indicating if the first checkpoint should be kept.
     """
+    _check_is_posix_fully_portable_filename(root_dir)
+    _check_is_posix_fully_portable_filename(prefix)
     super().__init__()
     self._root_dir = root_dir
     self._prefix = prefix
     self._keep_total = keep_total
     self._keep_first = keep_first
-    path = os.path.join(root_dir, prefix)
+    path = re.escape(os.path.join(root_dir, prefix))
     self._round_num_expression = re.compile(r'{}([0-9]+)$'.format(path))
 
   def load_latest_checkpoint(self, structure: Any) -> Tuple[Any, int]:
-    """Returns the latest checkpointed state.
+    """Returns the latest checkpointed state and round number.
 
     Args:
       structure: A nested structure which `tf.convert_to_tensor` supports to use
         as a template when reconstructing the loaded template.
     """
-    checkpoint_round_nums = [
-        self._round_num(c) for c in self._get_all_checkpoint_paths()
-    ]
-    if checkpoint_round_nums:
-      round_num = max(checkpoint_round_nums)
-      state = self.load_checkpoint(structure, round_num)
-    else:
-      round_num = 0
-      state = None
-    return state, round_num
+    checkpoint_paths = self._get_all_checkpoint_paths()
+    if checkpoint_paths:
+      checkpoint_path = max(checkpoint_paths, key=self._round_num)
+      return self._load_checkpoint_from_path(structure, checkpoint_path)
+    return None, 0
 
   def load_checkpoint(self, structure: Any, round_num: int) -> Any:
-    """Returns the checkpointed state at the given `round_num`.
+    """Returns the checkpointed state for the given `round_num`.
 
     Args:
       structure: A nested structure which `tf.convert_to_tensor` supports to use
         as a template when reconstructing the loaded template.
       round_num: An integer representing the round to load from.
+    """
+    basename = '{}{}'.format(self._prefix, round_num)
+    checkpoint_path = os.path.join(self._root_dir, basename)
+    state, _ = self._load_checkpoint_from_path(structure, checkpoint_path)
+    return state
+
+  def _load_checkpoint_from_path(self, structure: Any,
+                                 checkpoint_path: str) -> Tuple[Any, int]:
+    """Returns the state and round number for the given `checkpoint_path`.
+
+    Args:
+      structure: A nested structure which `tf.convert_to_tensor` supports to use
+        as a template when reconstructing the loaded template.
+      checkpoint_path: A path on the filesystem to load.
 
     Raises:
-      FileNotFoundError: If checkpoint for given `round_num` doesn't exist.
+      FileNotFoundError: If a checkpoint for given `checkpoint_path` doesn't
+        exist.
     """
-    checkpoint_path = os.path.join(self._root_dir,
-                                   '{}{}'.format(self._prefix, round_num))
     if not tf.io.gfile.exists(checkpoint_path):
-      raise FileNotFoundError('No such file or directory: %s' % checkpoint_path)
+      raise FileNotFoundError(
+          'No such file or directory: {}'.format(checkpoint_path))
     model = tf.compat.v2.saved_model.load(checkpoint_path)
     flat_obj = model.build_obj_fn()
     state = tf.nest.pack_sequence_as(structure, flat_obj)
+    round_num = self._round_num(checkpoint_path)
     logging.info('Checkpoint loaded: %s', checkpoint_path)
-    return state
+    return state, round_num
 
   def save_checkpoint(self, state: Any, round_num: int) -> None:
     """Saves a new checkpointed `state` for the given `round_num`.
@@ -200,9 +249,15 @@ class FileCheckpointManager(CheckpointManager):
         logging.info('Checkpoint removed: %s', checkpoint_path)
 
   def _round_num(self, checkpoint_path: str) -> int:
-    """Returns the round number for the given `checkpoint_path`."""
+    """Returns the round number for the given `checkpoint_path`, or `-1`."""
     match = self._round_num_expression.match(checkpoint_path)
-    return int(match.group(1)) if match else -1
+    if match is None:
+      logging.debug(
+          'Could not extract round number from: \'%s\' using the following '
+          'pattern: \'%s\'', checkpoint_path,
+          self._round_num_expression.pattern)
+      return -1
+    return int(match.group(1))
 
   def _get_all_checkpoint_paths(self) -> List[str]:
     """Returns all the checkpoint paths managed by the instance."""
