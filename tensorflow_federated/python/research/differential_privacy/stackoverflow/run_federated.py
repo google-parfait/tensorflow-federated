@@ -77,28 +77,38 @@ with utils_impl.record_new_flags() as hparam_flags:
       'clipped_count_budget_allocation', 0.1,
       'Fraction of privacy budget to allocate for clipped counts.')
   flags.DEFINE_boolean('per_vector_clipping', False, 'Use per-vector clipping.')
-  flags.DEFINE_boolean('geometric_clip_update', True,
-                       'Use geometric updating of adaptive clip norm.')
 
 FLAGS = flags.FLAGS
 
 
-class FederatedAveragingProcessAdapter(adapters.IterativeProcessPythonAdapter):
+class DPFedAvgProcessAdapter(adapters.IterativeProcessPythonAdapter):
   """Converts iterative process results from anonymous tuples.
 
-  Converts to ServerState and unpacks metrics. This simplifies tasks such as
-  recording metrics.
+  Converts to ServerState and unpacks metrics, including adding the vector
+  clips as metrics.
   """
 
-  def __init__(self, iterative_process):
+  def __init__(self, iterative_process, per_vector_clipping, adaptive_clipping):
     self._iterative_process = iterative_process
+    self._per_vector_clipping = per_vector_clipping
+    self._adaptive_clipping = adaptive_clipping
+
+  def _get_clip(self, state):
+    return state.numerator_state.sum_state.l2_norm_clip
 
   def _server_state_from_tff_result(self, result):
+    if self._per_vector_clipping:
+      per_vector_aggregate_states = [
+          anonymous_tuple.to_odict(elt, recursive=True) for _, elt in
+          anonymous_tuple.iter_elements(result.delta_aggregate_state)
+      ]
+    else:
+      per_vector_aggregate_states = anonymous_tuple.to_odict(
+          result.delta_aggregate_state, recursive=True)
     return tff.learning.framework.ServerState(
-        tff.learning.ModelWeights(tuple(result.model.trainable),
-                                  tuple(result.model.non_trainable)),
-        list(result.optimizer_state),
-        anonymous_tuple.to_odict(result.delta_aggregate_state, True),
+        tff.learning.ModelWeights(
+            tuple(result.model.trainable), tuple(result.model.non_trainable)),
+        list(result.optimizer_state), per_vector_aggregate_states,
         tuple(result.model_broadcast_state))
 
   def initialize(self):
@@ -107,11 +117,19 @@ class FederatedAveragingProcessAdapter(adapters.IterativeProcessPythonAdapter):
 
   def next(self, state, data):
     state, metrics = self._iterative_process.next(state, data)
-    state = self._server_state_from_tff_result(state)
+    python_state = self._server_state_from_tff_result(state)
     metrics = metrics._asdict(recursive=True)
-    metrics.update(state.delta_aggregate_state)
+    if self._adaptive_clipping:
+      if self._per_vector_clipping:
+        metrics.update({
+            ('clip_' + str(i)): self._get_clip(vector_state)
+            for i, vector_state in enumerate(state.delta_aggregate_state)
+        })
+      else:
+        metrics.update({'clip': self._get_clip(state.delta_aggregate_state)})
+
     outputs = None
-    return adapters.IterationResult(state, metrics, outputs)
+    return adapters.IterationResult(python_state, metrics, outputs)
 
 
 def assign_weights_to_keras_model(state, keras_model):
@@ -217,7 +235,10 @@ def main(argv):
           client_optimizer_fn=client_optimizer_fn,
           stateful_delta_aggregate_fn=dp_aggregate_fn))
 
-  training_process = FederatedAveragingProcessAdapter(training_process)
+  adaptive_clipping = (FLAGS.adaptive_clip_learning_rate > 0)
+  training_process = DPFedAvgProcessAdapter(training_process,
+                                            FLAGS.per_vector_clipping,
+                                            adaptive_clipping)
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
       train_dataset, FLAGS.clients_per_round)

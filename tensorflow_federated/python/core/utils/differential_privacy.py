@@ -60,7 +60,7 @@ def build_dp_query(clip,
     adaptive_clip_learning_rate: Learning rate for quantile-based adaptive
       clipping. If 0, fixed clipping is used. If per-vector clipping is enabled,
       the learning rate of each vector is proportional to that vector's initial
-      clip, such that the sum of all per-vector learning rates equals this.
+      clip.
     target_unclipped_quantile: Target unclipped quantile for adaptive clipping.
     clipped_count_budget_allocation: The fraction of privacy budget to use for
       estimating clipped counts.
@@ -69,8 +69,8 @@ def build_dp_query(clip,
     per_vector_clipping: If True, clip each weight tensor independently.
       Otherwise, global clipping is used. The clipping norm for each vector (or
       the initial clipping norm, in the case of adaptive clipping) is
-      proportional to the sqrt of the vector dimensionality while the total
-      bound still equals `clip`.
+      proportional to the sqrt of the vector dimensionality such that the root
+      sum squared of the individual clips equals `clip`.
     model: A `tff.learning.Model` to determine the structure of model weights.
       Required only if per_vector_clipping is True.
 
@@ -86,7 +86,7 @@ def build_dp_query(clip,
   if per_vector_clipping:
     # Note we need to keep the structure of vectors (not just the num_vectors)
     # to create the subqueries below, when per_vector_clipping is True.
-    vectors = model.weights.trainable
+    vectors = model.weights
     num_vectors = len(tf.nest.flatten(vectors))
   else:
     num_vectors = 1
