@@ -945,8 +945,9 @@ class LambdaWrappingNoArgGraph(transformation_utils.TransformSpec):
 
     constructed_proto = pb.Computation(
         type=serialized_function_type, tensorflow=tf_result_proto)
-
-    return building_blocks.CompiledComputation(constructed_proto), True
+    proto_pruned = proto_transformations.prune_tensorflow_proto(
+        constructed_proto)
+    return building_blocks.CompiledComputation(proto_pruned), True
 
 
 class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):

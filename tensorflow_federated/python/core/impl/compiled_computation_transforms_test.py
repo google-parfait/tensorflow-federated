@@ -30,7 +30,9 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import proto_transformations
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 tf.compat.v1.enable_v2_behavior()
 
@@ -2301,19 +2303,27 @@ class LambdaWrappingNoArgGraphTest(test.TestCase, parameterized.TestCase):
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
 
   def test_updates_init_op(self):
-    embedded_constant = building_block_factory.create_tensorflow_constant(
-        tf.int32, 0)
-    noarg_graph = embedded_constant.function
-    tf_proto = noarg_graph.proto.tensorflow
+
+    with tf.Graph().as_default() as graph:
+      var = tf.Variable(initial_value=0.0, name='var1', import_scope='')
+      assign_op = var.assign_add(tf.constant(1.0))
+      out = tf.add(1.0, assign_op)
+      init_op_name = tf.compat.v1.global_variables_initializer().name
+
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        out, graph)
+    type_spec = computation_types.FunctionType(None, result_type)
+    serialized_type_spec = type_serialization.serialize_type(type_spec)
+
     proto_with_init_op = pb.TensorFlow(
-        graph_def=tf_proto.graph_def,
-        initialize_op='bad_init_op',
-        parameter=tf_proto.parameter,
-        result=tf_proto.result)
+        graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+        initialize_op=init_op_name,
+        result=result_binding)
+
     constant_with_init_op = building_blocks.Call(
         building_blocks.CompiledComputation(
             pb.Computation(
-                type=noarg_graph.proto.type, tensorflow=proto_with_init_op)),
+                type=serialized_type_spec, tensorflow=proto_with_init_op)),
         None)
     lambda_wrapping_constant = building_blocks.Lambda('x', tf.float32,
                                                       constant_with_init_op)
@@ -2322,7 +2332,7 @@ class LambdaWrappingNoArgGraphTest(test.TestCase, parameterized.TestCase):
     self.assertTrue(transformed)
     split_init_op_name = parsed.proto.tensorflow.initialize_op.split('/')
     self.assertNotEmpty(split_init_op_name[0])
-    self.assertEqual(split_init_op_name[1], 'bad_init_op')
+    self.assertEqual(split_init_op_name[1], init_op_name)
 
   @parameterized.named_parameters([(str(n), n * 1.0) for n in range(10)])
   def test_function_returned_independent_of_argument(self, arg):
