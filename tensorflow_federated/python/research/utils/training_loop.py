@@ -15,6 +15,7 @@
 """Internal dispatcher for training loops."""
 
 import collections
+import contextlib
 import os.path
 import pprint
 import time
@@ -48,6 +49,9 @@ with utils_impl.record_hparam_flags():
                        'How often to evaluate the global model.')
   flags.DEFINE_integer('rounds_per_checkpoint', 50,
                        'How often to checkpoint the global model.')
+  flags.DEFINE_integer(
+      'rounds_per_profile', 0,
+      '(Experimental) How often to run the experimental TF profiler, if >0.')
 
 FLAGS = flags.FLAGS
 
@@ -88,7 +92,16 @@ def _setup_outputs(root_output_dir, experiment_name, hparam_dict):
   logging.info('    metrics csv to: %s', metrics_mngr.metrics_filename)
   logging.info('    summaries to: %s', summary_logdir)
 
-  return checkpoint_mngr, metrics_mngr, summary_writer
+  @contextlib.contextmanager
+  def profiler(round_num):
+    if (FLAGS.rounds_per_profile > 0 and
+        round_num % FLAGS.rounds_per_profile == 0):
+      with tf.profiler.experimental.Profile(summary_logdir):
+        yield
+    else:
+      yield
+
+  return checkpoint_mngr, metrics_mngr, summary_writer, profiler
 
 
 def _write_metrics(metrics_mngr, summary_writer, metrics, round_num):
@@ -156,7 +169,7 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
       (name, FLAGS[name].value) for name in hparam_flags
   ])
 
-  checkpoint_mngr, metrics_mngr, summary_writer = _setup_outputs(
+  checkpoint_mngr, metrics_mngr, summary_writer, profiler = _setup_outputs(
       FLAGS.root_output_dir, FLAGS.experiment_name, hparam_dict)
 
   logging.info('Asking checkpoint manager to load checkpoint.')
@@ -186,7 +199,8 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     # errors during training, and should be removed once the root cause is
     # determined (and possibly fixed).
     try:
-      iteration_result = iterative_process.next(state, federated_train_data)
+      with profiler(round_num):
+        iteration_result = iterative_process.next(state, federated_train_data)
     except (tf.errors.FailedPreconditionError, tf.errors.NotFoundError,
             tf.errors.InternalError) as e:
       logging.warning('Caught %s exception while running round %d:\n\t%s',
