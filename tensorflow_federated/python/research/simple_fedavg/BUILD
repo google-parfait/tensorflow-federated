@@ -1,6 +1,4 @@
-package(default_visibility = [
-    "//tensorflow_federated/python/research",
-])
+package(default_visibility = ["//tensorflow_federated/python/research"])
 
 licenses(["notice"])
 
