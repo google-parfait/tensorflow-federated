@@ -36,15 +36,6 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 tf.compat.v1.enable_v2_behavior()
 
 
-class TransformationsTest(absltest.TestCase):
-
-  def test_example_training_comp_reduces(self):
-    training_comp = mapreduce_test_utils.construct_example_training_comp()
-    self.assertIsInstance(
-        mapreduce_test_utils.computation_to_building_block(training_comp.next),
-        building_blocks.Lambda)
-
-
 class CheckExtractionResultTest(absltest.TestCase):
 
   def get_function_from_argument_to_call_in_call_in_lambda(self, tree):
