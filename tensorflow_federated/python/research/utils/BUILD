@@ -82,25 +82,6 @@ py_test(
 )
 
 py_library(
-    name = "training_loops",
-    srcs = ["training_loops.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
-)
-
-py_test(
-    name = "training_loops_test",
-    size = "large",
-    srcs = ["training_loops_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":training_loops",
-        "//tensorflow_federated",
-    ],
-)
-
-py_library(
     name = "training_utils",
     srcs = ["training_utils.py"],
     srcs_version = "PY3",
