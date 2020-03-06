@@ -99,20 +99,48 @@ def build_personalize_fn(optimizer_fn,
       }
       return next_state
 
+    def train_several_epochs(num_epochs, state):
+      """Train the model for several epochs on `train_data`."""
+      data = train_data.repeat(num_epochs)
+      if shuffle:
+        data = data.shuffle(shuffle_buffer_size)
+      data = data.batch(train_batch_size)
+      return data.reduce(initial_state=state, reduce_func=train_one_batch)
+
     # Start training.
     training_state = {'num_examples': 0, 'num_batches': 0}
+
+    # Compute the number of times that the model gets evaluated during training.
+    num_evals, remainder_epochs = divmod(max_num_epochs, num_epochs_per_eval)
+
+    # Create a nested structure of `tf.TensorArray`s that has the same nested
+    # strucutre of the evaluation metrics returned by the `evaluate_fn`. In this
+    # case, the nested strucutre is an `OrderedDict` that maps names to values.
+    metrics_tensorarrays = tf.nest.map_structure(
+        lambda v: tf.TensorArray(v.dtype, size=num_evals),
+        evaluate_fn(model, test_data, test_batch_size))
+
+    for i in tf.range(num_evals):
+      training_state = train_several_epochs(num_epochs_per_eval, training_state)
+      # Evaluate the current trained model.
+      current_metrics = evaluate_fn(model, test_data, test_batch_size)
+      # Write the current result to the corresponding `tf.TensorArray`s.
+      metrics_tensorarrays = tf.nest.map_structure(
+          lambda ta, v: ta.write(i, v),  # pylint: disable=cell-var-from-loop
+          metrics_tensorarrays,
+          current_metrics)
+
+    # Finish the remaining training epochs.
+    training_state = train_several_epochs(remainder_epochs, training_state)
+
+    # Convert the nested `tf.TensorArray`s to the desired structure: here we
+    # create a dict by grouping the metric values at the same epoch together.
     metrics_dict = collections.OrderedDict()
-    for epoch_idx in range(1, max_num_epochs + 1):
-      if shuffle:
-        data = train_data.shuffle(shuffle_buffer_size).batch(train_batch_size)
-      else:
-        data = train_data.batch(train_batch_size)
-      training_state = data.reduce(
-          initial_state=training_state, reduce_func=train_one_batch)
-      # Evaluate the trained model every `num_epochs_per_eval` epochs.
-      if epoch_idx % num_epochs_per_eval == 0:
-        metrics_dict[f'epoch_{epoch_idx}'] = evaluate_fn(
-            model, test_data, test_batch_size)
+    for j in range(num_evals):
+      epoch_idx = (j + 1) * num_epochs_per_eval
+      metrics_dict[f'epoch_{epoch_idx}'] = tf.nest.map_structure(
+          lambda ta: ta.read(j),  # pylint: disable=cell-var-from-loop
+          metrics_tensorarrays)
 
     # Save the training statistics.
     metrics_dict['num_examples'] = training_state['num_examples']

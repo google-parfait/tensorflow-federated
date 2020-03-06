@@ -73,11 +73,10 @@ class P13NUtilsTest(tf.test.TestCase):
 
     # The model weights become [0, 0, 1] after training one epoch, which gives
     # an MSE 0.0 and MAE 0.0.
-    # TODO(b/150599675): restore the following check once the bug is fixed.
-    # self.assertDictContainsSubset({
-    #     'loss': 0.0,
-    #     'mean_absolute_error': 0.0
-    # }, p13n_metrics['epoch_1'])
+    self.assertDictContainsSubset({
+        'loss': 0.0,
+        'mean_absolute_error': 0.0
+    }, p13n_metrics['epoch_1'])
     # The model is trained for one epoch, so the final model has the same
     # metrics as those in `epoch_1`.
     self.assertDictContainsSubset({
