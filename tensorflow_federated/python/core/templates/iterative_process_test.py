@@ -16,6 +16,7 @@
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import values
 from tensorflow_federated.python.core.impl.context_stack import set_default_executor
@@ -32,12 +33,12 @@ def initialize():
   return tf.constant(0)
 
 
-@computations.tf_computation([tf.int32, tf.int32])
+@computations.tf_computation(tf.int32, tf.int32)
 def add_int32(current, val):
   return current + val
 
 
-@computations.tf_computation([tf.int32, tf.int32])
+@computations.tf_computation(tf.int32, tf.int32)
 def add_mul_int32(current, val):
   return current + val, current * val
 
@@ -59,6 +60,23 @@ class IterativeProcessTest(test.TestCase):
       # type is supported.
       state = ip.next(state.item())
     self.assertEqual(state, iterations)
+
+  def test_constructor_with_tensors_unknown_dimensions(self):
+
+    @computations.tf_computation
+    def init():
+      return tf.constant([], dtype=tf.string)
+
+    @computations.tf_computation(
+        computation_types.TensorType(shape=[None], dtype=tf.string))
+    def next_fn(strings):
+      return tf.concat([strings, tf.constant(['abc'])], axis=0)
+
+    try:
+      iterative_process.IterativeProcess(init, next_fn)
+    except:  # pylint: disable=bare-except
+      self.fail('Could not construct an IterativeProcess with parameter types '
+                'including unknown dimension tennsors.')
 
   def test_constructor_with_state_tuple_arg(self):
     ip = iterative_process.IterativeProcess(initialize, add_int32)
@@ -100,9 +118,9 @@ class IterativeProcessTest(test.TestCase):
 
   def test_constructor_with_type_mismatch(self):
     with self.assertRaisesRegex(
-        TypeError, r'The return type of initialize_fn should match.*'):
+        TypeError, r'The return type of initialize_fn must be assignable.*'):
 
-      @computations.federated_computation([tf.float32, tf.float32])
+      @computations.federated_computation(tf.float32, tf.float32)
       def add_float32(current, val):
         return current + val
 
@@ -111,7 +129,7 @@ class IterativeProcessTest(test.TestCase):
 
     with self.assertRaisesRegex(
         TypeError,
-        'The return type of next_fn should match the first parameter'):
+        'The return type of next_fn must be assignable to the first parameter'):
 
       @computations.federated_computation(tf.int32)
       def add_bad_result(_):
@@ -122,7 +140,7 @@ class IterativeProcessTest(test.TestCase):
 
     with self.assertRaisesRegex(
         TypeError,
-        'The return type of next_fn should match the first parameter'):
+        'The return type of next_fn must be assignable to the first parameter'):
 
       @computations.federated_computation(tf.int32)
       def add_bad_multi_result(_):

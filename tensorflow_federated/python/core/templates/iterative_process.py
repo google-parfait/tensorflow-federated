@@ -17,6 +17,7 @@
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import type_utils
 
 
 class IterativeProcess(object):
@@ -58,10 +59,10 @@ class IterativeProcess(object):
       initialize_fn: a no-arg `tff.Computation` that creates the initial state
         of the chained computation.
       next_fn: a `tff.Computation` that defines an iterated function. If
-        `initialize_fn` returns a type _T_, then `next_fn` must also return type
-        _T_  or multiple values where the first is of type _T_, and accept
-        either a single argument of type _T_ or multiple arguments where the
-        first argument must be of type _T_.
+        `initialize_fn` returns a type _T_, then `next_fn` must return a type
+        _U_ which is compatible with _T_ or multiple values where the first type
+        is _U_, and accept either a single argument of type _U_ or
+        multiple arguments where the first argument must be of type _U_.
 
     Raises:
       TypeError: `initialize_fn` and `next_fn` are not compatible function
@@ -80,21 +81,23 @@ class IterativeProcess(object):
       next_first_param_type = next_fn.type_signature.parameter[0]
     else:
       next_first_param_type = next_fn.type_signature.parameter
-    if initialize_result_type != next_first_param_type:
-      raise TypeError('The return type of initialize_fn should match the '
-                      'first parameter of next_fn, but found\n'
+    if not type_utils.is_assignable_from(next_first_param_type,
+                                         initialize_result_type):
+      raise TypeError('The return type of initialize_fn must be assignable '
+                      'to the first parameter of next_fn, but found\n'
                       'initialize_fn.type_signature.result=\n{}\n'
                       'next_fn.type_signature.parameter[0]=\n{}'.format(
                           initialize_result_type, next_first_param_type))
 
     next_result_type = next_fn.type_signature.result
-    if next_first_param_type != next_result_type:
+    if not type_utils.is_assignable_from(next_first_param_type,
+                                         next_result_type):
       # This might be multiple output next_fn, check if the first argument might
       # be the state. If still not the right type, raise an error.
       if isinstance(next_result_type, computation_types.NamedTupleType):
         next_result_type = next_result_type[0]
       if next_first_param_type != next_result_type:
-        raise TypeError('The return type of next_fn should match the '
+        raise TypeError('The return type of next_fn must be assignable to the '
                         'first parameter, but found\n'
                         'next_fn.type_signature.parameter[0]=\n{}\n'
                         'actual next_result_type=\n{}'.format(
