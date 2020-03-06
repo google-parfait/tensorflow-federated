@@ -201,15 +201,13 @@ class _DeviceScheduler():
     """Initialize with device list.
 
     Args:
-      devices: List of `tf.config.PhysicalDevice` returned by
-        `tf.config.experimental.list_physical_devices()`.
+      devices: List of `tf.config.LogicalDevice` returned by
+        `tf.config.list_logical_devices()`.
     """
     py_typecheck.check_type(devices, (list, tuple))
     for device in devices:
-      py_typecheck.check_type(device, tf.config.PhysicalDevice)
-    self.devices = [
-        d.name.replace('physical_device', 'device') for d in devices
-    ]
+      py_typecheck.check_type(device, tf.config.LogicalDevice)
+    self.devices = [d.name for d in devices]
     self.idx = 0
 
   def next_device(self):
@@ -244,8 +242,8 @@ def local_executor_factory(
       Adjusting this parameter away from 1 can be useful if clients work is
       light.
     tf_devices: The list of devices to run clients for simulation. The
-      `tf.config.PhysicalDevice` list can often be returned by
-      `tf.config.experimental.list_physical_devices()`.
+      `tf.config.LogicalDevice` list can often be returned by
+      `tf.config.list_logical_devices()`.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -256,7 +254,7 @@ def local_executor_factory(
   """
   py_typecheck.check_type(tf_devices, (list, tuple))
   for device in tf_devices:
-    py_typecheck.check_type(device, tf.config.PhysicalDevice)
+    py_typecheck.check_type(device, tf.config.LogicalDevice)
   device_scheduler = _DeviceScheduler(tf_devices)
   stack_func = functools.partial(
       _create_federated_stack, device_scheduler=device_scheduler)
