@@ -230,7 +230,6 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
 
     metrics = {
         'train': train_metrics,
-        'round': round_num,
     }
 
     if round_num % FLAGS.rounds_per_eval == 0:
