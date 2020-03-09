@@ -22,6 +22,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:type_utils",
     ],
 )
 
@@ -30,7 +31,12 @@ py_test(
     srcs = ["canonical_form_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":test_utils"],
+    deps = [
+        ":canonical_form",
+        ":test_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+    ],
 )
 
 py_library(

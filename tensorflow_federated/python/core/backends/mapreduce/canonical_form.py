@@ -18,6 +18,7 @@ from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import type_utils
 
 
 class CanonicalForm(object):
@@ -328,30 +329,41 @@ class CanonicalForm(object):
           'The `work` computation returns a result  of type {} that is not a '
           'two-tuple.'.format(work.type_signature.result))
 
-    expected_accumulate_type = computation_types.FunctionType(
-        [zero.type_signature.result, work.type_signature.result[0][0]],
-        zero.type_signature.result)
-    if accumulate.type_signature != expected_accumulate_type:
-      raise TypeError(
-          'The `accumulate` computation has type signature {}, which does '
-          'not match the expected {} as implied by the type signatures of '
-          '`zero` and `work`.'.format(accumulate.type_signature,
-                                      expected_accumulate_type))
+    py_typecheck.check_type(zero.type_signature, computation_types.FunctionType)
 
-    expected_merge_type = computation_types.FunctionType(
-        [accumulate.type_signature.result, accumulate.type_signature.result],
-        accumulate.type_signature.result)
-    if merge.type_signature != expected_merge_type:
-      raise TypeError(
-          'The `merge` computation has type signature {}, which does '
-          'not match the expected {} as implied by the type signature '
-          'of `accumulate`.'.format(merge.type_signature, expected_merge_type))
+    py_typecheck.check_type(accumulate.type_signature,
+                            computation_types.FunctionType)
+    py_typecheck.check_len(accumulate.type_signature.parameter, 2)
+    type_utils.check_assignable_from(accumulate.type_signature.parameter[0],
+                                     zero.type_signature.result)
+    if (accumulate.type_signature.parameter[1] !=
+        work.type_signature.result[0][0]):
 
-    if report.type_signature.parameter != merge.type_signature.result:
       raise TypeError(
-          'The `report` computation expects an argument of type {}, '
-          'which does not match the result type {} of `merge`.'.format(
-              report.type_signature.parameter, merge.type_signature.result))
+          'The `accumulate` computation expects a second argument of type {}, '
+          'which does not match the expected {} as implied by the type '
+          'signature of `work`.'.format(accumulate.type_signature.parameter[1],
+                                        work.type_signature.result[0][0]))
+    type_utils.check_assignable_from(accumulate.type_signature.parameter[0],
+                                     accumulate.type_signature.result)
+
+    py_typecheck.check_type(merge.type_signature,
+                            computation_types.FunctionType)
+    py_typecheck.check_len(merge.type_signature.parameter, 2)
+    type_utils.check_assignable_from(merge.type_signature.parameter[0],
+                                     accumulate.type_signature.result)
+    type_utils.check_assignable_from(merge.type_signature.parameter[1],
+                                     accumulate.type_signature.result)
+    type_utils.check_assignable_from(merge.type_signature.parameter[0],
+                                     merge.type_signature.result)
+
+    py_typecheck.check_type(report.type_signature,
+                            computation_types.FunctionType)
+    type_utils.check_assignable_from(report.type_signature.parameter,
+                                     merge.type_signature.result)
+
+    py_typecheck.check_type(bitwidth.type_signature,
+                            computation_types.FunctionType)
 
     expected_update_parameter_type = computation_types.to_type([
         initialize.type_signature.result,
