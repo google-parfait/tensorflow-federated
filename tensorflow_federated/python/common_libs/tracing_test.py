@@ -26,6 +26,10 @@ from tensorflow_federated.python.common_libs import tracing
 
 tf.compat.v1.enable_v2_behavior()
 
+# Traces may not run in _exactly_ one second, but we can assert it was at least
+# one second; and most importantly the time should be logged.
+ELAPSED_ONE_REGEX = r'Elapsed time [1-9][0-9]*\.[0-9]+'
+
 
 class DebugLoggingTest(absltest.TestCase):
 
@@ -98,7 +102,8 @@ class DebugLoggingTest(absltest.TestCase):
       return await asyncio.gather(
           asyncio.sleep(1), asyncio.sleep(1), asyncio.sleep(1))
 
-    self._test_debug_logging_with_async_function(foo, '1.0')
+    self._test_debug_logging_with_async_function(
+        foo, r'<locals>\.foo\. ' + ELAPSED_ONE_REGEX)
 
   def test_logging_non_blocking_method(self):
 
@@ -116,7 +121,14 @@ class DebugLoggingTest(absltest.TestCase):
     a_class = AClass()
 
     result = self._test_debug_logging_with_async_function(
-        a_class.async_method, '1.0', 'foo', 'bar', arg3='baz', arg4=True)
+        a_class.async_method,
+        # Non-blocking may not run exactly one second, but we can assert it was
+        # at least one second; and most importantly it should be logged.
+        r'AClass\.async_method\. ' + ELAPSED_ONE_REGEX,
+        'foo',
+        'bar',
+        arg3='baz',
+        arg4=True)
     self.assertEqual(3, result)
 
   def test_logging_blocking_method(self):
@@ -136,7 +148,12 @@ class DebugLoggingTest(absltest.TestCase):
     a_class = AClass()
 
     result = self._test_debug_logging_with_sync_function(
-        a_class.sync_method, '1.0', 'foo', 'bar', arg3='baz', arg4=True)
+        a_class.sync_method,
+        r'AClass\.sync_method\. ' + ELAPSED_ONE_REGEX,
+        'foo',
+        'bar',
+        arg3='baz',
+        arg4=True)
     self.assertEqual(3, result)
 
   def test_logging_blocking_function(self):
@@ -152,7 +169,12 @@ class DebugLoggingTest(absltest.TestCase):
       return 3
 
     result = self._test_debug_logging_with_sync_function(
-        foo, '1.0', 'foo', 'bar', arg3='baz', arg4=True)
+        foo,
+        r'<locals>\.foo\. ' + ELAPSED_ONE_REGEX,
+        'foo',
+        'bar',
+        arg3='baz',
+        arg4=True)
     self.assertEqual(3, result)
 
 
