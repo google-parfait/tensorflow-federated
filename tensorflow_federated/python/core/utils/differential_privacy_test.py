@@ -137,8 +137,8 @@ class DpUtilsTest(test.TestCase):
 
     global_state, result = aggregate(global_state, [1.0, 3.0, 5.0])
 
-    self.assertEqual(getattr(global_state, 'l2_norm_clip'), 4.0)
-    self.assertEqual(getattr(global_state, 'stddev'), 0.0)
+    self.assertEqual(global_state['l2_norm_clip'], 4.0)
+    self.assertEqual(global_state['stddev'], 0.0)
     self.assertEqual(result, 8.0)
 
   def test_dp_sum_structure_odict(self):
@@ -160,11 +160,11 @@ class DpUtilsTest(test.TestCase):
 
     global_state, result = aggregate(global_state, data)
 
-    self.assertEqual(getattr(global_state, 'l2_norm_clip'), 5.0)
-    self.assertEqual(getattr(global_state, 'stddev'), 0.0)
+    self.assertEqual(global_state['l2_norm_clip'], 5.0)
+    self.assertEqual(global_state['stddev'], 0.0)
 
-    self.assertEqual(getattr(result, 'a')[0], 6.0)
-    self.assertEqual(getattr(result, 'b')[0], 9.0)
+    self.assertEqual(result['a'][0], 6.0)
+    self.assertEqual(result['b'][0], 9.0)
 
   def test_dp_sum_structure_list(self):
     query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
@@ -198,8 +198,8 @@ class DpUtilsTest(test.TestCase):
 
     global_state, result = aggregate(global_state, data)
 
-    self.assertEqual(getattr(global_state, 'l2_norm_clip'), 5.0)
-    self.assertEqual(getattr(global_state, 'stddev'), 0.0)
+    self.assertEqual(global_state['l2_norm_clip'], 5.0)
+    self.assertEqual(global_state['stddev'], 0.0)
 
     result = list(result)
     self.assertEqual(result[0], 6.0)
@@ -226,12 +226,11 @@ class DpUtilsTest(test.TestCase):
 
     def run_and_check(global_state, expected_l2_norm_clip, expected_result):
       global_state, result = aggregate(global_state, records)
-      self.assertEqual(
-          getattr(global_state, 'l2_norm_clip'), expected_l2_norm_clip)
+      self.assertEqual(global_state['l2_norm_clip'], expected_l2_norm_clip)
       self.assertEqual(result, expected_result)
       return global_state
 
-    self.assertEqual(getattr(global_state, 'l2_norm_clip'), 4.0)
+    self.assertEqual(global_state['l2_norm_clip'], 4.0)
     global_state = run_and_check(global_state, 3.0, 8.0)
     global_state = run_and_check(global_state, 2.0, 7.0)
     global_state = run_and_check(global_state, 1.0, 5.0)

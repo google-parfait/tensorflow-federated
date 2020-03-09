@@ -275,6 +275,20 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(x[1:], tuple(range(10, 50, 10)))
     self.assertEqual(x[-1:], (40,))
 
+  def test_getitem_key(self):
+    v = [('foo', 10), ('bar', 20)]
+    x = anonymous_tuple.AnonymousTuple(v)
+    self.assertEqual(x['foo'], 10)
+    self.assertEqual(x['bar'], 20)
+    with self.assertRaises(AttributeError):
+      _ = x['badkey']
+
+  def test_getitem_key_builtin_attribute_raises(self):
+    v = [('foo', 10), ('bar', 20)]
+    x = anonymous_tuple.AnonymousTuple(v)
+    with self.assertRaises(AttributeError):
+      _ = x['__getattr__']
+
   def test_getitem_bad_bounds(self):
     v = [(None, i) for i in range(0, 50, 10)]
     x = anonymous_tuple.AnonymousTuple(v)

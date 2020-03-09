@@ -15,6 +15,7 @@
 """Anonymous named tuples to represent generic tuple values in computations."""
 
 import collections
+from typing import Union
 
 import attr
 import tensorflow as tf
@@ -46,7 +47,7 @@ class AnonymousTuple(object):
   list(iter(x)) == [10, 20, 30]
   dir(x) == ['bar', 'foo']
   x.foo == 10
-  x.bar == 30
+  x['bar'] == 30
   ```
 
   Note that in general, naming the members of these tuples is optional. Thus,
@@ -120,8 +121,10 @@ class AnonymousTuple(object):
     """
     return list(self._name_to_index.keys())
 
-  def __getitem__(self, key):
-    py_typecheck.check_type(key, (int, slice))
+  def __getitem__(self, key: Union[int, str, slice]):
+    py_typecheck.check_type(key, (int, str, slice))
+    if isinstance(key, str):
+      return self.__getattr__(key)
     if isinstance(key, int):
       if key < 0 or key >= len(self._element_array):
         raise IndexError(
