@@ -146,7 +146,7 @@ def sample_clients_with_malicious(client_data,
   return federated_train_data, federated_malicious_data, client_type_list
 
 
-def create_compiled_keras_model():
+def create_keras_model():
   """Build compiled keras model."""
   num_classes = 10 if FLAGS.only_digits else 62
   model = tf.keras.models.Sequential([
@@ -165,22 +165,15 @@ def create_compiled_keras_model():
       tf.keras.layers.Dropout(0.5),
       tf.keras.layers.Dense(num_classes, activation='softmax')
   ])
-
-  def loss_fn(y_true, y_pred):
-    return tf.reduce_mean(
-        tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred))
-
-  model.compile(
-      loss=loss_fn,
-      optimizer=tf.keras.optimizers.SGD(
-          learning_rate=FLAGS.client_learning_rate),
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
   return model
 
 
 def evaluate(state, x, y, target_x, target_y, batch_size=100):
   """Evaluate the model on both main task and target task."""
-  keras_model = create_compiled_keras_model()
+  keras_model = create_keras_model()
+  keras_model.compile(
+      loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
   tff.learning.assign_weights_to_keras_model(keras_model, state.model)
   test_metrics = keras_model.evaluate(x, y, batch_size=batch_size)
   test_metrics_target = keras_model.evaluate(
@@ -239,8 +232,12 @@ def main(argv):
                                        iter(preprocess(example_dataset)).next())
 
   def model_fn():
-    keras_model = create_compiled_keras_model()
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+    keras_model = create_keras_model()
+    return tff.learning.from_keras_model(
+        keras_model,
+        dummy_batch=sample_batch,
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
   # define server optimizer
   nesterov = True if FLAGS.server_momentum != 0 else False
