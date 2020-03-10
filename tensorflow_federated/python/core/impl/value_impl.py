@@ -16,7 +16,7 @@
 
 import abc
 import collections
-from typing import Any
+from typing import Any, Union
 
 import attr
 import tensorflow as tf
@@ -133,7 +133,8 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
               self._comp, name), self._context_stack)
     if name not in dir(self._comp.type_signature):
       raise AttributeError(
-          'There is no such attribute as \'{}\' in this tuple.'.format(name))
+          'There is no such attribute \'{}\' in this tuple. Valid attributes: ({})'
+          .format(name, ', '.join(dir(self._comp.type_signature))))
     if isinstance(self._comp, building_blocks.Tuple):
       return ValueImpl(getattr(self._comp, name), self._context_stack)
     return ValueImpl(
@@ -165,8 +166,10 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
           .format(self._comp.type_signature))
     return len(type_signature)
 
-  def __getitem__(self, key):
-    py_typecheck.check_type(key, (int, slice))
+  def __getitem__(self, key: Union[int, str, slice]):
+    py_typecheck.check_type(key, (int, str, slice))
+    if isinstance(key, str):
+      return getattr(self, key)
     if _is_federated_named_tuple(self):
       return ValueImpl(
           building_block_factory.create_federated_getitem_call(self._comp, key),
