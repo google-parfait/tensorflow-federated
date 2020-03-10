@@ -104,6 +104,14 @@ customized applciations and algorithmic changes following detailed instructions
 in the
 [README](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/README.md).
 
+A more general implementation of Federated Averaging can be found
+[here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/optimization/shared/fed_avg_schedule.py).
+This implementation allows for more sophisticated optimization techniques,
+including learning rate scheduling and the use of different optimizers on both
+the server and client. Code that applies this generalized Federated Averaging to
+various tasks and federated datasets can be found can be found
+[here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/optimization).
+
 ### Model and update compression
 
 TFF uses the
