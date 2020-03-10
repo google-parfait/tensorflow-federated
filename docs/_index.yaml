@@ -76,14 +76,16 @@ landing_page:
               tf.keras.layers.Dense(10, tf.nn.softmax, input_shape=(784,),
                                     kernel_initializer='zeros')
           ])
-          model.compile(
+          return tff.learning.from_keras_model(
+              model,
+              dummy_batch=sample_batch,
               loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-              optimizer=tf.keras.optimizers.SGD(0.1),
               metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-          return tff.learning.from_compiled_keras_model(model, sample_batch)
 
         # Simulate a few rounds of training with the selected client devices.
-        trainer = tff.learning.build_federated_averaging_process(model_fn)
+        trainer = tff.learning.build_federated_averaging_process(
+          model_fn,
+          client_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1))
         state = trainer.initialize()
         for _ in range(5):
           state, metrics = trainer.next(state, train_data)
