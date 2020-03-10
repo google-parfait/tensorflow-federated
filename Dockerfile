@@ -58,18 +58,18 @@ RUN bazel version
 
 # Install the TensorFlow Federated development environment dependencies
 RUN ${PIP} install --no-cache-dir \
-    absl-py~=0.7 \
-    attrs~=19.3 \
+    absl-py~=0.9.0 \
+    attrs~=19.3.0 \
     cachetools~=3.1.1 \
     dm-tree~=0.1.1 \
     grpcio~=1.24.3 \
-    h5py~=2.6 \
-    numpy~=1.14 \
+    h5py~=2.8.0 \
+    numpy~=1.17.5 \
     pandas~=0.24.0 \
     portpicker~=1.3.1 \
     retrying~=1.3.3 \
     tensorflow-model-optimization~=0.2.1 \
-    tensorflow-privacy~=0.2.0 \
+    tensorflow-privacy~=0.2.2 \
     tf-nightly \
     tfa-nightly
 RUN pip freeze

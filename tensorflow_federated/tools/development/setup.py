@@ -69,18 +69,18 @@ with open('tensorflow_federated/version.py') as fp:
   VERSION = globals_dict['__version__']
 
 REQUIRED_PACKAGES = [
-    'absl-py~=0.7',
-    'attrs~=19.3',
+    'absl-py~=0.9.0',
+    'attrs~=19.3.0',
     'cachetools~=3.1.1',
     'dm-tree~=0.1.1',
     'grpcio~=1.24.3',
-    'h5py~=2.6',
-    'numpy~=1.14',
+    'h5py~=2.8.0',
+    'numpy~=1.17.5',
     'portpicker~=1.3.1',
     'retrying~=1.3.3',
     'tensorflow-addons~=0.8.3',
     'tensorflow-model-optimization~=0.2.1',
-    'tensorflow-privacy~=0.2.0',
+    'tensorflow-privacy~=0.2.2',
     'tensorflow~=2.1.0',
 ]
 
