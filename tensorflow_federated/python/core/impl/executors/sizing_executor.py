@@ -15,6 +15,7 @@
 """Utils for testing executors."""
 
 import collections
+from typing import List, Tuple
 
 import tensorflow as tf
 
@@ -24,6 +25,11 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+
+# This type is used to pass around information related to tensors. The int
+# describes the number of elements of a tensor, the DType is the same tensor's
+# DType.
+SizeAndDTypes = List[Tuple[int, tf.DType]]
 
 
 def get_type_information(value, type_spec):
@@ -90,11 +96,11 @@ class SizingExecutor(executor_base.Executor):
     self._output_history = []
 
   @property
-  def output_history(self):
+  def output_history(self) -> SizeAndDTypes:
     return self._output_history
 
   @property
-  def input_history(self):
+  def input_history(self) -> SizeAndDTypes:
     return self._input_history
 
   async def create_value(self, value, type_spec=None):

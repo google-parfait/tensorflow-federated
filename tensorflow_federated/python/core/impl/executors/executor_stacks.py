@@ -15,6 +15,7 @@
 """A collection of constructors for basic types of executor stacks."""
 
 import functools
+from typing import List, Tuple
 
 import tensorflow as tf
 
@@ -70,7 +71,8 @@ def _create_sizing_stack(num_clients, clients_per_thread):
       placement_literals.SERVER: _create_bottom_stack(),
       None: _create_bottom_stack()
   }
-  return _complete_stack(federating_executor.FederatingExecutor(executor_dict))
+  return _complete_stack(
+      federating_executor.FederatingExecutor(executor_dict)), sizing_stacks
 
 
 def _create_composite_stack(children):
@@ -273,9 +275,9 @@ def local_executor_factory(
 
 
 def sizing_executor_factory(
-    num_clients=None,
-    max_fanout=100,
-    clients_per_thread=1) -> executor_factory.ExecutorFactory:
+    num_clients: int = None,
+    max_fanout: int = 100,
+    clients_per_thread: int = 1) -> executor_factory.ExecutorFactory:
   """Constructs an executor to execute computations on the local machine with sizing.
 
   Args:
@@ -299,19 +301,59 @@ def sizing_executor_factory(
   Raises:
     ValueError: If the number of clients is specified and not one or larger.
   """
-  stack_func = _create_sizing_stack
+
+  def _executor_stack_fn(
+      cardinalities: executor_factory.CardinalitiesType
+  ) -> Tuple[executor_base.Executor, List[sizing_executor.SizingExecutor]]:
+    """The function passed to SizingExecutorFactoryImpl to convert cardinalities into executor stack.
+
+    Unlike the function that is passed into ExecutorFactoryImpl, this one
+    outputs the sizing executors as well.
+
+    Args:
+      cardinalities: Cardinality representation used to determine how many
+        clients there are.
+
+    Returns:
+      A Tuple of the top level executor created from the cardinalities, and the
+      list of sizing executors underneath the top level executors.
+    """
+    sizing_exs = []
+
+    def _standalone_stack_func(num_clients, clients_per_thread):
+      # pylint: disable= unused-variable
+      nonlocal sizing_exs
+      stack, current_sizing_exs = _create_sizing_stack(num_clients,
+                                                       clients_per_thread)
+      sizing_exs.extend(current_sizing_exs)
+
+      # pylint: enable= unused-variable
+      return stack
+
+    # Explicit case.
+    if num_clients is not None:
+      py_typecheck.check_type(num_clients, int)
+      if num_clients <= 0:
+        raise ValueError('If specifying `num_clients`, cardinality must be at '
+                         'least one; you have passed {}.'.format(num_clients))
+      n_requested_clients = cardinalities.get(placement_literals.CLIENTS)
+      if n_requested_clients is not None and n_requested_clients != num_clients:
+        raise ValueError('Expected to construct an executor with {} clients, '
+                         'but executor is hardcoded for {}'.format(
+                             n_requested_clients, num_clients))
+      return _create_full_stack(num_clients, max_fanout, _standalone_stack_func,
+                                clients_per_thread), sizing_exs
+    # Inferred case.
+    else:
+      n_requested_clients = cardinalities.get(placement_literals.CLIENTS, 0)
+      return _create_full_stack(n_requested_clients, max_fanout,
+                                _standalone_stack_func,
+                                clients_per_thread), sizing_exs
+
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
-  if num_clients is not None:
-    py_typecheck.check_type(num_clients, int)
-    if num_clients <= 0:
-      raise ValueError('If specifying `num_clients`, cardinality must be at '
-                       'least one; you have passed {}.'.format(num_clients))
-    return _create_explicit_cardinality_factory(num_clients, max_fanout,
-                                                stack_func, clients_per_thread)
-  else:
-    return _create_inferred_cardinality_factory(max_fanout, stack_func,
-                                                clients_per_thread)
+
+  return executor_factory.SizingExecutorFactoryImpl(_executor_stack_fn)
 
 
 def worker_pool_executor_factory(executors,

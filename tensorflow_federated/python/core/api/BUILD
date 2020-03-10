@@ -64,13 +64,17 @@ py_test(
     size = "small",
     srcs = ["computations_test.py"],
     python_version = "PY3",
+    shard_count = 10,
     srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":computations",
+        ":intrinsics",
         ":value_base",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl:test",
+        "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )

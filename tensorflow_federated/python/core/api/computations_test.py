@@ -30,11 +30,27 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import test as core_test
+from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.context_stack import set_default_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 
+
 tf.compat.v1.enable_v2_behavior()
+
+
+@computations.tf_computation(
+    computation_types.SequenceType(tf.float32), tf.float32)
+def count_over(ds, t):
+  return ds.reduce(
+      np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32))
+
+
+@computations.tf_computation(computation_types.SequenceType(tf.float32))
+def count_total(ds):
+  return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
 
 class TensorFlowComputationsV1OnlyTest(common_test.TestCase):
@@ -84,6 +100,43 @@ class TensorFlowComputationsV2OnlyTest(common_test.TestCase):
 
 
 class TensorFlowComputationsTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('one_client', 1),
+      ('two_clients', 2),
+      ('four_clients', 4),
+      ('ten_clients', 10),
+  )
+  def test_get_size_info(self, num_clients):
+
+    @computations.federated_computation(
+        type_factory.at_clients(computation_types.SequenceType(tf.float32)),
+        type_factory.at_server(tf.float32))
+    def comp(temperatures, threshold):
+      client_data = [temperatures, intrinsics.federated_broadcast(threshold)]
+      result_map = intrinsics.federated_map(
+          count_over, intrinsics.federated_zip(client_data))
+      count_map = intrinsics.federated_map(count_total, temperatures)
+      return intrinsics.federated_mean(result_map, count_map)
+
+    factory = executor_stacks.sizing_executor_factory(num_clients=num_clients)
+    set_default_executor.set_default_executor(factory)
+
+    to_float = lambda x: tf.cast(x, tf.float32)
+    temperatures = [tf.data.Dataset.range(10).map(to_float)] * num_clients
+    threshold = 15.0
+    comp(temperatures, threshold)
+
+    # Each client receives a tf.float32 and uploads two tf.float32 values.
+    expected_input_bits = num_clients * 32
+    expected_output_bits = expected_input_bits * 2
+    expected = ({
+        (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients
+    }, {
+        (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients * 2
+    }, [expected_input_bits], [expected_output_bits])
+
+    self.assertEqual(expected, factory.get_size_info())
 
   @core_test.executors
   def test_computation_with_no_args_returns_value(self):

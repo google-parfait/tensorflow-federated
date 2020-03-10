@@ -15,11 +15,14 @@
 """ExecutorFactory interface and simple implementation."""
 
 import abc
-from typing import Callable, Mapping
+from typing import Callable, Mapping, List, Tuple, Any, Dict
+
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import sizing_executor
 
 CardinalitiesType = Mapping[placement_literals.PlacementLiteral, int]
 
@@ -80,6 +83,10 @@ def create_executor_factory(
   return ExecutorFactoryImpl(executor_stack_fn)
 
 
+def _get_hashable_key(cardinalities: CardinalitiesType):
+  return tuple(sorted((str(k), v) for k, v in cardinalities.items()))
+
+
 class ExecutorFactoryImpl(ExecutorFactory):
   """Implementation of executor factory holding an executor per cardinality."""
 
@@ -97,9 +104,6 @@ class ExecutorFactoryImpl(ExecutorFactory):
     py_typecheck.check_callable(executor_stack_fn)
     self._executor_stack_fn = executor_stack_fn
     self._executors = {}
-
-  def _get_hashable_key(self, cardinalities: CardinalitiesType):
-    return tuple(sorted((str(k), v) for k, v in cardinalities.items()))
 
   def create_executor(
       self, cardinalities: CardinalitiesType) -> executor_base.Executor:
@@ -119,7 +123,7 @@ class ExecutorFactoryImpl(ExecutorFactory):
       Instance of `executor_base.Executor` as described above.
     """
     py_typecheck.check_type(cardinalities, dict)
-    key = self._get_hashable_key(cardinalities)
+    key = _get_hashable_key(cardinalities)
     ex = self._executors.get(key)
     if ex is not None:
       return ex
@@ -139,3 +143,113 @@ class ExecutorFactoryImpl(ExecutorFactory):
     for _, ex in self._executors.items():
       ex.close()
     self._executors = {}
+
+
+class SizingExecutorFactoryImpl(ExecutorFactoryImpl):
+  """Implementation of executor factory holding an executor per cardinality."""
+
+  def __init__(
+      self,
+      executor_stack_fn: Callable[[CardinalitiesType],
+                                  Tuple[executor_base.Executor,
+                                        List[sizing_executor.SizingExecutor]]]):
+    """Initializes `SizingExecutorFactoryImpl`.
+
+    The difference between the SizingExecutorFactoryImpl and the
+    ExecutorFactoryImpl is that the given executor_stack_fn for this class will
+    return two values. The first is the same, but the second return value is a
+    list of sizing executors.
+
+    Args:
+      executor_stack_fn: Similar to base class but the second return value of
+        the callable is used to expose the SizingExecutors.
+    """
+
+    super().__init__(executor_stack_fn)
+    self._sizing_executors = {}
+
+  def create_executor(
+      self, cardinalities: CardinalitiesType) -> executor_base.Executor:
+    """See base class."""
+
+    py_typecheck.check_type(cardinalities, dict)
+    key = _get_hashable_key(cardinalities)
+    ex = self._executors.get(key)
+    if ex is not None:
+      return ex
+    ex, sizing_executors = self._executor_stack_fn(cardinalities)
+    self._sizing_executors[key] = []
+    for executor in sizing_executors:
+      if not isinstance(executor, sizing_executor.SizingExecutor):
+        raise ValueError('Expected all input executors to be sizing executors')
+      self._sizing_executors[key].append(executor)
+    py_typecheck.check_type(ex, executor_base.Executor)
+    self._executors[key] = ex
+    return ex
+
+  def get_size_info(
+      self
+  ) -> Tuple[Dict[Any, sizing_executor.SizeAndDTypes], Dict[
+      Any, sizing_executor.SizeAndDTypes], List[int], List[int]]:
+    """Returns information about the input and output of each SizingExecutor.
+
+    Returns the history of inputs and outputs for each executor as well as the
+    number of aggregated bits that has been passed through.
+
+    Returns:
+      A tuple of
+        2D ragged list of 2-tuples which represents the input history.
+        2D ragged list of 2-tuples which represents the output history.
+        A list of shape [number_of_execs] representing the number of input bits
+          passed through each executor.
+        A list of shape [number_of_execs] representing the number of output bits
+          passed through each executor.
+    """
+    size_ex_dict = self._sizing_executors
+
+    def _extract_history(sizing_exs: List[sizing_executor.SizingExecutor]):
+      input_history, output_history = [], []
+      for ex in sizing_exs:
+        input_history.extend(ex.input_history)
+        output_history.extend(ex.output_history)
+      return input_history, output_history
+
+    input_history, output_history = {}, {}
+    for key, size_exs in size_ex_dict.items():
+      current_input_history, current_output_history = _extract_history(size_exs)
+      input_history[key] = current_input_history
+      output_history[key] = current_output_history
+
+    input_bits = [
+        self._calculate_bit_size(hist) for hist in input_history.values()
+    ]
+    output_bits = [
+        self._calculate_bit_size(hist) for hist in output_history.values()
+    ]
+    return input_history, output_history, input_bits, output_bits
+
+  def _bits_per_element(self, dtype: tf.DType) -> int:
+    """Returns the number of bits that a tensorflow DType uses per element."""
+    if dtype == tf.string:
+      return 8
+    elif dtype == tf.bool:
+      return 1
+    return dtype.size * 8
+
+  def _calculate_bit_size(self, history: sizing_executor.SizeAndDTypes) -> int:
+    """Takes a list of 2 element lists and calculates the number of bits represented.
+
+    The input list should follow the format of self.input_history or
+    self.output_history. That is, each 2 element list should be
+    [num_elements, dtype].
+
+    Args:
+      history: The history of values passed through the executor.
+
+    Returns:
+      The number of bits represented in the history.
+    """
+    bit_size = 0
+    for num_elements, dtype in history:
+      bit_size += num_elements * self._bits_per_element(dtype)
+    return bit_size

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from unittest import mock
+from absl.testing import parameterized
 
 import tensorflow as tf
 
@@ -26,7 +27,25 @@ from tensorflow_federated.python.core.impl.executors import executor_factory
 tf.compat.v1.enable_v2_behavior()
 
 
-class ExecutorFactoryImplTest(test.TestCase):
+class ExecutorFactoryImplTest(parameterized.TestCase):
+
+  def _maybe_wrap_stack_fn(self, stack_fn, ex_factory):
+    """The stack_fn for SizingExecutorFactoryImpl requires two outputs.
+
+    If required, we will wrap the stack_fn and provide a dummy value as the
+    second return value.
+
+    Args:
+      stack_fn: The original stack_fn
+      ex_factory: A class which inherits from ExecutorFactory.
+
+    Returns:
+      A stack_fn that might additionally return a list as the second value.
+    """
+    if ex_factory == executor_factory.SizingExecutorFactoryImpl:
+      return lambda x: (stack_fn(x), [])
+    else:
+      return stack_fn
 
   def test_subclass_base_fails_no_create_method(self):
 
@@ -60,35 +79,50 @@ class ExecutorFactoryImplTest(test.TestCase):
 
     Fine()
 
-  def test_concrete_class_instantiates_stack_fn(self):
+  @parameterized.named_parameters(
+      ('SizingExecutorFactoryImpl', executor_factory.SizingExecutorFactoryImpl),
+      ('ExecutorFactoryImpl', executor_factory.ExecutorFactoryImpl))
+  def test_concrete_class_instantiates_stack_fn(self, ex_factory):
 
     def _stack_fn(x):
       del x  # Unused
       return eager_tf_executor.EagerTFExecutor()
 
-    factory = executor_factory.ExecutorFactoryImpl(_stack_fn)
-    self.assertIsInstance(factory, executor_factory.ExecutorFactoryImpl)
+    maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
+    factory = ex_factory(maybe_wrapped_stack_fn)
+    self.assertIsInstance(factory, ex_factory)
 
-  def test_call_constructs_executor(self):
+  @parameterized.named_parameters(
+      ('SizingExecutorFactoryImpl', executor_factory.SizingExecutorFactoryImpl),
+      ('ExecutorFactoryImpl', executor_factory.ExecutorFactoryImpl))
+  def test_call_constructs_executor(self, ex_factory):
 
     def _stack_fn(x):
       del x  # Unused
       return eager_tf_executor.EagerTFExecutor()
 
-    factory = executor_factory.ExecutorFactoryImpl(_stack_fn)
+    maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
+    factory = ex_factory(maybe_wrapped_stack_fn)
     ex = factory.create_executor({})
     self.assertIsInstance(ex, executor_base.Executor)
 
-  def test_cleanup_succeeds_without_init(self):
+  @parameterized.named_parameters(
+      ('SizingExecutorFactoryImpl', executor_factory.SizingExecutorFactoryImpl),
+      ('ExecutorFactoryImpl', executor_factory.ExecutorFactoryImpl))
+  def test_cleanup_succeeds_without_init(self, ex_factory):
 
     def _stack_fn(x):
       del x  # Unused
       return eager_tf_executor.EagerTFExecutor()
 
-    factory = executor_factory.ExecutorFactoryImpl(_stack_fn)
+    maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
+    factory = ex_factory(maybe_wrapped_stack_fn)
     factory.clean_up_executors()
 
-  def test_cleanup_calls_close(self):
+  @parameterized.named_parameters(
+      ('SizingExecutorFactoryImpl', executor_factory.SizingExecutorFactoryImpl),
+      ('ExecutorFactoryImpl', executor_factory.ExecutorFactoryImpl))
+  def test_cleanup_calls_close(self, ex_factory):
     ex = eager_tf_executor.EagerTFExecutor()
     ex.close = mock.MagicMock()
 
@@ -96,13 +130,17 @@ class ExecutorFactoryImplTest(test.TestCase):
       del x  # Unused
       return ex
 
-    factory = executor_factory.ExecutorFactoryImpl(_stack_fn)
+    maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
+    factory = ex_factory(maybe_wrapped_stack_fn)
     factory.create_executor({})
     factory.clean_up_executors()
     ex.close.assert_called_once()
 
+  @parameterized.named_parameters(
+      ('SizingExecutorFactoryImpl', executor_factory.SizingExecutorFactoryImpl),
+      ('ExecutorFactoryImpl', executor_factory.ExecutorFactoryImpl))
   def test_construction_with_multiple_cardinalities_reuses_existing_stacks(
-      self):
+      self, ex_factory):
     ex = eager_tf_executor.EagerTFExecutor()
     ex.close = mock.MagicMock()
     num_times_invoked = 0
@@ -113,7 +151,8 @@ class ExecutorFactoryImplTest(test.TestCase):
       num_times_invoked += 1
       return ex
 
-    factory = executor_factory.ExecutorFactoryImpl(_stack_fn)
+    maybe_wrapped_stack_fn = self._maybe_wrap_stack_fn(_stack_fn, ex_factory)
+    factory = ex_factory(maybe_wrapped_stack_fn)
     for _ in range(2):
       factory.create_executor({})
       factory.create_executor({placement_literals.SERVER: 1})
