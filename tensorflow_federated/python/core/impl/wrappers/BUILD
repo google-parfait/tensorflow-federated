@@ -31,6 +31,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:type_utils",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
+        "//tensorflow_federated/python/tensorflow_libs:function",
     ],
 )
 

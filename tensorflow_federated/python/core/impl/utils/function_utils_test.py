@@ -43,13 +43,6 @@ class NoopIngestContextForTest(context_base.Context):
 
 class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
 
-  def test_is_defun(self):
-    self.assertTrue(function_utils.is_defun(tf.function(lambda x: None)))
-    fn = tf.function(lambda x: None, (tf.TensorSpec(None, tf.int32),))
-    self.assertTrue(function_utils.is_defun(fn))
-    self.assertFalse(function_utils.is_defun(lambda x: None))
-    self.assertFalse(function_utils.is_defun(None))
-
   def test_get_defun_argspec_with_typed_non_eager_defun(self):
     # In a tf.function with a defined input signature, **kwargs or default
     # values are not allowed, but *args are, and the input signature may overlap

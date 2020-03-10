@@ -10,6 +10,23 @@ py_library(
 )
 
 py_library(
+    name = "function",
+    srcs = ["function.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "function_test",
+    srcs = ["function_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":function",
+        "//tensorflow_federated/python/common_libs:test",
+    ],
+)
+
+py_library(
     name = "graph_keys",
     srcs = ["graph_keys.py"],
     srcs_version = "PY3",

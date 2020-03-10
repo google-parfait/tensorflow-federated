@@ -40,6 +40,7 @@ py_library(
         "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:context_stack_base",
         "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/tensorflow_libs:function",
     ],
 )
 

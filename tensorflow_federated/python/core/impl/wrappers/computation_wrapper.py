@@ -20,6 +20,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.utils import function_utils
+from tensorflow_federated.python.tensorflow_libs import function
 
 
 def _wrap(fn, parameter_type, wrapper_fn):
@@ -315,7 +316,7 @@ class ComputationWrapper(object):
       # to accidentally specify parameter type as a second argument.
       return lambda fn: _wrap(fn, None, self._wrapper_fn)
     elif (isinstance(args[0], types.FunctionType) or
-          function_utils.is_defun(args[0])):
+          function.is_tf_function(args[0])):
       # If the first argument on the list is a Python function or a defun, this
       # is the one that's being wrapped. This is the case of either a decorator
       # invocation without arguments as "@xyz" applied to a function definition,

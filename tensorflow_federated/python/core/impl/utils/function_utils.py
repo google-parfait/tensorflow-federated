@@ -18,7 +18,6 @@ import inspect
 import types
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
-from tensorflow.python.framework import function
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
@@ -27,37 +26,7 @@ from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import context_base
 from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import type_utils
-
-
-def is_defun(fn):
-  """Determines whether `fn` is one of the known types of TF defuns.
-
-  Args:
-    fn: The object to test for being a supported type of a TensorFlow defun.
-
-  Returns:
-    True iff `fn` is a supported type of a TF defun.
-  """
-  return isinstance(
-      fn,
-      (
-          # TODO(b/113112885): Add support for tfe Function and
-          # PolymorphicFunction,
-          # currently omitted due to issues with visibility.
-
-          # While these classes can be private to TF users, we need to peek into
-          # the private interfaces of these classes in order to obtain the
-          # function signatures and type information that are otherwise
-          # unavailable via regular public APIs. In order to do so safelty, we
-          # need to narrow the scope down to a few concrete classes, internal
-          # structure we create a dependency on.
-          # TODO(b/113112885): Work towards avoiding this, posisbly by
-          # upstreaming some helper library or extending the public interface.
-          function._DefinedFunction,  # pylint: disable=protected-access
-          function._OverloadedFunction  # pylint: disable=protected-access
-      )) or (
-          # TODO(b/113112885): Add (cleaner) support for tf.Function and
-          'def_function.Function' in py_typecheck.type_string(type(fn)))
+from tensorflow_federated.python.tensorflow_libs import function
 
 
 def get_signature(fn: types.FunctionType) -> inspect.Signature:
@@ -74,7 +43,7 @@ def get_signature(fn: types.FunctionType) -> inspect.Signature:
   """
   if isinstance(fn, types.FunctionType):
     return inspect.signature(fn)
-  elif is_defun(fn):
+  elif function.is_tf_function(fn):
     return inspect.signature(fn.python_function)
   else:
     raise TypeError('Expected a Python function or a defun, found {}.'.format(
