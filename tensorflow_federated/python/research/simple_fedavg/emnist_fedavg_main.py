@@ -47,12 +47,13 @@ FLAGS = flags.FLAGS
 
 
 def get_emnist_dataset():
-  """Load the EMNIST dataset.
+  """Loads and preprocesses the EMNIST dataset.
 
-  Preprocess the training and testing dataset.
   Returns:
-    Tuple of (train, test) where the tuple elements are
-    `tff.simulation.ClientData` objects.
+    A `(emnist_train, emnist_test)` tuple where `emnist_train` is a
+    `tff.simulation.ClientData` object representing the training data and
+    `emnist_test` is a single `tf.data.Dataset` representing the test data of
+    all clients.
   """
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
       only_digits=True)
@@ -83,6 +84,7 @@ def create_original_fedavg_cnn_model(only_digits=True):
 
   This function is duplicated from research/optimization/emnist/models.py to
   make this example completely stand-alone.
+
   Args:
     only_digits: If True, uses a final layer with 10 outputs, for use with the
       digits only EMNIST dataset. If False, uses 62 outputs for the larger
@@ -139,13 +141,12 @@ def keras_evaluate(model, test_data, metric):
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
-  tf.compat.v1.enable_v2_behavior()
 
   train_data, test_data = get_emnist_dataset()
 
   @tf.function
   def get_sample_batch():
-    """Return a sample batch to prepare model for TFF.
+    """Returns a sample batch to prepare model for TFF.
 
     Sample batch is used to enforce construction of model variables,
     and define data type in TFF. The returned sampled batch can be eager
@@ -156,7 +157,7 @@ def main(argv):
     return next(iter(example_dataset))
 
   def tff_model_fn():
-    """Construct a fully initialized model for use in federated averaging."""
+    """Constructs a fully initialized model for use in federated averaging."""
     sample_batch = get_sample_batch()
     keras_model = create_original_fedavg_cnn_model(only_digits=True)
     loss = tf.keras.losses.SparseCategoricalCrossentropy()
@@ -187,4 +188,5 @@ def main(argv):
 
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   app.run(main)

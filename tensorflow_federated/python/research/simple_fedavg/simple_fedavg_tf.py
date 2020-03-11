@@ -46,7 +46,7 @@ class KerasModelWrapper(object):
       keras_model: A `tf.keras.Model` to be trained.
       sample_batch: A `collections.Mapping` with two keys, `x` for inputs and
         `y` for labels.
-      loss: A `tf.keras.losses.Loss` isntance to be used for training.
+      loss: A `tf.keras.losses.Loss` instance to be used for training.
     """
     self.keras_model = keras_model
     self.input_spec = self._get_input_spec(sample_batch)
@@ -72,11 +72,11 @@ class KerasModelWrapper(object):
     return loss
 
   def _eagerly_construct_model_vars(self, sample_batch):
-    """Force construction of variables."""
+    """Forces construction of variables."""
     self.keras_model(sample_batch['x'])
 
   def _get_input_spec(self, sample_batch):
-    """Get the input data type to specify in TFF."""
+    """Gets the input data type to specify in TFF."""
 
     def _tensor_spec_with_undefined_batch_dim(tensor):
       # Remove the batch dimension and leave it unspecified.
@@ -184,7 +184,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
 
 @tf.function
 def build_server_broadcast_message(server_state):
-  """Build `BroadcastMessage` for broadcasting.
+  """Builds `BroadcastMessage` for broadcasting.
 
   This method can be used to post-process `ServerState` before broadcasting.
   For example, perform model compression on `ServerState` to obtain a compressed

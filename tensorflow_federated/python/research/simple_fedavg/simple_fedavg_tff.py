@@ -37,7 +37,7 @@ from tensorflow_federated.python.research.simple_fedavg.simple_fedavg_tf import 
 
 
 def _initialize_optimizer_vars(model, optimizer):
-  """Create optimizer variables to assign the optimizer's state."""
+  """Creates optimizer variables to assign the optimizer's state."""
   model_weights = model.weights
   model_delta = tf.nest.map_structure(tf.zeros_like, model_weights.trainable)
   # Create zero gradients to force an update that doesn't modify.
