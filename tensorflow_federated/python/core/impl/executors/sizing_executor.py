@@ -92,21 +92,21 @@ class SizingExecutor(executor_base.Executor):
     """
     py_typecheck.check_type(target, executor_base.Executor)
     self._target = target
-    self._input_history = []
-    self._output_history = []
+    self._broadcast_history = []
+    self._aggregate_history = []
 
   @property
-  def output_history(self) -> SizeAndDTypes:
-    return self._output_history
+  def aggregate_history(self) -> SizeAndDTypes:
+    return self._aggregate_history
 
   @property
-  def input_history(self) -> SizeAndDTypes:
-    return self._input_history
+  def broadcast_history(self) -> SizeAndDTypes:
+    return self._broadcast_history
 
   async def create_value(self, value, type_spec=None):
     target_val = await self._target.create_value(value, type_spec)
     wrapped_val = SizingExecutorValue(self, target_val)
-    self._input_history.extend(get_type_information(value, type_spec))
+    self._broadcast_history.extend(get_type_information(value, type_spec))
     return wrapped_val
 
   async def create_call(self, comp, arg=None):
@@ -160,6 +160,6 @@ class SizingExecutorValue(executor_value_base.ExecutorValue):
 
   async def compute(self):
     result = await self._value.compute()
-    self._owner.output_history.extend(
+    self._owner.aggregate_history.extend(
         get_type_information(result, self._value.type_signature))
     return result

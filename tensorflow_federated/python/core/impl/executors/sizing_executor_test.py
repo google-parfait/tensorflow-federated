@@ -52,8 +52,8 @@ class SizingExecutorTest(parameterized.TestCase):
       return await v5.compute()
 
     asyncio.get_event_loop().run_until_complete(_make())
-    self.assertCountEqual(ex.input_history, [[10, tf.int32]])
-    self.assertCountEqual(ex.output_history, [[10, tf.int32]])
+    self.assertCountEqual(ex.broadcast_history, [[10, tf.int32]])
+    self.assertCountEqual(ex.aggregate_history, [[10, tf.int32]])
 
   def test_string(self):
     ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
@@ -66,8 +66,10 @@ class SizingExecutorTest(parameterized.TestCase):
       return await v1.compute()
 
     asyncio.get_event_loop().run_until_complete(_make())
-    self.assertCountEqual(ex.input_history, [[total_string_length, tf.string]])
-    self.assertCountEqual(ex.output_history, [[total_string_length, tf.string]])
+    self.assertCountEqual(ex.broadcast_history,
+                          [[total_string_length, tf.string]])
+    self.assertCountEqual(ex.aggregate_history,
+                          [[total_string_length, tf.string]])
 
   def test_different_input_output(self):
     ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
@@ -86,8 +88,8 @@ class SizingExecutorTest(parameterized.TestCase):
       return await v3.compute()
 
     asyncio.get_event_loop().run_until_complete(_make())
-    self.assertCountEqual(ex.input_history, [[10, tf.int32]])
-    self.assertCountEqual(ex.output_history, [[1, tf.int32]])
+    self.assertCountEqual(ex.broadcast_history, [[10, tf.int32]])
+    self.assertCountEqual(ex.aggregate_history, [[1, tf.int32]])
 
   def test_multiple_inputs(self):
     ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
@@ -111,8 +113,9 @@ class SizingExecutorTest(parameterized.TestCase):
       return await v5.compute()
 
     asyncio.get_event_loop().run_until_complete(_make())
-    self.assertCountEqual(ex.input_history, [[10, tf.int32], [10, tf.float64]])
-    self.assertCountEqual(ex.output_history, [[10, tf.int64]])
+    self.assertCountEqual(ex.broadcast_history,
+                          [[10, tf.int32], [10, tf.float64]])
+    self.assertCountEqual(ex.aggregate_history, [[10, tf.int64]])
 
   def test_nested_tuple(self):
     ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
@@ -136,7 +139,7 @@ class SizingExecutorTest(parameterized.TestCase):
       return await v1.compute()
 
     asyncio.get_event_loop().run_until_complete(_make())
-    self.assertCountEqual(ex.input_history,
+    self.assertCountEqual(ex.broadcast_history,
                           [[4, tf.int32], [2, tf.bool], [6, tf.int64],
                            [4, tf.int32], [2, tf.bool], [6, tf.int64]])
 
@@ -150,7 +153,7 @@ class SizingExecutorTest(parameterized.TestCase):
       return await v1.compute()
 
     asyncio.get_event_loop().run_until_complete(_make())
-    self.assertCountEqual(ex.input_history, [])
+    self.assertCountEqual(ex.broadcast_history, [])
 
   def test_ordered_dict(self):
     a = computation_types.TensorType(tf.string, [4])
@@ -167,7 +170,7 @@ class SizingExecutorTest(parameterized.TestCase):
       return await v1.compute()
 
     asyncio.get_event_loop().run_until_complete(_make())
-    self.assertCountEqual(ex.input_history,
+    self.assertCountEqual(ex.broadcast_history,
                           [[total_string_length, tf.string], [6, tf.int64]])
 
   def test_unnamed_tuple(self):
@@ -179,8 +182,8 @@ class SizingExecutorTest(parameterized.TestCase):
       return await v1.compute()
 
     asyncio.get_event_loop().run_until_complete(_make())
-    self.assertCountEqual(ex.input_history, [[1, tf.int32], [1, tf.int32]])
-    self.assertCountEqual(ex.output_history, [[1, tf.int32], [1, tf.int32]])
+    self.assertCountEqual(ex.broadcast_history, [[1, tf.int32], [1, tf.int32]])
+    self.assertCountEqual(ex.aggregate_history, [[1, tf.int32], [1, tf.int32]])
 
   @parameterized.named_parameters(
       {
@@ -247,7 +250,7 @@ class SizingExecutorTest(parameterized.TestCase):
       return await v1.compute()
 
     asyncio.get_event_loop().run_until_complete(_make())
-    self.assertCountEqual(ex.input_history,
+    self.assertCountEqual(ex.broadcast_history,
                           [[4, tf.int32], [2, tf.bool], [6, tf.int64],
                            [4, tf.int32], [2, tf.bool], [6, tf.int64]])
 

@@ -191,42 +191,43 @@ class SizingExecutorFactoryImpl(ExecutorFactoryImpl):
       self
   ) -> Tuple[Dict[Any, sizing_executor.SizeAndDTypes], Dict[
       Any, sizing_executor.SizeAndDTypes], List[int], List[int]]:
-    """Returns information about the input and output of each SizingExecutor.
+    """Returns information about the transferred data of each SizingExecutor.
 
-    Returns the history of inputs and outputs for each executor as well as the
-    number of aggregated bits that has been passed through.
+    Returns the history of broadcast and aggregation for each executor as well
+    as the number of aggregated bits that has been passed through.
 
     Returns:
       A tuple of
-        2D ragged list of 2-tuples which represents the input history.
-        2D ragged list of 2-tuples which represents the output history.
-        A list of shape [number_of_execs] representing the number of input bits
-          passed through each executor.
-        A list of shape [number_of_execs] representing the number of output bits
-          passed through each executor.
+        2D ragged list of 2-tuples which represents the broadcast history.
+        2D ragged list of 2-tuples which represents the aggregation history.
+        A list of shape [number_of_execs] representing the number of broadcasted
+          bits passed through each executor.
+        A list of shape [number_of_execs] representing the number of aggregated
+          bits passed through each executor.
     """
     size_ex_dict = self._sizing_executors
 
     def _extract_history(sizing_exs: List[sizing_executor.SizingExecutor]):
-      input_history, output_history = [], []
+      broadcast_history, aggregate_history = [], []
       for ex in sizing_exs:
-        input_history.extend(ex.input_history)
-        output_history.extend(ex.output_history)
-      return input_history, output_history
+        broadcast_history.extend(ex.broadcast_history)
+        aggregate_history.extend(ex.aggregate_history)
+      return broadcast_history, aggregate_history
 
-    input_history, output_history = {}, {}
+    broadcast_history, aggregate_history = {}, {}
     for key, size_exs in size_ex_dict.items():
-      current_input_history, current_output_history = _extract_history(size_exs)
-      input_history[key] = current_input_history
-      output_history[key] = current_output_history
+      current_broadcast_history, current_aggregate_history = _extract_history(
+          size_exs)
+      broadcast_history[key] = current_broadcast_history
+      aggregate_history[key] = current_aggregate_history
 
-    input_bits = [
-        self._calculate_bit_size(hist) for hist in input_history.values()
+    broadcast_bits = [
+        self._calculate_bit_size(hist) for hist in broadcast_history.values()
     ]
-    output_bits = [
-        self._calculate_bit_size(hist) for hist in output_history.values()
+    aggregate_bits = [
+        self._calculate_bit_size(hist) for hist in aggregate_history.values()
     ]
-    return input_history, output_history, input_bits, output_bits
+    return broadcast_history, aggregate_history, broadcast_bits, aggregate_bits
 
   def _bits_per_element(self, dtype: tf.DType) -> int:
     """Returns the number of bits that a tensorflow DType uses per element."""
@@ -239,8 +240,8 @@ class SizingExecutorFactoryImpl(ExecutorFactoryImpl):
   def _calculate_bit_size(self, history: sizing_executor.SizeAndDTypes) -> int:
     """Takes a list of 2 element lists and calculates the number of bits represented.
 
-    The input list should follow the format of self.input_history or
-    self.output_history. That is, each 2 element list should be
+    The input list should follow the format of self.broadcast_history or
+    self.aggregate_history. That is, each 2 element list should be
     [num_elements, dtype].
 
     Args:
