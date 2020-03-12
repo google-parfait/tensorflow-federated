@@ -1,3 +1,23 @@
+# Release 0.13.0
+
+## Major Features and Improvements
+
+*   Updated `absl-py` package dependency to `0.9.0`.
+*   Updated `h5py` package dependency to `2.8.0`.
+*   Updated `numpy` package dependency to `1.17.5`.
+*   Updated `tensorflow-privacy` package dependency to `0.2.2`.
+
+## Breaking Changes
+
+*   Deprecated `dummy_batch` parameter of the `tff.learning.from_keras_model`
+    function.
+
+## Bug Fixes
+
+*   Fixed issues with executor service using old executor API.
+*   Fixed issues with remote executor test using old executor API.
+*   Fixed issues in tutorial notebooks.
+
 # Release 0.12.0
 
 ## Major Features and Improvements
