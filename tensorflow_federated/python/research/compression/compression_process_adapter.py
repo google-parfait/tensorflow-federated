@@ -16,13 +16,14 @@
 
 import collections
 
-from tensorflow_federated.python.learning.framework import optimizer_utils
+import tensorflow_federated as tff
+
 from tensorflow_federated.python.research.utils import adapters
 
 ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
 
 
-class CompressionServerState(optimizer_utils.ServerState):
+class CompressionServerState(tff.learning.framework.ServerState):
   """Represents the state of the server carried between rounds."""
 
   @classmethod
@@ -67,7 +68,7 @@ class CompressionProcessAdapter(adapters.IterativeProcessPythonAdapter):
   """Converts iterative process results from anonymous tuples.
 
   Intended to be used for iterative processes returned by
-  `python.learning.framework.optimizer_utils.build_model_delta_process`. Note
+  `tff.learning.framework.build_model_delta_optimizer_process`. Note
   that this is also called by `tff.learning.build_federated_averaging_process`.
   """
 

@@ -7,7 +7,7 @@ py_library(
     srcs = ["compression_process_adapter.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/learning/framework:optimizer_utils",
+        "//tensorflow_federated",
         "//tensorflow_federated/python/research/utils:adapters",
     ],
 )
