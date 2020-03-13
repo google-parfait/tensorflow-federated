@@ -25,7 +25,7 @@ There are two principal modes of deployment for TFF computations:
     exposed as a gRPC endpoint.
 
     Native backends that support the above interfaces can be used interactively
-    in lieu of the default reference runtime, e.g., to run Jupyter notebooks or
+    in lieu of the default reference runtime, e.g., to run notebooks or
     experiment scripts. Most native backends will operate in the *interpreted
     mode*, i.e., they will process the computation definition as it is defined,
     and execute it incrementally, but this does not always have to be the case.
