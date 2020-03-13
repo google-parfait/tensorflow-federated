@@ -120,8 +120,7 @@ DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
 def build_federated_averaging_process(
     model_fn: Callable[[], model_lib.Model],
-    client_optimizer_fn: Optional[Callable[
-        [], tf.keras.optimizers.Optimizer]] = None,
+    client_optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer],
     server_optimizer_fn: Callable[
         [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
     client_weight_fn: Callable[[Any], tf.Tensor] = None,
@@ -131,8 +130,7 @@ def build_federated_averaging_process(
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
-    client_optimizer_fn: An optional no-arg callable that returns a
-      `tf.keras.Optimizer`
+    client_optimizer_fn: A no-arg callable that returns a `tf.keras.Optimizer`.
     server_optimizer_fn: A no-arg callable that returns a `tf.keras.Optimizer`.
       The `apply_gradients` method of this optimizer is used to apply client
       updates to the server model. The default creates a
