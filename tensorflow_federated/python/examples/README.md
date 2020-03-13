@@ -1,3 +1,3 @@
 # TensorFlow Federated Examples
 
-This directory contains example code that uses TFF API.
+This directory contains canonical examples of how to use TFF.

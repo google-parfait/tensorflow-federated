@@ -19,7 +19,6 @@ import collections
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import learning
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -283,34 +282,6 @@ def get_mnist_training_example():
   return canonical_form.CanonicalForm(initialize, prepare, work, zero,
                                       accumulate, merge, report, bitwidth,
                                       update)
-
-
-def construct_example_training_comp():
-  """Constructs a `tff.utils.IterativeProcess` via the FL API."""
-  np.random.seed(0)
-  sample_batch = collections.OrderedDict(
-      x=np.array([[1., 1.]], dtype=np.float32),
-      y=np.array([[0]], dtype=np.int32))
-
-  def model_fn():
-    """Constructs keras model."""
-    keras_model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(
-            1,
-            activation=tf.nn.softmax,
-            kernel_initializer='zeros',
-            input_shape=(2,))
-    ])
-
-    return learning.from_keras_model(
-        keras_model,
-        dummy_batch=sample_batch,
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-
-  return learning.build_federated_averaging_process(
-      model_fn,
-      client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
 
 
 def computation_to_building_block(comp):
