@@ -93,10 +93,8 @@ def build_personalize_fn(optimizer_fn,
           zip(
               tf.nest.flatten(grads),
               tf.nest.flatten(model.trainable_variables)))
-      next_state = {
-          'num_examples': state['num_examples'] + output.num_examples,
-          'num_batches': state['num_batches'] + 1
-      }
+      # Update the number of examples and the number of batches.
+      next_state = (state[0] + output.num_examples, state[1] + 1)
       return next_state
 
     def train_several_epochs(num_epochs, state):
@@ -108,7 +106,7 @@ def build_personalize_fn(optimizer_fn,
       return data.reduce(initial_state=state, reduce_func=train_one_batch)
 
     # Start training.
-    training_state = {'num_examples': 0, 'num_batches': 0}
+    training_state = (0, 0)  # (number of examples, number of batches)
 
     # Compute the number of times that the model gets evaluated during training.
     num_evals, remainder_epochs = divmod(max_num_epochs, num_epochs_per_eval)
@@ -143,8 +141,8 @@ def build_personalize_fn(optimizer_fn,
           metrics_tensorarrays)
 
     # Save the training statistics.
-    metrics_dict['num_examples'] = training_state['num_examples']
-    metrics_dict['num_batches'] = training_state['num_batches']
+    metrics_dict['num_examples'] = training_state[0]
+    metrics_dict['num_batches'] = training_state[1]
 
     # Evaluate the final model.
     metrics_dict['final_model'] = evaluate_fn(model, test_data, test_batch_size)
