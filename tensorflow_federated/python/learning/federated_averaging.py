@@ -126,33 +126,63 @@ def build_federated_averaging_process(
     client_weight_fn: Callable[[Any], tf.Tensor] = None,
     stateful_delta_aggregate_fn=None,
     stateful_model_broadcast_fn=None) -> tff.utils.IterativeProcess:
-  """Builds the TFF computations for optimization using federated averaging.
+  """Builds an iterative process that performs federated averaging.
+
+  This function creates a `tff.utils.IterativeProcess` that performs federated
+  averaging on client models. The iterative process has the following methods:
+
+  *   `initialize`: A `tff.Computation` with the functional type signature
+      `( -> S@SERVER)`, where `S` is a`tff.learning.framework.ServerState`
+      representing the initial state of the server.
+  *   `next`: A `tff.Computation` with the functional type signature
+      `(<S@SERVER, {B*}@CLIENTS> -> <S@SERVER, T@SERVER>)` where `S` is a
+      `tff.learning.framework.ServerState` whose type matches that of the output
+      of `initialize`, and `{B*}@CLIENTS` represents the client datasets, where
+      `B` is the type of a single batch. This computation returns a
+      `tff.learning.framework.ServerState` representing the updated server state
+      and training metrics that are the result of
+      `tff.learning.Model.federated_output_computation` during client training.
+
+  Each time the `next` method is called, the server model is broadcast to each
+  client using a broadcast function. For each client, one epoch of local
+  training is performed via the `tf.keras.optimizers.Optimizer.apply_gradients`
+  method of the client optimizer. Each client computes the difference between
+  the client model after training and the initial broadcast model. These model
+  deltas are then aggregated at the server using some aggregation function. The
+  aggregate model delta is applied at the server by using the
+  `tf.keras.optimizers.Optimizer.apply_gradients` method of the server
+  optimizer.
+
+  Note: the default server optimizer function is `tf.keras.optimizers.SGD`
+  with a learning rate of 1.0, which corresponds to adding the model delta to
+  the current server model. This recovers the original FedAvg algorithm in
+  [McMahan et al., 2017](https://arxiv.org/abs/1602.05629). More
+  sophisticated federated averaging procedures may use different learning rates
+  or server optimizers.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
     client_optimizer_fn: A no-arg callable that returns a `tf.keras.Optimizer`.
     server_optimizer_fn: A no-arg callable that returns a `tf.keras.Optimizer`.
-      The `apply_gradients` method of this optimizer is used to apply client
-      updates to the server model. The default creates a
-      `tf.keras.optimizers.SGD` with a learning rate of 1.0, which simply adds
-      the average client delta to the server's model.
+      By default, this uses `tf.keras.optimizers.SGD` with a learning rate of
+      1.0.
     client_weight_fn: Optional function that takes the output of
-      `model.report_local_outputs` and returns a tensor that provides the weight
-      in the federated average of model deltas. If not provided, the default is
-      the total number of examples processed on device.
+      `model.report_local_outputs` and returns a tensor providing the weight in
+      the federated average of model deltas. If not provided, the default is the
+      total number of examples processed on device.
     stateful_delta_aggregate_fn: A `tff.utils.StatefulAggregateFn` where the
-      `next_fn` performs a federated aggregation and upates state. That is, it
-      has TFF type `(state@SERVER, value@CLIENTS, weights@CLIENTS) ->
-      (state@SERVER, aggregate@SERVER)`, where the `value` type is
+      `next_fn` performs a federated aggregation and upates state. It must have
+      TFF type `(<state@SERVER, value@CLIENTS, weights@CLIENTS> ->
+      <state@SERVER, aggregate@SERVER>)`, where the `value` type is
       `tff.learning.framework.ModelWeights.trainable` corresponding to the
       object returned by `model_fn`. By default performs arithmetic mean
       aggregation, weighted by `client_weight_fn`.
     stateful_model_broadcast_fn: A `tff.utils.StatefulBroadcastFn` where the
-      `next_fn` performs a federated broadcast and upates state. That is, it has
-      TFF type `(state@SERVER, value@SERVER) -> (state@SERVER, value@CLIENTS)`,
-      where the `value` type is `tff.learning.framework.ModelWeights`
-      corresponding to the object returned by `model_fn`. By default performs
-      identity broadcast.
+      `next_fn` performs a federated broadcast and upates state. It must have
+      TFF type `(<state@SERVER, value@SERVER> -> <state@SERVER,
+      value@CLIENTS>)`, where the `value` type is
+      `tff.learning.framework.ModelWeights` corresponding to the object returned
+      by `model_fn`. The default is the identity broadcast.
 
   Returns:
     A `tff.utils.IterativeProcess`.
