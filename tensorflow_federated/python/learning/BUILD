@@ -1,13 +1,15 @@
-package(default_visibility = ["//tensorflow_federated/python/learning:__subpackages__"])
+package(default_visibility = [
+    # Subpackages
+    "//tensorflow_federated/python/learning:__subpackages__",
+])
 
 licenses(["notice"])
 
-# This is the import for clients that use federated learning (see `README.md`).
 py_library(
     name = "learning",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//visibility:public"],
+    visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":federated_averaging",
         ":federated_evaluation",
