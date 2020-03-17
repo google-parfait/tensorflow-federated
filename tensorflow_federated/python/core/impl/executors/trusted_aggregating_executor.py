@@ -33,10 +33,14 @@ from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.executors import federating_executor
 
 
-class TrustedFederatingExecutorValue(executor_value_base.ExecutorValue):
-  """A value embedded in TrustedFederatingExecutor."""
+_AGGREGATING_LITERAL = 'AGGREGATOR'
+
+
+class TrustedAggregatingExecutorValue(executor_value_base.ExecutorValue):
+  """A value embedded in TrustedAggregatingExecutor."""
 
   def __init__(self, value, type_spec):
     """Creates an embedded instance of a value in this executor.
@@ -113,7 +117,7 @@ class TrustedFederatingExecutorValue(executor_value_base.ExecutorValue):
         return results
     elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
       gathered_values = await asyncio.gather(*[
-          TrustedFederatingExecutorValue(v, t).compute()
+          TrustedAggregatingExecutorValue(v, t).compute()
           for v, t in zip(self._value, self._type_signature)
       ])
       type_elements_iter = anonymous_tuple.iter_elements(self._type_signature)
@@ -125,10 +129,10 @@ class TrustedFederatingExecutorValue(executor_value_base.ExecutorValue):
           'this executor.'.format(self._type_signature,
                                   py_typecheck.type_string(type(self._value))))
 
-class TrustedFederatingExecutor(executor_base.Executor):
+class TrustedAggregatingExecutor(executor_base.Executor):
 
   def __init__(self, target_executors):
-    """Creates a federated executor backed by a collection of target executors.
+    """Creates a trusted executor for Aggregating.
 
     Args:
       target_executors: A dictionary mapping placements to executors or lists of
@@ -137,15 +141,18 @@ class TrustedFederatingExecutor(executor_base.Executor):
         unplaced computations. The values can be either single executors (if
         there only is a single participant associated with that placement, as
         would typically be the case with `tff.SERVER`) or lists of target
-        executors.
+        executors. This dictionary must contain an 'AGGREGATOR' key-value pair
+        targeting the aggregating executor stack.
 
     Raises:
       ValueError: If the value is unrecognized (e.g., a nonexistent intrinsic).
     """
+    assert _AGGREGATING_LITERAL in target_executors
+
     py_typecheck.check_type(target_executors, dict)
     self._target_executors = {}
     for k, v in target_executors.items():
-      if k is not None:
+      if k is not None and k != _AGGREGATING_LITERAL:
         py_typecheck.check_type(k, placement_literals.PlacementLiteral)
       py_typecheck.check_type(v, (list, executor_base.Executor))
       if isinstance(v, executor_base.Executor):
@@ -154,7 +161,7 @@ class TrustedFederatingExecutor(executor_base.Executor):
         for e in v:
           py_typecheck.check_type(e, executor_base.Executor)
         self._target_executors[k] = v.copy()
-    for pl in [None, placement_literals.SERVER]:
+    for pl in [None, _AGGREGATING_LITERAL, placement_literals.SERVER]:
       if pl in self._target_executors:
         pl_cardinality = len(self._target_executors[pl])
         if pl_cardinality != 1:
@@ -177,11 +184,11 @@ class TrustedFederatingExecutor(executor_base.Executor):
         raise TypeError('Incompatible type {} used with intrinsic {}.'.format(
             type_spec, value.uri))
       else:
-        return TrustedFederatingExecutorValue(value, type_spec)
+        return TrustedAggregatingExecutorValue(value, type_spec)
     if isinstance(value, placement_literals.PlacementLiteral):
       if type_spec is not None:
         py_typecheck.check_type(type_spec, computation_types.PlacementType)
-      return TrustedFederatingExecutorValue(value, computation_types.PlacementType())
+      return TrustedAggregatingExecutorValue(value, computation_types.PlacementType())
     elif isinstance(value, computation_impl.ComputationImpl):
       return await self.create_value(
           computation_impl.ComputationImpl.get_proto(value),
@@ -191,7 +198,7 @@ class TrustedFederatingExecutor(executor_base.Executor):
         type_spec = type_serialization.deserialize_type(value.type)
       which_computation = value.WhichOneof('computation')
       if which_computation in ['tensorflow', 'lambda']:
-        return TrustedFederatingExecutorValue(value, type_spec)
+        return TrustedAggregatingExecutorValue(value, type_spec)
       elif which_computation == 'reference':
         raise ValueError(
             'Encountered an unexpected unbound references "{}".'.format(
@@ -272,25 +279,25 @@ class TrustedFederatingExecutor(executor_base.Executor):
             c.create_value(v, type_spec.member)
             for v, c in zip(value, children)
         ])
-        return TrustedFederatingExecutorValue(child_vals, type_spec)
+        return TrustedAggregatingExecutorValue(child_vals, type_spec)
       else:
         child = self._target_executors.get(None)
         if not child or len(child) > 1:
           raise RuntimeError('Executor is not configured for unplaced values.')
         else:
-          return TrustedFederatingExecutorValue(
+          return TrustedAggregatingExecutorValue(
               await child[0].create_value(value, type_spec), type_spec)
 
   @tracing.trace
   async def create_call(self, comp, arg=None):
-    py_typecheck.check_type(comp, TrustedFederatingExecutorValue)
+    py_typecheck.check_type(comp, TrustedAggregatingExecutorValue)
     if arg is not None:
-      py_typecheck.check_type(arg, TrustedFederatingExecutorValue)
+      py_typecheck.check_type(arg, TrustedAggregatingExecutorValue)
       py_typecheck.check_type(comp.type_signature,
                               computation_types.FunctionType)
       param_type = comp.type_signature.parameter
       type_utils.check_assignable_from(param_type, arg.type_signature)
-      arg = TrustedFederatingExecutorValue(arg.internal_representation, param_type)
+      arg = TrustedAggregatingExecutorValue(arg.internal_representation, param_type)
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')
       comp_type_signature = comp.type_signature
@@ -314,7 +321,7 @@ class TrustedFederatingExecutor(executor_base.Executor):
         else:
           embedded_arg = None
         result = await child.create_call(embedded_comp, embedded_arg)
-        return TrustedFederatingExecutorValue(result, result.type_signature)
+        return TrustedAggregatingExecutorValue(result, result.type_signature)
       else:
         raise ValueError(
             'Directly calling computations of type {} is unsupported.'.format(
@@ -337,8 +344,8 @@ class TrustedFederatingExecutor(executor_base.Executor):
   async def create_tuple(self, elements):
     elem = anonymous_tuple.to_elements(anonymous_tuple.from_container(elements))
     for _, v in elem:
-      py_typecheck.check_type(v, TrustedFederatingExecutorValue)
-    return TrustedFederatingExecutorValue(
+      py_typecheck.check_type(v, TrustedAggregatingExecutorValue)
+    return TrustedAggregatingExecutorValue(
         anonymous_tuple.AnonymousTuple(
             (k, v.internal_representation) for k, v in elem),
         computation_types.NamedTupleType(
@@ -346,7 +353,7 @@ class TrustedFederatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def create_selection(self, source, index=None, name=None):
-    py_typecheck.check_type(source, TrustedFederatingExecutorValue)
+    py_typecheck.check_type(source, TrustedAggregatingExecutorValue)
     py_typecheck.check_type(source.type_signature,
                             computation_types.NamedTupleType)
     if name is not None:
@@ -358,20 +365,20 @@ class TrustedFederatingExecutor(executor_base.Executor):
                   anonymous_tuple.AnonymousTuple):
       val = source.internal_representation
       selected = val[index]
-      return TrustedFederatingExecutorValue(selected, source.type_signature[index])
+      return TrustedAggregatingExecutorValue(selected, source.type_signature[index])
     elif isinstance(source.internal_representation,
                     executor_value_base.ExecutorValue):
       if type_utils.type_tree_contains_types(source.type_signature,
                                              computation_types.FederatedType):
         raise ValueError(
-            'TrustedFederatingExecutorValue {} has violated its contract; '
+            'TrustedAggregatingExecutorValue {} has violated its contract; '
             'it is embedded in another executor and yet its type '
             'has placement. The embedded value is {}, with type '
             'signature {}.'.format(source, source.internal_representation,
                                    source.type_signature))
       val = source.internal_representation
       child = self._target_executors[None][0]
-      return TrustedFederatingExecutorValue(
+      return TrustedAggregatingExecutorValue(
           await child.create_selection(val, index=index),
           source.type_signature[index])
     else:
@@ -380,3 +387,52 @@ class TrustedFederatingExecutor(executor_base.Executor):
                        'embedded in target executor, received {}'.format(
                            source.internal_representation))
 
+  def _check_arg_is_anonymous_tuple(self, arg):
+    py_typecheck.check_type(arg.type_signature,
+                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.internal_representation,
+                            anonymous_tuple.AnonymousTuple)
+
+  @tracing.trace
+  async def _compute_intrinsic_federated_reduce(self, arg):
+    self._check_arg_is_anonymous_tuple(arg)
+    if len(arg.internal_representation) != 3:
+      raise ValueError(
+          'Expected 3 elements in the `federated_reduce()` argument tuple, '
+          'found {}.'.format(len(arg.internal_representation)))
+
+    val_type = arg.type_signature[0]
+    py_typecheck.check_type(val_type, computation_types.FederatedType)
+    item_type = val_type.member
+    zero_type = arg.type_signature[1]
+    op_type = arg.type_signature[2]
+    type_utils.check_equivalent_types(
+        op_type, type_factory.reduction_op(zero_type, item_type))
+
+    val = arg.internal_representation[0]
+    py_typecheck.check_type(val, list)
+    aggregator_child = self._target_executors[_AGGREGATING_LITERAL][0]
+    server_child = self._target_executors[placement_literals.SERVER][0]
+
+    async def _move(v, target):
+      return await target.create_value(await v.compute(), item_type)
+
+    # move reduce arguments to aggregator
+    items = await asyncio.gather(*[_move(v, aggregator_child) for v in val])
+
+    zero = await aggregator_child.create_value(
+        await (await self.create_selection(arg, index=1)).compute(), zero_type)
+    op = await aggregator_child.create_value(arg.internal_representation[2], op_type)
+
+    result = zero
+    for item in items:
+      # compute result on aggregator
+      result = await aggregator_child.create_call(
+          op, await aggregator_child.create_tuple(
+              anonymous_tuple.AnonymousTuple([(None, result), (None, item)])))
+
+    # move result to SERVER
+    server_result = await asyncio.gather(_move(result, server_child))
+
+    # create the server's federated value
+    return TrustedAggregatingExecutorValue(server_result, server_result.type_signature)
