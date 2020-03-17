@@ -24,7 +24,6 @@ from tensorflow_federated.python.learning.framework.optimizer_utils import Clien
 from tensorflow_federated.python.learning.framework.optimizer_utils import ServerState
 from tensorflow_federated.python.learning.model_utils import enhance
 from tensorflow_federated.python.learning.model_utils import EnhancedModel
-from tensorflow_federated.python.learning.model_utils import EnhancedTrainableModel
 from tensorflow_federated.python.learning.model_utils import ModelWeights
 
 # Used by doc generation script.
@@ -32,7 +31,6 @@ _allowed_symbols = [
     "ClientDeltaFn",
     "ClientOutput",
     "EnhancedModel",
-    "EnhancedTrainableModel",
     "ModelWeights",
     "ServerState",
     "build_encoded_broadcast_from_model",

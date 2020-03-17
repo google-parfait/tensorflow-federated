@@ -33,6 +33,7 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
 
   def __init__(self, model_fn):
     self._model = model_fn()
+    self._optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
 
   @property
   def variables(self):
@@ -42,7 +43,11 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
   def __call__(self, dataset, initial_weights):
     # Iterate over the dataset to get new metric values.
     def reduce_fn(dummy, batch):
-      self._model.train_on_batch(batch)
+      with tf.GradientTape() as tape:
+        output = self._model.forward_pass(batch)
+      gradients = tape.gradient(output.loss, self._model.trainable_variables)
+      self._optimizer.apply_gradients(
+          zip(gradients, self._model.trainable_variables))
       return dummy
 
     dataset.reduce(tf.constant(0.0), reduce_fn)
@@ -142,7 +147,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
   # pyformat: enable
   def test_server_eager_mode(self, optimizer_fn, updated_val,
                              num_optimizer_vars):
-    model_fn = lambda: model_examples.TrainableLinearRegression(feature_dim=2)
+    model_fn = lambda: model_examples.LinearRegression(feature_dim=2)
 
     server_state = optimizer_utils.server_init(model_fn, optimizer_fn, (), ())
     model_vars = self.evaluate(server_state.model)
@@ -166,7 +171,7 @@ class ServerTest(test.TestCase, parameterized.TestCase):
 
   def test_orchestration_execute(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=model_examples.TrainableLinearRegression,
+        model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
         # A federated_mean that maintains an int32 state equal to the

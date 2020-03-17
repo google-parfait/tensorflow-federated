@@ -101,12 +101,12 @@ class Model(object, metaclass=abc.ABCMeta):
   def forward_pass(self, batch_input, training=True):
     """Runs the forward pass and returns results.
 
-    This method should not modify any variables that are part of the model, that
-    is, variables that influence the predictions; for that, see
-    `TrainableModel.train_on_batch`.
+    This method should not modify any variables that are part of the model
+    parameters, that is, variables that influence the predictions. Rather, this
+    is done by the training loop.
 
     However, this method may update aggregated metrics computed across calls to
-    forward_pass; the final values of such metrics can be accessed via
+    `forward_pass`; the final values of such metrics can be accessed via
     `aggregated_outputs`.
 
     Uses in TFF:
@@ -116,7 +116,7 @@ class Model(object, metaclass=abc.ABCMeta):
         non-Federated-Averaging algorithms, where we want the model to run the
         forward pass and update metrics, but there is no optimizer
         (we might only compute gradients on the returned loss).
-      * To implement Federated Averaging, when augmented as a `TrainableModel`.
+      * To implement Federated Averaging.
 
     Args:
       batch_input: a nested structure that matches the structure of
@@ -190,28 +190,5 @@ class Model(object, metaclass=abc.ABCMeta):
       the overall computation consuming the model. Using an `OrderedDict`
       allows the value returned by TFF executor to be converted back to an
       `OrderedDict` via the `._asdict(recursive=True)` member function.
-    """
-    pass
-
-
-class TrainableModel(Model, metaclass=abc.ABCMeta):
-  """A Model with an additional method for (local) training.
-
-  This class is primarily intended to be used in the implementation of
-  Federated Averaging.
-  """
-
-  @abc.abstractmethod
-  def train_on_batch(self, batch_input):
-    """Like `forward_pass`, but updates the model variables.
-
-    Typically this will invoke `forward_pass`, with any corresponding
-    side-effects such as updating metrics.
-
-    Args:
-      batch_input: The current batch, as for `forward_pass`.
-
-    Returns:
-      The same `BatchOutput` as `forward_pass`.
     """
     pass

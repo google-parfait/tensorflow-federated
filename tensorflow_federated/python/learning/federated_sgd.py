@@ -26,7 +26,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -51,11 +50,6 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 
     self._model = model_utils.enhance(model)
     py_typecheck.check_type(self._model, model_utils.EnhancedModel)
-    if isinstance(self._model, model_lib.TrainableModel):
-      raise ValueError(
-          'Do not pass a TrainableModel to ClientSgd, as the '
-          'built-in local training algorithm would be ignored. '
-          'This failure could be made into a warning if this is inconvenient.')
 
   @property
   def variables(self):
@@ -166,8 +160,10 @@ def build_federated_sgd_process(
   or server optimizers.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
-    server_optimizer_fn: A no-arg function that returns a `tf.keras.Optimizer`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
+      `apply_gradients` method of this optimizer is used to apply client updates
+      to the server model.
     client_weight_fn: Optional function that takes the output of
       `model.report_local_outputs` and returns a tensor that provides the weight
       in the federated average of the aggregated gradients. If not provided, the

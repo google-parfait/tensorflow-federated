@@ -124,18 +124,6 @@ class LinearRegression(model.Model):
     return cls.Batch(x, y)
 
 
-class TrainableLinearRegression(LinearRegression, model.TrainableModel):
-  """A LinearRegression with trivial SGD training."""
-
-  @tf.function
-  def train_on_batch(self, batch):
-    # Most users won't implement this, and let us provide the optimizer.
-    fp = self.forward_pass(batch)
-    optimizer = tf.compat.v1.train.GradientDescentOptimizer(0.1)
-    optimizer.minimize(fp.loss, var_list=self.trainable_variables)
-    return fp
-
-
 def _dense_all_zeros_layer(input_dims=None, output_dim=1):
   """Create a layer that can be used in isolation for linear regression.
 

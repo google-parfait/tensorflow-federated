@@ -23,7 +23,6 @@ from tensorflow_federated.python.learning.keras_utils import assign_weights_to_k
 from tensorflow_federated.python.learning.keras_utils import from_keras_model
 from tensorflow_federated.python.learning.model import BatchOutput
 from tensorflow_federated.python.learning.model import Model
-from tensorflow_federated.python.learning.model import TrainableModel
 from tensorflow_federated.python.learning.model_utils import ModelWeights
 from tensorflow_federated.python.learning.personalization_eval import build_personalization_eval
 
@@ -32,7 +31,6 @@ _allowed_symbols = [
     "BatchOutput",
     "Model",
     "ModelWeights",
-    "TrainableModel",
     "assign_weights_to_keras_model",
     "build_federated_averaging_process",
     "build_federated_evaluation",

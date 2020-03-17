@@ -80,17 +80,16 @@ def enhance(model):
     model: A `tff.learning.Model`.
 
   Returns:
-    An `EnhancedModel` or `TrainableEnhancedModel`, depending on the type of the
-    input model. If `model` has already been wrapped as such, this is a no-op.
+    An `EnhancedModel`. If `model` has already been wrapped as such, this is a
+    no-op.
   """
   py_typecheck.check_type(model, model_lib.Model)
   if isinstance(model, EnhancedModel):
     return model
-
-  if isinstance(model, model_lib.TrainableModel):
-    return EnhancedTrainableModel(model)
-  else:
+  elif isinstance(model, model_lib.Model):
     return EnhancedModel(model)
+  raise TypeError('Do not know how to wrap object of type [{t}]. Expected a '
+                  'tff.learning.Model'.format(t=type(model_lib.Model)))
 
 
 def _check_iterable_of_variables(variables):
@@ -150,14 +149,3 @@ class EnhancedModel(model_lib.Model):
   @property
   def federated_output_computation(self):
     return self._model.federated_output_computation
-
-
-class EnhancedTrainableModel(EnhancedModel, model_lib.TrainableModel):
-
-  def __init__(self, model):
-    py_typecheck.check_type(model, model_lib.TrainableModel)
-    super().__init__(model)
-
-  def train_on_batch(self, batch_input):
-    return py_typecheck.check_type(
-        self._model.train_on_batch(batch_input), model_lib.BatchOutput)

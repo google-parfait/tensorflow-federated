@@ -96,7 +96,6 @@ py_library(
     srcs = ["federated_sgd.py"],
     srcs_version = "PY3",
     deps = [
-        ":model",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core",

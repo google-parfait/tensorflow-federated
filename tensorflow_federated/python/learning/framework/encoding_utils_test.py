@@ -33,19 +33,19 @@ class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
   """Tests for utilities for building StatefulFns."""
 
   def test_mean_from_model(self):
-    model_fn = model_examples.TrainableLinearRegression
+    model_fn = model_examples.LinearRegression
     gather_fn = encoding_utils.build_encoded_mean_from_model(
         model_fn, _test_encoder_fn('gather'))
     self.assertIsInstance(gather_fn, tff.utils.StatefulAggregateFn)
 
   def test_sum_from_model(self):
-    model_fn = model_examples.TrainableLinearRegression
+    model_fn = model_examples.LinearRegression
     gather_fn = encoding_utils.build_encoded_sum_from_model(
         model_fn, _test_encoder_fn('gather'))
     self.assertIsInstance(gather_fn, tff.utils.StatefulAggregateFn)
 
   def test_broadcast_from_model(self):
-    model_fn = model_examples.TrainableLinearRegression
+    model_fn = model_examples.LinearRegression
     broadcast_fn = encoding_utils.build_encoded_broadcast_from_model(
         model_fn, _test_encoder_fn('simple'))
     self.assertIsInstance(broadcast_fn, tff.utils.StatefulBroadcastFn)
@@ -55,7 +55,7 @@ class IterativeProcessTest(test.TestCase, parameterized.TestCase):
   """End-to-end tests using `tff.utils.IterativeProcess`."""
 
   def test_iterative_process_with_encoding(self):
-    model_fn = model_examples.TrainableLinearRegression
+    model_fn = model_examples.LinearRegression
     gather_fn = encoding_utils.build_encoded_mean_from_model(
         model_fn, _test_encoder_fn('gather'))
     broadcast_fn = encoding_utils.build_encoded_broadcast_from_model(
@@ -92,19 +92,10 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
 
   @tf.function
   def __call__(self, dataset, initial_weights):
-    # Iterate over the dataset to get new metric values.
-    def reduce_fn(dummy, batch):
-      self._model.train_on_batch(batch)
-      return dummy
-
-    dataset.reduce(tf.constant(0.0), reduce_fn)
-
-    # Create some fake weight deltas to send back.
-    trainable_weights_delta = tf.nest.map_structure(lambda x: -tf.ones_like(x),
-                                                    initial_weights.trainable)
+    """Dummy client delta which simply returns 1.0 for all parameters."""
     client_weight = tf.constant(1.0)
     return optimizer_utils.ClientOutput(
-        trainable_weights_delta,
+        tf.nest.map_structure(tf.ones_like, initial_weights.trainable),
         weights_delta_weight=client_weight,
         model_output=self._model.report_local_outputs(),
         optimizer_output={'client_weight': client_weight})

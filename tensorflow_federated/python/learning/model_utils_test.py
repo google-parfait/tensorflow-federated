@@ -51,7 +51,7 @@ class ModelUtilsTest(test.TestCase):
 
   def test_enhanced_var_lists(self):
 
-    class BadModel(model_examples.TrainableLinearRegression):
+    class BadModel(model_examples.LinearRegression):
 
       @property
       def trainable_variables(self):
@@ -64,9 +64,6 @@ class ModelUtilsTest(test.TestCase):
       def forward_pass(self, batch, training=True):
         return 'Not BatchOutput'
 
-      def train_on_batch(self, batch):
-        return 'Not BatchOutput'
-
     bad_model = model_utils.enhance(BadModel())
     self.assertRaisesRegex(TypeError, 'Variable',
                            lambda: bad_model.trainable_variables)
@@ -74,8 +71,6 @@ class ModelUtilsTest(test.TestCase):
                            lambda: bad_model.local_variables)
     self.assertRaisesRegex(TypeError, 'BatchOutput',
                            lambda: bad_model.forward_pass(1))
-    self.assertRaisesRegex(TypeError, 'BatchOutput',
-                           lambda: bad_model.train_on_batch(1))
 
 
 if __name__ == '__main__':
