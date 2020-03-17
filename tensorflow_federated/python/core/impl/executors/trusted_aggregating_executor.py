@@ -33,10 +33,18 @@ from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.executors import federating_executor
 
 
-_AGGREGATING_LITERAL = 'AGGREGATOR'
+class Aggregator():
+  def __init__(self):
+    self._uri = 'AGGREGATOR'
+  
+  @property
+  def uri(self):
+    return self._uri
+
+
+AGGREGATOR = Aggregator()
 
 
 class TrustedAggregatingExecutorValue(executor_value_base.ExecutorValue):
@@ -147,12 +155,12 @@ class TrustedAggregatingExecutor(executor_base.Executor):
     Raises:
       ValueError: If the value is unrecognized (e.g., a nonexistent intrinsic).
     """
-    assert _AGGREGATING_LITERAL in target_executors
+    assert AGGREGATOR in target_executors
 
     py_typecheck.check_type(target_executors, dict)
     self._target_executors = {}
     for k, v in target_executors.items():
-      if k is not None and k != _AGGREGATING_LITERAL:
+      if k is not None and k != AGGREGATOR:
         py_typecheck.check_type(k, placement_literals.PlacementLiteral)
       py_typecheck.check_type(v, (list, executor_base.Executor))
       if isinstance(v, executor_base.Executor):
@@ -161,7 +169,7 @@ class TrustedAggregatingExecutor(executor_base.Executor):
         for e in v:
           py_typecheck.check_type(e, executor_base.Executor)
         self._target_executors[k] = v.copy()
-    for pl in [None, _AGGREGATING_LITERAL, placement_literals.SERVER]:
+    for pl in [None, AGGREGATOR, placement_literals.SERVER]:
       if pl in self._target_executors:
         pl_cardinality = len(self._target_executors[pl])
         if pl_cardinality != 1:
@@ -411,7 +419,7 @@ class TrustedAggregatingExecutor(executor_base.Executor):
 
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
-    aggregator_child = self._target_executors[_AGGREGATING_LITERAL][0]
+    aggregator_child = self._target_executors[AGGREGATOR][0]
     server_child = self._target_executors[placement_literals.SERVER][0]
 
     async def _move(v, target):
