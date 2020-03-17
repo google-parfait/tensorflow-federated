@@ -24,9 +24,9 @@ COPY "tensorflow_federated/runtime/remote/remote_executor_service.py" /
 COPY "tensorflow_federated-"*".whl" /
 
 RUN pip3 install --no-cache-dir --upgrade pip
-RUN pip3 freeze
 
 RUN pip3 install --no-cache-dir --upgrade "/tensorflow_federated-"*".whl"
+RUN pip3 freeze
 
 EXPOSE 8000
 

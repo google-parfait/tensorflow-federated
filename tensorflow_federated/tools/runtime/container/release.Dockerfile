@@ -17,18 +17,18 @@
 # --build-arg VERSION=X.Y.Z to docker build to specify the release number.
 FROM python:3.6-buster
 
+RUN python3 --version
+
 ARG VERSION
 
 RUN test -n "${VERSION}"
 
-RUN python3 --version
-
 COPY "tensorflow_federated/runtime/remote/remote_executor_service.py" /
 
 RUN pip3 install --no-cache-dir --upgrade pip
-RUN pip3 freeze
 
-RUN pip3 install --no-cache-dir --upgrade "tensorflow_federated==${VERSION}"
+RUN pip3 install --no-cache-dir --upgrade "tensorflow-federated==${VERSION}"
+RUN pip3 freeze
 
 EXPOSE 8000
 
