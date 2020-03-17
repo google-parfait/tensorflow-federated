@@ -1,3 +1,9 @@
+# Release 0.13.1
+
+## Bug Fixes
+
+*   Fixed issues in tutorial notebooks.
+
 # Release 0.13.0
 
 ## Major Features and Improvements
