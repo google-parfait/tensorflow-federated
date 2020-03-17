@@ -321,7 +321,8 @@ class ComposingExecutor(executor_base.Executor):
     elif isinstance(comp.internal_representation, intrinsic_defs.IntrinsicDef):
       coro = getattr(
           self,
-          '_compute_intrinsic_{}'.format(comp.internal_representation.uri))
+          '_compute_intrinsic_{}'.format(comp.internal_representation.uri),
+          None)
       if coro is not None:
         return await coro(arg)
       else:
