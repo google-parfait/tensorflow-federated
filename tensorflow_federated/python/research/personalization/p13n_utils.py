@@ -40,7 +40,7 @@ def build_personalize_fn(optimizer_fn,
                          test_batch_size,
                          shuffle=True,
                          shuffle_buffer_size=1000):
-  """Example of a builder funtion that constructs a `personalize_fn`.
+  """Example of a builder function that constructs a `personalize_fn`.
 
   The returned function represents the optimization algorithm to run on each
   client in order to personalize a model for those clients.

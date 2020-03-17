@@ -1,4 +1,4 @@
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//tensorflow_federated/python/research"])
 
 licenses(["notice"])
 
@@ -16,5 +16,17 @@ py_test(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
+    ],
+)
+
+py_binary(
+    name = "run_emnist_p13n",
+    srcs = ["run_emnist_p13n.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":p13n_utils",
+        "//tensorflow_federated",
+        "//tensorflow_federated/python/research/optimization/emnist:models",
     ],
 )
