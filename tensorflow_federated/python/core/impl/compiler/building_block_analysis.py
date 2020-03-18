@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utils for TFF computation building blocks."""
+import collections
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
@@ -86,3 +87,29 @@ def count_tensorflow_variables_in(comp):
 
   return (sum(_node_is_variable(node) for node in graph_def.node) +
           _count_vars_in_function_lib(graph_def.library))
+
+
+def get_device_placement_in(comp):
+  """Gets counter of device placement for tensorflow compuation `comp`."""
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  if (not isinstance(comp, building_blocks.CompiledComputation)) or (
+      comp.proto.WhichOneof('computation') != 'tensorflow'):
+    raise ValueError('Please pass a '
+                     '`building_blocks.CompiledComputation` of the '
+                     '`tensorflow` variety to `get_device_placement_in`. (Got '
+                     'a [{t}]).'.format(t=type(comp)))
+  graph_def = serialization_utils.unpack_graph_def(
+      comp.proto.tensorflow.graph_def)
+
+  counter = collections.Counter()
+
+  def _populate_counter_in_function_lib(func_library):
+    for graph_func in func_library.function:
+      counter.update(node.device for node in graph_func.node_def)
+    for graph_func in func_library.gradient:
+      counter.update(node.device for node in graph_func.node_def)
+
+  counter.update(node.device for node in graph_def.node)
+  _populate_counter_in_function_lib(graph_def.library)
+
+  return counter
