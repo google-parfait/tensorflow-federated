@@ -106,7 +106,7 @@ class IterativeProcessTest(test.TestCase):
 
       @computations.federated_computation(tf.int32)
       def one_arg_initialize(one_arg):
-        del one_arg  # unused
+        del one_arg  # Unused.
         return values.to_value(0)
 
       iterative_process.IterativeProcess(

@@ -58,8 +58,8 @@ class TestError(Exception):
 
 async def raise_error(*args, **kwargs):
   """A function for mock executors that always raises an error."""
-  del args  # unused
-  del kwargs  # unused
+  del args  # Unused.
+  del kwargs  # Unused.
   await asyncio.sleep(1)
   raise TestError()
 
@@ -70,8 +70,8 @@ TEST_VALUE = True
 
 async def create_test_value(*args, **kwargs):
   """A function for mock executors that returns an arbitrary value."""
-  del args  # unused
-  del kwargs  # unused
+  del args  # Unused.
+  del kwargs  # Unused.
   await asyncio.sleep(1)
   return TEST_VALUE
 

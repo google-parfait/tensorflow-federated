@@ -565,7 +565,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
     @computations.tf_computation(sequence_type)
     def foo(ds):
-      del ds  # unused
+      del ds  # Unused.
       return 1
 
     ds = tf.data.Dataset.from_tensor_slices([])
@@ -1456,7 +1456,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
         computation_types.FederatedType(
             (computation_types.SequenceType(tf.string)), placements.CLIENTS))
     def compute_clients(examples):
-      del examples  # Unused
+      del examples  # Unused.
       return intrinsics.federated_sum(
           intrinsics.federated_value(1, placements.CLIENTS))
 

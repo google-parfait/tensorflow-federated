@@ -71,7 +71,7 @@ class LinearRegression(model.Model):
 
   @tf.function
   def forward_pass(self, batch, training=True):
-    del training  # Unused
+    del training  # Unused.
     if isinstance(batch, dict):
       batch = self.make_batch(**batch)
     if not self._input_spec.y.is_compatible_with(batch.y):
@@ -168,7 +168,7 @@ def build_linear_regression_keras_functional_model(feature_dims=2):
 
 def build_linear_regression_keras_subclass_model(feature_dims=2):
   """Build a linear regression model by sub-classing `tf.keras.Model`."""
-  del feature_dims  # unused.
+  del feature_dims  # Unused.
 
   class _KerasLinearRegression(tf.keras.Model):
 

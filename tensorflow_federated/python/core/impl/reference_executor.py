@@ -889,7 +889,7 @@ class ReferenceExecutor(context_base.Context):
     raise NotImplementedError('Placement is currently unsupported.')
 
   def _sequence_sum(self, arg, context):
-    del context  # Unused (left as arg b.c. functions must have same shape)
+    del context  # Unused (left as arg b.c. functions must have same shape).
     inferred_type_spec = type_utils.infer_type(arg.value[0])
     py_typecheck.check_type(arg.type_signature, computation_types.SequenceType)
     total = self._generic_zero(inferred_type_spec)
@@ -901,7 +901,7 @@ class ReferenceExecutor(context_base.Context):
     return total
 
   def _federated_collect(self, arg, context):
-    del context  # Unused (left as arg b.c. functions must have same shape)
+    del context  # Unused (left as arg b.c. functions must have same shape).
     type_utils.check_federated_type(arg.type_signature, None,
                                     placements.CLIENTS, False)
     return ComputedValue(
@@ -941,7 +941,7 @@ class ReferenceExecutor(context_base.Context):
     return self._federated_eval_shared(arg, context, placements.SERVER, True)
 
   def _federated_map(self, arg, context):
-    del context  # Unused (left as arg b.c. functions must have same shape)
+    del context  # Unused (left as arg b.c. functions must have same shape).
     mapping_type = arg.type_signature[0]
     py_typecheck.check_type(mapping_type, computation_types.FunctionType)
     type_utils.check_federated_type(arg.type_signature[1],
