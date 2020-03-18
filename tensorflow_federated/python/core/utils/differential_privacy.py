@@ -86,7 +86,7 @@ def build_dp_query(clip,
   if per_vector_clipping:
     # Note we need to keep the structure of vectors (not just the num_vectors)
     # to create the subqueries below, when per_vector_clipping is True.
-    vectors = model.weights
+    vectors = model.weights.trainable
     num_vectors = len(tf.nest.flatten(vectors))
   else:
     num_vectors = 1
