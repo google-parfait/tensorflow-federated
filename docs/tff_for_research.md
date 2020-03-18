@@ -204,3 +204,28 @@ DP-FedAvg-GAN algorithm presented in
 [implemented in TFF](https://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/research/gans).
 This work demonstrates the effectiveness of combining federated learning,
 generative models, and [differential privacy](#differential_privacy).
+
+### Personalization
+
+Personalization in the setting of federated learning is an active research area.
+The goal of personalization is to provide different inference models to
+different users. There are potentially different approaches to this problem.
+
+One approach is to let each client fine-tune a single global model (trained
+using federated learning) with their local data. This approach has connections
+to meta-learning, see, e.g., [this paper](https://arxiv.org/abs/1909.12488). An
+example of this approach is given in
+[`run_emnist_p13n.py`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/personalization/run_emnist_p13n.py).
+To explore and compare different fine-tuning strategies, you can:
+
+*   Implement a `tf.function` that starts from an initial model, trains and
+    evaluates a personalized model using each client's local datasets. An
+    example is
+    [`build_personalize_fn`](https://github.com/tensorflow/federated/blob/e157d7c2e2150f9e63c5c07a9ca17d741de510df/tensorflow_federated/python/research/personalization/p13n_utils.py#L36).
+
+*   Define an `OrderedDict` that maps strategy names to the corresponding
+    `tf.function`s (see
+    [`personalize_fn_dict`](https://github.com/tensorflow/federated/blob/e157d7c2e2150f9e63c5c07a9ca17d741de510df/tensorflow_federated/python/research/personalization/run_emnist_p13n.py#L131)
+    for an example), and construct the
+    [TFF computation](https://github.com/tensorflow/federated/blob/e157d7c2e2150f9e63c5c07a9ca17d741de510df/tensorflow_federated/python/research/personalization/run_emnist_p13n.py#L152)
+    to evaluate those strategies.
