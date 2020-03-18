@@ -56,12 +56,12 @@ class TestSetDefaultExecutor(absltest.TestCase):
 
     self.assertIs(context_stack.current, executor)
 
-  def test_raises_type_error_with_int(self):
+  def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
-      default_executor.set_default_executor(1)
+      default_executor.set_default_executor(None)
 
 
-class TestResetDefaultExecutor(absltest.TestCase):
+class TestInitializeDefaultExecutor(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
