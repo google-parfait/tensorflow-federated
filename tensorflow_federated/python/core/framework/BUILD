@@ -7,8 +7,6 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//visibility:public"],
     deps = [
-        "//tensorflow_federated/python/core/impl:context_base",
-        "//tensorflow_federated/python/core/impl:context_stack_base",
         "//tensorflow_federated/python/core/impl:reference_executor",
         "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",
         "//tensorflow_federated/python/core/impl:type_utils",
@@ -21,6 +19,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/executors:caching_executor",

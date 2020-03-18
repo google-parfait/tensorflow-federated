@@ -217,8 +217,8 @@ py_library(
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:typed_object",
-        "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
     ],
 )
 

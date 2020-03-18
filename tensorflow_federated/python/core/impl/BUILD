@@ -99,13 +99,13 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":computation_impl",
-        ":context_stack_base",
         ":value_transformations",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
     ],
 )
 
@@ -134,13 +134,13 @@ py_library(
     srcs = ["computation_impl.py"],
     srcs_version = "PY3",
     deps = [
-        ":context_stack_base",
         ":type_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
     ],
 )
@@ -158,18 +158,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
-)
-
-py_library(
-    name = "context_base",
-    srcs = ["context_base.py"],
-    srcs_version = "PY3",
-)
-
-py_library(
-    name = "context_stack_base",
-    srcs = ["context_stack_base.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
@@ -227,12 +215,12 @@ py_library(
     srcs = ["federated_computation_context.py"],
     srcs_version = "PY3",
     deps = [
-        ":context_base",
-        ":context_stack_base",
         ":type_utils",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
     ],
 )
 
@@ -255,12 +243,12 @@ py_library(
     srcs = ["federated_computation_utils.py"],
     srcs_version = "PY3",
     deps = [
-        ":context_stack_base",
         ":federated_computation_context",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
     ],
 )
 
@@ -283,7 +271,6 @@ py_library(
     srcs = ["intrinsic_bodies.py"],
     srcs_version = "PY3",
     deps = [
-        ":context_stack_base",
         ":intrinsic_factory",
         ":type_utils",
         ":value_impl",
@@ -293,6 +280,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
     ],
 )
 
@@ -320,7 +308,6 @@ py_library(
     srcs = ["intrinsic_factory.py"],
     srcs_version = "PY3",
     deps = [
-        ":context_stack_base",
         ":type_utils",
         ":value_impl",
         ":value_utils",
@@ -332,6 +319,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
     ],
 )
 
@@ -353,7 +341,6 @@ py_library(
     deps = [
         ":compiler_pipeline",
         ":computation_impl",
-        ":context_base",
         ":tensorflow_deserialization",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -366,6 +353,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/executors:cardinalities_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
@@ -433,7 +421,6 @@ py_library(
     srcs = ["tensorflow_serialization.py"],
     srcs_version = "PY3",
     deps = [
-        ":context_stack_base",
         ":tf_computation_context",
         ":type_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -441,6 +428,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:graph_keys",
@@ -469,9 +457,9 @@ py_library(
     srcs = ["test.py"],
     srcs_version = "PY3",
     deps = [
-        ":context_base",
         ":reference_executor",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
@@ -484,11 +472,11 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":computation_impl",
-        ":context_base",
         ":tensorflow_deserialization",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
     ],
 )
 
@@ -583,7 +571,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":computation_impl",
-        ":context_stack_base",
         ":tensorflow_serialization",
         ":type_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -595,6 +582,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
@@ -626,13 +614,13 @@ py_library(
     srcs = ["value_transformations.py"],
     srcs_version = "PY3",
     deps = [
-        ":context_stack_base",
         ":federated_computation_utils",
         ":intrinsic_bodies",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
     ],
 )
 

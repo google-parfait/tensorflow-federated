@@ -49,10 +49,10 @@ from tensorflow_federated.python.core.impl.compiler.tree_transformations import 
 from tensorflow_federated.python.core.impl.compiler.tree_transformations import unwrap_placement
 from tensorflow_federated.python.core.impl.compiler.type_serialization import deserialize_type
 from tensorflow_federated.python.core.impl.compiler.type_serialization import serialize_type
-from tensorflow_federated.python.core.impl.context_base import Context
+from tensorflow_federated.python.core.impl.context_stack.context_base import Context
+from tensorflow_federated.python.core.impl.context_stack.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context
-from tensorflow_federated.python.core.impl.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.executors.caching_executor import CachingExecutor
 from tensorflow_federated.python.core.impl.executors.composing_executor import ComposingExecutor
 from tensorflow_federated.python.core.impl.executors.default_executor import set_default_executor

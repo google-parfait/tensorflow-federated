@@ -7,6 +7,7 @@ package_group(
 
         # Impl Dependencies
         "//tensorflow_federated/python/core/impl/executors/...",
+        "//tensorflow_federated/python/core/impl/utils/...",
         "//tensorflow_federated/python/core/impl/wrappers/...",
 
         # TODO(b/143772942): This package is temporary and can be removed once
@@ -27,13 +28,25 @@ py_library(
 )
 
 py_library(
+    name = "context_base",
+    srcs = ["context_base.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
+    name = "context_stack_base",
+    srcs = ["context_stack_base.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
     name = "context_stack_impl",
     srcs = ["context_stack_impl.py"],
     srcs_version = "PY3",
     deps = [
+        ":context_base",
+        ":context_stack_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl:context_base",
-        "//tensorflow_federated/python/core/impl:context_stack_base",
     ],
 )
 
@@ -53,7 +66,7 @@ py_library(
     name = "context_stack_test_utils",
     srcs = ["context_stack_test_utils.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl:context_base"],
+    deps = [":context_base"],
 )
 
 py_library(
