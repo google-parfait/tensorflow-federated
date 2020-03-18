@@ -16,6 +16,7 @@
 import asyncio
 from typing import Tuple
 
+from absl import logging
 from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
@@ -34,6 +35,7 @@ from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import trusted_aggregating_executor
 
+logging.set_verbosity(logging.DEBUG)
 tf.compat.v1.enable_v2_behavior()
 
 
@@ -148,7 +150,6 @@ class TrustedAggregatingExecutorTest(parameterized.TestCase):
           intrinsics.federated_value(10, placements.CLIENTS), 0, add_numbers)
 
     result = _run_test_comp_produces_aggr_value(self, comp, num_clients=3)
-    import pdb; pdb.set_trace()
     self.assertEqual(result.numpy(), 30)
 
 
