@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.executors import caching_executor
+from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -418,4 +419,5 @@ class CachingExecutorTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   absltest.main()

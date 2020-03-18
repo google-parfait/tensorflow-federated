@@ -18,7 +18,7 @@ from absl.testing import absltest
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
-from tensorflow_federated.python.core.impl.context_stack import set_default_executor
+from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
@@ -27,11 +27,8 @@ class TestSetDefaultExecutor(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
-    # In these tests we are setting the default context of the
-    # `context_stack_impl.context_stack`, so here we reset that context back to
-    # some known state.
-    self.context = context_stack_test_utils.TestContext()
-    context_stack_impl.context_stack.set_default_context(self.context)
+    context = context_stack_test_utils.TestContext()
+    context_stack_impl.context_stack.set_default_context(context)
 
   def test_with_executor_factory(self):
     context_stack = context_stack_impl.context_stack
@@ -39,7 +36,7 @@ class TestSetDefaultExecutor(absltest.TestCase):
     self.assertNotIsInstance(context_stack.current,
                              execution_context.ExecutionContext)
 
-    set_default_executor.set_default_executor(executor_factory_impl)
+    default_executor.set_default_executor(executor_factory_impl)
 
     self.assertIsInstance(context_stack.current,
                           execution_context.ExecutionContext)
@@ -55,13 +52,31 @@ class TestSetDefaultExecutor(absltest.TestCase):
     executor = reference_executor.ReferenceExecutor()
     self.assertIsNot(context_stack.current, executor)
 
-    set_default_executor.set_default_executor(executor)
+    default_executor.set_default_executor(executor)
 
     self.assertIs(context_stack.current, executor)
 
-  def test_raises_type_error_with_none(self):
+  def test_raises_type_error_with_int(self):
     with self.assertRaises(TypeError):
-      set_default_executor.set_default_executor(None)
+      default_executor.set_default_executor(1)
+
+
+class TestResetDefaultExecutor(absltest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    context = context_stack_test_utils.TestContext()
+    context_stack_impl.context_stack.set_default_context(context)
+
+  def test_(self):
+    context_stack = context_stack_impl.context_stack
+    self.assertNotIsInstance(context_stack.current,
+                             execution_context.ExecutionContext)
+
+    default_executor.initialize_default_executor()
+
+    self.assertIsInstance(context_stack.current,
+                          execution_context.ExecutionContext)
 
 
 if __name__ == '__main__':

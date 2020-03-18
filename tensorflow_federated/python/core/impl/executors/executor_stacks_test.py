@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -167,4 +168,5 @@ class ExecutorStacksTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   absltest.main()

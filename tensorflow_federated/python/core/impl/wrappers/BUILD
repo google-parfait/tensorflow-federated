@@ -5,8 +5,8 @@ package_group(
         # Subpackages
         "//tensorflow_federated/python/core/impl/wrappers/...",
 
-        # TODO(b/143772942): This package is temporary and can be removed once all
-        # the appropriate  modules have been moved out of the `impl` package.
+        # TODO(b/143772942): This package is temporary and can be removed once
+        # all the appropriate modules have been moved out of the `impl` package.
         "//tensorflow_federated/python/core/impl",
     ],
 )
@@ -82,5 +82,6 @@ py_test(
         "//tensorflow_federated/python/core/impl:computation_impl",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
     ],
 )

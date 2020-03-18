@@ -21,6 +21,7 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.executors import default_executor
 
 tf.compat.v1.enable_v2_behavior()
 
@@ -118,4 +119,5 @@ class IntegrationTest(test.TestCase):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   test.main()

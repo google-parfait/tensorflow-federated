@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import test as core_test
+from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 tf.compat.v1.enable_v2_behavior()
@@ -860,4 +861,5 @@ class IntrinsicsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   common_test.main()

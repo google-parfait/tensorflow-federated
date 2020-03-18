@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import tf_computation_context
+from tensorflow_federated.python.core.impl.executors import default_executor
 
 tf.compat.v1.enable_v2_behavior()
 
@@ -68,4 +69,5 @@ class TensorFlowComputationContextTest(test.TestCase):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   test.main()

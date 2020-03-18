@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 tf.compat.v1.enable_v2_behavior()
@@ -396,4 +397,5 @@ class ParseTFFToTFTest(test.TestCase):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   test.main()

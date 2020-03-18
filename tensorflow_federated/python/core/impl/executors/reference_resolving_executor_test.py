@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federating_executor
@@ -327,4 +328,5 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   absltest.main()

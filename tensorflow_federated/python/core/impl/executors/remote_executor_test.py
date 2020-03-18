@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -495,4 +496,5 @@ class RemoteExecutorIntegrationTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   absltest.main()

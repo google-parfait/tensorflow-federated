@@ -183,6 +183,7 @@ py_test(
         ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
     ],
 )
 
@@ -504,6 +505,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
     ],
 )
 
@@ -539,6 +541,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )

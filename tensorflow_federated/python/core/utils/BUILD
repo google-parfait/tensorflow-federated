@@ -45,7 +45,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
-        "//tensorflow_federated/python/core/impl/context_stack:set_default_executor",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )
@@ -78,6 +78,7 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl:type_utils",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
     ],
 )
 
@@ -106,6 +107,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
     ],
 )
 
@@ -136,6 +138,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
     ],
 )
 

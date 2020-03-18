@@ -6,6 +6,7 @@ package_group(
         "//tensorflow_federated/python/core/impl/context_stack/...",
 
         # Impl Dependencies
+        "//tensorflow_federated/python/core/impl/executors/...",
         "//tensorflow_federated/python/core/impl/wrappers/...",
 
         # TODO(b/143772942): This package is temporary and can be removed once
@@ -33,8 +34,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:context_base",
         "//tensorflow_federated/python/core/impl:context_stack_base",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )
 
@@ -93,33 +92,5 @@ py_test(
         ":context_stack_impl",
         ":context_stack_test_utils",
         ":set_default_context",
-    ],
-)
-
-py_library(
-    name = "set_default_executor",
-    srcs = ["set_default_executor.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":context_stack_impl",
-        "//tensorflow_federated/python/core/impl:reference_executor",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
-    ],
-)
-
-py_test(
-    name = "set_default_executor_test",
-    size = "small",
-    srcs = ["set_default_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":context_stack_impl",
-        ":context_stack_test_utils",
-        ":set_default_executor",
-        "//tensorflow_federated/python/core/impl:reference_executor",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
     ],
 )

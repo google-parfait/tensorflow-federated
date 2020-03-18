@@ -21,6 +21,7 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.utils import encoding_utils
 from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregateFn
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
@@ -451,4 +452,5 @@ class StateUpdateTensorsEncodingStage(te.core.AdaptiveEncodingStageInterface):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   test.main()

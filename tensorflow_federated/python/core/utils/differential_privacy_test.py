@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.utils import differential_privacy
 
 tf.compat.v1.enable_v2_behavior()
@@ -260,4 +261,5 @@ class DpUtilsTest(test.TestCase):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   test.main()

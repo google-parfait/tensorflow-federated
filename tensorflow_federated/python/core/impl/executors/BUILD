@@ -7,10 +7,14 @@ package_group(
 
         # Impl Dependencies
         "//tensorflow_federated/python/core/impl/wrappers/...",
-        "//tensorflow_federated/python/core/impl/context_stack/...",
 
-        # TODO(b/143772942): This package is temporary and can be removed once all
-        # the appropriate  modules have been moved out of the `impl` package.
+        # This package dependency is required to initialize a default executor
+        # in `core/__init__.py`; which is implicitly executed once the first
+        # time a module in the `core` package is imported.
+        "//tensorflow_federated/python/core",
+
+        # TODO(b/143772942): This package is temporary and can be removed once
+        # all the appropriate modules have been moved out of the `impl` package.
         "//tensorflow_federated/python/core/impl",
     ],
 )
@@ -50,6 +54,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":caching_executor",
+        ":default_executor",
         ":eager_tf_executor",
         ":executor_base",
         ":executor_test_utils",
@@ -130,6 +135,35 @@ py_test(
 )
 
 py_library(
+    name = "default_executor",
+    srcs = ["default_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":execution_context",
+        ":executor_factory",
+        ":executor_stacks",
+        "//tensorflow_federated/python/core/impl:reference_executor",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+    ],
+)
+
+py_test(
+    name = "default_executor_test",
+    size = "small",
+    srcs = ["default_executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":default_executor",
+        ":execution_context",
+        ":executor_factory",
+        "//tensorflow_federated/python/core/impl:reference_executor",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_test_utils",
+    ],
+)
+
+py_library(
     name = "eager_tf_executor",
     srcs = ["eager_tf_executor.py"],
     srcs_version = "PY3",
@@ -159,6 +193,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":default_executor",
         ":eager_tf_executor",
         ":executor_test_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
@@ -194,6 +229,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":default_executor",
         ":execution_context",
         ":executor_stacks",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -296,6 +332,7 @@ py_test(
     shard_count = 5,
     srcs_version = "PY3",
     deps = [
+        ":default_executor",
         ":execution_context",
         ":executor_factory",
         ":executor_stacks",
@@ -393,6 +430,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":default_executor",
         ":eager_tf_executor",
         ":executor_test_utils",
         ":federating_executor",
@@ -439,6 +477,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":default_executor",
         ":eager_tf_executor",
         ":executor_test_utils",
         ":federating_executor",
@@ -477,6 +516,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":default_executor",
         ":executor_service",
         ":executor_stacks",
         ":executor_test_utils",

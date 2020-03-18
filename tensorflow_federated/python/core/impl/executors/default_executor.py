@@ -12,22 +12,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A utility to change the default executor."""
+"""Utilities to interact with the default executor."""
 
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
-def set_default_executor(executor_factory_instance):
+def set_default_executor(executor_factory_instance=None):
   """Places an `executor`-backed execution context at the top of the stack.
 
   Args:
     executor_factory_instance: An instance of
-      `executor_factory.ExecutorFactory`.
+      `executor_factory.ExecutorFactory`, or `None` for the default executor.
   """
-  if isinstance(executor_factory_instance, executor_factory.ExecutorFactory):
+  if executor_factory_instance is None:
+    context = None
+  elif isinstance(executor_factory_instance, executor_factory.ExecutorFactory):
     context = execution_context.ExecutionContext(executor_factory_instance)
   elif isinstance(executor_factory_instance,
                   reference_executor.ReferenceExecutor):
@@ -36,7 +39,14 @@ def set_default_executor(executor_factory_instance):
     # and stand it up inside a factory like all other executors.
     context = executor_factory_instance
   else:
-    raise TypeError('Expected `executor_factory_instance` to be of type '
-                    '`executor_factory.ExecutorFactory`, found {}.'.format(
-                        type(executor_factory_instance)))
+    raise TypeError(
+        '`set_default_executor` expects either an '
+        '`executor_factory.ExecutorFactory` or `None` for the '
+        'default context; you passed an argument of type {}.'.format(
+            type(executor_factory_instance)))
   context_stack_impl.context_stack.set_default_context(context)
+
+
+def initialize_default_executor():
+  executor_factory_instance = executor_stacks.local_executor_factory()
+  set_default_executor(executor_factory_instance)
