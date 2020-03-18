@@ -98,6 +98,7 @@ class TrustedAggregatingExecutorValue(executor_value_base.ExecutorValue):
 
   @tracing.trace
   async def compute(self):
+    import pdb; pdb.set_trace()
     if isinstance(self._value, executor_value_base.ExecutorValue):
       return await self._value.compute()
     elif isinstance(self._type_signature, computation_types.FederatedType):
@@ -111,18 +112,13 @@ class TrustedAggregatingExecutorValue(executor_value_base.ExecutorValue):
           raise RuntimeError('Arrived at a computation that inferred there are '
                              '0 clients. Try explicity passing `num_clients` '
                              'parameter when constructor the executor.')
-        vals = [self._value[0]]
-      else:
-        vals = self._value
+      vals = self._value
       results = []
       for v in vals:
         py_typecheck.check_type(v, executor_value_base.ExecutorValue)
         results.append(v.compute())
       results = await asyncio.gather(*results)
-      if self._type_signature.all_equal:
-        return results[0]
-      else:
-        return results
+      return results
     elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
       gathered_values = await asyncio.gather(*[
           TrustedAggregatingExecutorValue(v, t).compute()
@@ -185,6 +181,7 @@ class TrustedAggregatingExecutor(executor_base.Executor):
 
   @tracing.trace(stats=False)
   async def create_value(self, value, type_spec=None):
+    # import pdb; pdb.set_trace()
     type_spec = computation_types.to_type(type_spec)
     if isinstance(value, intrinsic_defs.IntrinsicDef):
       if not type_utils.is_concrete_instance_of(type_spec,
@@ -298,6 +295,7 @@ class TrustedAggregatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def create_call(self, comp, arg=None):
+    # import pdb; pdb.set_trace()
     py_typecheck.check_type(comp, TrustedAggregatingExecutorValue)
     if arg is not None:
       py_typecheck.check_type(arg, TrustedAggregatingExecutorValue)
@@ -337,19 +335,31 @@ class TrustedAggregatingExecutor(executor_base.Executor):
     elif isinstance(comp.internal_representation, intrinsic_defs.IntrinsicDef):
       coro = getattr(
           self,
-          '_compute_intrinsic_{}'.format(comp.internal_representation.uri))
+          '_compute_intrinsic_{}'.format(comp.internal_representation.uri),
+          None)
       if coro is not None:
         return await coro(arg)
       else:
-        raise NotImplementedError(
-            'Support for intrinsic "{}" has not been implemented yet.'.format(
-                comp.internal_representation.uri))
+        child_coro = getattr(
+            self._target_executors[None][0],
+            '_compute_intrinsic_{}'.format(comp.internal_representation.uri),
+            None)
+        if child_coro is not None:
+          import pdb; pdb.set_trace()
+          result = await child_coro(arg)
+          import pdb; pdb.set_trace()
+          return TrustedAggregatingExecutorValue([result], result.type_signature)
+        else:
+          raise NotImplementedError(
+              'Support for intrinsic "{}" has not been implemented yet.'.format(
+                  comp.internal_representation.uri))
     else:
       raise ValueError('Calling objects of type {} is unsupported.'.format(
           py_typecheck.type_string(type(comp.internal_representation))))
 
   @tracing.trace
   async def create_tuple(self, elements):
+    # import pdb; pdb.set_trace()
     elem = anonymous_tuple.to_elements(anonymous_tuple.from_container(elements))
     for _, v in elem:
       py_typecheck.check_type(v, TrustedAggregatingExecutorValue)
@@ -361,6 +371,7 @@ class TrustedAggregatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def create_selection(self, source, index=None, name=None):
+    # import pdb; pdb.set_trace()
     py_typecheck.check_type(source, TrustedAggregatingExecutorValue)
     py_typecheck.check_type(source.type_signature,
                             computation_types.NamedTupleType)
@@ -403,6 +414,7 @@ class TrustedAggregatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def _compute_intrinsic_federated_reduce(self, arg):
+    # import pdb; pdb.set_trace()
     self._check_arg_is_anonymous_tuple(arg)
     if len(arg.internal_representation) != 3:
       raise ValueError(
@@ -417,6 +429,7 @@ class TrustedAggregatingExecutor(executor_base.Executor):
     type_utils.check_equivalent_types(
         op_type, type_factory.reduction_op(zero_type, item_type))
 
+    import pdb; pdb.set_trace()
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
     aggregator_child = self._target_executors[AGGREGATOR][0]
@@ -426,21 +439,27 @@ class TrustedAggregatingExecutor(executor_base.Executor):
       return await target.create_value(await v.compute(), item_type)
 
     # move reduce arguments to aggregator
-    items = await asyncio.gather(*[_move(v, aggregator_child) for v in val])
+    item = _move(val[0], aggregator_child)
 
-    zero = await aggregator_child.create_value(
-        await (await self.create_selection(arg, index=1)).compute(), zero_type)
-    op = await aggregator_child.create_value(arg.internal_representation[2], op_type)
+    # zero = await aggregator_child.create_value(
+    #     await (await self.create_selection(arg, index=1)).compute(), zero_type)
+    # op = await aggregator_child.create_value(arg.internal_representation[2], op_type)
 
-    result = zero
-    for item in items:
-      # compute result on aggregator
-      result = await aggregator_child.create_call(
-          op, await aggregator_child.create_tuple(
-              anonymous_tuple.AnonymousTuple([(None, result), (None, item)])))
+    # result = zero
+    # for item in items:
+    #   # compute result on aggregator
+    #   result = await aggregator_child.create_call(
+    #       op, await aggregator_child.create_tuple(
+    #           anonymous_tuple.AnonymousTuple([(None, result), (None, item)])))
 
-    # move result to SERVER
-    server_result = await asyncio.gather(_move(result, server_child))
+    # # move result to SERVER
+    # server_result = await asyncio.gather(_move(result, server_child))
+    server_result = await asyncio.gather(item)
 
     # create the server's federated value
-    return TrustedAggregatingExecutorValue(server_result, server_result.type_signature)
+    return TrustedAggregatingExecutorValue(
+        server_result,
+        computation_types.FederatedType(
+            server_result[0].type_signature,
+            placement_literals.SERVER,
+            all_equal=True))

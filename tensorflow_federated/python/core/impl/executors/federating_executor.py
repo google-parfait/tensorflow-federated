@@ -86,6 +86,7 @@ class FederatingExecutorValue(executor_value_base.ExecutorValue):
 
   @tracing.trace
   async def compute(self):
+    import pdb; pdb.set_trace()
     if isinstance(self._value, executor_value_base.ExecutorValue):
       return await self._value.compute()
     elif isinstance(self._type_signature, computation_types.FederatedType):

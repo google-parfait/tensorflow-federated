@@ -22,6 +22,8 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import type_factory
@@ -76,7 +78,8 @@ def _run_comp_with_runtime(comp, runtime: Runtime):
   loop, ex = runtime
 
   async def call_value():
-    return await ex.create_call(await ex.create_value(comp))
+    future = await ex.create_value(comp)
+    return await ex.create_call(future)
 
   return loop.run_until_complete(call_value())
 
@@ -89,7 +92,7 @@ def _run_test_comp(comp, num_clients=1, use_reference_resolving_executor=False):
   return _run_comp_with_runtime(comp, runtime)
 
 
-def _run_test_comp_produces_federated_value(
+def _run_test_comp_produces_aggr_value(
     test_instance,
     comp,
     num_clients=1,
@@ -114,8 +117,8 @@ def _run_test_comp_produces_federated_value(
       num_clients=num_clients,
       use_reference_resolving_executor=use_reference_resolving_executor)
   val = _run_comp_with_runtime(comp, (loop, ex))
-  test_instance.assertIsInstance(val,
-                                 federating_executor.FederatingExecutorValue)
+  test_instance.assertIsInstance(
+    val, trusted_aggregating_executor.TrustedAggregatingExecutorValue)
   return loop.run_until_complete(val.compute())
 
 
@@ -132,95 +135,21 @@ def _produce_test_value(
   return loop.run_until_complete(ex.create_value(value, type_spec=type_spec))
 
 
-class FederatingExecutorTest(parameterized.TestCase):
+class TrustedAggregatingExecutorTest(parameterized.TestCase):
 
-  def test_executor_create_value_with_valid_intrinsic_def(self):
-    val = _produce_test_value(
-        intrinsic_defs.FEDERATED_APPLY,
-        computation_types.FunctionType(
-            [type_factory.unary_op(tf.int32),
-             type_factory.at_server(tf.int32)],
-            type_factory.at_server(tf.int32)))
-    self.assertIsInstance(
-        val, trusted_aggregating_executor.TrustedAggregatingExecutorValue)
-    self.assertEqual(
-        str(val.type_signature),
-        '(<(int32 -> int32),int32@SERVER> -> int32@SERVER)')
-    self.assertIs(val.internal_representation, intrinsic_defs.FEDERATED_APPLY)
+  def test_federated_reduce_with_simple_integer_sum(self):
+    @computations.tf_computation(tf.int32, tf.int32)
+    def add_numbers(x, y):
+      return x + y
 
-  def test_executor_create_value_with_invalid_intrinsic_def(self):
-    with self.assertRaises(TypeError):
-      _produce_test_value(intrinsic_defs.FEDERATED_APPLY, tf.bool)
+    @computations.federated_computation
+    def comp():
+      return intrinsics.federated_reduce(
+          intrinsics.federated_value(10, placements.CLIENTS), 0, add_numbers)
 
-  def test_executor_create_value_with_intrinsic_as_pb_computation(self):
-    val = _produce_test_value(
-        pb.Computation(
-            intrinsic=pb.Intrinsic(uri='generic_zero'),
-            type=type_serialization.serialize_type(tf.int32)))
-    self.assertIsInstance(
-        val, trusted_aggregating_executor.TrustedAggregatingExecutorValue)
-    self.assertEqual(str(val.type_signature), 'int32')
-    self.assertIs(val.internal_representation, intrinsic_defs.GENERIC_ZERO)
-
-  def test_executor_create_value_with_unbound_reference(self):
-    with self.assertRaises(ValueError):
-      _produce_test_value(
-          pb.Computation(
-              reference=pb.Reference(name='a'),
-              type=type_serialization.serialize_type(tf.int32)))
-
-  def test_executor_create_value_with_server_int(self):
-    val = _produce_test_value(10, type_spec=type_factory.at_server(tf.int32))
-    self.assertIsInstance(
-        val, trusted_aggregating_executor.TrustedAggregatingExecutorValue)
-    self.assertEqual(str(val.type_signature), 'int32@SERVER')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 1)
-    self.assertIsInstance(val.internal_representation[0],
-                          eager_tf_executor.EagerValue)
-    self.assertEqual(
-        val.internal_representation[0].internal_representation.numpy(), 10)
-
-  def test_executor_create_value_with_client_int(self):
-    val = _produce_test_value([10, 20, 30],
-                              type_spec=type_factory.at_clients(tf.int32),
-                              num_clients=3)
-    self.assertIsInstance(
-        val, trusted_aggregating_executor.TrustedAggregatingExecutorValue)
-    self.assertEqual(str(val.type_signature), '{int32}@CLIENTS')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 3)
-    for v in val.internal_representation:
-      self.assertIsInstance(v, eager_tf_executor.EagerValue)
-    self.assertCountEqual([
-        v.internal_representation.numpy() for v in val.internal_representation
-    ], [10, 20, 30])
-
-  def test_executor_create_value_with_all_equal_client_int(self):
-    val = _produce_test_value(
-        10,
-        type_spec=type_factory.at_clients(tf.int32, all_equal=True),
-        num_clients=3)
-    self.assertIsInstance(
-        val, trusted_aggregating_executor.TrustedAggregatingExecutorValue)
-    self.assertEqual(str(val.type_signature), 'int32@CLIENTS')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 3)
-    for v in val.internal_representation:
-      self.assertIsInstance(v, eager_tf_executor.EagerValue)
-      self.assertEqual(v.internal_representation.numpy(), 10)
-
-  def test_executor_create_value_with_unplaced_int(self):
-    val = _produce_test_value(10, type_spec=tf.int32)
-    self.assertIsInstance(
-        val, trusted_aggregating_executor.TrustedAggregatingExecutorValue)
-    self.assertEqual(str(val.type_signature), 'int32')
-    self.assertIsInstance(val.internal_representation,
-                          federating_executor.FederatingExecutorValue)
-    self.assertIsInstance(val.internal_representation.internal_representation,
-                          eager_tf_executor.EagerValue)
-    eager_val = val.internal_representation.internal_representation
-    self.assertEqual(eager_val.internal_representation.numpy(), 10)
+    result = _run_test_comp_produces_aggr_value(self, comp, num_clients=3)
+    import pdb; pdb.set_trace()
+    self.assertEqual(result.numpy(), 30)
 
 
 if __name__ == '__main__':
