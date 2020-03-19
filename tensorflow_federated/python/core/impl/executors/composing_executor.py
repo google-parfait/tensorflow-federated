@@ -433,8 +433,8 @@ class ComposingExecutor(executor_base.Executor):
     type_utils.check_federated_type(
         val_type, fn_type.parameter, placement_literals.SERVER, all_equal=True)
     fn = arg.internal_representation[0]
-    val = arg.internal_representation[1]
     py_typecheck.check_type(fn, pb.Computation)
+    val = arg.internal_representation[1]
     py_typecheck.check_type(val, executor_value_base.ExecutorValue)
     return CompositeValue(
         await self._parent_executor.create_call(
@@ -485,18 +485,22 @@ class ComposingExecutor(executor_base.Executor):
                             placement_literals.CLIENTS, False)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_map(self, arg):
+  async def _map(self, arg, all_equal=None):
     py_typecheck.check_type(arg.internal_representation,
                             anonymous_tuple.AnonymousTuple)
     py_typecheck.check_len(arg.internal_representation, 2)
     fn_type = arg.type_signature[0]
     py_typecheck.check_type(fn_type, computation_types.FunctionType)
     val_type = arg.type_signature[1]
-    type_utils.check_federated_type(val_type, fn_type.parameter,
-                                    placement_literals.CLIENTS)
+    py_typecheck.check_type(val_type, computation_types.FederatedType)
+    if all_equal is None:
+      all_equal = val_type.all_equal
+    elif all_equal and not val_type.all_equal:
+      raise ValueError(
+          'Cannot map a non-all_equal argument into an all_equal result.')
     fn = arg.internal_representation[0]
-    val = arg.internal_representation[1]
     py_typecheck.check_type(fn, pb.Computation)
+    val = arg.internal_representation[1]
     py_typecheck.check_type(val, list)
 
     map_type = computation_types.FunctionType(
@@ -514,7 +518,17 @@ class ComposingExecutor(executor_base.Executor):
 
     result_vals = await asyncio.gather(
         *[_child_fn(c, v) for c, v in zip(self._child_executors, val)])
-    return CompositeValue(result_vals, type_factory.at_clients(fn_type.result))
+    federated_type = computation_types.FederatedType(
+        fn_type.result, val_type.placement, all_equal=all_equal)
+    return CompositeValue(result_vals, federated_type)
+
+  @tracing.trace
+  async def _compute_intrinsic_federated_map(self, arg):
+    return await self._map(arg, all_equal=False)
+
+  @tracing.trace
+  async def _compute_intrinsic_federated_map_all_equal(self, arg):
+    return await self._map(arg, all_equal=True)
 
   @tracing.trace
   async def _compute_intrinsic_federated_mean(self, arg):

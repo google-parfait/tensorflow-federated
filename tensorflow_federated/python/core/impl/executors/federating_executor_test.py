@@ -27,11 +27,13 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -373,8 +375,8 @@ class FederatingExecutorTest(parameterized.TestCase):
 
     @computations.federated_computation
     def comp():
-      return intrinsics.federated_map(
-          add_one, intrinsics.federated_value(10, placements.SERVER))
+      value = intrinsics.federated_value(10, placements.SERVER)
+      return intrinsics.federated_map(add_one, value)
 
     val = _run_comp_with_runtime(comp, (loop, ex))
     self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
@@ -388,18 +390,43 @@ class FederatingExecutorTest(parameterized.TestCase):
     self.assertEqual(result.numpy(), 11)
 
   def test_federated_map(self):
+
     @computations.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
 
     @computations.federated_computation
     def comp():
-      return intrinsics.federated_map(
-          add_one, intrinsics.federated_value(10, placements.CLIENTS))
+      value = intrinsics.federated_value(10, placements.CLIENTS)
+      return intrinsics.federated_map(add_one, value)
 
     val = _run_test_comp(comp, num_clients=3)
     self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
     self.assertEqual(str(val.type_signature), '{int32}@CLIENTS')
+    self.assertIsInstance(val.internal_representation, list)
+    self.assertLen(val.internal_representation, 3)
+    for v in val.internal_representation:
+      self.assertIsInstance(v, eager_tf_executor.EagerValue)
+      self.assertEqual(v.internal_representation.numpy(), 11)
+
+  def test_federated_map_all_equal(self):
+    factory = intrinsic_factory.IntrinsicFactory(
+        context_stack_impl.context_stack)
+
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @computations.federated_computation
+    def comp():
+      value = intrinsics.federated_value(10, placements.CLIENTS)
+      return factory.federated_map_all_equal(add_one, value)
+
+    val = _run_test_comp(comp, num_clients=3)
+
+    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
+    self.assertEqual(val.type_signature.compact_representation(),
+                     'int32@CLIENTS')
     self.assertIsInstance(val.internal_representation, list)
     self.assertLen(val.internal_representation, 3)
     for v in val.internal_representation:

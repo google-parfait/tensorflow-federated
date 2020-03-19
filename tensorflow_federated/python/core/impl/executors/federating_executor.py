@@ -460,10 +460,9 @@ class FederatingExecutor(executor_base.Executor):
   @tracing.trace
   async def _map(self, arg, all_equal=None):
     self._check_arg_is_anonymous_tuple(arg)
-    if len(arg.internal_representation) != 2:
-      raise ValueError('Expected 2 elements in the tuple, found {}.'.format(
-          len(arg)))
+    py_typecheck.check_len(arg.internal_representation, 2)
     fn_type = arg.type_signature[0]
+    py_typecheck.check_type(fn_type, computation_types.FunctionType)
     val_type = arg.type_signature[1]
     py_typecheck.check_type(val_type, computation_types.FederatedType)
     if all_equal is None:
@@ -472,8 +471,8 @@ class FederatingExecutor(executor_base.Executor):
       raise ValueError(
           'Cannot map a non-all_equal argument into an all_equal result.')
     fn = arg.internal_representation[0]
-    val = arg.internal_representation[1]
     py_typecheck.check_type(fn, pb.Computation)
+    val = arg.internal_representation[1]
     py_typecheck.check_type(val, list)
     for v in val:
       py_typecheck.check_type(v, executor_value_base.ExecutorValue)
@@ -537,6 +536,10 @@ class FederatingExecutor(executor_base.Executor):
   @tracing.trace
   async def _compute_intrinsic_federated_map(self, arg):
     return await self._map(arg, all_equal=False)
+
+  @tracing.trace
+  async def _compute_intrinsic_federated_map_all_equal(self, arg):
+    return await self._map(arg, all_equal=True)
 
   @tracing.trace
   async def _compute_intrinsic_federated_broadcast(self, arg):

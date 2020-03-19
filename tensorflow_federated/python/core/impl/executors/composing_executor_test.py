@@ -23,8 +23,10 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import composing_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
@@ -126,21 +128,6 @@ class ComposingExecutorTest(absltest.TestCase):
     for x in result:
       self.assertEqual(x, 5)
 
-  def test_federated_map(self):
-
-    @computations.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    @computations.federated_computation
-    def comp():
-      value = intrinsics.federated_value(10, placement_literals.CLIENTS)
-      return intrinsics.federated_map(add_one, value)
-
-    executor, num_clients = _create_test_executor()
-    result = _invoke(executor, comp)
-    self.assertEqual(result, [10 + 1] * num_clients)
-
   def test_federated_aggregate(self):
 
     @computations.tf_computation(tf.int32, tf.int32)
@@ -227,6 +214,39 @@ class ComposingExecutorTest(absltest.TestCase):
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
     self.assertEqual(result, 10 + 1)
+
+  def test_federated_map(self):
+
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @computations.federated_computation
+    def comp():
+      value = intrinsics.federated_value(10, placement_literals.CLIENTS)
+      return intrinsics.federated_map(add_one, value)
+
+    executor, num_clients = _create_test_executor()
+    result = _invoke(executor, comp)
+    self.assertEqual(result, [10 + 1] * num_clients)
+
+  def test_federated_map_all_equal(self):
+    factory = intrinsic_factory.IntrinsicFactory(
+        context_stack_impl.context_stack)
+
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @computations.federated_computation
+    def comp():
+      value = intrinsics.federated_value(10, placement_literals.CLIENTS)
+      return factory.federated_map_all_equal(add_one, value)
+
+    executor, _ = _create_test_executor()
+    result = _invoke(executor, comp)
+    for value in result:
+      self.assertEqual(value.numpy(), 10 + 1)
 
   def test_federated_zip_at_server_unnamed(self):
 
