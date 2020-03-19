@@ -45,15 +45,17 @@ def _create_bottom_stack(device=None):
 def _create_federated_stack(num_clients, clients_per_thread, device_scheduler):
   """Constructs local federated stack."""
   bottom_stacks = [
-      _create_bottom_stack(device=device_scheduler.next_device())
+      _create_bottom_stack(device=device_scheduler.next_client_device())
       for _ in range(num_clients // clients_per_thread)
   ]
   executor_dict = {
       placement_literals.CLIENTS: [
           bottom_stacks[k % len(bottom_stacks)] for k in range(num_clients)
       ],
-      placement_literals.SERVER: _create_bottom_stack(),
-      None: _create_bottom_stack()
+      placement_literals.SERVER:
+          _create_bottom_stack(device=device_scheduler.server_device()),
+      None:
+          _create_bottom_stack(device=device_scheduler.server_device())
   }
   return _complete_stack(federating_executor.FederatingExecutor(executor_dict))
 
@@ -197,34 +199,47 @@ def _create_inferred_cardinality_factory(
 
 
 class _DeviceScheduler():
-  """Assign clients to devices. Useful in multi-GPU environment."""
+  """Assign server and clients to devices. Useful in multi-GPU environment."""
 
-  def __init__(self, devices):
-    """Initialize with device list.
+  def __init__(self, server_tf_device, client_tf_devices):
+    """Initialize with server and client TF device placement.
 
     Args:
-      devices: List of `tf.config.LogicalDevice` returned by
+      server_tf_device: A `tf.config.LogicalDevice` to place server and other
+        computation without explicit TFF placement.
+      client_tf_devices: List/tuple of `tf.config.LogicalDevice` to place
+        clients for simulation. Possibly accelerators returned by
         `tf.config.list_logical_devices()`.
     """
-    py_typecheck.check_type(devices, (list, tuple))
-    for device in devices:
+    py_typecheck.check_type(client_tf_devices, (tuple, list))
+    for device in client_tf_devices:
       py_typecheck.check_type(device, tf.config.LogicalDevice)
-    self.devices = [d.name for d in devices]
-    self.idx = 0
+    self._client_devices = [d.name for d in client_tf_devices]
+    self._idx = 0
+    if server_tf_device is None:
+      self._server_device = None
+    else:
+      py_typecheck.check_type(server_tf_device, tf.config.LogicalDevice)
+      self._server_device = server_tf_device.name
 
-  def next_device(self):
-    """Get a device to place the next client in cyclic order."""
-    if len(self.devices) < 1:
+  def next_client_device(self):
+    """Gets a device to place the next client in cyclic order."""
+    if len(self._client_devices) < 1:
       return None
-    self.idx = (self.idx + 1) % len(self.devices)
-    return self.devices[self.idx]
+    self._idx = (self._idx + 1) % len(self._client_devices)
+    return self._client_devices[self._idx]
+
+  def server_device(self):
+    return self._server_device
 
 
 def local_executor_factory(
     num_clients=None,
     max_fanout=100,
     clients_per_thread=1,
-    tf_devices=tuple()) -> executor_factory.ExecutorFactory:
+    server_tf_device=None,
+    client_tf_devices=tuple()
+) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally.
 
   Note: The `tff.federated_secure_sum()` intrinsic is not implemented by this
@@ -243,8 +258,10 @@ def local_executor_factory(
     clients_per_thread: The number of clients which will share a single thread.
       Adjusting this parameter away from 1 can be useful if clients work is
       light.
-    tf_devices: The list of devices to run clients for simulation. The
-      `tf.config.LogicalDevice` list can often be returned by
+    server_tf_device: A `tf.config.LogicalDevice` to place server and
+      other computation without explicit TFF placement.
+    client_tf_devices: List/tuple of `tf.config.LogicalDevice` to place clients
+      for simulation. Possibly accelerators returned by
       `tf.config.list_logical_devices()`.
 
   Returns:
@@ -254,10 +271,10 @@ def local_executor_factory(
   Raises:
     ValueError: If the number of clients is specified and not one or larger.
   """
-  py_typecheck.check_type(tf_devices, (list, tuple))
-  for device in tf_devices:
-    py_typecheck.check_type(device, tf.config.LogicalDevice)
-  device_scheduler = _DeviceScheduler(tf_devices)
+  if server_tf_device is not None:
+    py_typecheck.check_type(server_tf_device, tf.config.LogicalDevice)
+  py_typecheck.check_type(client_tf_devices, (tuple, list))
+  device_scheduler = _DeviceScheduler(server_tf_device, client_tf_devices)
   stack_func = functools.partial(
       _create_federated_stack, device_scheduler=device_scheduler)
   if max_fanout < 2:
