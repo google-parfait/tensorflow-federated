@@ -356,10 +356,14 @@ py_library(
         ":execution_context",
         ":executor_base",
         ":executor_factory",
+        ":executor_stacks",
         ":executor_value_base",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl:reference_executor",
+        "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
@@ -371,9 +375,11 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":eager_tf_executor",
+        ":executor_stacks",
         ":executor_test_utils",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl:reference_executor",
     ],
 )
 

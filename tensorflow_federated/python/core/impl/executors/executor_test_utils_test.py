@@ -16,14 +16,68 @@
 import asyncio
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
 tf.compat.v1.enable_v2_behavior()
+
+
+class ExecutorsTest(parameterized.TestCase):
+
+  @executor_test_utils.executors
+  def test_without_arguments(self):
+
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    result = add_one(5)
+
+    self.assertEqual(result, 6)
+
+  @executor_test_utils.executors()
+  def test_with_no_arguments(self):
+
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    result = add_one(5)
+
+    self.assertEqual(result, 6)
+
+  @executor_test_utils.executors(
+      ('reference', reference_executor.ReferenceExecutor(compiler=None)),)
+  def test_with_one_argument(self):
+
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    result = add_one(5)
+
+    self.assertEqual(result, 6)
+
+  @executor_test_utils.executors(
+      ('reference', reference_executor.ReferenceExecutor(compiler=None)),
+      ('local', executor_stacks.local_executor_factory()),
+  )
+  def test_with_two_argument(self):
+
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    result = add_one(5)
+
+    self.assertEqual(result, 6)
 
 
 class TracingExecutorTest(absltest.TestCase):

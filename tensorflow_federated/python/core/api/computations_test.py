@@ -36,6 +36,7 @@ from tensorflow_federated.python.core.impl import test as core_test
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
 
 tf.compat.v1.enable_v2_behavior()
@@ -138,7 +139,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
     self.assertEqual(expected, factory.get_size_info())
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_computation_with_no_args_returns_value(self):
 
     @computations.tf_computation
@@ -410,7 +411,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     tf_comp = tf_computation(foo)
     self.assertEqual(tf_comp(*args), 6)
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_complex_param_tf_computation(self):
     # The eager executor (inside the local executor stack) has issue with
     # tf2_computation and the v1 version of SavedModel, hence the test above is
@@ -447,7 +448,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
   # TODO(b/122081673): Support tf.Dataset serialization in tf2_computation.
-  @core_test.executors
+  @executor_test_utils.executors
   def test_with_tf_datasets(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int64))
@@ -466,7 +467,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
   # TODO(b/131363314): The reference executor should support generating and
   # returning infinite datasets
-  @core_test.executors(
+  @executor_test_utils.executors(
       ('local', executor_stacks.local_executor_factory(1)),)
   def test_consume_infinite_tf_dataset(self):
 
@@ -479,7 +480,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
   # TODO(b/131363314): The reference executor should support generating and
   # returning infinite datasets
-  @core_test.executors(
+  @executor_test_utils.executors(
       ('local', executor_stacks.local_executor_factory(1)),)
   def test_produce_and_consume_infinite_tf_dataset(self):
 
@@ -495,7 +496,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
     self.assertEqual(consume(produce()), 45)
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_with_sequence_of_pairs(self):
     pairs = tf.data.Dataset.from_tensor_slices(
         (list(range(5)), list(range(5, 10))))
@@ -506,14 +507,14 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
     self.assertEqual(process_pairs(pairs), 45)
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_tf_comp_with_sequence_inputs_and_outputs_does_not_fail(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int32))
     def _(x):
       return x
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_with_four_element_dataset_pipeline(self):
 
     @computations.tf_computation
@@ -541,7 +542,7 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
 class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_raises_value_error_none_result(self):
     with self.assertRaisesRegex(ValueError, 'must return some non-`None`'):
 
@@ -549,7 +550,7 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
       def _():
         return None
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_computation_with_no_args_returns_value(self):
 
     @computations.federated_computation
@@ -561,7 +562,7 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
 
   # TODO(b/131363314): The reference executor should support generating and
   # returning infinite datasets
-  @core_test.executors(
+  @executor_test_utils.executors(
       ('local', executor_stacks.local_executor_factory(num_clients=1)),)
   def test_computation_called_once_is_invoked_once(self):
 
@@ -577,7 +578,7 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
     num1, num2 = same_random_number_twice()
     self.assertEqual(num1, num2)
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_computation_typical_usage_as_decorator_with_unlabeled_type(self):
 
     @computations.federated_computation(
@@ -604,7 +605,7 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(foo(third_power, 10), int(1e9))
     self.assertEqual(foo(third_power, 1), 1)
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_computation_typical_usage_as_decorator_with_labeled_type(self):
 
     @computations.federated_computation(
@@ -638,7 +639,7 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
 
 class ComputationsTest(parameterized.TestCase):
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_tf_computation_called_twice_is_invoked_twice(self):
     self.skipTest(
         'b/139135080: Recognize distinct instantiations of the same TF code as '

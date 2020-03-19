@@ -292,7 +292,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":intrinsic_bodies",
-        ":test",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -300,6 +299,7 @@ py_test(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
     ],
 )
 
@@ -456,14 +456,7 @@ py_library(
     testonly = True,
     srcs = ["test.py"],
     srcs_version = "PY3",
-    deps = [
-        ":reference_executor",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
-    ],
+    deps = ["//tensorflow_federated/python/core/api:computations"],
 )
 
 py_library(

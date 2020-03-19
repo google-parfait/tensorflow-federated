@@ -28,9 +28,9 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import test as core_test
 from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
 tf.compat.v1.enable_v2_behavior()
 
@@ -839,7 +839,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assert_type(foo3, '({int32*}@CLIENTS -> {int32}@CLIENTS)')
 
-  @core_test.executors(
+  @executor_test_utils.executors(
       ('local', executor_stacks.local_executor_factory()),)
   def test_federated_zip_with_twenty_elements_local_executor(self):
 
