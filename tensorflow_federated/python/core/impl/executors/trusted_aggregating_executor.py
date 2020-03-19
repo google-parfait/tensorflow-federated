@@ -420,11 +420,8 @@ class TrustedAggregatingExecutor(executor_base.Executor):
     async def _move(v, target):
       return await target.create_value(await v.compute(), item_type)
 
-    # move reduce arguments to SERVER
-    items = await asyncio.gather(*[_move(v, server_child) for v in vals])
-
     # move reduce arguments to AGGREGATOR
-    aggregands = await asyncio.gather(*[_move(v, aggregator_child) for v in items])
+    aggregands = await asyncio.gather(*[_move(v, aggregator_child) for v in vals])
 
     zero = await aggregator_child.create_value(
         await (await self.create_selection(arg, index=1)).compute(), zero_type)
@@ -432,7 +429,7 @@ class TrustedAggregatingExecutor(executor_base.Executor):
 
     result = zero
     for agg in aggregands:
-      # compute result on aggregator
+      # compute result on AGGREGATOR
       result = await aggregator_child.create_call(
           op, await aggregator_child.create_tuple(
               anonymous_tuple.AnonymousTuple([(None, result), (None, agg)])))
