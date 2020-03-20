@@ -198,7 +198,7 @@ def main(argv):
     def client_weight_fn(local_outputs):
       return tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
 
-  if FLAGS.noise_multiplier:
+  if FLAGS.noise_multiplier is not None:
     if not FLAGS.uniform_weighting:
       raise ValueError(
           'Differential privacy is only implemented for uniform weighting.')
