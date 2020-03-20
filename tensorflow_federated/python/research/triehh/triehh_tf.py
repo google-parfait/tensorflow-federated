@@ -30,6 +30,7 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 DEFAULT_VALUE = -1  # The value to use if a key is missing in the hash table.
+DEFAULT_TERMINATOR = '$'  # The end of sequence symbol.
 
 
 @attr.s(cmp=False, frozen=True)
@@ -106,7 +107,8 @@ def listify(dataset):
   return data
 
 
-def make_accumulate_client_votes_fn(round_num, discovered_prefixes_table,
+def make_accumulate_client_votes_fn(round_num, num_sub_rounds,
+                                    discovered_prefixes_table,
                                     possible_prefix_extensions_table):
   """Returns a reduce function that is used to accumulate client votes.
 
@@ -117,6 +119,8 @@ def make_accumulate_client_votes_fn(round_num, discovered_prefixes_table,
 
   Args:
     round_num: A tf.constant containing the round number.
+    num_sub_rounds: A tf.constant containing the number of sub rounds in a
+      round.
     discovered_prefixes_table: A tf.lookup.StaticHashTable containing the
       discovered prefixes.
     possible_prefix_extensions_table: A tf.lookup.StaticHashTable containing the
@@ -130,17 +134,32 @@ def make_accumulate_client_votes_fn(round_num, discovered_prefixes_table,
   @tf.function
   def accumulate_client_votes(vote_accumulator, example):
     """Accumulates client votes on prefix extensions."""
-    if tf.strings.length(example) <= round_num:
+
+    example = tf.strings.lower(example)
+    # Append the default terminator to the example.
+    default_terminator = tf.constant(DEFAULT_TERMINATOR, dtype=tf.string)
+    example = tf.strings.join([example, default_terminator])
+
+    # Compute effective round number.
+    effective_round_num = tf.math.floordiv(round_num, num_sub_rounds)
+
+    if tf.strings.length(example) < effective_round_num:
       return vote_accumulator
     else:
       discovered_prefixes_index = discovered_prefixes_table.lookup(
-          tf.strings.substr(example, 0, round_num))
+          tf.strings.substr(example, 0, effective_round_num))
       possible_prefix_extensions_index = possible_prefix_extensions_table.lookup(
-          tf.strings.substr(example, round_num, 1))
+          tf.strings.substr(example, effective_round_num, 1))
 
-      if (discovered_prefixes_index == DEFAULT_VALUE) or (
-          possible_prefix_extensions_index == DEFAULT_VALUE):
+      if tf.math.equal(possible_prefix_extensions_index,
+                       tf.constant(DEFAULT_VALUE)):
         return vote_accumulator
+
+      elif tf.math.equal(discovered_prefixes_index, tf.constant(DEFAULT_VALUE)):
+        indices = [[0, possible_prefix_extensions_index]]
+        updates = tf.constant([1])
+        return tf.tensor_scatter_nd_add(vote_accumulator, indices, updates)
+
       else:
         indices = [[
             discovered_prefixes_index, possible_prefix_extensions_index
@@ -153,15 +172,26 @@ def make_accumulate_client_votes_fn(round_num, discovered_prefixes_table,
 
 @tf.function
 def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
-                  round_num, max_num_heavy_hitters, max_user_contribution):
-  """Creates a ClientOutput object hold the client's votes.
+                  round_num, num_sub_rounds, max_num_heavy_hitters,
+                  max_user_contribution):
+  """Creates a ClientOutput object that holds the client's votes.
+
+  This function takes in a 'tf.data.Dataset' containing the client's words,
+  selects (up to) `max_user_contribution` words the given `dataset`, and creates
+  a `ClientOutput` object that holds the client's votes on chracter extensions
+  to `discovered_prefixes`. The allowed character extensions are found in
+  `possible_prefix_extensions`. `round_num` and `num_sub_round` are needed to
+  compute the length of the prefix to be extended. `max_num_heavy_hitters` is
+  needed to set the shape of the tensor holding the client votes.
 
   Args:
-    dataset: A 'tf.data.Dataset'.
+    dataset: A 'tf.data.Dataset' containing the client's on-device words.
     discovered_prefixes: A tf.string containing candidate prefixes.
     possible_prefix_extensions: A tf.string of shape (num_discovered_prefixes, )
       containing possible prefix extensions.
     round_num: A tf.constant dictating the algorithm's round number.
+    num_sub_rounds: A tf.constant containing the number of sub rounds in a
+      round.
     max_num_heavy_hitters: A tf.constant dictating the maximum number of heavy
       hitters to discover.
     max_user_contribution: A tf.constant dictating the maximum number of
@@ -187,7 +217,8 @@ def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
           tf.range(tf.shape(possible_prefix_extensions)[0])), DEFAULT_VALUE)
 
   accumulate_client_votes_fn = make_accumulate_client_votes_fn(
-      round_num, discovered_prefixes_table, possible_prefix_extensions_table)
+      round_num, num_sub_rounds, discovered_prefixes_table,
+      possible_prefix_extensions_table)
 
   sampled_data = tf.data.Dataset.from_tensor_slices(
       get_top_elements(listify(dataset), max_user_contribution))
@@ -406,7 +437,7 @@ def server_update(server_state, sub_round_votes, num_sub_rounds,
   Returns:
     An updated `ServerState`.
   """
-  if (server_state.round_num + 1) % num_sub_rounds == 0:
+  if tf.math.equal((server_state.round_num + 1) % num_sub_rounds, 0):
     return accumulate_server_votes_and_decode(server_state, sub_round_votes,
                                               max_num_heavy_hitters,
                                               default_terminator)
