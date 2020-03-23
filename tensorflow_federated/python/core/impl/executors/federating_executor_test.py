@@ -161,6 +161,18 @@ class FederatingExecutorTest(parameterized.TestCase):
     self.assertEqual(str(val.type_signature), 'int32')
     self.assertIs(val.internal_representation, intrinsic_defs.GENERIC_ZERO)
 
+  def test_executor_call_unsupported_intrinsic(self):
+    dummy_intrinsic = intrinsic_defs.IntrinsicDef(
+        'DUMMY_INTRINSIC', 'dummy_intrinsic',
+        computation_types.AbstractType('T'))
+
+    comp = pb.Computation(
+        intrinsic=pb.Intrinsic(uri='dummy_intrinsic'),
+        type=type_serialization.serialize_type(tf.int32))
+
+    with self.assertRaises(NotImplementedError):
+      _run_test_comp(comp, num_clients=3)
+
   def test_executor_create_value_with_unbound_reference(self):
     with self.assertRaises(ValueError):
       _produce_test_value(
