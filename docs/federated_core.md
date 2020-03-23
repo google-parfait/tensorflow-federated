@@ -67,7 +67,7 @@ level of individual point-to-point message exchanges, and the interdependence of
 the participant's local state transitions with incoming and outgoing messages,
 TFF's Federated Core is designed to describe the behavior of the system from the
 *global* system-wide perspective (similarly to, e.g.,
-[MapReduce](https://ai.google/research/pubs/pub62.pdf)).
+[MapReduce](https://research.google/pubs/pub62/)).
 
 Consequently, while distributed frameworks for general purposes may offer
 operations such as *send* and *receive* as building blocks, FC provides building
