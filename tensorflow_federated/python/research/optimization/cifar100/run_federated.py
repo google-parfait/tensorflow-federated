@@ -57,11 +57,8 @@ def main(argv):
       train_batch_size=FLAGS.client_batch_size,
       crop_shape=CROP_SHAPE)
 
-  sample_client_dataset = cifar_train.create_tf_dataset_for_client(
-      cifar_train.client_ids[0])
-
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(sample_client_dataset)))
+  input_spec = cifar_train.create_tf_dataset_for_client(
+      cifar_train.client_ids[0]).element_spec
 
   model_builder = functools.partial(
       resnet_models.create_resnet18,
@@ -75,7 +72,7 @@ def main(argv):
   metrics_builder = lambda: [tf.keras.metrics.SparseCategoricalAccuracy()]
 
   training_process = iterative_process_builder.from_flags(
-      dummy_batch=sample_batch,
+      input_spec=input_spec,
       model_builder=model_builder,
       loss_builder=loss_builder,
       metrics_builder=metrics_builder)

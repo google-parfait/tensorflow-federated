@@ -73,12 +73,8 @@ def main(argv):
       max_training_elements_per_user=FLAGS.max_elements_per_user,
       num_validation_examples=FLAGS.num_validation_examples)
 
-  sample_client_dataset = stackoverflow_train.create_tf_dataset_for_client(
-      stackoverflow_train.client_ids[0])
-  # TODO(b/144382142): Sample batches cannot be eager tensors, since they are
-  # passed (implicitly) to tff.learning.build_federated_averaging_process.
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(sample_client_dataset)))
+  input_spec = stackoverflow_train.create_tf_dataset_for_client(
+      stackoverflow_train.client_ids[0]).element_spec
 
   model_builder = functools.partial(
       models.create_logistic_model,
@@ -91,7 +87,7 @@ def main(argv):
       reduction=tf.keras.losses.Reduction.SUM)
 
   training_process = iterative_process_builder.from_flags(
-      dummy_batch=sample_batch,
+      input_spec=input_spec,
       model_builder=model_builder,
       loss_builder=loss_builder,
       metrics_builder=metrics_builder)

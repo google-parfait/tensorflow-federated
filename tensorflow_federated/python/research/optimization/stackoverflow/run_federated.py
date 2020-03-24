@@ -98,8 +98,7 @@ def main(argv):
       FLAGS.sequence_length, FLAGS.max_elements_per_user,
       FLAGS.num_validation_examples)
 
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(validation_set)))
+  input_spec = validation_set.element_spec
 
   def client_weight_fn(local_outputs):
     # Num_tokens is a tensor with type int64[1], to use as a weight need
@@ -107,7 +106,7 @@ def main(argv):
     return tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
 
   training_process = iterative_process_builder.from_flags(
-      dummy_batch=sample_batch,
+      input_spec=input_spec,
       model_builder=model_builder,
       loss_builder=loss_builder,
       metrics_builder=metrics_builder,

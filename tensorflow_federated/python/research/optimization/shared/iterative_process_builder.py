@@ -37,7 +37,7 @@ with utils_impl.record_hparam_flags():
 FLAGS = flags.FLAGS
 
 
-def from_flags(dummy_batch,
+def from_flags(input_spec,
                model_builder,
                loss_builder,
                metrics_builder,
@@ -48,10 +48,10 @@ def from_flags(dummy_batch,
   which are configured via flags.
 
   Args:
-    dummy_batch: A nested structure of values that are convertible to batched
-      tensors with the same shapes and types as expected in the forward pass of
-      training. The actual values are not important and can hold any reasonable
-      value.
+    input_spec: A value convertible to a `tff.Type`, representing the data which
+      will be fed into the `tff.utils.IterativeProcess.next` function over the
+      course of training. Generally, this can be found by accessing the
+      `element_spec` attribute of a client `tf.data.Dataset`.
     model_builder: A no-arg function that returns an uncompiled `tf.keras.Model`
       object.
     loss_builder: A no-arg function returning a `tf.keras.losses.Loss` object.
@@ -76,7 +76,7 @@ def from_flags(dummy_batch,
   def tff_model_fn():
     return tff.learning.from_keras_model(
         keras_model=model_builder(),
-        dummy_batch=dummy_batch,
+        input_spec=input_spec,
         loss=loss_builder(),
         metrics=metrics_builder())
 

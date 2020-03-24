@@ -81,15 +81,8 @@ def main(argv):
   loss_fn_builder = functools.partial(
       tf.keras.losses.SparseCategoricalCrossentropy, from_logits=True)
 
-  # Need to iterate until we find a client with data.
-  for client_id in train_clientdata.client_ids:
-    try:
-      sample_batch = next(
-          iter(train_clientdata.create_tf_dataset_for_client(client_id)))
-      break
-    except StopIteration:
-      pass  # Client had no batches.
-  sample_batch = tf.nest.map_structure(lambda t: t.numpy(), sample_batch)
+  input_spec = train_clientdata.create_tf_dataset_for_client(
+      train_clientdata.client_ids[0]).element_spec
 
   def client_weight_fn(local_outputs):
     # Num_tokens is a tensor with type int64[1], to use as a weight need
@@ -97,7 +90,7 @@ def main(argv):
     return tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
 
   training_process = iterative_process_builder.from_flags(
-      dummy_batch=sample_batch,
+      input_spec=input_spec,
       model_builder=model_builder,
       loss_builder=loss_fn_builder,
       metrics_builder=metrics_builder,
