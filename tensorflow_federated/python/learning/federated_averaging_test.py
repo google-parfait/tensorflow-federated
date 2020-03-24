@@ -30,7 +30,7 @@ tf.compat.v1.enable_v2_behavior()
 
 class FederatedAveragingClientWithModelTest(test.TestCase,
                                             parameterized.TestCase):
-  """Tests of _ClientFedAvg that use a common model and data."""
+  """Tests of ClientFedAvg that use a common model and data."""
 
   def create_dataset(self):
     # Create a dataset with 4 examples:
@@ -56,7 +56,7 @@ class FederatedAveragingClientWithModelTest(test.TestCase,
   def test_client_tf(self):
     model = self.create_model()
     dataset = self.create_dataset()
-    client_tf = federated_averaging._ClientFedAvg(
+    client_tf = federated_averaging.ClientFedAvg(
         model, tf.keras.optimizers.SGD(learning_rate=0.1))
     client_outputs = self.evaluate(client_tf(dataset, self.initial_weights()))
 
@@ -80,7 +80,7 @@ class FederatedAveragingClientWithModelTest(test.TestCase,
   def test_client_tf_custom_delta_weight(self):
     model = self.create_model()
     dataset = self.create_dataset()
-    client_tf = federated_averaging._ClientFedAvg(
+    client_tf = federated_averaging.ClientFedAvg(
         model,
         tf.keras.optimizers.SGD(learning_rate=0.1),
         client_weight_fn=lambda _: tf.constant(1.5))
@@ -91,7 +91,7 @@ class FederatedAveragingClientWithModelTest(test.TestCase,
   def test_non_finite_aggregation(self, bad_value):
     model = self.create_model()
     dataset = self.create_dataset()
-    client_tf = federated_averaging._ClientFedAvg(
+    client_tf = federated_averaging.ClientFedAvg(
         model, tf.keras.optimizers.SGD(learning_rate=0.1))
     init_weights = self.initial_weights()
     init_weights.trainable[1] = bad_value
