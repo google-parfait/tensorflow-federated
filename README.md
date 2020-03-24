@@ -98,7 +98,7 @@ TensorFlow Federated                                                  | TensorFl
 [0.10.1](https://github.com/tensorflow/federated/tree/v0.10.1)        | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)
 [0.10.0](https://github.com/tensorflow/federated/tree/v0.10.0)        | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)
 [0.9.0](https://github.com/tensorflow/federated/tree/v0.9.0)          | [tf-nightly 2.1.0.dev20191005](https://pypi.org/project/tf-nightly/2.1.0.dev20191005/)
-~~[0.8.0](https://github.com/tensorflow/federated/tree/v0.8.0)~~ [^1] | [tf-nightly 1.15.0.dev20190805](https://pypi.org/project/tf-nightly/1.15.0.dev20190805/)
+~~[0.8.0](https://github.com/tensorflow/federated/tree/v0.8.0)~~ <sup>[1](#footnote1)</sup> | [tf-nightly 1.15.0.dev20190805](https://pypi.org/project/tf-nightly/1.15.0.dev20190805/)
 [0.7.0](https://github.com/tensorflow/federated/tree/v0.7.0)          | [tf-nightly 1.15.0.dev20190711](https://pypi.org/project/tf-nightly/1.15.0.dev20190711/)
 [0.6.0](https://github.com/tensorflow/federated/tree/v0.6.0)          | [tf-nightly 1.15.0.dev20190626](https://pypi.org/project/tf-nightly/1.15.0.dev20190626/)
 [0.5.0](https://github.com/tensorflow/federated/tree/v0.5.0)          | [tf-nightly 1.14.1.dev20190528](https://pypi.org/project/tf-nightly/1.14.1.dev20190528/)
@@ -107,7 +107,7 @@ TensorFlow Federated                                                  | TensorFl
 [0.2.0](https://github.com/tensorflow/federated/tree/v0.2.0)          | [tensorflow 1.13.1](https://pypi.org/project/tensorflow/1.13.1)
 [0.1.0](https://github.com/tensorflow/federated/tree/v0.1.0)          | [tensorflow 1.13.0rc2](https://pypi.org/project/tensorflow/1.13.0rc0/)
 
-[^1]: TensorFlow Federated
+<sup id="footnote1">1</sup> TensorFlow Federated
     [0.8.0](https://github.com/tensorflow/federated/tree/v0.8.0) fails to pip
     install `pip install tensorflow_federated==0.8.0` because it requires
     `tf-nightly==1.15.0.dev20190805`, which is no longer available.
