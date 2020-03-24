@@ -99,7 +99,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/framework",
+        "//tensorflow_federated/python/core",
     ],
 )
 
@@ -112,7 +112,7 @@ py_test(
     deps = [
         ":server_utils",
         "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/framework",
+        "//tensorflow_federated/python/core",
     ],
 )
 

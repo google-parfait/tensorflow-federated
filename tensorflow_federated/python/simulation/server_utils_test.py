@@ -19,8 +19,8 @@ import time
 
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff_core
 from tensorflow_federated.python.common_libs import test
-from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.simulation import server_utils
 
 tf.compat.v1.enable_v2_behavior()
@@ -29,7 +29,7 @@ tf.compat.v1.enable_v2_behavior()
 class ServerUtilsTest(test.TestCase):
 
   def test_server_runs(self):
-    ex = framework.EagerTFExecutor()
+    ex = tff_core.framework.EagerTFExecutor()
 
     def noarg_run_server():
       server_utils.run_server(ex, 1, 8888)

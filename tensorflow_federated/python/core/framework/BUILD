@@ -1,11 +1,17 @@
-package(default_visibility = ["//tensorflow_federated/python/core:__subpackages__"])
+package(default_visibility = [
+    # Subpackages
+    "//tensorflow_federated/python/core/framework:__subpackages__",
+])
 
 licenses(["notice"])
 
 py_library(
     name = "framework",
     srcs = ["__init__.py"],
-    visibility = ["//visibility:public"],
+    visibility = [
+        "//tensorflow_federated:__pkg__",
+        "//tensorflow_federated/python/core:__pkg__",
+    ],
     deps = [
         "//tensorflow_federated/python/core/impl:reference_executor",
         "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",
