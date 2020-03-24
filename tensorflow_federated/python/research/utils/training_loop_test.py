@@ -34,10 +34,10 @@ FLAGS = flags.FLAGS
 def _uncompiled_model_fn():
   keras_model = tff.simulation.models.mnist.create_keras_model(
       compile_model=False)
-  batch = _batch_fn()
+  input_spec = _create_input_spec()
   return tff.learning.from_keras_model(
       keras_model=keras_model,
-      dummy_batch=batch,
+      input_spec=input_spec,
       loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
 
@@ -52,6 +52,12 @@ def _batch_fn():
   batch = _Batch(
       x=np.ones([1, 784], dtype=np.float32), y=np.ones([1, 1], dtype=np.int64))
   return batch
+
+
+def _create_input_spec():
+  return _Batch(
+      x=tf.TensorSpec(shape=[None, 784], dtype=tf.float32),
+      y=tf.TensorSpec(dtype=tf.int64, shape=[None, 1]))
 
 
 class ExperimentRunnerTest(tf.test.TestCase):

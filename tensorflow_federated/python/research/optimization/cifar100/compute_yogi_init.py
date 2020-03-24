@@ -55,17 +55,16 @@ def main(argv):
       client_epochs_per_round=1,
       train_batch_size=FLAGS.client_batch_size,
       crop_shape=CROP_SHAPE)
-  sample_client_dataset = cifar_train.create_tf_dataset_for_client(
-      cifar_train.client_ids[0])
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(sample_client_dataset)))
+  input_spec = cifar_train.create_tf_dataset_for_client(
+      cifar_train.client_ids[0]).element_spec
+
   model_builder = functools.partial(
       resnet_models.create_resnet18,
       input_shape=CROP_SHAPE,
       num_classes=NUM_CLASSES)
   tff_model = tff.learning.from_keras_model(
       keras_model=model_builder(),
-      dummy_batch=sample_batch,
+      input_spec=input_spec,
       loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
   yogi_init_accum_estimate = optimizer_utils.compute_yogi_init(

@@ -32,13 +32,18 @@ def _batch_fn():
   return batch
 
 
+def _create_input_spec():
+  return _Batch(
+      x=tf.TensorSpec(shape=[None, 784], dtype=tf.float32),
+      y=tf.TensorSpec(dtype=tf.int64, shape=[None, 1]))
+
+
 def _uncompiled_model_builder():
   keras_model = tff.simulation.models.mnist.create_keras_model(
       compile_model=False)
-  batch = _batch_fn()
   return tff.learning.from_keras_model(
       keras_model=keras_model,
-      dummy_batch=batch,
+      input_spec=_create_input_spec(),
       loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
 

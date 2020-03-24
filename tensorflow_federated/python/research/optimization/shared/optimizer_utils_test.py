@@ -247,7 +247,7 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
         '2': (x2, y2)
     })
     tff_dataset = tff_dataset.preprocess(lambda x: x.batch(2))
-    sample_batch = next(iter(tff_dataset.create_tf_dataset_for_client('1')))
+    input_spec = tff_dataset.create_tf_dataset_for_client('1').element_spec
 
     def model_builder():
       # Create a simple linear regression model, single output.
@@ -261,7 +261,7 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
 
     tff_model = tff.learning.from_keras_model(
         keras_model=model_builder(),
-        dummy_batch=sample_batch,
+        input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError())
     # (x1, y1) should have gradient [-4, -2]
     # (x2, y2) should have gradient [-6, -2]

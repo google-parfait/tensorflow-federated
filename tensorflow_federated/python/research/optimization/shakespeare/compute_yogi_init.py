@@ -57,19 +57,12 @@ def main(argv):
   loss_fn_builder = functools.partial(
       tf.keras.losses.SparseCategoricalCrossentropy, from_logits=True)
 
-  # Need to iterate until we find a client with data.
-  for client_id in train_clientdata.client_ids:
-    try:
-      sample_batch = next(
-          iter(train_clientdata.create_tf_dataset_for_client(client_id)))
-      break
-    except StopIteration:
-      pass  # Client had no batches.
-  sample_batch = tf.nest.map_structure(lambda t: t.numpy(), sample_batch)
+  input_spec = train_clientdata.create_tf_dataset_for_client(
+      train_clientdata.client_ids[0])
 
   tff_model = tff.learning.from_keras_model(
       keras_model=model_builder(),
-      dummy_batch=sample_batch,
+      input_spec=input_spec,
       loss=loss_fn_builder())
 
   yogi_init_accum_estimate = optimizer_utils.compute_yogi_init(

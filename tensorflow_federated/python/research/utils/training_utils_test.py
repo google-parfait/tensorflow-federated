@@ -36,9 +36,8 @@ def model_builder():
   return model
 
 
-@tf.function
-def get_sample_batch():
-  return next(iter(create_tf_dataset_for_client(0)))
+def get_input_spec():
+  return create_tf_dataset_for_client(0).element_spec
 
 
 def create_tf_dataset_for_client(client_id, batch_data=True):
@@ -72,7 +71,7 @@ class TrainingUtilsTest(tf.test.TestCase):
     def tff_model_fn():
       return tff.learning.from_keras_model(
           keras_model=model_builder(),
-          dummy_batch=get_sample_batch(),
+          input_spec=get_input_spec(),
           loss=loss_builder(),
           metrics=metrics_builder())
 
