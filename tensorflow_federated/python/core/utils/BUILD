@@ -1,14 +1,18 @@
-package(default_visibility = ["//tensorflow_federated/python/core:__subpackages__"])
+package(default_visibility = [
+    # Subpackages
+    "//tensorflow_federated/python/core/utils:__subpackages__",
+])
 
 licenses(["notice"])
 
-# This is the import for other components of TFF that are layered upon the Core
-# utils.
 py_library(
     name = "utils",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//visibility:public"],
+    visibility = [
+        "//tensorflow_federated:__pkg__",
+        "//tensorflow_federated/python/core:__pkg__",
+    ],
     deps = [
         ":computation_utils",
         ":differential_privacy",
