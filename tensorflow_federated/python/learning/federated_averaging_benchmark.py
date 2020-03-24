@@ -132,6 +132,9 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
   def benchmark_learning_keras_model_mnist(self, executor_id):
     """Code adapted from MNIST learning tutorial ipynb."""
     federated_train_data = generate_fake_mnist_data()
+    x_type = tf.TensorSpec(shape=(None, 784), dtype=tf.float32)
+    y_type = tf.TensorSpec(shape=(None,), dtype=tf.int32)
+    input_spec = collections.OrderedDict(x=x_type, y=y_type)
     n_rounds = 10
     computation_building_start = time.time()
 
@@ -147,7 +150,7 @@ class FederatedAveragingBenchmark(tf.test.Benchmark):
       ])
       return keras_utils.from_keras_model(
           model,
-          dummy_batch=federated_train_data[0][0],
+          input_spec=input_spec,
           loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
     iterative_process = federated_averaging.build_federated_averaging_process(

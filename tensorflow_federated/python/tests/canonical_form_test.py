@@ -28,9 +28,10 @@ tf.compat.v1.enable_v2_behavior()
 def construct_example_training_comp():
   """Constructs a `tff.utils.IterativeProcess` via the FL API."""
   np.random.seed(0)
-  sample_batch = collections.OrderedDict(
-      x=np.array([[1., 1.]], dtype=np.float32),
-      y=np.array([[0]], dtype=np.int32))
+
+  input_spec = collections.OrderedDict(
+      x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
+      y=tf.TensorSpec(shape=[None, 1], dtype=tf.int32))
 
   def model_fn():
     """Constructs keras model."""
@@ -44,7 +45,7 @@ def construct_example_training_comp():
 
     return tff.learning.from_keras_model(
         keras_model,
-        dummy_batch=sample_batch,
+        input_spec=input_spec,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 

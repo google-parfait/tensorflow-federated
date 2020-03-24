@@ -111,10 +111,7 @@ def main(argv):
       emnist_train.client_ids[0])
 
   preprocessed_example_dataset = preprocess(example_dataset)
-
-  sample_batch = tf.nest.map_structure(
-      lambda x: x.numpy(),
-      iter(preprocessed_example_dataset).next())
+  input_spec = preprocessed_example_dataset.element_spec
 
   def model_fn():
     model = tf.keras.models.Sequential([
@@ -124,7 +121,7 @@ def main(argv):
     ])
     return tff.learning.from_keras_model(
         model,
-        dummy_batch=sample_batch,
+        input_spec=input_spec,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
