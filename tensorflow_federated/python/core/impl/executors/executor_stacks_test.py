@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
-
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
@@ -25,8 +23,6 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
-from tensorflow_federated.python.core.impl.executors import default_executor
-from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -61,11 +57,6 @@ def _temperature_sensor_example_next_fn():
   return comp
 
 
-@contextlib.contextmanager
-def _execution_context(executor_factory_impl):
-  yield execution_context.ExecutionContext(executor_factory_impl)
-
-
 class ExecutorStacksTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -86,42 +77,28 @@ class ExecutorStacksTest(parameterized.TestCase):
       executor_factory_fn(max_fanout=1)
 
   @parameterized.named_parameters(
-      ('local_executor', executor_stacks.local_executor_factory),
-      ('sizing_executor', executor_stacks.sizing_executor_factory),
+      ('local_executor_none_clients', executor_stacks.local_executor_factory()),
+      ('sizing_executor_none_clients',
+       executor_stacks.sizing_executor_factory()),
+      ('local_executor_three_clients',
+       executor_stacks.local_executor_factory(num_clients=3)),
+      ('sizing_executor_three_clients',
+       executor_stacks.sizing_executor_factory(num_clients=3)),
   )
-  def test_execution_with_none_clients_for_temperature_sensor_example(
-      self, executor_factory_fn):
+  def test_execution_of_temperature_sensor_example(self, executor):
     comp = _temperature_sensor_example_next_fn()
+    to_float = lambda x: tf.cast(x, tf.float32)
+    temperatures = [
+        tf.data.Dataset.range(10).map(to_float),
+        tf.data.Dataset.range(20).map(to_float),
+        tf.data.Dataset.range(30).map(to_float),
+    ]
+    threshold = 15.0
 
-    with _execution_context(executor_factory_fn()):
-      to_float = lambda x: tf.cast(x, tf.float32)
-      temperatures = [
-          tf.data.Dataset.range(10).map(to_float),
-          tf.data.Dataset.range(20).map(to_float),
-          tf.data.Dataset.range(30).map(to_float)
-      ]
-      threshold = 15.0
+    with executor_test_utils.install_executor(executor):
       result = comp(temperatures, threshold)
-      self.assertAlmostEqual(result, 8.333, places=3)
 
-  @parameterized.named_parameters(
-      ('local_executor', executor_stacks.local_executor_factory),
-      ('sizing_executor', executor_stacks.sizing_executor_factory),
-  )
-  def test_execution_with_three_clients_for_temperature_sensor_example(
-      self, executor_factory_fn):
-    comp = _temperature_sensor_example_next_fn()
-
-    with _execution_context(executor_factory_fn(3)):
-      to_float = lambda x: tf.cast(x, tf.float32)
-      temperatures = [
-          tf.data.Dataset.range(10).map(to_float),
-          tf.data.Dataset.range(20).map(to_float),
-          tf.data.Dataset.range(30).map(to_float)
-      ]
-      threshold = 15.0
-      result = comp(temperatures, threshold)
-      self.assertAlmostEqual(result, 8.333, places=3)
+    self.assertAlmostEqual(result, 8.333, places=3)
 
   @parameterized.named_parameters(
       ('local_executor', executor_stacks.local_executor_factory),
@@ -134,22 +111,31 @@ class ExecutorStacksTest(parameterized.TestCase):
     def foo(x):
       return intrinsics.federated_sum(x)
 
-    with _execution_context(executor_factory_fn(max_fanout=3)):
-      self.assertEqual(foo([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), 55)
+    executor = executor_factory_fn(max_fanout=3)
+    with executor_test_utils.install_executor(executor):
+      result = foo([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+
+    self.assertEqual(result, 55)
 
   @parameterized.named_parameters(
-      ('local_executor_with_one_client',
-       executor_stacks.local_executor_factory(1)),
-      ('local_executor_with_none_clients',
-       executor_stacks.local_executor_factory()),
-      ('sizing_executor_with_one_client',
-       executor_stacks.sizing_executor_factory(1)),
-      ('sizing_executor_with_none_clients',
+      ('local_executor_none_clients', executor_stacks.local_executor_factory()),
+      ('sizing_executor_none_clients',
        executor_stacks.sizing_executor_factory()),
+      ('local_executor_one_client',
+       executor_stacks.local_executor_factory(num_clients=1)),
+      ('sizing_executor_one_client',
+       executor_stacks.sizing_executor_factory(num_clients=1)),
   )
-  def test_runs_tf(self, executor_factory_impl):
-    executor = executor_factory_impl.create_executor({})
-    executor_test_utils.test_runs_tf(self, executor)
+  def test_execution_of_tensorflow(self, executor):
+
+    @computations.tf_computation
+    def comp():
+      return tf.math.add(5, 5)
+
+    with executor_test_utils.install_executor(executor):
+      result = comp()
+
+    self.assertEqual(result, 10)
 
   @parameterized.named_parameters(
       ('local_executor', executor_stacks.local_executor_factory),
@@ -168,5 +154,4 @@ class ExecutorStacksTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_executor()
   absltest.main()

@@ -34,13 +34,18 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 
 tf.compat.v1.enable_v2_behavior()
+
+
+def create_test_executor_factory():
+  executor = _make_test_executor(num_clients=1)
+  return executor_factory.ExecutorFactoryImpl(lambda _: executor)
 
 
 def _make_test_executor(
@@ -597,12 +602,17 @@ class FederatingExecutorTest(parameterized.TestCase):
     result = loop.run_until_complete(v5.compute())
     self.assertAlmostEqual(result.numpy(), 2.1, places=3)
 
-  def test_runs_tf(self):
-    executor_test_utils.test_runs_tf(self, _make_test_executor(1))
+  def test_execution_of_tensorflow(self):
 
-  def test_runs_tf_with_reference_resolving_executor(self):
-    executor_test_utils.test_runs_tf(
-        self, _make_test_executor(1, use_reference_resolving_executor=True))
+    @computations.tf_computation
+    def comp():
+      return tf.math.add(5, 5)
+
+    executor = create_test_executor_factory()
+    with executor_test_utils.install_executor(executor):
+      result = comp()
+
+    self.assertEqual(result, 10)
 
   @parameterized.named_parameters(
       ('tuple', (1, 2, 3, 4),),
@@ -755,5 +765,4 @@ class FederatingExecutorTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_executor()
   absltest.main()
