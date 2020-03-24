@@ -18,9 +18,9 @@ from absl import app
 from absl import flags
 import grpc
 import tensorflow as tf
+import tensorflow_federated as tff
 
-from tensorflow_federated.python.core import framework
-from tensorflow_federated.python.simulation import server_utils
+tf.compat.v1.enable_v2_behavior()
 
 FLAGS = flags.FLAGS
 
@@ -35,8 +35,7 @@ flags.DEFINE_integer('fanout', '100',
 
 def main(argv):
   del argv
-  tf.compat.v1.enable_v2_behavior()
-  executor_factory = framework.local_executor_factory(
+  executor_factory = tff.framework.local_executor_factory(
       num_clients=FLAGS.clients, max_fanout=FLAGS.fanout)
   if FLAGS.private_key:
     if FLAGS.certificate_chain:
@@ -53,7 +52,7 @@ def main(argv):
           'Private key has been specified, but the certificate chain missing.')
   else:
     credentials = None
-  server_utils.run_server(
+  tff.simulation.run_server(
       executor_factory.create_executor({}), FLAGS.threads, FLAGS.port,
       credentials)
 

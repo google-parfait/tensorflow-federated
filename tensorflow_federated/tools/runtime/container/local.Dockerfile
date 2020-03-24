@@ -20,7 +20,7 @@ FROM python:3.6-buster
 
 RUN python3 --version
 
-COPY "tensorflow_federated/runtime/remote/remote_executor_service.py" /
+COPY "tensorflow_federated/tools/runtime/remote_executor_service.py" /
 COPY "tensorflow_federated-"*".whl" /
 
 RUN pip3 install --no-cache-dir --upgrade pip

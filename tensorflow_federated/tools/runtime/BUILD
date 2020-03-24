@@ -8,8 +8,5 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools/runtime/container:__pkg__"],
-    deps = [
-        "//tensorflow_federated/python/core/framework",
-        "//tensorflow_federated/python/simulation:server_utils",
-    ],
+    deps = ["//tensorflow_federated"],
 )
