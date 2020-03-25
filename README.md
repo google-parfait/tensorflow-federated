@@ -82,6 +82,8 @@ for guidelines on the coding style, best practices, etc.
 
 ## Compatibility
 
+### TensorFlow
+
 The following table describes the compatibility between the TensorFlow Federated
 and TensorFlow Python packages, meaning that a version of the TensorFlow
 Federated package was tested against a version of the TensorFlow before it was
@@ -107,10 +109,12 @@ TensorFlow Federated                                                  | TensorFl
 [0.2.0](https://github.com/tensorflow/federated/tree/v0.2.0)          | [tensorflow 1.13.1](https://pypi.org/project/tensorflow/1.13.1)
 [0.1.0](https://github.com/tensorflow/federated/tree/v0.1.0)          | [tensorflow 1.13.0rc2](https://pypi.org/project/tensorflow/1.13.0rc0/)
 
-<sup id="footnote1">1</sup> TensorFlow Federated
-    [0.8.0](https://github.com/tensorflow/federated/tree/v0.8.0) fails to pip
-    install `pip install tensorflow_federated==0.8.0` because it requires
-    `tf-nightly==1.15.0.dev20190805`, which is no longer available.
+### Python
+
+See the `Programming Language` classifiers on the PyPI
+[tensorflow-federated](https://pypi.org/project/tensorflow-federated/) project
+for information about the compatibility between TensorFlow Federated and Python
+versions.
 
 ## Issues
 
@@ -122,3 +126,8 @@ requests and bugs.
 Please direct questions to [Stack Overflow](https://stackoverflow.com) using the
 [tensorflow-federated](https://stackoverflow.com/questions/tagged/tensorflow-federated)
 tag.
+
+<sup id="footnote1">1</sup> TensorFlow Federated
+    [0.8.0](https://github.com/tensorflow/federated/tree/v0.8.0) fails to pip
+    install `pip install tensorflow_federated==0.8.0` because it requires
+    `tf-nightly==1.15.0.dev20190805`, which is no longer available.
