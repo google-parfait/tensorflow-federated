@@ -163,11 +163,14 @@ def run_experiment():
   client_datasets_fn = training_utils.build_client_datasets_fn(
       emnist_train, FLAGS.clients_per_round)
 
+  assign_weights_fn = compression_process_adapter.CompressionServerState.assign_weights_to_keras_model
+
   evaluate_fn = training_utils.build_evaluate_fn(
       eval_dataset=emnist_test,
       model_builder=model_builder,
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder)
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_fn)
 
   client_optimizer_fn = functools.partial(
       utils_impl.create_optimizer_from_flags, 'client')

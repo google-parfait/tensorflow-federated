@@ -22,6 +22,7 @@ from absl import logging
 
 import tensorflow as tf
 
+from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.optimization.stackoverflow import dataset
@@ -115,11 +116,14 @@ def main(argv):
   client_datasets_fn = training_utils.build_client_datasets_fn(
       train_set, FLAGS.clients_per_round)
 
+  assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
+
   evaluate_fn = training_utils.build_evaluate_fn(
       model_builder=model_builder,
       eval_dataset=validation_set,
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder)
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_fn)
 
   test_fn = training_utils.build_evaluate_fn(
       model_builder=model_builder,
@@ -127,7 +131,8 @@ def main(argv):
       # evaluate on the entire test set.
       eval_dataset=validation_set.concatenate(test_set),
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder)
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_fn)
 
   logging.info('Training model:')
   logging.info(model_builder().summary())
