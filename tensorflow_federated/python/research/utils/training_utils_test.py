@@ -20,7 +20,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.utils import training_utils
 
 
@@ -75,16 +74,21 @@ class TrainingUtilsTest(tf.test.TestCase):
           loss=loss_builder(),
           metrics=metrics_builder())
 
-    iterative_process = fed_avg_schedule.build_fed_avg_process(
+    iterative_process = tff.learning.build_federated_averaging_process(
         tff_model_fn, client_optimizer_fn=tf.keras.optimizers.SGD)
-
     state = iterative_process.initialize()
-
     test_dataset = create_tf_dataset_for_client(1)
 
-    evaluate_fn = training_utils.build_evaluate_fn(test_dataset, model_builder,
-                                                   loss_builder,
-                                                   metrics_builder)
+    def assign_weights_to_keras_model(state, keras_model):
+      reference_model = tff.learning.ModelWeights(
+          trainable=list(state.model.trainable),
+          non_trainable=list(state.model.non_trainable))
+      reference_model.assign_weights_to(keras_model)
+
+    evaluate_fn = training_utils.build_evaluate_fn(
+        test_dataset, model_builder, loss_builder, metrics_builder,
+        assign_weights_to_keras_model)
+
     test_metrics = evaluate_fn(state)
     self.assertIn('loss', test_metrics)
 

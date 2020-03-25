@@ -22,13 +22,48 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
+from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.research.utils import checkpoint_manager
 from tensorflow_federated.python.research.utils import training_loop
 
 _Batch = collections.namedtuple('Batch', ['x', 'y'])
 
 FLAGS = flags.FLAGS
+
+
+def _from_tff_result(state):
+  return tff.learning.framework.ServerState(
+      model=tff.learning.ModelWeights(
+          list(state.model.trainable), list(state.model.non_trainable)),
+      optimizer_state=list(state.optimizer_state),
+      delta_aggregate_state=[],
+      model_broadcast_state=[])
+
+
+class BasicAdapter(adapters.IterativeProcessPythonAdapter):
+  """Converts iterative process results from anonymous tuples."""
+
+  def __init__(self, iterative_process):
+    self._iterative_process = iterative_process
+
+  def initialize(self):
+    initial_state = self._iterative_process.initialize()
+    return _from_tff_result(initial_state)
+
+  def next(self, state, data):
+    state, metrics = self._iterative_process.next(state, data)
+    state = _from_tff_result(state)
+    metrics = metrics._asdict(recursive=True)
+    outputs = None
+    return adapters.IterationResult(state, metrics, outputs)
+
+
+def _build_federated_averaging_process():
+  iterative_process = tff.learning.build_federated_averaging_process(
+      _uncompiled_model_fn,
+      client_optimizer_fn=tf.keras.optimizers.SGD,
+      server_optimizer_fn=tf.keras.optimizers.SGD)
+  return BasicAdapter(iterative_process)
 
 
 def _uncompiled_model_fn():
@@ -39,13 +74,6 @@ def _uncompiled_model_fn():
       keras_model=keras_model,
       input_spec=input_spec,
       loss=tf.keras.losses.SparseCategoricalCrossentropy())
-
-
-def _build_federated_averaging_process():
-  return fed_avg_schedule.build_fed_avg_process(
-      _uncompiled_model_fn,
-      client_optimizer_fn=tf.keras.optimizers.SGD,
-      server_optimizer_fn=tf.keras.optimizers.SGD)
 
 
 def _batch_fn():
@@ -148,8 +176,7 @@ class ExperimentRunnerTest(tf.test.TestCase):
     def evaluate(state):
       keras_model = tff.simulation.models.mnist.create_keras_model(
           compile_model=True)
-      state = fed_avg_schedule.ServerState.from_tff_result(state)
-      state.assign_weights_to_keras_model(keras_model)
+      state.model.assign_weights_to(keras_model)
       return {'loss': keras_model.evaluate(batch.x, batch.y)}
 
     initial_state = iterative_process.initialize()
@@ -194,10 +221,10 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
     keras_model = tff.simulation.models.mnist.create_keras_model(
         compile_model=True)
-    restored_state.assign_weights_to_keras_model(keras_model)
+    restored_state.model.assign_weights_to(keras_model)
     restored_loss = keras_model.test_on_batch(federated_data[0][0].x,
                                               federated_data[0][0].y)
-    final_state.assign_weights_to_keras_model(keras_model)
+    final_state.model.assign_weights_to(keras_model)
     final_loss = keras_model.test_on_batch(federated_data[0][0].x,
                                            federated_data[0][0].y)
     self.assertEqual(final_loss, restored_loss)
