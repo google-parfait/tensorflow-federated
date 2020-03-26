@@ -87,22 +87,21 @@ class ServerState(object):
         round_num=anon_tuple.round_num)
 
   @classmethod
-  def assign_weights_to_keras_model(cls, state, keras_model):
+  def assign_weights_to_keras_model(cls, reference_model, keras_model):
     """Assign the model weights to the weights of a `tf.keras.Model`.
 
     Args:
-      state: The `ServerState` object to assign weights from.
+      reference_model: the `ModelWeights` object to assign weights from.
       keras_model: the `tf.keras.Model` object to assign weights to.
     """
-    if not isinstance(state, ServerState):
-      raise TypeError('The reference state must be an instance of '
-                      'fed_avg_schedule.ServerState.')
+    if not isinstance(reference_model, ModelWeights):
+      raise TypeError('The reference model must be an instance of '
+                      'fed_avg_schedule.ModelWeights.')
 
     def assign_weights(keras_weights, tff_weights):
       for k, w in zip(keras_weights, tff_weights):
         k.assign(w)
 
-    reference_model = ServerState.model
     assign_weights(keras_model.trainable_weights, reference_model.trainable)
     assign_weights(keras_model.non_trainable_weights,
                    reference_model.non_trainable)

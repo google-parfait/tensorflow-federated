@@ -83,7 +83,8 @@ def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
     metrics_builder: A no-arg function that returns a list of
       `tf.keras.metrics.Metric` objects.
     assign_weights_to_keras_model: A function taking arguments
-      (state, keras_model) that assigns the weights of state to the keras_model.
+      (reference_model, keras_model) that assigns the weights of reference_model
+      to keras_model.
 
   Returns:
     A function that take as input the state of an iterative process and returns
@@ -100,10 +101,10 @@ def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
 
   eval_tuple_dataset = convert_to_tuple_dataset(eval_dataset)
 
-  def evaluate_fn(state):
+  def evaluate_fn(reference_model):
     """Evaluation function to be used during training."""
     keras_model = compiled_eval_keras_model()
-    assign_weights_to_keras_model(state, keras_model)
+    assign_weights_to_keras_model(reference_model, keras_model)
     logging.info('Evaluating the current model')
     eval_metrics = keras_model.evaluate(eval_tuple_dataset, verbose=0)
     return dict(zip(keras_model.metrics_names, eval_metrics))

@@ -79,17 +79,18 @@ class TrainingUtilsTest(tf.test.TestCase):
     state = iterative_process.initialize()
     test_dataset = create_tf_dataset_for_client(1)
 
-    def assign_weights_to_keras_model(state, keras_model):
-      reference_model = tff.learning.ModelWeights(
-          trainable=list(state.model.trainable),
-          non_trainable=list(state.model.non_trainable))
-      reference_model.assign_weights_to(keras_model)
+    reference_model = tff.learning.ModelWeights(
+        trainable=list(state.model.trainable),
+        non_trainable=list(state.model.non_trainable))
+
+    def assign_weights_to_keras_model(model, keras_model):
+      model.assign_weights_to(keras_model)
 
     evaluate_fn = training_utils.build_evaluate_fn(
         test_dataset, model_builder, loss_builder, metrics_builder,
         assign_weights_to_keras_model)
 
-    test_metrics = evaluate_fn(state)
+    test_metrics = evaluate_fn(reference_model)
     self.assertIn('loss', test_metrics)
 
   def test_tuple_conversion_from_tuple_datset(self):

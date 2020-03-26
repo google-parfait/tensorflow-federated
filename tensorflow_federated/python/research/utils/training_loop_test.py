@@ -100,8 +100,8 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def evaluate_fn(state):
-      del state
+    def evaluate_fn(model):
+      del model
       return {}
 
     temp_filepath = self.get_temp_dir()
@@ -118,8 +118,8 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
     client_dataset = federated_data
 
-    def evaluate_fn(state):
-      del state
+    def evaluate_fn(model):
+      del model
       return {}
 
     temp_filepath = self.get_temp_dir()
@@ -155,11 +155,40 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def eval_fn(state):
-      del state
+    def eval_fn(model):
+      del model
       return {}
 
     with self.assertRaises(TypeError):
+      training_loop.run(iterative_process, client_datasets_fn, eval_fn)
+
+  def test_raises_no_model_attribute_in_state(self):
+
+    class BadIterativeProcess(adapters.IterativeProcessPythonAdapter):
+      """Converts iterative process results from anonymous tuples."""
+
+      def __init__(self):
+        pass
+
+      def initialize(self):
+        return {}
+
+      def next(self, state, data):
+        return {}
+
+    iterative_process = BadIterativeProcess()
+    federated_data = [[_batch_fn()]]
+
+    def client_datasets_fn(round_num):
+      del round_num
+      return federated_data
+
+    def eval_fn(model):
+      del model
+      return {}
+
+    with self.assertRaisesRegex(TypeError,
+                                'The server state must have a model attribute'):
       training_loop.run(iterative_process, client_datasets_fn, eval_fn)
 
   def test_fedavg_training_decreases_loss(self):
@@ -173,10 +202,10 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def evaluate(state):
+    def evaluate(model):
       keras_model = tff.simulation.models.mnist.create_keras_model(
           compile_model=True)
-      state.model.assign_weights_to(keras_model)
+      model.assign_weights_to(keras_model)
       return {'loss': keras_model.evaluate(batch.x, batch.y)}
 
     initial_state = iterative_process.initialize()
@@ -186,8 +215,8 @@ class ExperimentRunnerTest(tf.test.TestCase):
     final_state = training_loop.run(iterative_process, client_datasets_fn,
                                     evaluate)
     self.assertLess(
-        evaluate(final_state)['loss'],
-        evaluate(initial_state)['loss'])
+        evaluate(final_state.model)['loss'],
+        evaluate(initial_state.model)['loss'])
 
   def test_checkpoint_manager_saves_state(self):
     FLAGS.total_rounds = 1
@@ -199,8 +228,8 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def evaluate_fn(state):
-      del state
+    def evaluate_fn(model):
+      del model
       return {}
 
     temp_filepath = self.get_temp_dir()

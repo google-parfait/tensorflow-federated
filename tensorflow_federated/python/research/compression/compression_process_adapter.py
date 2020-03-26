@@ -50,14 +50,14 @@ class CompressionServerState(tff.learning.framework.ServerState):
         model_broadcast_state=model_broadcast_state)
 
   @classmethod
-  def assign_weights_to_keras_model(cls, state, keras_model):
+  def assign_weights_to_keras_model(cls, reference_model, keras_model):
     """Assign the model weights to the weights of a `tf.keras.Model`.
 
     Args:
-      state: the `CompressionServerState` object to assign weights from.
+      reference_model: the `ModelWeights` object to assign weights from.
       keras_model: the `tf.keras.Model` object to assign weights to.
     """
-    if not isinstance(state, CompressionServerState):
+    if not isinstance(reference_model, ModelWeights):
       raise TypeError('Reference model must be an instance of '
                       'compression_process_adapter.ModelWeights.')
 
@@ -65,7 +65,6 @@ class CompressionServerState(tff.learning.framework.ServerState):
       for k, w in zip(keras_weights, tff_weights):
         k.assign(w)
 
-    reference_model = state.model
     assign_weights(keras_model.trainable_weights, reference_model.trainable)
     assign_weights(keras_model.non_trainable_weights,
                    reference_model.non_trainable)
