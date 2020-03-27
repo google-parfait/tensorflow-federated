@@ -61,16 +61,24 @@ class ModelWeights(object):
         for _, value in anonymous_tuple.iter_elements(anon_tuple.non_trainable)
     ])
 
-  def assign_weights_to(self, keras_model):
-    """Assign these TFF model weights to the weights of a `tf.keras.Model`.
+  def assign_weights_to(self, model):
+    """Assign these TFF model weights to the weights of a model.
 
     Args:
-      keras_model: the `tf.keras.Model` object to assign weights to.
+      model: a `tf.keras.Model` or `tff.learning.Model` instance to assign the
+        weights to.
     """
-    tf.nest.map_structure(lambda var, t: var.assign(t),
-                          keras_model.trainable_weights, self.trainable)
-    tf.nest.map_structure(lambda var, t: var.assign(t),
-                          keras_model.non_trainable_weights, self.non_trainable)
+    py_typecheck.check_type(model, (model_lib.Model, tf.keras.Model))
+    if isinstance(model, tf.keras.Model):
+      tf.nest.map_structure(lambda var, t: var.assign(t),
+                            model.trainable_weights, self.trainable)
+      tf.nest.map_structure(lambda var, t: var.assign(t),
+                            model.non_trainable_weights, self.non_trainable)
+    else:
+      tf.nest.map_structure(lambda var, t: var.assign(t),
+                            model.trainable_variables, self.trainable)
+      tf.nest.map_structure(lambda var, t: var.assign(t),
+                            model.non_trainable_variables, self.non_trainable)
 
 
 def enhance(model):
