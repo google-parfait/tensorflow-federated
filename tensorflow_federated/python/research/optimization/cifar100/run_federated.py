@@ -79,7 +79,7 @@ def main(argv):
       metrics_builder=metrics_builder)
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
-      cifar_train, FLAGS.clients_per_round),
+      cifar_train, FLAGS.clients_per_round)
 
   assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
 
