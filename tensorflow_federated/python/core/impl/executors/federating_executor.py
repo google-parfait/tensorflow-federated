@@ -130,17 +130,19 @@ class FederatingExecutor(executor_base.Executor):
   """The federated executor orchestrates federated computations.
 
   The intrinsics currently implemented include:
-  - federated_aggregate
-  - federated_apply
-  - federated_broadcast
-  - federated_eval
-  - federated_map
-  - federated_mean
-  - federated_reduce
-  - federated_sum
-  - federated_value
-  - federated_weighted_mean
-  - federated_zip
+
+  * federated_aggregate
+  * federated_apply
+  * federated_broadcast
+  * federated_collect
+  * federated_eval
+  * federated_map
+  * federated_mean
+  * federated_reduce
+  * federated_sum
+  * federated_value
+  * federated_weighted_mean
+  * federated_zip
 
   This executor is only responsible for handling federated types and federated
   operators, and a delegation of work to an underlying collection of target
@@ -211,18 +213,38 @@ class FederatingExecutor(executor_base.Executor):
 
   @tracing.trace(stats=False)
   async def create_value(self, value, type_spec=None):
+    """A coroutine that creates embedded value from `value` of type `type_spec`.
+
+    See the `FederatingExecutorValue` for detailed information about the
+    `value`s and `type_spec`s that can be embedded using `create_value`.
+
+    Args:
+      value: An object that represents the value to embed within the executor.
+      type_spec: An optional `tff.Type` of the value represented by this object,
+        or something convertible to it.
+
+    Returns:
+      An instance of `FederatingExecutorValue` that represents the embedded
+      value.
+
+    Raises:
+      TypeError: If the `value` and `type_spec` do not match.
+      ValueError: If the `value` being embedded is not a kind recognized by the
+        `FederatingExecutor`.
+    """
     type_spec = computation_types.to_type(type_spec)
     if isinstance(value, intrinsic_defs.IntrinsicDef):
       if not type_utils.is_concrete_instance_of(type_spec,
                                                 value.type_signature):
         raise TypeError('Incompatible type {} used with intrinsic {}.'.format(
             type_spec, value.uri))
+      return FederatingExecutorValue(value, type_spec)
+    elif isinstance(value, placement_literals.PlacementLiteral):
+      if type_spec is None:
+        type_spec = computation_types.PlacementType()
       else:
-        return FederatingExecutorValue(value, type_spec)
-    if isinstance(value, placement_literals.PlacementLiteral):
-      if type_spec is not None:
         py_typecheck.check_type(type_spec, computation_types.PlacementType)
-      return FederatingExecutorValue(value, computation_types.PlacementType())
+      return FederatingExecutorValue(value, type_spec)
     elif isinstance(value, computation_impl.ComputationImpl):
       return await self.create_value(
           computation_impl.ComputationImpl.get_proto(value),
@@ -231,7 +253,7 @@ class FederatingExecutor(executor_base.Executor):
       if type_spec is None:
         type_spec = type_serialization.deserialize_type(value.type)
       which_computation = value.WhichOneof('computation')
-      if which_computation in ['tensorflow', 'lambda']:
+      if which_computation in ['lambda', 'tensorflow']:
         return FederatingExecutorValue(value, type_spec)
       elif which_computation == 'reference':
         raise ValueError(
@@ -317,7 +339,7 @@ class FederatingExecutor(executor_base.Executor):
       else:
         child = self._target_executors.get(None)
         if not child or len(child) > 1:
-          raise RuntimeError('Executor is not configured for unplaced values.')
+          raise ValueError('Executor is not configured for unplaced values.')
         else:
           return FederatingExecutorValue(
               await child[0].create_value(value, type_spec), type_spec)

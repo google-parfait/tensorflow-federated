@@ -14,18 +14,27 @@
 # limitations under the License.
 """Utils for testing executors."""
 
+import asyncio
 
+from absl.testing import absltest
 from absl.testing import parameterized
+import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import reference_executor
+from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def install_executor(executor_factory_instance):
@@ -110,6 +119,30 @@ def executors(*args):
     return decorator(args[0])
   else:
     return lambda x: decorator(x, *args)
+
+
+class AsyncTestCase(absltest.TestCase):
+  """A test case that manages a new event loop for each test.
+
+  Each test will have a new event loop instead of using the current event loop.
+  This ensures that tests are isolated from each other and avoid unexpected side
+  effects.
+
+  Attributes:
+    loop: An `asyncio` event loop.
+  """
+
+  def setUp(self):
+    super().setUp()
+    self.loop = asyncio.new_event_loop()
+
+    # If `setUp()` fails, then `tearDown()` is not called; however cleanup
+    # functions will be called. Register the newly created loop `close()`
+    # function here to ensure it is closed after each test.
+    self.addCleanup(self.loop.close)
+
+  def run_sync(self, coro):
+    return self.loop.run_until_complete(coro)
 
 
 class TracingExecutor(executor_base.Executor):
@@ -223,3 +256,53 @@ class TracingExecutorValue(executor_value_base.ExecutorValue):
     result = await self._value.compute()
     self._owner.trace.append(('compute', self._index, result))
     return result
+
+
+def create_dummy_identity_lambda_computation(type_spec=tf.int32):
+  """Returns a `pb.Computation` representing an identity lambda.
+
+  The type signature of this `pb.Computation` is:
+
+  (int32 -> int32)
+
+  Args:
+    type_spec: A type signature.
+
+  Returns:
+    A `pb.Computation`.
+  """
+  type_signature = type_serialization.serialize_type(
+      type_factory.unary_op(type_spec))
+  result = pb.Computation(
+      type=type_serialization.serialize_type(type_spec),
+      reference=pb.Reference(name='a'))
+  fn = pb.Lambda(parameter_name='a', result=result)
+  # We are unpacking the lambda argument here because `lambda` is a reserved
+  # keyword in Python, but it is also the name of the parameter for a
+  # `pb.Computation`.
+  # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
+  return pb.Computation(type=type_signature, **{'lambda': fn})  # pytype: disable=wrong-keyword-args
+
+
+def create_dummy_empty_tensorflow_computation():
+  """Returns a `pb.Computation` representing an tensorflow graph.
+
+  The type signature of this `pb.Computation` is:
+
+  ( -> <>)
+
+  Returns:
+    A `pb.Computation`.
+  """
+
+  with tf.Graph().as_default() as graph:
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        [], graph)
+
+  function_type = computation_types.FunctionType(None, result_type)
+  type_signature = type_serialization.serialize_type(function_type)
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+      parameter=None,
+      result=result_binding)
+  return pb.Computation(type=type_signature, tensorflow=tensorflow)
