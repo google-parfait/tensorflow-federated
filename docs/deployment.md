@@ -18,7 +18,7 @@ There are two principal modes of deployment for TFF computations:
     A native backend does not necessarily have to support all language
     constructs or intrinsics. Native backends must implement one of the standard
     TFF *executor* interfaces, such as
-    [`tff.framework.Executor`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/executor_base.py)
+    [`tff.framework.Executor`](https://www.tensorflow.org/federated/api_docs/python/tff/framework/Executor)
     for consumption by Python code, or the language-independent version of it
     defined in
     [`executor.proto`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/proto/v0/executor.proto)
@@ -44,14 +44,15 @@ There are two principal modes of deployment for TFF computations:
     *compiled*). Depending on the setup, this can be done transparently to the
     user (i.e., a non-native backend could be wrapped in a standard executor
     interface such as
-    [`tff.framework.Executor`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/executor_base.py)
+    [`tff.framework.Executor`](https://www.tensorflow.org/federated/api_docs/python/tff/framework/Executor)
     that performs transformations under the hood), or it can be exposed as a
     tool that allows the user to manually convert a computation, or a set of
     computations, into the appropriate target representation understood by the
     particular class of backends. Code that supports specific types of
-    non-native backends can be found in the `tff.backends` namespace. At the
-    time of this writing, the only support type of non-native backends is a
-    class of systems capable of executing single-round MapReduce.
+    non-native backends can be found in the
+    [`tff.backends`](https://www.tensorflow.org/federated/api_docs/python/tff/backends)
+    namespace. At the time of this writing, the only support type of non-native
+    backends is a class of systems capable of executing single-round MapReduce.
 
 ## Native Backends
 

@@ -25,13 +25,19 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
-from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 
 tf.compat.v1.enable_v2_behavior()
+
+
+def create_test_executor_factory():
+  executor = eager_tf_executor.EagerTFExecutor()
+  executor = reference_resolving_executor.ReferenceResolvingExecutor(executor)
+  return executor_factory.ExecutorFactoryImpl(lambda _: executor)
 
 
 class ReferenceResolvingExecutorTest(absltest.TestCase):
@@ -320,13 +326,18 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
         'lambda passed to intrinsic contains references to captured variables'):
       loop.run_until_complete(ex.create_call(v1, v2))
 
-  def test_runs_tf(self):
-    executor_test_utils.test_runs_tf(
-        self,
-        reference_resolving_executor.ReferenceResolvingExecutor(
-            eager_tf_executor.EagerTFExecutor()))
+  def test_execution_of_tensorflow(self):
+
+    @computations.tf_computation
+    def comp():
+      return tf.math.add(5, 5)
+
+    executor = create_test_executor_factory()
+    with executor_test_utils.install_executor(executor):
+      result = comp()
+
+    self.assertEqual(result, 10)
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_executor()
   absltest.main()

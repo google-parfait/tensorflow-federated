@@ -25,11 +25,16 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
 tf.compat.v1.enable_v2_behavior()
+
+
+def create_test_executor_factory():
+  executor = eager_tf_executor.EagerTFExecutor()
+  return executor_factory.ExecutorFactoryImpl(lambda _: executor)
 
 
 def _get_physical_devices_for_testing():
@@ -433,8 +438,17 @@ class EagerTFExecutorTest(parameterized.TestCase):
       val = loop.run_until_complete(arg.compute())
       self.assertEqual(val.numpy(), 10 * (n + 2))
 
-  def test_runs_tf(self):
-    executor_test_utils.test_runs_tf(self, eager_tf_executor.EagerTFExecutor())
+  def test_execution_of_tensorflow(self):
+
+    @computations.tf_computation
+    def comp():
+      return tf.math.add(5, 5)
+
+    executor = create_test_executor_factory()
+    with executor_test_utils.install_executor(executor):
+      result = comp()
+
+    self.assertEqual(result, 10)
 
   @parameterized.named_parameters(
       *[(str(dev), dev) for dev in _get_physical_devices_for_testing()])
@@ -506,5 +520,4 @@ class EagerTFExecutorTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_executor()
   absltest.main()

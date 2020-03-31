@@ -23,7 +23,7 @@ ARG VERSION
 
 RUN test -n "${VERSION}"
 
-COPY "tensorflow_federated/runtime/remote/remote_executor_service.py" /
+COPY "tensorflow_federated/tools/runtime/remote_executor_service.py" /
 
 RUN pip3 install --no-cache-dir --upgrade pip
 

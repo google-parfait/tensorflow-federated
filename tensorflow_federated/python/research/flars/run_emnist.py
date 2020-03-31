@@ -343,14 +343,13 @@ def _run_experiment():
 
   example_dataset = emnist_train.create_tf_dataset_for_client(
       emnist_train.client_ids[0])
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(example_dataset)))
+  input_spec = example_dataset.element_spec
 
   def tff_model_fn():
     keras_model = model_builder()
     return tff.learning.from_keras_model(
         keras_model,
-        dummy_batch=sample_batch,
+        input_spec=input_spec,
         loss=loss_builder(),
         metrics=metrics_builder())
 

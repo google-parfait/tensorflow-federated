@@ -57,6 +57,7 @@ py_binary(
     deps = [
         ":dataset",
         ":models",
+        "//tensorflow_federated/python/research/optimization/shared:fed_avg_schedule",
         "//tensorflow_federated/python/research/optimization/shared:iterative_process_builder",
         "//tensorflow_federated/python/research/utils:training_loop",
         "//tensorflow_federated/python/research/utils:training_utils",

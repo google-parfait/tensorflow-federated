@@ -22,6 +22,7 @@ from absl import logging
 
 import tensorflow as tf
 
+from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
 from tensorflow_federated.python.research.optimization.stackoverflow_lr import dataset
 from tensorflow_federated.python.research.optimization.stackoverflow_lr import models
@@ -73,12 +74,8 @@ def main(argv):
       max_training_elements_per_user=FLAGS.max_elements_per_user,
       num_validation_examples=FLAGS.num_validation_examples)
 
-  sample_client_dataset = stackoverflow_train.create_tf_dataset_for_client(
-      stackoverflow_train.client_ids[0])
-  # TODO(b/144382142): Sample batches cannot be eager tensors, since they are
-  # passed (implicitly) to tff.learning.build_federated_averaging_process.
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(sample_client_dataset)))
+  input_spec = stackoverflow_train.create_tf_dataset_for_client(
+      stackoverflow_train.client_ids[0]).element_spec
 
   model_builder = functools.partial(
       models.create_logistic_model,
@@ -91,7 +88,7 @@ def main(argv):
       reduction=tf.keras.losses.Reduction.SUM)
 
   training_process = iterative_process_builder.from_flags(
-      dummy_batch=sample_batch,
+      input_spec=input_spec,
       model_builder=model_builder,
       loss_builder=loss_builder,
       metrics_builder=metrics_builder)
@@ -99,11 +96,14 @@ def main(argv):
   client_datasets_fn = training_utils.build_client_datasets_fn(
       stackoverflow_train, FLAGS.clients_per_round)
 
+  assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
+
   evaluate_fn = training_utils.build_evaluate_fn(
       model_builder=model_builder,
       eval_dataset=stackoverflow_validation,
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder)
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_fn)
 
   test_fn = training_utils.build_evaluate_fn(
       model_builder=model_builder,
@@ -111,7 +111,8 @@ def main(argv):
       # evaluate on the entire test set.
       eval_dataset=stackoverflow_validation.concatenate(stackoverflow_test),
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder)
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_fn)
 
   logging.info('Training model:')
   logging.info(model_builder().summary())

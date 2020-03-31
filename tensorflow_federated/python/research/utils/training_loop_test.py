@@ -22,7 +22,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
+from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.research.utils import checkpoint_manager
 from tensorflow_federated.python.research.utils import training_loop
 
@@ -31,27 +31,61 @@ _Batch = collections.namedtuple('Batch', ['x', 'y'])
 FLAGS = flags.FLAGS
 
 
-def _uncompiled_model_fn():
-  keras_model = tff.simulation.models.mnist.create_keras_model(
-      compile_model=False)
-  batch = _batch_fn()
-  return tff.learning.from_keras_model(
-      keras_model=keras_model,
-      dummy_batch=batch,
-      loss=tf.keras.losses.SparseCategoricalCrossentropy())
+def _from_tff_result(state):
+  return tff.learning.framework.ServerState(
+      model=tff.learning.ModelWeights(
+          list(state.model.trainable), list(state.model.non_trainable)),
+      optimizer_state=list(state.optimizer_state),
+      delta_aggregate_state=[],
+      model_broadcast_state=[])
+
+
+class BasicAdapter(adapters.IterativeProcessPythonAdapter):
+  """Converts iterative process results from anonymous tuples."""
+
+  def __init__(self, iterative_process):
+    self._iterative_process = iterative_process
+
+  def initialize(self):
+    initial_state = self._iterative_process.initialize()
+    return _from_tff_result(initial_state)
+
+  def next(self, state, data):
+    state, metrics = self._iterative_process.next(state, data)
+    state = _from_tff_result(state)
+    metrics = metrics._asdict(recursive=True)
+    outputs = None
+    return adapters.IterationResult(state, metrics, outputs)
 
 
 def _build_federated_averaging_process():
-  return fed_avg_schedule.build_fed_avg_process(
+  iterative_process = tff.learning.build_federated_averaging_process(
       _uncompiled_model_fn,
       client_optimizer_fn=tf.keras.optimizers.SGD,
       server_optimizer_fn=tf.keras.optimizers.SGD)
+  return BasicAdapter(iterative_process)
+
+
+def _uncompiled_model_fn():
+  keras_model = tff.simulation.models.mnist.create_keras_model(
+      compile_model=False)
+  input_spec = _create_input_spec()
+  return tff.learning.from_keras_model(
+      keras_model=keras_model,
+      input_spec=input_spec,
+      loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
 
 def _batch_fn():
   batch = _Batch(
       x=np.ones([1, 784], dtype=np.float32), y=np.ones([1, 1], dtype=np.int64))
   return batch
+
+
+def _create_input_spec():
+  return _Batch(
+      x=tf.TensorSpec(shape=[None, 784], dtype=tf.float32),
+      y=tf.TensorSpec(dtype=tf.int64, shape=[None, 1]))
 
 
 class ExperimentRunnerTest(tf.test.TestCase):
@@ -66,8 +100,8 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def evaluate_fn(state):
-      del state
+    def evaluate_fn(model):
+      del model
       return {}
 
     temp_filepath = self.get_temp_dir()
@@ -84,8 +118,8 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
     client_dataset = federated_data
 
-    def evaluate_fn(state):
-      del state
+    def evaluate_fn(model):
+      del model
       return {}
 
     temp_filepath = self.get_temp_dir()
@@ -121,11 +155,40 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def eval_fn(state):
-      del state
+    def eval_fn(model):
+      del model
       return {}
 
     with self.assertRaises(TypeError):
+      training_loop.run(iterative_process, client_datasets_fn, eval_fn)
+
+  def test_raises_no_model_attribute_in_state(self):
+
+    class BadIterativeProcess(adapters.IterativeProcessPythonAdapter):
+      """Converts iterative process results from anonymous tuples."""
+
+      def __init__(self):
+        pass
+
+      def initialize(self):
+        return {}
+
+      def next(self, state, data):
+        return {}
+
+    iterative_process = BadIterativeProcess()
+    federated_data = [[_batch_fn()]]
+
+    def client_datasets_fn(round_num):
+      del round_num
+      return federated_data
+
+    def eval_fn(model):
+      del model
+      return {}
+
+    with self.assertRaisesRegex(TypeError,
+                                'The server state must have a model attribute'):
       training_loop.run(iterative_process, client_datasets_fn, eval_fn)
 
   def test_fedavg_training_decreases_loss(self):
@@ -139,11 +202,10 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def evaluate(state):
+    def evaluate(model):
       keras_model = tff.simulation.models.mnist.create_keras_model(
           compile_model=True)
-      state = fed_avg_schedule.ServerState.from_tff_result(state)
-      state.assign_weights_to_keras_model(keras_model)
+      model.assign_weights_to(keras_model)
       return {'loss': keras_model.evaluate(batch.x, batch.y)}
 
     initial_state = iterative_process.initialize()
@@ -153,8 +215,8 @@ class ExperimentRunnerTest(tf.test.TestCase):
     final_state = training_loop.run(iterative_process, client_datasets_fn,
                                     evaluate)
     self.assertLess(
-        evaluate(final_state)['loss'],
-        evaluate(initial_state)['loss'])
+        evaluate(final_state.model)['loss'],
+        evaluate(initial_state.model)['loss'])
 
   def test_checkpoint_manager_saves_state(self):
     FLAGS.total_rounds = 1
@@ -166,8 +228,8 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def evaluate_fn(state):
-      del state
+    def evaluate_fn(model):
+      del model
       return {}
 
     temp_filepath = self.get_temp_dir()
@@ -188,10 +250,10 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
     keras_model = tff.simulation.models.mnist.create_keras_model(
         compile_model=True)
-    restored_state.assign_weights_to_keras_model(keras_model)
+    restored_state.model.assign_weights_to(keras_model)
     restored_loss = keras_model.test_on_batch(federated_data[0][0].x,
                                               federated_data[0][0].y)
-    final_state.assign_weights_to_keras_model(keras_model)
+    final_state.model.assign_weights_to(keras_model)
     final_loss = keras_model.test_on_batch(federated_data[0][0].x,
                                            federated_data[0][0].y)
     self.assertEqual(final_loss, restored_loss)

@@ -14,9 +14,9 @@
 # limitations under the License.
 
 import collections
-import contextlib
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -24,17 +24,11 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import type_factory
-from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
 tf.compat.v1.enable_v2_behavior()
-
-
-@contextlib.contextmanager
-def _execution_context(num_clients=None):
-  executor_factory = executor_stacks.local_executor_factory(num_clients)
-  yield execution_context.ExecutionContext(executor_factory)
 
 
 class RetryableErrorTest(absltest.TestCase):
@@ -48,7 +42,7 @@ class RetryableErrorTest(absltest.TestCase):
     self.assertFalse(execution_context._is_retryable_error(None))
 
 
-class ExecutionContextIntegrationTest(absltest.TestCase):
+class ExecutionContextIntegrationTest(parameterized.TestCase):
 
   def test_simple_no_arg_tf_computation_with_int_result(self):
 
@@ -56,7 +50,8 @@ class ExecutionContextIntegrationTest(absltest.TestCase):
     def comp():
       return tf.constant(10)
 
-    with _execution_context():
+    executor = executor_stacks.local_executor_factory()
+    with executor_test_utils.install_executor(executor):
       result = comp()
 
     self.assertEqual(result, 10)
@@ -67,7 +62,8 @@ class ExecutionContextIntegrationTest(absltest.TestCase):
     def comp(x):
       return tf.add(x, 10)
 
-    with _execution_context():
+    executor = executor_stacks.local_executor_factory()
+    with executor_test_utils.install_executor(executor):
       result = comp(3)
 
     self.assertEqual(result, 13)
@@ -78,7 +74,8 @@ class ExecutionContextIntegrationTest(absltest.TestCase):
     def comp(x, y, z):
       return tf.multiply(tf.add(x, y), z)
 
-    with _execution_context():
+    executor = executor_stacks.local_executor_factory()
+    with executor_test_utils.install_executor(executor):
       result = comp(3, 4, 5)
 
     self.assertEqual(result, 35)
@@ -89,7 +86,8 @@ class ExecutionContextIntegrationTest(absltest.TestCase):
     def comp(ds):
       return ds.reduce(np.int32(0), lambda x, y: x + y)
 
-    with _execution_context():
+    executor = executor_stacks.local_executor_factory()
+    with executor_test_utils.install_executor(executor):
       ds = tf.data.Dataset.range(10).map(lambda x: tf.cast(x, tf.int32))
       result = comp(ds)
 
@@ -104,13 +102,19 @@ class ExecutionContextIntegrationTest(absltest.TestCase):
           ('b', tf.constant(20)),
       ])
 
-    with _execution_context():
+    executor = executor_stacks.local_executor_factory()
+    with executor_test_utils.install_executor(executor):
       result = comp()
 
     self.assertIsInstance(result, collections.OrderedDict)
     self.assertDictEqual(result, {'a': 10, 'b': 20})
 
-  def test_with_temperature_sensor_example(self):
+  @parameterized.named_parameters(
+      ('local_executor_none_clients', executor_stacks.local_executor_factory()),
+      ('local_executor_three_clients',
+       executor_stacks.local_executor_factory(num_clients=3)),
+  )
+  def test_with_temperature_sensor_example(self, executor):
 
     @computations.tf_computation(
         computation_types.SequenceType(tf.float32), tf.float32)
@@ -134,19 +138,7 @@ class ExecutionContextIntegrationTest(absltest.TestCase):
                    intrinsics.federated_broadcast(threshold)])),
           intrinsics.federated_map(count_total, temperatures))
 
-    with _execution_context():
-      to_float = lambda x: tf.cast(x, tf.float32)
-      temperatures = [
-          tf.data.Dataset.range(10).map(to_float),
-          tf.data.Dataset.range(20).map(to_float),
-          tf.data.Dataset.range(30).map(to_float),
-      ]
-      threshold = 15.0
-      result = comp(temperatures, threshold)
-      self.assertAlmostEqual(result, 8.333, places=3)
-
-    num_clients = 3
-    with _execution_context(num_clients):
+    with executor_test_utils.install_executor(executor):
       to_float = lambda x: tf.cast(x, tf.float32)
       temperatures = [
           tf.data.Dataset.range(10).map(to_float),
@@ -166,7 +158,8 @@ class ExecutionContextIntegrationTest(absltest.TestCase):
     five_ints = list(range(5))
     ten_ints = list(range(10))
 
-    with _execution_context():
+    executor = executor_stacks.local_executor_factory()
+    with executor_test_utils.install_executor(executor):
       five = comp(five_ints)
       ten = comp(ten_ints)
 
@@ -175,20 +168,21 @@ class ExecutionContextIntegrationTest(absltest.TestCase):
 
   def test_conflicting_cardinalities_within_call(self):
 
-    @computations.federated_computation(
-        [type_factory.at_clients(tf.int32),
-         type_factory.at_clients(tf.int32)])
+    @computations.federated_computation([
+        type_factory.at_clients(tf.int32),
+        type_factory.at_clients(tf.int32),
+    ])
     def comp(x):
       return x
 
     five_ints = list(range(5))
     ten_ints = list(range(10))
 
-    with _execution_context():
+    executor = executor_stacks.local_executor_factory()
+    with executor_test_utils.install_executor(executor):
       with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
         comp([five_ints, ten_ints])
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_executor()
   absltest.main()

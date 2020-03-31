@@ -19,6 +19,7 @@ import contextlib
 from unittest import mock
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import grpc
 from grpc.framework.foundation import logging_pool
 import portpicker
@@ -31,7 +32,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import placement_literals
-from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -389,7 +389,7 @@ class RemoteExecutorTest(absltest.TestCase):
       loop.run_until_complete(executor.create_selection(source, index=0))
 
 
-class RemoteExecutorIntegrationTest(absltest.TestCase):
+class RemoteExecutorIntegrationTest(parameterized.TestCase):
 
   def test_no_arg_tf_computation(self):
     with test_context() as context:
@@ -451,13 +451,20 @@ class RemoteExecutorIntegrationTest(absltest.TestCase):
                  if x[0] == 'create_selection']
     self.assertLen(seletions, 2)
 
-  def test_runs_tf(self):
-    with test_context() as context:
-      executor_test_utils.test_runs_tf(self, context.executor)
+  @parameterized.named_parameters(
+      ('request_reply', 'REQUEST_REPLY'),
+      ('streaming', 'STREAMING'),
+  )
+  def test_execution_of_tensorflow(self, rpc_mode):
 
-  def test_runs_tf_streaming_rpc(self):
-    with test_context(rpc_mode='STREAMING') as context:
-      executor_test_utils.test_runs_tf(self, context.executor)
+    @computations.tf_computation
+    def comp():
+      return tf.math.add(5, 5)
+
+    with test_context(rpc_mode=rpc_mode) as context:
+      result = _invoke(context.executor, comp)
+
+    self.assertEqual(result, 10)
 
   def test_with_federated_computations(self):
     with test_context() as context:
@@ -496,5 +503,4 @@ class RemoteExecutorIntegrationTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_executor()
   absltest.main()

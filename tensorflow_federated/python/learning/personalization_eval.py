@@ -30,10 +30,10 @@ def build_personalization_eval(model_fn,
                                context_tff_type=None):
   """Builds the TFF computation for evaluating personalization strategies.
 
-  The returned TFF computation broadcasts model weights from SERVER to CLIENTS.
-  Each client evaluates the personalization strategies given in
+  The returned TFF computation broadcasts model weights from `tff.SERVER` to
+  `tff.CLIENTS`. Each client evaluates the personalization strategies given in
   `personalize_fn_dict`. Evaluation metrics from at most `max_num_samples`
-  participating clients are collected to the SERVER.
+  participating clients are collected to the server.
 
   NOTE: The functions in `personalize_fn_dict` and `baseline_evaluate_fn` are
   expected to take as input *unbatched* datasets, and are responsible for
@@ -71,26 +71,27 @@ def build_personalization_eval(model_fn,
       `personalization_fn_dict`, its `tff.Type` must be provided here.
 
   Returns:
-    A federated `tff.Computation` that maps
-    <model_weights@SERVER, input@CLIENTS> -> personalization_metrics@SERVER,
-    where:
-    - model_weights is a `tff.learning.framework.ModelWeights`.
-    - each client's input is an `OrderedDict` of at least two keys `train_data`
-      and `test_data`; each key is mapped to an unbatched `tf.data.Dataset`. If
-      extra context is used in `personalize_fn_dict`, then client input has a
-      third key `context` that is mapped to a object whose `tff.Type` is
-      provided by the `context_tff_type` argument.
-    - personazliation_metrics is an `OrderedDict` that maps a key
-      'baseline_metrics' to the evaluation metrics of the initial model
-      (computed by `baseline_evaluate_fn`), and maps keys (strategy names) in
-      `personalize_fn_dict` to the evaluation metrics of the corresponding
-      personalization strategies.
-    - Note: only metrics from at most `max_num_samples` participating clients
-      are collected to the SERVER. All collected metrics are stored in a
-      single `OrderedDict` (the personalization_metrics shown above), where each
-      metric is mapped to a list of scalars (each scalar comes from one client).
-      Metric values at the same position, e.g., metric_1[i], metric_2[i]..., all
-      come from the same client.
+    A federated `tff.Computation` with the functional type signature
+    `(<model_weights@SERVER, input@CLIENTS> -> personalization_metrics@SERVER)`:
+
+    *   `model_weights` is a `tff.learning.ModelWeights`.
+    *   Each client's input is an `OrderedDict` of two required keys
+        `train_data` and `test_data`; each key is mapped to an unbatched
+        `tf.data.Dataset`. If extra context (e.g., extra datasets) is used in
+        `personalize_fn_dict`, then client input has a third key `context` that
+        is mapped to a object whose `tff.Type` is provided by the
+        `context_tff_type` argument.
+    *   `personazliation_metrics` is an `OrderedDict` that maps a key
+        'baseline_metrics' to the evaluation metrics of the initial model
+        (computed by `baseline_evaluate_fn`), and maps keys (strategy names) in
+        `personalize_fn_dict` to the evaluation metrics of the corresponding
+        personalization strategies.
+    *   Note: only metrics from at most `max_num_samples` participating clients
+        (sampled without replacement) are collected to the SERVER. All collected
+        metrics are stored in a single `OrderedDict` (`personalization_metrics`
+        shown above), where each metric is mapped to a list of scalars (each
+        scalar comes from one client). Metric values at the same position, e.g.,
+        metric_1[i], metric_2[i]..., all come from the same client.
 
   Raises:
     TypeError: If arguments are of the wrong types.
@@ -122,12 +123,29 @@ def build_personalization_eval(model_fn,
   @tff.tf_computation(model_weights_type, client_input_type)
   def _client_computation(initial_model_weights, client_input):
     """TFF computation that runs on each client."""
-    model = model_fn()
     train_data = client_input['train_data']
     test_data = client_input['test_data']
     context = client_input.get('context', None)
-    return _client_fn(model, initial_model_weights, train_data, test_data,
-                      personalize_fn_dict, baseline_evaluate_fn, context)
+
+    final_metrics = collections.OrderedDict()
+    # Compute the evaluation metrics of the initial model.
+    final_metrics['baseline_metrics'] = _compute_baseline_metrics(
+        model_fn, initial_model_weights, test_data, baseline_evaluate_fn)
+
+    py_typecheck.check_type(personalize_fn_dict, collections.OrderedDict)
+    if 'baseline_metrics' in personalize_fn_dict:
+      raise ValueError('baseline_metrics should not be used as a key in '
+                       'personalize_fn_dict.')
+
+    # Compute the evaluation metrics of the personalized models. The returned
+    # `p13n_metrics` is an `OrderedDict` that maps keys (strategy names) in
+    # `personalize_fn_dict` to the evaluation metrics of the corresponding
+    # personalization strategies.
+    p13n_metrics = _compute_p13n_metrics(model_fn, initial_model_weights,
+                                         train_data, test_data,
+                                         personalize_fn_dict, context)
+    final_metrics.update(p13n_metrics)
+    return final_metrics
 
   py_typecheck.check_type(max_num_samples, int)
   if max_num_samples <= 0:
@@ -178,72 +196,44 @@ def _remove_batch_dim(spec):
   return tf.nest.map_structure(_remove_first_dim_for_tensorspec, spec)
 
 
-@tf.function
-def _client_fn(model,
-               initial_model_weights,
-               train_data,
-               test_data,
-               personalize_fn_dict,
-               baseline_evaluate_fn,
-               context=None):
-  """The main `tf.function` that runs on device.
+def _compute_baseline_metrics(model_fn, initial_model_weights, test_data,
+                              baseline_evaluate_fn):
+  """Evaluate the model with weights being the `initial_model_weights`."""
+  model = model_utils.enhance(model_fn())
 
-  This function first evalautes the initial model and gets the baseline metrics.
-  Then starting from the same initial model, this function iterates over the
-  personalization strategies defined in `personalize_fn_dict`, trains and
-  evaluates the personalized models, and returns the evaluation metrics.
+  @tf.function
+  def assign_and_compute():
+    tff.utils.assign(model.weights, initial_model_weights)
+    py_typecheck.check_callable(baseline_evaluate_fn)
+    return baseline_evaluate_fn(model, test_data)
 
-  Args:
-    model: A `tff.learning.Model`.
-    initial_model_weights: A `tff.learning.framework.ModelWeights` containing
-      `tf.Tensor`s that hold trainable and non-trainable weights.
-    train_data: A `tf.data.Dataset` used for training.
-    test_data: A `tf.data.Dataset` used for evaluation.
-    personalize_fn_dict: This is the same argument specified in the function
-      `build_personalization_eval` above; see its documentation for details.
-    baseline_evaluate_fn: This is the same argument specified in the function
-      `build_personalization_eval` above; see its documentation for details.
-    context: An optional object used in `personalize_fn_dict`. If used, its
-      `tff.Type` must be provided by passing the correct `context_tff_type`
-      argument to the `build_personalization_eval` function.
+  return assign_and_compute()
 
-  Returns:
-    An `OrderedDict` that maps a string 'baseline_metrics' to the evaluation
-    metrics of the initial model (computed by `baseline_evaluate_fn`), and maps
-    keys (strategy names) in `personalize_fn_dict` to the evaluation metrics of
-    the corresponding personalization strategies.
 
-  Raises:
-    TypeError: If arguments are of the wrong types.
-    ValueError: If `baseline_metrics` is used as a key in `personalize_fn_dict`.
-  """
-  # Wrap the input model as an `EnhancedModel` for easy access of its weights.
-  model = model_utils.enhance(model)
-
-  final_metrics = collections.OrderedDict()
-  tff.utils.assign(model.weights, initial_model_weights)
-  py_typecheck.check_callable(baseline_evaluate_fn)
-  final_metrics['baseline_metrics'] = baseline_evaluate_fn(model, test_data)
-
-  py_typecheck.check_type(personalize_fn_dict, collections.OrderedDict)
-  if 'baseline_metrics' in personalize_fn_dict:
-    raise ValueError('baseline_metrics should not be used as a key in '
-                     'personalize_fn_dict.')
-
+def _compute_p13n_metrics(model_fn, initial_model_weights, train_data,
+                          test_data, personalize_fn_dict, context):
+  """Train and evaluate the personalized models."""
+  model = model_utils.enhance(model_fn())
+  # Construct the `personalize_fn` (and the associated `tf.Variable`s) here.
+  # This ensures that the new variables are created in the graphs that TFF
+  # controls. This is the key reason why we need `personalize_fn_dict` to
+  # contain no-argument functions that build the desired `tf.function`s, rather
+  # than already built `tf.function`s. Note that this has to be done outside the
+  # `tf.function` `loop_and_compute` below, because `tf.function` usually does
+  # not allow creation of new variables.
+  personalize_fns = collections.OrderedDict()
   for name, personalize_fn_builder in personalize_fn_dict.items():
     py_typecheck.check_type(name, str)
-    tff.utils.assign(model.weights, initial_model_weights)
-
-    # Construct the `personalize_fn` (and the associated `tf.Variable`s) here.
-    # Once `_client_fn` is decorated with `tff.tf_computation`, construction of
-    # the new variables will happen in a scope controlled by TFF. Ensuring
-    # `tf.Variable`s are created in the graphs that TFF controls is the reason
-    # we need `personalize_fn_dict` to contain no-argument functions that build
-    # the desired `tf.function`s, rather than already built `tf.function`s.
     py_typecheck.check_callable(personalize_fn_builder)
-    personalize_fn = personalize_fn_builder()
+    personalize_fns[name] = personalize_fn_builder()
 
-    py_typecheck.check_callable(personalize_fn)
-    final_metrics[name] = personalize_fn(model, train_data, test_data, context)
+  @tf.function
+  def loop_and_compute():
+    p13n_metrics = collections.OrderedDict()
+    for name, personalize_fn in personalize_fns.items():
+      tff.utils.assign(model.weights, initial_model_weights)
+      py_typecheck.check_callable(personalize_fn)
+      p13n_metrics[name] = personalize_fn(model, train_data, test_data, context)
+    return p13n_metrics
 
-  return final_metrics
+  return loop_and_compute()

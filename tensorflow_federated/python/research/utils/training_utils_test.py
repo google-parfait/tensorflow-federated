@@ -20,7 +20,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.utils import training_utils
 
 
@@ -36,9 +35,8 @@ def model_builder():
   return model
 
 
-@tf.function
-def get_sample_batch():
-  return next(iter(create_tf_dataset_for_client(0)))
+def get_input_spec():
+  return create_tf_dataset_for_client(0).element_spec
 
 
 def create_tf_dataset_for_client(client_id, batch_data=True):
@@ -72,21 +70,27 @@ class TrainingUtilsTest(tf.test.TestCase):
     def tff_model_fn():
       return tff.learning.from_keras_model(
           keras_model=model_builder(),
-          dummy_batch=get_sample_batch(),
+          input_spec=get_input_spec(),
           loss=loss_builder(),
           metrics=metrics_builder())
 
-    iterative_process = fed_avg_schedule.build_fed_avg_process(
+    iterative_process = tff.learning.build_federated_averaging_process(
         tff_model_fn, client_optimizer_fn=tf.keras.optimizers.SGD)
-
     state = iterative_process.initialize()
-
     test_dataset = create_tf_dataset_for_client(1)
 
-    evaluate_fn = training_utils.build_evaluate_fn(test_dataset, model_builder,
-                                                   loss_builder,
-                                                   metrics_builder)
-    test_metrics = evaluate_fn(state)
+    reference_model = tff.learning.ModelWeights(
+        trainable=list(state.model.trainable),
+        non_trainable=list(state.model.non_trainable))
+
+    def assign_weights_to_keras_model(model, keras_model):
+      model.assign_weights_to(keras_model)
+
+    evaluate_fn = training_utils.build_evaluate_fn(
+        test_dataset, model_builder, loss_builder, metrics_builder,
+        assign_weights_to_keras_model)
+
+    test_metrics = evaluate_fn(reference_model)
     self.assertIn('loss', test_metrics)
 
   def test_tuple_conversion_from_tuple_datset(self):

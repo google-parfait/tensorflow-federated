@@ -14,41 +14,23 @@
 # limitations under the License.
 """Utils for testing executors."""
 
-import contextlib
 
 from absl.testing import parameterized
-import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 
 
-@contextlib.contextmanager
-def _execution_context(executor_factory_impl):
-  yield execution_context.ExecutionContext(executor_factory_impl)
-
-
-def test_runs_tf(test_obj, executor):
-  """Tests `executor` can run a minimal TF computation."""
-  py_typecheck.check_type(executor, executor_base.Executor)
-
-  @computations.tf_computation
-  def comp():
-    return tf.math.add(5, 5)
-
-  executor_factory_impl = executor_factory.ExecutorFactoryImpl(
-      lambda _: executor)
-  with _execution_context(executor_factory_impl):
-    test_obj.assertEqual(comp(), 10)
+def install_executor(executor_factory_instance):
+  context = execution_context.ExecutionContext(executor_factory_instance)
+  return context_stack_impl.context_stack.install(context)
 
 
 def executors(*args):

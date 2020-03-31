@@ -1,4 +1,7 @@
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = [
+    # Subpackages
+    "//tensorflow_federated/python/core/backends/mapreduce:__subpackages__",
+])
 
 licenses(["notice"])
 

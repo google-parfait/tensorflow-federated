@@ -53,12 +53,8 @@ def main(argv):
 
   emnist_train, _ = dataset.get_emnist_datasets(only_digits=False)
   emnist_train = emnist_train.preprocess(lambda x: x.batch(20))
-  sample_client_dataset = emnist_train.create_tf_dataset_for_client(
-      emnist_train.client_ids[0])
-  # TODO(b/144382142): Sample batches cannot be eager tensors, since they are
-  # passed (implicitly) to tff.learning.build_federated_averaging_process.
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(sample_client_dataset)))
+  input_spec = emnist_train.create_tf_dataset_for_client(
+      emnist_train.client_ids[0]).element_spec
   if FLAGS.model == 'cnn':
     model_builder = functools.partial(
         models.create_conv_dropout_model, only_digits=False)
@@ -70,7 +66,7 @@ def main(argv):
 
   tff_model = tff.learning.from_keras_model(
       keras_model=model_builder(),
-      dummy_batch=sample_batch,
+      input_spec=input_spec,
       loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
   yogi_init_accum_estimate = optimizer_utils.compute_yogi_init(

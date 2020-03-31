@@ -12,7 +12,7 @@ sh_binary(
     srcs = ["build_image.sh"],
     data = [
         ":dockerfile_file",
-        "//tensorflow_federated/runtime/remote:remote_executor_service",
         "//tensorflow_federated/tools/development:build_pip_package",
+        "//tensorflow_federated/tools/runtime:remote_executor_service",
     ],
 )

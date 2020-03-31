@@ -43,6 +43,13 @@ def _batch_fn():
   return batch
 
 
+def _get_input_spec():
+  input_spec = _Batch(
+      x=tf.TensorSpec(shape=[None, 784], dtype=tf.float32),
+      y=tf.TensorSpec([None, 1], dtype=tf.int64))
+  return input_spec
+
+
 def model_builder():
   return tff.simulation.models.mnist.create_keras_model(compile_model=False)
 
@@ -71,9 +78,9 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.client_lr_schedule = 'constant'
     FLAGS.server_lr_schedule = 'constant'
     federated_data = [[_batch_fn()]]
-    dummy_batch = _batch_fn()
+    input_spec = _get_input_spec()
     iterative_process = iterative_process_builder.from_flags(
-        dummy_batch, model_builder, loss_builder, metrics_builder)
+        input_spec, model_builder, loss_builder, metrics_builder)
     _, train_outputs = self._run_rounds(iterative_process, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
@@ -81,13 +88,13 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.client_lr_schedule = 'constant'
     FLAGS.server_lr_schedule = 'constant'
     federated_data = [[_batch_fn()]]
-    dummy_batch = _batch_fn()
+    input_spec = _get_input_spec()
 
     def client_weight_fn(local_outputs):
       return 1.0 / (1.0 + local_outputs['loss'][-1])
 
     iterative_process = iterative_process_builder.from_flags(
-        dummy_batch,
+        input_spec,
         model_builder,
         loss_builder,
         metrics_builder,
@@ -105,9 +112,9 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.server_lr_schedule = 'constant'
     FLAGS.client_lr_schedule = sched_type
     federated_data = [[_batch_fn()]]
-    dummy_batch = _batch_fn()
+    input_spec = _get_input_spec()
     iterative_process = iterative_process_builder.from_flags(
-        dummy_batch, model_builder, loss_builder, metrics_builder)
+        input_spec, model_builder, loss_builder, metrics_builder)
     _, train_outputs = self._run_rounds(iterative_process, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
@@ -119,9 +126,9 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.server_lr_schedule = 'constant'
 
     federated_data = [[_batch_fn()]]
-    dummy_batch = _batch_fn()
+    input_spec = _get_input_spec()
     iterative_process = iterative_process_builder.from_flags(
-        dummy_batch, model_builder, loss_builder, metrics_builder)
+        input_spec, model_builder, loss_builder, metrics_builder)
     _, train_outputs = self._run_rounds(iterative_process, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
@@ -134,9 +141,9 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.server_lr_staircase = False
     FLAGS.server_lr_schedule = sched_type
     federated_data = [[_batch_fn()]]
-    dummy_batch = _batch_fn()
+    input_spec = _get_input_spec()
     iterative_process = iterative_process_builder.from_flags(
-        dummy_batch, model_builder, loss_builder, metrics_builder)
+        input_spec, model_builder, loss_builder, metrics_builder)
     _, train_outputs = self._run_rounds(iterative_process, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
@@ -148,9 +155,9 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.server_lr_staircase = False
 
     federated_data = [[_batch_fn()]]
-    dummy_batch = _batch_fn()
+    input_spec = _get_input_spec()
     iterative_process = iterative_process_builder.from_flags(
-        dummy_batch, model_builder, loss_builder, metrics_builder)
+        input_spec, model_builder, loss_builder, metrics_builder)
     _, train_outputs = self._run_rounds(iterative_process, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
@@ -162,9 +169,9 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.server_lr_schedule = 'constant'
 
     federated_data = [[_batch_fn()]]
-    dummy_batch = _batch_fn()
+    input_spec = _get_input_spec()
     iterative_process = iterative_process_builder.from_flags(
-        dummy_batch, model_builder, loss_builder, metrics_builder)
+        input_spec, model_builder, loss_builder, metrics_builder)
     _, train_outputs = self._run_rounds(iterative_process, federated_data, 4)
     self.assertLess(train_outputs[1]['loss'], train_outputs[0]['loss'])
     self.assertNear(

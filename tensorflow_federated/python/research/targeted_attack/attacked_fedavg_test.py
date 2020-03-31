@@ -27,19 +27,19 @@ from tensorflow_federated.python.research.targeted_attack.attacked_fedavg import
 _Batch = collections.namedtuple('Batch', ['x', 'y'])
 
 
-def _create_random_batch():
+def _create_input_spec():
   return _Batch(
-      x=tf.random.uniform(tf.TensorShape([1, 784]), dtype=tf.float32),
-      y=tf.constant(1, dtype=tf.int64, shape=[1, 1]))
+      x=tf.TensorSpec(shape=[None, 784], dtype=tf.float32),
+      y=tf.TensorSpec(dtype=tf.int64, shape=[None, 1]))
 
 
 def _model_fn():
   keras_model = tff.simulation.models.mnist.create_keras_model(
       compile_model=False)
-  batch = _create_random_batch()
+  input_spec = _create_input_spec()
   return tff.learning.from_keras_model(
       keras_model,
-      dummy_batch=batch,
+      input_spec=input_spec,
       loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
 

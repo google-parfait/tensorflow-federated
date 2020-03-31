@@ -74,10 +74,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":adapters",
         ":checkpoint_manager",
         ":training_loop",
         "//tensorflow_federated",
-        "//tensorflow_federated/python/research/optimization/shared:fed_avg_schedule",
     ],
 )
 
@@ -96,7 +96,6 @@ py_test(
     deps = [
         ":training_utils",
         "//tensorflow_federated",
-        "//tensorflow_federated/python/research/optimization/shared:fed_avg_schedule",
     ],
 )
 

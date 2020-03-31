@@ -22,6 +22,7 @@ from absl import logging
 
 import tensorflow as tf
 
+from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.optimization.stackoverflow import dataset
@@ -98,8 +99,7 @@ def main(argv):
       FLAGS.sequence_length, FLAGS.max_elements_per_user,
       FLAGS.num_validation_examples)
 
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(validation_set)))
+  input_spec = validation_set.element_spec
 
   def client_weight_fn(local_outputs):
     # Num_tokens is a tensor with type int64[1], to use as a weight need
@@ -107,7 +107,7 @@ def main(argv):
     return tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
 
   training_process = iterative_process_builder.from_flags(
-      dummy_batch=sample_batch,
+      input_spec=input_spec,
       model_builder=model_builder,
       loss_builder=loss_builder,
       metrics_builder=metrics_builder,
@@ -116,11 +116,14 @@ def main(argv):
   client_datasets_fn = training_utils.build_client_datasets_fn(
       train_set, FLAGS.clients_per_round)
 
+  assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
+
   evaluate_fn = training_utils.build_evaluate_fn(
       model_builder=model_builder,
       eval_dataset=validation_set,
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder)
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_fn)
 
   test_fn = training_utils.build_evaluate_fn(
       model_builder=model_builder,
@@ -128,7 +131,8 @@ def main(argv):
       # evaluate on the entire test set.
       eval_dataset=validation_set.concatenate(test_set),
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder)
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_fn)
 
   logging.info('Training model:')
   logging.info(model_builder().summary())

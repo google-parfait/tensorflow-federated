@@ -139,12 +139,12 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     client_datasets_fn: Function accepting an integer argument (the round
       number) and returning a list of client datasets to use as federated data
       for that round, and a list of the corresponding client ids.
-    evaluate_fn: Callable accepting a server state (the `state` of the
-      `IterationResult`) and returning a dict of evaluation metrics. Used to
-      compute validation metrics throughout the training process.
-    test_fn: An optional callable accepting a server state (the `state` of the
-      `IterationResult`) and returning a dict of test metrics. Used to compute
-      test metrics at the end of the training process.
+    evaluate_fn: Callable accepting the `model` attribute of an
+      `IterationResult.state`, and returning a dict of evaluation metrics. Used
+      to compute validation metrics throughout the training process.
+    test_fn: An optional callable accepting the `model` attribute of an
+    `IterationResult.state`) and returning a dict of test metrics. Used to
+    compute test metrics at the end of the training process.
 
   Returns:
     The `state` of the `IterationResult` representing the result of the training
@@ -163,6 +163,9 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
 
   logging.info('Starting iterative_process_training_loop')
   initial_state = iterative_process.initialize()
+
+  if not hasattr(initial_state, 'model'):
+    raise TypeError('The server state must have a model attribute.')
 
   hparam_flags = utils_impl.get_hparam_flags()
   hparam_dict = collections.OrderedDict([
@@ -234,7 +237,7 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
 
     if round_num % FLAGS.rounds_per_eval == 0:
       evaluate_start_time = time.time()
-      eval_metrics = evaluate_fn(state)
+      eval_metrics = evaluate_fn(state.model)
       eval_metrics['evaluate_secs'] = time.time() - evaluate_start_time
 
       metrics['eval'] = eval_metrics
@@ -244,7 +247,7 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
 
   if test_fn:
     test_start_time = time.time()
-    test_metrics = test_fn(state)
+    test_metrics = test_fn(state.model)
     test_metrics['test_evaluate_secs'] = time.time() - test_start_time
 
     metrics = {'test': test_metrics}

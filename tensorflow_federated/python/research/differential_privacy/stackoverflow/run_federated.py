@@ -132,20 +132,25 @@ class DPFedAvgProcessAdapter(adapters.IterativeProcessPythonAdapter):
     return adapters.IterationResult(python_state, metrics, outputs)
 
 
-def assign_weights_to_keras_model(state, keras_model):
+def assign_weights_to_keras_model(reference_model, keras_model):
   """Assign the model weights to the weights of a `tf.keras.Model`.
 
   Args:
-    state: The state to assign from.
+    reference_model: The model to assign weights from. Must be an instance of
+      `tff.learning.ModelWeights`.
     keras_model: the `tf.keras.Model` object to assign weights to.
   """
+  if not isinstance(reference_model, tff.learning.ModelWeights):
+    raise TypeError('The reference model must be an instance of '
+                    'tff.learning.ModelWeights.')
 
   def assign_weights(keras_weights, tff_weights):
     for k, w in zip(keras_weights, tff_weights):
       k.assign(w)
 
-  assign_weights(keras_model.trainable_weights, state.model.trainable)
-  assign_weights(keras_model.non_trainable_weights, state.model.non_trainable)
+  assign_weights(keras_model.trainable_weights, reference_model.trainable)
+  assign_weights(keras_model.non_trainable_weights,
+                 reference_model.non_trainable)
 
 
 def main(argv):

@@ -29,6 +29,8 @@ import attr
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.python.research.analytics.heavy_hitters import heavy_hitters_utils as hh_utils
+
 DEFAULT_VALUE = -1  # The value to use if a key is missing in the hash table.
 DEFAULT_TERMINATOR = '$'  # The end of sequence symbol.
 
@@ -62,49 +64,6 @@ class ServerState(object):
   possible_prefix_extensions = attr.ib()
   round_num = attr.ib()
   accumulated_votes = attr.ib()
-
-
-# TODO(b/150700360): Consolidate reused TF functions in a common utils library.
-@tf.function
-def get_top_elements(list_of_elements, max_user_contribution):
-  """Gets the top max_user_contribution words from the input list.
-
-  Note that the returned set of top words will not necessarily be sorted.
-
-  Args:
-    list_of_elements: A tensor containing a list of elements.
-    max_user_contribution: The maximum number of elements to keep.
-
-  Returns:
-    A tensor of a list of strings.
-    If the total number of unique words is less than or equal to
-    max_user_contribution, returns the set of unique words.
-  """
-  words, _, counts = tf.unique_with_counts(list_of_elements)
-  if tf.size(words) > max_user_contribution:
-    # This logic is influenced by the focus on global heavy hitters and
-    # thus implements clipping by chopping the tail of the distribution
-    # of the words as present on a single client. Another option could
-    # be to provide pick max_words_per_user random words out of the unique
-    # words present locally.
-    top_indices = tf.argsort(
-        counts, axis=-1, direction='DESCENDING')[:max_user_contribution]
-    top_words = tf.gather(words, top_indices)
-    return top_words
-  return words
-
-
-@tf.function()
-def listify(dataset):
-  """Turns a stream of strings into a 1D tensor of strings."""
-  data = tf.constant([], dtype=tf.string)
-  for item in dataset:
-    # Empty datasets return a zero tf.float32 tensor for some reason.
-    # so we need to protect against that.
-    if item.dtype == tf.string:
-      items = tf.expand_dims(item, 0)
-      data = tf.concat([data, items], axis=0)
-  return data
 
 
 def make_accumulate_client_votes_fn(round_num, num_sub_rounds,
@@ -221,7 +180,8 @@ def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
       possible_prefix_extensions_table)
 
   sampled_data = tf.data.Dataset.from_tensor_slices(
-      get_top_elements(listify(dataset), max_user_contribution))
+      hh_utils.get_top_elements(
+          hh_utils.listify(dataset), max_user_contribution))
 
   return ClientOutput(
       sampled_data.reduce(client_votes, accumulate_client_votes_fn))

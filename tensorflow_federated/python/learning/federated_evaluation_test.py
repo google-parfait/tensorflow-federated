@@ -117,9 +117,9 @@ class FederatedEvaluationTest(test.TestCase):
                                         name='my_model')
       return keras_utils.from_keras_model(
           keras_model,
-          dummy_batch=collections.OrderedDict(
-              x=np.zeros((1, 1), np.float32),
-              y=np.zeros((1, 1), np.float32),
+          input_spec=collections.OrderedDict(
+              x=tf.TensorSpec(shape=(None, 1), dtype=tf.float32),
+              y=tf.TensorSpec(shape=(None, 1), dtype=tf.float32),
           ),
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[tf.keras.metrics.Accuracy()])

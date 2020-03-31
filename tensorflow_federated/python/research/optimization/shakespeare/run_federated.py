@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.optimization.shakespeare import dataset
 from tensorflow_federated.python.research.optimization.shakespeare import models
+from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.utils import training_loop
@@ -81,15 +82,8 @@ def main(argv):
   loss_fn_builder = functools.partial(
       tf.keras.losses.SparseCategoricalCrossentropy, from_logits=True)
 
-  # Need to iterate until we find a client with data.
-  for client_id in train_clientdata.client_ids:
-    try:
-      sample_batch = next(
-          iter(train_clientdata.create_tf_dataset_for_client(client_id)))
-      break
-    except StopIteration:
-      pass  # Client had no batches.
-  sample_batch = tf.nest.map_structure(lambda t: t.numpy(), sample_batch)
+  input_spec = train_clientdata.create_tf_dataset_for_client(
+      train_clientdata.client_ids[0]).element_spec
 
   def client_weight_fn(local_outputs):
     # Num_tokens is a tensor with type int64[1], to use as a weight need
@@ -97,25 +91,31 @@ def main(argv):
     return tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
 
   training_process = iterative_process_builder.from_flags(
-      dummy_batch=sample_batch,
+      input_spec=input_spec,
       model_builder=model_builder,
       loss_builder=loss_fn_builder,
       metrics_builder=metrics_builder,
       client_weight_fn=client_weight_fn)
+
+  client_datasets_fn = training_utils.build_client_datasets_fn(
+      train_clientdata, FLAGS.clients_per_round)
+
+  assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
+
+  evaluate_fn = training_utils.build_evaluate_fn(
+      eval_dataset=test_dataset,
+      model_builder=model_builder,
+      loss_builder=loss_fn_builder,
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_fn)
 
   logging.info('Training model:')
   logging.info(model_builder().summary())
 
   training_loop.run(
       iterative_process=training_process,
-      client_datasets_fn=training_utils.build_client_datasets_fn(
-          train_clientdata, FLAGS.clients_per_round),
-      evaluate_fn=training_utils.build_evaluate_fn(
-          eval_dataset=test_dataset,
-          model_builder=model_builder,
-          loss_builder=loss_fn_builder,
-          metrics_builder=metrics_builder),
-  )
+      client_datasets_fn=client_datasets_fn,
+      evaluate_fn=evaluate_fn)
 
 
 if __name__ == '__main__':

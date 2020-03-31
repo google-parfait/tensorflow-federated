@@ -41,7 +41,8 @@ def preprocess_cifar_example(example, crop_shape, distort=False):
 
 def get_federated_cifar100(client_epochs_per_round,
                            train_batch_size,
-                           crop_shape=CIFAR_SHAPE):
+                           crop_shape=CIFAR_SHAPE,
+                           serializable=False):
   """Loads and preprocesses federated CIFAR100 training and testing sets.
 
   Args:
@@ -54,6 +55,9 @@ def get_federated_cifar100(client_epochs_per_round,
       (CROP_HEIGHT, CROP_WIDTH, NUM_CHANNELS) which cannot have elements that
       exceed (32, 32, 3), element-wise. The element in the last index should be
       set to 3 to maintain the RGB image structure of the elements.
+    serializable: Boolean indicating whether the returned datasets are intended
+      to be serialized and shipped across RPC channels. If `True`, stateful
+      transformations will be disallowed.
 
   Returns:
     A tuple of `tff.simulation.ClientData` and `tf.data.Datset` objects.
@@ -65,19 +69,26 @@ def get_federated_cifar100(client_epochs_per_round,
   if len(crop_shape) != 3:
     raise ValueError('The crop_shape must have length 3, corresponding to a '
                      'tensor of shape [height, width, channels].')
+  if not isinstance(serializable, bool):
+    raise TypeError(
+        'serializable must be a Boolean; you passed {} of type {}.'.format(
+            serializable, type(serializable)))
   cifar_train, cifar_test = tff.simulation.datasets.cifar100.load_data()
   train_crop_shape = (train_batch_size,) + crop_shape
   test_crop_shape = (TEST_BATCH_SIZE,) + crop_shape
   train_image_map = functools.partial(
-      preprocess_cifar_example, crop_shape=train_crop_shape, distort=True)
+      preprocess_cifar_example,
+      crop_shape=train_crop_shape,
+      distort=not serializable)
   test_image_map = functools.partial(
       preprocess_cifar_example, crop_shape=test_crop_shape, distort=False)
 
   def preprocess_train_dataset(dataset):
     """Preprocess CIFAR100 training dataset."""
-    return dataset.shuffle(buffer_size=NUM_EXAMPLES_PER_CLIENT).repeat(
-        client_epochs_per_round).batch(
-            train_batch_size, drop_remainder=True).map(train_image_map)
+    if not serializable:
+      dataset = dataset.shuffle(buffer_size=NUM_EXAMPLES_PER_CLIENT)
+    return dataset.repeat(client_epochs_per_round).batch(
+        train_batch_size, drop_remainder=True).map(train_image_map)
 
   def preprocess_test_dataset(dataset):
     """Preprocess CIFAR100 testing dataset."""

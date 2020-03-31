@@ -80,20 +80,11 @@ def main(argv):
       max_training_elements_per_user=FLAGS.max_elements_per_user,
       num_validation_examples=1)
 
-  # Need to iterate until we find a client with data.
-  for client_id in stackoverflow_train.client_ids:
-    try:
-      sample_batch = next(
-          iter(stackoverflow_train.create_tf_dataset_for_client(client_id)))
-      break
-    except StopIteration:
-      pass  # Client had no batches.
-  sample_batch = tf.nest.map_structure(lambda t: t.numpy(), sample_batch)
+  input_spec = stackoverflow_train.create_tf_dataset_for_client(
+      stackoverflow_train.client_ids[0]).element_spec
 
   tff_model = tff.learning.from_keras_model(
-      keras_model=model_builder(),
-      dummy_batch=sample_batch,
-      loss=loss_builder())
+      keras_model=model_builder(), input_spec=input_spec, loss=loss_builder())
 
   yogi_init_accum_estimate = optimizer_utils.compute_yogi_init(
       stackoverflow_train, tff_model, num_clients=FLAGS.num_clients)

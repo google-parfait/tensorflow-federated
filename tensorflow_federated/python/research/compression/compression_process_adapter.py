@@ -49,19 +49,25 @@ class CompressionServerState(tff.learning.framework.ServerState):
         delta_aggregate_state=delta_aggregate_state,
         model_broadcast_state=model_broadcast_state)
 
-  def assign_weights_to_keras_model(self, keras_model):
+  @classmethod
+  def assign_weights_to_keras_model(cls, reference_model, keras_model):
     """Assign the model weights to the weights of a `tf.keras.Model`.
 
     Args:
+      reference_model: the `ModelWeights` object to assign weights from.
       keras_model: the `tf.keras.Model` object to assign weights to.
     """
+    if not isinstance(reference_model, ModelWeights):
+      raise TypeError('Reference model must be an instance of '
+                      'compression_process_adapter.ModelWeights.')
 
     def assign_weights(keras_weights, tff_weights):
       for k, w in zip(keras_weights, tff_weights):
         k.assign(w)
 
-    assign_weights(keras_model.trainable_weights, self.model.trainable)
-    assign_weights(keras_model.non_trainable_weights, self.model.non_trainable)
+    assign_weights(keras_model.trainable_weights, reference_model.trainable)
+    assign_weights(keras_model.non_trainable_weights,
+                   reference_model.non_trainable)
 
 
 class CompressionProcessAdapter(adapters.IterativeProcessPythonAdapter):

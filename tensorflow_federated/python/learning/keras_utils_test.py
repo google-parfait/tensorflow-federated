@@ -53,12 +53,6 @@ class NumExamplesCounter(tf.keras.metrics.Sum):
     return super().update_state(tf.shape(y_pred)[0], sample_weight)
 
 
-def _create_dummy_batch(feature_dims):
-  """Creates a dummy batch of zeros."""
-  return collections.OrderedDict([('x', tf.zeros([1, feature_dims])),
-                                  ('y', tf.zeros([1]))])
-
-
 def _create_dummy_types(feature_dims):
   """Creates a dummy batch of zeros."""
   return collections.OrderedDict(
@@ -93,7 +87,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(TypeError, r'keras\..*\.Model'):
       keras_utils.from_keras_model(
           keras_model=0,  # not a tf.keras.Model
-          dummy_batch=_create_dummy_batch(1),
+          input_spec=_create_dummy_types(1),
           loss=tf.keras.losses.MeanSquaredError())
 
   # Test class for batches using namedtuple.
@@ -101,18 +95,20 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('container',
-       collections.OrderedDict([('x', np.ones([1, 1], np.float32)),
-                                ('y', np.zeros([1, 1], np.float32))])),
+       collections.OrderedDict(
+           [('x', tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
+            ('y', tf.TensorSpec(shape=[None, 1], dtype=tf.float32))])),
       ('container_fn',
        _make_test_batch(
-           x=np.ones([1, 1], np.float32), y=np.zeros([1, 1], np.float32))),
+           x=tf.TensorSpec(shape=[1, 1], dtype=tf.float32),
+           y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))),
   )
-  def test_dummy_batch_types(self, dummy_batch):
+  def test_input_spec_batch_types(self, input_spec):
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=1)
     tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,
-        dummy_batch=dummy_batch,
+        input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError())
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
 
@@ -123,7 +119,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     keras_model = model_fn(feature_dims)
     tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,
-        dummy_batch=_create_dummy_batch(feature_dims),
+        input_spec=_create_dummy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
@@ -245,10 +241,12 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_keras_model_using_embeddings(self):
     model = model_examples.build_embedding_keras_model()
-    dummy_batch = collections.OrderedDict(x=np.zeros([1]), y=np.zeros([1]))
+    input_spec = collections.OrderedDict(
+        x=tf.TensorSpec(shape=[None], dtype=tf.float32),
+        y=tf.TensorSpec(shape=[None], dtype=tf.float32))
     tff_model = keras_utils.from_keras_model(
         keras_model=model,
-        dummy_batch=dummy_batch,
+        input_spec=input_spec,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
 
@@ -278,15 +276,15 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(m['loss'][1], input_vocab_size * num_train_steps)
 
   def test_keras_model_multiple_inputs(self):
-    dummy_batch = collections.OrderedDict(
+    input_spec = collections.OrderedDict(
         x=collections.OrderedDict(
-            a=np.zeros([1, 1], dtype=np.float32),
-            b=np.zeros([1, 1], dtype=np.float32)),
-        y=np.zeros([1, 1], dtype=np.float32))
+            a=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            b=tf.TensorSpec(shape=[1, 1], dtype=tf.float32)),
+        y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))
     model = model_examples.build_multiple_inputs_keras_model()
     tff_model = keras_utils.from_keras_model(
         keras_model=model,
-        dummy_batch=dummy_batch,
+        input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
 
@@ -313,7 +311,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     tff_weights.assign_weights_to(keras_model)
     loaded_model = keras_utils.from_keras_model(
         keras_model=keras_model,
-        dummy_batch=dummy_batch,
+        input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
 
@@ -325,12 +323,12 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_keras_model_using_batch_norm(self):
     model = model_examples.build_conv_batch_norm_keras_model()
-    dummy_batch = collections.OrderedDict(
-        x=np.zeros([1, 28 * 28], dtype=np.float32),
-        y=np.zeros([1, 1], dtype=np.int64))
+    input_spec = collections.OrderedDict(
+        x=tf.TensorSpec(shape=[None, 28 * 28], dtype=tf.float32),
+        y=tf.TensorSpec(shape=[None, 1], dtype=tf.int64))
     tff_model = keras_utils.from_keras_model(
         keras_model=model,
-        dummy_batch=dummy_batch,
+        input_spec=input_spec,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
 
@@ -381,7 +379,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     def _model_fn():
       return keras_utils.from_keras_model(
           keras_model=_make_keras_model(),
-          dummy_batch=_create_dummy_batch(feature_dims),
+          input_spec=_create_dummy_types(feature_dims),
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[NumBatchesCounter(),
                    NumExamplesCounter()])
@@ -427,22 +425,22 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_keras_model_multiple_outputs(self):
     keras_model = model_examples.build_multiple_outputs_keras_model()
-    dummy_batch = collections.OrderedDict(
+    input_spec = collections.OrderedDict(
         x=[
-            np.zeros([1, 1], dtype=np.float32),
-            np.zeros([1, 1], dtype=np.float32)
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
         ],
         y=[
-            np.zeros([1, 1], dtype=np.float32),
-            np.ones([1, 1], dtype=np.float32),
-            np.ones([1, 1], dtype=np.float32)
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
         ])
 
     with self.subTest('loss_output_len_mismatch'):
       with self.assertRaises(ValueError):
         _ = keras_utils.from_keras_model(
             keras_model=keras_model,
-            dummy_batch=dummy_batch,
+            input_spec=input_spec,
             loss=[
                 tf.keras.losses.MeanSquaredError(),
                 tf.keras.losses.MeanSquaredError()
@@ -451,12 +449,12 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     with self.subTest('invalid_loss'):
       with self.assertRaises(TypeError):
         _ = keras_utils.from_keras_model(
-            keras_model=keras_model, dummy_batch=dummy_batch, loss=3)
+            keras_model=keras_model, input_spec=input_spec, loss=3)
 
     with self.subTest('loss_list_no_opt'):
       tff_model = keras_utils.from_keras_model(
           keras_model=keras_model,
-          dummy_batch=dummy_batch,
+          input_spec=input_spec,
           loss=[
               tf.keras.losses.MeanSquaredError(),
               tf.keras.losses.MeanSquaredError(),
@@ -464,6 +462,16 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
           ])
 
       self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+      dummy_batch = collections.OrderedDict(
+          x=[
+              np.zeros([1, 1], dtype=np.float32),
+              np.zeros([1, 1], dtype=np.float32)
+          ],
+          y=[
+              np.zeros([1, 1], dtype=np.float32),
+              np.ones([1, 1], dtype=np.float32),
+              np.ones([1, 1], dtype=np.float32)
+          ])
       output = tff_model.forward_pass(dummy_batch)
       self.assertAllClose(output.loss, 2.0)
 
@@ -471,7 +479,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     with self.subTest('loss_weights_as_list'):
       tff_model = keras_utils.from_keras_model(
           keras_model=keras_model,
-          dummy_batch=dummy_batch,
+          input_spec=input_spec,
           loss=[
               tf.keras.losses.MeanSquaredError(),
               tf.keras.losses.MeanSquaredError(),
@@ -489,7 +497,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
       with self.assertRaises(ValueError):
         _ = keras_utils.from_keras_model(
             keras_model=keras_model,
-            dummy_batch=dummy_batch,
+            input_spec=input_spec,
             loss=[
                 tf.keras.losses.MeanSquaredError(),
                 tf.keras.losses.MeanSquaredError(),
@@ -501,7 +509,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
       with self.assertRaises(TypeError):
         _ = keras_utils.from_keras_model(
             keras_model=keras_model,
-            dummy_batch=dummy_batch,
+            input_spec=input_spec,
             loss=[
                 tf.keras.losses.MeanSquaredError(),
                 tf.keras.losses.MeanSquaredError(),
@@ -515,12 +523,12 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_keras_model_lookup_table(self):
     model = model_examples.build_lookup_table_keras_model()
-    dummy_batch = collections.OrderedDict(
-        x=tf.constant([['G']], dtype=tf.string),
-        y=tf.zeros([1, 1], dtype=tf.float32))
+    input_spec = collections.OrderedDict(
+        x=tf.TensorSpec(shape=[None, 1], dtype=tf.string),
+        y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))
     tff_model = keras_utils.from_keras_model(
         keras_model=model,
-        dummy_batch=dummy_batch,
+        input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
 
@@ -545,7 +553,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     tff_weights.assign_weights_to(keras_model)
     loaded_model = keras_utils.from_keras_model(
         keras_model=keras_model,
-        dummy_batch=dummy_batch,
+        input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
 

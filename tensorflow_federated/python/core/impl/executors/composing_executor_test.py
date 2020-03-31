@@ -19,13 +19,16 @@ import collections
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import intrinsic_factory
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import composing_executor
@@ -350,6 +353,23 @@ class ComposingExecutorTest(absltest.TestCase):
     arg = ([float(x + 1) for x in range(num_clients)], [1.0, 2.0, 3.0] * 4)
     result = _invoke(executor, comp, arg)
     self.assertAlmostEqual(result, 6.83333333333, places=3)
+
+  def test_executor_call_unsupported_intrinsic(self):
+    dummy_intrinsic = intrinsic_defs.IntrinsicDef(
+        'DUMMY_INTRINSIC', 'dummy_intrinsic',
+        computation_types.AbstractType('T'))
+
+    comp = pb.Computation(
+        type=type_serialization.serialize_type(tf.int32),
+        intrinsic=pb.Intrinsic(uri='dummy_intrinsic'))
+
+    loop = asyncio.get_event_loop()
+    executor = composing_executor.ComposingExecutor(
+        _create_bottom_stack(), [_create_worker_stack() for _ in range(3)])
+
+    with self.assertRaises(NotImplementedError):
+      v1 = loop.run_until_complete(executor.create_value(comp, tf.int32))
+      loop.run_until_complete(executor.create_call(v1, None))
 
 
 if __name__ == '__main__':

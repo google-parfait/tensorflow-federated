@@ -186,45 +186,31 @@ class SizingExecutorTest(parameterized.TestCase):
     self.assertCountEqual(ex.aggregate_history, [[1, tf.int32], [1, tf.int32]])
 
   @parameterized.named_parameters(
-      {
-          'testcase_name': 'basic',
-          'executor_stack': [sizing_executor.SizingExecutor]
-      }, {
-          'testcase_name':
-              'big_stack',
-          'executor_stack': [
-              sizing_executor.SizingExecutor,
-              reference_resolving_executor.ReferenceResolvingExecutor,
-              caching_executor.CachingExecutor,
-              reference_resolving_executor.ReferenceResolvingExecutor
-          ]
-      }, {
-          'testcase_name':
-              'big_caching_stack',
-          'executor_stack': [
-              sizing_executor.SizingExecutor,
-              caching_executor.CachingExecutor,
-              reference_resolving_executor.ReferenceResolvingExecutor,
-              caching_executor.CachingExecutor,
-              caching_executor.CachingExecutor,
-              reference_resolving_executor.ReferenceResolvingExecutor,
-              caching_executor.CachingExecutor,
-          ]
-      }, {
-          'testcase_name':
-              'reference_resolving_executor',
-          'executor_stack': [
-              sizing_executor.SizingExecutor,
-              reference_resolving_executor.ReferenceResolvingExecutor
-          ]
-      }, {
-          'testcase_name':
-              'caching_executor',
-          'executor_stack': [
-              sizing_executor.SizingExecutor,
-              caching_executor.CachingExecutor,
-          ]
-      })
+      ('basic', [sizing_executor.SizingExecutor]),
+      ('big_stack', [
+          sizing_executor.SizingExecutor,
+          reference_resolving_executor.ReferenceResolvingExecutor,
+          caching_executor.CachingExecutor,
+          reference_resolving_executor.ReferenceResolvingExecutor,
+      ]),
+      ('big_caching_stack', [
+          sizing_executor.SizingExecutor,
+          caching_executor.CachingExecutor,
+          reference_resolving_executor.ReferenceResolvingExecutor,
+          caching_executor.CachingExecutor,
+          caching_executor.CachingExecutor,
+          reference_resolving_executor.ReferenceResolvingExecutor,
+          caching_executor.CachingExecutor,
+      ]),
+      ('reference_resolving_executor', [
+          sizing_executor.SizingExecutor,
+          reference_resolving_executor.ReferenceResolvingExecutor,
+      ]),
+      ('caching_executor', [
+          sizing_executor.SizingExecutor,
+          caching_executor.CachingExecutor,
+      ]),
+  )
   def test_executor_stacks(self, executor_stack):
     assert executor_stack
     ex = eager_tf_executor.EagerTFExecutor()

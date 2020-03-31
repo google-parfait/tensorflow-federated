@@ -665,7 +665,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
   r"""Merges a tuple of called intrinsics into one called intrinsic.
 
   This transform matches the following pattern, and replaces the following
-  computation containing a tuple of called intrinsics all represeting the same
+  computation containing a tuple of called intrinsics all representing the same
   operation:
 
            Tuple

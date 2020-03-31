@@ -35,7 +35,7 @@ from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-class _ClientFedAvg(optimizer_utils.ClientDeltaFn):
+class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated Averaging."""
 
   def __init__(self,
@@ -189,7 +189,7 @@ def build_federated_averaging_process(
   """
 
   def client_fed_avg(model_fn):
-    return _ClientFedAvg(model_fn(), client_optimizer_fn(), client_weight_fn)
+    return ClientFedAvg(model_fn(), client_optimizer_fn(), client_weight_fn)
 
   if stateful_delta_aggregate_fn is None:
     stateful_delta_aggregate_fn = optimizer_utils.build_stateless_mean()

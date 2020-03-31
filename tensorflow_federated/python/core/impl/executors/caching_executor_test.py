@@ -26,22 +26,26 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.executors import caching_executor
-from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 
 tf.compat.v1.enable_v2_behavior()
 
 
-def _make_executor_and_tracer_for_test(support_lambdas=False):
+def create_test_executor_factory():
+  executor = eager_tf_executor.EagerTFExecutor()
+  executor = caching_executor.CachingExecutor(executor)
+  executor = reference_resolving_executor.ReferenceResolvingExecutor(executor)
+  return executor_factory.ExecutorFactoryImpl(lambda _: executor)
+
+
+def _make_executor_and_tracer_for_test():
   tracer = executor_test_utils.TracingExecutor(
       eager_tf_executor.EagerTFExecutor())
   ex = caching_executor.CachingExecutor(tracer)
-  if support_lambdas:
-    ex = reference_resolving_executor.ReferenceResolvingExecutor(
-        caching_executor.CachingExecutor(ex))
   return ex, tracer
 
 
@@ -413,11 +417,18 @@ class CachingExecutorTest(absltest.TestCase):
         ex.create_value(ds, computation_types.SequenceType(tf.int32)))
     self.assertIs(v4, v2)
 
-  def test_runs_tf(self):
-    ex, _ = _make_executor_and_tracer_for_test(support_lambdas=True)
-    executor_test_utils.test_runs_tf(self, ex)
+  def test_execution_of_tensorflow(self):
+
+    @computations.tf_computation
+    def comp():
+      return tf.math.add(5, 5)
+
+    executor = create_test_executor_factory()
+    with executor_test_utils.install_executor(executor):
+      result = comp()
+
+    self.assertEqual(result, 10)
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_executor()
   absltest.main()
