@@ -49,9 +49,10 @@ There are two principal modes of deployment for TFF computations:
     tool that allows the user to manually convert a computation, or a set of
     computations, into the appropriate target representation understood by the
     particular class of backends. Code that supports specific types of
-    non-native backends can be found in the `tff.backends` namespace. At the
-    time of this writing, the only support type of non-native backends is a
-    class of systems capable of executing single-round MapReduce.
+    non-native backends can be found in the
+    [`tff.backends`](https://www.tensorflow.org/federated/api_docs/python/tff/backends)
+    namespace. At the time of this writing, the only support type of non-native
+    backends is a class of systems capable of executing single-round MapReduce.
 
 ## Native Backends
 
