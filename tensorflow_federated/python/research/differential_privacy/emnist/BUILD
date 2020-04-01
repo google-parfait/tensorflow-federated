@@ -8,10 +8,9 @@ py_binary(
     deps = [
         "//tensorflow_federated",
         "//tensorflow_federated/python/research/differential_privacy:dp_utils",
-        "//tensorflow_federated/python/research/optimization/shared:keras_metrics",
+        "//tensorflow_federated/python/research/optimization/emnist:dataset",
+        "//tensorflow_federated/python/research/optimization/emnist:models",
         "//tensorflow_federated/python/research/optimization/shared:optimizer_utils",
-        "//tensorflow_federated/python/research/optimization/stackoverflow:dataset",
-        "//tensorflow_federated/python/research/optimization/stackoverflow:models",
         "//tensorflow_federated/python/research/utils:training_loop",
         "//tensorflow_federated/python/research/utils:training_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",

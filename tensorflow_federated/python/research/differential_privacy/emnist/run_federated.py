@@ -12,10 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Trains and evaluates Stackoverflow NWP model using TFF."""
+"""Trains and evaluates an EMNIST classification model with DP-FedAvg."""
 
 import functools
-
 from absl import app
 from absl import flags
 from absl import logging
@@ -24,45 +23,34 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.differential_privacy import dp_utils
-from tensorflow_federated.python.research.optimization.shared import keras_metrics
+from tensorflow_federated.python.research.optimization.emnist import dataset
+from tensorflow_federated.python.research.optimization.emnist import models
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
-from tensorflow_federated.python.research.optimization.stackoverflow import dataset
-from tensorflow_federated.python.research.optimization.stackoverflow import models
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
 
-with utils_impl.record_new_flags() as hparam_flags:
-  # Training hyperparameters
+with utils_impl.record_hparam_flags():
+  # Experiment hyperparameters
+  flags.DEFINE_enum(
+      'model', 'cnn', ['cnn', '2nn'], 'Which model to use. This '
+      'can be a convolutional model (cnn) or a two hidden-layer '
+      'densely connected network (2nn).')
+  flags.DEFINE_integer('client_batch_size', 20,
+                       'Batch size used on the client.')
   flags.DEFINE_integer('clients_per_round', 10,
                        'How many clients to sample per round.')
-  flags.DEFINE_integer('client_epochs_per_round', 1,
-                       'Number of epochs in the client to take per round.')
-  flags.DEFINE_integer('client_batch_size', 8, 'Batch size used on the client.')
-  flags.DEFINE_integer('sequence_length', 20, 'Max sequence length to use.')
-  flags.DEFINE_integer('max_elements_per_user', 1000, 'Max number of training '
-                       'sentences to use per user.')
-  flags.DEFINE_integer('num_validation_examples', 10000, 'Number of examples '
-                       'to use from test set for per-round validation.')
-  flags.DEFINE_boolean('uniform_weighting', False,
-                       'Whether to weigh clients uniformly. If false, clients '
-                       'are weighted by the number of tokens.')
+  flags.DEFINE_integer(
+      'client_epochs_per_round', 1,
+      'Number of client (inner optimizer) epochs per federated round.')
+  flags.DEFINE_boolean(
+      'uniform_weighting', False,
+      'Whether to weigh clients uniformly. If false, clients '
+      'are weighted by the number of samples.')
 
   # Optimizer configuration (this defines one or more flags per optimizer).
   utils_impl.define_optimizer_flags('server')
   utils_impl.define_optimizer_flags('client')
-
-  # Modeling flags
-  flags.DEFINE_integer('vocab_size', 10000, 'Size of vocab to use.')
-  flags.DEFINE_integer('embedding_size', 96,
-                       'Dimension of word embedding to use.')
-  flags.DEFINE_integer('latent_size', 670,
-                       'Dimension of latent size to use in recurrent cell')
-  flags.DEFINE_integer('num_layers', 1,
-                       'Number of stacked recurrent layers to use.')
-  flags.DEFINE_boolean(
-      'shared_embedding', False,
-      'Boolean indicating whether to tie input and output embeddings.')
 
   # Differential privacy flags
   flags.DEFINE_float('clip', 0.05, 'Initial clip.')
@@ -82,62 +70,45 @@ with utils_impl.record_new_flags() as hparam_flags:
 
 FLAGS = flags.FLAGS
 
+# End of hyperparameter flags.
+
 
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Expected no command-line arguments, '
                          'got: {}'.format(argv))
+
   tf.compat.v1.enable_v2_behavior()
-  tff.framework.set_default_executor(
-      tff.framework.local_executor_factory(max_fanout=10))
 
-  model_builder = functools.partial(
-      models.create_recurrent_model,
-      vocab_size=FLAGS.vocab_size,
-      embedding_size=FLAGS.embedding_size,
-      latent_size=FLAGS.latent_size,
-      num_layers=FLAGS.num_layers,
-      shared_embedding=FLAGS.shared_embedding)
+  emnist_train, emnist_test = dataset.get_emnist_datasets(
+      FLAGS.client_batch_size, FLAGS.client_epochs_per_round, only_digits=False)
 
-  loss_builder = functools.partial(
-      tf.keras.losses.SparseCategoricalCrossentropy, from_logits=True)
+  if FLAGS.model == 'cnn':
+    model_builder = functools.partial(
+        models.create_conv_dropout_model, only_digits=False)
+  elif FLAGS.model == '2nn':
+    model_builder = functools.partial(
+        models.create_two_hidden_layer_model, only_digits=False)
+  else:
+    raise ValueError('Cannot handle model flag [{!s}].'.format(FLAGS.model))
 
-  pad_token, oov_token, _, eos_token = dataset.get_special_tokens(
-      FLAGS.vocab_size)
-
-  def metrics_builder():
-    return [
-        keras_metrics.MaskedCategoricalAccuracy(
-            name='accuracy_with_oov', masked_tokens=[pad_token]),
-        keras_metrics.MaskedCategoricalAccuracy(
-            name='accuracy_no_oov', masked_tokens=[pad_token, oov_token]),
-        # Notice BOS never appears in ground truth.
-        keras_metrics.MaskedCategoricalAccuracy(
-            name='accuracy_no_oov_or_eos',
-            masked_tokens=[pad_token, oov_token, eos_token]),
-        keras_metrics.NumBatchesCounter(),
-        keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
-    ]
-
-  datasets = dataset.construct_word_level_datasets(
-      FLAGS.vocab_size, FLAGS.client_batch_size, FLAGS.client_epochs_per_round,
-      FLAGS.sequence_length, FLAGS.max_elements_per_user,
-      FLAGS.num_validation_examples)
-  train_dataset, validation_dataset, test_dataset = datasets
+  loss_builder = tf.keras.losses.SparseCategoricalCrossentropy
+  metrics_builder = lambda: [tf.keras.metrics.SparseCategoricalAccuracy()]
 
   if FLAGS.uniform_weighting:
+
     def client_weight_fn(local_outputs):
       del local_outputs
       return 1.0
+
   else:
-    def client_weight_fn(local_outputs):
-      return tf.cast(tf.squeeze(local_outputs['num_tokens']), tf.float32)
+    client_weight_fn = None  #  Defaults to the number of examples per client.
 
   def model_fn():
     return tff.learning.from_keras_model(
         model_builder(),
         loss_builder(),
-        input_spec=validation_dataset.element_spec,
+        input_spec=emnist_test.element_spec,
         metrics=metrics_builder())
 
   if FLAGS.noise_multiplier is not None:
@@ -176,20 +147,11 @@ def main(argv):
                                                      adaptive_clipping)
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
-      train_dataset, FLAGS.clients_per_round)
+      emnist_train, FLAGS.clients_per_round)
 
   evaluate_fn = training_utils.build_evaluate_fn(
+      eval_dataset=emnist_test,
       model_builder=model_builder,
-      eval_dataset=validation_dataset,
-      loss_builder=loss_builder,
-      metrics_builder=metrics_builder,
-      assign_weights_to_keras_model=dp_utils.assign_weights_to_keras_model)
-
-  test_fn = training_utils.build_evaluate_fn(
-      model_builder=model_builder,
-      # Use both val and test for symmetry with other experiments, which
-      # evaluate on the entire test set.
-      eval_dataset=validation_dataset.concatenate(test_dataset),
       loss_builder=loss_builder,
       metrics_builder=metrics_builder,
       assign_weights_to_keras_model=dp_utils.assign_weights_to_keras_model)
@@ -198,7 +160,10 @@ def main(argv):
   logging.info(model_builder().summary())
 
   training_loop.run(
-      training_process, client_datasets_fn, evaluate_fn, test_fn=test_fn)
+      iterative_process=training_process,
+      client_datasets_fn=client_datasets_fn,
+      evaluate_fn=evaluate_fn,
+  )
 
 
 if __name__ == '__main__':
