@@ -217,9 +217,6 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     train_metrics['model_delta_l2_norm'] = _compute_numpy_l2_difference(
         state.model, prev_model)
     train_metrics.update(round_metrics)
-    # TODO(b/148576550): Wire in client training time metrics into custom
-    # training loops.
-    train_metrics.pop('keras_training_time_client_sum_sec')
 
     logging.info('Round {:2d}, {:.2f}s per round in average.'.format(
         round_num, (time.time() - loop_start_time) / (round_num + 1)))

@@ -127,7 +127,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
     self.assertSequenceEqual(
-        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0, 0.0])
+        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0])
 
     batch = collections.OrderedDict(
         x=np.stack([
@@ -175,7 +175,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     # Metrics should be zero, though the model wrapper internally executes the
     # forward pass once.
     self.assertSequenceEqual(
-        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0, 0.0])
+        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0])
 
     batch = collections.OrderedDict(
         x=np.stack([

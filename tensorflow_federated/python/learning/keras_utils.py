@@ -293,17 +293,7 @@ class _KerasModel(model_lib.Model):
 
         return super().update_state(batch_loss, batch_size)
 
-    class _TrainingTimeHistory(tf.keras.metrics.Sum):
-
-      def update_state(self, y_true, y_pred, sample_weight=None):
-        pass
-
-      def log_time(self, time_value):
-        return super(_TrainingTimeHistory, self).update_state(values=time_value)
-
     self._loss_metric = _WeightedMeanLossMetric()
-    self._training_timing = _TrainingTimeHistory(
-        name='keras_training_time_client_sum_sec')
 
     metric_variable_type_dict = tf.nest.map_structure(
         tf.TensorSpec.from_tensor, self.report_local_outputs())
@@ -348,11 +338,9 @@ class _KerasModel(model_lib.Model):
 
   def get_metrics(self):
     if not self._keras_model._is_compiled:  # pylint: disable=protected-access
-      return self._metrics + [self._loss_metric, self._training_timing]
+      return self._metrics + [self._loss_metric]
     else:
-      return self._keras_model.metrics + [
-          self._loss_metric, self._training_timing
-      ]
+      return self._keras_model.metrics + [self._loss_metric]
 
   @property
   def input_spec(self):

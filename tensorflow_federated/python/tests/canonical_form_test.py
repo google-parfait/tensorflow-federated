@@ -100,9 +100,6 @@ class CanonicalFormTest(test.TestCase):
         '      <\n'
         '        float32,\n'
         '        float32\n'
-        '      >,\n'
-        '      <\n'
-        '        float32\n'
         '      >\n'
         '    >,\n'
         '    <>\n'
@@ -157,11 +154,6 @@ class CanonicalFormTest(test.TestCase):
     self.assertAllEqual(server_output_1_names, server_output_2_names)
     self.assertAllClose(server_state_1_arrays, server_state_2_arrays)
     self.assertAllClose(server_output_1_arrays[:2], server_output_2_arrays[:2])
-
-    execution_time_1 = server_output_1_arrays[2]
-    execution_time_2 = server_output_2_arrays[2]
-
-    self.assertAlmostEqual(execution_time_1, execution_time_2, delta=1e-3)
 
 
 if __name__ == '__main__':
