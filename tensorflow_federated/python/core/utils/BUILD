@@ -17,6 +17,7 @@ py_library(
         ":computation_utils",
         ":differential_privacy",
         ":encoding_utils",
+        ":execution_tracing",
         ":federated_aggregations",
         ":tf_computation_utils",
     ],
@@ -110,6 +111,42 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/executors:default_executor",
+    ],
+)
+
+py_library(
+    name = "execution_tracing",
+    srcs = ["execution_tracing.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:tracing",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:computation_impl",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/executors:caching_executor",
+        "//tensorflow_federated/python/core/impl/executors:composing_executor",
+        "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
+        "//tensorflow_federated/python/core/impl/executors:federating_executor",
+        "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
+        "//tensorflow_federated/python/core/impl/executors:remote_executor",
+        "//tensorflow_federated/python/core/impl/executors:sizing_executor",
+        "//tensorflow_federated/python/core/impl/executors:thread_delegating_executor",
+        "//tensorflow_federated/python/core/impl/executors:transforming_executor",
+    ],
+)
+
+py_test(
+    name = "execution_tracing_test",
+    size = "small",
+    srcs = ["execution_tracing_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":execution_tracing",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:tracing",
     ],
 )
 
