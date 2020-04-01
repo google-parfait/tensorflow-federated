@@ -174,6 +174,7 @@ class _BidiStream:
       self._stream_closed_event.wait(_STREAM_CLOSE_WAIT_SECONDS)
     else:
       logging.debug('Closing unused bidi stream')
+    self._is_initialized = False
 
 
 def _request(rpc_func, request):
@@ -247,13 +248,13 @@ class RemoteExecutor(executor_base.Executor):
     self._dispose_batch_size = dispose_batch_size
     self._dispose_request = executor_pb2.DisposeRequest()
     if rpc_mode == 'STREAMING':
+      logging.debug('Creating Bidi stream')
       self._bidi_stream = _BidiStream(self._stub, thread_pool_executor)
 
   def close(self):
-    if self._bidi_stream:
+    if self._bidi_stream is not None:
       logging.debug('Closing bidi stream')
       self._bidi_stream.close()
-      self._bidi_stream = None
 
   def _dispose(self, value_ref: executor_pb2.ValueRef):
     """Disposes of the remote value stored on the worker service."""
@@ -262,7 +263,7 @@ class RemoteExecutor(executor_base.Executor):
       return
     dispose_request = self._dispose_request
     self._dispose_request = executor_pb2.DisposeRequest()
-    if not self._bidi_stream:
+    if self._bidi_stream is None:
       _request(self._stub.Dispose, dispose_request)
     else:
       send_request_fut = self._bidi_stream.send_request(
@@ -280,7 +281,7 @@ class RemoteExecutor(executor_base.Executor):
 
     value_proto, type_spec = serialize_value()
     create_value_request = executor_pb2.CreateValueRequest(value=value_proto)
-    if not self._bidi_stream:
+    if self._bidi_stream is None:
       response = _request(self._stub.CreateValue, create_value_request)
     else:
       response = (await self._bidi_stream.send_request(
@@ -298,7 +299,7 @@ class RemoteExecutor(executor_base.Executor):
     create_call_request = executor_pb2.CreateCallRequest(
         function_ref=comp.value_ref,
         argument_ref=(arg.value_ref if arg is not None else None))
-    if not self._bidi_stream:
+    if self._bidi_stream is None:
       response = _request(self._stub.CreateCall, create_call_request)
     else:
       response = (await self._bidi_stream.send_request(
@@ -320,7 +321,7 @@ class RemoteExecutor(executor_base.Executor):
       type_elem.append((k, v.type_signature) if k else v.type_signature)
     result_type = computation_types.NamedTupleType(type_elem)
     request = executor_pb2.CreateTupleRequest(element=proto_elem)
-    if not self._bidi_stream:
+    if self._bidi_stream is None:
       response = _request(self._stub.CreateTuple, request)
     else:
       response = (await self._bidi_stream.send_request(
@@ -342,7 +343,7 @@ class RemoteExecutor(executor_base.Executor):
       result_type = getattr(source.type_signature, name)
     request = executor_pb2.CreateSelectionRequest(
         source_ref=source.value_ref, name=name, index=index)
-    if not self._bidi_stream:
+    if self._bidi_stream is None:
       response = _request(self._stub.CreateSelection, request)
     else:
       response = (await self._bidi_stream.send_request(
@@ -355,7 +356,7 @@ class RemoteExecutor(executor_base.Executor):
   async def _compute(self, value_ref):
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
     request = executor_pb2.ComputeRequest(value_ref=value_ref)
-    if not self._bidi_stream:
+    if self._bidi_stream is None:
       response = _request(self._stub.Compute, request)
     else:
       response = (await self._bidi_stream.send_request(
