@@ -317,15 +317,15 @@ FEDERATED_REDUCE = IntrinsicDef(
 # Computes the sum of client values on the server, securely. Only supported for
 # numeric types, or nested structures made up of numeric computation_types.
 #
-# Type signature: <{T}@CLIENTS,T> -> T@SERVER
+# Type signature: <{V}@CLIENTS,B> -> V@SERVER
 FEDERATED_SECURE_SUM = IntrinsicDef(
     'FEDERATED_SECURE_SUM', 'federated_secure_sum',
     computation_types.FunctionType(
         parameter=[
-            type_factory.at_clients(computation_types.AbstractType('T')),
-            computation_types.AbstractType('T'),
+            type_factory.at_clients(computation_types.AbstractType('V')),
+            computation_types.AbstractType('B'),
         ],
-        result=type_factory.at_server(computation_types.AbstractType('T'))))
+        result=type_factory.at_server(computation_types.AbstractType('V'))))
 
 # Computes the sum of client values on the server. Only supported for numeric
 # types, or nested structures made up of numeric computation_types.

@@ -55,7 +55,7 @@ class IntrinsicDefsTest(parameterized.TestCase):
       ('federated_map', 'FEDERATED_MAP',
        '(<(T -> U),{T}@CLIENTS> -> {U}@CLIENTS)'),
       ('federated_secure_sum', 'FEDERATED_SECURE_SUM',
-       '(<{T}@CLIENTS,T> -> T@SERVER)'),
+       '(<{V}@CLIENTS,B> -> V@SERVER)'),
       ('federated_sum', 'FEDERATED_SUM', '({T}@CLIENTS -> T@SERVER)'),
       ('federated_zip_at_clients', 'FEDERATED_ZIP_AT_CLIENTS',
        '(<{T}@CLIENTS,{U}@CLIENTS> -> {<T,U>}@CLIENTS)'),

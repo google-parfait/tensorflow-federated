@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import numpy as np
 
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
@@ -38,6 +39,26 @@ class FederatedSecureSumTest(absltest.TestCase):
 
     self.assertEqual(intrinsic.type_signature.compact_representation(),
                      '<int32,<int32,int32>>@SERVER')
+
+  def test_type_signature_with_one_tensor_and_bitwidth(self):
+    value = intrinsics.federated_value(
+        np.ndarray(shape=(5, 37), dtype=np.int16), placements.CLIENTS)
+    bitwidth = 2
+
+    intrinsic = intrinsics.federated_secure_sum(value, bitwidth)
+
+    self.assertEqual(intrinsic.type_signature.compact_representation(),
+                     'int16[5,37]@SERVER')
+
+  def test_type_signature_with_structure_of_tensors_and_bitwidths(self):
+    np_array = np.ndarray(shape=(5, 37), dtype=np.int16)
+    value = intrinsics.federated_value((np_array, np_array), placements.CLIENTS)
+    bitwidth = (2, 2)
+
+    intrinsic = intrinsics.federated_secure_sum(value, bitwidth)
+
+    self.assertEqual(intrinsic.type_signature.compact_representation(),
+                     '<int16[5,37],int16[5,37]>@SERVER')
 
   def test_raises_type_error_with_value_float(self):
     value = intrinsics.federated_value(1.0, placements.CLIENTS)

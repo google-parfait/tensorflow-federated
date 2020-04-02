@@ -837,6 +837,44 @@ def check_is_structure_of_integers(type_spec):
             type_spec))
 
 
+def _both_are_type(first, second, ty):
+  """Whether or not `first` and `second` are both instances of `ty`."""
+  return isinstance(first, ty) and isinstance(second, ty)
+
+
+def is_valid_bitwidth_type_for_value_type(bitwidth_type, value_type):
+  """Whether or not `bitwidth_type` is a valid bitwidth type for `value_type`."""
+  # NOTE: this function is primarily a helper for `intrinsic_factory.py`'s
+  # `federated_secure_sum` function.
+
+  bitwidth_type = computation_types.to_type(bitwidth_type)
+  value_type = computation_types.to_type(value_type)
+
+  if _both_are_type(value_type, bitwidth_type, computation_types.TensorType):
+    # Here, `value_type` refers to a tensor. Rather than check that
+    # `bitwidth_type` is exactly the same, we check that it is a single integer,
+    # since we want a single bitwidth integer per tensor.
+    return bitwidth_type.dtype.is_integer and (
+        bitwidth_type.shape.num_elements() == 1)
+  elif _both_are_type(value_type, bitwidth_type,
+                      computation_types.NamedTupleType):
+    bitwidth_name_and_types = list(anonymous_tuple.iter_elements(bitwidth_type))
+    value_name_and_types = list(anonymous_tuple.iter_elements(value_type))
+    if len(bitwidth_name_and_types) != len(value_name_and_types):
+      return False
+    for (inner_bitwidth_name,
+         inner_bitwidth_type), (inner_value_name, inner_value_type) in zip(
+             bitwidth_name_and_types, value_name_and_types):
+      if inner_bitwidth_name != inner_value_name:
+        return False
+      if not is_valid_bitwidth_type_for_value_type(inner_bitwidth_type,
+                                                   inner_value_type):
+        return False
+    return True
+  else:
+    return False
+
+
 def check_federated_type(type_spec,
                          member=None,
                          placement=None,

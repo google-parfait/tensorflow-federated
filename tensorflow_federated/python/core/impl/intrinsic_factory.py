@@ -14,8 +14,6 @@
 # limitations under the License.
 """A factory of intrinsics for use in composing federated computations."""
 
-import contextlib
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
@@ -28,15 +26,6 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
-
-
-@contextlib.contextmanager
-def err_ctx(err_ty, context: str):
-  """A context manager which wraps type errors in a string describing their context."""
-  try:
-    yield
-  except err_ty as err:
-    raise err_ty(context) from err
 
 
 class IntrinsicFactory(object):
@@ -343,13 +332,15 @@ class IntrinsicFactory(object):
                                                'value to be summed')
     type_utils.check_is_structure_of_integers(value.type_signature)
     bitwidth = value_impl.to_value(bitwidth, None, self._context_stack)
-    value_member_ty = value.type_signature.member
-    bitwidth_ty = bitwidth.type_signature
-    if not type_utils.are_equivalent_types(value_member_ty, bitwidth_ty):
+    value_member_type = value.type_signature.member
+    bitwidth_type = bitwidth.type_signature
+    if not type_utils.is_valid_bitwidth_type_for_value_type(
+        bitwidth_type, value_member_type):
       raise TypeError(
-          'Expected `federated_secure_sum` parameters `value` and `bitwidth` '
-          'to have the same structure. Found `value` of `{}` and `bitwidth` of `{}`'
-          .format(value_member_ty, bitwidth_ty))
+          'Expected `federated_secure_sum` parameter `bitwidth` to match '
+          'the structure of `value`, with one integer bitwidth per tensor in '
+          '`value`. Found `value` of `{}` and `bitwidth` of `{}`.'.format(
+              value_member_type, bitwidth_type))
     value = value_impl.ValueImpl.get_comp(value)
     bitwidth = value_impl.ValueImpl.get_comp(bitwidth)
     comp = building_block_factory.create_federated_secure_sum(value, bitwidth)

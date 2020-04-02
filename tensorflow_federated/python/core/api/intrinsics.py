@@ -284,7 +284,8 @@ def federated_secure_sum(value, bitwidth):
   Args:
     value: An integer value of a TFF federated type placed at the `tff.CLIENTS`,
       in the range [0, 2^bitwidth - 1].
-    bitwidth: An integer or nested structure of integers.
+    bitwidth: An integer or nested structure of integers. For each tensor in
+      `value`, `bitwidth` must contain exactly one corresponding integer.
 
   Returns:
     A representation of the sum of the member constituents of `value` placed

@@ -1109,6 +1109,37 @@ class IsStructureOfIntegersTest(parameterized.TestCase):
     self.assertFalse(type_utils.is_structure_of_integers(type_spec))
 
 
+class IsValidBitwidthTypeForValueType(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('single int', tf.int32, tf.int32),
+      ('tuple', (tf.int32, tf.int32), (tf.int32, tf.int32)),
+      ('named tuple', computation_types.NamedTupleType(
+          ['x', tf.int32]), computation_types.NamedTupleType(['x', tf.int32])),
+      ('single int for complex tensor', tf.int32,
+       tf.TensorSpec([5, 97, 204], dtype=tf.int32)),
+      ('different kinds of ints', tf.int32, tf.int8),
+  )
+  def test_returns_true(self, bitwidth_type, value_type):
+    self.assertTrue(
+        type_utils.is_valid_bitwidth_type_for_value_type(
+            bitwidth_type, value_type))
+
+  @parameterized.named_parameters(
+      ('single int_for_tuple', tf.int32, (tf.int32, tf.int32)),
+      ('miscounted tuple', (tf.int32, tf.int32, tf.int32),
+       (tf.int32, tf.int32)),
+      ('miscounted tuple 2', (tf.int32, tf.int32),
+       (tf.int32, tf.int32, tf.int32)),
+      ('misnamed tuple', computation_types.NamedTupleType(
+          ['x', tf.int32]), computation_types.NamedTupleType(['y', tf.int32])),
+  )
+  def test_returns_false(self, bitwidth_type, value_type):
+    self.assertFalse(
+        type_utils.is_valid_bitwidth_type_for_value_type(
+            bitwidth_type, value_type))
+
+
 class IsAnonTupleWithPyContainerTest(test.TestCase):
 
   def test_returns_true(self):
