@@ -66,8 +66,7 @@ class Executor(object, metaclass=abc.ABCMeta):
         by calling `create_value()` on it first.
 
     Returns:
-      An instance of `ExecutorValue` that represents the
-      constructed vall.
+      An instance of `ExecutorValue` that represents the constructed call.
     """
     raise NotImplementedError
 

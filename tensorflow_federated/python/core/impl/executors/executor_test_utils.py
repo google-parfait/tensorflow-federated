@@ -25,7 +25,10 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import reference_executor
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_base
@@ -258,21 +261,69 @@ class TracingExecutorValue(executor_value_base.ExecutorValue):
     return result
 
 
-def create_dummy_identity_lambda_computation(type_spec=tf.int32):
-  """Returns a `pb.Computation` representing an identity lambda.
+def create_dummy_intrinsic_def():
+  """Returns a `intrinsic_defs.IntrinsicDef` and type."""
+  value = intrinsic_defs.FEDERATED_EVAL_AT_SERVER
+  type_signature = computation_types.FunctionType(
+      computation_types.FunctionType(None, tf.int32),
+      type_factory.at_server(tf.int32))
+  return value, type_signature
 
-  The type signature of this `pb.Computation` is:
 
-  (int32 -> int32)
+def create_dummy_placement_literal():
+  """Returns a `placement_literals.PlacementLiteral` and type."""
+  value = placement_literals.SERVER
+  type_signature = computation_types.PlacementType()
+  return value, type_signature
 
-  Args:
-    type_spec: A type signature.
 
-  Returns:
-    A `pb.Computation`.
-  """
-  type_signature = type_serialization.serialize_type(
-      type_factory.unary_op(type_spec))
+def create_dummy_computation_impl():
+  """Returns a `tff.ComputationImpl` and type."""
+  comp, type_signature = create_dummy_computation_tensorflow_identity()
+  value = computation_impl.ComputationImpl(comp,
+                                           context_stack_impl.context_stack)
+  return value, type_signature
+
+
+def create_dummy_computation_call():
+  """Returns a call computation and type."""
+  function, function_type = create_dummy_computation_tensorflow_constant()
+  type_signature = function_type.result
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      call=pb.Call(function=function))
+  return value, type_signature
+
+
+def create_dummy_computation_intrinsic():
+  """Returns a intrinsic computation and type."""
+  intrinsic_def, type_signature = create_dummy_intrinsic_def()
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      intrinsic=pb.Intrinsic(uri=intrinsic_def.uri))
+  return value, type_signature
+
+
+def create_dummy_computation_lambda_empty():
+  """Returns a lambda computation and type `( -> <>)`."""
+  result_type = computation_types.NamedTupleType([])
+  type_signature = computation_types.FunctionType(None, result_type)
+  result = pb.Computation(
+      type=type_serialization.serialize_type(result_type),
+      tuple=pb.Tuple(element=[]))
+  fn = pb.Lambda(parameter_name=None, result=result)
+  # We are unpacking the lambda argument here because `lambda` is a reserved
+  # keyword in Python, but it is also the name of the parameter for a
+  # `pb.Computation`.
+  # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature), **{'lambda': fn})  # pytype: disable=wrong-keyword-args
+  return value, type_signature
+
+
+def create_dummy_computation_lambda_identity(type_spec=tf.int32):
+  """Returns a lambda computation and type `(T -> T)`."""
+  type_signature = type_factory.unary_op(type_spec)
   result = pb.Computation(
       type=type_serialization.serialize_type(type_spec),
       reference=pb.Reference(name='a'))
@@ -281,28 +332,133 @@ def create_dummy_identity_lambda_computation(type_spec=tf.int32):
   # keyword in Python, but it is also the name of the parameter for a
   # `pb.Computation`.
   # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
-  return pb.Computation(type=type_signature, **{'lambda': fn})  # pytype: disable=wrong-keyword-args
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature), **{'lambda': fn})  # pytype: disable=wrong-keyword-args
+  return value, type_signature
 
 
-def create_dummy_empty_tensorflow_computation():
-  """Returns a `pb.Computation` representing an tensorflow graph.
+def create_dummy_computation_placement():
+  """Returns a placement computation and type."""
+  placement_literal, type_signature = create_dummy_placement_literal()
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      placement=pb.Placement(uri=placement_literal.uri))
+  return value, type_signature
 
-  The type signature of this `pb.Computation` is:
 
-  ( -> <>)
+def create_dummy_computation_reference():
+  """Returns a reference computation and type."""
+  type_signature = computation_types.TensorType(tf.int32)
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      reference=pb.Reference(name='a'))
+  return value, type_signature
 
-  Returns:
-    A `pb.Computation`.
-  """
+
+def create_dummy_computation_selection():
+  """Returns a selection computation and type."""
+  source, source_type = create_dummy_computation_tuple()
+  type_signature = source_type[0]
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      selection=pb.Selection(source=source, index=0))
+  return value, type_signature
+
+
+def create_dummy_computation_tensorflow_constant(value=10):
+  """Returns a tensorflow computation and type `( -> T)`."""
+
+  with tf.Graph().as_default() as graph:
+    result = tf.constant(value)
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        result, graph)
+
+  type_signature = computation_types.FunctionType(None, result_type)
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+      parameter=None,
+      result=result_binding)
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      tensorflow=tensorflow)
+  return value, type_signature
+
+
+def create_dummy_computation_tensorflow_empty():
+  """Returns a tensorflow computation and type `( -> <>)`."""
 
   with tf.Graph().as_default() as graph:
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         [], graph)
 
-  function_type = computation_types.FunctionType(None, result_type)
-  type_signature = type_serialization.serialize_type(function_type)
+  type_signature = computation_types.FunctionType(None, result_type)
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=None,
       result=result_binding)
-  return pb.Computation(type=type_signature, tensorflow=tensorflow)
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      tensorflow=tensorflow)
+  return value, type_signature
+
+
+def create_dummy_computation_tensorflow_identity(type_spec=tf.int32):
+  """Returns a tensorflow computation and type `(T -> T)`."""
+
+  with tf.Graph().as_default() as graph:
+    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
+        'a', type_spec, graph)
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        parameter_value, graph)
+
+  type_signature = computation_types.FunctionType(type_spec, result_type)
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+      parameter=parameter_binding,
+      result=result_binding)
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      tensorflow=tensorflow)
+  return value, type_signature
+
+
+def create_dummy_computation_tuple():
+  """Returns a tuple computation and type."""
+  element_type = computation_types.NamedTupleType([])
+  element_value = pb.Computation(
+      type=type_serialization.serialize_type(element_type),
+      tuple=pb.Tuple(element=[]))
+  element = pb.Tuple.Element(value=element_value)
+  type_signature = computation_types.NamedTupleType([element_type])
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      tuple=pb.Tuple(element=[element]))
+  return value, type_signature
+
+
+def create_dummy_value_clients():
+  """Returns a Python value and type at clients."""
+  value = [10, 10, 10]
+  type_signature = type_factory.at_clients(tf.int32)
+  return value, type_signature
+
+
+def create_dummy_value_clients_all_equal():
+  """Returns a Python value and type at clients and all equal."""
+  value = 10
+  type_signature = type_factory.at_clients(tf.int32, all_equal=True)
+  return value, type_signature
+
+
+def create_dummy_value_server():
+  """Returns a Python value and type at server."""
+  value = 10
+  type_signature = type_factory.at_server(tf.int32)
+  return value, type_signature
+
+
+def create_dummy_value_unplaced():
+  """Returns a Python value and type unplaced."""
+  value = 10
+  type_signature = computation_types.TensorType(tf.int32)
+  return value, type_signature

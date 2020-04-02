@@ -63,127 +63,6 @@ def create_test_executor_factory():
   return executor_factory.ExecutorFactoryImpl(lambda _: executor)
 
 
-def create_dummy_intrinsic_def():
-  value = intrinsic_defs.FEDERATED_APPLY
-  type_signature = computation_types.FunctionType([
-      type_factory.unary_op(tf.int32),
-      type_factory.at_server(tf.int32),
-  ], type_factory.at_server(tf.int32))
-  return value, type_signature
-
-
-def create_dummy_placement_literal():
-  value = placement_literals.SERVER
-  type_signature = computation_types.PlacementType()
-  return value, type_signature
-
-
-def create_dummy_computation_impl():
-  proto = executor_test_utils.create_dummy_identity_lambda_computation()
-  value = computation_impl.ComputationImpl(proto,
-                                           context_stack_impl.context_stack)
-  type_signature = type_factory.unary_op(tf.int32)
-  return value, type_signature
-
-
-def create_dummy_computation_call():
-  function = executor_test_utils.create_dummy_empty_tensorflow_computation()
-  value = pb.Computation(
-      type=type_serialization.serialize_type(
-          computation_types.NamedTupleType([])),
-      call=pb.Call(function=function))
-  type_signature = computation_types.NamedTupleType([])
-  return value, type_signature
-
-
-def create_dummy_computation_intrinsic():
-  value = pb.Computation(
-      type=type_serialization.serialize_type(tf.int32),
-      intrinsic=pb.Intrinsic(uri=intrinsic_defs.GENERIC_ZERO.uri))
-  type_signature = computation_types.TensorType(tf.int32)
-  return value, type_signature
-
-
-def create_dummy_computation_lambda():
-  value = executor_test_utils.create_dummy_identity_lambda_computation()
-  type_signature = type_factory.unary_op(tf.int32)
-  return value, type_signature
-
-
-def create_dummy_computation_placement():
-  value = pb.Computation(
-      type=type_serialization.serialize_type(computation_types.PlacementType()),
-      placement=pb.Placement(uri=placement_literals.SERVER.uri))
-  type_signature = computation_types.PlacementType()
-  return value, type_signature
-
-
-def create_dummy_computation_reference():
-  value = pb.Computation(
-      type=type_serialization.serialize_type(tf.int32),
-      reference=pb.Reference(name='a'))
-  type_signature = computation_types.TensorType(tf.int32)
-  return value, type_signature
-
-
-def create_dummy_computation_selection():
-  element_value = executor_test_utils.create_dummy_empty_tensorflow_computation(
-  )
-  element_type = computation_types.FunctionType(
-      None, computation_types.NamedTupleType([]))
-  element = pb.Tuple.Element(value=element_value)
-  source = pb.Computation(
-      type=type_serialization.serialize_type([element_type]),
-      tuple=pb.Tuple(element=[element]))
-  value = pb.Computation(
-      type=type_serialization.serialize_type(element_type),
-      selection=pb.Selection(source=source, index=0))
-  type_signature = computation_types.FunctionType(
-      None, computation_types.NamedTupleType([]))
-
-  return value, type_signature
-
-
-def create_dummy_computation_tensorflow():
-  value = executor_test_utils.create_dummy_empty_tensorflow_computation()
-  type_signature = computation_types.FunctionType(
-      None, computation_types.NamedTupleType([]))
-  return value, type_signature
-
-
-def create_dummy_computation_tuple():
-  value = pb.Computation(
-      type=type_serialization.serialize_type(
-          computation_types.NamedTupleType([])),
-      tuple=pb.Tuple(element=[]))
-  type_signature = computation_types.NamedTupleType([])
-  return value, type_signature
-
-
-def create_dummy_federated_type_clients():
-  value = [10, 20, 30]
-  type_signature = type_factory.at_clients(tf.int32)
-  return value, type_signature
-
-
-def create_dummy_federated_type_clients_all_equal():
-  value = 10
-  type_signature = type_factory.at_clients(tf.int32, all_equal=True)
-  return value, type_signature
-
-
-def create_dummy_federated_type_server():
-  value = 10
-  type_signature = type_factory.at_server(tf.int32)
-  return value, type_signature
-
-
-def create_dummy_unplaced_type():
-  value = 10
-  type_signature = computation_types.TensorType(tf.int32)
-  return value, type_signature
-
-
 Runtime = Tuple[asyncio.AbstractEventLoop,
                 federating_executor.FederatingExecutor]
 
@@ -262,23 +141,38 @@ def _produce_test_value(
 class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
                                         parameterized.TestCase):
 
+  # pyformat: disable
   @parameterized.named_parameters([
-      ('intrinsic_def', *create_dummy_intrinsic_def()),
-      ('placement_literal', *create_dummy_placement_literal()),
-      ('computation_impl', *create_dummy_computation_impl()),
-      ('computation_call', *create_dummy_computation_call()),
-      ('computation_intrinsic', *create_dummy_computation_intrinsic()),
-      ('computation_lambda', *create_dummy_computation_lambda()),
-      ('computation_placement', *create_dummy_computation_placement()),
-      ('computation_selection', *create_dummy_computation_selection()),
-      ('computation_tensorflow', *create_dummy_computation_tensorflow()),
-      ('computation_tuple', *create_dummy_computation_tuple()),
-      ('federated_type_clients', *create_dummy_federated_type_clients()),
+      ('intrinsic_def',
+       *executor_test_utils.create_dummy_intrinsic_def()),
+      ('placement_literal',
+       *executor_test_utils.create_dummy_placement_literal()),
+      ('computation_impl',
+       *executor_test_utils.create_dummy_computation_impl()),
+      ('computation_call',
+       *executor_test_utils.create_dummy_computation_call()),
+      ('computation_intrinsic',
+       *executor_test_utils.create_dummy_computation_intrinsic()),
+      ('computation_lambda',
+       *executor_test_utils.create_dummy_computation_lambda_empty()),
+      ('computation_placement',
+       *executor_test_utils.create_dummy_computation_placement()),
+      ('computation_selection',
+       *executor_test_utils.create_dummy_computation_selection()),
+      ('computation_tensorflow',
+       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+      ('computation_tuple',
+       *executor_test_utils.create_dummy_computation_tuple()),
+      ('federated_type_clients',
+       *executor_test_utils.create_dummy_value_clients()),
       ('federated_type_clients_all_equal',
-       *create_dummy_federated_type_clients_all_equal()),
-      ('federated_type_server', *create_dummy_federated_type_server()),
-      ('unplaced_type', *create_dummy_unplaced_type()),
+       *executor_test_utils.create_dummy_value_clients_all_equal()),
+      ('federated_type_server',
+       *executor_test_utils.create_dummy_value_server()),
+      ('unplaced_type',
+       *executor_test_utils.create_dummy_value_unplaced()),
   ])
+  # pyformat: enable
   def test_returns_value_with_value_and_type(self, value, type_signature):
     executor = create_test_executor(num_clients=3)
 
@@ -288,17 +182,28 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
 
+  # pyformat: disable
   @parameterized.named_parameters([
-      ('placement_literal', *create_dummy_placement_literal()),
-      ('computation_impl', *create_dummy_computation_impl()),
-      ('computation_call', *create_dummy_computation_call()),
-      ('computation_intrinsic', *create_dummy_computation_intrinsic()),
-      ('computation_lambda', *create_dummy_computation_lambda()),
-      ('computation_placement', *create_dummy_computation_placement()),
-      ('computation_selection', *create_dummy_computation_selection()),
-      ('computation_tensorflow', *create_dummy_computation_tensorflow()),
-      ('computation_tuple', *create_dummy_computation_tuple()),
+      ('placement_literal',
+       *executor_test_utils.create_dummy_placement_literal()),
+      ('computation_impl',
+       *executor_test_utils.create_dummy_computation_impl()),
+      ('computation_call',
+       *executor_test_utils.create_dummy_computation_call()),
+      ('computation_intrinsic',
+       *executor_test_utils.create_dummy_computation_intrinsic()),
+      ('computation_lambda',
+       *executor_test_utils.create_dummy_computation_lambda_empty()),
+      ('computation_placement',
+       *executor_test_utils.create_dummy_computation_placement()),
+      ('computation_selection',
+       *executor_test_utils.create_dummy_computation_selection()),
+      ('computation_tensorflow',
+       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+      ('computation_tuple',
+       *executor_test_utils.create_dummy_computation_tuple()),
   ])
+  # pyformat: enable
   def test_returns_value_with_value_only(self, value, type_signature):
     executor = create_test_executor(num_clients=3)
 
@@ -308,31 +213,46 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
 
+  # pyformat: disable
   @parameterized.named_parameters([
-      ('intrinsic_def', *create_dummy_intrinsic_def()),
-      ('federated_type_clients', *create_dummy_federated_type_clients()),
+      ('intrinsic_def',
+       *executor_test_utils.create_dummy_intrinsic_def()),
+      ('federated_type_clients',
+       *executor_test_utils.create_dummy_value_clients()),
       ('federated_type_clients_all_equal',
-       *create_dummy_federated_type_clients_all_equal()),
-      ('federated_type_server', *create_dummy_federated_type_server()),
-      ('unplaced_type', *create_dummy_unplaced_type()),
+       *executor_test_utils.create_dummy_value_clients_all_equal()),
+      ('federated_type_server',
+       *executor_test_utils.create_dummy_value_server()),
+      ('unplaced_type',
+       *executor_test_utils.create_dummy_value_unplaced()),
   ])
-  def test_raises_type_error_with_value_only(self, value, type_signature):
+  # pyformat: enable
+  def test_raises_type_error_with_value_only(self, value, _):
     executor = create_test_executor(num_clients=3)
 
     with self.assertRaises(TypeError):
       self.run_sync(executor.create_value(value))
 
+  # pyformat: disable
   @parameterized.named_parameters([
-      ('intrinsic_def', *create_dummy_intrinsic_def()),
-      ('placement_literal', *create_dummy_placement_literal()),
-      ('computation_impl', *create_dummy_computation_impl()),
-      ('computation_placement', *create_dummy_computation_placement()),
-      ('federated_type_clients', *create_dummy_federated_type_clients()),
+      ('intrinsic_def',
+       *executor_test_utils.create_dummy_intrinsic_def()),
+      ('placement_literal',
+       *executor_test_utils.create_dummy_placement_literal()),
+      ('computation_impl',
+       *executor_test_utils.create_dummy_computation_impl()),
+      ('computation_placement',
+       *executor_test_utils.create_dummy_computation_placement()),
+      ('federated_type_clients',
+       *executor_test_utils.create_dummy_value_clients()),
       ('federated_type_clients_all_equal',
-       *create_dummy_federated_type_clients_all_equal()),
-      ('federated_type_server', *create_dummy_federated_type_server()),
-      ('unplaced_type', *create_dummy_unplaced_type()),
+       *executor_test_utils.create_dummy_value_clients_all_equal()),
+      ('federated_type_server',
+       *executor_test_utils.create_dummy_value_server()),
+      ('unplaced_type',
+       *executor_test_utils.create_dummy_value_unplaced()),
   ])
+  # pyformat: enable
   def test_raises_type_error_with_value_and_bad_type(self, value, _):
     executor = create_test_executor(num_clients=3)
     bad_type_signature = computation_types.TensorType(tf.string)
@@ -340,14 +260,22 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     with self.assertRaises(TypeError):
       self.run_sync(executor.create_value(value, bad_type_signature))
 
+  # pyformat: disable
   @parameterized.named_parameters([
-      ('computation_call', *create_dummy_computation_call()),
-      ('computation_intrinsic', *create_dummy_computation_intrinsic()),
-      ('computation_lambda', *create_dummy_computation_lambda()),
-      ('computation_selection', *create_dummy_computation_selection()),
-      ('computation_tensorflow', *create_dummy_computation_tensorflow()),
-      ('computation_tuple', *create_dummy_computation_tuple()),
+      ('computation_call',
+       *executor_test_utils.create_dummy_computation_call()),
+      ('computation_intrinsic',
+       *executor_test_utils.create_dummy_computation_intrinsic()),
+      ('computation_lambda',
+       *executor_test_utils.create_dummy_computation_lambda_empty()),
+      ('computation_selection',
+       *executor_test_utils.create_dummy_computation_selection()),
+      ('computation_tensorflow',
+       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+      ('computation_tuple',
+       *executor_test_utils.create_dummy_computation_tuple()),
   ])
+  # pyformat: enable
   def test_raises_type_error_with_value_and_bad_type_skipped(self, value, _):
     self.skipTest(
         'TODO(b/152449402): `FederatingExecutor.create_value` method should '
@@ -358,12 +286,18 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     with self.assertRaises(TypeError):
       self.run_sync(executor.create_value(value, bad_type_signature))
 
-  def test_raises_value_error_with_computation_reference(self):
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('computation_reference',
+       *executor_test_utils.create_dummy_computation_reference()),
+      ('function_type', lambda: 10, type_factory.unary_op(tf.int32)),
+  ])
+  # pyformat: enable
+  def test_raises_value_error_with_value(self, value, type_signature):
     executor = create_test_executor(num_clients=3)
-    value, _ = create_dummy_computation_reference()
 
     with self.assertRaises(ValueError):
-      self.run_sync(executor.create_value(value))
+      self.run_sync(executor.create_value(value, type_signature))
 
   def test_raises_value_error_with_unrecognized_computation_intrinsic(self):
     executor = create_test_executor(num_clients=3)
@@ -380,30 +314,14 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
 
   def test_raises_value_error_with_unrecognized_computation_selection(self):
     executor = create_test_executor(num_clients=3)
-    element_value = executor_test_utils.create_dummy_empty_tensorflow_computation(
-    )
-    element_type = computation_types.FunctionType(
-        None, computation_types.NamedTupleType([]))
-    element = pb.Tuple.Element(value=element_value)
-    source = pb.Computation(
-        type=type_serialization.serialize_type([element_type]),
-        tuple=pb.Tuple(element=[element]))
+    source, _ = executor_test_utils.create_dummy_computation_tuple()
+    type_signature = computation_types.NamedTupleType([])
     # A `ValueError` will be raised because `create_value` can not handle the
     # following `pb.Selection`, because does not set either a name or an index
     # field.
     value = pb.Computation(
-        type=type_serialization.serialize_type(element_type),
+        type=type_serialization.serialize_type(type_signature),
         selection=pb.Selection(source=source))
-    type_signature = computation_types.FunctionType(
-        None, computation_types.NamedTupleType([]))
-
-    with self.assertRaises(ValueError):
-      self.run_sync(executor.create_value(value, type_signature))
-
-  def test_raises_value_error_with_function_type(self):
-    executor = create_test_executor(num_clients=3)
-    value = None
-    type_signature = type_factory.unary_op(tf.int32)
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
@@ -417,7 +335,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
         placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
         None: eager_tf_executor.EagerTFExecutor()
     })
-    value, type_signature = create_dummy_federated_type_clients()
+    value, type_signature = executor_test_utils.create_dummy_value_clients()
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
@@ -431,7 +349,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
         placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
         None: eager_tf_executor.EagerTFExecutor()
     })
-    value, type_signature = create_dummy_federated_type_server()
+    value, type_signature = executor_test_utils.create_dummy_value_server()
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
@@ -444,7 +362,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
         placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
         placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
     })
-    value, type_signature = create_dummy_unplaced_type()
+    value, type_signature = executor_test_utils.create_dummy_value_unplaced()
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
@@ -467,19 +385,132 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
       self.run_sync(executor.create_value(value, type_signature))
 
 
-class FederatingExecutorTest(parameterized.TestCase):
+class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
+                                       parameterized.TestCase):
 
-  def test_executor_call_unsupported_intrinsic(self):
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('intrinsic_def',
+       *executor_test_utils.create_dummy_intrinsic_def(),
+       *executor_test_utils.create_dummy_computation_tensorflow_constant()),
+      ('computation_impl',
+       *executor_test_utils.create_dummy_computation_impl(),
+       *executor_test_utils.create_dummy_value_unplaced()),
+      ('computation_intrinsic',
+       *executor_test_utils.create_dummy_computation_intrinsic(),
+       *executor_test_utils.create_dummy_computation_tensorflow_constant()),
+      ('computation_tensorflow',
+       *executor_test_utils.create_dummy_computation_tensorflow_identity(),
+       *executor_test_utils.create_dummy_value_unplaced()),
+  ])
+  # pyformat: enable
+  def test_returns_value_with_comp_and_arg(self, comp, comp_type, arg,
+                                           arg_type):
+    executor = create_test_executor(num_clients=3)
+
+    comp = self.run_sync(executor.create_value(comp, comp_type))
+    arg = self.run_sync(executor.create_value(arg, arg_type))
+    result = self.run_sync(executor.create_call(comp, arg))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     comp_type.result.compact_representation())
+
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('computation_lambda',
+       *executor_test_utils.create_dummy_computation_lambda_empty()),
+      ('computation_tensorflow',
+       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+  ])
+  # pyformat: enable
+  def test_returns_value_with_comp_only(self, comp, comp_type):
+    executor = create_test_executor(num_clients=3)
+
+    comp = self.run_sync(executor.create_value(comp, comp_type))
+    result = self.run_sync(executor.create_call(comp))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     comp_type.result.compact_representation())
+
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('intrinsic_def',
+       *executor_test_utils.create_dummy_intrinsic_def()),
+      ('computation_impl',
+       *executor_test_utils.create_dummy_computation_impl()),
+      ('computation_intrinsic',
+       *executor_test_utils.create_dummy_computation_intrinsic()),
+      ('computation_lambda',
+       *executor_test_utils.create_dummy_computation_lambda_identity()),
+      ('computation_tensorflow',
+       *executor_test_utils.create_dummy_computation_tensorflow_identity()),
+  ])
+  # pyformat: enable
+  def test_raises_type_error_with_comp_and_bad_arg(self, comp, comp_type):
+    executor = create_test_executor(num_clients=3)
+    bad_arg = 'string'
+    bad_arg_type = computation_types.TensorType(tf.string)
+
+    comp = self.run_sync(executor.create_value(comp, comp_type))
+    arg = self.run_sync(executor.create_value(bad_arg, bad_arg_type))
+    with self.assertRaises(TypeError):
+      self.run_sync(executor.create_call(comp, arg))
+
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('computation_call',
+       *executor_test_utils.create_dummy_computation_call()),
+      ('computation_placement',
+       *executor_test_utils.create_dummy_computation_placement()),
+      ('computation_selection',
+       *executor_test_utils.create_dummy_computation_selection()),
+      ('computation_tuple',
+       *executor_test_utils.create_dummy_computation_tuple()),
+      ('federated_type_clients',
+       *executor_test_utils.create_dummy_value_clients()),
+      ('federated_type_clients_all_equal',
+       *executor_test_utils.create_dummy_value_clients_all_equal()),
+      ('federated_type_server',
+       *executor_test_utils.create_dummy_value_server()),
+      ('unplaced_type',
+       *executor_test_utils.create_dummy_value_unplaced()),
+  ])
+  # pyformat: enable
+  def test_raises_value_error_with_comp(self, comp, comp_type):
+    executor = create_test_executor(num_clients=3)
+
+    comp = self.run_sync(executor.create_value(comp, comp_type))
+    with self.assertRaises(ValueError):
+      self.run_sync(executor.create_call(comp))
+
+  def test_raises_value_error_with_computation_lambda_and_arg(self):
+    executor = create_test_executor(num_clients=3)
+    comp, comp_type = executor_test_utils.create_dummy_computation_lambda_identity(
+    )
+    arg, arg_type = executor_test_utils.create_dummy_value_unplaced()
+
+    comp = self.run_sync(executor.create_value(comp, comp_type))
+    arg = self.run_sync(executor.create_value(arg, arg_type))
+    with self.assertRaises(ValueError):
+      self.run_sync(executor.create_call(comp, arg))
+
+  def test_raises_not_implemented_error_with_unimplemented_intrinsic(self):
+    executor = create_test_executor(num_clients=3)
     dummy_intrinsic = intrinsic_defs.IntrinsicDef(
         'DUMMY_INTRINSIC', 'dummy_intrinsic',
         computation_types.AbstractType('T'))
-
     comp = pb.Computation(
         intrinsic=pb.Intrinsic(uri='dummy_intrinsic'),
         type=type_serialization.serialize_type(tf.int32))
 
+    comp = self.run_sync(executor.create_value(comp))
     with self.assertRaises(NotImplementedError):
-      _run_test_comp(comp, num_clients=3)
+      self.run_sync(executor.create_call(comp))
+
+
+class FederatingExecutorTest(parameterized.TestCase):
 
   def test_federated_value_at_server(self):
     @computations.federated_computation

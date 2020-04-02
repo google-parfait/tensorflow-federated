@@ -229,7 +229,7 @@ class FederatingExecutor(executor_base.Executor):
 
     Raises:
       TypeError: If the `value` and `type_spec` do not match.
-      ValueError: If the `value` being embedded is not a kind recognized by the
+      ValueError: If `value` is not a kind recognized by the
         `FederatingExecutor`.
     """
     type_spec = computation_types.to_type(type_spec)
@@ -346,6 +346,25 @@ class FederatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def create_call(self, comp, arg=None):
+    """A coroutine that creates a call to `comp` with optional argument `arg`.
+
+    Args:
+      comp: The computation to invoke.
+      arg: An optional argument of the call, or `None` if no argument was
+        supplied.
+
+    Returns:
+      An instance of `FederatingExecutorValue` that represents the constructed
+      call.
+
+    Raises:
+      TypeError: If the `type_signature` of `arg` does not match the expected
+        `type_signature` of the parameter to `comp`.
+      ValueError: If `comp` is not a functional kind recognized by the
+        `FederatingExecutor` or if `comp` is a lambda with an argument.
+      NotImplementedError: If `comp` is an intrinsic and it has not been
+        implemented by the `FederatingExecutor`.
+    """
     py_typecheck.check_type(comp, FederatingExecutorValue)
     if arg is not None:
       py_typecheck.check_type(arg, FederatingExecutorValue)
@@ -356,13 +375,12 @@ class FederatingExecutor(executor_base.Executor):
       arg = FederatingExecutorValue(arg.internal_representation, param_type)
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')
-      comp_type_signature = comp.type_signature
       if which_computation == 'lambda':
-        # Pull the inner computation out of called no-arg lambdas.
         if comp.type_signature.parameter is not None:
           raise ValueError(
               'Directly calling lambdas with arguments is unsupported. '
               'Found call to lambda with type {}.'.format(comp.type_signature))
+        # Pull the inner computation out of called no-arg lambdas.
         return await self.create_value(
             getattr(comp.internal_representation, 'lambda').result,
             comp.type_signature.result)
@@ -370,7 +388,7 @@ class FederatingExecutor(executor_base.Executor):
         # Run tensorflow computations.
         child = self._target_executors[None][0]
         embedded_comp = await child.create_value(comp.internal_representation,
-                                                 comp_type_signature)
+                                                 comp.type_signature)
         if arg is not None:
           embedded_arg = await executor_utils.delegate_entirely_to_executor(
               arg.internal_representation, arg.type_signature, child)
