@@ -55,14 +55,16 @@ def _create_test_cnn_model(only_digits=True):
 def _create_random_batch():
   return collections.OrderedDict(
       x=tf.random.uniform(tf.TensorShape([1, 28, 28, 1]), dtype=tf.float32),
-      y=tf.constant(1, dtype=tf.int64, shape=[1]))
+      y=tf.constant(1, dtype=tf.int32, shape=[1]))
 
 
 def _model_fn():
   keras_model = _create_test_cnn_model(only_digits=True)
   loss = tf.keras.losses.SparseCategoricalCrossentropy()
-  return simple_fedavg_tf.KerasModelWrapper(keras_model, _create_random_batch(),
-                                            loss)
+  input_spec = collections.OrderedDict(
+      x=tf.TensorSpec([None, 28, 28, 1], tf.float32),
+      y=tf.TensorSpec([None], tf.int32))
+  return simple_fedavg_tf.KerasModelWrapper(keras_model, input_spec, loss)
 
 
 MnistVariables = collections.namedtuple(
@@ -118,9 +120,6 @@ def aggregate_mnist_metrics_across_clients(metrics):
       accuracy=tff.federated_mean(metrics.accuracy, metrics.num_examples))
 
 
-ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
-
-
 class MnistModel(tff.learning.Model):
 
   def __init__(self):
@@ -136,7 +135,7 @@ class MnistModel(tff.learning.Model):
 
   @property
   def weights(self):
-    return ModelWeights(
+    return simple_fedavg_tf.ModelWeights(
         trainable=self.trainable_variables,
         non_trainable=self.non_trainable_variables)
 
@@ -149,9 +148,9 @@ class MnistModel(tff.learning.Model):
 
   @property
   def input_spec(self):
-    return collections.OrderedDict([('x', tf.TensorSpec([None, 784],
-                                                        tf.float32)),
-                                    ('y', tf.TensorSpec([None, 1], tf.int32))])
+    return collections.OrderedDict(
+        x=tf.TensorSpec([None, 784], tf.float32),
+        y=tf.TensorSpec([None, 1], tf.int32))
 
   @tf.function
   def forward_pass(self, batch, training=True):
@@ -169,16 +168,15 @@ class MnistModel(tff.learning.Model):
 
 
 def create_client_data():
-  emnist_batch = collections.OrderedDict([('label', [5]),
-                                          ('pixels', np.random.rand(28, 28))])
+  emnist_batch = collections.OrderedDict(
+      label=[5], pixels=np.random.rand(28, 28))
 
-  output_types = collections.OrderedDict([('label', tf.int32),
-                                          ('pixels', tf.float32)])
+  output_types = collections.OrderedDict(label=tf.int32, pixels=tf.float32)
 
-  output_shapes = collections.OrderedDict([
-      ('label', tf.TensorShape([1])),
-      ('pixels', tf.TensorShape([28, 28])),
-  ])
+  output_shapes = collections.OrderedDict(
+      label=tf.TensorShape([1]),
+      pixels=tf.TensorShape([28, 28]),
+  )
 
   dataset = tf.data.Dataset.from_generator(lambda: (yield emnist_batch),
                                            output_types, output_shapes)
@@ -198,7 +196,7 @@ class SimpleFedAvgTest(tf.test.TestCase):
     federated_data_type = it_process.next.type_signature.parameter[1]
     self.assertEqual(
         str(federated_data_type),
-        '{<x=float32[?,28,28,1],y=int64[?]>*}@CLIENTS')
+        '{<x=float32[?,28,28,1],y=int32[?]>*}@CLIENTS')
 
   def test_simple_training(self):
     it_process = simple_fedavg_tff.build_federated_averaging_process(_model_fn)
@@ -211,7 +209,7 @@ class SimpleFedAvgTest(tf.test.TestCase):
     def deterministic_batch():
       return Batch(
           x=np.ones([1, 28, 28, 1], dtype=np.float32),
-          y=np.ones([1], dtype=np.int64))
+          y=np.ones([1], dtype=np.int32))
 
     batch = tff.tf_computation(deterministic_batch)()
     federated_data = [[batch]]

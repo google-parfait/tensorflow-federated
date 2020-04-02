@@ -144,24 +144,12 @@ def main(argv):
 
   train_data, test_data = get_emnist_dataset()
 
-  @tf.function
-  def get_sample_batch():
-    """Returns a sample batch to prepare model for TFF.
-
-    Sample batch is used to enforce construction of model variables,
-    and define data type in TFF. The returned sampled batch can be eager
-    or non-eager depending on the contex.
-    """
-    example_dataset = train_data.create_tf_dataset_for_client(
-        train_data.client_ids[0])
-    return next(iter(example_dataset))
-
   def tff_model_fn():
     """Constructs a fully initialized model for use in federated averaging."""
-    sample_batch = get_sample_batch()
     keras_model = create_original_fedavg_cnn_model(only_digits=True)
     loss = tf.keras.losses.SparseCategoricalCrossentropy()
-    return simple_fedavg_tf.KerasModelWrapper(keras_model, sample_batch, loss)
+    return simple_fedavg_tf.KerasModelWrapper(keras_model,
+                                              test_data.element_spec, loss)
 
   iterative_process = simple_fedavg_tff.build_federated_averaging_process(
       tff_model_fn, server_optimizer_fn, client_optimizer_fn)

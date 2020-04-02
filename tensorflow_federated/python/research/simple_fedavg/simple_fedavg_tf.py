@@ -39,22 +39,19 @@ ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
 class KerasModelWrapper(object):
   """A standalone keras wrapper to be used in TFF."""
 
-  def __init__(self, keras_model, sample_batch, loss):
+  def __init__(self, keras_model, input_spec, loss):
     """A wrapper class that provides necessary API handles for TFF.
 
     Args:
       keras_model: A `tf.keras.Model` to be trained.
-      sample_batch: A `collections.Mapping` with two keys, `x` for inputs and
-        `y` for labels.
+      input_spec: Metadata of dataset that desribes the input tensors, which
+       will be converted to `tff.Type` specifying the expected type of input
+       and output of the model.
       loss: A `tf.keras.losses.Loss` instance to be used for training.
     """
     self.keras_model = keras_model
-    self.input_spec = self._get_input_spec(sample_batch)
+    self.input_spec = input_spec
     self.loss = loss
-    # Eagerly construct the model variables now. Keras will lazily wait until
-    # the first call, but TFF needs to statically know the shape of the model
-    # during computation tracing.
-    self._eagerly_construct_model_vars(sample_batch)
 
   def forward_pass(self, batch_input, training=True):
     """Forward pass of the model to get loss for a batch of data.
@@ -70,23 +67,6 @@ class KerasModelWrapper(object):
     preds = self.keras_model(batch_input['x'], training=training)
     loss = self.loss(batch_input['y'], preds)
     return loss
-
-  def _eagerly_construct_model_vars(self, sample_batch):
-    """Forces construction of variables."""
-    self.keras_model(sample_batch['x'])
-
-  def _get_input_spec(self, sample_batch):
-    """Gets the input data type to specify in TFF."""
-
-    def _tensor_spec_with_undefined_batch_dim(tensor):
-      # Remove the batch dimension and leave it unspecified.
-      spec = tf.TensorSpec(
-          shape=[None] + tensor.shape.dims[1:], dtype=tensor.dtype)
-      return spec
-
-    tf_dataset_type = tf.nest.map_structure(
-        _tensor_spec_with_undefined_batch_dim, sample_batch)
-    return tf_dataset_type
 
   @property
   def weights(self):
