@@ -463,15 +463,15 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
 
     @attr.s
     class Foo(object):
-      A = attr.ib()
-      B = attr.ib()
+      a = attr.ib()
+      b = attr.ib()
 
-    foo = Foo(A=tf.constant(True), B=tf.constant([1, 2]))
+    foo = Foo(a=tf.constant(True), b=tf.constant([1, 2]))
     dtypes = tf.nest.map_structure(lambda x: x.dtype.base_dtype, foo)
     shapes = tf.nest.map_structure(lambda x: x.shape, foo)
 
     t = type_utils.tf_dtypes_and_shapes_to_type(dtypes, shapes)
-    self.assertEqual(str(t), '<A=bool,B=int32[2]>')
+    self.assertEqual(str(t), '<a=bool,b=int32[2]>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIs(

@@ -1146,9 +1146,10 @@ class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
         return comp, False
       return building_blocks.Block(new_locals, comp.result), True
     elif isinstance(referred, building_blocks.Lambda):
-      referred = referred  # type: building_blocks.Lambda
+      referred_lambda = referred  # type: building_blocks.Lambda
       transformed_comp = building_blocks.Block(
-          [(referred.parameter_name, comp.argument)], referred.result)
+          [(referred_lambda.parameter_name, comp.argument)],
+          referred_lambda.result)
       symbol_tree.update_payload_with_name(comp.function.name)
     else:
       if comp.function.parameter_type is not None:
