@@ -126,7 +126,7 @@ def from_keras_model(keras_model,
     raise ValueError('The top-level structure in `input_spec` must contain '
                      'exactly two elements, as it must specify type '
                      'information for both inputs to and predictions from the '
-                     'model.')
+                     'model. You passed input spec {}.'.format(input_spec))
   if loss_weights is not None:
     py_typecheck.check_type(loss, collections.Sequence)
   if isinstance(loss, collections.Sequence):
