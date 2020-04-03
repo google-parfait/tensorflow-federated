@@ -15,6 +15,7 @@
 """Utilities for constructing decorators/wrappers for functions and defuns."""
 
 import types
+from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -73,11 +74,11 @@ def _wrap(fn, parameter_type, wrapper_fn):
   if parameter_type is None and signature.parameters:
     # There is no TFF type specification, and the function/defun declares
     # parameters. Create a polymorphic template.
-    def _wrap_polymorphic(wrapper_fn, fn, parameter_type, name=fn_name):
-      return wrapper_fn(fn, parameter_type, unpack=True, name=name)
+    def _wrap_polymorphic(parameter_type: computation_types.Type,
+                          unpack: Optional[bool]):
+      return wrapper_fn(fn, parameter_type, unpack=unpack, name=fn_name)
 
-    polymorphic_fn = function_utils.PolymorphicFunction(
-        lambda pt: _wrap_polymorphic(wrapper_fn, fn, pt))
+    polymorphic_fn = function_utils.PolymorphicFunction(_wrap_polymorphic)
 
     # When applying a decorator, the __doc__ attribute with the documentation
     # in triple-quotes is not automatically transferred from the function on

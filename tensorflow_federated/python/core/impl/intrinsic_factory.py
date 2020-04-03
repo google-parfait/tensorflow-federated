@@ -52,9 +52,23 @@ class IntrinsicFactory(object):
 
     zero = value_impl.to_value(zero, None, self._context_stack)
     py_typecheck.check_type(zero, value_base.Value)
-    accumulate = value_impl.to_value(accumulate, None, self._context_stack)
-    merge = value_impl.to_value(merge, None, self._context_stack)
-    report = value_impl.to_value(report, None, self._context_stack)
+    accumulate = value_impl.to_value(
+        accumulate,
+        None,
+        self._context_stack,
+        parameter_type_hint=computation_types.NamedTupleType(
+            [zero.type_signature, value.type_signature.member]))
+    merge = value_impl.to_value(
+        merge,
+        None,
+        self._context_stack,
+        parameter_type_hint=computation_types.NamedTupleType(
+            [zero.type_signature, zero.type_signature]))
+    report = value_impl.to_value(
+        report,
+        None,
+        self._context_stack,
+        parameter_type_hint=zero.type_signature)
     for op in [accumulate, merge, report]:
       py_typecheck.check_type(op, value_base.Value)
       py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
@@ -145,9 +159,11 @@ class IntrinsicFactory(object):
     arg = value_impl.to_value(arg, None, self._context_stack)
     arg = value_utils.ensure_federated_value(arg, label='value to be mapped')
 
-    # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
-    # here based on the actual type of the argument.
-    fn = value_impl.to_value(fn, None, self._context_stack)
+    fn = value_impl.to_value(
+        fn,
+        None,
+        self._context_stack,
+        parameter_type_hint=arg.type_signature.member)
 
     py_typecheck.check_type(fn, value_base.Value)
     py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
@@ -192,9 +208,11 @@ class IntrinsicFactory(object):
     arg = value_utils.ensure_federated_value(arg, placements.CLIENTS,
                                              'value to be mapped')
 
-    # TODO(b/113112108): Add support for polymorphic templates auto-instantiated
-    # here based on the actual type of the argument.
-    fn = value_impl.to_value(fn, None, self._context_stack)
+    fn = value_impl.to_value(
+        fn,
+        None,
+        self._context_stack,
+        parameter_type_hint=arg.type_signature.member)
 
     py_typecheck.check_type(fn, value_base.Value)
     py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
@@ -269,7 +287,12 @@ class IntrinsicFactory(object):
     # TODO(b/113112108): We need a check here that zero does not have federated
     # constituents.
 
-    op = value_impl.to_value(op, None, self._context_stack)
+    op = value_impl.to_value(
+        op,
+        None,
+        self._context_stack,
+        parameter_type_hint=computation_types.NamedTupleType(
+            [zero.type_signature, value.type_signature.member]))
     py_typecheck.check_type(op, value_base.Value)
     py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
     op_type_expected = type_factory.reduction_op(zero.type_signature,

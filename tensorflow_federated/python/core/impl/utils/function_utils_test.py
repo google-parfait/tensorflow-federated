@@ -330,9 +330,8 @@ class PolymorphicFunctionTest(test.TestCase):
         return val
 
       def invoke(self, comp, arg):
-        return 'name={},type={},arg={}'.format(comp.name,
-                                               comp.type_signature.parameter,
-                                               arg)
+        return 'name={},type={},arg={},unpack={}'.format(
+            comp.name, comp.type_signature.parameter, arg, comp.unpack)
 
     class TestContextStack(context_stack_base.ContextStack):
 
@@ -352,8 +351,9 @@ class PolymorphicFunctionTest(test.TestCase):
 
     class TestFunction(function_utils.ConcreteFunction):
 
-      def __init__(self, name, parameter_type):
+      def __init__(self, name, unpack, parameter_type):
         self._name = name
+        self._unpack = unpack
         type_signature = computation_types.FunctionType(parameter_type,
                                                         tf.string)
         super().__init__(type_signature, context_stack)
@@ -362,27 +362,41 @@ class PolymorphicFunctionTest(test.TestCase):
       def name(self):
         return self._name
 
+      @property
+      def unpack(self):
+        return self._unpack
+
     class TestFunctionFactory(object):
 
       def __init__(self):
         self._count = 0
 
-      def __call__(self, parameter_type):
+      def __call__(self, parameter_type, unpack):
         self._count = self._count + 1
-        return TestFunction(str(self._count), parameter_type)
+        return TestFunction(str(self._count), str(unpack), parameter_type)
 
     fn = function_utils.PolymorphicFunction(TestFunctionFactory())
 
-    self.assertEqual(fn(10), 'name=1,type=<int32>,arg=<10>')
+    self.assertEqual(fn(10), 'name=1,type=<int32>,arg=<10>,unpack=True')
     self.assertEqual(
-        fn(20, x=True), 'name=2,type=<int32,x=bool>,arg=<20,x=True>')
-    self.assertEqual(fn(True), 'name=3,type=<bool>,arg=<True>')
-    self.assertEqual(fn(30, x=40), 'name=4,type=<int32,x=int32>,arg=<30,x=40>')
-    self.assertEqual(fn(50), 'name=1,type=<int32>,arg=<50>')
+        fn(20, x=True),
+        'name=2,type=<int32,x=bool>,arg=<20,x=True>,unpack=True')
+    fn_with_bool_arg = fn.fn_for_argument_type(
+        computation_types.to_type(tf.bool))
     self.assertEqual(
-        fn(0, x=False), 'name=2,type=<int32,x=bool>,arg=<0,x=False>')
-    self.assertEqual(fn(False), 'name=3,type=<bool>,arg=<False>')
-    self.assertEqual(fn(60, x=70), 'name=4,type=<int32,x=int32>,arg=<60,x=70>')
+        fn_with_bool_arg(True), 'name=3,type=bool,arg=True,unpack=None')
+    self.assertEqual(
+        fn(30, x=40), 'name=4,type=<int32,x=int32>,arg=<30,x=40>,unpack=True')
+    self.assertEqual(fn(50), 'name=1,type=<int32>,arg=<50>,unpack=True')
+    self.assertEqual(
+        fn(0, x=False),
+        'name=2,type=<int32,x=bool>,arg=<0,x=False>,unpack=True')
+    fn_with_bool_arg = fn.fn_for_argument_type(
+        computation_types.to_type(tf.bool))
+    self.assertEqual(
+        fn_with_bool_arg(False), 'name=3,type=bool,arg=False,unpack=None')
+    self.assertEqual(
+        fn(60, x=70), 'name=4,type=<int32,x=int32>,arg=<60,x=70>,unpack=True')
 
 
 if __name__ == '__main__':

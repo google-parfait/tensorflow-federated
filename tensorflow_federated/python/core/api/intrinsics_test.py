@@ -110,7 +110,7 @@ class IntrinsicsTest(parameterized.TestCase):
         computation_types.FederatedType(tf.int32, placements.CLIENTS, True))
     def foo(x):
       val = intrinsics.federated_map(
-          computations.tf_computation(lambda x: x > 10, tf.int32), x)
+          computations.tf_computation(lambda x: x > 10), x)
       self.assertIsInstance(val, value_base.Value)
       return val
 
@@ -122,7 +122,7 @@ class IntrinsicsTest(parameterized.TestCase):
         computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def foo(x):
       val = intrinsics.federated_map(
-          computations.tf_computation(lambda x: x > 10, tf.int32), x)
+          computations.tf_computation(lambda x: x > 10), x)
       self.assertIsInstance(val, value_base.Value)
       return val
 
@@ -134,7 +134,7 @@ class IntrinsicsTest(parameterized.TestCase):
         computation_types.FederatedType(tf.int32, placements.SERVER))
     def foo(x):
       val = intrinsics.federated_map(
-          computations.tf_computation(lambda x: x > 10, tf.int32), x)
+          computations.tf_computation(lambda x: x > 10), x)
       self.assertIsInstance(val, value_base.Value)
       return val
 
@@ -149,7 +149,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x, y):
       val = intrinsics.federated_map(
           computations.tf_computation(lambda x, y: x > 10,
-                                      [tf.int32, tf.int32]), [x, y])
+                                     ), [x, y])
       self.assertIsInstance(val, value_base.Value)
       return val
 
@@ -160,7 +160,7 @@ class IntrinsicsTest(parameterized.TestCase):
     def foo(x, y):
       val = intrinsics.federated_map(
           computations.tf_computation(lambda x, y: x > 10,
-                                      [tf.int32, tf.int32]), [x, y])
+                                     ), [x, y])
       self.assertIsInstance(val, value_base.Value)
       return val
 
@@ -180,7 +180,7 @@ class IntrinsicsTest(parameterized.TestCase):
       @computations.federated_computation(tf.int32)
       def _(x):
         return intrinsics.federated_map(
-            computations.tf_computation(lambda x: x > 10, tf.int32), x)
+            computations.tf_computation(lambda x: x > 10), x)
 
   def test_federated_sum_with_client_int(self):
 
@@ -447,22 +447,20 @@ class IntrinsicsTest(parameterized.TestCase):
     # pylint: disable=invalid-name
     Accumulator = collections.namedtuple('Accumulator', 'total count')
     # pylint: enable=invalid-name
-    accumulator_type = computation_types.NamedTupleType(
-        Accumulator(tf.int32, tf.int32))
 
     # The operator to use during the first stage simply adds an element to the
     # total and updates the count.
-    @computations.tf_computation([accumulator_type, tf.int32])
+    @computations.tf_computation
     def accumulate(accu, elem):
       return Accumulator(accu.total + elem, accu.count + 1)
 
     # The operator to use during the second stage simply adds total and count.
-    @computations.tf_computation([accumulator_type, accumulator_type])
+    @computations.tf_computation
     def merge(x, y):
       return Accumulator(x.total + y.total, x.count + y.count)
 
     # The operator to use during the final stage simply computes the ratio.
-    @computations.tf_computation(accumulator_type)
+    @computations.tf_computation
     def report(accu):
       return tf.cast(accu.total, tf.float32) / tf.cast(accu.count, tf.float32)
 
@@ -551,7 +549,7 @@ class IntrinsicsTest(parameterized.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def foo(x):
-      plus = computations.tf_computation(tf.add, [tf.int32, tf.int32])
+      plus = computations.tf_computation(tf.add)
       val = intrinsics.federated_reduce(x, 0, plus)
       self.assertIsInstance(val, value_base.Value)
       return val
@@ -568,8 +566,7 @@ class IntrinsicsTest(parameterized.TestCase):
       val = intrinsics.federated_sum(
           intrinsics.federated_map(
               computations.tf_computation(
-                  lambda x, y: tf.cast(tf.greater(x, y), tf.int32),
-                  [tf.float32, tf.float32]),
+                  lambda x, y: tf.cast(tf.greater(x, y), tf.int32)),
               [temperatures,
                intrinsics.federated_broadcast(threshold)]))
       self.assertIsInstance(val, value_base.Value)
@@ -687,7 +684,7 @@ class IntrinsicsTest(parameterized.TestCase):
           computation_types.FederatedType(tf.int32, placements.SERVER))
       def foo(x):
         val = intrinsics.federated_apply(
-            computations.tf_computation(lambda x: x * x, tf.int32), x)
+            computations.tf_computation(lambda x: x * x), x)
         self.assertIsInstance(val, value_base.Value)
         return val
 

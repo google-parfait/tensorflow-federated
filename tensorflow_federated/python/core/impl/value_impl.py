@@ -310,6 +310,7 @@ def to_value(
     arg: Any,
     type_spec,
     context_stack: context_stack_base.ContextStack,
+    parameter_type_hint=None,
 ) -> ValueImpl:
   """Converts the argument into an instance of `tff.Value`.
 
@@ -334,6 +335,10 @@ def to_value(
       representations), or `None` if none available, in which case TFF tries to
       determine the type of the TFF value automatically.
     context_stack: The context stack to use.
+    parameter_type_hint: An optional `computation_types.Type` or value
+      convertible to it by `computation_types.to_type` which specifies an
+      argument type to use in the case that `arg` is a
+      `function_utils.PolymorphicFunction`.
 
   Returns:
     An instance of `tff.Value` corresponding to the given `arg`, and of TFF type
@@ -355,7 +360,22 @@ def to_value(
     result = ValueImpl(arg, context_stack)
   elif isinstance(arg, placement_literals.PlacementLiteral):
     result = ValueImpl(building_blocks.Placement(arg), context_stack)
-  elif isinstance(arg, computation_base.Computation):
+  elif isinstance(
+      arg, (computation_base.Computation, function_utils.PolymorphicFunction)):
+    if isinstance(arg, function_utils.PolymorphicFunction):
+      if parameter_type_hint is None:
+        raise TypeError(
+            'Polymorphic computations cannot be converted to TFF values '
+            'without a type hint. Consider explicitly specifying the '
+            'argument types of a computation before passing it to a '
+            'function that requires a TFF value (such as a TFF intrinsic '
+            'like `federated_map`). If you are a TFF developer and think '
+            'this should be supported, consider providing `parameter_type_hint` '
+            'as an argument to the encompassing `to_value` conversion.')
+      parameter_type_hint = computation_types.to_type(parameter_type_hint)
+      type_utils.check_well_formed(parameter_type_hint)
+      arg = arg.fn_for_argument_type(parameter_type_hint)
+    py_typecheck.check_type(arg, computation_base.Computation)
     result = ValueImpl(
         building_blocks.CompiledComputation(
             computation_impl.ComputationImpl.get_proto(arg)), context_stack)
@@ -397,13 +417,6 @@ def to_value(
         'context. TFF does not support mixing TF and federated orchestration '
         'code. Please wrap any TensorFlow constructs with '
         '`tff.tf_computation`.'.format(arg))
-  elif isinstance(arg, function_utils.PolymorphicFunction):
-    # TODO(b/129567727) remove this case when this is no longer an error
-    raise TypeError(
-        'Polymorphic computations cannot be converted to a TFF value. Consider '
-        'explicitly specifying the argument types of a computation before '
-        'passing it to a function that requires a TFF value (such as a TFF '
-        'intrinsic like federated_map).')
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a TFF value.'.format(
