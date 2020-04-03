@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.compiler import type_transformations
 
 TF_DATASET_REPRESENTATION_TYPES = (tf.data.Dataset, tf.compat.v1.data.Dataset,
                                    tf.compat.v2.data.Dataset)
@@ -623,7 +624,8 @@ def is_binary_op_with_upcast_compatible_pair(possibly_nested_type,
       types_are_ok[0] = False
     return type_spec, False
 
-  transform_type_postorder(possibly_nested_type, _check_tensor_types)
+  type_transformations.transform_type_postorder(possibly_nested_type,
+                                                _check_tensor_types)
 
   return types_are_ok[0]
 
@@ -1268,79 +1270,6 @@ def is_concrete_instance_of(type_with_concrete_elements,
 
   return are_equivalent_types(concretized_abstract_type,
                               type_with_concrete_elements)
-
-
-def transform_type_postorder(type_signature, transform_fn):
-  """Walks type tree of `type_signature` postorder, calling `transform_fn`.
-
-  Args:
-    type_signature: Instance of `computation_types.Type` to transform
-      recursively.
-    transform_fn: Transformation function to apply to each node in the type tree
-      of `type_signature`. Must be instance of Python function type.
-
-  Returns:
-    A possibly transformed version of `type_signature`, with each node in its
-    tree the result of applying `transform_fn` to the corresponding node in
-    `type_signature`.
-
-  Raises:
-    TypeError: If the types don't match the specification above.
-  """
-  # TODO(b/134525440): Investigate unifying the recursive methods in type_utils,
-  # rather than proliferating them.
-  # TODO(b/134595038): Revisit the change here to add a mutated flag.
-  py_typecheck.check_type(type_signature, computation_types.Type)
-  py_typecheck.check_callable(transform_fn)
-  if isinstance(type_signature, computation_types.FederatedType):
-    transformed_member, member_mutated = transform_type_postorder(
-        type_signature.member, transform_fn)
-    if member_mutated:
-      type_signature = computation_types.FederatedType(transformed_member,
-                                                       type_signature.placement,
-                                                       type_signature.all_equal)
-    fed_type_signature, type_signature_mutated = transform_fn(type_signature)
-    return fed_type_signature, type_signature_mutated or member_mutated
-  elif isinstance(type_signature, computation_types.SequenceType):
-    transformed_element, element_mutated = transform_type_postorder(
-        type_signature.element, transform_fn)
-    if element_mutated:
-      type_signature = computation_types.SequenceType(transformed_element)
-    seq_type_signature, type_signature_mutated = transform_fn(type_signature)
-    return seq_type_signature, type_signature_mutated or element_mutated
-  elif isinstance(type_signature, computation_types.FunctionType):
-    transformed_param, param_mutated = transform_type_postorder(
-        type_signature.parameter, transform_fn)
-    transformed_result, result_mutated = transform_type_postorder(
-        type_signature.result, transform_fn)
-    if param_mutated or result_mutated:
-      type_signature = computation_types.FunctionType(transformed_param,
-                                                      transformed_result)
-    fn_type_signature, fn_mutated = transform_fn(type_signature)
-    return fn_type_signature, fn_mutated or param_mutated or result_mutated
-  elif isinstance(type_signature, computation_types.NamedTupleType):
-    elems = []
-    elems_mutated = False
-    for element in anonymous_tuple.iter_elements(type_signature):
-      transformed_element, element_mutated = transform_type_postorder(
-          element[1], transform_fn)
-      elems_mutated = elems_mutated or element_mutated
-      elems.append((element[0], transformed_element))
-    if elems_mutated:
-      if isinstance(type_signature,
-                    computation_types.NamedTupleTypeWithPyContainerType):
-        type_signature = computation_types.NamedTupleTypeWithPyContainerType(
-            elems,
-            computation_types.NamedTupleTypeWithPyContainerType
-            .get_container_type(type_signature))
-      else:
-        type_signature = computation_types.NamedTupleType(elems)
-    tuple_type_signature, tuple_mutated = transform_fn(type_signature)
-    return tuple_type_signature, elems_mutated or tuple_mutated
-  elif isinstance(type_signature,
-                  (computation_types.AbstractType, computation_types.TensorType,
-                   computation_types.PlacementType)):
-    return transform_fn(type_signature)
 
 
 def reconcile_value_with_type_spec(value, type_spec):

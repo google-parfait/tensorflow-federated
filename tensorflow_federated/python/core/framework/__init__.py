@@ -49,6 +49,7 @@ from tensorflow_federated.python.core.impl.compiler.tree_transformations import 
 from tensorflow_federated.python.core.impl.compiler.tree_transformations import unwrap_placement
 from tensorflow_federated.python.core.impl.compiler.type_serialization import deserialize_type
 from tensorflow_federated.python.core.impl.compiler.type_serialization import serialize_type
+from tensorflow_federated.python.core.impl.compiler.type_transformations import transform_type_postorder
 from tensorflow_federated.python.core.impl.context_stack.context_base import Context
 from tensorflow_federated.python.core.impl.context_stack.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
@@ -75,7 +76,6 @@ from tensorflow_federated.python.core.impl.tree_to_cc_transformations import TFP
 from tensorflow_federated.python.core.impl.type_utils import are_equivalent_types
 from tensorflow_federated.python.core.impl.type_utils import is_assignable_from
 from tensorflow_federated.python.core.impl.type_utils import is_tensorflow_compatible_type
-from tensorflow_federated.python.core.impl.type_utils import transform_type_postorder
 from tensorflow_federated.python.core.impl.type_utils import type_from_tensors
 from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_specs
 from tensorflow_federated.python.core.impl.wrappers.computation_wrapper_instances import building_block_to_computation

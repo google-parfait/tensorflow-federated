@@ -67,6 +67,7 @@ py_library(
         ":placement_literals",
         ":transformation_utils",
         ":type_serialization",
+        ":type_transformations",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -340,6 +341,7 @@ py_library(
         ":intrinsic_defs",
         ":transformation_utils",
         ":tree_analysis",
+        ":type_transformations",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -414,6 +416,32 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl:type_utils",
+    ],
+)
+
+py_library(
+    name = "type_transformations",
+    srcs = ["type_transformations.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "type_transformations_test",
+    size = "small",
+    srcs = ["type_transformations_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":placement_literals",
+        ":type_transformations",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl:type_utils",
     ],
 )

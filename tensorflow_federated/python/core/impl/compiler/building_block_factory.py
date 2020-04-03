@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.compiler import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -282,7 +283,7 @@ def create_tensorflow_constant(type_spec, scalar_value, name=None):
       tensor_dtypes_in_type_spec.append(type_signature.dtype)
     return type_signature, False
 
-  type_utils.transform_type_postorder(type_spec, _pack_dtypes)
+  type_transformations.transform_type_postorder(type_spec, _pack_dtypes)
 
   if (any(x.is_integer for x in tensor_dtypes_in_type_spec) and
       not inferred_scalar_value_type.dtype.is_integer):
@@ -631,10 +632,10 @@ def create_named_tuple_setattr_lambda(named_tuple_signature, name, value_comp):
   lambda_arg = building_blocks.Reference('lambda_arg', named_tuple_signature)
   if name not in dir(named_tuple_signature):
     raise AttributeError(
-        'There is no such attribute as \'{}\' in this federated tuple. '
+        'There is no such attribute as \'{name}\' in this federated tuple. '
         'TFF does not allow for assigning to a nonexistent attribute. '
-        'If you want to assign to \'{}\', you must create a new named tuple '
-        'containing this attribute.'.format(name, name))
+        'If you want to assign to \'{name}\', you must create a new named '
+        'tuple containing this attribute.'.format(name=name))
   elements = []
   for idx, (key, element_type) in enumerate(
       anonymous_tuple.to_elements(named_tuple_signature)):

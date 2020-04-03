@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import type_transformations
 
 
 class TransformationError(Exception):
@@ -1621,7 +1622,7 @@ def unwrap_placement(comp):
 
     def _remove_reference_placement(comp):
       """Unwraps placement from references and updates unbound reference info."""
-      new_type, _ = type_utils.transform_type_postorder(
+      new_type, _ = type_transformations.transform_type_postorder(
           comp.type_signature, _remove_placement_from_type)
       return building_blocks.Reference(comp.name, new_type)
 
@@ -1688,7 +1689,7 @@ def unwrap_placement(comp):
 
     def _remove_lambda_placement(comp):
       """Removes placement from Lambda's parameter."""
-      new_parameter_type, _ = type_utils.transform_type_postorder(
+      new_parameter_type, _ = type_transformations.transform_type_postorder(
           comp.parameter_type, _remove_placement_from_type)
       return building_blocks.Lambda(comp.parameter_name, new_parameter_type,
                                     comp.result)
