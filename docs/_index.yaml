@@ -1,6 +1,7 @@
 book_path: /federated/_book.yaml
 project_path: /federated/_project.yaml
-description: <!--no description-->
+description: An open-source framework for machine learning and other computations on decentralized
+ data. TFF has been developed to facilitate open research and experimentation.
 landing_page:
   custom_css_path: /site-assets/css/style.css
   rows:
