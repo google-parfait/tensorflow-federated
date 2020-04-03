@@ -163,8 +163,6 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
       prev_loss = metrics.loss
 
   def test_orchestration_execute_from_keras_with_lookup(self):
-    self.skipTest('https://github.com/tensorflow/federated/issues/783')
-
     ds = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
             x=[['R'], ['G'], ['B']], y=[[1.0], [2.0], [3.0]])).batch(2)

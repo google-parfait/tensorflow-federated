@@ -300,8 +300,10 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
           # computations from context.init_ops. Variables from import_graph_def
           # will not make it into the global collections, and so will not be
           # initialized without this code path.
-          init_op_name = tf.compat.v1.initializers.variables(
-              all_variables, name=name).name
+          init_op_name = tf.group(
+              tf.compat.v1.initializers.variables(all_variables, name=name),
+              *tf.compat.v1.get_collection(
+                  tf.compat.v1.GraphKeys.TABLE_INITIALIZERS)).name
       elif context.init_ops:
         init_op_name = tf.group(
             *context.init_ops, name='subcomputation_init_ops').name
