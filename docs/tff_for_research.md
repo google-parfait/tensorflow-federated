@@ -23,7 +23,7 @@ types of logic.
     encapsulate logic that runs in a single location (e.g., on clients or on a
     server). This code is typically written and tested without any `tff.*`
     references, and can be re-used outside of TFF. For example, the
-    [client training loop in Federated Averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg_tf.py#L204-L242)
+    [client training loop in Federated Averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg_tf.py#L184-L222)
     is implemented at this level.
 
 1.  TensorFlow Federated orchestration logic, which binds together the
@@ -31,12 +31,12 @@ types of logic.
     and then orchestrating them using abstractions like
     `tff.federated_broadcast` and `tff.federated_mean` inside a
     `tff.federated_computation`. See, for example, this
-    [orchestration for Federated Averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg_tff.py#L111-L139).
+    [orchestration for Federated Averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/simple_fedavg_tff.py#L112-L140).
 
 1.  An outer driver script that simulates the control logic of a production FL
     system, selecting simulated clients from a dataset and then executing
     federated comptuations defined in 2. on those clients. For example,
-    [a Federated EMNIST experiment driver](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/emnist_fedavg_main.py#L139).
+    [a Federated EMNIST experiment driver](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/simple_fedavg/emnist_fedavg_main.py).
 
 ## Federated learning datasets
 
@@ -109,7 +109,7 @@ A more general implementation of Federated Averaging can be found
 This implementation allows for more sophisticated optimization techniques,
 including learning rate scheduling and the use of different optimizers on both
 the server and client. Code that applies this generalized Federated Averaging to
-various tasks and federated datasets can be found can be found
+various tasks and federated datasets can be found
 [here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/optimization).
 
 ### Model and update compression
