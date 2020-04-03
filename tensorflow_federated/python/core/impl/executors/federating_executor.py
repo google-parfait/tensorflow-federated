@@ -417,14 +417,25 @@ class FederatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def create_tuple(self, elements):
-    elem = anonymous_tuple.to_elements(anonymous_tuple.from_container(elements))
-    for _, v in elem:
-      py_typecheck.check_type(v, FederatingExecutorValue)
+    """A coroutine that creates a tuple of `elements`.
+
+    Args:
+      elements: A collection of `ExecutorValue`s to create a tuple from.
+
+    Returns:
+      An instance of `FederatingExecutorValue` that represents the constructed
+      tuple.
+    """
+    for value in elements:
+      py_typecheck.check_type(value, FederatingExecutorValue)
+    elements = anonymous_tuple.to_elements(
+        anonymous_tuple.from_container(elements))
     return FederatingExecutorValue(
         anonymous_tuple.AnonymousTuple(
-            (k, v.internal_representation) for k, v in elem),
+            (k, v.internal_representation) for k, v in elements),
         computation_types.NamedTupleType(
-            (k, v.type_signature) if k else v.type_signature for k, v in elem))
+            (k, v.type_signature) if k else v.type_signature
+            for k, v in elements))
 
   @tracing.trace
   async def create_selection(self, source, index=None, name=None):

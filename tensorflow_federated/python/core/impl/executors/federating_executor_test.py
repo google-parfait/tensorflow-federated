@@ -510,6 +510,54 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
       self.run_sync(executor.create_call(comp))
 
 
+class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
+                                        parameterized.TestCase):
+
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('intrinsic_def',
+       *executor_test_utils.create_dummy_intrinsic_def()),
+      ('placement_literal',
+       *executor_test_utils.create_dummy_placement_literal()),
+      ('computation_impl',
+       *executor_test_utils.create_dummy_computation_impl()),
+      ('computation_call',
+       *executor_test_utils.create_dummy_computation_call()),
+      ('computation_intrinsic',
+       *executor_test_utils.create_dummy_computation_intrinsic()),
+      ('computation_lambda',
+       *executor_test_utils.create_dummy_computation_lambda_empty()),
+      ('computation_placement',
+       *executor_test_utils.create_dummy_computation_placement()),
+      ('computation_selection',
+       *executor_test_utils.create_dummy_computation_selection()),
+      ('computation_tensorflow',
+       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+      ('computation_tuple',
+       *executor_test_utils.create_dummy_computation_tuple()),
+      ('federated_type_clients',
+       *executor_test_utils.create_dummy_value_clients()),
+      ('federated_type_clients_all_equal',
+       *executor_test_utils.create_dummy_value_clients_all_equal()),
+      ('federated_type_server',
+       *executor_test_utils.create_dummy_value_server()),
+      ('unplaced_type',
+       *executor_test_utils.create_dummy_value_unplaced()),
+  ])
+  # pyformat: enable
+  def test_returns_value_with_elements(self, value, type_signature):
+    executor = create_test_executor(num_clients=3)
+
+    element = self.run_sync(executor.create_value(value, type_signature))
+    elements = [element] * 10
+    type_signature = computation_types.NamedTupleType([type_signature] * 10)
+    result = self.run_sync(executor.create_tuple(elements))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     type_signature.compact_representation())
+
+
 class FederatingExecutorTest(parameterized.TestCase):
 
   def test_federated_value_at_server(self):
