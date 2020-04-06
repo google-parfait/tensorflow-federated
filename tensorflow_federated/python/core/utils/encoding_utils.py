@@ -26,7 +26,6 @@ import attr
 import tensorflow as tf
 import tree
 
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import type_utils
@@ -193,13 +192,11 @@ def build_encoded_mean(values, encoders):
                                                    encoders)
   encoded_sum_fn = _build_encoded_sum_fn(nest_encoder)
 
-  @computations.tf_computation(value_type,
-                               computation_types.to_type(tf.float32))
+  @computations.tf_computation(value_type, tf.float32)
   def multiply_fn(value, weight):
     return tf.nest.map_structure(lambda v: v * tf.cast(weight, v.dtype), value)
 
-  @computations.tf_computation(value_type,
-                               computation_types.to_type(tf.float32))
+  @computations.tf_computation(value_type, tf.float32)
   def divide_fn(value, denominator):
     return tf.nest.map_structure(lambda v: v / tf.cast(denominator, v.dtype),
                                  value)

@@ -27,6 +27,17 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model_utils
 
 
+def _weights_from_model_fn(model_fn) -> model_utils.ModelWeights:
+  py_typecheck.check_callable(model_fn)
+  # This graph and the ones below are introduced in order to ensure that these
+  # TF invocations don't leak into the global graph. In the future, it would
+  # be nice if we were able to access the structure of `weights` without ever
+  # actually running TF code.
+  with tf.Graph().as_default():
+    model = model_fn()
+  return model_utils.ModelWeights.from_model(model)
+
+
 # TODO(b/138081552): Move to tff.learning when ready.
 def build_encoded_broadcast_from_model(model_fn, encoder_fn):
   """Builds `StatefulBroadcastFn` for weights of model returned by `model_fn`.
@@ -51,12 +62,9 @@ def build_encoded_broadcast_from_model(model_fn, encoder_fn):
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
-  # TODO(b/144382142): Keras name uniquification is probably the main reason we
-  # still need this.
-  with tf.Graph().as_default():
-    values = model_utils.enhance(model_fn()).weights
-  encoders = tf.nest.map_structure(encoder_fn, values)
-  return tff.utils.build_encoded_broadcast(values, encoders)
+  weights = _weights_from_model_fn(model_fn)
+  encoders = tf.nest.map_structure(encoder_fn, weights)
+  return tff.utils.build_encoded_broadcast(weights, encoders)
 
 
 # TODO(b/138081552): Move to tff.learning when ready.
@@ -83,12 +91,9 @@ def build_encoded_sum_from_model(model_fn, encoder_fn):
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
-  # TODO(b/144382142): Keras name uniquification is probably the main reason we
-  # still need this.
-  with tf.Graph().as_default():
-    values = model_utils.enhance(model_fn()).weights.trainable
-  encoders = tf.nest.map_structure(encoder_fn, values)
-  return tff.utils.build_encoded_sum(values, encoders)
+  trainable_weights = _weights_from_model_fn(model_fn).trainable
+  encoders = tf.nest.map_structure(encoder_fn, trainable_weights)
+  return tff.utils.build_encoded_sum(trainable_weights, encoders)
 
 
 # TODO(b/138081552): Move to tff.learning when ready.
@@ -115,9 +120,6 @@ def build_encoded_mean_from_model(model_fn, encoder_fn):
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
-  # TODO(b/144382142): Keras name uniquification is probably the main reason we
-  # still need this.
-  with tf.Graph().as_default():
-    values = model_utils.enhance(model_fn()).weights.trainable
-  encoders = tf.nest.map_structure(encoder_fn, values)
-  return tff.utils.build_encoded_mean(values, encoders)
+  trainable_weights = _weights_from_model_fn(model_fn).trainable
+  encoders = tf.nest.map_structure(encoder_fn, trainable_weights)
+  return tff.utils.build_encoded_mean(trainable_weights, encoders)

@@ -92,7 +92,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":computation_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl:type_utils",
