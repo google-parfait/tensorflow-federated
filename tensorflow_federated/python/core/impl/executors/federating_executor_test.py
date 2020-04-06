@@ -458,6 +458,25 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     with self.assertRaises(TypeError):
       self.run_sync(executor.create_call(comp, arg))
 
+  def test_raises_type_error_with_unembedded_comp(self):
+    executor = create_test_executor(num_clients=3)
+    comp, _ = executor_test_utils.create_dummy_computation_tensorflow_identity()
+    arg, arg_type = executor_test_utils.create_dummy_value_unplaced()
+
+    arg = self.run_sync(executor.create_value(arg, arg_type))
+    with self.assertRaises(TypeError):
+      self.run_sync(executor.create_call(comp, arg))
+
+  def test_raises_type_error_with_unembedded_arg(self):
+    executor = create_test_executor(num_clients=3)
+    comp, comp_type = executor_test_utils.create_dummy_computation_tensorflow_identity(
+    )
+    arg, _ = executor_test_utils.create_dummy_value_unplaced()
+
+    comp = self.run_sync(executor.create_value(comp, comp_type))
+    with self.assertRaises(TypeError):
+      self.run_sync(executor.create_call(comp, arg))
+
   # pyformat: disable
   @parameterized.named_parameters([
       ('computation_call',
