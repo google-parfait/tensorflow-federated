@@ -157,6 +157,6 @@ class CanonicalFormTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  reference_executor = tff.framework.ReferenceExecutor()
+  reference_executor = tff.test.ReferenceExecutor()
   tff.framework.set_default_executor(reference_executor)
   test.main()

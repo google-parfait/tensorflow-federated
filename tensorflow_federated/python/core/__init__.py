@@ -47,8 +47,9 @@ from tensorflow_federated.python.core.api.values import to_value
 
 # Note: These imports must happen after the API imports.
 # pylint: disable=g-bad-import-order
-from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import backends
+from tensorflow_federated.python.core import framework
+from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core import utils
 # pylint: enable=g-bad-import-order
 

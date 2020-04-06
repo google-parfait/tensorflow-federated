@@ -51,8 +51,9 @@ from tensorflow_federated.python.core.api.values import to_value
 
 # Note: These imports must happen after the API imports.
 # pylint: disable=g-bad-import-order
-from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import backends
+from tensorflow_federated.python.core import framework
+from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core import utils
 # pylint: enable=g-bad-import-order
 
@@ -60,7 +61,7 @@ from tensorflow_federated.python.core import utils
 # pylint: disable=g-bad-import-order
 from tensorflow_federated.python import learning
 from tensorflow_federated.python import simulation
-# pylint: enable=g-bad-import-order,wildcard-import
+# pylint: enable=g-bad-import-order
 
 if sys.version_info[0] < 3 or sys.version_info[1] < 6:
   raise Exception("TFF only supports Python versions 3.6 or later.")

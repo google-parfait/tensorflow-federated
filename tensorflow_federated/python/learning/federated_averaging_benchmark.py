@@ -53,7 +53,7 @@ def executors_benchmark(fn):
   def wrapped_fn(self):
     """Runs `fn` against different local executor stacks."""
     tff.framework.set_default_executor(
-        tff.framework.ReferenceExecutor(compiler=None))
+        tff.test.ReferenceExecutor(compiler=None))
     fn(self, 'reference executor')
     tff.framework.set_default_executor(tff.framework.local_executor_factory())
     fn(self, 'local executor')

@@ -71,7 +71,6 @@ from tensorflow_federated.python.core.impl.executors.reference_resolving_executo
 from tensorflow_federated.python.core.impl.executors.remote_executor import RemoteExecutor
 from tensorflow_federated.python.core.impl.executors.thread_delegating_executor import ThreadDelegatingExecutor
 from tensorflow_federated.python.core.impl.executors.transforming_executor import TransformingExecutor
-from tensorflow_federated.python.core.impl.reference_executor import ReferenceExecutor
 from tensorflow_federated.python.core.impl.tree_to_cc_transformations import TFParser
 from tensorflow_federated.python.core.impl.type_utils import are_equivalent_types
 from tensorflow_federated.python.core.impl.type_utils import is_assignable_from
