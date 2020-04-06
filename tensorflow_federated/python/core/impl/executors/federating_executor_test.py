@@ -564,17 +564,25 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_value_unplaced()),
   ])
   # pyformat: enable
-  def test_returns_value_with_elements(self, value, type_signature):
+  def test_returns_value_with_elements(self, element, type_signature):
     executor = create_test_executor(num_clients=3)
 
-    element = self.run_sync(executor.create_value(value, type_signature))
-    elements = [element] * 10
-    type_signature = computation_types.NamedTupleType([type_signature] * 10)
+    element = self.run_sync(executor.create_value(element, type_signature))
+    elements = [element] * 3
+    type_signature = computation_types.NamedTupleType([type_signature] * 3)
     result = self.run_sync(executor.create_tuple(elements))
 
     self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
+
+  def test_raises_type_error_with_unembedded_elements(self):
+    executor = create_test_executor(num_clients=3)
+    element, _ = executor_test_utils.create_dummy_value_unplaced()
+
+    elements = [element] * 3
+    with self.assertRaises(TypeError):
+      self.run_sync(executor.create_tuple(elements))
 
 
 class FederatingExecutorTest(parameterized.TestCase):
