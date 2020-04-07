@@ -33,7 +33,10 @@ py_test(
     srcs = ["dataset_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":dataset"],
+    deps = [
+        ":dataset",
+        "//tensorflow_federated",
+    ],
 )
 
 py_test(

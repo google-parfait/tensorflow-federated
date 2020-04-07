@@ -12,9 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import collections
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.optimization.stackoverflow import dataset
 
@@ -22,20 +24,6 @@ tf.compat.v1.enable_v2_behavior()
 
 
 class DatasetTest(tf.test.TestCase):
-
-  def test_raises_bad_args(self):
-    with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(0, 1, 1, 1, 1, 1)
-    with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 0, 1, 1, 1, 1)
-    with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 1, 0, 1, 1, 1)
-    with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 1, 1, 0, 1, 1)
-    with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 1, 1, 1, -2, 1)
-    with self.assertRaises(ValueError):
-      dataset.construct_word_level_datasets(1, 1, 1, 1, -1, 0)
 
   def test_split_input_target(self):
     tokens = tf.constant([[0, 1, 2, 3, 4]], dtype=tf.int64)
@@ -109,6 +97,86 @@ class BatchAndSplitTest(tf.test.TestCase):
           self.evaluate(elem[1]), np.array([[1, 2, 3, 4, 0, 0]], np.int64))
       num_elems += 1
     self.assertEqual(num_elems, 1)
+
+
+class DatasetPreprocessFnTest(tf.test.TestCase):
+
+  def test_train_preprocess_is_tff_computation(self):
+    token = collections.OrderedDict(tokens=([
+        'one must imagine',
+    ]))
+    ds = tf.data.Dataset.from_tensor_slices(token)
+    train_preprocess_fn = dataset.create_train_dataset_preprocess_fn(
+        ds.element_spec,
+        client_batch_size=32,
+        client_epochs_per_round=1,
+        max_seq_len=10,
+        max_training_elements_per_user=100,
+        vocab=['one', 'must'])
+    self.assertIsInstance(train_preprocess_fn, tff.Computation)
+    self.assertEqual(
+        train_preprocess_fn.type_signature.compact_representation(),
+        '(<tokens=string>* -> <int64[?,10],int64[?,10]>*)')
+
+  def test_train_preprocess_fn_return_dataset_element_spec(self):
+    token = collections.OrderedDict(tokens=([
+        'one must imagine',
+    ]))
+    ds = tf.data.Dataset.from_tensor_slices(token)
+    train_preprocess_fn = dataset.create_train_dataset_preprocess_fn(
+        ds.element_spec,
+        client_batch_size=32,
+        client_epochs_per_round=1,
+        max_seq_len=10,
+        max_training_elements_per_user=100,
+        vocab=['one', 'must'])
+    train_preprocessed_ds = train_preprocess_fn(ds)
+    self.assertEqual(train_preprocessed_ds.element_spec,
+                     (tf.TensorSpec(shape=[None, 10], dtype=tf.int64),
+                      tf.TensorSpec(shape=[None, 10], dtype=tf.int64)))
+
+  def test_test_preprocess_fn_return_dataset_element_spec(self):
+    token = collections.OrderedDict(tokens=([
+        'one must imagine',
+    ]))
+    ds = tf.data.Dataset.from_tensor_slices(token)
+    test_preprocess_fn = dataset.create_test_dataset_preprocess_fn(
+        max_seq_len=10, vocab=['one', 'must'])
+    test_preprocessed_ds = test_preprocess_fn(ds)
+    self.assertEqual(test_preprocessed_ds.element_spec,
+                     (tf.TensorSpec(shape=[None, 10], dtype=tf.int64),
+                      tf.TensorSpec(shape=[None, 10], dtype=tf.int64)))
+
+  def test_train_preprocess_fn_returns_correct_sequence(self):
+    token = collections.OrderedDict(tokens=([
+        'one must imagine',
+    ]))
+    ds = tf.data.Dataset.from_tensor_slices(token)
+    train_preprocess_fn = dataset.create_train_dataset_preprocess_fn(
+        ds.element_spec,
+        client_batch_size=32,
+        client_epochs_per_round=1,
+        max_seq_len=6,
+        max_training_elements_per_user=100,
+        vocab=['one', 'must'])
+    train_preprocessed_ds = train_preprocess_fn(ds)
+    element = next(iter(train_preprocessed_ds))
+    # BOS is len(vocab)+2, EOS is len(vocab)+3, pad is 0, OOV is len(vocab)+1
+    self.assertAllEqual(
+        self.evaluate(element[0]), np.array([[4, 1, 2, 3, 5, 0]]))
+
+  def test_test_preprocess_fn_returns_correct_sequence(self):
+    token = collections.OrderedDict(tokens=([
+        'one must imagine',
+    ]))
+    ds = tf.data.Dataset.from_tensor_slices(token)
+    test_preprocess_fn = dataset.create_test_dataset_preprocess_fn(
+        max_seq_len=6, vocab=['one', 'must'])
+    test_preprocessed_ds = test_preprocess_fn(ds)
+    element = next(iter(test_preprocessed_ds))
+    # BOS is len(vocab)+2, EOS is len(vocab)+3, pad is 0, OOV is len(vocab)+1
+    self.assertAllEqual(
+        self.evaluate(element[0]), np.array([[4, 1, 2, 3, 5, 0]]))
 
 
 if __name__ == '__main__':
