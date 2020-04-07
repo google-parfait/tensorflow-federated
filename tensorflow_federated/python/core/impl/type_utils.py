@@ -833,7 +833,7 @@ def is_structure_of_integers(type_spec):
 
 
 def check_is_structure_of_integers(type_spec):
-  if not is_sum_compatible(type_spec):
+  if not is_structure_of_integers(type_spec):
     raise TypeError(
         'Expected a type which is structure of integers, found {}.'.format(
             type_spec))
