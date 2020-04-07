@@ -349,6 +349,57 @@ class ComputationWrapperTest(test.TestCase):
     foo = test_wrap(lambda unused_x, unused_y: 99, tf.int32, tf.int32)
     self.assertEqual(foo(10, 20), '<10,20> : <int32,int32> -> 99')
 
+  def test_as_wrapper_with_one_argument_instance_method(self):
+
+    class IntWrapper:
+
+      def __init__(self, x):
+        self._x = x
+
+      def multiply_by(self, y):
+        return self._x * y
+
+    five = IntWrapper(5)
+    wrapped = test_wrap(five.multiply_by, tf.int32)
+    self.assertEqual(wrapped(2), '2 : int32 -> 10')
+
+  def test_as_wrapper_with_no_argument_instance_method(self):
+
+    class C:
+
+      def __init__(self, x):
+        self._x = x
+
+      def my_method(self):
+        return self._x
+
+    c = C(99)
+    wrapped = test_wrap(c.my_method)
+    self.assertEqual(wrapped(), 'None : None -> 99')
+
+  def test_as_wrapper_with_class_property(self):
+
+    class C:
+
+      @property
+      def x(self):
+        return 99
+
+    c = C()
+    with self.assertRaises(TypeError):
+      test_wrap(c.x)
+
+  def test_as_wrapper_with_classmethod(self):
+
+    class C:
+
+      @classmethod
+      def prefix(cls, msg):
+        return f'{cls.__name__}_{msg}'
+
+    wrapped = test_wrap(C.prefix)
+    self.assertEqual(wrapped('foo'), '<foo> : <string> -> C_foo')
+
 
 if __name__ == '__main__':
   with context_stack_impl.context_stack.install(ContextForTest()):

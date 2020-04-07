@@ -302,8 +302,9 @@ class ComputationWrapper(object):
         keyword arguments, although that might change in the future).
 
     Returns:
-      Either a result of wrapping, or a callable that expects a function or a
-      defun and performs wrapping on it, depending on specific usage pattern.
+      Either a result of wrapping, or a callable that expects a function,
+      method, or a defun and performs wrapping on it, depending on specific
+      usage pattern.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
@@ -316,14 +317,14 @@ class ComputationWrapper(object):
       # Deliberate wrapping with a lambda to prevent the caller from being able
       # to accidentally specify parameter type as a second argument.
       return lambda fn: _wrap(fn, None, self._wrapper_fn)
-    elif (isinstance(args[0], types.FunctionType) or
+    elif (isinstance(args[0], (types.FunctionType, types.MethodType)) or
           function.is_tf_function(args[0])):
-      # If the first argument on the list is a Python function or a defun, this
-      # is the one that's being wrapped. This is the case of either a decorator
-      # invocation without arguments as "@xyz" applied to a function definition,
-      # of an inline invocation as "... = xyz(lambda....). Any of the following
-      # arguments, if present, are the arguments to the wrapper that are to be
-      # interpreted as the type specification.
+      # If the first argument on the list is a Python function, instance method,
+      # or a defun, this is the one that's being wrapped. This is the case of
+      # either a decorator invocation without arguments as "@xyz" applied to a
+      # function definition, of an inline invocation as "... = xyz(lambda....).
+      # Any of the following arguments, if present, are the arguments to the
+      # wrapper that are to be interpreted as the type specification.
       if len(args) > 2:
         args = (args[0], args[1:])
       return _wrap(

@@ -73,6 +73,49 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
             z=inspect.Parameter('z', inspect.Parameter.VAR_POSITIONAL),
         ))
 
+  def test_get_signature_with_class_instance_method(self):
+
+    class C:
+
+      def __init__(self, x):
+        self._x = x
+
+      def foo(self, y):
+        return self._x * y
+
+    c = C(5)
+    signature = function_utils.get_signature(c.foo)
+    self.assertEqual(
+        signature.parameters,
+        collections.OrderedDict(
+            y=inspect.Parameter('y', inspect.Parameter.POSITIONAL_OR_KEYWORD)))
+
+  def test_get_signature_with_class_property(self):
+
+    class C:
+
+      @property
+      def x(self):
+        return 99
+
+    c = C()
+    with self.assertRaises(TypeError):
+      function_utils.get_signature(c.x)
+
+  def test_as_wrapper_with_classmethod(self):
+
+    class C:
+
+      @classmethod
+      def foo(cls, x):
+        return x * 2
+
+    signature = function_utils.get_signature(C.foo)
+    self.assertEqual(
+        signature.parameters,
+        collections.OrderedDict(
+            x=inspect.Parameter('x', inspect.Parameter.POSITIONAL_OR_KEYWORD)))
+
   # pyformat: disable
   @parameterized.parameters(
       itertools.product(

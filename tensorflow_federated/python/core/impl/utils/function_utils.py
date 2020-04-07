@@ -16,7 +16,7 @@
 
 import inspect
 import types
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -29,8 +29,9 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_ba
 from tensorflow_federated.python.tensorflow_libs import function
 
 
-def get_signature(fn: types.FunctionType) -> inspect.Signature:
-  """Returns the `inspect.Signature` structure for the given function.
+def get_signature(
+    fn: Union[types.FunctionType, types.MethodType]) -> inspect.Signature:
+  """Returns the `inspect.Signature` structure for the given function or method.
 
   Args:
     fn: The Python function or Tensorflow function to analyze.
@@ -41,7 +42,7 @@ def get_signature(fn: types.FunctionType) -> inspect.Signature:
   Raises:
     TypeError: if the argument is not of a supported type.
   """
-  if isinstance(fn, types.FunctionType):
+  if isinstance(fn, (types.FunctionType, types.MethodType)):
     return inspect.signature(fn)
   elif function.is_tf_function(fn):
     return inspect.signature(fn.python_function)
@@ -213,7 +214,9 @@ def pack_args_into_anonymous_tuple(
   else:
     py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
     py_typecheck.check_type(context, context_base.Context)
+    # pylint: disable=self-assigning-variable
     context = context  # type: context_base.Context
+    # pylint: enable=self-assigning-variable
     if not is_argument_tuple(type_spec):  # pylint: disable=attribute-error
       raise TypeError(
           'Parameter type {} does not have a structure of an argument tuple, '
