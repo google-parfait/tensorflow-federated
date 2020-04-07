@@ -127,7 +127,7 @@ class IntrinsicStrategy(abc.ABC):
   See concrete implementations for more details.
   """
 
-  def __init__(self, federating_executor: FederatingExecutor):
+  def __init__(self, federating_executor):
     self.federating_executor = federating_executor
 
   @classmethod
@@ -258,11 +258,11 @@ class CentralizedIntrinsicStrategy(IntrinsicStrategy):
 
   async def federated_value_at_clients(self, arg):
     return await executor_utils.compute_intrinsic_federated_value(
-        self.executor, arg, placement_literals.CLIENTS)
+        self.federating_executor, arg, placement_literals.CLIENTS)
 
   async def federated_value_at_server(self, arg):
     return await executor_utils.compute_intrinsic_federated_value(
-        self.executor, arg, placement_literals.SERVER)
+        self.federating_executor, arg, placement_literals.SERVER)
 
   async def federated_eval_at_server(self, arg):
     return await self._eval(arg, placement_literals.SERVER, True)
@@ -286,7 +286,7 @@ class CentralizedIntrinsicStrategy(IntrinsicStrategy):
           'Federated broadcast expects a value with a single representation, '
           'found {}.'.format(len(arg.internal_representation)))
     return await executor_utils.compute_intrinsic_federated_broadcast(
-        self.executor, arg)
+        self.federating_executor, arg)
 
   async def federated_zip_at_server(self, arg):
     return await self._zip(arg, placement_literals.SERVER, all_equal=True)
@@ -379,7 +379,6 @@ class CentralizedIntrinsicStrategy(IntrinsicStrategy):
 
   async def federated_sum(self, arg):
     py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
-<<<<<<< HEAD
     zero, plus = await asyncio.gather(
         executor_utils.embed_tf_scalar_constant(self.federating_executor,
                                                 arg.type_signature.member,
@@ -388,15 +387,6 @@ class CentralizedIntrinsicStrategy(IntrinsicStrategy):
                                                 arg.type_signature.member,
                                                 tf.add))
     return await self.federating_executor._compute_intrinsic_federated_reduce(
-=======
-    zero, plus = tuple(await asyncio.gather(*[
-        executor_utils.embed_tf_scalar_constant(self.federating_executor,
-                                                arg.type_signature.member, 0),
-        executor_utils.embed_tf_binary_operator(
-            self.federating_executor, arg.type_signature.member, tf.add)
-    ]))
-    return await self.federating_executor._compute_intrinsic_federated_reduce(
->>>>>>> c9b6642d... - new intrinsic_strategy_fn arg for FederatingExecutor
         FederatingExecutorValue(
             anonymous_tuple.AnonymousTuple([
                 (None, arg.internal_representation),
@@ -414,13 +404,8 @@ class CentralizedIntrinsicStrategy(IntrinsicStrategy):
     count = float(len(arg.internal_representation))
     if count < 1.0:
       raise RuntimeError('Cannot compute a federated mean over an empty group.')
-<<<<<<< HEAD
-    child = self.executor._target_executors[placement_literals.SERVER][0]
-    factor, multiply = await asyncio.gather(
-=======
     child = self._get_child_executors(placement_literals.SERVER, index=0)
-    factor, multiply = tuple(await asyncio.gather(*[
->>>>>>> c9b6642d... - new intrinsic_strategy_fn arg for FederatingExecutor
+    factor, multiply = await asyncio.gather(
         executor_utils.embed_tf_scalar_constant(child, member_type,
                                                 float(1.0 / count)),
         executor_utils.embed_tf_binary_operator(child, member_type,
