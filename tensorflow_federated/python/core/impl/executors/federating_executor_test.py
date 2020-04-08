@@ -147,8 +147,6 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_intrinsic_def()),
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
-      ('computation_impl',
-       *executor_test_utils.create_dummy_computation_impl()),
       ('computation_call',
        *executor_test_utils.create_dummy_computation_call()),
       ('computation_intrinsic',
@@ -186,8 +184,6 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   @parameterized.named_parameters([
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
-      ('computation_impl',
-       *executor_test_utils.create_dummy_computation_impl()),
       ('computation_call',
        *executor_test_utils.create_dummy_computation_call()),
       ('computation_intrinsic',
@@ -208,6 +204,27 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     executor = create_test_executor(num_clients=3)
 
     result = self.run_sync(executor.create_value(value))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     type_signature.compact_representation())
+
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('computation_intrinsic',
+       *executor_test_utils.create_dummy_computation_intrinsic()),
+      ('computation_lambda',
+       *executor_test_utils.create_dummy_computation_lambda_empty()),
+      ('computation_tensorflow',
+       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+  ])
+  # pyformat: enable
+  def test_returns_value_with_computation_impl(self, proto, type_signature):
+    executor = create_test_executor(num_clients=3)
+    value = computation_impl.ComputationImpl(proto,
+                                             context_stack_impl.context_stack)
+
+    result = self.run_sync(executor.create_value(value, type_signature))
 
     self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
@@ -239,8 +256,6 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_intrinsic_def()),
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
-      ('computation_impl',
-       *executor_test_utils.create_dummy_computation_impl()),
       ('computation_placement',
        *executor_test_utils.create_dummy_computation_placement()),
       ('federated_type_clients',
@@ -393,9 +408,6 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
       ('intrinsic_def',
        *executor_test_utils.create_dummy_intrinsic_def(),
        *executor_test_utils.create_dummy_computation_tensorflow_constant()),
-      ('computation_impl',
-       *executor_test_utils.create_dummy_computation_impl(),
-       *executor_test_utils.create_dummy_value_unplaced()),
       ('computation_intrinsic',
        *executor_test_utils.create_dummy_computation_intrinsic(),
        *executor_test_utils.create_dummy_computation_tensorflow_constant()),
@@ -438,8 +450,6 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   @parameterized.named_parameters([
       ('intrinsic_def',
        *executor_test_utils.create_dummy_intrinsic_def()),
-      ('computation_impl',
-       *executor_test_utils.create_dummy_computation_impl()),
       ('computation_intrinsic',
        *executor_test_utils.create_dummy_computation_intrinsic()),
       ('computation_lambda',
@@ -538,8 +548,6 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_intrinsic_def()),
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
-      ('computation_impl',
-       *executor_test_utils.create_dummy_computation_impl()),
       ('computation_call',
        *executor_test_utils.create_dummy_computation_call()),
       ('computation_intrinsic',

@@ -363,7 +363,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl:computation_impl",
         "//tensorflow_federated/python/core/impl:reference_executor",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
