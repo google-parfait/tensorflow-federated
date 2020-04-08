@@ -377,20 +377,7 @@ def create_dummy_computation_tensorflow_constant(value=10):
 
 def create_dummy_computation_tensorflow_empty():
   """Returns a tensorflow computation and type `( -> <>)`."""
-
-  with tf.Graph().as_default() as graph:
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        [], graph)
-
-  type_signature = computation_types.FunctionType(None, result_type)
-  tensorflow = pb.TensorFlow(
-      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-      parameter=None,
-      result=result_binding)
-  value = pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
-  return value, type_signature
+  return create_dummy_computation_tensorflow_constant(value=[])
 
 
 def create_dummy_computation_tensorflow_identity(type_spec=tf.int32):
@@ -413,23 +400,49 @@ def create_dummy_computation_tensorflow_identity(type_spec=tf.int32):
   return value, type_signature
 
 
-def create_dummy_computation_tuple():
-  """Returns a tuple computation and type."""
-  element_type = computation_types.NamedTupleType([])
-  element_value = pb.Computation(
-      type=type_serialization.serialize_type(element_type),
-      tuple=pb.Tuple(element=[]))
-  element = pb.Tuple.Element(value=element_value)
-  type_signature = computation_types.NamedTupleType([element_type])
+def create_dummy_computation_tensorflow_tuple(value=10):
+  """Returns a tensorflow computation and type.
+
+  `( -> <('a', T), ('b', T), ('c', T)>)`
+
+  Args:
+    value: An optional integer value.
+  """
+
+  with tf.Graph().as_default() as graph:
+    names = ['a', 'b', 'c']
+    result = anonymous_tuple.AnonymousTuple(
+        (n, tf.constant(value)) for n in names)
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        result, graph)
+
+  type_signature = computation_types.FunctionType(None, result_type)
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+      parameter=None,
+      result=result_binding)
   value = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
-      tuple=pb.Tuple(element=[element]))
+      tensorflow=tensorflow)
+  return value, type_signature
+
+
+def create_dummy_computation_tuple():
+  """Returns a tuple computation and type."""
+  names = ['a', 'b', 'c']
+  element_value, element_type = create_dummy_computation_tensorflow_constant()
+  elements = [pb.Tuple.Element(name=n, value=element_value) for n in names]
+  type_signature = computation_types.NamedTupleType(
+      (n, element_type) for n in names)
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      tuple=pb.Tuple(element=elements))
   return value, type_signature
 
 
 def create_dummy_value_clients():
   """Returns a Python value and type at clients."""
-  value = [10, 10, 10]
+  value = [10] * 3
   type_signature = type_factory.at_clients(tf.int32)
   return value, type_signature
 

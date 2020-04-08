@@ -358,9 +358,10 @@ class FederatingExecutor(executor_base.Executor):
       call.
 
     Raises:
-      TypeError: If the `type_signature` of `arg` does not match the expected
-        `type_signature` of the parameter to `comp`.
-      ValueError: If `comp` is not a functional kind recognized by the
+      TypeError: If `comp` or `arg` are not embedded in the executor, before
+        calling `create_call` or if the `type_signature` of `arg` do not match
+        the expected `type_signature` of the parameter to `comp`.
+      ValueError: If `comp` is not a functional kind recognized by
         `FederatingExecutor` or if `comp` is a lambda with an argument.
       NotImplementedError: If `comp` is an intrinsic and it has not been
         implemented by the `FederatingExecutor`.
@@ -420,11 +421,16 @@ class FederatingExecutor(executor_base.Executor):
     """A coroutine that creates a tuple of `elements`.
 
     Args:
-      elements: A collection of `ExecutorValue`s to create a tuple from.
+      elements: A collection of `FederatingExecutorValue`s to create a tuple
+        from.
 
     Returns:
       An instance of `FederatingExecutorValue` that represents the constructed
       tuple.
+
+    Raises:
+      TypeError: If the `elements` are not embedded in the executor, before
+        calling `create_call`.
     """
     for value in elements:
       py_typecheck.check_type(value, FederatingExecutorValue)
@@ -439,13 +445,33 @@ class FederatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def create_selection(self, source, index=None, name=None):
+    """A coroutine that creates a selection from `source`.
+
+    Args:
+      source: The source to select from.
+      index: An optional integer index. Either this, or `name` must be present.
+      name: An optional string name. Either this, or `index` must be present.
+
+    Returns:
+      An instance of `FederatingExecutorValue` that represents the constructed
+      selection.
+
+    Raises:
+      TypeError: If `source` is not embedded in the executor, before calling
+        `create_call` or if `source` is not a `tff.NamedTupleType`.
+      ValueError: If both `index` and `name` are `None` of if `source` is not a
+        kind recognized by `FederatingExecutor`.
+    """
     py_typecheck.check_type(source, FederatingExecutorValue)
     py_typecheck.check_type(source.type_signature,
                             computation_types.NamedTupleType)
+    if index is None and name is None:
+      raise ValueError(
+          'Expected either `index` or `name` to be specificed, found both are '
+          '`None`.')
     if name is not None:
-      name_to_index = dict((n, i) for i, (
-          n,
-          t) in enumerate(anonymous_tuple.to_elements(source.type_signature)))
+      elements = anonymous_tuple.iter_elements(source.type_signature)
+      name_to_index = dict((n, i) for i, (n, _) in enumerate(elements))
       index = name_to_index[name]
     if isinstance(source.internal_representation,
                   anonymous_tuple.AnonymousTuple):
@@ -454,24 +480,16 @@ class FederatingExecutor(executor_base.Executor):
       return FederatingExecutorValue(selected, source.type_signature[index])
     elif isinstance(source.internal_representation,
                     executor_value_base.ExecutorValue):
-      if type_utils.type_tree_contains_types(source.type_signature,
-                                             computation_types.FederatedType):
-        raise ValueError(
-            'FederatingExecutorValue {} has violated its contract; '
-            'it is embedded in another executor and yet its type '
-            'has placement. The embedded value is {}, with type '
-            'signature {}.'.format(source, source.internal_representation,
-                                   source.type_signature))
       val = source.internal_representation
       child = self._target_executors[None][0]
       return FederatingExecutorValue(
           await child.create_selection(val, index=index),
           source.type_signature[index])
     else:
-      raise ValueError('Unexpected internal representation while creating '
-                       'selection. Expected one of `AnonymousTuple` or value '
-                       'embedded in target executor, received {}'.format(
-                           source.internal_representation))
+      raise ValueError(
+          'Unexpected internal representation while creating selection. '
+          'Expected one of `AnonymousTuple` or value embedded in target '
+          'executor, received {}'.format(source.internal_representation))
 
   def _check_arg_is_anonymous_tuple(self, arg):
     py_typecheck.check_type(arg.type_signature,

@@ -446,6 +446,25 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     self.assertEqual(result.type_signature.compact_representation(),
                      comp_type.result.compact_representation())
 
+  def test_raises_type_error_with_unembedded_comp(self):
+    executor = create_test_executor(num_clients=3)
+    comp, _ = executor_test_utils.create_dummy_computation_tensorflow_identity()
+    arg, arg_type = executor_test_utils.create_dummy_value_unplaced()
+
+    arg = self.run_sync(executor.create_value(arg, arg_type))
+    with self.assertRaises(TypeError):
+      self.run_sync(executor.create_call(comp, arg))
+
+  def test_raises_type_error_with_unembedded_arg(self):
+    executor = create_test_executor(num_clients=3)
+    comp, comp_type = executor_test_utils.create_dummy_computation_tensorflow_identity(
+    )
+    arg, _ = executor_test_utils.create_dummy_value_unplaced()
+
+    comp = self.run_sync(executor.create_value(comp, comp_type))
+    with self.assertRaises(TypeError):
+      self.run_sync(executor.create_call(comp, arg))
+
   # pyformat: disable
   @parameterized.named_parameters([
       ('intrinsic_def',
@@ -468,33 +487,10 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     with self.assertRaises(TypeError):
       self.run_sync(executor.create_call(comp, arg))
 
-  def test_raises_type_error_with_unembedded_comp(self):
-    executor = create_test_executor(num_clients=3)
-    comp, _ = executor_test_utils.create_dummy_computation_tensorflow_identity()
-    arg, arg_type = executor_test_utils.create_dummy_value_unplaced()
-
-    arg = self.run_sync(executor.create_value(arg, arg_type))
-    with self.assertRaises(TypeError):
-      self.run_sync(executor.create_call(comp, arg))
-
-  def test_raises_type_error_with_unembedded_arg(self):
-    executor = create_test_executor(num_clients=3)
-    comp, comp_type = executor_test_utils.create_dummy_computation_tensorflow_identity(
-    )
-    arg, _ = executor_test_utils.create_dummy_value_unplaced()
-
-    comp = self.run_sync(executor.create_value(comp, comp_type))
-    with self.assertRaises(TypeError):
-      self.run_sync(executor.create_call(comp, arg))
-
   # pyformat: disable
   @parameterized.named_parameters([
-      ('computation_call',
-       *executor_test_utils.create_dummy_computation_call()),
       ('computation_placement',
        *executor_test_utils.create_dummy_computation_placement()),
-      ('computation_selection',
-       *executor_test_utils.create_dummy_computation_selection()),
       ('computation_tuple',
        *executor_test_utils.create_dummy_computation_tuple()),
       ('federated_type_clients',
@@ -591,6 +587,115 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     elements = [element] * 3
     with self.assertRaises(TypeError):
       self.run_sync(executor.create_tuple(elements))
+
+
+class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
+
+  def test_returns_value_with_source_and_index_computation_tensorflow(self):
+    executor = create_test_executor(num_clients=3)
+    source, type_signature = executor_test_utils.create_dummy_computation_tensorflow_tuple(
+    )
+
+    source = self.run_sync(executor.create_value(source, type_signature))
+    source = self.run_sync(executor.create_call(source))
+    result = self.run_sync(executor.create_selection(source, index=0))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     type_signature.result[0].compact_representation())
+    actual_result = self.run_sync(result.compute())
+    expected_result = self.run_sync(source.compute())[0]
+    self.assertEqual(actual_result, expected_result)
+
+  def test_returns_value_with_source_and_index_anonymous_tuple(self):
+    executor = create_test_executor(num_clients=3)
+    element, element_type = executor_test_utils.create_dummy_value_unplaced()
+
+    element = self.run_sync(executor.create_value(element, element_type))
+    elements = [element] * 3
+    type_signature = computation_types.NamedTupleType([element_type] * 3)
+    source = self.run_sync(executor.create_tuple(elements))
+    result = self.run_sync(executor.create_selection(source, index=0))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     type_signature[0].compact_representation())
+    actual_result = self.run_sync(result.compute())
+    expected_result = self.run_sync(source.compute())[0]
+    self.assertEqual(actual_result, expected_result)
+
+  def test_returns_value_with_source_and_name_computation_tensorflow(self):
+    executor = create_test_executor(num_clients=3)
+    source, type_signature = executor_test_utils.create_dummy_computation_tensorflow_tuple(
+    )
+
+    source = self.run_sync(executor.create_value(source, type_signature))
+    source = self.run_sync(executor.create_call(source))
+    result = self.run_sync(executor.create_selection(source, name='a'))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     type_signature.result['a'].compact_representation())
+    actual_result = self.run_sync(result.compute())
+    expected_result = self.run_sync(source.compute())['a']
+    self.assertEqual(actual_result, expected_result)
+
+  def test_returns_value_with_source_and_name_anonymous_tuple(self):
+    executor = create_test_executor(num_clients=3)
+    element, element_type = executor_test_utils.create_dummy_value_unplaced()
+
+    names = ['a', 'b', 'c']
+    element = self.run_sync(executor.create_value(element, element_type))
+    elements = anonymous_tuple.AnonymousTuple((n, element) for n in names)
+    type_signature = computation_types.NamedTupleType(
+        (n, element_type) for n in names)
+    source = self.run_sync(executor.create_tuple(elements))
+    result = self.run_sync(executor.create_selection(source, name='a'))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     type_signature['a'].compact_representation())
+    actual_result = self.run_sync(result.compute())
+    expected_result = self.run_sync(source.compute())['a']
+    self.assertEqual(actual_result, expected_result)
+
+  def test_raises_type_error_with_unembedded_source(self):
+    executor = create_test_executor(num_clients=3)
+    element, element_type = executor_test_utils.create_dummy_value_unplaced()
+
+    element = self.run_sync(executor.create_value(element, element_type))
+    source = [element] * 3
+    with self.assertRaises(TypeError):
+      self.run_sync(executor.create_selection(source, index=0))
+
+  def test_raises_type_error_with_not_tuple_type(self):
+    executor = create_test_executor(num_clients=3)
+    element, element_type = executor_test_utils.create_dummy_value_unplaced()
+
+    source = self.run_sync(executor.create_value(element, element_type))
+    with self.assertRaises(TypeError):
+      self.run_sync(executor.create_selection(source, index=0))
+
+  def test_raises_value_error_with_no_index_or_name(self):
+    executor = create_test_executor(num_clients=3)
+    element, element_type = executor_test_utils.create_dummy_value_unplaced()
+
+    element = self.run_sync(executor.create_value(element, element_type))
+    elements = [element] * 3
+    source = self.run_sync(executor.create_tuple(elements))
+    with self.assertRaises(ValueError):
+      self.run_sync(executor.create_selection(source))
+
+  def test_raises_value_error_with_unrecognized_generic_zero(self):
+    executor = create_test_executor(num_clients=3)
+
+    value = intrinsic_defs.GENERIC_ZERO
+    type_signature = computation_types.NamedTupleType(
+        [computation_types.TensorType(tf.int32)] * 3)
+
+    source = self.run_sync(executor.create_value(value, type_signature))
+    with self.assertRaises(ValueError):
+      self.run_sync(executor.create_selection(source, index=0))
 
 
 class FederatingExecutorTest(parameterized.TestCase):
@@ -955,104 +1060,6 @@ class FederatingExecutorTest(parameterized.TestCase):
     result = tf.nest.map_structure(lambda x: x.numpy(),
                                    loop.run_until_complete(v.compute()))
     self.assertCountEqual(result, [1, 2, 3, 4])
-
-  def test_create_selection_by_index_anonymous_tuple_backed(self):
-    loop = asyncio.get_event_loop()
-    ex = create_test_executor(num_clients=4)
-
-    v1 = loop.run_until_complete(
-        ex.create_value([1.0, 2.0, 3.0, 4.0],
-                        type_factory.at_clients(tf.float32)))
-    self.assertEqual(str(v1.type_signature), '{float32}@CLIENTS')
-
-    v2 = loop.run_until_complete(
-        ex.create_value([5.0, 10.0, 3.0, 2.0],
-                        type_factory.at_clients(tf.float32)))
-    self.assertEqual(str(v2.type_signature), '{float32}@CLIENTS')
-
-    v3 = loop.run_until_complete(
-        ex.create_tuple(
-            anonymous_tuple.AnonymousTuple([(None, v1), (None, v2)])))
-    self.assertEqual(
-        str(v3.type_signature), '<{float32}@CLIENTS,{float32}@CLIENTS>')
-
-    v4 = loop.run_until_complete(ex.create_selection(v3, index=0))
-    self.assertEqual(str(v4.type_signature), '{float32}@CLIENTS')
-    result = tf.nest.map_structure(lambda x: x.numpy(),
-                                   loop.run_until_complete(v4.compute()))
-    self.assertCountEqual(result, [1, 2, 3, 4])
-
-  def test_create_selection_by_name_anonymous_tuple_backed(self):
-    loop, ex = _make_test_runtime(num_clients=4)
-
-    v1 = loop.run_until_complete(
-        ex.create_value([1.0, 2.0, 3.0, 4.0],
-                        type_factory.at_clients(tf.float32)))
-    self.assertEqual(str(v1.type_signature), '{float32}@CLIENTS')
-
-    v2 = loop.run_until_complete(
-        ex.create_value([5.0, 10.0, 3.0, 2.0],
-                        type_factory.at_clients(tf.float32)))
-    self.assertEqual(str(v2.type_signature), '{float32}@CLIENTS')
-
-    v3 = loop.run_until_complete(
-        ex.create_tuple(anonymous_tuple.AnonymousTuple([('a', v1), ('b', v2)])))
-    self.assertEqual(
-        str(v3.type_signature), '<a={float32}@CLIENTS,b={float32}@CLIENTS>')
-
-    v4 = loop.run_until_complete(ex.create_selection(v3, name='b'))
-    self.assertEqual(str(v4.type_signature), '{float32}@CLIENTS')
-    result = tf.nest.map_structure(lambda x: x.numpy(),
-                                   loop.run_until_complete(v4.compute()))
-    self.assertCountEqual(result, [5, 10, 3, 2])
-
-  def test_create_selection_by_index_eager_tf_executor_backed(self):
-    loop, ex = _make_test_runtime()
-
-    @computations.tf_computation()
-    def comp():
-      return (1, 2)
-
-    val = loop.run_until_complete(ex.create_value(comp))
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    v1 = loop.run_until_complete(ex.create_call(val, None))
-    self.assertEqual(str(v1.type_signature), '<int32,int32>')
-    selected = loop.run_until_complete(ex.create_selection(v1, index=0))
-    self.assertEqual(str(selected.type_signature), 'int32')
-    result = loop.run_until_complete(selected.compute())
-    self.assertEqual(result, 1)
-
-  def test_create_selection_by_index_reference_resolving_executor_backed(self):
-    loop, ex = _make_test_runtime(use_reference_resolving_executor=True)
-
-    @computations.tf_computation()
-    def comp():
-      return (1, 2)
-
-    val = loop.run_until_complete(ex.create_value(comp))
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    v1 = loop.run_until_complete(ex.create_call(val, None))
-    self.assertEqual(str(v1.type_signature), '<int32,int32>')
-    selected = loop.run_until_complete(ex.create_selection(v1, index=0))
-    self.assertEqual(str(selected.type_signature), 'int32')
-    result = loop.run_until_complete(selected.compute())
-    self.assertEqual(result, 1)
-
-  def test_create_selection_by_name_eager_tf_executor_backed(self):
-    loop, ex = _make_test_runtime()
-
-    @computations.tf_computation()
-    def comp():
-      return anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2)])
-
-    val = loop.run_until_complete(ex.create_value(comp))
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    v1 = loop.run_until_complete(ex.create_call(val, None))
-    self.assertEqual(str(v1.type_signature), '<a=int32,b=int32>')
-    selected = loop.run_until_complete(ex.create_selection(v1, name='b'))
-    self.assertEqual(str(selected.type_signature), 'int32')
-    result = loop.run_until_complete(selected.compute())
-    self.assertEqual(result, 2)
 
   def test_federated_collect(self):
     loop, ex = _make_test_runtime(num_clients=3)
