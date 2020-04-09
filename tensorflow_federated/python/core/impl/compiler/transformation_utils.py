@@ -18,6 +18,7 @@ import abc
 import collections
 import itertools
 import operator
+import typing
 from typing import Callable, Dict, Set, Tuple
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -441,7 +442,7 @@ class SymbolTree(object):
       name is unbound in the current context.
     """
     py_typecheck.check_type(name, str)
-    comp = self.active_node  # type: SequentialBindingNode
+    comp = typing.cast(SequentialBindingNode, self.active_node)
     while comp.parent is not None or comp.older_sibling is not None:
       if name == comp.payload.name:
         return comp.payload
@@ -462,7 +463,7 @@ class SymbolTree(object):
     payloads = []
     if equal_fn is None:
       equal_fn = operator.is_
-    comp = self.active_node  # type: SequentialBindingNode
+    comp = typing.cast(SequentialBindingNode, self.active_node)
     while comp.parent is not None or comp.older_sibling is not None:
       if comp.payload.value is not None and equal_fn(value, comp.payload.value):
         payloads.append(comp.payload)
@@ -487,7 +488,7 @@ class SymbolTree(object):
         available in `self`.
     """
     py_typecheck.check_type(name, str)
-    comp = self.active_node  # type: SequentialBindingNode
+    comp = typing.cast(SequentialBindingNode, self.active_node)
     while comp.parent is not None or comp.older_sibling is not None:
       if name == comp.payload.name:
         comp.payload.update(name)
@@ -515,7 +516,7 @@ class SymbolTree(object):
     perhaps execute some logic based on them.
     """
     scope_sentinel = _BeginScopePointer()
-    self.active_node = self.active_node  # type: SequentialBindingNode
+    self.active_node = typing.cast(SequentialBindingNode, self.active_node)
     while self.active_node.payload != scope_sentinel:
       self.active_node = self.active_node.older_sibling
 
@@ -526,7 +527,7 @@ class SymbolTree(object):
       Raises ValueError if we are already at the highest level.
     """
     self.walk_to_scope_beginning()
-    self.active_node = self.active_node  # type: SequentialBindingNode
+    self.active_node = typing.cast(SequentialBindingNode, self.active_node)
     if self.active_node.parent:
       self.active_node = self.active_node.parent
     else:
@@ -552,7 +553,7 @@ class SymbolTree(object):
         point in the tree.
     """
     py_typecheck.check_type(comp_id, int)
-    self.active_node = self.active_node  # type: SequentialBindingNode
+    self.active_node = typing.cast(SequentialBindingNode, self.active_node)
     if self.active_node.children.get(comp_id) is None:
       node = SequentialBindingNode(_BeginScopePointer())
       self._add_child(comp_id, node)
@@ -572,7 +573,7 @@ class SymbolTree(object):
     Raises:
       Raises ValueError if there is no such available variable binding.
     """
-    self.active_node = self.active_node  # type: SequentialBindingNode
+    self.active_node = typing.cast(SequentialBindingNode, self.active_node)
     if self.active_node.younger_sibling:
       self.active_node = self.active_node.younger_sibling
     else:
@@ -615,7 +616,7 @@ class SymbolTree(object):
     if value is not None:
       py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
     node = SequentialBindingNode(self.payload_type(name=name, value=value))
-    self.active_node = self.active_node  # type: SequentialBindingNode
+    self.active_node = typing.cast(SequentialBindingNode, self.active_node)
     if self.active_node.younger_sibling is None:
       self._add_younger_sibling(node)
       self.walk_down_one_variable_binding()
@@ -636,7 +637,7 @@ class SymbolTree(object):
       raise ValueError(
           'Each instance of {} can only appear once in a given symbol tree.'
           .format(self.payload_type))
-    self.active_node = self.active_node  # type: SequentialBindingNode
+    self.active_node = typing.cast(SequentialBindingNode, self.active_node)
     if self.active_node.younger_sibling is not None:
       raise ValueError('Ambiguity in adding a younger sibling')
     comp_tracker.set_older_sibling(self.active_node)
@@ -665,7 +666,7 @@ class SymbolTree(object):
       raise ValueError('Each node can only appear once in a given'
                        'symbol tree. You have tried to add {} '
                        'twice.'.format(comp_tracker.payload))
-    self.active_node = self.active_node  # type: SequentialBindingNode
+    self.active_node = typing.cast(SequentialBindingNode, self.active_node)
     comp_tracker.set_parent(self.active_node)
     self.active_node.add_child(constructing_comp_id, comp_tracker)
     self._node_ids[id(comp_tracker)] = 1
@@ -680,7 +681,7 @@ class SymbolTree(object):
     Raises:
       ValueError: If the active node has no child with the correct id.
     """
-    self.active_node = self.active_node  # type: SequentialBindingNode
+    self.active_node = typing.cast(SequentialBindingNode, self.active_node)
     if self.active_node.children.get(comp_id) is not None:
       self.active_node = self.active_node.get_child(comp_id)
     else:

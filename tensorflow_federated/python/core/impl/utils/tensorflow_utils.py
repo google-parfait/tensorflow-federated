@@ -17,6 +17,7 @@
 import collections
 import functools
 import itertools
+import typing
 
 import attr
 import numpy as np
@@ -992,7 +993,8 @@ def make_data_set_from_elements(graph, elements, element_type):
         # we're targeting.
         #
         # Note: this will not remain `None` because `element`s is not empty.
-        ds = None  # type: tf.data.Dataset
+        ds = None
+        ds = typing.cast(tf.data.Dataset, ds)
         for i in range(len(elements)):
           singleton_ds = _make(elements[i:i + 1])
           ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)

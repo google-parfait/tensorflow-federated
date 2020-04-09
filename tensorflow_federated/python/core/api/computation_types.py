@@ -16,6 +16,7 @@
 
 import abc
 import collections
+import typing
 from typing import Any
 
 import attr
@@ -146,7 +147,7 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
     """
     py_typecheck.check_type(elements, collections.Iterable)
     if py_typecheck.is_named_tuple(elements):
-      elements = elements  # type: Any
+      elements = typing.cast(Any, elements)
       elements = elements._asdict()
     if isinstance(elements, collections.OrderedDict):
       elements = elements.items()

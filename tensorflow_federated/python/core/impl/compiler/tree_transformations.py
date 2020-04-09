@@ -14,6 +14,8 @@
 # limitations under the License.
 """A library of transformations that can be applied to a computation."""
 
+import typing
+
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -1147,10 +1149,9 @@ class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
         return comp, False
       return building_blocks.Block(new_locals, comp.result), True
     elif isinstance(referred, building_blocks.Lambda):
-      referred_lambda = referred  # type: building_blocks.Lambda
+      referred = typing.cast(building_blocks.Lambda, referred)
       transformed_comp = building_blocks.Block(
-          [(referred_lambda.parameter_name, comp.argument)],
-          referred_lambda.result)
+          [(referred.parameter_name, comp.argument)], referred.result)
       symbol_tree.update_payload_with_name(comp.function.name)
     else:
       if comp.function.parameter_type is not None:

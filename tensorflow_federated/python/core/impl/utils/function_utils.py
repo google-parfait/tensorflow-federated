@@ -16,6 +16,7 @@
 
 import inspect
 import types
+import typing
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -214,9 +215,7 @@ def pack_args_into_anonymous_tuple(
   else:
     py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
     py_typecheck.check_type(context, context_base.Context)
-    # pylint: disable=self-assigning-variable
-    context = context  # type: context_base.Context
-    # pylint: enable=self-assigning-variable
+    context = typing.cast(context_base.Context, context)
     if not is_argument_tuple(type_spec):  # pylint: disable=attribute-error
       raise TypeError(
           'Parameter type {} does not have a structure of an argument tuple, '
