@@ -97,6 +97,8 @@ def generate_api_docs(output_dir):
               _ignore_symbols(tff.simulation.models),
           'tff.simulation.models.mnist':
               _get_ignored_symbols(tff.simulation.models.mnist),
+          'tff.templates':
+              _ignore_symbols(tff.templates),
           'tff.test':
               _ignore_symbols(tff.test),
           'tff.utils':

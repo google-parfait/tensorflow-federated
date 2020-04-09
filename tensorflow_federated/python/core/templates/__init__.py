@@ -12,3 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""This directory contains frequently used computation templates."""
+
+from tensorflow_federated.python.core.templates.iterative_process import IterativeProcess
+
+# Used by doc generation script.
+_allowed_symbols = [
+    "IterativeProcess",
+]

@@ -19,6 +19,7 @@ py_library(
         "//tensorflow_federated/python/core/backends",
         "//tensorflow_federated/python/core/framework",
         "//tensorflow_federated/python/core/impl/executors:default_executor",
+        "//tensorflow_federated/python/core/templates",
         "//tensorflow_federated/python/core/test",
         "//tensorflow_federated/python/core/utils",
     ],

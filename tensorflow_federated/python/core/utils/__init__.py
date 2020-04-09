@@ -40,7 +40,6 @@ from tensorflow_federated.python.core.utils.tf_computation_utils import identity
 _allowed_symbols = [
     "StatefulAggregateFn",
     "StatefulBroadcastFn",
-    "IterativeProcess",
     "assign",
     "build_dp_aggregate",
     "build_dp_query",
