@@ -76,7 +76,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 
     @tf.function
     def reduce_fn(num_examples_sum, batch):
-      """Runs `tff.learning.Model.train_on_batch` on local client batch."""
+      """Train `tff.learning.Model` on local client batch."""
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch, training=True)
 
