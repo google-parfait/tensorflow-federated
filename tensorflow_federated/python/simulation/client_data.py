@@ -92,9 +92,6 @@ class ClientData(object, metaclass=abc.ABCMeta):
     models (num_clients=1). This can be useful as a point of comparison
     against federated models.
 
-    Note: the returned `tf.data.Dataset` is not serializable and runnable on
-    other devices, as it uses `tf.py_func` internally.
-
     Currently, the implementation produces a dataset that contains
     all examples from a single client in order, and so generally additional
     shuffling should be performed.
@@ -111,17 +108,10 @@ class ClientData(object, metaclass=abc.ABCMeta):
     # Note: simply calling Dataset.concatenate() will result in too deep
     # recursion depth.
     # Note: Tests are via the simple concrete from_tensor_slices_client_data.
-    def _generator():
-      for dataset in self.datasets(seed=seed):
-        for example in dataset:
-          yield example
-
-    types = tf.nest.map_structure(lambda t: t.dtype,
-                                  self.element_type_structure)
-    shapes = tf.nest.map_structure(lambda t: t.shape,
-                                   self.element_type_structure)
-
-    return tf.data.Dataset.from_generator(_generator, types, shapes)
+    client_datasets = [d for d in self.datasets(seed=seed)]
+    nested_dataset = tf.data.Dataset.from_tensor_slices(client_datasets)
+    example_dataset = nested_dataset.flat_map(lambda x: x)
+    return example_dataset
 
   def preprocess(self, preprocess_fn):
     """Applies `preprocess_fn` to each client's data."""
