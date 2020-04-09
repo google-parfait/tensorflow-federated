@@ -53,6 +53,7 @@ from tensorflow_federated.python.core.api.values import to_value
 # pylint: disable=g-bad-import-order
 from tensorflow_federated.python.core import backends
 from tensorflow_federated.python.core import framework
+from tensorflow_federated.python.core import templates
 from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core import utils
 # pylint: enable=g-bad-import-order
@@ -99,6 +100,8 @@ _allowed_symbols = [
     "sequence_reduce",
     "sequence_sum",
     "simulation",
+    "templates",
+    "test",
     "tf_computation",
     "to_type",
     "to_value",
