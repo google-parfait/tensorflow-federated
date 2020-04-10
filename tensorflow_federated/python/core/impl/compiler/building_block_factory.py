@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Library implementing reusable `computation_building_blocks` structures."""
+"""Library implementing common `computation_building_blocks` structures."""
 
 import random
 import string
@@ -29,9 +29,9 @@ from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import type_serialization
-from tensorflow_federated.python.core.impl.compiler import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -65,21 +65,9 @@ def create_compiled_empty_tuple():
     which returns an empty tuple. This function is an instance of
     `building_blocks.CompiledComputation`.
   """
-  with tf.Graph().as_default() as graph:
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        [], graph)
-
-  function_type = computation_types.FunctionType(None, result_type)
-  serialized_function_type = type_serialization.serialize_type(function_type)
-
-  proto = pb.Computation(
-      type=serialized_function_type,
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=None,
-          result=result_binding))
-
-  return building_blocks.Call(building_blocks.CompiledComputation(proto), None)
+  proto = tensorflow_computation_factory.create_empty_tuple()
+  compiled = building_blocks.CompiledComputation(proto)
+  return building_blocks.Call(compiled, None)
 
 
 def create_compiled_identity(type_signature, name=None):
@@ -99,22 +87,7 @@ def create_compiled_identity(type_signature, name=None):
     TypeError: If `type_signature` contains any types which cannot appear in
       TensorFlow bindings.
   """
-  type_spec = computation_types.to_type(type_signature)
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  type_utils.check_tensorflow_compatible_type(type_spec)
-  with tf.Graph().as_default() as graph:
-    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', type_spec, graph)
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        parameter_value, graph)
-  function_type = computation_types.FunctionType(type_spec, result_type)
-  serialized_function_type = type_serialization.serialize_type(function_type)
-  proto = pb.Computation(
-      type=serialized_function_type,
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=parameter_binding,
-          result=result_binding))
+  proto = tensorflow_computation_factory.create_identity(type_signature)
   return building_blocks.CompiledComputation(proto, name)
 
 
@@ -263,65 +236,10 @@ def create_tensorflow_constant(type_spec, scalar_value, name=None):
   Raises:
     TypeError: If the type assumptions above are violated.
   """
-  type_spec = computation_types.to_type(type_spec)
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if not type_utils.is_generic_op_compatible_type(type_spec):
-    raise TypeError('Type spec {} cannot be constructed as a TensorFlow '
-                    'constant in TFF; only nested tuples and tensors are '
-                    'permitted.'.format(type_spec))
-  inferred_scalar_value_type = type_utils.infer_type(scalar_value)
-  if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
-      or inferred_scalar_value_type.shape != tf.TensorShape(())):
-    raise TypeError('Must pass a scalar value to '
-                    '`create_tensorflow_constant`; encountered a value '
-                    '{}'.format(scalar_value))
-  tensor_dtypes_in_type_spec = []
-
-  def _pack_dtypes(type_signature):
-    """Appends dtype of `type_signature` to nonlocal variable."""
-    if isinstance(type_signature, computation_types.TensorType):
-      tensor_dtypes_in_type_spec.append(type_signature.dtype)
-    return type_signature, False
-
-  type_transformations.transform_type_postorder(type_spec, _pack_dtypes)
-
-  if (any(x.is_integer for x in tensor_dtypes_in_type_spec) and
-      not inferred_scalar_value_type.dtype.is_integer):
-    raise TypeError('Only integers can be used as scalar values if our desired '
-                    'constant type spec contains any integer tensors; passed '
-                    'scalar {} of dtype {} for type spec {}.'.format(
-                        scalar_value, inferred_scalar_value_type.dtype,
-                        type_spec))
-
-  def _create_result_tensor(type_spec, scalar_value):
-    """Packs `scalar_value` into `type_spec` recursively."""
-    if isinstance(type_spec, computation_types.TensorType):
-      type_spec.shape.assert_is_fully_defined()
-      result = tf.constant(
-          scalar_value, dtype=type_spec.dtype, shape=type_spec.shape)
-    else:
-      elements = []
-      for _, type_element in anonymous_tuple.iter_elements(type_spec):
-        elements.append(_create_result_tensor(type_element, scalar_value))
-      result = elements
-    return result
-
-  with tf.Graph().as_default() as graph:
-    result = _create_result_tensor(type_spec, scalar_value)
-  _, result_binding = tensorflow_utils.capture_result_from_graph(result, graph)
-
-  function_type = computation_types.FunctionType(None, type_spec)
-  serialized_function_type = type_serialization.serialize_type(function_type)
-
-  proto = pb.Computation(
-      type=serialized_function_type,
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=None,
-          result=result_binding))
-
-  noarg_constant_fn = building_blocks.CompiledComputation(proto, name)
-  return building_blocks.Call(noarg_constant_fn, None)
+  proto = tensorflow_computation_factory.create_constant(
+      scalar_value, type_spec)
+  compiled = building_blocks.CompiledComputation(proto, name)
+  return building_blocks.Call(compiled, None)
 
 
 def create_compiled_input_replication(type_signature, n_replicas):

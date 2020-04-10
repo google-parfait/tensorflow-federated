@@ -26,8 +26,10 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import reference_executor
+from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_base
@@ -358,45 +360,23 @@ def create_dummy_computation_selection():
 
 def create_dummy_computation_tensorflow_constant(value=10):
   """Returns a tensorflow computation and type `( -> T)`."""
-
-  with tf.Graph().as_default() as graph:
-    result = tf.constant(value)
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result, graph)
-
-  type_signature = computation_types.FunctionType(None, result_type)
-  tensorflow = pb.TensorFlow(
-      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-      parameter=None,
-      result=result_binding)
-  value = pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
+  type_spec = type_utils.infer_type(value)
+  value = tensorflow_computation_factory.create_constant(value, type_spec)
+  type_signature = computation_types.FunctionType(None, type_spec)
   return value, type_signature
 
 
 def create_dummy_computation_tensorflow_empty():
   """Returns a tensorflow computation and type `( -> <>)`."""
-  return create_dummy_computation_tensorflow_constant(value=[])
+  value = tensorflow_computation_factory.create_empty_tuple()
+  type_signature = computation_types.FunctionType(None, [])
+  return value, type_signature
 
 
 def create_dummy_computation_tensorflow_identity(type_spec=tf.int32):
   """Returns a tensorflow computation and type `(T -> T)`."""
-
-  with tf.Graph().as_default() as graph:
-    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'a', type_spec, graph)
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        parameter_value, graph)
-
-  type_signature = computation_types.FunctionType(type_spec, result_type)
-  tensorflow = pb.TensorFlow(
-      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-      parameter=parameter_binding,
-      result=result_binding)
-  value = pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
+  value = tensorflow_computation_factory.create_identity(type_spec)
+  type_signature = computation_types.FunctionType(type_spec, type_spec)
   return value, type_signature
 
 
