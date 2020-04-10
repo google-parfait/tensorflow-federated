@@ -40,6 +40,7 @@ from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 
+
 tf.compat.v1.enable_v2_behavior()
 
 
@@ -540,22 +541,14 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
 
   # pyformat: disable
   @parameterized.named_parameters([
-      ('intrinsic_def',
-       *executor_test_utils.create_dummy_intrinsic_def()),
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
       ('computation_call',
        *executor_test_utils.create_dummy_computation_call()),
-      ('computation_intrinsic',
-       *executor_test_utils.create_dummy_computation_intrinsic()),
-      ('computation_lambda',
-       *executor_test_utils.create_dummy_computation_lambda_empty()),
       ('computation_placement',
        *executor_test_utils.create_dummy_computation_placement()),
       ('computation_selection',
        *executor_test_utils.create_dummy_computation_selection()),
-      ('computation_tensorflow',
-       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
       ('computation_tuple',
        *executor_test_utils.create_dummy_computation_tuple()),
       ('federated_type_clients',
@@ -568,10 +561,10 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_value_unplaced()),
   ])
   # pyformat: enable
-  def test_returns_value_with_elements(self, element, type_signature):
+  def test_returns_value_with_elements_value(self, value, type_signature):
     executor = create_test_executor(num_clients=3)
 
-    element = self.run_sync(executor.create_value(element, type_signature))
+    element = self.run_sync(executor.create_value(value, type_signature))
     elements = [element] * 3
     type_signature = computation_types.NamedTupleType([type_signature] * 3)
     result = self.run_sync(executor.create_tuple(elements))
@@ -579,6 +572,60 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
+    # TODO(b/153578410): Some `FederatingExecutorValue` that can can be
+    # constructed, can not be computed.
+
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('intrinsic_def',
+       *executor_test_utils.create_dummy_intrinsic_def(),
+       *executor_test_utils.create_dummy_computation_tensorflow_constant()),
+      ('computation_intrinsic',
+       *executor_test_utils.create_dummy_computation_intrinsic(),
+       *executor_test_utils.create_dummy_computation_tensorflow_constant()),
+  ])
+  # pyformat: enable
+  def test_returns_value_with_elements_fn_and_arg(self, fn, fn_type, arg,
+                                                  arg_type):
+    executor = create_test_executor(num_clients=3)
+
+    fn = self.run_sync(executor.create_value(fn, fn_type))
+    arg = self.run_sync(executor.create_value(arg, arg_type))
+    element = self.run_sync(executor.create_call(fn, arg))
+    elements = [element] * 3
+    type_signature = computation_types.NamedTupleType([fn_type.result] * 3)
+    result = self.run_sync(executor.create_tuple(elements))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     type_signature.compact_representation())
+    actual_result = self.run_sync(result.compute())
+    expected_result = [self.run_sync(element.compute())] * 3
+    self.assertCountEqual(actual_result, expected_result)
+
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('computation_lambda',
+       *executor_test_utils.create_dummy_computation_lambda_empty()),
+      ('computation_tensorflow',
+       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+  ])
+  # pyformat: enable
+  def test_returns_value_with_elements_fn_only(self, fn, fn_type):
+    executor = create_test_executor(num_clients=3)
+
+    fn = self.run_sync(executor.create_value(fn, fn_type))
+    element = self.run_sync(executor.create_call(fn))
+    elements = [element] * 3
+    type_signature = computation_types.NamedTupleType([fn_type.result] * 3)
+    result = self.run_sync(executor.create_tuple(elements))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     type_signature.compact_representation())
+    actual_result = self.run_sync(result.compute())
+    expected_result = [self.run_sync(element.compute())] * 3
+    self.assertCountEqual(actual_result, expected_result)
 
   def test_raises_type_error_with_unembedded_elements(self):
     executor = create_test_executor(num_clients=3)
