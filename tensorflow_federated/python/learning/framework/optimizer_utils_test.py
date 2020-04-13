@@ -42,15 +42,15 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
   @tf.function
   def __call__(self, dataset, initial_weights):
     # Iterate over the dataset to get new metric values.
-    def reduce_fn(dummy, batch):
+    def reduce_fn(batch):
       with tf.GradientTape() as tape:
         output = self._model.forward_pass(batch)
       gradients = tape.gradient(output.loss, self._model.trainable_variables)
       self._optimizer.apply_gradients(
           zip(gradients, self._model.trainable_variables))
-      return dummy
 
-    dataset.reduce(tf.constant(0.0), reduce_fn)
+    for batch in dataset:
+      reduce_fn(batch)
 
     # Create some fake weight deltas to send back.
     trainable_weights_delta = tf.nest.map_structure(lambda x: -tf.ones_like(x),

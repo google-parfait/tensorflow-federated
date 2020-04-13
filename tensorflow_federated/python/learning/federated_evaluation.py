@@ -57,11 +57,8 @@ def build_federated_evaluation(model_fn):
 
       tff.utils.assign(model.weights, incoming_model_weights)
 
-      def reduce_fn(prev_loss, batch):
-        model_output = model.forward_pass(batch, training=False)
-        return prev_loss + tf.cast(model_output.loss, tf.float64)
-
-      dataset.reduce(tf.constant(0.0, dtype=tf.float64), reduce_fn)
+      for batch in dataset:
+        model.forward_pass(batch, training=False)
 
       return collections.OrderedDict([('local_outputs',
                                        model.report_local_outputs())])

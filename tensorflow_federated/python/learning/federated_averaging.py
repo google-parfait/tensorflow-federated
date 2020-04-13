@@ -88,8 +88,9 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
       else:
         return num_examples_sum + output.num_examples
 
-    num_examples_sum = dataset.reduce(
-        initial_state=tf.constant(0), reduce_func=reduce_fn)
+    num_examples_sum = tf.constant(0, dtype=tf.int32)
+    for batch in dataset:
+      num_examples_sum = reduce_fn(num_examples_sum, batch)
 
     weights_delta = tf.nest.map_structure(tf.subtract, model.weights.trainable,
                                           initial_weights.trainable)

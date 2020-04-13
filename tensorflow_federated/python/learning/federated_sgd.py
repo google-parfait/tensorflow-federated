@@ -99,8 +99,10 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       return (tuple(tf.zeros_like(w) for w in flat_trainable_weights),
               tf.constant(0.0))
 
-    flat_grad_sums, batch_weight_sum = dataset.reduce(
-        initial_state=_zero_initial_state(), reduce_func=reduce_fn)
+    state = _zero_initial_state()
+    for batch in dataset:
+      state = reduce_fn(state, batch)
+    flat_grad_sums, batch_weight_sum = state
     grad_sums = tf.nest.pack_sequence_as(model.weights.trainable,
                                          flat_grad_sums)
 
