@@ -35,6 +35,12 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 
 class ValueImplTest(parameterized.TestCase):
 
+  def test_raises_on_boolean_ops(self):
+    x_comp = building_blocks.Reference('foo', tf.bool)
+    x = value_impl.ValueImpl(x_comp, context_stack_impl.context_stack)
+    with self.assertRaises(TypeError):
+      assert x
+
   def test_value_impl_with_reference(self):
     x_comp = building_blocks.Reference('foo', tf.int32)
     x = value_impl.ValueImpl(x_comp, context_stack_impl.context_stack)

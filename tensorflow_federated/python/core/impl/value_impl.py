@@ -155,6 +155,12 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     new_comp = building_blocks.Call(named_tuple_setattr_lambda, self._comp)
     super(ValueImpl, self).__setattr__('_comp', new_comp)
 
+  def __bool__(self):
+    raise TypeError(
+        'Federated computation values do not support boolean operations. '
+        'If you were attempting to perform logic on tensors, consider moving '
+        'this logic into a tff.tf_computation.')
+
   def __len__(self):
     type_signature = self._comp.type_signature
     if isinstance(type_signature, computation_types.FederatedType):
