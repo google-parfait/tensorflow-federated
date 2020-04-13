@@ -156,30 +156,22 @@ def create_original_fedavg_cnn_model(only_digits=True):
 def create_two_hidden_layer_model(only_digits=True, hidden_units=200):
   """Create a two hidden-layer fully connected neural network.
 
-  When `only_digits=False`, the summary of returned model is
+  When `only_digits=True`, the summary of returned model is
 
   Model: "sequential"
   _________________________________________________________________
   Layer (type)                 Output Shape              Param #
   =================================================================
-  conv2d (Conv2D)              (None, 26, 26, 32)        320
+  reshape (Reshape)            (None, 784)               0
   _________________________________________________________________
-  conv2d_1 (Conv2D)            (None, 24, 24, 64)        18496
+  dense (Dense)                (None, 200)               157000
   _________________________________________________________________
-  max_pooling2d (MaxPooling2D) (None, 12, 12, 64)        0
+  dense_1 (Dense)              (None, 200)               40200
   _________________________________________________________________
-  dropout (Dropout)            (None, 12, 12, 64)        0
-  _________________________________________________________________
-  flatten (Flatten)            (None, 9216)              0
-  _________________________________________________________________
-  dense (Dense)                (None, 128)               1179776
-  _________________________________________________________________
-  dropout_1 (Dropout)          (None, 128)               0
-  _________________________________________________________________
-  dense_1 (Dense)              (None, 62)                7998
+  dense_2 (Dense)              (None, 10)                2010
   =================================================================
-  Total params: 1,206,590
-  Trainable params: 1,206,590
+  Total params: 199,210
+  Trainable params: 199,210
   Non-trainable params: 0
 
   Args:
