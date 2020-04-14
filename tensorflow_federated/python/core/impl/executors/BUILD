@@ -337,6 +337,7 @@ py_test(
     shard_count = 5,
     srcs_version = "PY3",
     deps = [
+        ":executor_base",
         ":executor_factory",
         ":executor_stacks",
         ":executor_test_utils",

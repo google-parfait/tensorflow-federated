@@ -60,11 +60,11 @@ def executors_benchmark(fn):
     tff.framework.set_default_executor(tff.framework.sizing_executor_factory())
     fn(self, 'sizing executor')
     tff.framework.set_default_executor(
-        tff.framework.local_executor_factory(clients_per_thread=2))
-    fn(self, 'local executor, 2 clients per worker')
+        tff.framework.local_executor_factory(num_client_executors=5))
+    fn(self, 'local executor, max 5 clients concurrently')
     tff.framework.set_default_executor(
-        tff.framework.local_executor_factory(clients_per_thread=4))
-    fn(self, 'local executor, 4 clients per worker')
+        tff.framework.local_executor_factory(num_client_executors=2))
+    fn(self, 'local executor, max 2 clients concurrently')
 
   return wrapped_fn
 

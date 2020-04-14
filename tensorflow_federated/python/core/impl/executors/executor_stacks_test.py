@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -23,6 +24,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -55,6 +57,38 @@ def _temperature_sensor_example_next_fn():
         intrinsics.federated_map(count_total, temperatures))
 
   return comp
+
+
+def _create_concurrent_maxthread_tuples():
+  tuples = []
+  for concurrency in range(1, 5):
+    local_ex_string = 'local_executor_{}_client_thread'.format(concurrency)
+    ex_factory = executor_stacks.local_executor_factory(
+        num_client_executors=concurrency)
+    tuples.append((local_ex_string, ex_factory, concurrency))
+    sizing_ex_string = 'sizing_executor_{}_client_thread'.format(concurrency)
+    ex_factory = executor_stacks.sizing_executor_factory(
+        num_client_executors=concurrency)
+    tuples.append((sizing_ex_string, ex_factory, concurrency))
+  return tuples
+
+
+class ExecutorMock(mock.MagicMock, executor_base.Executor):
+
+  def create_value(self, *args):
+    pass
+
+  def create_call(self, *args):
+    pass
+
+  def create_selection(self, *args):
+    pass
+
+  def create_tuple(self, *args):
+    pass
+
+  def close(self, *args):
+    pass
 
 
 class ExecutorStacksTest(parameterized.TestCase):
@@ -136,6 +170,17 @@ class ExecutorStacksTest(parameterized.TestCase):
       result = comp()
 
     self.assertEqual(result, 10)
+
+  @parameterized.named_parameters(*_create_concurrent_maxthread_tuples())
+  @mock.patch(
+      'tensorflow_federated.python.core.impl.executors.eager_tf_executor.EagerTFExecutor',
+      return_value=ExecutorMock())
+  def test_limiting_concurrency_constructs_one_eager_executor(
+      self, ex_factory, concurrency_level, tf_executor_mock):
+    ex_factory.create_executor({placement_literals.CLIENTS: 10})
+    args_list = tf_executor_mock.call_args_list
+    # One for server, one for `None`-placed, concurrency_level for clients.
+    self.assertLen(args_list, concurrency_level + 2)
 
   @parameterized.named_parameters(
       ('local_executor', executor_stacks.local_executor_factory),
