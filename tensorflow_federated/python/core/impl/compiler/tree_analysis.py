@@ -14,6 +14,8 @@
 # limitations under the License.
 """A library of static analysis functions that can be applied to ASTs."""
 
+from typing import AbstractSet, List
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
@@ -22,6 +24,17 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import type_analysis
+
+
+def _visit_postorder(comp, function):
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+
+  def _function(inner_comp):
+    function(inner_comp)
+    return inner_comp, False
+
+  transformation_utils.transform_postorder(comp, _function)
 
 
 def count_types(comp, types):
@@ -43,9 +56,8 @@ def count(comp, predicate=None):
   def _function(comp):
     if predicate is None or predicate(comp):
       counter[0] += 1
-    return comp, False
 
-  transformation_utils.transform_postorder(comp, _function)
+  _visit_postorder(comp, _function)
   return counter[0]
 
 
@@ -72,9 +84,8 @@ def check_has_single_placement(comp, single_placement):
                        'placement {} on comp {} inside the structure. '.format(
                            single_placement, comp.type_signature.placement,
                            comp.compact_representation()))
-    return comp, False
 
-  transformation_utils.transform_postorder(comp, _check_single_placement)
+  _visit_postorder(comp, _check_single_placement)
 
 
 def check_intrinsics_whitelisted_for_reduction(comp):
@@ -111,9 +122,8 @@ def check_intrinsics_whitelisted_for_reduction(comp):
       raise ValueError(
           'Encountered an Intrinsic not currently reducible to aggregate or '
           'broadcast, the intrinsic {}'.format(comp.compact_representation()))
-    return comp, False
 
-  transformation_utils.transform_postorder(comp, _check_whitelisted)
+  _visit_postorder(comp, _check_whitelisted)
 
 
 def check_has_unique_names(comp):
@@ -262,9 +272,8 @@ def count_tensorflow_ops_under(comp):
     ) and inner_comp.proto.WhichOneof('computation') == 'tensorflow':
       total_tf_ops[0] += building_block_analysis.count_tensorflow_ops_in(
           inner_comp)
-    return inner_comp, False
 
-  transformation_utils.transform_postorder(comp, _count_tf_ops)
+  _visit_postorder(comp, _count_tf_ops)
   return total_tf_ops[0]
 
 
@@ -293,9 +302,8 @@ def count_tensorflow_variables_under(comp):
         inner_comp.proto.WhichOneof('computation') == 'tensorflow'):
       total_tf_vars[0] += building_block_analysis.count_tensorflow_variables_in(
           inner_comp)
-    return inner_comp, False
 
-  transformation_utils.transform_postorder(comp, _count_tf_vars)
+  _visit_postorder(comp, _count_tf_vars)
   return total_tf_vars[0]
 
 
@@ -477,3 +485,89 @@ def trees_equal(comp_1, comp_2):
     raise NotImplementedError('Unexpected type found: {}.'.format(type(comp_1)))
 
   return _trees_equal(comp_1, comp_2, [])
+
+
+def _find_aggregation_in_tree(
+    comp, aggregation_uris: AbstractSet[str]) -> List[building_blocks.Call]:
+  """Finds aggregating calls to `aggregation_uris` in `comp`.
+
+  An "aggregating call" for the purpose of this function is a call to an
+  intrinsic which takes values at CLIENT and materializes some result at
+  SERVER.
+
+  Args:
+    comp: An AST to search.
+    aggregation_uris: A list of URIs for aggregation intrinsics to look for
+      calls to.
+
+  Returns:
+    A list of child ASTs which are calls to aggregating intrinsics found
+    in the `aggregation_uris` list.
+
+  Raises:
+    ValueError if `comp` contains a call whose target function cannot be
+      identified. This may result from calls to references or other
+      indirect structures.
+  """
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  aggregation_calls: List[building_blocks.Call] = []
+
+  def record_intrinsic_calls(comp):
+    """Identifies matching calls and adds them to `aggregation_calls`."""
+    if not isinstance(comp, building_blocks.Call):
+      return
+    # Called lambdas will only trigger aggregation if they themselves contain
+    # aggregation, which will be caught when the lambea itself is traversed.
+    if isinstance(comp.function, building_blocks.Lambda):
+      return
+    # Aggregation cannot be occurring if the output type is not federated
+    if not type_analysis.contains_federated_type(
+        comp.function.type_signature.result):
+      return
+
+    # We can't tell whether an arbitrary AST fragment results in an intrinsic
+    # with a given URI, so we report an error in this case.
+    if not isinstance(comp.function, building_blocks.Intrinsic):
+      raise ValueError('Cannot determine whether call contains aggregation: ' +
+                       str(comp))
+
+    # Aggregation with inputs that don't contain any tensors isn't interesting.
+    #
+    # NOTE: this is only applicable to intrinsic calls. Users can write their
+    # own functions that internally materialize values at clients + aggregate
+    # without taking any input tensors.
+    #
+    # This means that this check *must* come after the check above ensuring
+    # that we're only talking about calls to `building_blocks.Intrinsic`s.
+    if comp.argument is None or not type_analysis.contains_tensors(
+        comp.argument.type_signature):
+      return
+
+    if comp.function.uri in aggregation_uris:
+      aggregation_calls.append(comp)
+
+  _visit_postorder(comp, record_intrinsic_calls)
+  return aggregation_calls
+
+
+def find_secure_aggregation_in_tree(
+    comp: building_blocks.ComputationBuildingBlock
+) -> List[building_blocks.Call]:
+  """See documentation on `tree_contains_aggregation` for details."""
+  secagg_intrinsics = set([intrinsic_defs.FEDERATED_SECURE_SUM.uri])
+  return _find_aggregation_in_tree(comp, secagg_intrinsics)
+
+
+def find_unsecure_aggregation_in_tree(
+    comp: building_blocks.ComputationBuildingBlock
+) -> List[building_blocks.Call]:
+  """See documentation on `tree_contains_aggregation` for details."""
+  unsecagg_intrinsics = set([
+      intrinsic_defs.FEDERATED_AGGREGATE.uri,
+      intrinsic_defs.FEDERATED_COLLECT.uri,
+      intrinsic_defs.FEDERATED_MEAN.uri,
+      intrinsic_defs.FEDERATED_REDUCE.uri,
+      intrinsic_defs.FEDERATED_SUM.uri,
+      intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri,
+  ])
+  return _find_aggregation_in_tree(comp, unsecagg_intrinsics)

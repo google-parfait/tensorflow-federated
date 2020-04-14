@@ -19,3 +19,16 @@ easier or more convenient and parallels the `tf.test` package.
 """
 
 from tensorflow_federated.python.core.impl.reference_executor import ReferenceExecutor
+from tensorflow_federated.python.core.test.static_assert import assert_contains_secure_aggregation
+from tensorflow_federated.python.core.test.static_assert import assert_contains_unsecure_aggregation
+from tensorflow_federated.python.core.test.static_assert import assert_not_contains_secure_aggregation
+from tensorflow_federated.python.core.test.static_assert import assert_not_contains_unsecure_aggregation
+
+# Used by doc generation script.
+_allowed_symbols = [
+    "ReferenceExecutor",
+    "assert_contains_secure_aggregation",
+    "assert_contains_unsecure_aggregation",
+    "assert_not_contains_secure_aggregation",
+    "assert_not_contains_unsecure_aggregation",
+]
