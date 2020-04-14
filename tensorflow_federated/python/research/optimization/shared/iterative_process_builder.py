@@ -42,15 +42,15 @@ def from_flags(input_spec,
                loss_builder,
                metrics_builder,
                client_weight_fn=None):
-  """Builds a `tff.utils.IterativeProcess` instance from flags.
+  """Builds a `tff.templates.IterativeProcess` instance from flags.
 
   The iterative process is designed to incorporate learning rate schedules,
   which are configured via flags.
 
   Args:
     input_spec: A value convertible to a `tff.Type`, representing the data which
-      will be fed into the `tff.utils.IterativeProcess.next` function over the
-      course of training. Generally, this can be found by accessing the
+      will be fed into the `tff.templates.IterativeProcess.next` function over
+      the course of training. Generally, this can be found by accessing the
       `element_spec` attribute of a client `tf.data.Dataset`.
     model_builder: A no-arg function that returns an uncompiled `tf.keras.Model`
       object.
@@ -63,7 +63,7 @@ def from_flags(input_spec,
       to the number of examples processed over all batches.
 
   Returns:
-    A `tff.utils.IterativeProcess` instance.
+    A `tff.templates.IterativeProcess` instance.
   """
   # TODO(b/147808007): Assert that model_builder() returns an uncompiled keras
   # model.

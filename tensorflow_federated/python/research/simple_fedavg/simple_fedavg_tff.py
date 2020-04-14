@@ -67,7 +67,7 @@ def build_federated_averaging_process(
       `tf.keras.optimizers.Optimizer` for client update.
 
   Returns:
-    A `tff.utils.IterativeProcess`.
+    A `tff.templates.IterativeProcess`.
   """
 
   dummy_model = model_fn()
@@ -144,5 +144,5 @@ def build_federated_averaging_process(
     """Orchestration logic for server model initialization."""
     return tff.federated_value(server_init_tf(), tff.SERVER)
 
-  return tff.utils.IterativeProcess(
+  return tff.templates.IterativeProcess(
       initialize_fn=server_init_tff, next_fn=run_one_round)

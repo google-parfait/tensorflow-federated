@@ -66,7 +66,7 @@ def build_triehh_process(possible_prefix_extensions: List[str],
     default_terminator: The end of sequence symbol.
 
   Returns:
-    A `tff.utils.IterativeProcess`.
+    A `tff.templates.IterativeProcess`.
   """
 
   @tff.tf_computation
@@ -161,7 +161,7 @@ def build_triehh_process(possible_prefix_extensions: List[str],
 
     return server_state, server_output
 
-  return tff.utils.IterativeProcess(
+  return tff.templates.IterativeProcess(
       initialize_fn=tff.federated_computation(
           lambda: tff.federated_value(server_init_tf(), tff.SERVER)),
       next_fn=run_one_round)

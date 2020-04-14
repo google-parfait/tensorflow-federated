@@ -437,7 +437,7 @@ def build_federated_averaging_process_attacked(
     client_update_tf: a 'tf.function' computes the ClientOutput.
 
   Returns:
-    A `tff.utils.IterativeProcess`.
+    A `tff.templates.IterativeProcess`.
   """
 
   dummy_model_for_metadata = model_fn()
@@ -463,7 +463,7 @@ def build_federated_averaging_process_attacked(
       dummy_model_for_metadata, federated_server_state_type,
       federated_dataset_type)
 
-  return tff.utils.IterativeProcess(
+  return tff.templates.IterativeProcess(
       initialize_fn=tff.federated_computation(
           lambda: tff.federated_value(server_init_tf(), tff.SERVER)),
       next_fn=run_one_round_tff)

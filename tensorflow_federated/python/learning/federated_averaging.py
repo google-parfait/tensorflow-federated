@@ -125,11 +125,12 @@ def build_federated_averaging_process(
         [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
     client_weight_fn: Callable[[Any], tf.Tensor] = None,
     stateful_delta_aggregate_fn=None,
-    stateful_model_broadcast_fn=None) -> tff.utils.IterativeProcess:
+    stateful_model_broadcast_fn=None) -> tff.templates.IterativeProcess:
   """Builds an iterative process that performs federated averaging.
 
-  This function creates a `tff.utils.IterativeProcess` that performs federated
-  averaging on client models. The iterative process has the following methods:
+  This function creates a `tff.templates.IterativeProcess` that performs
+  federated averaging on client models. The iterative process has the following
+  methods:
 
   *   `initialize`: A `tff.Computation` with the functional type signature
       `( -> S@SERVER)`, where `S` is a`tff.learning.framework.ServerState`
@@ -185,7 +186,7 @@ def build_federated_averaging_process(
       by `model_fn`. The default is the identity broadcast.
 
   Returns:
-    A `tff.utils.IterativeProcess`.
+    A `tff.templates.IterativeProcess`.
   """
 
   def client_fed_avg(model_fn):

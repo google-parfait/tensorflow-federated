@@ -280,7 +280,7 @@ that accept the current state as an input and then provide the updated state as
 an output. In order to fully define a stateful process, one also needs to
 specify where the initial state comes from (otherwise we cannot bootstrap the
 process). This is captured in the definition of the helper class
-`tff.utils.IterativeProcess`, with the 2 properties `initialize` and `next`
+`tff.templates.IterativeProcess`, with the 2 properties `initialize` and `next`
 corresponding to the initialization and iteration, respectively.
 
 ### Available builders
@@ -290,7 +290,7 @@ computations for federated training and evaluation:
 
 *   `tff.learning.build_federated_averaging_process` takes a *model function*
     and a *client optimizer*, and returns a stateful
-    `tff.utils.IterativeProcess`.
+    `tff.templates.IterativeProcess`.
 
 *   `tff.learning.build_federated_evaluation` takes a *model function* and
     returns a single federated computation for federated evaluation of models,
@@ -355,8 +355,8 @@ to train on data from specific subsets of clients may be needed (e.g., to
 simulate the diurnal avaiablity of different types of clients). The compiled
 computations and the underlying runtime do *not* involve any notion of client
 identity. Once data from a specific subset of clients has been selected as an
-input, e.g., in a call to `tff.utils.IterativeProcess.next`, client identities
-no longer appear in it.
+input, e.g., in a call to `tff.templates.IterativeProcess.next`, client
+identities no longer appear in it.
 
 ### Available data sets
 

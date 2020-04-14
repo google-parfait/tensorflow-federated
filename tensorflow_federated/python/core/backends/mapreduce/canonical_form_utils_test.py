@@ -50,7 +50,7 @@ def get_iterative_process_for_sum_example():
 
   @computations.federated_computation
   def init_fn():
-    """The `init` function for `tff.utils.IterativeProcess`."""
+    """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
   @computations.tf_computation([tf.int32, tf.int32])
@@ -73,7 +73,7 @@ def get_iterative_process_for_sum_example():
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
-    """The `next` function for `tff.utils.IterativeProcess`."""
+    """The `next` function for `tff.templates.IterativeProcess`."""
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
@@ -97,7 +97,7 @@ def get_iterative_process_for_sum_example_with_no_prepare():
 
   @computations.federated_computation
   def init_fn():
-    """The `init` function for `tff.utils.IterativeProcess`."""
+    """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
   @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
@@ -116,7 +116,7 @@ def get_iterative_process_for_sum_example_with_no_prepare():
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
-    """The `next` function for `tff.utils.IterativeProcess`."""
+    """The `next` function for `tff.templates.IterativeProcess`."""
     # No call to `federated_map` with a `prepare` function.
     client_input = intrinsics.federated_broadcast(server_state)
     c3 = intrinsics.federated_zip([client_data, client_input])
@@ -141,7 +141,7 @@ def get_iterative_process_for_sum_example_with_no_broadcast():
 
   @computations.federated_computation
   def init_fn():
-    """The `init` function for `tff.utils.IterativeProcess`."""
+    """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
   @computations.tf_computation(tf.int32)
@@ -159,7 +159,7 @@ def get_iterative_process_for_sum_example_with_no_broadcast():
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
-    """The `next` function for `tff.utils.IterativeProcess`."""
+    """The `next` function for `tff.templates.IterativeProcess`."""
     # No call to `federated_map` with prepare.
     # No call to `federated_broadcast`.
     client_updates, client_output = intrinsics.federated_map(work, client_data)
@@ -181,7 +181,7 @@ def get_iterative_process_for_sum_example_with_no_client_output():
 
   @computations.federated_computation
   def init_fn():
-    """The `init` function for `tff.utils.IterativeProcess`."""
+    """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
   @computations.tf_computation([tf.int32, tf.int32])
@@ -204,7 +204,7 @@ def get_iterative_process_for_sum_example_with_no_client_output():
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
-    """The `next` function for `tff.utils.IterativeProcess`."""
+    """The `next` function for `tff.templates.IterativeProcess`."""
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
@@ -228,7 +228,7 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
 
   @computations.federated_computation
   def init_fn():
-    """The `init` function for `tff.utils.IterativeProcess`."""
+    """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value(0, placements.SERVER)
 
   @computations.tf_computation(tf.int32)
@@ -251,7 +251,7 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
-    """The `next` function for `tff.utils.IterativeProcess`."""
+    """The `next` function for `tff.templates.IterativeProcess`."""
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
@@ -273,7 +273,7 @@ def get_iterative_process_for_sum_example_with_no_federated_secure_sum():
 
   @computations.federated_computation
   def init_fn():
-    """The `init` function for `tff.utils.IterativeProcess`."""
+    """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value(0, placements.SERVER)
 
   @computations.tf_computation(tf.int32)
@@ -296,7 +296,7 @@ def get_iterative_process_for_sum_example_with_no_federated_secure_sum():
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
-    """The `next` function for `tff.utils.IterativeProcess`."""
+    """The `next` function for `tff.templates.IterativeProcess`."""
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
@@ -319,7 +319,7 @@ def get_iterative_process_for_sum_example_with_no_update():
 
   @computations.federated_computation
   def init_fn():
-    """The `init` function for `tff.utils.IterativeProcess`."""
+    """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
   @computations.tf_computation([tf.int32, tf.int32])
@@ -337,7 +337,7 @@ def get_iterative_process_for_sum_example_with_no_update():
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
-    """The `next` function for `tff.utils.IterativeProcess`."""
+    """The `next` function for `tff.templates.IterativeProcess`."""
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
@@ -365,7 +365,7 @@ def get_iterative_process_for_sum_example_with_no_server_state():
 
   @computations.federated_computation
   def init_fn():
-    """The `init` function for `tff.utils.IterativeProcess`."""
+    """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([], placements.SERVER)
 
   @computations.tf_computation(tf.int32)
@@ -382,7 +382,7 @@ def get_iterative_process_for_sum_example_with_no_server_state():
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
-    """The `next` function for `tff.utils.IterativeProcess`."""
+    """The `next` function for `tff.templates.IterativeProcess`."""
     del server_state  # Unused
     # No call to `federated_map` with prepare.
     # No call to `federated_broadcast`.
@@ -408,7 +408,7 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
 
   @computations.federated_computation
   def init_fn():
-    """The `init` function for `tff.utils.IterativeProcess`."""
+    """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
   @computations.tf_computation([tf.int32, tf.int32])
@@ -431,7 +431,7 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
-    """The `next` function for `tff.utils.IterativeProcess`."""
+    """The `next` function for `tff.templates.IterativeProcess`."""
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
@@ -457,7 +457,7 @@ def get_iterative_process_for_minimal_sum_example():
 
   @computations.federated_computation
   def init_fn():
-    """The `init` function for `tff.utils.IterativeProcess`."""
+    """The `init` function for `tff.templates.IterativeProcess`."""
     zero = computations.tf_computation(lambda: [0, 0])
     return intrinsics.federated_eval(zero, placements.SERVER)
 
@@ -471,7 +471,7 @@ def get_iterative_process_for_minimal_sum_example():
       computation_types.FederatedType(tf.int32, placements.CLIENTS),
   ])
   def next_fn(server_state, client_data):
-    """The `next` function for `tff.utils.IterativeProcess`."""
+    """The `next` function for `tff.templates.IterativeProcess`."""
     del server_state  # Unused
     # No call to `federated_map` with prepare.
     # No call to `federated_broadcast`.
@@ -723,10 +723,11 @@ class GetTypeInfoTest(test.TestCase):
     # Note: THE CONTENTS OF THIS DICTIONARY IS NOT IMPORTANT. The purpose of
     # this test is not to assert that this value returned by
     # `canonical_form_utils._get_type_info`, but instead to act as a signal when
-    # refactoring the code involved in compiling an `tff.utils.IterativeProcess`
-    # into a `tff.backends.mapreduce.CanonicalForm`. If you are sure this needs
-    # to be updated, one recommendation is to print 'k=\'v\',' while iterating
-    # over the k-v pairs of the ordereddict.
+    # refactoring the code involved in compiling an
+    # `tff.templates.IterativeProcess` into a
+    # `tff.backends.mapreduce.CanonicalForm`. If you are sure this needs to be
+    # updated, one recommendation is to print 'k=\'v\',' while iterating over
+    # the k-v pairs of the ordereddict.
     # pyformat: disable
     expected = collections.OrderedDict(
         initialize_type='( -> <int32,int32>)',
@@ -755,7 +756,7 @@ class GetTypeInfoTest(test.TestCase):
         s7_type='<<int32,int32>,<>>@SERVER',
         s8_type='<int32,int32>@SERVER',
         s9_type='<>@SERVER',
-        )
+    )
     # pyformat: enable
 
     items = zip(actual.items(), expected.items())

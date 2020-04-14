@@ -85,7 +85,7 @@ def build_robust_federated_aggregation_process(model_fn,
     tolerance: Tolerance for the smoothed Weiszfeld algorithm. Default 1e-6.
 
   Returns:
-    A `tff.utils.IterativeProcess`.
+    A `tff.templates.IterativeProcess`.
   """
   # build throwaway model simply to infer types
   with tf.Graph().as_default():

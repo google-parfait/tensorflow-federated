@@ -308,7 +308,7 @@ def build_model_delta_optimizer_process(
     server_optimizer_fn,
     stateful_delta_aggregate_fn=build_stateless_mean(),
     stateful_model_broadcast_fn=build_stateless_broadcaster()):
-  """Constructs `tff.utils.IterativeProcess` for Federated Averaging or SGD.
+  """Constructs `tff.templates.IterativeProcess` for Federated Averaging or SGD.
 
   This provides the TFF orchestration logic connecting the common server logic
   which applies aggregated model deltas to the server model with a
@@ -336,7 +336,7 @@ def build_model_delta_optimizer_process(
       corresponding to the object returned by `model_fn`.
 
   Returns:
-    A `tff.utils.IterativeProcess`.
+    A `tff.templates.IterativeProcess`.
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(model_to_client_delta_fn)
@@ -460,5 +460,5 @@ def build_model_delta_optimizer_process(
 
     return server_state, aggregated_outputs
 
-  return tff.utils.IterativeProcess(
+  return tff.templates.IterativeProcess(
       initialize_fn=server_init_tff, next_fn=run_one_round_tff)

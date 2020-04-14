@@ -246,7 +246,7 @@ def build_gan_training_process(gan: GanFnsAndTypes):
     gan: A `GanFnsAndTypes` object.
 
   Returns:
-    A `tff.utils.IterativeProcess` for GAN training.
+    A `tff.templates.IterativeProcess` for GAN training.
   """
 
   # Generally, it is easiest to get the types correct by building
@@ -311,4 +311,4 @@ def build_gan_training_process(gan: GanFnsAndTypes):
                              aggregated_client_output, new_dp_averaging_state))
     return server_state
 
-  return tff.utils.IterativeProcess(fed_server_initial_state, run_one_round)
+  return tff.templates.IterativeProcess(fed_server_initial_state, run_one_round)

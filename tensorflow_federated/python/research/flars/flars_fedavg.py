@@ -371,7 +371,7 @@ def build_federated_averaging_process(
       `tf.keras.optimizers.Optimizer` for applying updates on the server.
 
   Returns:
-    A `tff.utils.IterativeProcess`.
+    A `tff.templates.IterativeProcess`.
   """
   dummy_model_for_metadata = model_fn()
   type_signature_grads_norm = tff.NamedTupleType([
@@ -398,7 +398,7 @@ def build_federated_averaging_process(
                                              federated_server_state_type,
                                              federated_dataset_type)
 
-  return tff.utils.IterativeProcess(
+  return tff.templates.IterativeProcess(
       initialize_fn=tff.federated_computation(
           lambda: tff.federated_value(server_init_tf(), tff.SERVER)),
       next_fn=run_one_round_tff)

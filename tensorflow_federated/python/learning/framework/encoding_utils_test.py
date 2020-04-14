@@ -52,7 +52,7 @@ class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
 
 
 class IterativeProcessTest(test.TestCase, parameterized.TestCase):
-  """End-to-end tests using `tff.utils.IterativeProcess`."""
+  """End-to-end tests using `tff.templates.IterativeProcess`."""
 
   def test_iterative_process_with_encoding(self):
     model_fn = model_examples.LinearRegression

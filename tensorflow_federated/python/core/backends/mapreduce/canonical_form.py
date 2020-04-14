@@ -61,7 +61,7 @@ class CanonicalForm(object):
   of Apache Beam-like systems may emerge at a later time, and will be supported
   by a separate set of tools, with a more expressive canonical representation.
 
-  We say that a `tff.utils.IterativeProcess` is *in the canonical form for a
+  We say that a `tff.templates.IterativeProcess` is *in the canonical form for a
   simple MapReduce-like platform* if its iterative component (`next`) can be
   converted into a semantically equivalent instance of the computation template
   shown below, with all the variable constituents of the template representable

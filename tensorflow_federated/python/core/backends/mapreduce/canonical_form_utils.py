@@ -41,13 +41,13 @@ from tensorflow_federated.python.core.templates import iterative_process
 
 
 def get_iterative_process_for_canonical_form(cf):
-  """Creates `tff.utils.IterativeProcess` from a canonical form.
+  """Creates `tff.templates.IterativeProcess` from a canonical form.
 
   Args:
     cf: An instance of `tff.backends.mapreduce.CanonicalForm`.
 
   Returns:
-    An instance of `tff.utils.IterativeProcess` that corresponds to `cf`.
+    An instance of `tff.templates.IterativeProcess` that corresponds to `cf`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -153,9 +153,10 @@ def _check_iterative_process_compatible_with_canonical_form(
 
   Args:
     initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
-      representing the `initalize` component of an `tff.utils.IterativeProcess`.
+      representing the `initalize` component of an
+      `tff.templates.IterativeProcess`.
     next_tree: An instance of `building_blocks.ComputationBuildingBlock` that
-      representing `next` component of an `tff.utils.IterativeProcess`.
+      representing `next` component of an `tff.templates.IterativeProcess`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -198,7 +199,7 @@ def _create_next_with_fake_client_output(tree):
   This function is intended to be used by
   `get_canonical_form_for_iterative_process` to create a next computation with
   a fake client output when no client output is returned by `tree` (which
-  represents the `next` function of the `tff.utils.IterativeProcess`). As a
+  represents the `next` function of the `tff.templates.IterativeProcess`). As a
   result, this function does not assert that there is no client output in `tree`
   and it does not assert that `tree` has the expected structure, the caller is
   expected to perform these checks before calling this function.
@@ -707,11 +708,11 @@ def _extract_update(after_aggregate):
 
 def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
                    before_aggregate, after_aggregate):
-  """Returns type information for an `tff.utils.IterativeProcess`.
+  """Returns type information for an `tff.templates.IterativeProcess`.
 
   This function is intended to be used by
   `get_canonical_form_for_iterative_process` to create the expected type
-  signatures when compiling a given `tff.utils.IterativeProcess` into a
+  signatures when compiling a given `tff.templates.IterativeProcess` into a
   `tff.backends.mapreduce.CanonicalForm` and returns a `collections.OrderedDict`
   whose keys and order match the explicit and intermediate componets of
   `tff.backends.mapreduce.CanonicalForm` defined here:
@@ -741,12 +742,12 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   ```
 
   Note that the type signatures for the `initalize` and `next` components of an
-  `tff.utils.IterativeProcess` are:
+  `tff.templates.IterativeProcess` are:
 
   initalize:  `( -> s1)`
   next:       `(<s1,c1> -> <s8,s9,c8>)`
 
-  However, the `next` component of an `tff.utils.IterativeProcess` has been
+  However, the `next` component of an `tff.templates.IterativeProcess` has been
   split into a before and after broadcast and a before and after aggregate with
   the given semantics:
 
@@ -755,7 +756,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   ```
 
   as a result, the type signatures for the components split from the `next`
-  component of an `tff.utils.IterativeProcess` are:
+  component of an `tff.templates.IterativeProcess` are:
 
   before_broadcast:  `(<s1,c1> -> s2)`
   after_broadcast:   `(<<s1,c1>,c2> -> <s8,s9,c8>)`
@@ -764,15 +765,16 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
 
   Args:
     initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
-      representing the `initalize` component of an `tff.utils.IterativeProcess`.
+      representing the `initalize` component of an
+      `tff.templates.IterativeProcess`.
     before_broadcast: The first result of splitting `next` component of an
-      `tff.utils.IterativeProcess` on broadcast.
+      `tff.templates.IterativeProcess` on broadcast.
     after_broadcast: The second result of splitting `next` component of an
-      `tff.utils.IterativeProcess` on broadcast.
+      `tff.templates.IterativeProcess` on broadcast.
     before_aggregate: The first result of splitting `next` component of an
-      `tff.utils.IterativeProcess` on aggregate.
+      `tff.templates.IterativeProcess` on aggregate.
     after_aggregate: The second result of splitting `next` component of an
-      `tff.utils.IterativeProcess` on aggregate.
+      `tff.templates.IterativeProcess` on aggregate.
 
   Raises:
     transformations.CanonicalFormCompilationError: If the arguments are of the
@@ -969,7 +971,7 @@ def get_canonical_form_for_iterative_process(ip):
   an instance of `tff.backends.mapreduce.CanonicalForm`.
 
   Args:
-    ip: An instance of `tff.utils.IterativeProcess`.
+    ip: An instance of `tff.templates.IterativeProcess`.
 
   Returns:
     An instance of `tff.backends.mapreduce.CanonicalForm` equivalent to this
@@ -1028,7 +1030,7 @@ def get_canonical_form_for_iterative_process(ip):
             after_broadcast))
   else:
     raise ValueError(
-        'Expected an `tff.utils.IterativeProcess` containing at least one '
+        'Expected an `tff.templates.IterativeProcess` containing at least one '
         '`federated_aggregate` or `federated_secure_sum`, found none.')
 
   type_info = _get_type_info(initialize_comp, before_broadcast, after_broadcast,

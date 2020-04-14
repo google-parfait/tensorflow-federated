@@ -129,8 +129,9 @@ def build_federated_sgd_process(
     stateful_model_broadcast_fn=None):
   """Builds the TFF computations for optimization using federated SGD.
 
-  This function creates a `tff.utils.IterativeProcess` that performs federated
-  averaging on client models. The iterative process has the following methods:
+  This function creates a `tff.templates.IterativeProcess` that performs
+  federated averaging on client models. The iterative process has the following
+  methods:
 
   *   `initialize`: A `tff.Computation` with the functional type signature
       `( -> S@SERVER)`, where `S` is a`tff.learning.framework.ServerState`
@@ -183,7 +184,7 @@ def build_federated_sgd_process(
       by `model_fn`. The default is the identity broadcast.
 
   Returns:
-    A `tff.utils.IterativeProcess`.
+    A `tff.templates.IterativeProcess`.
   """
 
   def client_sgd_avg(model_fn):

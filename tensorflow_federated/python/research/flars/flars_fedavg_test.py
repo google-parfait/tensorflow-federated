@@ -99,7 +99,7 @@ class FlarsFedAvgTest(tf.test.TestCase):
     it_process = flars_fedavg.build_federated_averaging_process(
         _keras_model_fn,
         client_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1))
-    self.assertIsInstance(it_process, tff.utils.IterativeProcess)
+    self.assertIsInstance(it_process, tff.templates.IterativeProcess)
     federated_data_type = it_process.next.type_signature.parameter[1]
     self.assertEqual(
         str(federated_data_type), '{<x=float32[?,784],y=int64[?,1]>*}@CLIENTS')

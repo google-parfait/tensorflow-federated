@@ -275,7 +275,7 @@ def build_fed_avg_process(model_fn,
       the total number of examples processed on device.
 
   Returns:
-    A `tff.utils.IterativeProcess`.
+    A `tff.templates.IterativeProcess`.
   """
 
   client_lr_schedule = client_lr
@@ -350,7 +350,7 @@ def build_fed_avg_process(model_fn,
   def initialize_fn():
     return tff.federated_value(server_init_tf(), tff.SERVER)
 
-  tff_iterative_process = tff.utils.IterativeProcess(
+  tff_iterative_process = tff.templates.IterativeProcess(
       initialize_fn=initialize_fn, next_fn=run_one_round)
 
   return FederatedAveragingProcessAdapter(tff_iterative_process)

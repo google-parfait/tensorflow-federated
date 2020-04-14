@@ -26,7 +26,7 @@ tf.compat.v1.enable_v2_behavior()
 
 
 def construct_example_training_comp():
-  """Constructs a `tff.utils.IterativeProcess` via the FL API."""
+  """Constructs a `tff.templates.IterativeProcess` via the FL API."""
   np.random.seed(0)
 
   input_spec = collections.OrderedDict(

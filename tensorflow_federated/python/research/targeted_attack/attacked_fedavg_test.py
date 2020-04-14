@@ -161,7 +161,7 @@ class ClientAttackTest(tf.test.TestCase):
 
   def test_input_types(self):
     it_process = build_federated_averaging_process_attacked(_model_fn)
-    self.assertIsInstance(it_process, tff.utils.IterativeProcess)
+    self.assertIsInstance(it_process, tff.templates.IterativeProcess)
     federated_data_type = it_process.next.type_signature.parameter[1]
     self.assertEqual(
         str(federated_data_type), '{<x=float32[?,784],y=int64[?,1]>*}@CLIENTS')

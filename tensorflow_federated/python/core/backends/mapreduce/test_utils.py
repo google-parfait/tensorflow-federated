@@ -319,7 +319,7 @@ def get_iterative_process_for_example_with_unused_lambda_arg():
           computation_types.SequenceType(tf.string), placements.CLIENTS)
   ])
   def next_fn(server_state, client_val):
-    """`next` function for `tff.utils.IterativeProcess`."""
+    """`next` function for `tff.templates.IterativeProcess`."""
     server_update = intrinsics.federated_zip(
         collections.OrderedDict(
             num_clients=count_clients_federated(client_val)))
@@ -366,7 +366,7 @@ def get_iterative_process_for_example_with_unused_tf_computation_arg():
           computation_types.SequenceType(tf.string), placements.CLIENTS)
   ])
   def next_fn(server_state, client_val):
-    """`next` function for `tff.utils.IterativeProcess`."""
+    """`next` function for `tff.templates.IterativeProcess`."""
     server_update = intrinsics.federated_zip(
         collections.OrderedDict(
             num_clients=count_clients_federated(client_val)))

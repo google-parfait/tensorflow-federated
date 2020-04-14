@@ -192,7 +192,7 @@ class SimpleFedAvgTest(tf.test.TestCase):
 
   def test_something(self):
     it_process = simple_fedavg_tff.build_federated_averaging_process(_model_fn)
-    self.assertIsInstance(it_process, tff.utils.IterativeProcess)
+    self.assertIsInstance(it_process, tff.templates.IterativeProcess)
     federated_data_type = it_process.next.type_signature.parameter[1]
     self.assertEqual(
         str(federated_data_type),

@@ -131,7 +131,7 @@ def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
       Default 1e-6.
 
   Returns:
-    A `tff.utils.IterativeProcess`.
+    A `tff.templates.IterativeProcess`.
   """
   server_optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
