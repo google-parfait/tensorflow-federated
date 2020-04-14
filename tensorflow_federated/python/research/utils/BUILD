@@ -9,6 +9,24 @@ py_library(
 )
 
 py_library(
+    name = "aggregate_fns",
+    srcs = ["aggregate_fns.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
+    name = "aggregate_fns_test",
+    srcs = ["aggregate_fns_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":aggregate_fns",
+        "//tensorflow_federated",
+    ],
+)
+
+py_library(
     name = "checkpoint_manager",
     srcs = ["checkpoint_manager.py"],
     srcs_version = "PY3",
