@@ -26,19 +26,3 @@ from tensorflow_federated.python.learning.model import BatchOutput
 from tensorflow_federated.python.learning.model import Model
 from tensorflow_federated.python.learning.model_utils import ModelWeights
 from tensorflow_federated.python.learning.personalization_eval import build_personalization_eval
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "BatchOutput",
-    "ClientFedAvg",
-    "Model",
-    "ModelWeights",
-    "assign_weights_to_keras_model",
-    "build_federated_averaging_process",
-    "build_federated_evaluation",
-    "build_federated_sgd_process",
-    "build_personalization_eval",
-    "framework",
-    "from_keras_model",
-    "state_with_new_model_weights",
-]

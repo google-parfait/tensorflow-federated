@@ -15,8 +15,3 @@
 """This directory contains frequently used computation templates."""
 
 from tensorflow_federated.python.core.templates.iterative_process import IterativeProcess
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "IterativeProcess",
-]

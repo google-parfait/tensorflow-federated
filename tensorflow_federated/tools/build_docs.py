@@ -14,13 +14,11 @@
 # limitations under the License.
 """Tool to generate external API documentation for tensorflow_federated."""
 
-import inspect
 import os
 
 from absl import app
 from absl import flags
-
-from tensorflow_docs.api_generator import generate_lib
+import tensorflow_docs
 
 import tensorflow_federated as tff
 
@@ -39,76 +37,21 @@ flags.DEFINE_string('site_path', 'federated/api_docs/python',
                     'Path prefix in the _toc.yaml')
 
 
-def generate_api_docs(output_dir):
-  """Generates markdown API docs for TFF.
-
-  Args:
-    output_dir: Base directory path to write generated files to.
-  """
-
-  def _ignore_symbols(mod):
-    """Returns list of symbols to ignore for documentation."""
-    all_symbols = [x for x in dir(mod) if not x.startswith('_')]
-    allowed_symbols = mod._allowed_symbols  # pylint: disable=protected-access
-    return set(all_symbols) - set(allowed_symbols)
-
-  def _get_ignored_symbols(module):
-    """Returns a Python `set` of symbols to ignore for a given `module`."""
-    symbols = dir(module)
-    private_symbols = [x for x in symbols if x.startswith('_')]
-    module_symbols = [
-        x for x in symbols if inspect.ismodule(getattr(module, x))
-    ]
-    return set(private_symbols + module_symbols)
-
-  doc_generator = generate_lib.DocGenerator(
+def main(argv):
+  if len(argv) > 1:
+    raise app.UsageError('Too many command-line arguments.')
+  doc_generator = tensorflow_docs.api_generator.generate_lib.DocGenerator(
       root_title='TensorFlow Federated',
       py_modules=[('tff', tff)],
       base_dir=os.path.dirname(tff.__file__),
       code_url_prefix=FLAGS.code_url_prefix,
       search_hints=FLAGS.search_hints,
       site_path=FLAGS.site_path,
-      private_map={
-          'tff':
-              _ignore_symbols(tff),
-          'tff.backends':
-              _ignore_symbols(tff.backends),
-          'tff.backends.mapreduce':
-              _ignore_symbols(tff.backends.mapreduce),
-          'tff.framework':
-              _ignore_symbols(tff.framework),
-          'tff.learning':
-              _ignore_symbols(tff.learning),
-          'tff.learning.framework':
-              _ignore_symbols(tff.learning.framework),
-          'tff.simulation':
-              _ignore_symbols(tff.simulation),
-          'tff.simulation.datasets':
-              _ignore_symbols(tff.simulation.datasets),
-          'tff.simulation.datasets.cifar100':
-              _get_ignored_symbols(tff.simulation.datasets.cifar100),
-          'tff.simulation.datasets.emnist':
-              _get_ignored_symbols(tff.simulation.datasets.emnist),
-          'tff.simulation.datasets.shakespeare':
-              _get_ignored_symbols(tff.simulation.datasets.shakespeare),
-          'tff.simulation.datasets.stackoverflow':
-              _get_ignored_symbols(tff.simulation.datasets.stackoverflow),
-          'tff.simulation.models':
-              _ignore_symbols(tff.simulation.models),
-          'tff.simulation.models.mnist':
-              _get_ignored_symbols(tff.simulation.models.mnist),
-          'tff.templates':
-              _ignore_symbols(tff.templates),
-          'tff.test':
-              _ignore_symbols(tff.test),
-          'tff.utils':
-              _ignore_symbols(tff.utils),
-      })
-  doc_generator.build(output_dir)
-
-
-def main(unused_argv):
-  generate_api_docs(FLAGS.output_dir)
+      callbacks=[
+          tensorflow_docs.api_generator.public_api
+          .explicit_package_contents_filter,
+      ])
+  doc_generator.build(FLAGS.output_dir)
 
 
 if __name__ == '__main__':

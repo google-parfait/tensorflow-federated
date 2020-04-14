@@ -65,45 +65,4 @@ from tensorflow_federated.python import simulation
 # pylint: enable=g-bad-import-order
 
 if sys.version_info[0] < 3 or sys.version_info[1] < 6:
-  raise Exception("TFF only supports Python versions 3.6 or later.")
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "CLIENTS",
-    "Computation",
-    "FederatedType",
-    "FunctionType",
-    "NamedTupleType",
-    "SERVER",
-    "SequenceType",
-    "TensorType",
-    "Type",
-    "TypedObject",
-    "Value",
-    "backends",
-    "federated_aggregate",
-    "federated_apply",
-    "federated_broadcast",
-    "federated_collect",
-    "federated_computation",
-    "federated_eval",
-    "federated_map",
-    "federated_mean",
-    "federated_reduce",
-    "federated_secure_sum",
-    "federated_sum",
-    "federated_value",
-    "federated_zip",
-    "framework",
-    "learning",
-    "sequence_map",
-    "sequence_reduce",
-    "sequence_sum",
-    "simulation",
-    "templates",
-    "test",
-    "tf_computation",
-    "to_type",
-    "to_value",
-    "utils",
-]
+  raise Exception('TFF only supports Python versions 3.6 or later.')

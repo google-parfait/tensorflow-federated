@@ -15,8 +15,3 @@
 """This directory contains code for interfacing custom types of backends."""
 
 from tensorflow_federated.python.core.backends import mapreduce
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "mapreduce",
-]

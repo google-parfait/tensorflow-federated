@@ -25,18 +25,3 @@ from tensorflow_federated.python.learning.framework.optimizer_utils import Serve
 from tensorflow_federated.python.learning.model_utils import enhance
 from tensorflow_federated.python.learning.model_utils import EnhancedModel
 from tensorflow_federated.python.learning.model_utils import ModelWeights
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "ClientDeltaFn",
-    "ClientOutput",
-    "EnhancedModel",
-    "ModelWeights",
-    "ServerState",
-    "build_encoded_broadcast_from_model",
-    "build_encoded_mean_from_model",
-    "build_encoded_sum_from_model",
-    "build_model_delta_optimizer_process",
-    "build_stateless_broadcaster",
-    "enhance",
-]

@@ -14,9 +14,4 @@
 # limitations under the License.
 """Models for running Federated Learning experiments in simulation."""
 
-import tensorflow_federated.python.simulation.models.mnist
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "mnist",
-]
+from tensorflow_federated.python.simulation.models import mnist

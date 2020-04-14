@@ -22,15 +22,3 @@ from tensorflow_federated.python.simulation.from_tensor_slices_client_data impor
 from tensorflow_federated.python.simulation.hdf5_client_data import HDF5ClientData
 from tensorflow_federated.python.simulation.server_utils import run_server
 from tensorflow_federated.python.simulation.transforming_client_data import TransformingClientData
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "ClientData",
-    "FilePerUserClientData",
-    "FromTensorSlicesClientData",
-    "HDF5ClientData",
-    "TransformingClientData",
-    "datasets",
-    "models",
-    "run_server",
-]

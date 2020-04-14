@@ -19,8 +19,3 @@ easier or more convenient and parallels the `tf.test` package.
 """
 
 from tensorflow_federated.python.core.impl.reference_executor import ReferenceExecutor
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "ReferenceExecutor",
-]

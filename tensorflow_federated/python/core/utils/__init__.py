@@ -35,21 +35,3 @@ from tensorflow_federated.python.core.utils.federated_aggregations import federa
 from tensorflow_federated.python.core.utils.tf_computation_utils import assign
 from tensorflow_federated.python.core.utils.tf_computation_utils import create_variables
 from tensorflow_federated.python.core.utils.tf_computation_utils import identity
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "StatefulAggregateFn",
-    "StatefulBroadcastFn",
-    "assign",
-    "build_dp_aggregate",
-    "build_dp_query",
-    "build_encoded_broadcast",
-    "build_encoded_mean",
-    "build_encoded_sum",
-    "federated_max",
-    "federated_min",
-    "federated_sample",
-    "create_variables",
-    "identity",
-    "update_state",
-]
