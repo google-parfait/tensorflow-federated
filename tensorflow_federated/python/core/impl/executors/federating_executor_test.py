@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import asyncio
-from typing import Tuple
+from typing import Any, Iterable, Tuple, Type
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -26,9 +26,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl import intrinsic_factory
-from tensorflow_federated.python.core.impl.compiler import building_block_factory
-from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
@@ -42,6 +39,10 @@ from tensorflow_federated.python.core.impl.executors import reference_resolving_
 
 
 tf.compat.v1.enable_v2_behavior()
+
+
+def all_isinstance(objs: Iterable[Any], classinfo: Type[Any]) -> bool:
+  return all(isinstance(x, classinfo) for x in objs)
 
 
 def create_test_executor(
@@ -406,28 +407,122 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
 
   # pyformat: disable
   @parameterized.named_parameters([
-      ('intrinsic_def',
-       *executor_test_utils.create_dummy_intrinsic_def(),
-       *executor_test_utils.create_dummy_computation_tensorflow_constant()),
+      ('intrinsic_def_federated_apply',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_apply(),
+       [executor_test_utils.create_dummy_computation_tensorflow_identity(),
+        executor_test_utils.create_dummy_value_server()],
+       10.0),
+      ('intrinsic_def_federated_aggregate',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_aggregate(),
+       [executor_test_utils.create_dummy_value_clients(),
+        executor_test_utils.create_dummy_value_unplaced(),
+        executor_test_utils.create_dummy_computation_tensorflow_add(),
+        executor_test_utils.create_dummy_computation_tensorflow_add(),
+        executor_test_utils.create_dummy_computation_tensorflow_identity()],
+       70.0),
+      ('intrinsic_def_federated_broadcast',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_broadcast(),
+       [executor_test_utils.create_dummy_value_server()],
+       10.0),
+      ('intrinsic_def_federated_collect',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_collect(),
+       [executor_test_utils.create_dummy_value_clients()],
+       tf.data.Dataset.from_tensor_slices([10.0, 20.0, 30.0])),
+      ('intrinsic_def_federated_eval_at_clients',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_clients(),
+       [executor_test_utils.create_dummy_computation_tensorflow_constant()],
+       [10.0] * 3),
+      ('intrinsic_def_federated_eval_at_server',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_server(),
+       [executor_test_utils.create_dummy_computation_tensorflow_constant()],
+       10.0),
+      ('intrinsic_def_federated_map',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_map(),
+       [executor_test_utils.create_dummy_computation_tensorflow_identity(),
+        executor_test_utils.create_dummy_value_clients()],
+       [10.0, 20.0, 30.0]),
+      ('intrinsic_def_federated_map_all_equal',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_map_all_equal(),
+       [executor_test_utils.create_dummy_computation_tensorflow_identity(),
+        executor_test_utils.create_dummy_value_clients_all_equal()],
+       10.0),
+      ('intrinsic_def_federated_mean',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_mean(),
+       [executor_test_utils.create_dummy_value_clients()],
+       20.0),
+      ('intrinsic_def_federated_sum',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_sum(),
+       [executor_test_utils.create_dummy_value_clients()],
+       60.0),
+      ('intrinsic_def_federated_reduce',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_reduce(),
+       [executor_test_utils.create_dummy_value_clients(),
+        executor_test_utils.create_dummy_value_unplaced(),
+        executor_test_utils.create_dummy_computation_tensorflow_add()],
+       70.0),
+      ('intrinsic_def_federated_value_at_clients',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_clients(),
+       [executor_test_utils.create_dummy_value_unplaced()],
+       10.0),
+      ('intrinsic_def_federated_value_at_server',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_server(),
+       [executor_test_utils.create_dummy_value_unplaced()],
+       10.0),
+      ('intrinsic_def_federated_weighted_mean',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_weighted_mean(),
+       [executor_test_utils.create_dummy_value_clients(),
+        executor_test_utils.create_dummy_value_clients()],
+       20.0),
+      ('intrinsic_def_federated_zip_at_clients',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_clients(),
+       [executor_test_utils.create_dummy_value_clients(),
+        executor_test_utils.create_dummy_value_clients()],
+       [anonymous_tuple.AnonymousTuple([(None, 10.0), (None, 10.0)]),
+        anonymous_tuple.AnonymousTuple([(None, 20.0), (None, 20.0)]),
+        anonymous_tuple.AnonymousTuple([(None, 30.0), (None, 30.0)])]),
+      ('intrinsic_def_federated_zip_at_server',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_server(),
+       [executor_test_utils.create_dummy_value_server(),
+        executor_test_utils.create_dummy_value_server()],
+       anonymous_tuple.AnonymousTuple([(None, 10.0), (None, 10.0)])),
       ('computation_intrinsic',
        *executor_test_utils.create_dummy_computation_intrinsic(),
-       *executor_test_utils.create_dummy_computation_tensorflow_constant()),
+       [executor_test_utils.create_dummy_computation_tensorflow_constant()],
+       10.0),
       ('computation_tensorflow',
        *executor_test_utils.create_dummy_computation_tensorflow_identity(),
-       *executor_test_utils.create_dummy_value_unplaced()),
+       [executor_test_utils.create_dummy_value_unplaced()],
+       10.0),
   ])
   # pyformat: enable
-  def test_returns_value_with_comp_and_arg(self, comp, comp_type, arg,
-                                           arg_type):
+  def test_returns_value_with_comp_and_arg(self, comp, comp_type, args,
+                                           expected_result):
+    if comp == intrinsic_defs.FEDERATED_WEIGHTED_MEAN:
+      self.skipTest(
+          'TODO(b/134543154): A `intrinsic_defs.FEDERATED_WEIGHTED_MEAN` can '
+          'not be executed directly on top of a plain TensorFlow-based '
+          'executor.')
     executor = create_test_executor(num_clients=3)
 
     comp = self.run_sync(executor.create_value(comp, comp_type))
-    arg = self.run_sync(executor.create_value(arg, arg_type))
+    elements = [self.run_sync(executor.create_value(*x)) for x in args]
+    if len(elements) > 1:
+      arg = self.run_sync(executor.create_tuple(elements))
+    else:
+      arg = elements[0]
     result = self.run_sync(executor.create_call(comp, arg))
 
     self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
                      comp_type.result.compact_representation())
+    actual_result = self.run_sync(result.compute())
+    if (all_isinstance([actual_result, expected_result], list) or
+        all_isinstance([actual_result, expected_result], tf.data.Dataset)):
+      for actual_element, expected_element in zip(actual_result,
+                                                  expected_result):
+        self.assertEqual(actual_element, expected_element)
+    else:
+      self.assertEqual(actual_result, expected_result)
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -446,6 +541,9 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
                      comp_type.result.compact_representation())
+    actual_result = self.run_sync(result.compute())
+    expected_result = []
+    self.assertCountEqual(actual_result, expected_result)
 
   def test_raises_type_error_with_unembedded_comp(self):
     executor = create_test_executor(num_clients=3)
@@ -521,6 +619,21 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     arg = self.run_sync(executor.create_value(arg, arg_type))
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_call(comp, arg))
+
+  def test_raises_not_implemented_error_with_intrinsic_def_federated_secure_sum(
+      self):
+    executor = create_test_executor(num_clients=3)
+    comp, comp_type = executor_test_utils.create_dummy_intrinsic_def_federated_secure_sum(
+    )
+    arg_1, arg_1_type = executor_test_utils.create_dummy_value_clients()
+    arg_2, arg_2_type = executor_test_utils.create_dummy_value_unplaced()
+
+    comp = self.run_sync(executor.create_value(comp, comp_type))
+    arg_1 = self.run_sync(executor.create_value(arg_1, arg_1_type))
+    arg_2 = self.run_sync(executor.create_value(arg_2, arg_2_type))
+    args = self.run_sync(executor.create_tuple([arg_1, arg_2]))
+    with self.assertRaises(NotImplementedError):
+      self.run_sync(executor.create_call(comp, args))
 
   def test_raises_not_implemented_error_with_unimplemented_intrinsic(self):
     executor = create_test_executor(num_clients=3)
@@ -747,21 +860,6 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
 class FederatingExecutorTest(parameterized.TestCase):
 
-  def test_federated_value_at_server(self):
-    @computations.federated_computation
-    def comp():
-      return intrinsics.federated_value(10, placement_literals.SERVER)
-
-    val = _run_test_comp(comp)
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(str(val.type_signature), 'int32@SERVER')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 1)
-    self.assertIsInstance(val.internal_representation[0],
-                          eager_tf_executor.EagerValue)
-    self.assertEqual(
-        val.internal_representation[0].internal_representation.numpy(), 10)
-
   def test_federated_value_at_client_with_zero_clients_raises_error(self):
     self.skipTest('b/145936344')
     @computations.federated_computation
@@ -793,54 +891,6 @@ class FederatingExecutorTest(parameterized.TestCase):
     self.assertEqual(inner_eager_value.internal_representation[0].numpy(), 10)
     self.assertEqual(inner_eager_value.internal_representation[1].numpy(), 10)
 
-  def test_federated_value_at_clients(self):
-    @computations.federated_computation
-    def comp():
-      return intrinsics.federated_value(10, placement_literals.CLIENTS)
-
-    val = _run_test_comp(comp, num_clients=3)
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(str(val.type_signature), 'int32@CLIENTS')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 3)
-    for v in val.internal_representation:
-      self.assertIsInstance(v, eager_tf_executor.EagerValue)
-      self.assertEqual(v.internal_representation.numpy(), 10)
-
-  def test_federated_eval_at_clients_simple_number(self):
-
-    @computations.federated_computation
-    def comp():
-      return_five = computations.tf_computation(lambda: 5)
-      return intrinsics.federated_eval(return_five, placement_literals.CLIENTS)
-
-    num_clients = 3
-    val = _run_test_comp(comp, num_clients=num_clients)
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(str(val.type_signature), '{int32}@CLIENTS')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, num_clients)
-    for v in val.internal_representation:
-      self.assertIsInstance(v, eager_tf_executor.EagerValue)
-      self.assertEqual(v.internal_representation.numpy(), 5)
-
-  def test_federated_eval_at_server_simple_number(self):
-
-    @computations.federated_computation
-    def comp():
-      return_five = computations.tf_computation(lambda: 5)
-      return intrinsics.federated_eval(return_five, placement_literals.SERVER)
-
-    num_clients = 3
-    val = _run_test_comp(comp, num_clients=num_clients)
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(str(val.type_signature), 'int32@SERVER')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 1)
-    v = val.internal_representation[0]
-    self.assertIsInstance(v, eager_tf_executor.EagerValue)
-    self.assertEqual(v.internal_representation.numpy(), 5)
-
   def test_federated_eval_at_clients_random(self):
 
     @computations.federated_computation
@@ -862,226 +912,6 @@ class FederatingExecutorTest(parameterized.TestCase):
         raise Exception('Multiple clients returned same random number')
       previous_values.add(number)
 
-  def test_federated_map_at_server(self):
-    loop, ex = _make_test_runtime()
-
-    @computations.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    @computations.federated_computation
-    def comp():
-      value = intrinsics.federated_value(10, placement_literals.SERVER)
-      return intrinsics.federated_map(add_one, value)
-
-    val = _run_comp_with_runtime(comp, (loop, ex))
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(str(val.type_signature), 'int32@SERVER')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 1)
-    v = val.internal_representation[0]
-    self.assertIsInstance(v, eager_tf_executor.EagerValue)
-    self.assertEqual(v.internal_representation.numpy(), 11)
-    result = loop.run_until_complete(v.compute())
-    self.assertEqual(result.numpy(), 11)
-
-  def test_federated_map(self):
-
-    @computations.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    @computations.federated_computation
-    def comp():
-      value = intrinsics.federated_value(10, placement_literals.CLIENTS)
-      return intrinsics.federated_map(add_one, value)
-
-    val = _run_test_comp(comp, num_clients=3)
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(str(val.type_signature), '{int32}@CLIENTS')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 3)
-    for v in val.internal_representation:
-      self.assertIsInstance(v, eager_tf_executor.EagerValue)
-      self.assertEqual(v.internal_representation.numpy(), 11)
-
-  def test_federated_map_all_equal(self):
-    factory = intrinsic_factory.IntrinsicFactory(
-        context_stack_impl.context_stack)
-
-    @computations.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    @computations.federated_computation
-    def comp():
-      value = intrinsics.federated_value(10, placement_literals.CLIENTS)
-      return factory.federated_map_all_equal(add_one, value)
-
-    val = _run_test_comp(comp, num_clients=3)
-
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(val.type_signature.compact_representation(),
-                     'int32@CLIENTS')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 3)
-    for v in val.internal_representation:
-      self.assertIsInstance(v, eager_tf_executor.EagerValue)
-      self.assertEqual(v.internal_representation.numpy(), 11)
-
-  def test_federated_broadcast(self):
-    @computations.federated_computation
-    def comp():
-      return intrinsics.federated_broadcast(
-          intrinsics.federated_value(10, placement_literals.SERVER))
-
-    val = _run_test_comp(comp, num_clients=3)
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(str(val.type_signature), 'int32@CLIENTS')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 3)
-    for v in val.internal_representation:
-      self.assertIsInstance(v, eager_tf_executor.EagerValue)
-      self.assertEqual(v.internal_representation.numpy(), 10)
-
-  def test_federated_zip(self):
-    loop, ex = _make_test_runtime(num_clients=3)
-
-    @computations.federated_computation
-    def ten_on_server():
-      return intrinsics.federated_value(10, placement_literals.SERVER)
-
-    @computations.federated_computation
-    def ten_on_clients():
-      return intrinsics.federated_value(10, placement_literals.CLIENTS)
-
-    for ten, type_string, cardinality, expected_result in [
-        (ten_on_server, '<int32,int32>@SERVER', 1, '<10,10>'),
-        (ten_on_clients, '{<int32,int32>}@CLIENTS', 3, ['<10,10>'] * 3)
-    ]:
-      comp = building_block_factory.create_zip_two_values(
-          building_blocks.Tuple([
-              building_blocks.Call(
-                  building_blocks.ComputationBuildingBlock.from_proto(
-                      computation_impl.ComputationImpl.get_proto(ten)))
-          ] * 2))
-      val = loop.run_until_complete(
-          ex.create_value(comp.proto, comp.type_signature))
-      self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-      self.assertEqual(str(val.type_signature), type_string)
-      self.assertIsInstance(val.internal_representation, list)
-      self.assertLen(val.internal_representation, cardinality)
-      result = loop.run_until_complete(val.compute())
-
-      def _print(x):
-        return str(anonymous_tuple.map_structure(lambda v: v.numpy(), x))
-
-      if isinstance(expected_result, list):
-        self.assertCountEqual([_print(x) for x in result], expected_result)
-      else:
-        self.assertEqual(_print(result), expected_result)
-
-  def test_federated_reduce_with_simple_integer_sum(self):
-    @computations.tf_computation(tf.int32, tf.int32)
-    def add_numbers(x, y):
-      return x + y
-
-    @computations.federated_computation
-    def comp():
-      return intrinsics.federated_reduce(
-          intrinsics.federated_value(10, placement_literals.CLIENTS), 0,
-          add_numbers)
-
-    result = _run_test_comp_produces_federated_value(self, comp, num_clients=3)
-    self.assertEqual(result.numpy(), 30)
-
-  def test_federated_aggregate_with_simple_integer_sum(self):
-    @computations.tf_computation(tf.int32, tf.int32)
-    def add_numbers(x, y):
-      return x + y
-
-    @computations.tf_computation(tf.int32)
-    def add_one_because_why_not(x):
-      return x + 1
-
-    @computations.federated_computation
-    def comp():
-      x = intrinsics.federated_value(10, placement_literals.CLIENTS)
-      return intrinsics.federated_aggregate(x, 0, add_numbers, add_numbers,
-                                            add_one_because_why_not)
-
-    result = _run_test_comp_produces_federated_value(self, comp, num_clients=3)
-    self.assertEqual(result.numpy(), 31)
-
-  def test_federated_sum_with_integers(self):
-    @computations.federated_computation
-    def comp():
-      x = intrinsics.federated_value(10, placement_literals.CLIENTS)
-      return intrinsics.federated_sum(x)
-
-    result = _run_test_comp_produces_federated_value(self, comp, num_clients=3)
-    self.assertEqual(result.numpy(), 30)
-
-  def test_federated_mean_with_floats(self):
-    loop, ex = _make_test_runtime(num_clients=4)
-
-    v1 = loop.run_until_complete(
-        ex.create_value([1.0, 2.0, 3.0, 4.0],
-                        type_factory.at_clients(tf.float32)))
-    self.assertEqual(str(v1.type_signature), '{float32}@CLIENTS')
-
-    v2 = loop.run_until_complete(
-        ex.create_value(
-            intrinsic_defs.FEDERATED_MEAN,
-            computation_types.FunctionType(
-                type_factory.at_clients(tf.float32),
-                type_factory.at_server(tf.float32))))
-    self.assertEqual(
-        str(v2.type_signature), '({float32}@CLIENTS -> float32@SERVER)')
-
-    v3 = loop.run_until_complete(ex.create_call(v2, v1))
-    self.assertEqual(str(v3.type_signature), 'float32@SERVER')
-
-    result = loop.run_until_complete(v3.compute())
-    self.assertEqual(result.numpy(), 2.5)
-
-  def test_federated_weighted_mean_with_floats(self):
-    loop, ex = _make_test_runtime(
-        num_clients=4, use_reference_resolving_executor=True)
-
-    v1 = loop.run_until_complete(
-        ex.create_value([1.0, 2.0, 3.0, 4.0],
-                        type_factory.at_clients(tf.float32)))
-    self.assertEqual(str(v1.type_signature), '{float32}@CLIENTS')
-
-    v2 = loop.run_until_complete(
-        ex.create_value([5.0, 10.0, 3.0, 2.0],
-                        type_factory.at_clients(tf.float32)))
-    self.assertEqual(str(v2.type_signature), '{float32}@CLIENTS')
-
-    v3 = loop.run_until_complete(
-        ex.create_tuple(
-            anonymous_tuple.AnonymousTuple([(None, v1), (None, v2)])))
-    self.assertEqual(
-        str(v3.type_signature), '<{float32}@CLIENTS,{float32}@CLIENTS>')
-
-    v4 = loop.run_until_complete(
-        ex.create_value(
-            intrinsic_defs.FEDERATED_WEIGHTED_MEAN,
-            computation_types.FunctionType([
-                type_factory.at_clients(tf.float32),
-                type_factory.at_clients(tf.float32)
-            ], type_factory.at_server(tf.float32))))
-    self.assertEqual(
-        str(v4.type_signature),
-        '(<{float32}@CLIENTS,{float32}@CLIENTS> -> float32@SERVER)')
-
-    v5 = loop.run_until_complete(ex.create_call(v4, v3))
-    self.assertEqual(str(v5.type_signature), 'float32@SERVER')
-
-    result = loop.run_until_complete(v5.compute())
-    self.assertAlmostEqual(result.numpy(), 2.1, places=3)
-
   def test_execution_of_tensorflow(self):
 
     @computations.tf_computation
@@ -1093,39 +923,6 @@ class FederatingExecutorTest(parameterized.TestCase):
       result = comp()
 
     self.assertEqual(result, 10)
-
-  @parameterized.named_parameters(
-      ('tuple', (1, 2, 3, 4)),
-      ('set', set([1, 2, 3, 4])),
-      ('frozenset', frozenset([1, 2, 3, 4])),
-  )
-  def test_with_federated_value_as_a_non_py_list(self, val):
-    loop, ex = _make_test_runtime(num_clients=4)
-    v = loop.run_until_complete(
-        ex.create_value(val, type_factory.at_clients(tf.int32)))
-    self.assertEqual(str(v.type_signature), '{int32}@CLIENTS')
-    result = tf.nest.map_structure(lambda x: x.numpy(),
-                                   loop.run_until_complete(v.compute()))
-    self.assertCountEqual(result, [1, 2, 3, 4])
-
-  def test_federated_collect(self):
-    loop, ex = _make_test_runtime(num_clients=3)
-
-    @computations.federated_computation
-    def comp():
-      x = intrinsics.federated_value(10, placement_literals.CLIENTS)
-      return intrinsics.federated_collect(x)
-
-    val = _run_comp_with_runtime(comp, (loop, ex))
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    result = loop.run_until_complete(val.compute())
-    self.assertEqual([x.numpy() for x in result], [10, 10, 10])
-
-    new_ex = create_test_executor(num_clients=5)
-    val = _run_comp_with_runtime(comp, (loop, new_ex))
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    result = loop.run_until_complete(val.compute())
-    self.assertEqual([x.numpy() for x in result], [10, 10, 10, 10, 10])
 
   def test_federated_collect_with_map_call(self):
     @computations.tf_computation()

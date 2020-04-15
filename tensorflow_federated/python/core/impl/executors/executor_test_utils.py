@@ -266,8 +266,153 @@ def create_dummy_intrinsic_def():
   """Returns a `intrinsic_defs.IntrinsicDef` and type."""
   value = intrinsic_defs.FEDERATED_EVAL_AT_SERVER
   type_signature = computation_types.FunctionType(
-      computation_types.FunctionType(None, tf.int32),
-      type_factory.at_server(tf.int32))
+      computation_types.FunctionType(None, tf.float32),
+      type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_apply():
+  value = intrinsic_defs.FEDERATED_APPLY
+  type_signature = computation_types.FunctionType([
+      type_factory.unary_op(tf.float32),
+      type_factory.at_server(tf.float32),
+  ], type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_aggregate():
+  value = intrinsic_defs.FEDERATED_AGGREGATE
+  type_signature = computation_types.FunctionType([
+      type_factory.at_clients(tf.float32),
+      tf.float32,
+      type_factory.reduction_op(tf.float32, tf.float32),
+      type_factory.binary_op(tf.float32),
+      computation_types.FunctionType(tf.float32, tf.float32),
+  ], type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_broadcast():
+  value = intrinsic_defs.FEDERATED_BROADCAST
+  type_signature = computation_types.FunctionType(
+      type_factory.at_server(tf.float32),
+      type_factory.at_clients(tf.float32, all_equal=True))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_collect():
+  value = intrinsic_defs.FEDERATED_COLLECT
+  type_signature = computation_types.FunctionType(
+      type_factory.at_clients(tf.float32),
+      type_factory.at_server(computation_types.SequenceType(tf.float32)))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_eval_at_clients():
+  value = intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS
+  type_signature = computation_types.FunctionType(
+      computation_types.FunctionType(None, tf.float32),
+      type_factory.at_clients(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_eval_at_server():
+  value = intrinsic_defs.FEDERATED_EVAL_AT_SERVER
+  type_signature = computation_types.FunctionType(
+      computation_types.FunctionType(None, tf.float32),
+      type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_map():
+  value = intrinsic_defs.FEDERATED_MAP
+  type_signature = computation_types.FunctionType([
+      type_factory.unary_op(tf.float32),
+      type_factory.at_clients(tf.float32),
+  ], type_factory.at_clients(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_map_all_equal():
+  value = intrinsic_defs.FEDERATED_MAP_ALL_EQUAL
+  type_signature = computation_types.FunctionType([
+      type_factory.unary_op(tf.float32),
+      type_factory.at_clients(tf.float32, all_equal=True),
+  ], type_factory.at_clients(tf.float32, all_equal=True))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_mean():
+  value = intrinsic_defs.FEDERATED_MEAN
+  type_signature = computation_types.FunctionType(
+      type_factory.at_clients(tf.float32), type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_reduce():
+  value = intrinsic_defs.FEDERATED_REDUCE
+  type_signature = computation_types.FunctionType([
+      type_factory.at_clients(tf.float32),
+      tf.float32,
+      type_factory.reduction_op(tf.float32, tf.float32),
+  ], type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_secure_sum():
+  value = intrinsic_defs.FEDERATED_SECURE_SUM
+  type_signature = computation_types.FunctionType([
+      type_factory.at_clients(tf.float32),
+      tf.float32,
+  ], type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_sum():
+  value = intrinsic_defs.FEDERATED_SUM
+  type_signature = computation_types.FunctionType(
+      type_factory.at_clients(tf.float32), type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_value_at_clients():
+  value = intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS
+  type_signature = computation_types.FunctionType(
+      tf.float32, type_factory.at_clients(tf.float32, all_equal=True))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_value_at_server():
+  value = intrinsic_defs.FEDERATED_VALUE_AT_SERVER
+  type_signature = computation_types.FunctionType(
+      tf.float32, type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_weighted_mean():
+  value = intrinsic_defs.FEDERATED_WEIGHTED_MEAN
+  type_signature = computation_types.FunctionType([
+      type_factory.at_clients(tf.float32),
+      type_factory.at_clients(tf.float32),
+  ], type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_zip_at_clients():
+  value = intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS
+  type_signature = computation_types.FunctionType([
+      type_factory.at_clients(tf.float32),
+      type_factory.at_clients(tf.float32)
+  ], type_factory.at_clients([tf.float32, tf.float32]))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_zip_at_server():
+  value = intrinsic_defs.FEDERATED_ZIP_AT_SERVER
+  type_signature = computation_types.FunctionType(
+      [type_factory.at_server(tf.float32),
+       type_factory.at_server(tf.float32)],
+      type_factory.at_server([tf.float32, tf.float32]))
   return value, type_signature
 
 
@@ -314,11 +459,11 @@ def create_dummy_computation_lambda_empty():
   return value, type_signature
 
 
-def create_dummy_computation_lambda_identity(type_spec=tf.int32):
+def create_dummy_computation_lambda_identity():
   """Returns a lambda computation and type `(T -> T)`."""
-  type_signature = type_factory.unary_op(type_spec)
+  type_signature = type_factory.unary_op(tf.float32)
   result = pb.Computation(
-      type=type_serialization.serialize_type(type_spec),
+      type=type_serialization.serialize_type(tf.float32),
       reference=pb.Reference(name='a'))
   fn = pb.Lambda(parameter_name='a', result=result)
   # We are unpacking the lambda argument here because `lambda` is a reserved
@@ -341,7 +486,7 @@ def create_dummy_computation_placement():
 
 def create_dummy_computation_reference():
   """Returns a reference computation and type."""
-  type_signature = computation_types.TensorType(tf.int32)
+  type_signature = computation_types.TensorType(tf.float32)
   value = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
       reference=pb.Reference(name='a'))
@@ -358,7 +503,35 @@ def create_dummy_computation_selection():
   return value, type_signature
 
 
-def create_dummy_computation_tensorflow_constant(value=10):
+def create_dummy_computation_tensorflow_add():
+  """Returns a tensorflow computation and type `(<T,T> -> T)`."""
+  type_spec = tf.float32
+
+  with tf.Graph().as_default() as graph:
+    parameter_1_value, parameter_1_binding = tensorflow_utils.stamp_parameter_in_graph(
+        'x', type_spec, graph)
+    parameter_2_value, parameter_2_binding = tensorflow_utils.stamp_parameter_in_graph(
+        'y', type_spec, graph)
+    result_value = tf.add(parameter_1_value, parameter_2_value)
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        result_value, graph)
+
+  parameter_type = computation_types.NamedTupleType([type_spec, type_spec])
+  type_signature = computation_types.FunctionType(parameter_type, result_type)
+  tuple_binding = pb.TensorFlow.NamedTupleBinding(
+      element=[parameter_1_binding, parameter_2_binding])
+  parameter_binding = pb.TensorFlow.Binding(tuple=tuple_binding)
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+      parameter=parameter_binding,
+      result=result_binding)
+  value = pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      tensorflow=tensorflow)
+  return value, type_signature
+
+
+def create_dummy_computation_tensorflow_constant(value=10.0):
   """Returns a tensorflow computation and type `( -> T)`."""
   type_spec = type_utils.infer_type(value)
   value = tensorflow_computation_factory.create_constant(value, type_spec)
@@ -373,14 +546,15 @@ def create_dummy_computation_tensorflow_empty():
   return value, type_signature
 
 
-def create_dummy_computation_tensorflow_identity(type_spec=tf.int32):
+def create_dummy_computation_tensorflow_identity():
   """Returns a tensorflow computation and type `(T -> T)`."""
+  type_spec = tf.float32
   value = tensorflow_computation_factory.create_identity(type_spec)
   type_signature = computation_types.FunctionType(type_spec, type_spec)
   return value, type_signature
 
 
-def create_dummy_computation_tensorflow_tuple(value=10):
+def create_dummy_computation_tensorflow_tuple(value=10.0):
   """Returns a tensorflow computation and type.
 
   `( -> <('a', T), ('b', T), ('c', T)>)`
@@ -422,27 +596,27 @@ def create_dummy_computation_tuple():
 
 def create_dummy_value_clients():
   """Returns a Python value and type at clients."""
-  value = [10] * 3
-  type_signature = type_factory.at_clients(tf.int32)
+  value = [10.0, 20.0, 30.0]
+  type_signature = type_factory.at_clients(tf.float32)
   return value, type_signature
 
 
 def create_dummy_value_clients_all_equal():
   """Returns a Python value and type at clients and all equal."""
-  value = 10
-  type_signature = type_factory.at_clients(tf.int32, all_equal=True)
+  value = 10.0
+  type_signature = type_factory.at_clients(tf.float32, all_equal=True)
   return value, type_signature
 
 
 def create_dummy_value_server():
   """Returns a Python value and type at server."""
-  value = 10
-  type_signature = type_factory.at_server(tf.int32)
+  value = 10.0
+  type_signature = type_factory.at_server(tf.float32)
   return value, type_signature
 
 
 def create_dummy_value_unplaced():
   """Returns a Python value and type unplaced."""
-  value = 10
-  type_signature = computation_types.TensorType(tf.int32)
+  value = 10.0
+  type_signature = computation_types.TensorType(tf.float32)
   return value, type_signature
