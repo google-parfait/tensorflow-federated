@@ -831,7 +831,10 @@ def append_to_list_structure_for_element_type_spec(structure, value, type_spec):
           'all unnamed, got {}.'.format(value))
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(structure, list)
-    structure.append(value)  # pytype: disable=attribute-error
+    # Convert the structure members to tensors to ensure that they are properly
+    # typed and grouped before being passed to
+    # tf.data.Dataset.from_tensor_slices.
+    structure.append(tf.convert_to_tensor(value, type_spec.dtype))  # pytype: disable=attribute-error
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(type_spec)
     if isinstance(structure, collections.OrderedDict):
@@ -871,12 +874,11 @@ def append_to_list_structure_for_element_type_spec(structure, value, type_spec):
         'Expected a tensor or named tuple type, found {}.'.format(type_spec))
 
 
-def to_tensor_slices_from_list_structure_for_element_type_spec(
-    structure, type_spec):
-  """Converts `structure` for use with `tf.data.Dataset.from_tensor_slices`.
+def replace_empty_leaf_lists_with_numpy_arrays(structure, type_spec):
+  """Replaces empty leaf lists in `structure` with numpy arrays.
 
-  This function wraps lists in the leaves of `structure` with `np.array()` for
-  consumption by `tf.data.Dataset.from_tensor_slices`.
+  This function is primarily used to ensure that an appropriate TF dtype is
+  inferrable for a structure, even if no elements are actually present.
 
   Args:
     structure: Output of `make_empty_list_structure_for_element_type_spec`.
@@ -884,35 +886,33 @@ def to_tensor_slices_from_list_structure_for_element_type_spec(
       `make_empty_list_structure_for_element_type_spec`.
 
   Returns:
-    The transformed version of `structure`, in a form that can be consumed and
-    correctly parsed by `tf.data.Dataset.from_tensor_slices`.
+    The transformed version of `structure`.
 
   Raises:
-    TypeError: If the `type_spec` is not of a form described above, or the
-      structure is not of a type compatible with `type_spec`.
+    TypeError: If the `type_spec` is not of a form described above, or if
+      `structure` is not of a type compatible with `type_spec`.
   """
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(structure, list)
-    # TODO(b/113116813): Perhaps this can be done more selectively, based on the
-    # type of elements on the list as well as the `type_spec`. Also, passing the
-    # explicit `dtype` here will trigger implicit conversion, e.g., from `int32`
-    # to `bool`, which may not be desirable.
-    return np.array(structure, dtype=type_spec.dtype.as_numpy_dtype)
+    if len(structure) > 0:  # pylint: disable=g-explicit-length-test
+      return structure
+    else:
+      return np.array([], dtype=type_spec.dtype.as_numpy_dtype)
   elif isinstance(type_spec, computation_types.NamedTupleType):
     elements = anonymous_tuple.to_elements(type_spec)
     if isinstance(structure, collections.OrderedDict):
       to_return = []
       for elem_name, elem_type in elements:
-        elem_val = to_tensor_slices_from_list_structure_for_element_type_spec(
+        elem_val = replace_empty_leaf_lists_with_numpy_arrays(
             structure[elem_name], elem_type)
         to_return.append((elem_name, elem_val))
       return collections.OrderedDict(to_return)
     elif isinstance(structure, tuple):
       to_return = []
       for idx, (_, elem_type) in enumerate(elements):
-        elem_val = to_tensor_slices_from_list_structure_for_element_type_spec(
+        elem_val = replace_empty_leaf_lists_with_numpy_arrays(
             structure[idx], elem_type)
         to_return.append(elem_val)
       return tuple(to_return)
@@ -968,7 +968,7 @@ def make_data_set_from_elements(graph, elements, element_type):
     for el in element_subset:
       append_to_list_structure_for_element_type_spec(structure, el,
                                                      element_type)
-    tensor_slices = to_tensor_slices_from_list_structure_for_element_type_spec(
+    tensor_slices = replace_empty_leaf_lists_with_numpy_arrays(
         structure, element_type)
     return tf.data.Dataset.from_tensor_slices(tensor_slices)
 

@@ -14,3 +14,12 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
     ],
 )
+
+py_test(
+    name = "perf_regression_test",
+    size = "medium",
+    srcs = ["perf_regression_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)

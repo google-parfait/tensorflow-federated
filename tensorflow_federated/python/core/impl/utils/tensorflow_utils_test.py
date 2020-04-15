@@ -776,12 +776,16 @@ class GraphUtilsTest(test.TestCase):
     type_spec = computation_types.to_type(
         [tf.int32, [('a', tf.bool), ('b', tf.float32)]])
     structure = tuple([[], collections.OrderedDict([('a', []), ('b', [])])])
-    for value in [[10, {'a': 20, 'b': 30}], (40, [50, 60])]:
+    for value in [[10, {'a': True, 'b': 30}], (40, [False, 60])]:
       tensorflow_utils.append_to_list_structure_for_element_type_spec(
           structure, value, type_spec)
     self.assertEqual(
-        str(structure),
-        '([10, 40], OrderedDict([(\'a\', [20, 50]), (\'b\', [30, 60])]))')
+        str(structure), '([<tf.Tensor: shape=(), dtype=int32, numpy=10>, '
+        '<tf.Tensor: shape=(), dtype=int32, numpy=40>], OrderedDict([(\'a\', ['
+        '<tf.Tensor: shape=(), dtype=bool, numpy=True>, '
+        '<tf.Tensor: shape=(), dtype=bool, numpy=False>]), (\'b\', ['
+        '<tf.Tensor: shape=(), dtype=float32, numpy=30.0>, '
+        '<tf.Tensor: shape=(), dtype=float32, numpy=60.0>])]))')
 
   def test_append_to_list_structure_with_too_few_element_keys(self):
     type_spec = computation_types.to_type([('a', tf.int32), ('b', tf.int32)])
@@ -815,22 +819,18 @@ class GraphUtilsTest(test.TestCase):
       tensorflow_utils.append_to_list_structure_for_element_type_spec(
           structure, value, type_spec)
 
-  def test_to_tensor_slices_from_list_structure_for_element_type_spec(self):
+  def test_replace_empty_leaf_lists_with_numpy_arrays(self):
     type_spec = computation_types.to_type(
         [tf.int32, [('a', tf.bool), ('b', tf.float32)]])
-    structure = tuple([[10, 40],
-                       collections.OrderedDict([('a', [20, 50]), ('b', [30,
-                                                                        60])])])
+    structure = tuple([[], collections.OrderedDict([('a', []), ('b', [])])])
     structure = (
-        tensorflow_utils
-        .to_tensor_slices_from_list_structure_for_element_type_spec(
+        tensorflow_utils.replace_empty_leaf_lists_with_numpy_arrays(
             structure, type_spec))
 
     expected_structure = tuple([
-        np.array([10, 40], dtype=np.int32),
-        collections.OrderedDict([('a', np.array([True, True], dtype=np.bool)),
-                                 ('b', np.array([30.0, 60.0],
-                                                dtype=np.float32))])
+        np.array([], dtype=np.int32),
+        collections.OrderedDict([('a', np.array([], dtype=np.bool)),
+                                 ('b', np.array([], dtype=np.float32))])
     ])
 
     self.assertEqual(
@@ -844,8 +844,7 @@ class GraphUtilsTest(test.TestCase):
       tensorflow_utils.append_to_list_structure_for_element_type_spec(
           structure, element_value, type_spec)
     structure = (
-        tensorflow_utils
-        .to_tensor_slices_from_list_structure_for_element_type_spec(
+        tensorflow_utils.replace_empty_leaf_lists_with_numpy_arrays(
             structure, type_spec))
     self.assertEqual(
         str(structure).replace(' ', ''), expected_output_str.replace(' ', ''))
@@ -863,7 +862,8 @@ class GraphUtilsTest(test.TestCase):
                                   ])))
 
   def test_list_structures_from_element_type_spec_with_int_value(self):
-    self._test_list_structure(tf.int32, [1], '[1]')
+    self._test_list_structure(tf.int32, [1],
+                              '[<tf.Tensor:shape=(),dtype=int32,numpy=1>]')
 
   def test_list_structures_from_element_type_spec_with_empty_dict_value(self):
     self._test_list_structure(
@@ -876,14 +876,22 @@ class GraphUtilsTest(test.TestCase):
     }, {
         'a': 1,
         'b': 2
-    }], 'OrderedDict([(\'a\',array([1,1],dtype=int32)),'
-                              '(\'b\',array([2,2],dtype=int32))])')
+    }], 'OrderedDict([(\'a\',['
+                              '<tf.Tensor:shape=(),dtype=int32,numpy=1>,'
+                              '<tf.Tensor:shape=(),dtype=int32,numpy=1>'
+                              ']),(\'b\',['
+                              '<tf.Tensor:shape=(),dtype=int32,numpy=2>,'
+                              '<tf.Tensor:shape=(),dtype=int32,numpy=2>'
+                              '])])')
 
   def test_list_structures_from_element_type_spec_with_no_values(self):
     self._test_list_structure(tf.int32, [], '[]')
 
   def test_list_structures_from_element_type_spec_with_int_values(self):
-    self._test_list_structure(tf.int32, [1, 2, 3], '[1 2 3]')
+    self._test_list_structure(
+        tf.int32, [1, 2, 3], '[<tf.Tensor:shape=(),dtype=int32,numpy=1>,'
+        '<tf.Tensor:shape=(),dtype=int32,numpy=2>,'
+        '<tf.Tensor:shape=(),dtype=int32,numpy=3>]')
 
   def test_list_structures_from_element_type_spec_with_empty_dict_values(self):
     self._test_list_structure(
@@ -894,7 +902,9 @@ class GraphUtilsTest(test.TestCase):
         computation_types.NamedTupleType([('a', tf.int32)]), [
             anonymous_tuple.AnonymousTuple([('a', 1)]),
             anonymous_tuple.AnonymousTuple([('a', 2)])
-        ], 'OrderedDict([(\'a\', array([1,2],dtype=int32))])')
+        ], 'OrderedDict([(\'a\', ['
+        '<tf.Tensor:shape=(),dtype=int32,numpy=1>,'
+        '<tf.Tensor:shape=(),dtype=int32,numpy=2>])])')
 
   def test_list_structures_from_element_type_spec_with_empty_anon_tuples(self):
     self._test_list_structure(
@@ -909,7 +919,9 @@ class GraphUtilsTest(test.TestCase):
             computation_types.NamedTupleType([('a', tf.int32)])
         ]), [[anonymous_tuple.AnonymousTuple([('a', 1)])],
              [anonymous_tuple.AnonymousTuple([('a', 2)])]],
-        '(OrderedDict([(\'a\', array([1,2],dtype=int32))]),)')
+        '(OrderedDict([(\'a\', ['
+        '<tf.Tensor:shape=(),dtype=int32,numpy=1>,'
+        '<tf.Tensor:shape=(),dtype=int32,numpy=2>])]),)')
 
   def test_make_data_set_from_elements_with_wrong_elements(self):
     with self.assertRaises(TypeError):

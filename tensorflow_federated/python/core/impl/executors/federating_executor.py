@@ -777,7 +777,8 @@ class FederatingExecutor(executor_base.Executor):
         [collected_items],
         computation_types.FederatedType(
             computation_types.SequenceType(member_type),
-            placement_literals.SERVER))
+            placement_literals.SERVER,
+            all_equal=True))
 
   @tracing.trace
   async def _compute_intrinsic_federated_secure_sum(self, arg):
