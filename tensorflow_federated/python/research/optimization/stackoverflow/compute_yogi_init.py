@@ -37,9 +37,6 @@ flags.DEFINE_integer('max_elements_per_user', 1000, 'Max number of training '
 
 # Modeling flags
 flags.DEFINE_boolean(
-    'lstm', True,
-    'Boolean indicating LSTM recurrent cell. If False, GRU is used.')
-flags.DEFINE_boolean(
     'shared_embedding', False,
     'Boolean indicating whether to tie input and output embeddings.')
 flags.DEFINE_integer('vocab_size', 10000, 'Size of vocab to use.')
@@ -54,19 +51,10 @@ def main(argv):
   tf.compat.v1.enable_v2_behavior()
   tff.framework.set_default_executor(
       tff.framework.local_executor_factory(max_fanout=10))
-  if FLAGS.lstm:
-
-    def _layer_fn(x):
-      return tf.keras.layers.LSTM(x, return_sequences=True)
-  else:
-
-    def _layer_fn(x):
-      return tf.keras.layers.GRU(x, return_sequences=True)
 
   model_builder = functools.partial(
       models.create_recurrent_model,
       vocab_size=FLAGS.vocab_size,
-      recurrent_layer_fn=_layer_fn,
       shared_embedding=FLAGS.shared_embedding)
 
   loss_builder = functools.partial(
