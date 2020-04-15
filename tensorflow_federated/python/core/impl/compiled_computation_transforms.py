@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
+from tensorflow_federated.python.tensorflow_libs import graph_spec
 
 
 def _index_from_name(type_signature, name):
@@ -457,14 +458,14 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
 
 
 def _unpack_proto_into_graph_spec(tf_block_proto):
-  """Packs a TF proto into a `graph_merge.GraphSpec`.
+  """Packs a TF proto into a `graph_spec.GraphSpec`.
 
   Args:
     tf_block_proto: Instance of `computation_pb2.Computation` with `tensorflow`
       `computation` attribute.
 
   Returns:
-    Instance of `graph_merge.GraphSpec` containing Python representations of
+    Instance of `graph_spec.GraphSpec` containing Python representations of
     the information present in `tf_block_proto`.
   """
   graph = serialization_utils.unpack_graph_def(
@@ -482,8 +483,8 @@ def _unpack_proto_into_graph_spec(tf_block_proto):
     graph_parameter_list = []
   graph_result_list = tensorflow_utils.extract_tensor_names_from_binding(
       graph_result_binding)
-  return graph_merge.GraphSpec(graph, graph_init_op_name, graph_parameter_list,
-                               graph_result_list)
+  return graph_spec.GraphSpec(graph, graph_init_op_name, graph_parameter_list,
+                              graph_result_list)
 
 
 def _repack_binding_with_new_name(binding, name_map):

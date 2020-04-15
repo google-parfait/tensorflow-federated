@@ -36,6 +36,7 @@ py_library(
     name = "graph_merge",
     srcs = ["graph_merge.py"],
     srcs_version = "PY3",
+    deps = [":graph_spec"],
 )
 
 py_test(
@@ -45,6 +46,24 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":graph_merge",
+        ":graph_spec",
+        "//tensorflow_federated/python/common_libs:test",
+    ],
+)
+
+py_library(
+    name = "graph_spec",
+    srcs = ["graph_spec.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "graph_spec_test",
+    srcs = ["graph_spec_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":graph_spec",
         "//tensorflow_federated/python/common_libs:test",
     ],
 )

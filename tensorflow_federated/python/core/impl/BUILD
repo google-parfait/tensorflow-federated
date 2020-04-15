@@ -66,6 +66,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:graph_merge",
+        "//tensorflow_federated/python/tensorflow_libs:graph_spec",
     ],
 )
 
