@@ -140,13 +140,50 @@ def _produce_test_value(
   return loop.run_until_complete(ex.create_value(value, type_spec=type_spec))
 
 
+def get_named_parameters_for_supported_intrinsics():
+  # pyformat: disable
+  return [
+      ('intrinsic_def_federated_apply',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_apply()),
+      ('intrinsic_def_federated_aggregate',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_aggregate()),
+      ('intrinsic_def_federated_broadcast',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_broadcast()),
+      ('intrinsic_def_federated_collect',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_collect()),
+      ('intrinsic_def_federated_eval_at_clients',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_clients()),
+      ('intrinsic_def_federated_eval_at_server',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_server()),
+      ('intrinsic_def_federated_map',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_map()),
+      ('intrinsic_def_federated_map_all_equal',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_map_all_equal()),
+      ('intrinsic_def_federated_mean',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_mean()),
+      ('intrinsic_def_federated_sum',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_sum()),
+      ('intrinsic_def_federated_reduce',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_reduce()),
+      ('intrinsic_def_federated_value_at_clients',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_clients()),
+      ('intrinsic_def_federated_value_at_server',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_server()),
+      ('intrinsic_def_federated_weighted_mean',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_weighted_mean()),
+      ('intrinsic_def_federated_zip_at_clients',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_clients()),
+      ('intrinsic_def_federated_zip_at_server',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_server()),
+  ]
+  # pyformat: enable
+
+
 class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
                                         parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters([
-      ('intrinsic_def',
-       *executor_test_utils.create_dummy_intrinsic_def()),
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
       ('computation_call',
@@ -171,7 +208,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_value_server()),
       ('unplaced_type',
        *executor_test_utils.create_dummy_value_unplaced()),
-  ])
+  ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_returns_value_with_value_and_type(self, value, type_signature):
     executor = create_test_executor(num_clients=3)
@@ -234,8 +271,6 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
 
   # pyformat: disable
   @parameterized.named_parameters([
-      ('intrinsic_def',
-       *executor_test_utils.create_dummy_intrinsic_def()),
       ('federated_type_clients',
        *executor_test_utils.create_dummy_value_clients()),
       ('federated_type_clients_all_equal',
@@ -244,7 +279,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_value_server()),
       ('unplaced_type',
        *executor_test_utils.create_dummy_value_unplaced()),
-  ])
+  ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_raises_type_error_with_value_only(self, value, _):
     executor = create_test_executor(num_clients=3)
@@ -254,8 +289,6 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
 
   # pyformat: disable
   @parameterized.named_parameters([
-      ('intrinsic_def',
-       *executor_test_utils.create_dummy_intrinsic_def()),
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
       ('computation_placement',
@@ -268,7 +301,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_value_server()),
       ('unplaced_type',
        *executor_test_utils.create_dummy_value_unplaced()),
-  ])
+  ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_raises_type_error_with_value_and_bad_type(self, value, _):
     executor = create_test_executor(num_clients=3)
@@ -566,15 +599,13 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
 
   # pyformat: disable
   @parameterized.named_parameters([
-      ('intrinsic_def',
-       *executor_test_utils.create_dummy_intrinsic_def()),
       ('computation_intrinsic',
        *executor_test_utils.create_dummy_computation_intrinsic()),
       ('computation_lambda',
        *executor_test_utils.create_dummy_computation_lambda_identity()),
       ('computation_tensorflow',
        *executor_test_utils.create_dummy_computation_tensorflow_identity()),
-  ])
+  ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_raises_type_error_with_comp_and_bad_arg(self, comp, comp_type):
     executor = create_test_executor(num_clients=3)
@@ -690,8 +721,8 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
 
   # pyformat: disable
   @parameterized.named_parameters([
-      ('intrinsic_def',
-       *executor_test_utils.create_dummy_intrinsic_def(),
+      ('intrinsic_def_federated_eval_at_server',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_server(),
        *executor_test_utils.create_dummy_computation_tensorflow_constant()),
       ('computation_intrinsic',
        *executor_test_utils.create_dummy_computation_intrinsic(),

@@ -262,15 +262,6 @@ class TracingExecutorValue(executor_value_base.ExecutorValue):
     return result
 
 
-def create_dummy_intrinsic_def():
-  """Returns a `intrinsic_defs.IntrinsicDef` and type."""
-  value = intrinsic_defs.FEDERATED_EVAL_AT_SERVER
-  type_signature = computation_types.FunctionType(
-      computation_types.FunctionType(None, tf.float32),
-      type_factory.at_server(tf.float32))
-  return value, type_signature
-
-
 def create_dummy_intrinsic_def_federated_apply():
   value = intrinsic_defs.FEDERATED_APPLY
   type_signature = computation_types.FunctionType([
@@ -435,7 +426,8 @@ def create_dummy_computation_call():
 
 def create_dummy_computation_intrinsic():
   """Returns a intrinsic computation and type."""
-  intrinsic_def, type_signature = create_dummy_intrinsic_def()
+  intrinsic_def, type_signature = create_dummy_intrinsic_def_federated_eval_at_server(
+  )
   value = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
       intrinsic=pb.Intrinsic(uri=intrinsic_def.uri))
