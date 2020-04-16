@@ -50,3 +50,57 @@ class GraphSpec:
       validator=attr.validators.instance_of((str, type(None))))
   in_names: Sequence[str] = attr.ib(validator=_check_names_are_strings)
   out_names: Sequence[str] = attr.ib(validator=_check_names_are_strings)
+
+  def to_meta_graph_def(self):
+    """Packs `GraphSpec` into a `tf.compat.v1.MetaGraphDef`.
+
+    Does not adjust names in the graph_def which backs this instance of
+    `GraphSpec`. Only introduces one important convention: the initialize op
+    is stored in the graph collection with key `tf.compat.v1.GraphKeys.INIT_OP`.
+
+    Returns:
+      A `tf.compat.v1.MetaGraphDef` which represents the logic in this
+      `GraphSpec`, with the convention that the initialize op is stored in the
+      graph collection with key `tf.compat.v1.GraphKeys.INIT_OP`, and the input
+      and output tensor information is stored in the lone populated
+      `SignatureDef`.
+    """
+
+    with tf.Graph().as_default() as graph_for_tensor_specs:
+      tf.graph_util.import_graph_def(self.graph_def, name='')
+
+    def _get_tensor_spec(name):
+      return tf.TensorSpec.from_tensor(
+          graph_for_tensor_specs.get_tensor_by_name(name))
+
+    in_names_to_tensor_specs = {
+        name: _get_tensor_spec(name) for name in self.in_names
+    }
+    out_names_to_tensor_specs = {
+        name: _get_tensor_spec(name) for name in self.out_names
+    }
+
+    meta_graph_def = tf.compat.v1.MetaGraphDef()
+
+    meta_graph_def.graph_def.CopyFrom(self.graph_def)
+
+    if self.init_op is not None:
+      meta_graph_def.collection_def[
+          tf.compat.v1.GraphKeys.INIT_OP].node_list.value.append(self.init_op)
+
+    signature_def = meta_graph_def.signature_def['FunctionSpec']
+    for index, input_name in enumerate(self.in_names):
+      input_tensor_info = signature_def.inputs['arg_{}'.format(index)]
+      input_tensor_info.name = input_name
+      input_tensor_info.dtype = in_names_to_tensor_specs[
+          input_name].dtype.as_datatype_enum
+      input_tensor_info.tensor_shape.CopyFrom(
+          in_names_to_tensor_specs[input_name].shape.as_proto())
+    for index, output_name in enumerate(self.out_names):
+      output_tensor_info = signature_def.outputs['output_{}'.format(index)]
+      output_tensor_info.name = output_name
+      output_tensor_info.dtype = out_names_to_tensor_specs[
+          output_name].dtype.as_datatype_enum
+      output_tensor_info.tensor_shape.CopyFrom(
+          out_names_to_tensor_specs[output_name].shape.as_proto())
+    return meta_graph_def
