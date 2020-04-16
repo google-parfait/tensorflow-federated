@@ -12,7 +12,10 @@ py_library(
     name = "aggregate_fns",
     srcs = ["aggregate_fns.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        "//tensorflow_federated",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+    ],
 )
 
 py_test(

@@ -18,6 +18,8 @@ import attr
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
+
 
 @attr.s(auto_attribs=True, eq=False, frozen=True)
 class ClipNormAggregateState(object):
@@ -45,9 +47,11 @@ def build_clip_norm_aggregate_fn(
 
     @tff.tf_computation(deltas.type_signature.member, tf.float32)
     def clip_by_global_norm(delta, clip_norm):
+      # TODO(b/123092620): Replace anonymous_tuple with tf.nest.
+      delta = anonymous_tuple.from_container(delta)
       clipped, global_norm = tf.clip_by_global_norm(
-          tf.nest.flatten(delta), clip_norm)
-      return tf.nest.pack_sequence_as(delta, clipped), global_norm
+          anonymous_tuple.flatten(delta), clip_norm)
+      return anonymous_tuple.pack_sequence_as(delta, clipped), global_norm
 
     client_clip_norm = tff.federated_broadcast(state.clip_norm)
     clipped_deltas, client_norms = tff.federated_map(clip_by_global_norm,
