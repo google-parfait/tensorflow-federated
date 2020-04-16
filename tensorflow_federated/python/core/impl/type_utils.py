@@ -424,7 +424,7 @@ def get_named_tuple_element_type(type_spec, name):
   py_typecheck.check_type(name, str)
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
-  elements = anonymous_tuple.to_elements(type_spec)
+  elements = anonymous_tuple.iter_elements(type_spec)
   for elem_name, elem_type in elements:
     if name == elem_name:
       return elem_type
@@ -1087,7 +1087,11 @@ def convert_to_py_container(value, type_spec):
     return value
 
   anon_tuple = value
-  py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
+  if isinstance(type_spec, computation_types.FederatedType):
+    structure_type_spec = type_spec.member
+  else:
+    structure_type_spec = type_spec
+  py_typecheck.check_type(structure_type_spec, computation_types.NamedTupleType)
 
   def is_container_type_without_names(container_type):
     return (issubclass(container_type, (list, tuple)) and
@@ -1098,10 +1102,11 @@ def convert_to_py_container(value, type_spec):
             py_typecheck.is_attrs(container_type) or
             issubclass(container_type, dict))
 
-  if isinstance(type_spec, computation_types.NamedTupleTypeWithPyContainerType):
+  if isinstance(structure_type_spec,
+                computation_types.NamedTupleTypeWithPyContainerType):
     container_type = (
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            type_spec))
+            structure_type_spec))
     container_is_anon_tuple = False
   else:
     # TODO(b/133228705): Consider requiring NamedTupleTypeWithPyContainerType.
@@ -1132,8 +1137,8 @@ def convert_to_py_container(value, type_spec):
                            anon_tuple, container_type))
 
   elements = []
-  for index, (elem_name,
-              elem_type) in enumerate(anonymous_tuple.to_elements(type_spec)):
+  for index, (elem_name, elem_type) in enumerate(
+      anonymous_tuple.iter_elements(structure_type_spec)):
     value = convert_to_py_container(anon_tuple[index], elem_type)
 
     if elem_name is None and not container_is_anon_tuple:

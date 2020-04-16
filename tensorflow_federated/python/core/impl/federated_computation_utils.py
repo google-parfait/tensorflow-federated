@@ -13,11 +13,12 @@
 # limitations under the License.
 """Helpers for creating larger structures out of computating building blocks."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import federated_computation_context
+from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
@@ -29,7 +30,7 @@ def zero_or_one_arg_fn_to_building_block(
     parameter_type: Optional[Any],
     context_stack: context_stack_base.ContextStack,
     suggested_name: Optional[str] = None,
-) -> building_blocks.ComputationBuildingBlock:
+) -> Tuple[building_blocks.ComputationBuildingBlock, computation_types.Type]:
   """Converts a zero- or one-argument `fn` into a computation building block.
 
   Args:
@@ -44,8 +45,10 @@ def zero_or_one_arg_fn_to_building_block(
       the underlying Python function). It might be modified to avoid conflicts.
 
   Returns:
-    An instance of `building_blocks.ComputationBuildingBlock` that
-    contains the logic from `fn`.
+    A tuple of `(building_blocks.ComputationBuildingBlock,
+    computation_types.Type)`, where the first element contains the logic from
+    `fn`, and the second element contains potentially annotated type information
+    for the result of `fn`.
 
   Raises:
     ValueError: if `fn` is incompatible with `parameter_type`.
@@ -78,6 +81,10 @@ def zero_or_one_arg_fn_to_building_block(
           'The function defined on line {} of file {} has returned a '
           '`NoneType`, but all TFF functions must return some non-`None` '
           'value.'.format(fn.__code__.co_firstlineno, fn.__code__.co_filename))
-    result = value_impl.to_value(result, None, context_stack)
+    annotated_result_type = type_utils.infer_type(result)
+    result = value_impl.to_value(result, annotated_result_type, context_stack)
     result_comp = value_impl.ValueImpl.get_comp(result)
-    return building_blocks.Lambda(parameter_name, parameter_type, result_comp)
+    annotated_type = computation_types.FunctionType(parameter_type,
+                                                    annotated_result_type)
+    return building_blocks.Lambda(parameter_name, parameter_type,
+                                  result_comp), annotated_type

@@ -748,7 +748,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
     self.assertEqual(
         str(foo.type_signature), '(<int32,int32>* -> <int32,int32>)')
-    self.assertEqual(str(foo([[1, 2], [3, 4], [5, 6]])), '<9,12>')
+    self.assertEqual(str(foo([[1, 2], [3, 4], [5, 6]])), '[9, 12]')
 
   def test_sequence_sum_with_unspecified_shape_tensor(self):
 
@@ -880,7 +880,28 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
     self.assertEqual(
         str(foo.type_signature), '(int32 -> <int32@CLIENTS,int32@SERVER>)')
-    self.assertEqual(str(foo(11)), '<11,11>')
+    self.assertEqual(str(foo(11)), '[11, 11]')
+
+  def test_federated_computation_returns_named_tuple(self):
+    test_named_tuple = collections.namedtuple('_', ['sum', 'n'])
+
+    @computations.federated_computation()
+    def foo():
+      return test_named_tuple(sum=10.0, n=2)
+
+    self.assertEqual(str(foo.type_signature), '( -> <sum=float32,n=int32>)')
+    self.assertEqual(foo(), test_named_tuple(10.0, 2))
+
+  def test_federated_computation_returns_ordered_dict(self):
+
+    @computations.federated_computation()
+    def foo():
+      return collections.OrderedDict([('A', 1.0), ('B', 2)])
+
+    self.assertEqual(str(foo.type_signature), '( -> <A=float32,B=int32>)')
+    result = foo()
+    self.assertIsInstance(result, collections.OrderedDict)
+    self.assertDictEqual(result, {'A': 1.0, 'B': 2})
 
   def test_generic_zero_with_scalar_int32_tensor_type(self):
 

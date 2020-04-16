@@ -86,14 +86,15 @@ def _federated_computation_wrapper_fn(target_fn,
   target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
       target_fn, parameter_type, unpack)
   ctx_stack = context_stack_impl.context_stack
-  target_lambda = (
+  target_lambda, extra_type_spec = (
       federated_computation_utils.zero_or_one_arg_fn_to_building_block(
           target_fn,
           'arg' if parameter_type else None,
           parameter_type,
           ctx_stack,
           suggested_name=name))
-  return computation_impl.ComputationImpl(target_lambda.proto, ctx_stack)
+  return computation_impl.ComputationImpl(target_lambda.proto, ctx_stack,
+                                          extra_type_spec)
 
 
 federated_computation_wrapper = computation_wrapper.ComputationWrapper(

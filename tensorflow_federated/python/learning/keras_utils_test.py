@@ -24,7 +24,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
@@ -414,8 +413,6 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
     aggregated_outputs = _model_fn().federated_output_computation(
         [client_local_outputs])
-    aggregated_outputs = collections.OrderedDict(
-        anonymous_tuple.to_elements(aggregated_outputs))
     self.assertEqual(aggregated_outputs['num_batches'], num_train_steps)
     self.assertEqual(aggregated_outputs['num_examples'], 2 * num_train_steps)
     self.assertGreater(aggregated_outputs['loss'], 0.0)
