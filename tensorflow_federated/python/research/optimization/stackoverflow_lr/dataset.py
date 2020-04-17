@@ -18,7 +18,6 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 TEST_BATCH_SIZE = 500
-MAX_SEQ_LEN = 20000
 
 
 def create_token_vocab(vocab_size):
@@ -49,14 +48,17 @@ def build_to_ids_fn(vocab_tokens, vocab_tags):
 
   def to_ids(example):
     """Converts tf example to bag of words."""
-    sentence = example['tokens'] + ' ' + example['title']
-    words = tf.strings.split(sentence[:MAX_SEQ_LEN], sep=' ').values
+    sentence = tf.strings.join(
+        [tf.reshape(example['tokens'], ()),
+         tf.reshape(example['title'], ())],
+        separator=' ')
+    words = tf.strings.split(sentence)
     tokens = table_tokens.lookup(words)
     tokens = tf.one_hot(tokens, vocab_tokens_size+1)
     tokens = tf.reduce_mean(tokens, axis=0)[:vocab_tokens_size]
 
-    tags = example['tags']
-    tags = tf.strings.split(tags, sep='|').values
+    tags = tf.reshape(example['tags'], ())
+    tags = tf.strings.split(tags, sep='|')
     tags = table_tags.lookup(tags)
     tags = tf.one_hot(tags, vocab_tags_size+1)
     tags = tf.reduce_sum(tags, axis=0)[:vocab_tags_size]
