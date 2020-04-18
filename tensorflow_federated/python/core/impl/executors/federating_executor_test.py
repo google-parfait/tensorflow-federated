@@ -376,25 +376,62 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
 
-  def test_raises_value_error_with_no_target_executor_federated_type_clients(
-      self):
-    # A `ValueError` will be raised because `create_value` can not find a target
-    # executor of the appropriate placement, however the following
-    # `federating_executor.FederatingExecutor` was created without one.
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('intrinsic_def_federated_broadcast',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_broadcast()),
+      ('intrinsic_def_federated_eval_at_clients',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_clients()),
+      ('intrinsic_def_federated_map',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_map()),
+      ('intrinsic_def_federated_map_all_equal',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_map_all_equal()),
+      ('intrinsic_def_federated_value_at_clients',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_clients()),
+      ('federated_type_clients_all_equal',
+       *executor_test_utils.create_dummy_value_clients_all_equal()),
+      ('federated_type_clients',
+       *executor_test_utils.create_dummy_value_clients())
+  ])
+  # pyformat: enable
+  def test_raises_value_error_with_no_target_executor_clients(
+      self, value, type_signature):
     executor = federating_executor.FederatingExecutor({
         placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
         None: eager_tf_executor.EagerTFExecutor()
     })
-    value, type_signature = executor_test_utils.create_dummy_value_clients()
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
 
-  def test_raises_value_error_with_no_target_executor_federated_type_server(
-      self):
-    # A `ValueError` will be raised because `create_value` can not find a target
-    # executor of the appropriate placement, because the following
-    # `federating_executor.FederatingExecutor` was created without one.
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('intrinsic_def_federated_apply',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_apply()),
+      ('intrinsic_def_federated_aggregate',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_aggregate()),
+      ('intrinsic_def_federated_collect',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_collect()),
+      ('intrinsic_def_federated_eval_at_server',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_server()),
+      ('intrinsic_def_federated_mean',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_mean()),
+      ('intrinsic_def_federated_sum',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_sum()),
+      ('intrinsic_def_federated_reduce',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_reduce()),
+      ('intrinsic_def_federated_value_at_server',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_server()),
+      ('intrinsic_def_federated_weighted_mean',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_weighted_mean()),
+      ('intrinsic_def_federated_zip_at_server',
+       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_server()),
+      ('federated_type_server',
+       *executor_test_utils.create_dummy_value_server()),
+  ])
+  # pyformat: enable
+  def test_raises_value_error_with_no_target_executor_server(
+      self, value, type_signature):
     executor = federating_executor.FederatingExecutor({
         placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
         None: eager_tf_executor.EagerTFExecutor()
@@ -404,10 +441,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
 
-  def test_raises_value_error_with_no_target_executor_unplaced_type(self):
-    # A `ValueError` will be raised because `create_value` can not find a target
-    # executor of the appropriate placement, because the following
-    # `federating_executor.FederatingExecutor` was created without one.
+  def test_raises_value_error_with_no_target_executor_unplaced(self):
     executor = federating_executor.FederatingExecutor({
         placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
         placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
@@ -890,20 +924,6 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
 
 class FederatingExecutorTest(parameterized.TestCase):
-
-  def test_federated_value_at_client_with_zero_clients_raises_error(self):
-    self.skipTest('b/145936344')
-    @computations.federated_computation
-    def comp():
-      return intrinsics.federated_broadcast(
-          intrinsics.federated_value(10, placement_literals.SERVER))
-
-    val = _run_test_comp(comp, num_clients=0)
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(str(val.type_signature), 'int32@CLIENTS')
-    self.assertIsInstance(val.internal_representation, list)
-    with self.assertRaisesRegex(RuntimeError, '0 clients'):
-      val.compute()
 
   def test_federated_value_at_server_with_tuple(self):
     @computations.federated_computation

@@ -91,14 +91,6 @@ class FederatingExecutorValue(executor_value_base.ExecutorValue):
     elif isinstance(self._type_signature, computation_types.FederatedType):
       py_typecheck.check_type(self._value, list)
       if self._type_signature.all_equal:
-        if not self._value:
-          # TODO(b/145936344): this happens when the executor has inferred the
-          # cardinality of clients as 0, which can happen in tff.Computation
-          # that only do a tff.federated_broadcast. This probably should be
-          # handled elsewhere.
-          raise RuntimeError('Arrived at a computation that inferred there are '
-                             '0 clients. Try explicity passing `num_clients` '
-                             'parameter when constructor the executor.')
         vals = [self._value[0]]
       else:
         vals = self._value
@@ -233,6 +225,11 @@ class FederatingExecutor(executor_base.Executor):
         `FederatingExecutor`.
     """
     type_spec = computation_types.to_type(type_spec)
+    if isinstance(type_spec, computation_types.FederatedType):
+      self._check_executor_compatible_with_placement(type_spec.placement)
+    elif (isinstance(type_spec, computation_types.FunctionType) and
+          isinstance(type_spec.result, computation_types.FederatedType)):
+      self._check_executor_compatible_with_placement(type_spec.result.placement)
     if isinstance(value, intrinsic_defs.IntrinsicDef):
       if not type_utils.is_concrete_instance_of(type_spec,
                                                 value.type_signature):
@@ -312,25 +309,10 @@ class FederatingExecutor(executor_base.Executor):
                 type_spec, py_typecheck.type_string(type(value))))
       elif isinstance(type_spec, computation_types.FederatedType):
         children = self._target_executors.get(type_spec.placement)
-        if not children:
-          raise ValueError(
-              'Placement "{}" is not configured in this executor.'.format(
-                  type_spec.placement))
-        py_typecheck.check_type(children, list)
-        if not type_spec.all_equal:
-          py_typecheck.check_type(value, (list, tuple, set, frozenset))
-          if not isinstance(value, list):
-            value = list(value)
-        elif isinstance(value, list):
-          raise ValueError(
-              'An all_equal value should be passed directly, not as a list.')
-        else:
+        self._check_value_compatible_with_placement(value, type_spec.placement,
+                                                    type_spec.all_equal)
+        if type_spec.all_equal:
           value = [value for _ in children]
-        if len(value) != len(children):
-          raise ValueError(
-              'Federated value contains {} items, but the placement {} in this '
-              'executor is configured with {} participants.'.format(
-                  len(value), type_spec.placement, len(children)))
         child_vals = await asyncio.gather(*[
             c.create_value(v, type_spec.member)
             for v, c in zip(value, children)
@@ -497,14 +479,70 @@ class FederatingExecutor(executor_base.Executor):
     py_typecheck.check_type(arg.internal_representation,
                             anonymous_tuple.AnonymousTuple)
 
+  def _check_executor_compatible_with_placement(self, placement):
+    """Tests that this executor is compatible with the given `placement`.
+
+    This function checks that `value` is compatible with the configuration of
+    this executor for the given `placement`.
+
+    Args:
+      placement: A placement literal, the placement to test.
+
+    Raises:
+      ValueError: If `value` is not compatible.
+    """
+    children = self._target_executors.get(placement)
+    if not children:
+      # TODO(b/154328996): This executor does not have the context to know that
+      # the suggested solution is reasonable; the suggestion is here because it
+      # is probably the correct soltuion. We should establish a pattern for
+      # raising errors to a level in the stack where the appropriate context
+      # exists.
+      raise ValueError(
+          'Expected at least one participant for the \'{}\' placement, found '
+          'none. It is possible that the inferred number of clients is 0, you '
+          'can explicitly pass `num_clients` when constructing the execution '
+          'stack'.format(placement))
+
+  def _check_value_compatible_with_placement(self, value, placement, all_equal):
+    """Tests that `value` is compatible with the given `placement`.
+
+    Args:
+      value: A value to test.
+      placement: A placement literal indicating the placement of `value`.
+      all_equal: A `bool` indicating whether all elements of `value` are equal.
+
+    Raises:
+      ValueError: If `value` is not compatible.
+    """
+    if all_equal:
+      if isinstance(value, list):
+        raise ValueError(
+            'Expected a single value when \'all_equal\' is \'True\', found a '
+            'list.')
+    else:
+      py_typecheck.check_type(value, (list, tuple, set, frozenset))
+      children = self._target_executors.get(placement)
+      if len(value) != len(children):
+        raise ValueError(
+            'Expected a value that contains one element for each participant '
+            'for the given placement, found a value with {elements} elements '
+            'and this executor is configured to have {participants} '
+            'participants for the \'{placement}\' placement.'.format(
+                elements=len(value),
+                placement=placement,
+                participants=len(children)))
+
   @tracing.trace
   async def _place(self, arg, placement):
     py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
     children = self._target_executors[placement]
-    val = await arg.compute()
+    value = await arg.compute()
+    self._check_value_compatible_with_placement(
+        value, placement, all_equal=True)
     return FederatingExecutorValue(
         await asyncio.gather(
-            *[c.create_value(val, arg.type_signature) for c in children]),
+            *[c.create_value(value, arg.type_signature) for c in children]),
         computation_types.FederatedType(
             arg.type_signature, placement, all_equal=True))
 
@@ -620,10 +658,12 @@ class FederatingExecutor(executor_base.Executor):
     if len(arg.internal_representation) != 1:
       raise ValueError(
           'Cannot broadcast a with a non-singleton representation.')
-    val = await arg.internal_representation[0].compute()
+    value = await arg.internal_representation[0].compute()
+    self._check_value_compatible_with_placement(
+        value, placement_literals.CLIENTS, all_equal=True)
     return FederatingExecutorValue(
         await asyncio.gather(*[
-            c.create_value(val, arg.type_signature.member)
+            c.create_value(value, arg.type_signature.member)
             for c in self._target_executors[placement_literals.CLIENTS]
         ]), type_factory.at_clients(arg.type_signature.member, all_equal=True))
 
