@@ -10,13 +10,17 @@ Some pip packages are required by this library, and may need to be installed:
 ```
 pip install absl-py
 pip install attr
-pip install bazel
 pip install dm-tree
 pip install numpy
 pip install pandas
 pip install tensorflow
 pip install tensorflow-federated
 ```
+
+We also require [Bazel](https://www.bazel.build/) in order to run the code.
+Please see the guide
+[here](https://docs.bazel.build/versions/master/install.html) for installation
+instructions.
 
 ### Directory structure
 
