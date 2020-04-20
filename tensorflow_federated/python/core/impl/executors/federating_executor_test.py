@@ -13,8 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-from typing import Any, Iterable, Tuple, Type
+from typing import Any, Iterable, Type
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -23,8 +22,6 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
@@ -32,7 +29,6 @@ from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
-from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
@@ -58,86 +54,6 @@ def create_test_executor(
       placement_literals.CLIENTS: [bottom_ex] * num_clients,
       None: bottom_ex
   })
-
-
-def create_test_executor_factory():
-  executor = create_test_executor(num_clients=1)
-  return executor_factory.ExecutorFactoryImpl(lambda _: executor)
-
-
-Runtime = Tuple[asyncio.AbstractEventLoop,
-                federating_executor.FederatingExecutor]
-
-
-def _make_test_runtime(num_clients=1,
-                       use_reference_resolving_executor=False) -> Runtime:
-  """Creates a test runtime consisting of an event loop and test executor."""
-  loop = asyncio.get_event_loop()
-  ex = create_test_executor(
-      num_clients=num_clients,
-      use_reference_resolving_executor=use_reference_resolving_executor)
-  return loop, ex
-
-
-def _run_comp_with_runtime(comp, runtime: Runtime):
-  """Runs a computation using the provided runtime."""
-  loop, ex = runtime
-
-  async def call_value():
-    return await ex.create_call(await ex.create_value(comp))
-
-  return loop.run_until_complete(call_value())
-
-
-def _run_test_comp(comp, num_clients=1, use_reference_resolving_executor=False):
-  """Runs a computation (unapplied TFF function) using a test runtime."""
-  runtime = _make_test_runtime(
-      num_clients=num_clients,
-      use_reference_resolving_executor=use_reference_resolving_executor)
-  return _run_comp_with_runtime(comp, runtime)
-
-
-def _run_test_comp_produces_federated_value(
-    test_instance,
-    comp,
-    num_clients=1,
-    use_reference_resolving_executor=False,
-):
-  """Runs a computation (unapplied TFF function) using a test runtime.
-
-  This is similar to _run_test_comp, but the result is asserted to be a
-  FederatedValue and computed.
-
-  Args:
-    test_instance: A class with the standard unit testing assertions.
-    comp: The computation to run.
-    num_clients: The number of clients to use when computing `comp`.
-    use_reference_resolving_executor: Whether or not to include an executor
-      to resolve references.
-
-  Returns:
-    The result of running the computation.
-  """
-  loop, ex = _make_test_runtime(
-      num_clients=num_clients,
-      use_reference_resolving_executor=use_reference_resolving_executor)
-  val = _run_comp_with_runtime(comp, (loop, ex))
-  test_instance.assertIsInstance(val,
-                                 federating_executor.FederatingExecutorValue)
-  return loop.run_until_complete(val.compute())
-
-
-def _produce_test_value(
-    value,
-    type_spec=None,
-    num_clients=1,
-    use_reference_resolving_executor=False,
-):
-  """Produces a TFF value using a test runtime."""
-  loop, ex = _make_test_runtime(
-      num_clients=num_clients,
-      use_reference_resolving_executor=use_reference_resolving_executor)
-  return loop.run_until_complete(ex.create_value(value, type_spec=type_spec))
 
 
 def get_named_parameters_for_supported_intrinsics():
@@ -591,10 +507,53 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     else:
       self.assertEqual(actual_result, expected_result)
 
+  def test_returns_value_with_intrinsic_def_federated_value_at_server_and_tuple(
+      self):
+    executor = create_test_executor(num_clients=3)
+    arg, arg_type = executor_test_utils.create_dummy_computation_tuple()
+    intrinsic_def = intrinsic_defs.FEDERATED_VALUE_AT_SERVER
+    comp_type = computation_types.FunctionType(arg_type,
+                                               type_factory.at_server(arg_type))
+    comp = pb.Computation(
+        type=type_serialization.serialize_type(comp_type),
+        intrinsic=pb.Intrinsic(uri=intrinsic_def.uri))
+
+    comp = self.run_sync(executor.create_value(comp, comp_type))
+    arg = self.run_sync(executor.create_value(arg, arg_type))
+    result = self.run_sync(executor.create_call(comp, arg))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     comp_type.result.compact_representation())
+    actual_result = self.run_sync(result.compute())
+    expected_result = [10.0] * 2
+    for actual_element, expected_element in zip(actual_result, expected_result):
+      self.assertEqual(actual_element, expected_element)
+
+  def test_returns_value_with_intrinsic_def_federated_eval_at_clients_and_random(
+      self):
+    executor = create_test_executor(num_clients=3)
+    comp, comp_type = executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_clients(
+    )
+    arg, arg_type = executor_test_utils.create_dummy_computation_tensorflow_random(
+    )
+
+    comp = self.run_sync(executor.create_value(comp, comp_type))
+    arg = self.run_sync(executor.create_value(arg, arg_type))
+    result = self.run_sync(executor.create_call(comp, arg))
+
+    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     comp_type.result.compact_representation())
+    actual_result = self.run_sync(result.compute())
+    unique_results = set([x.numpy() for x in actual_result])
+    if len(actual_result) != len(unique_results):
+      self.fail(
+          'Expected the result to contain different random numbers, found {}.'
+          .format(actual_result))
+
   # pyformat: disable
   @parameterized.named_parameters([
-      ('computation_lambda',
-       *executor_test_utils.create_dummy_computation_lambda_empty()),
       ('computation_tensorflow',
        *executor_test_utils.create_dummy_computation_tensorflow_empty()),
   ])
@@ -653,6 +612,8 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
 
   # pyformat: disable
   @parameterized.named_parameters([
+      ('computation_lambda',
+       *executor_test_utils.create_dummy_computation_lambda_empty()),
       ('computation_placement',
        *executor_test_utils.create_dummy_computation_placement()),
       ('computation_tuple',
@@ -673,17 +634,6 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     comp = self.run_sync(executor.create_value(comp, comp_type))
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_call(comp))
-
-  def test_raises_value_error_with_computation_lambda_and_arg(self):
-    executor = create_test_executor(num_clients=3)
-    comp, comp_type = executor_test_utils.create_dummy_computation_lambda_identity(
-    )
-    arg, arg_type = executor_test_utils.create_dummy_value_unplaced()
-
-    comp = self.run_sync(executor.create_value(comp, comp_type))
-    arg = self.run_sync(executor.create_value(arg, arg_type))
-    with self.assertRaises(ValueError):
-      self.run_sync(executor.create_call(comp, arg))
 
   def test_raises_not_implemented_error_with_intrinsic_def_federated_secure_sum(
       self):
@@ -783,8 +733,6 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
 
   # pyformat: disable
   @parameterized.named_parameters([
-      ('computation_lambda',
-       *executor_test_utils.create_dummy_computation_lambda_empty()),
       ('computation_tensorflow',
        *executor_test_utils.create_dummy_computation_tensorflow_empty()),
   ])
@@ -921,77 +869,6 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     source = self.run_sync(executor.create_value(value, type_signature))
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_selection(source, index=0))
-
-
-class FederatingExecutorTest(parameterized.TestCase):
-
-  def test_federated_value_at_server_with_tuple(self):
-    @computations.federated_computation
-    def comp():
-      return intrinsics.federated_value([10, 10], placement_literals.SERVER)
-
-    val = _run_test_comp(comp)
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(str(val.type_signature), '<int32,int32>@SERVER')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, 1)
-    self.assertIsInstance(val.internal_representation[0],
-                          eager_tf_executor.EagerValue)
-    inner_eager_value = val.internal_representation[0]
-    self.assertLen(inner_eager_value.internal_representation, 2)
-    self.assertEqual(inner_eager_value.internal_representation[0].numpy(), 10)
-    self.assertEqual(inner_eager_value.internal_representation[1].numpy(), 10)
-
-  def test_federated_eval_at_clients_random(self):
-
-    @computations.federated_computation
-    def comp():
-      rand = computations.tf_computation(lambda: tf.random.normal([]))
-      return intrinsics.federated_eval(rand, placement_literals.CLIENTS)
-
-    num_clients = 3
-    val = _run_test_comp(comp, num_clients=num_clients)
-    self.assertIsInstance(val, federating_executor.FederatingExecutorValue)
-    self.assertEqual(str(val.type_signature), '{float32}@CLIENTS')
-    self.assertIsInstance(val.internal_representation, list)
-    self.assertLen(val.internal_representation, num_clients)
-    previous_values = set()
-    for v in val.internal_representation:
-      self.assertIsInstance(v, eager_tf_executor.EagerValue)
-      number = v.internal_representation.numpy()
-      if number in previous_values:
-        raise Exception('Multiple clients returned same random number')
-      previous_values.add(number)
-
-  def test_execution_of_tensorflow(self):
-
-    @computations.tf_computation
-    def comp():
-      return tf.math.add(5, 5)
-
-    executor = create_test_executor_factory()
-    with executor_test_utils.install_executor(executor):
-      result = comp()
-
-    self.assertEqual(result, 10)
-
-  def test_federated_collect_with_map_call(self):
-    @computations.tf_computation()
-    def make_dataset():
-      return tf.data.Dataset.range(5)
-
-    @computations.tf_computation(computation_types.SequenceType(tf.int64))
-    def foo(x):
-      return x.reduce(tf.constant(0, dtype=tf.int64), lambda a, b: a + b)
-
-    @computations.federated_computation()
-    def bar():
-      x = intrinsics.federated_value(make_dataset(), placement_literals.CLIENTS)
-      return intrinsics.federated_map(
-          foo, intrinsics.federated_collect(intrinsics.federated_map(foo, x)))
-
-    result = _run_test_comp_produces_federated_value(self, bar, num_clients=5)
-    self.assertEqual(result.numpy(), 50)
 
 
 if __name__ == '__main__':
