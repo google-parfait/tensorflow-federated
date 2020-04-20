@@ -50,6 +50,8 @@ from tensorflow_federated.python.core.impl.compiler.tree_transformations import 
 from tensorflow_federated.python.core.impl.compiler.type_serialization import deserialize_type
 from tensorflow_federated.python.core.impl.compiler.type_serialization import serialize_type
 from tensorflow_federated.python.core.impl.compiler.type_transformations import transform_type_postorder
+from tensorflow_federated.python.core.impl.computation_serialization import deserialize_computation
+from tensorflow_federated.python.core.impl.computation_serialization import serialize_computation
 from tensorflow_federated.python.core.impl.context_stack.context_base import Context
 from tensorflow_federated.python.core.impl.context_stack.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack

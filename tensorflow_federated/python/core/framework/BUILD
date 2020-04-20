@@ -13,6 +13,7 @@ py_library(
         "//tensorflow_federated/python/core:__pkg__",
     ],
     deps = [
+        "//tensorflow_federated/python/core/impl:computation_serialization",
         "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",
         "//tensorflow_federated/python/core/impl:type_utils",
         "//tensorflow_federated/python/core/impl/compiler:building_block_analysis",
