@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import collections
+from typing import List, Set
 
 import numpy as np
 import tensorflow as tf
@@ -104,6 +105,51 @@ class TensorFlowSerializationTest(test.TestCase):
     results = tf.compat.v1.Session().run(
         tf.import_graph_def(
             serialization_utils.unpack_graph_def(comp.tensorflow.graph_def), {
+                comp.tensorflow.parameter.sequence.variant_tensor_name:
+                    tf.data.experimental.to_variant(parameter)
+            }, [comp.tensorflow.result.tensor.tensor_name]))
+    self.assertEqual(results, [10])
+
+  def assertNodeDefListDoesNotContainOps(self,
+                                         nodedefs: List[tf.compat.v1.NodeDef],
+                                         forbidden_ops: Set[str]):
+    for node in nodedefs:
+      if node.op in forbidden_ops:
+        self.fail('[{n}] node was found but not allowed.'.format(n=node.op))
+
+  def assertGraphDoesNotContainOps(self, graphdef: tf.compat.v1.GraphDef,
+                                   forbidden_ops: Set[str]):
+    self.assertNodeDefListDoesNotContainOps(graphdef.node, forbidden_ops)
+    for function in graphdef.library.function:
+      self.assertNodeDefListDoesNotContainOps(function.node_def, forbidden_ops)
+
+  @test.graph_mode_test
+  def test_serialize_tensorflow_with_dataset_not_optimized(self):
+
+    @tf.function
+    def test_foo(ds):
+      return ds.reduce(np.int64(0), lambda x, y: x + y)
+
+    def legacy_dataset_reducer_example(ds):
+      return test_foo(ds)
+
+    comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+        legacy_dataset_reducer_example,
+        computation_types.SequenceType(tf.int64),
+        context_stack_impl.context_stack)
+    self.assertEqual(
+        str(type_serialization.deserialize_type(comp.type)),
+        '(int64* -> int64)')
+    self.assertEqual(str(extra_type_spec), '(int64* -> int64)')
+    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
+    parameter = tf.data.Dataset.range(5)
+
+    graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
+    self.assertGraphDoesNotContainOps(graph_def,
+                                      ['OptimizeDataset', 'ModelDataste'])
+    results = tf.compat.v1.Session().run(
+        tf.import_graph_def(
+            graph_def, {
                 comp.tensorflow.parameter.sequence.variant_tensor_name:
                     tf.data.experimental.to_variant(parameter)
             }, [comp.tensorflow.result.tensor.tensor_name]))

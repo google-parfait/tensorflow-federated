@@ -19,6 +19,7 @@ import os.path
 import shutil
 import tempfile
 import types
+from typing import Dict, Optional, Set, MutableSequence
 import zipfile
 
 import tensorflow as tf
@@ -315,16 +316,146 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
 
   annotated_type = computation_types.FunctionType(parameter_type, result_type)
 
+  # WARNING: we do not really want to be modifying the graph here if we can
+  # avoid it. This is purely to work around performance issues uncovered with
+  # the non-standard usage of Tensorflow and have been discussed with the
+  # Tensorflow core team before being added.
+  clean_graph_def = _clean_graph_def(graph.as_graph_def())
+
   return pb.Computation(
       type=pb.Type(
           function=pb.FunctionType(
               parameter=type_serialization.serialize_type(parameter_type),
               result=type_serialization.serialize_type(result_type))),
       tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+          graph_def=serialization_utils.pack_graph_def(clean_graph_def),
           parameter=parameter_binding,
           result=result_binding,
           initialize_op=init_op_name)), annotated_type
+
+
+def _clean_graph_def(graph_def: tf.compat.v1.GraphDef) -> tf.compat.v1.GraphDef:
+  """Edit the GraphDef proto to make it more performant for TFF.
+
+  WARNING: This method must _NOT_ make any semantic changes (those that would
+  change the results of the computation). TFF does not really want to be
+  modifying the graph here if we can avoid it. This is purely to work around
+  performance issues uncovered with the non-standard usage of Tensorflow and
+  have been discussed with the Tensorflow core team before being added.
+
+  Args:
+    graph_def: the proto message to modify.
+
+  Returns:
+    A GraphDef that has been altered for performance, with no semantic
+    modifications.
+  """
+  # TODO(b/153565654): remove this workaround once there is a way to prevent
+  # the OptimizeDataset ops from being added when serializing FunctionDef that
+  # received a tf.data.Dataset argument.
+  _remove_optimize_dataset_ops(graph_def)
+  return graph_def
+
+
+# TODO(b/153565654): cleanup this workaround method when no longer needed.
+def _remove_optimize_dataset_ops(graph_def: tf.compat.v1.GraphDef):
+  """Removes `OptimizeDataset` and `ModelDataset` ops from the graph.
+
+  TensorFlow Federated creates and tears down datasets frequently (one for each
+  user); which is contrary to the TF expected usage of a Dataset where it is
+  setup once and used throughout a long training process.
+
+  In the TFF execution stack this leads to performance degradation where a lot
+  of time is spent optimizing a dataset that will soon be thrown away. The time
+  spent optimizing can even be as long as it takes to train on the dataset. For
+  that reason TFF turns off this optimization.
+
+  Luckily, it appears that generally `ModelDataset` and `OptimizeDataset` have a
+  fairly straightforward pattern in graphs (though a fragile assumption); they
+  have so far always appeared as:
+
+    dataset -> OptimizeDataset -> ModelDataset -> (DatasetReduce ...)
+
+  Each node is the first input to the next node. The following function simply
+  cuts out the middle nodes and connect the first input into OptimizeDataset
+  as the input to replace ModelDataset into the last op in the chain.
+
+  Args:
+    graph_def: the proto message to mutate in place.
+  """
+  ops_to_remove = ['OptimizeDataset', 'ModelDataset']
+
+  def is_control_dep(tensor_name: str) -> bool:
+    return tensor_name.startswith('^')
+
+  def normalized_tensor_name(tensor_name: str) -> str:
+    if is_control_dep(tensor_name):
+      return tensor_name[1:]
+    return tensor_name.split(':', maxsplit=2)[0]
+
+  def clean_input_tensor(
+      tensor_name: str,
+      names_to_nodes: Dict[str, tf.compat.v1.NodeDef],
+      input_args: Set[str],
+  ) -> Optional[str]:
+    """Rewire an input tensor that is output by a removed node."""
+    node_name = normalized_tensor_name(tensor_name)
+    if is_control_dep(tensor_name):
+      # Simply delete control deps on removed nodes, otherwise pass through.
+      input_node = names_to_nodes[node_name]
+      if input_node.op in ops_to_remove:
+        return None
+      return tensor_name
+    node = names_to_nodes.get(node_name)
+    if node is None:
+      if tensor_name in input_args:
+        return node_name
+      else:
+        raise ValueError('cannot handle input {n} ({nn})'.format(
+            n=tensor_name, nn=node_name))
+    if node.op not in ops_to_remove:
+      return tensor_name
+    if node.op == 'OptimizeDataset':
+      # The dataset is the first input to OptimizeDataset, so return to replace
+      # the dependency on OptimizeDataset.
+      return node.input[0]
+    elif node.op == 'ModelDataset':
+      # ModelDataset's first input is expected to be OptimizeDataset, we can
+      # walk up input chain and find the input to the OptimizeDataset and return
+      # that instead.
+      input_node_name = normalized_tensor_name(node.input[0])
+      input_node = names_to_nodes.get(input_node_name)
+      if input_node is None or input_node.op != 'OptimizeDataset':
+        raise ValueError('Input to ModelDataset node was not OptimizeDataset, '
+                         'unknown graph structure, aborting.')
+      return input_node.input[0]
+    else:
+      raise ValueError('Encoutered node [{n}] which is an op to remove, but '
+                       'is not handled properly.'.format(n=node))
+
+  def filter_nodes(node_defs: MutableSequence[tf.compat.v1.NodeDef], args):
+    nodes_to_keep = []
+    names_to_nodes = {}
+    for node in node_defs:
+      names_to_nodes[node.name] = node
+      if node.op not in ops_to_remove:
+        nodes_to_keep.append(node)
+    func_arg_names = {arg.name for arg in args}
+    for node in nodes_to_keep:
+      clean_inputs = []
+      for input_name in node.input:
+        clean_input = clean_input_tensor(input_name, names_to_nodes,
+                                         func_arg_names)
+        if clean_input is not None:
+          clean_inputs.append(clean_input)
+      del node.input[:]
+      node.input.extend(clean_inputs)
+    del node_defs[:]
+    node_defs.extend(nodes_to_keep)
+
+  filter_nodes(graph_def.node, args=[])
+  for function in graph_def.library.function:
+    filter_nodes(function.node_def, args=function.signature.input_arg)
 
 
 # The maximum size allowed for serialized sequence values. Sequence that
