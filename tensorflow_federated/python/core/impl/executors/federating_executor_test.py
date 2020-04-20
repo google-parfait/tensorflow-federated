@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Iterable, Type
+from typing import Any, Iterable, List, Tuple, Type
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -42,21 +42,19 @@ def all_isinstance(objs: Iterable[Any], classinfo: Type[Any]) -> bool:
 
 
 def create_test_executor(
-    num_clients=1,
-    use_reference_resolving_executor=False
-) -> federating_executor.FederatingExecutor:
-  bottom_ex = eager_tf_executor.EagerTFExecutor()
-  if use_reference_resolving_executor:
-    bottom_ex = reference_resolving_executor.ReferenceResolvingExecutor(
-        bottom_ex)
+    num_clients: int = 3) -> federating_executor.FederatingExecutor:
+  executor = eager_tf_executor.EagerTFExecutor()
+  # Note: A `ReferenceResolvingExecutor` is required to be below a
+  # `FederatingExecutor` because intrinsics often take `Lambda`s as arguments.
+  executor = reference_resolving_executor.ReferenceResolvingExecutor(executor)
   return federating_executor.FederatingExecutor({
-      placement_literals.SERVER: bottom_ex,
-      placement_literals.CLIENTS: [bottom_ex] * num_clients,
-      None: bottom_ex
+      placement_literals.SERVER: executor,
+      placement_literals.CLIENTS: [executor] * num_clients,
+      None: executor
   })
 
 
-def get_named_parameters_for_supported_intrinsics():
+def get_named_parameters_for_supported_intrinsics() -> List[Tuple[str, Any]]:
   # pyformat: disable
   return [
       ('intrinsic_def_federated_apply',
@@ -127,7 +125,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_returns_value_with_value_and_type(self, value, type_signature):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     result = self.run_sync(executor.create_value(value, type_signature))
 
@@ -156,7 +154,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   ])
   # pyformat: enable
   def test_returns_value_with_value_only(self, value, type_signature):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     result = self.run_sync(executor.create_value(value))
 
@@ -175,7 +173,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   ])
   # pyformat: enable
   def test_returns_value_with_computation_impl(self, proto, type_signature):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     value = computation_impl.ComputationImpl(proto,
                                              context_stack_impl.context_stack)
 
@@ -198,7 +196,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_raises_type_error_with_value_only(self, value, _):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     with self.assertRaises(TypeError):
       self.run_sync(executor.create_value(value))
@@ -220,7 +218,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_raises_type_error_with_value_and_bad_type(self, value, _):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     bad_type_signature = computation_types.TensorType(tf.string)
 
     with self.assertRaises(TypeError):
@@ -246,7 +244,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     self.skipTest(
         'TODO(b/152449402): `FederatingExecutor.create_value` method should '
         'fail if it is passed a computation and an incompatible type.')
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     bad_type_signature = computation_types.TensorType(tf.string)
 
     with self.assertRaises(TypeError):
@@ -260,13 +258,13 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   ])
   # pyformat: enable
   def test_raises_value_error_with_value(self, value, type_signature):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
 
   def test_raises_value_error_with_unrecognized_computation_intrinsic(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     # A `ValueError` will be raised because `create_value` can not recognize the
     # following intrinsic, because it has not been added to the intrinsic
     # registry.
@@ -279,7 +277,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
       self.run_sync(executor.create_value(value, type_signature))
 
   def test_raises_value_error_with_unrecognized_computation_selection(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     source, _ = executor_test_utils.create_dummy_computation_tuple()
     type_signature = computation_types.NamedTupleType([])
     # A `ValueError` will be raised because `create_value` can not handle the
@@ -368,7 +366,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
       self.run_sync(executor.create_value(value, type_signature))
 
   def test_raises_value_error_with_unexpected_federated_type_clients(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     value = [10, 20]
     type_signature = type_factory.at_clients(tf.int32)
 
@@ -377,7 +375,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
 
   def test_raises_value_error_with_unexpected_federated_type_clients_all_equal(
       self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     value = [10, 10, 10]
     type_signature = type_factory.at_clients(tf.int32, all_equal=True)
 
@@ -455,7 +453,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_intrinsic_def_federated_weighted_mean(),
        [executor_test_utils.create_dummy_value_clients(),
         executor_test_utils.create_dummy_value_clients()],
-       20.0),
+       23.333334),
       ('intrinsic_def_federated_zip_at_clients',
        *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_clients(),
        [executor_test_utils.create_dummy_value_clients(),
@@ -480,12 +478,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   # pyformat: enable
   def test_returns_value_with_comp_and_arg(self, comp, comp_type, args,
                                            expected_result):
-    if comp == intrinsic_defs.FEDERATED_WEIGHTED_MEAN:
-      self.skipTest(
-          'TODO(b/134543154): A `intrinsic_defs.FEDERATED_WEIGHTED_MEAN` can '
-          'not be executed directly on top of a plain TensorFlow-based '
-          'executor.')
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     comp = self.run_sync(executor.create_value(comp, comp_type))
     elements = [self.run_sync(executor.create_value(*x)) for x in args]
@@ -559,7 +552,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   ])
   # pyformat: enable
   def test_returns_value_with_comp_only(self, comp, comp_type):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     comp = self.run_sync(executor.create_value(comp, comp_type))
     result = self.run_sync(executor.create_call(comp))
@@ -572,7 +565,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     self.assertCountEqual(actual_result, expected_result)
 
   def test_raises_type_error_with_unembedded_comp(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     comp, _ = executor_test_utils.create_dummy_computation_tensorflow_identity()
     arg, arg_type = executor_test_utils.create_dummy_value_unplaced()
 
@@ -581,7 +574,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
       self.run_sync(executor.create_call(comp, arg))
 
   def test_raises_type_error_with_unembedded_arg(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     comp, comp_type = executor_test_utils.create_dummy_computation_tensorflow_identity(
     )
     arg, _ = executor_test_utils.create_dummy_value_unplaced()
@@ -601,7 +594,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_raises_type_error_with_comp_and_bad_arg(self, comp, comp_type):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     bad_arg = 'string'
     bad_arg_type = computation_types.TensorType(tf.string)
 
@@ -629,7 +622,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   ])
   # pyformat: enable
   def test_raises_value_error_with_comp(self, comp, comp_type):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     comp = self.run_sync(executor.create_value(comp, comp_type))
     with self.assertRaises(ValueError):
@@ -637,7 +630,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
 
   def test_raises_not_implemented_error_with_intrinsic_def_federated_secure_sum(
       self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     comp, comp_type = executor_test_utils.create_dummy_intrinsic_def_federated_secure_sum(
     )
     arg_1, arg_1_type = executor_test_utils.create_dummy_value_clients()
@@ -651,7 +644,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
       self.run_sync(executor.create_call(comp, args))
 
   def test_raises_not_implemented_error_with_unimplemented_intrinsic(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     dummy_intrinsic = intrinsic_defs.IntrinsicDef(
         'DUMMY_INTRINSIC', 'dummy_intrinsic',
         computation_types.AbstractType('T'))
@@ -690,7 +683,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
   ])
   # pyformat: enable
   def test_returns_value_with_elements_value(self, value, type_signature):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     element = self.run_sync(executor.create_value(value, type_signature))
     elements = [element] * 3
@@ -715,7 +708,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
   # pyformat: enable
   def test_returns_value_with_elements_fn_and_arg(self, fn, fn_type, arg,
                                                   arg_type):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     fn = self.run_sync(executor.create_value(fn, fn_type))
     arg = self.run_sync(executor.create_value(arg, arg_type))
@@ -738,7 +731,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
   ])
   # pyformat: enable
   def test_returns_value_with_elements_fn_only(self, fn, fn_type):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     fn = self.run_sync(executor.create_value(fn, fn_type))
     element = self.run_sync(executor.create_call(fn))
@@ -754,7 +747,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     self.assertCountEqual(actual_result, expected_result)
 
   def test_raises_type_error_with_unembedded_elements(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     element, _ = executor_test_utils.create_dummy_value_unplaced()
 
     elements = [element] * 3
@@ -765,7 +758,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
 class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
   def test_returns_value_with_source_and_index_computation_tensorflow(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     source, type_signature = executor_test_utils.create_dummy_computation_tensorflow_tuple(
     )
 
@@ -781,7 +774,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     self.assertEqual(actual_result, expected_result)
 
   def test_returns_value_with_source_and_index_anonymous_tuple(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     element, element_type = executor_test_utils.create_dummy_value_unplaced()
 
     element = self.run_sync(executor.create_value(element, element_type))
@@ -798,7 +791,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     self.assertEqual(actual_result, expected_result)
 
   def test_returns_value_with_source_and_name_computation_tensorflow(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     source, type_signature = executor_test_utils.create_dummy_computation_tensorflow_tuple(
     )
 
@@ -814,7 +807,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     self.assertEqual(actual_result, expected_result)
 
   def test_returns_value_with_source_and_name_anonymous_tuple(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     element, element_type = executor_test_utils.create_dummy_value_unplaced()
 
     names = ['a', 'b', 'c']
@@ -833,7 +826,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     self.assertEqual(actual_result, expected_result)
 
   def test_raises_type_error_with_unembedded_source(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     element, element_type = executor_test_utils.create_dummy_value_unplaced()
 
     element = self.run_sync(executor.create_value(element, element_type))
@@ -842,7 +835,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
       self.run_sync(executor.create_selection(source, index=0))
 
   def test_raises_type_error_with_not_tuple_type(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     element, element_type = executor_test_utils.create_dummy_value_unplaced()
 
     source = self.run_sync(executor.create_value(element, element_type))
@@ -850,7 +843,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
       self.run_sync(executor.create_selection(source, index=0))
 
   def test_raises_value_error_with_no_index_or_name(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
     element, element_type = executor_test_utils.create_dummy_value_unplaced()
 
     element = self.run_sync(executor.create_value(element, element_type))
@@ -860,7 +853,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
       self.run_sync(executor.create_selection(source))
 
   def test_raises_value_error_with_unrecognized_generic_zero(self):
-    executor = create_test_executor(num_clients=3)
+    executor = create_test_executor()
 
     value = intrinsic_defs.GENERIC_ZERO
     type_signature = computation_types.NamedTupleType(
