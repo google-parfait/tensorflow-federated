@@ -53,6 +53,20 @@ def get_top_elements(list_of_elements, max_user_contribution):
   return words
 
 
+@tf.function
+def get_random_elements(list_of_elements, max_user_contribution):
+  """Gets random max_user_contribution words from the input list.
+
+  Args:
+    list_of_elements: A tensor containing a list of elements.
+    max_user_contribution: The maximum number of elements to keep.
+
+  Returns:
+    A tensor of a list of strings.
+  """
+  return tf.random.shuffle(list_of_elements)[:max_user_contribution]
+
+
 @tf.function()
 def listify(dataset):
   """Turns a stream of strings into a 1D tensor of strings."""
@@ -134,11 +148,17 @@ def top_k(signal, k):
   return results
 
 
-def compute_loss(results, expected_results, correction,
-                 factor_bandwidth_into_loss, sketch_width, sketch_length):
-  distance = distance_l1(results, expected_results, correction=correction)
+def compute_loss(results,
+                 expected_results,
+                 correction,
+                 space=None,
+                 space_cost_per_error=None,
+                 factor_bandwidth_into_loss=False):
+  """Computes the loss between results and expected_results."""
+  distance = distance_l1(
+      signal=results, ground_truth=expected_results, correction=correction)
   if factor_bandwidth_into_loss:
-    distance = distance / (sketch_width * sketch_length)
+    distance = distance + (float(space) / space_cost_per_error)
   return distance
 
 
@@ -152,16 +172,19 @@ def enough_variation(new_results, old_results, min_variation):
   return len(intersection) >= min_variation
 
 
-def get_words(datasets):
+def get_top_words(datasets, num_words_per_dataset=None):
   total_words = []
   for dataset in datasets:
     words = [word.numpy().decode('utf-8') for word in dataset]
+    if num_words_per_dataset is None:
+      words = collections.Counter(words).most_common(num_words_per_dataset)
+      words = [word_pair[0] for word_pair in words]
     total_words += list(set(words))
   return total_words
 
 
 def compute_expected_results(datasets, limit):
-  return top_k(get_words(datasets), limit)
+  return top_k(get_top_words(datasets), limit)
 
 
 def calculate_ground_truth(data, dataset_name):
@@ -172,6 +195,6 @@ def calculate_ground_truth(data, dataset_name):
   ]
 
   start = time.time()
-  ground_truth_results = get_words(all_datasets)
+  ground_truth_results = get_top_words(all_datasets)
   logging.info('Obtained ground truth in %.2f seconds', time.time() - start)
   return ground_truth_results
