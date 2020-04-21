@@ -52,6 +52,25 @@ py_test(
 )
 
 py_library(
+    name = "graph_opt",
+    srcs = ["graph_opt.py"],
+    srcs_version = "PY3",
+    deps = [":graph_spec"],
+)
+
+py_test(
+    name = "graph_opt_test",
+    srcs = ["graph_opt_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":graph_opt",
+        ":graph_spec",
+        "//tensorflow_federated/python/common_libs:test",
+    ],
+)
+
+py_library(
     name = "graph_spec",
     srcs = ["graph_spec.py"],
     srcs_version = "PY3",
