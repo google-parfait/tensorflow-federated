@@ -14,6 +14,8 @@
 # limitations under the License.
 """Utilities for serializing and deserializing TFF computation_types."""
 
+from typing import Optional
+
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -23,7 +25,8 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 
 
-def _to_tensor_type_proto(tensor_type):
+def _to_tensor_type_proto(
+    tensor_type: computation_types.TensorType) -> pb.TensorType:
   py_typecheck.check_type(tensor_type, computation_types.TensorType)
   shape = tensor_type.shape
   if shape.dims is None:
@@ -36,7 +39,7 @@ def _to_tensor_type_proto(tensor_type):
       unknown_rank=dims is None)
 
 
-def _to_tensor_shape(tensor_type_proto):
+def _to_tensor_shape(tensor_type_proto: pb.TensorType) -> tf.TensorShape:
   py_typecheck.check_type(tensor_type_proto, pb.TensorType)
   if not hasattr(tensor_type_proto, 'dims'):
     if tensor_type_proto.unknown_rank:
@@ -47,7 +50,7 @@ def _to_tensor_shape(tensor_type_proto):
   return tf.TensorShape(dims)
 
 
-def serialize_type(type_spec):
+def serialize_type(type_spec) -> Optional[pb.Type]:
   """Serializes 'type_spec' as a pb.Type.
 
   Note: Currently only serialization for tensor, named tuple, sequence, and
@@ -106,7 +109,8 @@ def serialize_type(type_spec):
     raise NotImplementedError
 
 
-def deserialize_type(type_proto):
+def deserialize_type(
+    type_proto: Optional[pb.Type]) -> Optional[computation_types.Type]:
   """Deserializes 'type_proto' as a computation_types.Type.
 
   Note: Currently only deserialization for tensor, named tuple, sequence, and
