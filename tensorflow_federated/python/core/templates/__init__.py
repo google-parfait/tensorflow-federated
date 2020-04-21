@@ -15,3 +15,4 @@
 """This directory contains frequently used computation templates."""
 
 from tensorflow_federated.python.core.templates.iterative_process import IterativeProcess
+from tensorflow_federated.python.core.templates.measured_process import MeasuredProcess

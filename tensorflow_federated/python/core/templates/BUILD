@@ -18,7 +18,10 @@ py_library(
         # the `tff.utils` package.
         "//tensorflow_federated/tools:__subpackages__",
     ],
-    deps = [":iterative_process"],
+    deps = [
+        ":iterative_process",
+        ":measured_process",
+    ],
 )
 
 py_library(
@@ -41,6 +44,34 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":iterative_process",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:values",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
+        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
+    ],
+)
+
+py_library(
+    name = "measured_process",
+    srcs = ["measured_process.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":iterative_process",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "measured_process_test",
+    size = "small",
+    srcs = ["measured_process_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":measured_process",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
