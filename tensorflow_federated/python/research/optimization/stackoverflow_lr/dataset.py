@@ -48,16 +48,14 @@ def build_to_ids_fn(vocab_tokens, vocab_tags):
 
   def to_ids(example):
     """Converts tf example to bag of words."""
-    sentence = tf.strings.join(
-        [tf.reshape(example['tokens'], ()),
-         tf.reshape(example['title'], ())],
-        separator=' ')
+    sentence = tf.strings.join([example['tokens'], example['title']],
+                               separator=' ')
     words = tf.strings.split(sentence)
     tokens = table_tokens.lookup(words)
     tokens = tf.one_hot(tokens, vocab_tokens_size+1)
     tokens = tf.reduce_mean(tokens, axis=0)[:vocab_tokens_size]
 
-    tags = tf.reshape(example['tags'], ())
+    tags = example['tags']
     tags = tf.strings.split(tags, sep='|')
     tags = table_tags.lookup(tags)
     tags = tf.one_hot(tags, vocab_tags_size+1)
