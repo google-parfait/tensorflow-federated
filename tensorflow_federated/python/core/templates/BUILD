@@ -13,10 +13,6 @@ py_library(
     visibility = [
         "//tensorflow_federated:__pkg__",
         "//tensorflow_federated/python/core:__pkg__",
-
-        # TODO(b/153602430): Remove `iterative_process.IterativeProcess` from
-        # the `tff.utils` package.
-        "//tensorflow_federated/tools:__subpackages__",
     ],
     deps = [
         ":iterative_process",

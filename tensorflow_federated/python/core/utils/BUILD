@@ -19,7 +19,6 @@ py_library(
         ":encoding_utils",
         ":federated_aggregations",
         ":tf_computation_utils",
-        "//tensorflow_federated/python/core/templates:iterative_process",
     ],
 )
 
