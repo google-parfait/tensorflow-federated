@@ -36,13 +36,13 @@ from tensorflow_federated.python.core.impl.executors import executor_value_base
 
 
 class FederatingExecutorValue(executor_value_base.ExecutorValue):
-  """Represents a value embedded in the federated executor."""
+  """A value embedded in a `FederatedExecutor`."""
 
   def __init__(self, value, type_spec):
     """Creates an embedded instance of a value in this executor.
 
-    The kinds of supported internal representations (`value`) and types are as
-    follows:
+    The kinds of supported `value`s or internal representations and `type_spec`
+    are:
 
     * An instance of `intrinsic_defs.IntrinsicDef` in case of a federated
       operator (to be interpreted by this executor upon invocation).
@@ -51,30 +51,35 @@ class FederatingExecutorValue(executor_value_base.ExecutorValue):
 
     * An instance of `pb.Computation` in an unparsed form (to be relayed to one
       of the executors responsible for the given placement later on), which
-      must be of one of the following varieties: tensorflow, lambda.
+      must be of one of the following varieties: call, intrinsic, lambda,
+      placement,  selection, tensorflow, and tuple.
 
-    * An ordinary Python `list` with values embedded in subordinate executors
-      in case `type_spec` is a federated type. The list representation is used
-      even if the value is of an `all_equal` type or there's only a single
-      participant associated with the given placement.
+    * A Python `list` of values embedded in subordinate executors in the case
+      where `type_spec` is a federated type. The `value` must be a list even if
+      it is of an `all_equal` type or if there is only a single participant
+      associated with the given placement.
 
-    * A single value embedded in a subordinate executor in case `type_spec` is
-      of a non-federated non-functional type.
+    * A single value embedded in a subordinate executor in the case where
+      `type_spec` is of a non-federated and non-functional type.
 
     * An instance of `anonymous_tuple.AnonymousTuple` with values being one of
       the supported types listed above.
 
-    This constructor does not perform any verification, however.
+    Note: This constructor does not check that the `value` and `type_spec` are
+    of a kind supported by the `FederatingExecutor`.
 
     Args:
-      value: An internal value representation (of one of the allowed types, as
+      value: An internal value representation (one of the allowed types,
         defined above).
       type_spec: An instance of `tff.Type` or something convertible to it that
         is compatible with `value` (as defined above).
+
+    Raises:
+      TypeError: If `type_spec` is not a `tff.Type`.
     """
+    py_typecheck.check_type(type_spec, computation_types.Type)
     self._value = value
     self._type_signature = computation_types.to_type(type_spec)
-    py_typecheck.check_type(type_spec, computation_types.Type)
 
   @property
   def internal_representation(self):
@@ -90,27 +95,20 @@ class FederatingExecutorValue(executor_value_base.ExecutorValue):
       return await self._value.compute()
     elif isinstance(self._type_signature, computation_types.FederatedType):
       py_typecheck.check_type(self._value, list)
+      for value in self._value:
+        py_typecheck.check_type(value, executor_value_base.ExecutorValue)
       if self._type_signature.all_equal:
-        vals = [self._value[0]]
+        return await self._value[0].compute()
       else:
-        vals = self._value
-      results = []
-      for v in vals:
-        py_typecheck.check_type(v, executor_value_base.ExecutorValue)
-        results.append(v.compute())
-      results = await asyncio.gather(*results)
-      if self._type_signature.all_equal:
-        return results[0]
-      else:
-        return results
+        return await asyncio.gather(*[v.compute() for v in self._value])
     elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
-      gathered_values = await asyncio.gather(*[
+      results = await asyncio.gather(*[
           FederatingExecutorValue(v, t).compute()
           for v, t in zip(self._value, self._type_signature)
       ])
-      type_elements_iter = anonymous_tuple.iter_elements(self._type_signature)
+      element_types = anonymous_tuple.iter_elements(self._type_signature)
       return anonymous_tuple.AnonymousTuple(
-          (k, v) for (k, _), v in zip(type_elements_iter, gathered_values))
+          (n, v) for (n, _), v in zip(element_types, results))
     else:
       raise RuntimeError(
           'Computing values of type {} represented as {} is not supported in '
