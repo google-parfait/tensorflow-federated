@@ -70,18 +70,18 @@ def load_data(cache_dir=None):
   `collections.OrderedDict` objects at each iteration, with the following keys
   and values:
 
-    -   `'creation_date'`: a `tf.Tensor` with `dtype=tf.string` and shape [1]
+    -   `'creation_date'`: a `tf.Tensor` with `dtype=tf.string` and shape []
         containing the date/time of the question or answer in UTC format.
-    -   `'title'`: a `tf.Tensor` with `dtype=tf.string` and shape [1] containing
+    -   `'title'`: a `tf.Tensor` with `dtype=tf.string` and shape [] containing
         the title of the question.
-    -   `'score'`: a `tf.Tensor` with `dtype=tf.int64` and shape [1] containing
+    -   `'score'`: a `tf.Tensor` with `dtype=tf.int64` and shape [] containing
         the score of the question.
-    -   `'tags'`: a `tf.Tensor` with `dtype=tf.string` and shape [1] containing
+    -   `'tags'`: a `tf.Tensor` with `dtype=tf.string` and shape [] containing
         the tags of the question, separated by '|' characters.
-    -   `'tokens'`: a `tf.Tensor` with `dtype=tf.string` and shape [1]
+    -   `'tokens'`: a `tf.Tensor` with `dtype=tf.string` and shape []
         containing the tokens of the question/answer, separated by space (' ')
         characters.
-    -   `'type'`: a `tf.Tensor` with `dtype=tf.string` and shape [1]
+    -   `'type'`: a `tf.Tensor` with `dtype=tf.string` and shape []
         containing either the string 'question' or 'answer'.
 
   Args:
