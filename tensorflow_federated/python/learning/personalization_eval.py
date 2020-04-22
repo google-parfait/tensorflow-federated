@@ -40,7 +40,10 @@ def build_personalization_eval(model_fn,
   applying batching, if any, to the provided input datasets.
 
   Args:
-    model_fn: A no-argument function that returns a `tff.learning.Model`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
+      must *not* capture TensorFlow tensors or variables and use them. The model
+      must be constructed entirely from scratch on each invocation, returning
+      the same pre-constructed model each call will result in an error.
     personalize_fn_dict: An `OrderedDict` that maps a `string` (representing a
       strategy name) to a no-argument function that returns a `tf.function`.
       Each `tf.function` represents a personalization strategy: it accepts a

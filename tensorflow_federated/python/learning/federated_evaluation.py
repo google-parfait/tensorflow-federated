@@ -26,7 +26,10 @@ def build_federated_evaluation(model_fn):
   """Builds the TFF computation for federated evaluation of the given model.
 
   Args:
-    model_fn: A no-argument function that returns a `tff.learning.Model`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
+      must *not* capture TensorFlow tensors or variables and use them. The model
+      must be constructed entirely from scratch on each invocation, returning
+      the same pre-constructed model each call will result in an error.
 
   Returns:
     A federated computation (an instance of `tff.Computation`) that accepts

@@ -161,7 +161,10 @@ def build_federated_sgd_process(
   or server optimizers.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
+      must *not* capture TensorFlow tensors or variables and use them. The model
+      must be constructed entirely from scratch on each invocation, returning
+      the same pre-constructed model each call will result in an error.
     server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
       `apply_gradients` method of this optimizer is used to apply client updates
       to the server model.
