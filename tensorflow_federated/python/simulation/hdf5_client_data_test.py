@@ -91,6 +91,11 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
   def test_create_tf_dataset_for_client(self):
     client_data = hdf5_client_data.HDF5ClientData(
         HDF5ClientDataTest.test_data_filepath)
+
+    with self.assertRaisesRegex(ValueError,
+                                'is not a client in this ClientData'):
+      client_data.create_tf_dataset_for_client('non_existent_id')
+
     # Iterate over each client, ensuring we received a tf.data.Dataset with the
     # correct data.
     for client_id, expected_data in TEST_DATA.items():

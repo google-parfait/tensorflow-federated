@@ -68,6 +68,11 @@ class HDF5ClientData(client_data.ClientData):
     return self._client_ids
 
   def create_tf_dataset_for_client(self, client_id):
+    if client_id not in self.client_ids:
+      raise ValueError(
+          "ID [{i}] is not a client in this ClientData. See "
+          "property `client_ids` for the list of valid ids.".format(
+              i=client_id))
     tf_dataset = self._create_dataset(client_id)
     tensor_utils.check_nested_equal(tf_dataset.element_spec,
                                     self._element_type_structure)
