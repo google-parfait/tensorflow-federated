@@ -29,6 +29,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.tensorflow_libs import version_check
 
 
 class ClientData(object, metaclass=abc.ABCMeta):
@@ -104,13 +105,30 @@ class ClientData(object, metaclass=abc.ABCMeta):
     Returns:
       A `tf.data.Dataset` object.
     """
-
     # Note: simply calling Dataset.concatenate() will result in too deep
     # recursion depth.
     # Note: Tests are via the simple concrete from_tensor_slices_client_data.
-    client_datasets = [d for d in self.datasets(seed=seed)]
-    nested_dataset = tf.data.Dataset.from_tensor_slices(client_datasets)
-    example_dataset = nested_dataset.flat_map(lambda x: x)
+
+    # TODO(b/154763092): remove this check and only use the newer path.
+    if version_check.is_tensorflow_version_newer('2.3.0', tf):
+      # This works in tf-nightly, but isn't in a released tensorflow
+      # version yet.
+      client_datasets = [d for d in self.datasets(seed=seed)]
+      nested_dataset = tf.data.Dataset.from_tensor_slices(client_datasets)
+      example_dataset = nested_dataset.flat_map(lambda x: x)
+    else:
+
+      def _generator():
+        for dataset in self.datasets(seed=seed):
+          for example in dataset:
+            yield example
+
+      types = tf.nest.map_structure(lambda t: t.dtype,
+                                    self.element_type_structure)
+      shapes = tf.nest.map_structure(lambda t: t.shape,
+                                     self.element_type_structure)
+      example_dataset = tf.data.Dataset.from_generator(_generator, types,
+                                                       shapes)
     return example_dataset
 
   def preprocess(self, preprocess_fn):

@@ -68,6 +68,7 @@ RUN ${PIP} install --no-cache-dir \
     pandas~=0.24.0 \
     portpicker~=1.3.1 \
     retrying~=1.3.3 \
+    semantic-version~=2.8 \
     tensorflow-model-optimization~=0.2.1 \
     tensorflow-privacy~=0.2.2 \
     tf-nightly \

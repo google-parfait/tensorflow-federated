@@ -105,3 +105,21 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
     ],
 )
+
+py_library(
+    name = "version_check",
+    srcs = ["version_check.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "version_check_test",
+    size = "small",
+    srcs = ["version_check_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":version_check",
+        "//tensorflow_federated/python/common_libs:test",
+    ],
+)
