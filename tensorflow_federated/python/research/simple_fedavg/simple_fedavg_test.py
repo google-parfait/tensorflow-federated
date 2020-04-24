@@ -260,54 +260,56 @@ def server_init(model, optimizer):
       round_num=0)
 
 
-class ServerTest(tf.test.TestCase):
-
-  def _assert_server_update_with_all_ones(self, model_fn):
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
-    model = model_fn()
-    optimizer = optimizer_fn()
-    state = server_init(model, optimizer)
-    weights_delta = tf.nest.map_structure(tf.ones_like,
-                                          model.trainable_variables)
-
-    for _ in range(2):
-      state = simple_fedavg_tf.server_update(model, optimizer, state,
-                                             weights_delta)
-
-    model_vars = self.evaluate(state.model_weights)
-    train_vars = model_vars.trainable
-    self.assertLen(train_vars, 2)
-    self.assertEqual(state.round_num, 2)
-    # weights are initialized with all-zeros, weights_delta is all ones,
-    # SGD learning rate is 0.1. Updating server for 2 steps.
-    self.assertAllClose(train_vars, [np.ones_like(v) * 0.2 for v in train_vars])
-
-  def test_self_contained_example_custom_model(self):
-    self._assert_server_update_with_all_ones(MnistModel)
-
-
-class ClientTest(tf.test.TestCase):
-
-  def test_self_contained_example(self):
-
-    client_data = create_client_data()
-
-    model = MnistModel()
-    optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
-    losses = []
-    for r in range(2):
-      optimizer = optimizer_fn()
-      simple_fedavg_tff._initialize_optimizer_vars(model, optimizer)
-      server_message = simple_fedavg_tf.BroadcastMessage(
-          model_weights=model.weights, round_num=r)
-      outputs = simple_fedavg_tf.client_update(model, client_data(),
-                                               server_message, optimizer)
-      losses.append(outputs.model_output.numpy())
-
-    self.assertAllEqual(int(outputs.client_weight.numpy()), 2)
-    self.assertLess(losses[1], losses[0])
+# class ServerTest(tf.test.TestCase):
+#
+#   def _assert_server_update_with_all_ones(self, model_fn):
+#     optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
+#     model = model_fn()
+#     optimizer = optimizer_fn()
+#     state = server_init(model, optimizer)
+#     weights_delta = tf.nest.map_structure(tf.ones_like,
+#                                           model.trainable_variables)
+#
+#     for _ in range(2):
+#       state = simple_fedavg_tf.server_update(model, optimizer, state,
+#                                              weights_delta)
+#
+#     model_vars = self.evaluate(state.model_weights)
+#     train_vars = model_vars.trainable
+#     self.assertLen(train_vars, 2)
+#     self.assertEqual(state.round_num, 2)
+#     # weights are initialized with all-zeros, weights_delta is all ones,
+#     # SGD learning rate is 0.1. Updating server for 2 steps.
+#     self.assertAllClose(train_vars, [np.ones_like(v) * 0.2 for v in train_vars])
+#
+#   def test_self_contained_example_custom_model(self):
+#     self._assert_server_update_with_all_ones(MnistModel)
+#
+#
+# class ClientTest(tf.test.TestCase):
+#
+#   def test_self_contained_example(self):
+#
+#     client_data = create_client_data()
+#
+#     model = MnistModel()
+#     optimizer_fn = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
+#     losses = []
+#     for r in range(2):
+#       optimizer = optimizer_fn()
+#       simple_fedavg_tff._initialize_optimizer_vars(model, optimizer)
+#       server_message = simple_fedavg_tf.BroadcastMessage(
+#           model_weights=model.weights, round_num=r)
+#       outputs = simple_fedavg_tf.client_update(model, client_data(),
+#                                                server_message, optimizer)
+#       losses.append(outputs.model_output.numpy())
+#
+#     self.assertAllEqual(int(outputs.client_weight.numpy()), 2)
+#     self.assertLess(losses[1], losses[0])
 
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
+  tff.framework.set_default_executor(
+      tff.framework.local_executor_factory(num_client_executors=2))
   tf.test.main()
