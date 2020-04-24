@@ -2,12 +2,15 @@ package(default_visibility = ["//tensorflow_federated:__subpackages__"])
 
 licenses(["notice"])
 
-# This is the import for other components of TFF that are layered upon the Core API.
 py_library(
     name = "api",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//visibility:public"],
+    visibility = [
+        "//tensorflow_federated:__pkg__",
+        "//tensorflow_federated/python/core:__pkg__",
+        "//tensorflow_federated/tools:__subpackages__",
+    ],
     deps = [
         ":computation_base",
         ":computation_types",
