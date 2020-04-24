@@ -163,7 +163,7 @@ class ExecutionContext(context_base.Context):
   )
   def invoke(self, comp, arg):
 
-    with tracing.span('ExecutionContext', 'Invoke'):
+    with tracing.span('ExecutionContext', 'Invoke', span=True):
 
       @contextlib.contextmanager
       def executor_closer(wrapped_executor):
@@ -195,9 +195,9 @@ class ExecutionContext(context_base.Context):
 
         if arg is not None:
           arg = event_loop.run_until_complete(
-              tracing.run_coroutine_in_ambient_trace_context(
+              tracing.wrap_coroutine_in_current_trace_context(
                   _ingest(executor, unwrapped_arg, arg.type_signature)))
 
         return event_loop.run_until_complete(
-            tracing.run_coroutine_in_ambient_trace_context(
+            tracing.wrap_coroutine_in_current_trace_context(
                 _invoke(executor, comp, arg)))

@@ -73,9 +73,9 @@ class ThreadDelegatingExecutor(executor_base.Executor):
     self._target_executor.close()
 
   def _delegate(self, coro):
+    coro_with_trace_ctx = tracing.wrap_coroutine_in_current_trace_context(coro)
     return asyncio.wrap_future(
-        tracing.run_coroutine_threadsafe_in_task_trace_context(
-            coro, self._event_loop))
+        asyncio.run_coroutine_threadsafe(coro_with_trace_ctx, self._event_loop))
 
   @tracing.trace
   async def create_value(self, value, type_spec=None):
