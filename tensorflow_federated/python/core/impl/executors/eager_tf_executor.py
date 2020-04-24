@@ -403,7 +403,8 @@ class EagerTFExecutor(executor_base.Executor):
     if not tf.executing_eagerly():
       raise RuntimeError('The eager executor may only be used in eager mode.')
 
-    return EagerValue(value, self._tf_function_cache, type_spec, self._device)
+    with tracing.task_trace_context():
+      return EagerValue(value, self._tf_function_cache, type_spec, self._device)
 
   @tracing.trace
   async def create_call(self, comp, arg=None):

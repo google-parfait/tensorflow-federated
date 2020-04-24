@@ -178,7 +178,7 @@ class _BidiStream:
 
 
 def _request(rpc_func, request):
-  with tracing.wrap_rpc_in_trace_context():
+  with tracing.task_trace_context():
     try:
       return rpc_func(request)
     except grpc.RpcError as e:

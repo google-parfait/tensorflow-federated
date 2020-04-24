@@ -74,13 +74,6 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
 
     weakref.finalize(self, finalize, self._event_loop, self._thread)
 
-  def _run_coro_threadsafe_with_tracing(self, coro):
-    """Runs `coro` on `self._event_loop` inside the current trace spans."""
-    with tracing.with_trace_context_from_rpc():
-      return asyncio.run_coroutine_threadsafe(
-          tracing.wrap_coroutine_in_current_trace_context(coro),
-          self._event_loop)
-
   async def _HandleRequest(
       self,
       req: executor_pb2.ExecuteRequest,
@@ -174,8 +167,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         value, value_type = (
             executor_service_utils.deserialize_value(request.value))
       value_id = str(uuid.uuid4())
-      coro = self._executor.create_value(value, value_type)
-      future_val = self._run_coro_threadsafe_with_tracing(coro)
+      future_val = tracing.run_coroutine_threadsafe_in_ambient_trace_context(
+          self._executor.create_value(value, value_type), self._event_loop)
       with self._lock:
         self._values[value_id] = future_val
       return executor_pb2.CreateValueResponse(
@@ -204,8 +197,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
             argument_val) if argument_val is not None else None
         return await self._executor.create_call(function, argument)
 
-      coro = _processing()
-      result_fut = self._run_coro_threadsafe_with_tracing(coro)
+      result_fut = tracing.run_coroutine_threadsafe_in_ambient_trace_context(
+          _processing(), self._event_loop)
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
@@ -236,7 +229,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         anon_tuple = anonymous_tuple.AnonymousTuple(elements)
         return await self._executor.create_tuple(anon_tuple)
 
-      result_fut = self._run_coro_threadsafe_with_tracing(_processing())
+      result_fut = tracing.run_coroutine_threadsafe_in_ambient_trace_context(
+          _processing(), self._event_loop)
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
@@ -266,7 +260,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
           coro = self._executor.create_selection(source, index=request.index)
         return await coro
 
-      result_fut = self._run_coro_threadsafe_with_tracing(_processing())
+      result_fut = tracing.run_coroutine_threadsafe_in_ambient_trace_context(
+          _processing(), self._event_loop)
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
@@ -282,8 +277,8 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       context: grpc.ServicerContext,
   ) -> executor_pb2.ComputeResponse:
     """Computes a value embedded in the executor."""
-    return self._run_coro_threadsafe_with_tracing(
-        self._Compute(request, context)).result()
+    return tracing.run_coroutine_threadsafe_in_ambient_trace_context(
+        self._Compute(request, context), self._event_loop).result()
 
   async def _Compute(
       self,
