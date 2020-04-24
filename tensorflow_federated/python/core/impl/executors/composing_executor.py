@@ -444,9 +444,7 @@ class ComposingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def _compute_intrinsic_federated_broadcast(self, arg):
-    return await self.create_value(
-        await arg.compute(),
-        type_factory.at_clients(arg.type_signature.member, all_equal=True))
+    return await executor_utils.compute_intrinsic_federated_broadcast(self, arg)
 
   @tracing.trace
   async def _eval(self, arg, intrinsic, placement, all_equal):
@@ -583,7 +581,8 @@ class ComposingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def _compute_intrinsic_federated_weighted_mean(self, arg):
-    return await executor_utils.compute_federated_weighted_mean(self, arg)
+    return await executor_utils.compute_intrinsic_federated_weighted_mean(
+        self, arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_zip_at_clients(self, arg):

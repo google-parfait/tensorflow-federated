@@ -406,8 +406,28 @@ py_library(
         "//tensorflow_federated/python/core/impl:type_utils",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
+    ],
+)
+
+py_test(
+    name = "executor_utils_test",
+    size = "small",
+    srcs = ["executor_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":composing_executor",
+        ":eager_tf_executor",
+        ":executor_test_utils",
+        ":executor_utils",
+        ":executor_value_base",
+        ":federating_executor",
+        ":reference_resolving_executor",
+        "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/compiler:type_factory",
     ],
 )
 

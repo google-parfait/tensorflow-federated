@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.executors import executor_base
@@ -165,12 +166,43 @@ def create_intrinsic_comp(intrinsic_def, type_spec):
       intrinsic=pb.Intrinsic(uri=intrinsic_def.uri))
 
 
-async def compute_federated_weighted_mean(executor, arg):
-  """Computes a federated weighted using simpler intrinsic coroutines.
+async def compute_intrinsic_federated_broadcast(
+    executor: executor_base.Executor, arg: executor_value_base.ExecutorValue
+) -> executor_value_base.ExecutorValue:
+  """Computes a federated broadcast.
+
+  This functions computes a federated broadcast of `arg` on the given
+  `executor`. The `arg` is expected to be embedded in the `executor` and
+  have federated type placed at `tff.SERVER` with all_equal of `True`.
 
   Args:
     executor: The executor to use.
-    arg: The argument tuple value, which must be embedded in `executor`.
+    arg: The value to broadcast.
+
+  Returns:
+    The result embedded in `executor`.
+
+  Raises:
+    TypeError: If the arguments are of the wrong types.
+  """
+  py_typecheck.check_type(executor, executor_base.Executor)
+  py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
+  type_utils.check_federated_type(
+      arg.type_signature, placement=placement_literals.SERVER, all_equal=True)
+  value = await arg.compute()
+  type_signature = computation_types.FederatedType(
+      arg.type_signature.member, placement_literals.CLIENTS, all_equal=True)
+  return await executor.create_value(value, type_signature)
+
+
+async def compute_intrinsic_federated_weighted_mean(
+    executor: executor_base.Executor, arg: executor_value_base.ExecutorValue
+) -> executor_value_base.ExecutorValue:
+  """Computes a federated weighted mean.
+
+  Args:
+    executor: The executor to use.
+    arg: The argument to embedded in `executor`.
 
   Returns:
     The result embedded in `executor`.

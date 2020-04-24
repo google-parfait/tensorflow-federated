@@ -261,15 +261,6 @@ class TracingExecutorValue(executor_value_base.ExecutorValue):
     return result
 
 
-def create_dummy_intrinsic_def_federated_apply():
-  value = intrinsic_defs.FEDERATED_APPLY
-  type_signature = computation_types.FunctionType([
-      type_factory.unary_op(tf.float32),
-      type_factory.at_server(tf.float32),
-  ], type_factory.at_server(tf.float32))
-  return value, type_signature
-
-
 def create_dummy_intrinsic_def_federated_aggregate():
   value = intrinsic_defs.FEDERATED_AGGREGATE
   type_signature = computation_types.FunctionType([
@@ -278,6 +269,15 @@ def create_dummy_intrinsic_def_federated_aggregate():
       type_factory.reduction_op(tf.float32, tf.float32),
       type_factory.binary_op(tf.float32),
       computation_types.FunctionType(tf.float32, tf.float32),
+  ], type_factory.at_server(tf.float32))
+  return value, type_signature
+
+
+def create_dummy_intrinsic_def_federated_apply():
+  value = intrinsic_defs.FEDERATED_APPLY
+  type_signature = computation_types.FunctionType([
+      type_factory.unary_op(tf.float32),
+      type_factory.at_server(tf.float32),
   ], type_factory.at_server(tf.float32))
   return value, type_signature
 
@@ -610,29 +610,29 @@ def create_dummy_computation_tuple():
   return value, type_signature
 
 
-def create_dummy_value_clients():
-  """Returns a Python value and type at clients."""
-  value = [10.0, 20.0, 30.0]
+def create_dummy_value_at_clients(number_of_clients: int = 3):
+  """Returns a Python value and federated type at clients."""
+  value = [float(x) for x in range(10, number_of_clients + 10)]
   type_signature = type_factory.at_clients(tf.float32)
   return value, type_signature
 
 
-def create_dummy_value_clients_all_equal():
-  """Returns a Python value and type at clients and all equal."""
+def create_dummy_value_at_clients_all_equal():
+  """Returns a Python value and federated type at clients and all equal."""
   value = 10.0
   type_signature = type_factory.at_clients(tf.float32, all_equal=True)
   return value, type_signature
 
 
-def create_dummy_value_server():
-  """Returns a Python value and type at server."""
+def create_dummy_value_at_server():
+  """Returns a Python value and federated type at server."""
   value = 10.0
   type_signature = type_factory.at_server(tf.float32)
   return value, type_signature
 
 
 def create_dummy_value_unplaced():
-  """Returns a Python value and type unplaced."""
+  """Returns a Python value and unplaced type."""
   value = 10.0
   type_signature = computation_types.TensorType(tf.float32)
   return value, type_signature

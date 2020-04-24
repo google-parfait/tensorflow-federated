@@ -611,6 +611,15 @@ class FederatingExecutor(executor_base.Executor):
             all_equal=all_equal))
 
   @tracing.trace
+  async def _compute_intrinsic_federated_broadcast(self, arg):
+    py_typecheck.check_type(arg.internal_representation, list)
+    if len(arg.internal_representation) != 1:
+      raise ValueError(
+          'Federated broadcast expects a value with a single representation, '
+          'found {}.'.format(len(arg.internal_representation)))
+    return await executor_utils.compute_intrinsic_federated_broadcast(self, arg)
+
+  @tracing.trace
   async def _compute_intrinsic_federated_value_at_server(self, arg):
     return await self._place(arg, placement_literals.SERVER)
 
@@ -637,24 +646,6 @@ class FederatingExecutor(executor_base.Executor):
   @tracing.trace
   async def _compute_intrinsic_federated_map_all_equal(self, arg):
     return await self._map(arg, all_equal=True)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_broadcast(self, arg):
-    py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
-    py_typecheck.check_type(arg.internal_representation, list)
-    if not arg.type_signature.all_equal:
-      raise ValueError('Cannot broadcast a non all_equal value.')
-    if len(arg.internal_representation) != 1:
-      raise ValueError(
-          'Cannot broadcast a with a non-singleton representation.')
-    value = await arg.internal_representation[0].compute()
-    self._check_value_compatible_with_placement(
-        value, placement_literals.CLIENTS, all_equal=True)
-    return FederatingExecutorValue(
-        await asyncio.gather(*[
-            c.create_value(value, arg.type_signature.member)
-            for c in self._target_executors[placement_literals.CLIENTS]
-        ]), type_factory.at_clients(arg.type_signature.member, all_equal=True))
 
   @tracing.trace
   async def _compute_intrinsic_federated_zip_at_server(self, arg):
@@ -788,7 +779,8 @@ class FederatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def _compute_intrinsic_federated_weighted_mean(self, arg):
-    return await executor_utils.compute_federated_weighted_mean(self, arg)
+    return await executor_utils.compute_intrinsic_federated_weighted_mean(
+        self, arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_collect(self, arg):
