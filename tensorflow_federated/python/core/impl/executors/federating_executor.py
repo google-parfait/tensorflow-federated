@@ -611,6 +611,51 @@ class FederatingExecutor(executor_base.Executor):
             all_equal=all_equal))
 
   @tracing.trace
+  async def _compute_intrinsic_federated_aggregate(self, arg):
+    val_type, zero_type, accumulate_type, _, report_type = (
+        executor_utils.parse_federated_aggregate_argument_types(
+            arg.type_signature))
+    py_typecheck.check_type(arg.internal_representation,
+                            anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_len(arg.internal_representation, 5)
+
+    # Note: This is a simple initial implementation that simply forwards this
+    # to `federated_reduce()`. The more complete implementation would be able
+    # to take advantage of the parallelism afforded by `merge` to reduce the
+    # cost from liner (with respect to the number of clients) to sub-linear.
+
+    # TODO(b/134543154): Expand this implementation to take advantage of the
+    # parallelism afforded by `merge`.
+
+    val = arg.internal_representation[0]
+    zero = arg.internal_representation[1]
+    accumulate = arg.internal_representation[2]
+    pre_report = await self._compute_intrinsic_federated_reduce(
+        FederatingExecutorValue(
+            anonymous_tuple.AnonymousTuple([(None, val), (None, zero),
+                                            (None, accumulate)]),
+            computation_types.NamedTupleType(
+                (val_type, zero_type, accumulate_type))))
+
+    py_typecheck.check_type(pre_report.type_signature,
+                            computation_types.FederatedType)
+    type_utils.check_equivalent_types(pre_report.type_signature.member,
+                                      report_type.parameter)
+
+    report = arg.internal_representation[4]
+    return await self._compute_intrinsic_federated_apply(
+        FederatingExecutorValue(
+            anonymous_tuple.AnonymousTuple([
+                (None, report), (None, pre_report.internal_representation)
+            ]),
+            computation_types.NamedTupleType(
+                (report_type, pre_report.type_signature))))
+
+  @tracing.trace
+  async def _compute_intrinsic_federated_apply(self, arg):
+    return await self._map(arg)
+
+  @tracing.trace
   async def _compute_intrinsic_federated_broadcast(self, arg):
     py_typecheck.check_type(arg.internal_representation, list)
     if len(arg.internal_representation) != 1:
@@ -620,24 +665,31 @@ class FederatingExecutor(executor_base.Executor):
     return await executor_utils.compute_intrinsic_federated_broadcast(self, arg)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_value_at_server(self, arg):
-    return await self._place(arg, placement_literals.SERVER)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_value_at_clients(self, arg):
-    return await self._place(arg, placement_literals.CLIENTS)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_eval_at_server(self, arg):
-    return await self._eval(arg, placement_literals.SERVER, True)
+  async def _compute_intrinsic_federated_collect(self, arg):
+    py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
+    type_utils.check_federated_type(
+        arg.type_signature, placement=placement_literals.CLIENTS)
+    val = arg.internal_representation
+    py_typecheck.check_type(val, list)
+    member_type = arg.type_signature.member
+    child = self._target_executors[placement_literals.SERVER][0]
+    collected_items = await child.create_value(
+        await asyncio.gather(*[v.compute() for v in val]),
+        computation_types.SequenceType(member_type))
+    return FederatingExecutorValue(
+        [collected_items],
+        computation_types.FederatedType(
+            computation_types.SequenceType(member_type),
+            placement_literals.SERVER,
+            all_equal=True))
 
   @tracing.trace
   async def _compute_intrinsic_federated_eval_at_clients(self, arg):
     return await self._eval(arg, placement_literals.CLIENTS, False)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_apply(self, arg):
-    return await self._map(arg)
+  async def _compute_intrinsic_federated_eval_at_server(self, arg):
+    return await self._eval(arg, placement_literals.SERVER, True)
 
   @tracing.trace
   async def _compute_intrinsic_federated_map(self, arg):
@@ -648,12 +700,24 @@ class FederatingExecutor(executor_base.Executor):
     return await self._map(arg, all_equal=True)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_zip_at_server(self, arg):
-    return await self._zip(arg, placement_literals.SERVER, all_equal=True)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_zip_at_clients(self, arg):
-    return await self._zip(arg, placement_literals.CLIENTS, all_equal=False)
+  async def _compute_intrinsic_federated_mean(self, arg):
+    arg_sum = await self._compute_intrinsic_federated_sum(arg)
+    member_type = arg_sum.type_signature.member
+    count = float(len(arg.internal_representation))
+    if count < 1.0:
+      raise RuntimeError('Cannot compute a federated mean over an empty group.')
+    child = self._target_executors[placement_literals.SERVER][0]
+    factor, multiply = tuple(await asyncio.gather(*[
+        executor_utils.embed_tf_scalar_constant(child, member_type,
+                                                float(1.0 / count)),
+        executor_utils.embed_tf_binary_operator(child, member_type, tf.multiply)
+    ]))
+    multiply_arg = await child.create_tuple(
+        anonymous_tuple.AnonymousTuple([(None,
+                                         arg_sum.internal_representation[0]),
+                                        (None, factor)]))
+    result = await child.create_call(multiply, multiply_arg)
+    return FederatingExecutorValue([result], arg_sum.type_signature)
 
   @tracing.trace
   async def _compute_intrinsic_federated_reduce(self, arg):
@@ -696,45 +760,8 @@ class FederatingExecutor(executor_base.Executor):
                                        all_equal=True))
 
   @tracing.trace
-  async def _compute_intrinsic_federated_aggregate(self, arg):
-    val_type, zero_type, accumulate_type, _, report_type = (
-        executor_utils.parse_federated_aggregate_argument_types(
-            arg.type_signature))
-    py_typecheck.check_type(arg.internal_representation,
-                            anonymous_tuple.AnonymousTuple)
-    py_typecheck.check_len(arg.internal_representation, 5)
-
-    # Note: This is a simple initial implementation that simply forwards this
-    # to `federated_reduce()`. The more complete implementation would be able
-    # to take advantage of the parallelism afforded by `merge` to reduce the
-    # cost from liner (with respect to the number of clients) to sub-linear.
-
-    # TODO(b/134543154): Expand this implementation to take advantage of the
-    # parallelism afforded by `merge`.
-
-    val = arg.internal_representation[0]
-    zero = arg.internal_representation[1]
-    accumulate = arg.internal_representation[2]
-    pre_report = await self._compute_intrinsic_federated_reduce(
-        FederatingExecutorValue(
-            anonymous_tuple.AnonymousTuple([(None, val), (None, zero),
-                                            (None, accumulate)]),
-            computation_types.NamedTupleType(
-                (val_type, zero_type, accumulate_type))))
-
-    py_typecheck.check_type(pre_report.type_signature,
-                            computation_types.FederatedType)
-    type_utils.check_equivalent_types(pre_report.type_signature.member,
-                                      report_type.parameter)
-
-    report = arg.internal_representation[4]
-    return await self._compute_intrinsic_federated_apply(
-        FederatingExecutorValue(
-            anonymous_tuple.AnonymousTuple([
-                (None, report), (None, pre_report.internal_representation)
-            ]),
-            computation_types.NamedTupleType(
-                (report_type, pre_report.type_signature))))
+  async def _compute_intrinsic_federated_secure_sum(self, arg):
+    raise NotImplementedError('The secure sum intrinsic is not implemented.')
 
   @tracing.trace
   async def _compute_intrinsic_federated_sum(self, arg):
@@ -758,24 +785,12 @@ class FederatingExecutor(executor_base.Executor):
     )
 
   @tracing.trace
-  async def _compute_intrinsic_federated_mean(self, arg):
-    arg_sum = await self._compute_intrinsic_federated_sum(arg)
-    member_type = arg_sum.type_signature.member
-    count = float(len(arg.internal_representation))
-    if count < 1.0:
-      raise RuntimeError('Cannot compute a federated mean over an empty group.')
-    child = self._target_executors[placement_literals.SERVER][0]
-    factor, multiply = tuple(await asyncio.gather(*[
-        executor_utils.embed_tf_scalar_constant(child, member_type,
-                                                float(1.0 / count)),
-        executor_utils.embed_tf_binary_operator(child, member_type, tf.multiply)
-    ]))
-    multiply_arg = await child.create_tuple(
-        anonymous_tuple.AnonymousTuple([(None,
-                                         arg_sum.internal_representation[0]),
-                                        (None, factor)]))
-    result = await child.create_call(multiply, multiply_arg)
-    return FederatingExecutorValue([result], arg_sum.type_signature)
+  async def _compute_intrinsic_federated_value_at_clients(self, arg):
+    return await self._place(arg, placement_literals.CLIENTS)
+
+  @tracing.trace
+  async def _compute_intrinsic_federated_value_at_server(self, arg):
+    return await self._place(arg, placement_literals.SERVER)
 
   @tracing.trace
   async def _compute_intrinsic_federated_weighted_mean(self, arg):
@@ -783,24 +798,9 @@ class FederatingExecutor(executor_base.Executor):
         self, arg)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_collect(self, arg):
-    py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
-    type_utils.check_federated_type(
-        arg.type_signature, placement=placement_literals.CLIENTS)
-    val = arg.internal_representation
-    py_typecheck.check_type(val, list)
-    member_type = arg.type_signature.member
-    child = self._target_executors[placement_literals.SERVER][0]
-    collected_items = await child.create_value(
-        await asyncio.gather(*[v.compute() for v in val]),
-        computation_types.SequenceType(member_type))
-    return FederatingExecutorValue(
-        [collected_items],
-        computation_types.FederatedType(
-            computation_types.SequenceType(member_type),
-            placement_literals.SERVER,
-            all_equal=True))
+  async def _compute_intrinsic_federated_zip_at_clients(self, arg):
+    return await self._zip(arg, placement_literals.CLIENTS, all_equal=False)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_secure_sum(self, arg):
-    raise NotImplementedError('The secure sum intrinsic is not implemented.')
+  async def _compute_intrinsic_federated_zip_at_server(self, arg):
+    return await self._zip(arg, placement_literals.SERVER, all_equal=True)

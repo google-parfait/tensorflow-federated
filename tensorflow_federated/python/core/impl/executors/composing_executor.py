@@ -474,14 +474,14 @@ class ComposingExecutor(executor_base.Executor):
     return CompositeValue(result_vals, result_type)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_eval_at_server(self, arg):
-    return await self._eval(arg, intrinsic_defs.FEDERATED_EVAL_AT_SERVER,
-                            placement_literals.SERVER, True)
-
-  @tracing.trace
   async def _compute_intrinsic_federated_eval_at_clients(self, arg):
     return await self._eval(arg, intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS,
                             placement_literals.CLIENTS, False)
+
+  @tracing.trace
+  async def _compute_intrinsic_federated_eval_at_server(self, arg):
+    return await self._eval(arg, intrinsic_defs.FEDERATED_EVAL_AT_SERVER,
+                            placement_literals.SERVER, True)
 
   @tracing.trace
   async def _map(self, arg, all_equal=None):
@@ -569,6 +569,10 @@ class ComposingExecutor(executor_base.Executor):
     return await self._compute_intrinsic_federated_aggregate(aggregate_args)
 
   @tracing.trace
+  async def _compute_intrinsic_federated_secure_sum(self, arg):
+    raise NotImplementedError('The secure sum intrinsic is not implemented.')
+
+  @tracing.trace
   async def _compute_intrinsic_federated_value_at_clients(self, arg):
     return await self.create_value(
         await arg.compute(),
@@ -645,10 +649,6 @@ class ComposingExecutor(executor_base.Executor):
         type_factory.at_server(
             computation_types.NamedTupleType(
                 [arg.type_signature[0].member, arg.type_signature[1].member])))
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_secure_sum(self, arg):
-    raise NotImplementedError('The secure sum intrinsic is not implemented.')
 
   def close(self):
     for e in self._child_executors:
