@@ -523,19 +523,6 @@ class FederatingExecutor(executor_base.Executor):
                 participants=len(children)))
 
   @tracing.trace
-  async def _place(self, arg, placement):
-    py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
-    children = self._target_executors[placement]
-    value = await arg.compute()
-    self._check_value_compatible_with_placement(
-        value, placement, all_equal=True)
-    return FederatingExecutorValue(
-        await asyncio.gather(
-            *[c.create_value(value, arg.type_signature) for c in children]),
-        computation_types.FederatedType(
-            arg.type_signature, placement, all_equal=True))
-
-  @tracing.trace
   async def _eval(self, arg, placement, all_equal):
     py_typecheck.check_type(arg.type_signature, computation_types.FunctionType)
     py_typecheck.check_none(arg.type_signature.parameter)
@@ -786,11 +773,13 @@ class FederatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def _compute_intrinsic_federated_value_at_clients(self, arg):
-    return await self._place(arg, placement_literals.CLIENTS)
+    return await executor_utils.compute_intrinsic_federated_value(
+        self, arg, placement_literals.CLIENTS)
 
   @tracing.trace
   async def _compute_intrinsic_federated_value_at_server(self, arg):
-    return await self._place(arg, placement_literals.SERVER)
+    return await executor_utils.compute_intrinsic_federated_value(
+        self, arg, placement_literals.SERVER)
 
   @tracing.trace
   async def _compute_intrinsic_federated_weighted_mean(self, arg):

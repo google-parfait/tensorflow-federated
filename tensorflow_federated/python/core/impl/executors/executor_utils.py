@@ -169,15 +169,12 @@ def create_intrinsic_comp(intrinsic_def, type_spec):
 async def compute_intrinsic_federated_broadcast(
     executor: executor_base.Executor, arg: executor_value_base.ExecutorValue
 ) -> executor_value_base.ExecutorValue:
-  """Computes a federated broadcast.
-
-  This functions computes a federated broadcast of `arg` on the given
-  `executor`. The `arg` is expected to be embedded in the `executor` and
-  have federated type placed at `tff.SERVER` with all_equal of `True`.
+  """Computes a federated broadcast on the given `executor`.
 
   Args:
     executor: The executor to use.
-    arg: The value to broadcast.
+    arg: The value to broadcast. Expected to be embedded in the `executor` and
+      have federated type placed at `tff.SERVER` with all_equal of `True`.
 
   Returns:
     The result embedded in `executor`.
@@ -195,10 +192,36 @@ async def compute_intrinsic_federated_broadcast(
   return await executor.create_value(value, type_signature)
 
 
+async def compute_intrinsic_federated_value(
+    executor: executor_base.Executor, arg: executor_value_base.ExecutorValue,
+    placement: placement_literals.PlacementLiteral
+) -> executor_value_base.ExecutorValue:
+  """Computes a federated value on the given `executor`.
+
+  Args:
+    executor: The executor to use.
+    arg: The value to place.
+    placement: The new placement of the value.
+
+  Returns:
+    The result embedded in `executor`.
+
+  Raises:
+    TypeError: If the arguments are of the wrong types.
+  """
+  py_typecheck.check_type(executor, executor_base.Executor)
+  py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
+  py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+  value = await arg.compute()
+  type_signature = computation_types.FederatedType(
+      arg.type_signature, placement, all_equal=True)
+  return await executor.create_value(value, type_signature)
+
+
 async def compute_intrinsic_federated_weighted_mean(
     executor: executor_base.Executor, arg: executor_value_base.ExecutorValue
 ) -> executor_value_base.ExecutorValue:
-  """Computes a federated weighted mean.
+  """Computes a federated weighted mean on the given `executor`.
 
   Args:
     executor: The executor to use.

@@ -113,5 +113,43 @@ class ComputeIntrinsicFederatedBroadcastTest(executor_test_utils.AsyncTestCase,
           executor_utils.compute_intrinsic_federated_broadcast(executor, value))
 
 
+@parameterized.named_parameters([
+    ('federating_executor', create_test_federating_executor()),
+    ('composing_executor', create_test_composing_executor()),
+])
+class ComputeIntrinsicFederatedValueTest(executor_test_utils.AsyncTestCase,
+                                         parameterized.TestCase):
+
+  def test_returns_value_with_unplaced_type_and_clients(self, executor):
+    value, type_signature = executor_test_utils.create_dummy_value_unplaced()
+
+    value = self.run_sync(executor.create_value(value, type_signature))
+    result = self.run_sync(
+        executor_utils.compute_intrinsic_federated_value(
+            executor, value, placement_literals.CLIENTS))
+
+    self.assertIsInstance(result, executor_value_base.ExecutorValue)
+    expected_type = type_factory.at_clients(type_signature, all_equal=True)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     expected_type.compact_representation())
+    actual_result = self.run_sync(result.compute())
+    self.assertEqual(actual_result, 10.0)
+
+  def test_returns_value_with_unplaced_type_and_server(self, executor):
+    value, type_signature = executor_test_utils.create_dummy_value_unplaced()
+
+    value = self.run_sync(executor.create_value(value, type_signature))
+    result = self.run_sync(
+        executor_utils.compute_intrinsic_federated_value(
+            executor, value, placement_literals.SERVER))
+
+    self.assertIsInstance(result, executor_value_base.ExecutorValue)
+    expected_type = type_factory.at_server(type_signature)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     expected_type.compact_representation())
+    actual_result = self.run_sync(result.compute())
+    self.assertEqual(actual_result, 10.0)
+
+
 if __name__ == '__main__':
   absltest.main()
