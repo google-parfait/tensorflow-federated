@@ -334,7 +334,10 @@ def span(scope, sub_scope, **trace_opts):
   span_gen = _span_generator(scope, sub_scope, trace_opts)
   next(span_gen)
   yield
-  span_gen.send(TracedSpan())
+  try:
+    span_gen.send(TracedSpan())
+  except StopIteration:
+    pass
 
 
 def _span_generator(scope,
