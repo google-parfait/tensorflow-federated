@@ -77,3 +77,22 @@ def assert_nested_struct_eq(x, y):
     if xe != ye:
       raise ValueError('Mismatching elements {} and {}.'.format(
           str(xe), str(ye)))
+
+
+def skip_test_for_gpu(test_fn):
+  """Decorator for a test to be skipped in GPU tests.
+
+  Args:
+    test_fn: A test function to be decorated.
+
+  Returns:
+    The decorated test_fn.
+  """
+
+  def wrapped_test_fn(self):
+    gpu_devices = tf.config.list_logical_devices('GPU')
+    if gpu_devices:
+      self.skipTest('skip GPU test')
+    test_fn(self)
+
+  return wrapped_test_fn
