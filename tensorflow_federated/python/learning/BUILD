@@ -38,20 +38,6 @@ py_library(
 )
 
 py_test(
-    name = "federated_averaging_benchmark",
-    srcs = ["federated_averaging_benchmark.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":federated_averaging",
-        ":keras_utils",
-        ":model_examples",
-        "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core",
-    ],
-)
-
-py_test(
     name = "federated_averaging_test",
     size = "medium",
     srcs = ["federated_averaging_test.py"],
