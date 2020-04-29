@@ -54,6 +54,10 @@ DEFAULT_FORMAT_STRATEGY = lambda x: "{} {}".format(x, type(x))
 class ExecutionTracingProvider(tracing.TracingProvider):
   """Traces a subset of functions appearing in the current execution context.
 
+  NOTE: This TracingProvider does not attempt to correlate log messages across
+  threads, so executor stacks using ThreadDelegatingExecutor will generally lose
+  their nesting structure in the logs.
+
   This implementation does not require storing additional trace context state,
   so most methods are no-ops.
   """
