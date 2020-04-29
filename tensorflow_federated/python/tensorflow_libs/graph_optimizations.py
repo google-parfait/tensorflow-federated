@@ -13,17 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Library of static graph optimizations."""
-import tensorflow as tf
-
 from tensorflow.python.grappler import tf_optimizer
 from tensorflow_federated.python.tensorflow_libs import graph_spec
 
 
-def optimize_graph_spec(graph_spec_obj):
+def optimize_graph_spec(graph_spec_obj, config_proto):
+  """Applies Grappler with given options to a `graph_spec.GraphSpec`."""
   meta_graph_def = graph_spec_obj.to_meta_graph_def()
-  config_proto = tf.compat.v1.ConfigProto()
-  # TODO(b/154367032): Determine a set of optimizer configurations for TFF.
-  optimized_graph_def = tf_optimizer.OptimizeGraph(config_proto, meta_graph_def)
+
+  try:
+    # Grappler raises if it fails to find feeds and fetches, but can handle
+    # *some* no-arg graphs, so we try/except here.
+    optimized_graph_def = tf_optimizer.OptimizeGraph(config_proto,
+                                                     meta_graph_def)
+  except ValueError:
+    optimized_graph_def = graph_spec_obj.graph_def
+
   return graph_spec.GraphSpec(
       optimized_graph_def,
       init_op=graph_spec_obj.init_op,

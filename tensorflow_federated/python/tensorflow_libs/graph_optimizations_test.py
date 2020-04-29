@@ -12,12 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for graph_opt.py."""
+"""Tests for graph_optimizations.py."""
 
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
-from tensorflow_federated.python.tensorflow_libs import graph_opt
+from tensorflow_federated.python.tensorflow_libs import graph_optimizations
 from tensorflow_federated.python.tensorflow_libs import graph_spec
 
 
@@ -75,7 +75,8 @@ class GraphOptTest(test.TestCase):
     in_names = [in_name]
     out_names = [out_name]
     gs = graph_spec.GraphSpec(graph_def, init_op, in_names, out_names)
-    opt_graph_spec = graph_opt.optimize_graph_spec(gs)
+    config_proto = tf.compat.v1.ConfigProto()
+    opt_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
     self.assertIsInstance(opt_graph_spec, graph_spec.GraphSpec)
     self.assertLess(opt_graph_spec.graph_def.ByteSize(), graph_def.ByteSize())
 
@@ -86,7 +87,8 @@ class GraphOptTest(test.TestCase):
     in_names = [in_name]
     out_names = [out_name]
     gs = graph_spec.GraphSpec(graph_def, init_op, in_names, out_names)
-    opt_graph_spec = graph_opt.optimize_graph_spec(gs)
+    config_proto = tf.compat.v1.ConfigProto()
+    opt_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
 
     with tf.Graph().as_default() as orig_graph:
       tf.graph_util.import_graph_def(gs.graph_def, name='')
@@ -113,7 +115,8 @@ class GraphOptTest(test.TestCase):
     in_names = []
     out_names = [out_name]
     gs = graph_spec.GraphSpec(graph_def, init_op, in_names, out_names)
-    opt_graph_spec = graph_opt.optimize_graph_spec(gs)
+    config_proto = tf.compat.v1.ConfigProto()
+    opt_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
     self.assertIsInstance(opt_graph_spec, graph_spec.GraphSpec)
     self.assertLess(opt_graph_spec.graph_def.ByteSize(), graph_def.ByteSize())
 
@@ -128,7 +131,8 @@ class GraphOptTest(test.TestCase):
     in_names = []
     out_names = [out_name]
     gs = graph_spec.GraphSpec(graph_def, init_op, in_names, out_names)
-    opt_graph_spec = graph_opt.optimize_graph_spec(gs)
+    config_proto = tf.compat.v1.ConfigProto()
+    opt_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
 
     with tf.Graph().as_default() as orig_graph:
       tf.graph_util.import_graph_def(gs.graph_def, name='')
@@ -164,7 +168,8 @@ class GraphOptTest(test.TestCase):
     in_names = [in_name]
     out_names = [out_name]
     gs = graph_spec.GraphSpec(graph_def, init_op, in_names, out_names)
-    opt_graph_spec = graph_opt.optimize_graph_spec(gs)
+    config_proto = tf.compat.v1.ConfigProto()
+    opt_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
 
     opt_constants_1 = []
     for node in opt_graph_spec.graph_def.node:
@@ -186,7 +191,8 @@ class GraphOptTest(test.TestCase):
     in_names = [in_name]
     out_names = [out_name]
     gs = graph_spec.GraphSpec(graph_def, init_op, in_names, out_names)
-    opt_graph_spec = graph_opt.optimize_graph_spec(gs)
+    config_proto = tf.compat.v1.ConfigProto()
+    opt_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
 
     with tf.Graph().as_default() as orig_graph:
       tf.graph_util.import_graph_def(gs.graph_def, name='')
@@ -234,7 +240,8 @@ class GraphOptTest(test.TestCase):
     in_names = [in_name]
     out_names = [out_name]
     gs = graph_spec.GraphSpec(graph_def, init_op_name, in_names, out_names)
-    opt_graph_spec = graph_opt.optimize_graph_spec(gs)
+    config_proto = tf.compat.v1.ConfigProto()
+    opt_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
 
     self.assertIsInstance(opt_graph_spec, graph_spec.GraphSpec)
     self.assertLess(opt_graph_spec.graph_def.ByteSize(), graph_def.ByteSize())
@@ -267,7 +274,8 @@ class GraphOptTest(test.TestCase):
     in_names = [in_name]
     out_names = [out_name]
     gs = graph_spec.GraphSpec(graph_def, init_op_name, in_names, out_names)
-    opt_graph_spec = graph_opt.optimize_graph_spec(gs)
+    config_proto = tf.compat.v1.ConfigProto()
+    opt_graph_spec = graph_optimizations.optimize_graph_spec(gs, config_proto)
 
     with tf.Graph().as_default() as orig_graph:
       tf.graph_util.import_graph_def(gs.graph_def, name='')
