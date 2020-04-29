@@ -191,21 +191,6 @@ py_test(
     ],
 )
 
-py_test(
-    name = "end_to_end_test",
-    size = "small",
-    srcs = ["end_to_end_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":computation_impl",
-        ":tensorflow_serialization",
-        "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/executors:default_executor",
-    ],
-)
-
 py_library(
     name = "executor_service_utils",
     srcs = ["executor_service_utils.py"],
