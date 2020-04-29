@@ -20,6 +20,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.research.targeted_attack import aggregate_fn
 from tensorflow_federated.python.research.targeted_attack import attacked_fedavg
 from tensorflow_federated.python.research.targeted_attack.attacked_fedavg import build_federated_averaging_process_attacked
@@ -279,6 +280,8 @@ class ServerTest(tf.test.TestCase):
 
 class ClientTest(tf.test.TestCase):
 
+  # TODO(b/155198591): bring GPU test back after the fix for tf.function.
+  @test.skip_test_for_gpu
   def test_self_contained_example(self):
     client_data = create_client_data()
     model = MnistModel()

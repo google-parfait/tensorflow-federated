@@ -28,6 +28,8 @@ tf.compat.v1.enable_v2_behavior()
 
 class IntegrationTest(test.TestCase):
 
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @test.skip_test_for_gpu
   def test_fetch_value_with_nested_datasets(self):
 
     def return_two_datasets():
@@ -42,6 +44,8 @@ class IntegrationTest(test.TestCase):
     self.assertEqual([i for i in iter(x[0])], list(range(5)))
     self.assertEqual([i for i in iter(x[1])], list(range(5)))
 
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @test.skip_test_for_gpu
   def test_fetch_value_with_dataset_and_tensor(self):
 
     def return_dataset_and_tensor():
@@ -58,6 +62,8 @@ class IntegrationTest(test.TestCase):
     self.assertEqual([x for x in iter(x[1])], list(range(5)))
     self.assertEqual(x[2], 5)
 
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @test.skip_test_for_gpu
   def test_fetch_value_with_datasets_nested_at_second_level(self):
 
     def return_two_datasets():
@@ -76,6 +82,8 @@ class IntegrationTest(test.TestCase):
     self.assertEqual([i for i in iter(x[1][0])], list(range(5)))
     self.assertEqual([i for i in iter(x[1][1])], list(range(5)))
 
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @test.skip_test_for_gpu
   def test_fetch_value_with_empty_dataset_and_tensors(self):
 
     def return_dataset():
@@ -94,6 +102,8 @@ class IntegrationTest(test.TestCase):
     with self.assertRaises(StopIteration):
       _ = next(iter(x[1]))
 
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @test.skip_test_for_gpu
   def test_fetch_value_with_empty_structured_dataset_and_tensors(self):
 
     def return_dataset():

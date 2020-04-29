@@ -36,6 +36,7 @@ py_test(
     deps = [
         ":dataset",
         "//tensorflow_federated",
+        "//tensorflow_federated/python/common_libs:test",
     ],
 )
 

@@ -449,6 +449,8 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
   # TODO(b/122081673): Support tf.Dataset serialization in tf2_computation.
   @executor_test_utils.executors
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @common_test.skip_test_for_gpu
   def test_with_tf_datasets(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int64))
@@ -482,6 +484,8 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
   # returning infinite datasets
   @executor_test_utils.executors(
       ('local', executor_stacks.local_executor_factory(1)),)
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @common_test.skip_test_for_gpu
   def test_produce_and_consume_infinite_tf_dataset(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int64))

@@ -109,6 +109,8 @@ class CanonicalFormTest(test.TestCase):
     )
     # pyformat: enable
 
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @test.skip_test_for_gpu
   def test_canonical_form_with_learning_structure_does_not_change_execution_of_iterative_process(
       self):
     ip_1 = construct_example_training_comp()

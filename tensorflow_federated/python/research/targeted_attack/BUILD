@@ -30,6 +30,7 @@ py_test(
         ":aggregate_fn",
         ":attacked_fedavg",
         "//tensorflow_federated",
+        "//tensorflow_federated/python/common_libs:test",
     ],
 )
 
