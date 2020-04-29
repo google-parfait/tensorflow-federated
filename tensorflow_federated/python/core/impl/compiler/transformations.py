@@ -614,10 +614,5 @@ def dedupe_and_merge_tuple_intrinsics(comp, uri):
       comp, _remove_selection_from_block_holding_tuple)
   transform_spec = tree_transformations.MergeTupleIntrinsics(comp, uri)
   dedupe_and_merger = RemoveDuplicatesAndApplyTransform(comp, transform_spec)
-
-  def _transform(comp):
-    if dedupe_and_merger.should_transform(comp):
-      return dedupe_and_merger.transform(comp)
-    return comp, False
-
-  return transformation_utils.transform_postorder(comp, _transform)
+  return transformation_utils.transform_postorder(comp,
+                                                  dedupe_and_merger.transform)
