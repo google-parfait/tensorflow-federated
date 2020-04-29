@@ -292,8 +292,20 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   @parameterized.named_parameters([
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
+      ('computation_call',
+       *executor_test_utils.create_dummy_computation_call()),
+      ('computation_intrinsic',
+       *executor_test_utils.create_dummy_computation_intrinsic()),
+      ('computation_lambda',
+       *executor_test_utils.create_dummy_computation_lambda_empty()),
       ('computation_placement',
        *executor_test_utils.create_dummy_computation_placement()),
+      ('computation_selection',
+       *executor_test_utils.create_dummy_computation_selection()),
+      ('computation_tensorflow',
+       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+      ('computation_tuple',
+       *executor_test_utils.create_dummy_computation_tuple()),
       ('federated_type_at_clients',
        *executor_test_utils.create_dummy_value_at_clients()),
       ('federated_type_at_clients_all_equal',
@@ -307,34 +319,6 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   def test_raises_type_error_with_value_and_bad_type(self, value,
                                                      type_signature):
     del type_signature  # Unused.
-    executor = create_test_executor()
-    bad_type_signature = computation_types.TensorType(tf.string)
-
-    with self.assertRaises(TypeError):
-      self.run_sync(executor.create_value(value, bad_type_signature))
-
-  # pyformat: disable
-  @parameterized.named_parameters([
-      ('computation_call',
-       *executor_test_utils.create_dummy_computation_call()),
-      ('computation_intrinsic',
-       *executor_test_utils.create_dummy_computation_intrinsic()),
-      ('computation_lambda',
-       *executor_test_utils.create_dummy_computation_lambda_empty()),
-      ('computation_selection',
-       *executor_test_utils.create_dummy_computation_selection()),
-      ('computation_tensorflow',
-       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
-      ('computation_tuple',
-       *executor_test_utils.create_dummy_computation_tuple()),
-  ])
-  # pyformat: enable
-  def test_raises_type_error_with_value_and_bad_type_skipped(
-      self, value, type_signature):
-    del type_signature  # Unused.
-    self.skipTest(
-        'TODO(b/152449402): `FederatingExecutor.create_value` method should '
-        'fail if it is passed a computation and an incompatible type.')
     executor = create_test_executor()
     bad_type_signature = computation_types.TensorType(tf.string)
 

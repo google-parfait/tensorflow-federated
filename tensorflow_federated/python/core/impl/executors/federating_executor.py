@@ -245,8 +245,11 @@ class FederatingExecutor(executor_base.Executor):
           computation_impl.ComputationImpl.get_proto(value),
           type_utils.reconcile_value_with_type_spec(value, type_spec))
     elif isinstance(value, pb.Computation):
+      deserialized_type = type_serialization.deserialize_type(value.type)
       if type_spec is None:
-        type_spec = type_serialization.deserialize_type(value.type)
+        type_spec = deserialized_type
+      else:
+        type_utils.check_assignable_from(type_spec, deserialized_type)
       which_computation = value.WhichOneof('computation')
       if which_computation in ['lambda', 'tensorflow']:
         return FederatingExecutorValue(value, type_spec)
