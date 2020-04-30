@@ -4,6 +4,7 @@
 # Python
 *.py[cod]
 __pycache__/
+venv/
 
 # Bazel
 /.bazelrc
