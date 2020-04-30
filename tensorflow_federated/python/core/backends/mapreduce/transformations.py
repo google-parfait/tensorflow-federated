@@ -65,6 +65,8 @@ divide-and-conquer.
 
 import collections
 
+import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
@@ -304,23 +306,40 @@ def parse_tff_to_tf(comp):
   if isinstance(new_comp, building_blocks.CompiledComputation) or isinstance(
       new_comp, building_blocks.Call) and isinstance(
           new_comp.function, building_blocks.CompiledComputation):
-    return new_comp
-  if isinstance(new_comp, building_blocks.Lambda):
+    tf_parsed = new_comp
+  elif isinstance(new_comp, building_blocks.Lambda):
     leaves_decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
         new_comp)
-    parsed_comp, _ = transformation_utils.transform_postorder(
+    tf_parsed, _ = transformation_utils.transform_postorder(
         leaves_decorated, parser_callable)
-    return parsed_comp
   elif isinstance(new_comp, building_blocks.Call):
     leaves_decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
         new_comp)
-    parsed_comp, _ = transformation_utils.transform_postorder(
+    tf_parsed, _ = transformation_utils.transform_postorder(
         leaves_decorated, parser_callable)
-    return parsed_comp
   else:
-    parsed_comp, _ = transformation_utils.transform_postorder(
+    tf_parsed, _ = transformation_utils.transform_postorder(
         new_comp, parser_callable)
-    return parsed_comp
+  # TODO(b/154352798): We copy TF's RewriterConfig toggle enum values as it
+  # is not exposed. There is ongoing discussion with TF API owners on exposing
+  # the ability to call into Grappler offline; follow up here when we land on
+  # something.
+  off = 2
+  aggressive = 3
+
+  grappler_config_proto = tf.compat.v1.ConfigProto()
+
+  # TODO(b/155127458): Enable function optimization when possible.
+  grappler_config_proto.graph_options.rewrite_options.function_optimization = off
+
+  grappler_config_proto.graph_options.rewrite_options.memory_optimization = aggressive
+  grappler_config_proto.graph_options.rewrite_options.constant_folding = aggressive
+  grappler_config_proto.graph_options.rewrite_options.arithmetic_optimization = aggressive
+  grappler_config_proto.graph_options.rewrite_options.loop_optimization = aggressive
+
+  graphs_optimized, _ = transformations.optimize_tensorflow_graphs(
+      tf_parsed, grappler_config_proto)
+  return graphs_optimized
 
 
 def force_align_and_split_by_intrinsics(comp, uri):

@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
+from tensorflow_federated.python.tensorflow_libs import graph_optimizations
 from tensorflow_federated.python.tensorflow_libs import graph_spec
 
 
@@ -801,6 +802,38 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
   return building_blocks.CompiledComputation(proto_pruned)
 
 
+def optimize_tensorflow_comp(tf_computation, config_proto):
+  """Applies configured optimizations to the graphdef backing a TF comp.
+
+  Args:
+    tf_computation: Instance of `building_blocks.CompiledComputation` backed by
+      TensorFlow.
+    config_proto: Instance of `tf.compat.v1.ConfigProto` specifying the
+      optimizations to apply to the graph backing this TensorFlow computation.
+
+  Returns:
+    A transformed version of `tf_computation`, which has had the
+    `tf.compat.v1.GraphDef` backing it run through Grappler with the specified
+    configuration.
+  """
+  py_typecheck.check_type(tf_computation, building_blocks.CompiledComputation)
+  tf_proto = tf_computation.proto
+  graph_spec_obj = _unpack_proto_into_graph_spec(tf_proto)
+
+  optimized_graph_spec = graph_optimizations.optimize_graph_spec(
+      graph_spec_obj, config_proto)
+  graph_def = serialization_utils.pack_graph_def(optimized_graph_spec.graph_def)
+
+  tf_result_proto = pb.TensorFlow(
+      graph_def=graph_def,
+      initialize_op=optimized_graph_spec.init_op,
+      parameter=tf_proto.tensorflow.parameter,
+      result=tf_proto.tensorflow.result)
+  optimized_proto = pb.Computation(
+      type=tf_proto.type, tensorflow=tf_result_proto)
+  return building_blocks.CompiledComputation(optimized_proto)
+
+
 def compose_tensorflow_blocks(tf_comps):
   """Composes TensorFlow blocks from `tf_comps`.
 
@@ -1535,3 +1568,24 @@ class NestedTupleOfSelectionsAndGraphs(transformation_utils.TransformSpec):
     if not self.should_transform(comp):
       return comp, False
     return construct_composed_function_capturing_selections(comp), True
+
+
+class TensorFlowOptimizer(transformation_utils.TransformSpec):
+  """Applies TF graph optimizations to `building_blocks.CompiledComputations`.
+
+  This `transformation_utils.TransformSpec` does not alter the TFF structure of
+  the computations on which it is called; rather, it calls out to TensorFlow
+  libraries which perform optimization on the underlying TensorFlow graph
+  representing local processing.
+  """
+
+  def __init__(self, config_proto):
+    self._config_proto = config_proto
+
+  def should_transform(self, comp):
+    return isinstance(comp, building_blocks.CompiledComputation)
+
+  def transform(self, comp):
+    if not self.should_transform(comp):
+      return comp, False
+    return optimize_tensorflow_comp(comp, self._config_proto), True

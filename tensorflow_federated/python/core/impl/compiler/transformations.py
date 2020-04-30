@@ -616,3 +616,10 @@ def dedupe_and_merge_tuple_intrinsics(comp, uri):
   dedupe_and_merger = RemoveDuplicatesAndApplyTransform(comp, transform_spec)
   return transformation_utils.transform_postorder(comp,
                                                   dedupe_and_merger.transform)
+
+
+def optimize_tensorflow_graphs(comp, grappler_config_proto):
+  """Performs any static optimization on TensorFlow subcomputations."""
+  tf_optimizer = compiled_computation_transforms.TensorFlowOptimizer(
+      grappler_config_proto)
+  return transformation_utils.transform_postorder(comp, tf_optimizer.transform)

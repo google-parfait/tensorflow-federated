@@ -2557,5 +2557,43 @@ class NestedTupleOfSelectionsAndGraphsTest(test.TestCase):
     self.assertEqual(test_result[1], 1.)
 
 
+class TensorFlowOptimizerTest(test.TestCase):
+
+  def test_should_transform_compiled_computation(self):
+    compiled_computation = building_block_factory.create_compiled_identity(
+        tf.int32)
+    config = tf.compat.v1.ConfigProto()
+    tf_optimizer = compiled_computation_transforms.TensorFlowOptimizer(config)
+    self.assertTrue(tf_optimizer.should_transform(compiled_computation))
+
+  def test_should_not_transform_reference(self):
+    reference = building_blocks.Reference('x', tf.int32)
+    config = tf.compat.v1.ConfigProto()
+    tf_optimizer = compiled_computation_transforms.TensorFlowOptimizer(config)
+    self.assertFalse(tf_optimizer.should_transform(reference))
+
+  def test_transform_compiled_computation_returns_compiled_computation(self):
+    compiled_computation = building_block_factory.create_compiled_identity(
+        tf.int32)
+    config = tf.compat.v1.ConfigProto()
+    tf_optimizer = compiled_computation_transforms.TensorFlowOptimizer(config)
+    transformed_comp, mutated = tf_optimizer.transform(compiled_computation)
+    self.assertTrue(mutated)
+    self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
+
+  def test_transform_compiled_computation_semantic_equivalence(self):
+    compiled_computation = building_block_factory.create_compiled_identity(
+        tf.int32)
+    config = tf.compat.v1.ConfigProto()
+    tf_optimizer = compiled_computation_transforms.TensorFlowOptimizer(config)
+    transformed_comp, mutated = tf_optimizer.transform(compiled_computation)
+    self.assertTrue(mutated)
+    self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
+    zero_before_transform = test_utils.run_tensorflow(
+        compiled_computation.proto, 0)
+    zero_after_transform = test_utils.run_tensorflow(transformed_comp.proto, 0)
+    self.assertEqual(zero_before_transform, zero_after_transform)
+
+
 if __name__ == '__main__':
   test.main()
