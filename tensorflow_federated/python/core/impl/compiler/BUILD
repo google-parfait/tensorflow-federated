@@ -135,33 +135,27 @@ py_test(
 )
 
 py_library(
-    name = "tensorflow_computation_factory",
-    srcs = ["tensorflow_computation_factory.py"],
+    name = "computation_factory",
+    srcs = ["computation_factory.py"],
     srcs_version = "PY3",
     deps = [
+        ":type_factory",
         ":type_serialization",
-        ":type_transformations",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl:type_utils",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
 py_test(
-    name = "tensorflow_computation_factory_test",
-    srcs = ["tensorflow_computation_factory_test.py"],
+    name = "computation_factory_test",
+    srcs = ["computation_factory_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":tensorflow_computation_factory",
-        ":test_utils",
+        ":computation_factory",
         ":type_factory",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
@@ -233,6 +227,38 @@ py_test(
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+    ],
+)
+
+py_library(
+    name = "tensorflow_computation_factory",
+    srcs = ["tensorflow_computation_factory.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":type_serialization",
+        ":type_transformations",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+    ],
+)
+
+py_test(
+    name = "tensorflow_computation_factory_test",
+    srcs = ["tensorflow_computation_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":tensorflow_computation_factory",
+        ":test_utils",
+        ":type_factory",
+        ":type_serialization",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
 

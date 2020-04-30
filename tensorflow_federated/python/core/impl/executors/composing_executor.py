@@ -25,10 +25,10 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import type_factory
-from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
@@ -115,22 +115,6 @@ class CompositeValue(executor_value_base.ExecutorValue):
         return anonymous_tuple.AnonymousTuple(zip(keys, vals))
 
       return await _compute_tuple(self._value)
-
-
-def _create_lambda_identity_comp(type_spec):
-  """Returns a `pb.Computation` representing an identity function."""
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  type_signature = type_serialization.serialize_type(
-      type_factory.unary_op(type_spec))
-  result = pb.Computation(
-      type=type_serialization.serialize_type(type_spec),
-      reference=pb.Reference(name='x'))
-  fn = pb.Lambda(parameter_name='x', result=result)
-  # We are unpacking the lambda argument here because `lambda` is a reserved
-  # keyword in Python, but it is also the name of the parameter for a
-  # `pb.Computation`.
-  # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
-  return pb.Computation(type=type_signature, **{'lambda': fn})  # pytype: disable=wrong-keyword-args
 
 
 class ComposingExecutor(executor_base.Executor):
@@ -382,7 +366,7 @@ class ComposingExecutor(executor_base.Executor):
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
     py_typecheck.check_len(val, len(self._child_executors))
-    identity_report = _create_lambda_identity_comp(zero_type)
+    identity_report = computation_factory.create_lambda_identity(zero_type)
     identity_report_type = type_factory.unary_op(zero_type)
     aggr_type = computation_types.FunctionType(
         computation_types.NamedTupleType([
@@ -562,7 +546,8 @@ class ComposingExecutor(executor_base.Executor):
         executor_utils.embed_tf_binary_operator(self, arg.type_signature.member,
                                                 tf.add),
         self.create_value(
-            _create_lambda_identity_comp(arg.type_signature.member),
+            computation_factory.create_lambda_identity(
+                arg.type_signature.member),
             type_factory.unary_op(arg.type_signature.member))
     ]))
     aggregate_args = await self.create_tuple([arg, zero, plus, plus, identity])

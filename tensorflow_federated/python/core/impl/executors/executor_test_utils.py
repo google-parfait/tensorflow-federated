@@ -26,6 +26,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import reference_executor
+from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
@@ -435,34 +436,16 @@ def create_dummy_computation_intrinsic():
 
 def create_dummy_computation_lambda_empty():
   """Returns a lambda computation and type `( -> <>)`."""
-  result_type = computation_types.NamedTupleType([])
-  type_signature = computation_types.FunctionType(None, result_type)
-  result = pb.Computation(
-      type=type_serialization.serialize_type(result_type),
-      tuple=pb.Tuple(element=[]))
-  fn = pb.Lambda(parameter_name=None, result=result)
-  # We are unpacking the lambda argument here because `lambda` is a reserved
-  # keyword in Python, but it is also the name of the parameter for a
-  # `pb.Computation`.
-  # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
-  value = pb.Computation(
-      type=type_serialization.serialize_type(type_signature), **{'lambda': fn})  # pytype: disable=wrong-keyword-args
+  value = computation_factory.create_lambda_empty_tuple()
+  type_signature = computation_types.FunctionType(None, [])
   return value, type_signature
 
 
 def create_dummy_computation_lambda_identity():
   """Returns a lambda computation and type `(float32 -> float32)`."""
-  type_signature = type_factory.unary_op(tf.float32)
-  result = pb.Computation(
-      type=type_serialization.serialize_type(tf.float32),
-      reference=pb.Reference(name='a'))
-  fn = pb.Lambda(parameter_name='a', result=result)
-  # We are unpacking the lambda argument here because `lambda` is a reserved
-  # keyword in Python, but it is also the name of the parameter for a
-  # `pb.Computation`.
-  # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
-  value = pb.Computation(
-      type=type_serialization.serialize_type(type_signature), **{'lambda': fn})  # pytype: disable=wrong-keyword-args
+  type_spec = tf.float32
+  value = computation_factory.create_lambda_identity(type_spec)
+  type_signature = computation_types.FunctionType(type_spec, type_spec)
   return value, type_signature
 
 

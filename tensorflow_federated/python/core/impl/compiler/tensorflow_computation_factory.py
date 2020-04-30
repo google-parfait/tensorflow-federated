@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.impl.compiler import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
-def create_constant(scalar_value, type_spec):
+def create_constant(scalar_value, type_spec) -> pb.Computation:
   """Returns a tensorflow computation returning a constant `scalar_value`.
 
   Has the type signature:
@@ -108,7 +108,7 @@ def create_constant(scalar_value, type_spec):
       tensorflow=tensorflow)
 
 
-def create_empty_tuple():
+def create_empty_tuple() -> pb.Computation:
   """Returns a tensorflow computation returning an empty tuple.
 
   Has the type signature:
@@ -133,7 +133,7 @@ def create_empty_tuple():
       tensorflow=tensorflow)
 
 
-def create_identity(type_spec):
+def create_identity(type_spec) -> pb.Computation:
   """Returns a tensorflow computation representing an identity function.
 
   Has the type signature:

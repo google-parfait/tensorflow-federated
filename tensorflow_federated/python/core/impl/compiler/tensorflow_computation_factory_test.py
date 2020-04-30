@@ -108,7 +108,7 @@ class CreateConstantTest(parameterized.TestCase):
 
   def test_raises_type_error_with_non_scalar_value(self):
     value = np.zeros([1])
-    type_signature = tf.int32
+    type_signature = computation_types.TensorType(tf.int32)
 
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_constant(value, type_signature)
@@ -148,7 +148,7 @@ class CreateEmptyTupleTest(absltest.TestCase):
 class CreateIdentityTest(parameterized.TestCase):
 
   def test_returns_computation_int(self):
-    type_signature = tf.int32
+    type_signature = computation_types.TensorType(tf.int32)
 
     proto = tensorflow_computation_factory.create_identity(type_signature)
 
@@ -161,7 +161,7 @@ class CreateIdentityTest(parameterized.TestCase):
     self.assertEqual(actual_value, expected_value)
 
   def test_returns_computation_tuple_unnamed(self):
-    type_signature = [tf.int32, tf.float32]
+    type_signature = computation_types.NamedTupleType([tf.int32, tf.float32])
 
     proto = tensorflow_computation_factory.create_identity(type_signature)
 
@@ -174,7 +174,8 @@ class CreateIdentityTest(parameterized.TestCase):
     self.assertEqual(actual_value, expected_value)
 
   def test_returns_computation_tuple_named(self):
-    type_signature = [('a', tf.int32), ('b', tf.float32)]
+    type_signature = computation_types.NamedTupleType([('a', tf.int32),
+                                                       ('b', tf.float32)])
 
     proto = tensorflow_computation_factory.create_identity(type_signature)
 
