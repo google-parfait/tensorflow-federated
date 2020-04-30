@@ -36,7 +36,7 @@ class Mock:
     return x
 
   @tracing.trace
-  def _compute_intrinsic_blah_blah(self, x):
+  def _compute_intrinsic_xxyyzz(self, x):
     arg = self.create_value(x)
     res = self._weird_other_method(arg)
     return res
@@ -45,10 +45,10 @@ class Mock:
   def _weird_other_method(self, x):
 
     @tracing.trace
-    def _weird_nested_trace(y):
+    def _weird_local_trace(y):
       return y
 
-    return _weird_nested_trace(x)
+    return _weird_local_trace(x)
 
 
 expected_mock_format = "{} {}".format(mock_repr, Mock)
@@ -78,7 +78,7 @@ class ExecutionTracingProviderTest(test.TestCase, parameterized.TestCase):
     obj = Mock()
     testable_methods = [
         'create_value',
-        '_compute_intrinsic_blah_blah',
+        '_compute_intrinsic_xxyyzz',
         '_weird_other_method',
     ]
     tracer = execution_tracing.ExecutionTracingProvider(trace_filter_mode=mode)

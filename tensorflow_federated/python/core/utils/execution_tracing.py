@@ -5,6 +5,7 @@ import functools
 import inspect
 import logging
 import re
+from typing import Any, Dict, Optional, Tuple
 
 from tensorflow.python.framework.ops import EagerTensor as tf_EagerTensor
 
@@ -79,93 +80,35 @@ class ExecutionTracingProvider(tracing.TracingProvider):
     # start at -1 so the first call prints at 0
     self._current_call_level = -1
 
-  def trace(self, fn=None, **kwargs):
-    """Decorate a method with tracing.
-
-    Works with async or regular functions. If no kwargs specified, can be used
-    without parens. Parameters accepted in kwargs depends on the implementation
-    vary across platforms.
-
-    Args:
-      fn: The function to decorate.
-      **kwargs: Options for configuring the trace.
-
-    Returns:
-      The decorated function.
-    """
-
-    class_name, method_name = tracing.func_to_class_and_method(fn)
+  def span(
+    self,
+    scope: str,
+    sub_scope: str,
+    nonce: int,
+    parent_span_yield: Optional[None],
+    fn_args: Optional[Tuple[Any, ...]],
+    fn_kwargs: Optional[Dict[str, Any]],
+    trace_opts: Dict[str, Any],
+  ):
+    assert parent_span_yield is None
+    del parent_span_yield, nonce, trace_opts
 
     regex = self._is_traceable_regex
     force_trace = regex is None
-    if not self._is_traceable(method_name, regex, override=force_trace):
-      return fn
-
-    def _pre_fn(*args, **kwargs):
-      self._current_call_level += 1
-      self._trace_method(fn, class_name, method_name, "call")(*args, **kwargs)
-
-    def _post_fn(*args, **kwargs):
-      self._trace_method(fn, class_name, method_name, "retr")(*args, **kwargs)
-      self._current_call_level -= 1
-
-    if inspect.iscoroutinefunction(fn):
-
-      @functools.wraps(fn)
-      async def async_fn(*args, **kwargs):
-        _pre_fn(*args, **kwargs)
-        retval = await fn(*args, **kwargs)
-        _post_fn(*args, **kwargs)
-        return retval
-
-      return async_fn
+    if not self._is_traceable(sub_scope, regex, override=force_trace):
+      # exit span early
+      yield None
 
     else:
+      # Pre-fn
+      self._current_call_level += 1
+      self._log_trace("call", scope, sub_scope, fn_args, fn_kwargs)
+      yield None
 
-      @functools.wraps(fn)
-      def sync_fn(*args, **kwargs):
-        _pre_fn(*args, **kwargs)
-        retval = fn(*args, **kwargs)
-        _post_fn(*args, **kwargs)
-        return retval
+      # Post-fn
+      self._current_call_level -= 1
+      self._log_trace("retr", scope, sub_scope, fn_args, fn_kwargs)
 
-      return sync_fn
-
-  def span(self, unused_scope, unused_sub_scope, **unused_trace_opts):
-    """"No-op implementation of span."""
-
-    class NoSuchError(Exception):
-      pass
-
-    # contextlib.suppress(NoSuchError) is used to create a no-op Context and
-    # should be replaced by contextlib.nullcontext when it becomes available.
-    return contextlib.suppress(NoSuchError)
-
-  def task_trace_context(self):
-    """No-op implementation of task_trace_context."""
-
-    class NoSuchError(Exception):
-      pass
-
-    # contextlib.suppress(NoSuchError) is used to create a no-op Context and
-    # should be replaced by contextlib.nullcontext when it is available.
-    return contextlib.suppress(NoSuchError)
-
-  def propagate_trace_context_task_factory(self, loop, coro):
-    """No-op implementation of propagate_trace_context_task_factory."""
-    return asyncio.tasks.Task(coro, loop=loop)
-
-  def run_coroutine_threadsafe_in_ambient_trace_context(self, coro, loop):
-    """No-op implementation of run_coroutine_threadsafe_in_ambient_trace_context."""
-    return asyncio.run_coroutine_threadsafe(coro, loop)
-
-  def run_coroutine_threadsafe_in_task_trace_context(self, coro, loop):
-    """No-op implementation of run_coroutine_threadsafe_in_ambient_trace_context."""
-    return asyncio.run_coroutine_threadsafe(coro, loop)
-
-  def run_coroutine_in_ambient_trace_context(self, coro):
-    """No-op implementation of run_coroutine_in_ambient_trace_context."""
-    return coro
 
   @classmethod
   def _is_traceable(cls, method_name, regex, override=False):
@@ -176,27 +119,27 @@ class ExecutionTracingProvider(tracing.TracingProvider):
       return False
     return True
 
-  def _trace_method(self, fn, class_name, method_name, call_or_retr):
-    # rough workaround -- Python can't distinguish that fn is a method here
-    fn_sig = inspect.signature(fn)
-    has_self = 'self' in fn_sig.parameters
+  def _log_trace(self, call_or_retr, scope, sub_scope, fn_args, fn_kwargs):
+    fn_args = fn_args or [None]
+    fn_kwargs = fn_kwargs or {}
 
-    def _log_fn(*args, **kwargs):
-      nonlocal has_self
+    ctx = fn_args[0]
 
-      ctx = None
-      if has_self:
-        ctx = args[0]
-        args = args[1:]
+    if ctx is not None:
+      has_self = ctx.__class__.__name__ == scope
 
-      prefix_str = self._prefix(ctx, class_name)
-      main_str = "{m} {c}".format(m=method_name, c=call_or_retr)
-      suffix_args = " ".join(self.format_object(a) for a in args)
-      suffix_kwargs = " ".join(self.format_object(v) for k, v in kwargs.items())
-      logging.debug("{p} {m} {sa} {sk}".format(
-          p=prefix_str, m=main_str, sa=suffix_args, sk=suffix_kwargs))
+      if has_self and len(fn_args) > 1:
+          fn_args = fn_args[1:]
 
-    return _log_fn
+    prefix_str = self._prefix(ctx, scope)
+    main_str = "{m} {c}".format(m=sub_scope, c=call_or_retr)
+    suffix_args = " ".join(self._format_object(a) for a in fn_args)
+    suffix_kwargs = " ".join(self._format_object(v) for k, v in fn_kwargs.items())
+    final = "{p} {m} {sa} {sk}".format(
+        p=prefix_str, m=main_str, sa=suffix_args, sk=suffix_kwargs)
+
+    logging.debug(final)
+    
 
   def _prefix(self, ctx, type_):
     indentation = '  ' * self._current_call_level
