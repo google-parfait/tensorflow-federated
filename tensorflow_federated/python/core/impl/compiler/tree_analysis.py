@@ -263,18 +263,16 @@ def count_tensorflow_ops_under(comp):
     variety under `comp`.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
-  total_tf_ops = [0]
+  count_ops = 0
 
   def _count_tf_ops(inner_comp):
-    if isinstance(
-        inner_comp, building_blocks.CompiledComputation
-    ) and inner_comp.proto.WhichOneof('computation') == 'tensorflow':
-      total_tf_ops[0] += building_block_analysis.count_tensorflow_ops_in(
-          inner_comp)
+    nonlocal count_ops
+    if (isinstance(inner_comp, building_blocks.CompiledComputation) and
+        inner_comp.proto.WhichOneof('computation') == 'tensorflow'):
+      count_ops += building_block_analysis.count_tensorflow_ops_in(inner_comp)
 
   _visit_postorder(comp, _count_tf_ops)
-  return total_tf_ops[0]
+  return count_ops
 
 
 def count_tensorflow_variables_under(comp):
@@ -294,17 +292,17 @@ def count_tensorflow_variables_under(comp):
     variety under `comp`.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
-  total_tf_vars = [0]
+  count_vars = 0
 
   def _count_tf_vars(inner_comp):
+    nonlocal count_vars
     if (isinstance(inner_comp, building_blocks.CompiledComputation) and
         inner_comp.proto.WhichOneof('computation') == 'tensorflow'):
-      total_tf_vars[0] += building_block_analysis.count_tensorflow_variables_in(
+      count_vars += building_block_analysis.count_tensorflow_variables_in(
           inner_comp)
 
   _visit_postorder(comp, _count_tf_vars)
-  return total_tf_vars[0]
+  return count_vars
 
 
 def check_contains_no_unbound_references(tree, excluding=None):

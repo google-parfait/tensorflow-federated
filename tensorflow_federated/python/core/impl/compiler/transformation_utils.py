@@ -1132,27 +1132,27 @@ def has_unique_names(comp):
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   names = set()
-  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility
-  unique = [True]
+  unique = True
 
   def _transform(comp):
     """Binds any names to external `names` set."""
-    if unique[0]:
+    nonlocal unique
+    if unique:
       if isinstance(comp, building_blocks.Block):
         for name, _ in comp.locals:
           if name in names:
-            unique[0] = False
+            unique = False
           names.add(name)
       elif isinstance(comp, building_blocks.Lambda):
         if comp.parameter_type is None:
           return comp, False
         if comp.parameter_name in names:
-          unique[0] = False
+          unique = False
         names.add(comp.parameter_name)
     return comp, False
 
   transform_postorder(comp, _transform)
-  return unique[0]
+  return unique
 
 
 def get_map_of_unbound_references(

@@ -118,15 +118,16 @@ def _construct_trivial_instance_of_all_computation_building_blocks():
 def _get_number_of_nodes_via_transform_postorder(comp, predicate=None):
   """Returns the number of nodes in `comp` matching `predicate`."""
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  count = [0]  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility.
+  count = 0
 
   def fn(comp):
+    nonlocal count
     if predicate is None or predicate(comp):
-      count[0] += 1
+      count += 1
     return comp, False
 
   transformation_utils.transform_postorder(comp, fn)
-  return count[0]
+  return count
 
 
 def _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
@@ -134,18 +135,19 @@ def _get_number_of_nodes_via_transform_postorder_with_symbol_bindings(
   """Returns the number of nodes in `comp` matching `predicate`."""
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
-  count = [0]  # TODO(b/129791812): Cleanup Python 2 and 3 compatibility.
+  count = 0
 
   def fn(comp, ctxt_tree):
+    nonlocal count
     del ctxt_tree
     if predicate is None or predicate(comp):
-      count[0] += 1
+      count += 1
     return comp, False
 
   transformation_utils.transform_postorder_with_symbol_bindings(
       comp, fn, empty_context_tree)
 
-  return count[0]
+  return count
 
 
 def _get_number_of_nodes_via_transform_preorder(comp, predicate=None):
