@@ -76,8 +76,6 @@ class DatasetTest(tf.test.TestCase):
 
 class BatchAndSplitTest(tf.test.TestCase):
 
-  # TODO(b/155198591): bring GPU test back after the fix for tf.function.
-  @test.skip_test_for_gpu
   def test_batch_and_split_fn_returns_dataset_with_correct_type_spec(self):
     token = tf.constant([[0, 1, 2, 3, 4]], dtype=tf.int64)
     ds = tf.data.Dataset.from_tensor_slices(token)
@@ -87,8 +85,6 @@ class BatchAndSplitTest(tf.test.TestCase):
     self.assertEqual(padded_and_batched.element_spec, (tf.TensorSpec(
         [None, 6], dtype=tf.int64), tf.TensorSpec([None, 6], dtype=tf.int64)))
 
-  # TODO(b/155198591): bring GPU test back after the fix for tf.function.
-  @test.skip_test_for_gpu
   def test_batch_and_split_fn_returns_dataset_yielding_expected_elements(self):
     token = tf.constant([[0, 1, 2, 3, 4]], dtype=tf.int64)
     ds = tf.data.Dataset.from_tensor_slices(token)

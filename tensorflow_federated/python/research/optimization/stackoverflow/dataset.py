@@ -50,10 +50,9 @@ def build_to_ids_fn(vocab, max_seq_len):
 
   table_values = np.arange(len(vocab), dtype=np.int64)
 
-  @tf.function
   def to_ids(example):
     # TODO(b/153363900): Move construction of the vocab table outside of the
-    # tf.function when we are able to grab the initializer.
+    # function when we are able to grab the initializer.
     table = tf.lookup.StaticVocabularyTable(
         tf.lookup.KeyValueTensorInitializer(vocab, table_values),
         num_oov_buckets=1)
@@ -70,7 +69,6 @@ def build_to_ids_fn(vocab, max_seq_len):
   return to_ids
 
 
-@tf.function
 def batch_and_split(dataset, max_seq_len, batch_size):
   return dataset.padded_batch(
       batch_size, padded_shapes=[max_seq_len + 1]).map(
@@ -153,7 +151,7 @@ def create_train_dataset_preprocess_fn(element_spec,
 def create_test_dataset_preprocess_fn(vocab: List[str], max_seq_len: int):
   """Creates preprocessing functions for stackoverflow data.
 
-  This function returns a `tf.function` which represents preprocessing logic
+  This function returns a function which represents preprocessing logic
   for use on centralized validation and test datasets outside of TFF.
 
   Args:
@@ -169,7 +167,6 @@ def create_test_dataset_preprocess_fn(vocab: List[str], max_seq_len: int):
     raise ValueError('max_seq_len must be a positive integer; you have '
                      'passed {}'.format(max_seq_len))
 
-  @tf.function
   def preprocess_val_and_test(dataset):
     to_ids = build_to_ids_fn(vocab, max_seq_len)
     id_dataset = dataset.map(
