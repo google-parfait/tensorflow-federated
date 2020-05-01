@@ -21,7 +21,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.common_libs import tracing
-from tensorflow_federated.python.core.utils import execution_tracing
+from tensorflow_federated.python.common_libs import execution_tracing
 
 mock_repr = "mock!"
 

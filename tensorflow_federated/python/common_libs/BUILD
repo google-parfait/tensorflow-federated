@@ -31,6 +31,29 @@ py_test(
 )
 
 py_library(
+    name = "execution_tracing",
+    srcs = ["execution_tracing.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":anonymous_tuple",
+        ":tracing",
+    ],
+)
+
+py_test(
+    name = "execution_tracing_test",
+    size = "small",
+    srcs = ["execution_tracing_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":execution_tracing",
+        ":test",
+        ":tracing",
+    ],
+)
+
+py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
     srcs_version = "PY3",
