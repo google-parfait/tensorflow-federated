@@ -16,9 +16,7 @@ import collections
 
 import numpy as np
 import tensorflow as tf
-import tensorflow_federated as tff
 
-from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.research.optimization.stackoverflow import dataset
 
 tf.compat.v1.enable_v2_behavior()
@@ -102,32 +100,12 @@ class BatchAndSplitTest(tf.test.TestCase):
 
 class DatasetPreprocessFnTest(tf.test.TestCase):
 
-  def test_train_preprocess_is_tff_computation(self):
-    token = collections.OrderedDict(tokens=([
-        'one must imagine',
-    ]))
-    ds = tf.data.Dataset.from_tensor_slices(token)
-    train_preprocess_fn = dataset.create_train_dataset_preprocess_fn(
-        ds.element_spec,
-        client_batch_size=32,
-        client_epochs_per_round=1,
-        max_seq_len=10,
-        max_training_elements_per_user=100,
-        vocab=['one', 'must'])
-    self.assertIsInstance(train_preprocess_fn, tff.Computation)
-    self.assertEqual(
-        train_preprocess_fn.type_signature.compact_representation(),
-        '(<tokens=string>* -> <int64[?,10],int64[?,10]>*)')
-
-  # TODO(b/155198591): bring GPU test back after the fix for tf.function.
-  @test.skip_test_for_gpu
   def test_train_preprocess_fn_return_dataset_element_spec(self):
     token = collections.OrderedDict(tokens=([
         'one must imagine',
     ]))
     ds = tf.data.Dataset.from_tensor_slices(token)
     train_preprocess_fn = dataset.create_train_dataset_preprocess_fn(
-        ds.element_spec,
         client_batch_size=32,
         client_epochs_per_round=1,
         max_seq_len=10,
@@ -138,8 +116,6 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
                      (tf.TensorSpec(shape=[None, 10], dtype=tf.int64),
                       tf.TensorSpec(shape=[None, 10], dtype=tf.int64)))
 
-  # TODO(b/155198591): bring GPU test back after the fix for tf.function.
-  @test.skip_test_for_gpu
   def test_test_preprocess_fn_return_dataset_element_spec(self):
     token = collections.OrderedDict(tokens=([
         'one must imagine',
@@ -152,15 +128,12 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
                      (tf.TensorSpec(shape=[None, 10], dtype=tf.int64),
                       tf.TensorSpec(shape=[None, 10], dtype=tf.int64)))
 
-  # TODO(b/155198591): bring GPU test back after the fix for tf.function.
-  @test.skip_test_for_gpu
   def test_train_preprocess_fn_returns_correct_sequence(self):
     token = collections.OrderedDict(tokens=([
         'one must imagine',
     ]))
     ds = tf.data.Dataset.from_tensor_slices(token)
     train_preprocess_fn = dataset.create_train_dataset_preprocess_fn(
-        ds.element_spec,
         client_batch_size=32,
         client_epochs_per_round=1,
         max_seq_len=6,
@@ -172,8 +145,6 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
     self.assertAllEqual(
         self.evaluate(element[0]), np.array([[4, 1, 2, 3, 5, 0]]))
 
-  # TODO(b/155198591): bring GPU test back after the fix for tf.function.
-  @test.skip_test_for_gpu
   def test_test_preprocess_fn_returns_correct_sequence(self):
     token = collections.OrderedDict(tokens=([
         'one must imagine',

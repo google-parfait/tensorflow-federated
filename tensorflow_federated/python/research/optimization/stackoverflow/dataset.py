@@ -49,13 +49,11 @@ def build_to_ids_fn(vocab, max_seq_len):
   _, _, bos, eos = get_special_tokens(len(vocab))
 
   table_values = np.arange(len(vocab), dtype=np.int64)
+  table = tf.lookup.StaticVocabularyTable(
+      tf.lookup.KeyValueTensorInitializer(vocab, table_values),
+      num_oov_buckets=1)
 
   def to_ids(example):
-    # TODO(b/153363900): Move construction of the vocab table outside of the
-    # function when we are able to grab the initializer.
-    table = tf.lookup.StaticVocabularyTable(
-        tf.lookup.KeyValueTensorInitializer(vocab, table_values),
-        num_oov_buckets=1)
     sentence = tf.reshape(example['tokens'], shape=[1])
     words = tf.strings.split(sentence, sep=' ').values
     truncated_words = words[:max_seq_len]
@@ -84,8 +82,7 @@ def get_special_tokens(vocab_size):
   return pad, oov, bos, eos
 
 
-def create_train_dataset_preprocess_fn(element_spec,
-                                       vocab: List[str],
+def create_train_dataset_preprocess_fn(vocab: List[str],
                                        client_batch_size: int,
                                        client_epochs_per_round: int,
                                        max_seq_len: int,
@@ -93,13 +90,11 @@ def create_train_dataset_preprocess_fn(element_spec,
                                        max_shuffle_buffer_size=10000):
   """Creates preprocessing functions for stackoverflow data.
 
-  This function returns a `tff.tf_computation` which takes a dataset and
-  returns a dataset, generally for mapping over a set of unprocessed client
-  datasets during training.
+  This function returns a function which takes a dataset and returns a dataset,
+  generally for mapping over a set of unprocessed client datasets during
+  training.
 
   Args:
-    element_spec: The `tf.TensorSpec` of elements which will be yielded from the
-      datasets to which the returned functions should be applied.
     vocab: Vocabulary which defines the embedding.
     client_batch_size: Integer representing batch size to use on the clients.
     client_epochs_per_round: Number of epochs for which to repeat train client
@@ -135,7 +130,8 @@ def create_train_dataset_preprocess_fn(element_spec,
   else:
     shuffle_buffer_size = max_training_elements_per_user
 
-  @tff.tf_computation(tff.SequenceType(element_spec))
+  # TODO(b/155408842): need further investigation on why `tff.tf_compuation`
+  # decorator causes b/153363900 for `to_ids`, and large memory consumption.
   def preprocess_train(dataset):
     to_ids = build_to_ids_fn(vocab, max_seq_len)
     dataset = dataset.take(max_training_elements_per_user)
@@ -230,9 +226,8 @@ def construct_word_level_datasets(vocab_size: int,
   raw_test_dataset = stackoverflow_test.create_tf_dataset_from_all_clients()
 
   preprocess_train = create_train_dataset_preprocess_fn(
-      raw_test_dataset.element_spec, vocab, client_batch_size,
-      client_epochs_per_round, max_seq_len, max_training_elements_per_user,
-      max_shuffle_buffer_size)
+      vocab, client_batch_size, client_epochs_per_round, max_seq_len,
+      max_training_elements_per_user, max_shuffle_buffer_size)
 
   preprocess_val_and_test = create_test_dataset_preprocess_fn(
       vocab, max_seq_len)
