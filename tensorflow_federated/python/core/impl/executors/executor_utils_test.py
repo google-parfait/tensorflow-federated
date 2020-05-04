@@ -16,7 +16,8 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl.executors import composing_executor
+from tensorflow_federated.python.core.impl.executors import composing_federating_strategy
+from tensorflow_federated.python.core.impl.executors import default_federating_strategy
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import executor_utils
@@ -29,42 +30,48 @@ from tensorflow_federated.python.core.impl.types import type_factory
 tf.compat.v1.enable_v2_behavior()
 
 
-def create_test_federating_executor(
+def create_test_default_strategy_with_default_strategy(
     num_clients=3) -> federating_executor.FederatingExecutor:
 
   def create_bottom_stack():
     executor = eager_tf_executor.EagerTFExecutor()
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
-  return federating_executor.FederatingExecutor({
-      placement_literals.SERVER: create_bottom_stack(),
+  factory = default_federating_strategy.DefaultFederatingStrategy.factory({
+      placement_literals.SERVER:
+          create_bottom_stack(),
       placement_literals.CLIENTS: [
           create_bottom_stack() for _ in range(num_clients)
       ],
-      None: create_bottom_stack()
   })
+  return federating_executor.FederatingExecutor(factory, create_bottom_stack())
 
 
-def create_test_composing_executor(
+def create_test_default_strategy_with_composing_strategy(
     clients_per_stack=3,
     stacks_per_layer=3,
-    num_layers=3) -> composing_executor.ComposingExecutor:
+    num_layers=3) -> federating_executor.FederatingExecutor:
 
   def create_bottom_stack():
     executor = eager_tf_executor.EagerTFExecutor()
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
   def create_worker_stack():
-    return federating_executor.FederatingExecutor({
-        placement_literals.SERVER: create_bottom_stack(),
+    factroy = default_federating_strategy.DefaultFederatingStrategy.factory({
+        placement_literals.SERVER:
+            create_bottom_stack(),
         placement_literals.CLIENTS: [
             create_bottom_stack() for _ in range(clients_per_stack)
         ],
-        None: create_bottom_stack()
     })
+    return federating_executor.FederatingExecutor(factroy,
+                                                  create_bottom_stack())
 
   def create_aggregation_stack(children):
-    return composing_executor.ComposingExecutor(create_bottom_stack(), children)
+    factory = composing_federating_strategy.ComposingFederatingStrategy.factory(
+        create_bottom_stack(), children)
+    return federating_executor.FederatingExecutor(factory,
+                                                  create_bottom_stack())
 
   def create_aggregation_layer(num_stacks):
     return create_aggregation_stack(
@@ -75,12 +82,13 @@ def create_test_composing_executor(
 
 
 @parameterized.named_parameters([
-    ('federating_executor', create_test_federating_executor(), 3),
-    ('composing_executor_9_clients',
-     create_test_composing_executor(
+    ('default_strategy', create_test_default_strategy_with_default_strategy(),
+     3),
+    ('composing_strategy_9_clients',
+     create_test_default_strategy_with_composing_strategy(
          clients_per_stack=3, stacks_per_layer=3, num_layers=1), 9),
-    ('composing_executor_27_clients',
-     create_test_composing_executor(
+    ('composing_strategy_27_clients',
+     create_test_default_strategy_with_composing_strategy(
          clients_per_stack=3, stacks_per_layer=3, num_layers=3), 27),
 ])
 class ComputeIntrinsicFederatedBroadcastTest(executor_test_utils.AsyncTestCase,
@@ -126,12 +134,12 @@ class ComputeIntrinsicFederatedBroadcastTest(executor_test_utils.AsyncTestCase,
 
 
 @parameterized.named_parameters([
-    ('federating_executor', create_test_federating_executor()),
-    ('composing_executor_9_clients',
-     create_test_composing_executor(
+    ('default_strategy', create_test_default_strategy_with_default_strategy()),
+    ('composing_strategy_9_clients',
+     create_test_default_strategy_with_composing_strategy(
          clients_per_stack=3, stacks_per_layer=3, num_layers=1)),
-    ('composing_executor_27_clients',
-     create_test_composing_executor(
+    ('composing_strategy_27_clients',
+     create_test_default_strategy_with_composing_strategy(
          clients_per_stack=3, stacks_per_layer=3, num_layers=3)),
 ])
 class ComputeIntrinsicFederatedValueTest(executor_test_utils.AsyncTestCase,
@@ -172,14 +180,15 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
     executor_test_utils.AsyncTestCase, parameterized.TestCase):
 
   @parameterized.named_parameters([
-      ('federating_executor_3_clients', create_test_federating_executor(3), 3),
-      ('federating_executor_10_clients', create_test_federating_executor(10),
-       10),
-      ('composing_executor_9_clients',
-       create_test_composing_executor(
+      ('default_strategy_3_clients',
+       create_test_default_strategy_with_default_strategy(3), 3),
+      ('default_strategy_10_clients',
+       create_test_default_strategy_with_default_strategy(10), 10),
+      ('composing_strategy_9_clients',
+       create_test_default_strategy_with_composing_strategy(
            clients_per_stack=3, stacks_per_layer=3, num_layers=1), 9),
-      ('composing_executor_27_clients',
-       create_test_composing_executor(
+      ('composing_strategy_27_clients',
+       create_test_default_strategy_with_composing_strategy(
            clients_per_stack=3, stacks_per_layer=3, num_layers=3), 27),
   ])
   def test_computes_weighted_mean(
@@ -206,14 +215,17 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
     self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters([
-      ('federating_executor_unplaced_type', create_test_federating_executor(),
+      ('default_strategy_unplaced_type',
+       create_test_default_strategy_with_default_strategy(),
        executor_test_utils.create_dummy_value_unplaced()),
-      ('composing_executor_unplaced_type', create_test_composing_executor(),
+      ('composing_strategy_unplaced_type',
+       create_test_default_strategy_with_composing_strategy(),
        executor_test_utils.create_dummy_value_unplaced()),
-      ('federating_executor_server_placement',
-       create_test_federating_executor(),
+      ('default_strategy_server_placement',
+       create_test_default_strategy_with_default_strategy(),
        executor_test_utils.create_dummy_value_at_server()),
-      ('composing_executor_server_placement', create_test_composing_executor(),
+      ('composing_strategy_server_placement',
+       create_test_default_strategy_with_composing_strategy(),
        executor_test_utils.create_dummy_value_at_server()),
   ])
   def test_raises_type_error(self, executor, value_and_type_signature):
@@ -227,8 +239,10 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
               executor, arg))
 
   @parameterized.named_parameters([
-      ('federating_executor', create_test_federating_executor(), 3),
-      ('composing_executor', create_test_composing_executor(), 27),
+      ('default_strategy', create_test_default_strategy_with_default_strategy(),
+       3),
+      ('composing_strategy',
+       create_test_default_strategy_with_composing_strategy(), 27),
   ])
   def test_raises_type_error_with_singleton_tuple(
       self,

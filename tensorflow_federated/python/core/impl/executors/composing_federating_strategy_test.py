@@ -26,39 +26,35 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.executors import caching_executor
-from tensorflow_federated.python.core.impl.executors import composing_executor
+from tensorflow_federated.python.core.impl.executors import composing_federating_strategy
+from tensorflow_federated.python.core.impl.executors import default_federating_strategy
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
-from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def _create_bottom_stack():
-  return reference_resolving_executor.ReferenceResolvingExecutor(
-      caching_executor.CachingExecutor(
-          thread_delegating_executor.ThreadDelegatingExecutor(
-              eager_tf_executor.EagerTFExecutor())))
+  executor = eager_tf_executor.EagerTFExecutor()
+  return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
 
 def _create_worker_stack():
-  return federating_executor.FederatingExecutor({
+  factory = default_federating_strategy.DefaultFederatingStrategy.factory({
       placement_literals.SERVER: _create_bottom_stack(),
       placement_literals.CLIENTS: [_create_bottom_stack() for _ in range(2)],
-      None: _create_bottom_stack()
   })
+  return federating_executor.FederatingExecutor(factory, _create_bottom_stack())
 
 
 def _create_middle_stack(children):
-  return reference_resolving_executor.ReferenceResolvingExecutor(
-      caching_executor.CachingExecutor(
-          composing_executor.ComposingExecutor(_create_bottom_stack(),
-                                               children)))
+  factory = composing_federating_strategy.ComposingFederatingStrategy.factory(
+      _create_bottom_stack(), children)
+  executor = federating_executor.FederatingExecutor(factory,
+                                                    _create_bottom_stack())
+  return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
 
 def _create_test_executor():
@@ -363,12 +359,14 @@ class ComposingExecutorTest(absltest.TestCase):
         intrinsic=pb.Intrinsic(uri='dummy_intrinsic'))
 
     loop = asyncio.get_event_loop()
-    executor = composing_executor.ComposingExecutor(
-        _create_bottom_stack(), [_create_worker_stack() for _ in range(3)])
+    factory = composing_federating_strategy.ComposingFederatingStrategy.factory(
+        _create_bottom_stack(), [_create_worker_stack()])
+    executor = federating_executor.FederatingExecutor(factory,
+                                                      _create_bottom_stack())
 
+    v1 = loop.run_until_complete(executor.create_value(comp))
     with self.assertRaises(NotImplementedError):
-      v1 = loop.run_until_complete(executor.create_value(comp, tf.int32))
-      loop.run_until_complete(executor.create_call(v1, None))
+      loop.run_until_complete(executor.create_call(v1))
 
 
 if __name__ == '__main__':

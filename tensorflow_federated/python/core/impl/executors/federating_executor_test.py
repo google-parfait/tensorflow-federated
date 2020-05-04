@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.executors import default_federating_strategy
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federating_executor
@@ -31,9 +32,6 @@ from tensorflow_federated.python.core.impl.executors import reference_resolving_
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
-
-
-tf.compat.v1.enable_v2_behavior()
 
 
 def all_isinstance(objs: Iterable[Any], classinfo: Type[Any]) -> bool:
@@ -47,13 +45,14 @@ def create_test_executor(
     executor = eager_tf_executor.EagerTFExecutor()
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
-  return federating_executor.FederatingExecutor({
-      placement_literals.SERVER: create_bottom_stack(),
+  factory = default_federating_strategy.DefaultFederatingStrategy.factory({
+      placement_literals.SERVER:
+          create_bottom_stack(),
       placement_literals.CLIENTS: [
           create_bottom_stack() for _ in range(number_of_clients)
       ],
-      None: create_bottom_stack()
   })
+  return federating_executor.FederatingExecutor(factory, create_bottom_stack())
 
 
 def get_named_parameters_for_supported_intrinsics() -> List[Tuple[str, Any]]:
@@ -95,89 +94,6 @@ def get_named_parameters_for_supported_intrinsics() -> List[Tuple[str, Any]]:
   # pyformat: enable
 
 
-class FederatingExecutorValueConstructionTest(absltest.TestCase):
-
-  def test_raises_type_error_with_value_and_bad_type(self):
-    value = eager_tf_executor.EagerValue(10.0, None, tf.float32)
-    bad_type_signature = None
-
-    with self.assertRaises(TypeError):
-      federating_executor.FederatingExecutorValue(value, bad_type_signature)
-
-
-class FederatingExecutorValueComputeTest(executor_test_utils.AsyncTestCase):
-
-  def test_returns_value_with_embedded_value(self):
-    value = eager_tf_executor.EagerValue(10.0, None, tf.float32)
-    type_signature = computation_types.TensorType(tf.float32)
-    value = federating_executor.FederatingExecutorValue(value, type_signature)
-
-    result = self.run_sync(value.compute())
-
-    self.assertEqual(result, 10.0)
-
-  def test_returns_value_with_federated_type_at_clients(self):
-    value = [
-        eager_tf_executor.EagerValue(10.0, None, tf.float32),
-        eager_tf_executor.EagerValue(11.0, None, tf.float32),
-        eager_tf_executor.EagerValue(12.0, None, tf.float32),
-    ]
-    type_signature = type_factory.at_clients(tf.float32)
-    value = federating_executor.FederatingExecutorValue(value, type_signature)
-
-    result = self.run_sync(value.compute())
-
-    self.assertEqual(result, [10.0, 11.0, 12.0])
-
-  def test_returns_value_with_federated_type_at_clients_all_equal(self):
-    value = [eager_tf_executor.EagerValue(10.0, None, tf.float32)]
-    type_signature = type_factory.at_clients(tf.float32, all_equal=True)
-    value = federating_executor.FederatingExecutorValue(value, type_signature)
-
-    result = self.run_sync(value.compute())
-
-    self.assertEqual(result, 10.0)
-
-  def test_returns_value_with_federated_type_at_server(self):
-    value = [eager_tf_executor.EagerValue(10.0, None, tf.float32)]
-    type_signature = type_factory.at_server(tf.float32)
-    value = federating_executor.FederatingExecutorValue(value, type_signature)
-
-    result = self.run_sync(value.compute())
-
-    self.assertEqual(result, 10.0)
-
-  def test_returns_value_with_anonymous_tuple_value(self):
-    element = eager_tf_executor.EagerValue(10.0, None, tf.float32)
-    element_type = computation_types.TensorType(tf.float32)
-    names = ['a', 'b', 'c']
-    value = anonymous_tuple.AnonymousTuple((n, element) for n in names)
-    type_signature = computation_types.NamedTupleType(
-        (n, element_type) for n in names)
-    value = federating_executor.FederatingExecutorValue(value, type_signature)
-
-    result = self.run_sync(value.compute())
-
-    expected_result = anonymous_tuple.AnonymousTuple((n, 10.0) for n in names)
-    self.assertEqual(result, expected_result)
-
-  def test_raises_type_error_with_unembedded_federated_type(self):
-    value = [10.0, 11.0, 12.0]
-    type_signature = type_factory.at_clients(tf.float32)
-    value = federating_executor.FederatingExecutorValue(value, type_signature)
-
-    with self.assertRaises(TypeError):
-      self.run_sync(value.compute())
-
-  def test_raises_runtime_error_with_unsupported_value_or_type(self):
-    value = 10.0
-    type_signature = computation_types.TensorType(tf.float32)
-    value = federating_executor.FederatingExecutorValue(value, type_signature)
-
-    with self.assertRaises(RuntimeError):
-      self.run_sync(value.compute())
-
-
 class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
                                         parameterized.TestCase):
 
@@ -206,7 +122,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
 
     result = self.run_sync(executor.create_value(value, type_signature))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
 
@@ -227,7 +143,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
 
     result = self.run_sync(executor.create_value(value))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
 
@@ -248,7 +164,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
 
     result = self.run_sync(executor.create_value(value, type_signature))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
 
@@ -353,70 +269,83 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
 
-  # pyformat: disable
-  @parameterized.named_parameters([
-      ('intrinsic_def_federated_broadcast',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_broadcast()),
-      ('intrinsic_def_federated_eval_at_clients',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_clients()),
-      ('intrinsic_def_federated_map',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_map()),
-      ('intrinsic_def_federated_map_all_equal',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_map_all_equal()),
-      ('intrinsic_def_federated_value_at_clients',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_clients()),
-      ('federated_type_at_clients_all_equal',
-       *executor_test_utils.create_dummy_value_at_clients_all_equal()),
-      ('federated_type_at_clients',
-       *executor_test_utils.create_dummy_value_at_clients())
-  ])
-  # pyformat: enable
-  def test_raises_value_error_with_no_target_executor_clients(
-      self, value, type_signature):
-    executor = federating_executor.FederatingExecutor({
-        placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
-        None: eager_tf_executor.EagerTFExecutor()
-    })
+#   # pyformat: disable
+#   @parameterized.named_parameters([
+#       ('intrinsic_def_federated_broadcast',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_broadcast()),
+#       ('intrinsic_def_federated_eval_at_clients',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_clients()),
+#       ('intrinsic_def_federated_map',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_map()),
+#       ('intrinsic_def_federated_map_all_equal',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_map_all_equal()),
+#       ('intrinsic_def_federated_value_at_clients',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_clients()),
+#       ('federated_type_at_clients_all_equal',
+#        *executor_test_utils.create_dummy_value_at_clients_all_equal()),
+#       ('federated_type_at_clients',
+#        *executor_test_utils.create_dummy_value_at_clients())
+#   ])
+#   # pyformat: enable
+#   def test_raises_value_error_with_no_target_executor_clients(
+#       self, value, type_signature):
+#     strategy = default_federating_strategy.DefaultFederatingStrategy({
+#         placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
+#     })
+#     executor = default_federating_strategy.FederatingExecutor(
+#         strategy, eager_tf_executor.EagerTFExecutor())
 
-    with self.assertRaises(ValueError):
-      self.run_sync(executor.create_value(value, type_signature))
+#     with self.assertRaises(ValueError):
+#       self.run_sync(executor.create_value(value, type_signature))
 
-  # pyformat: disable
-  @parameterized.named_parameters([
-      ('intrinsic_def_federated_aggregate',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_aggregate()),
-      ('intrinsic_def_federated_apply',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_apply()),
-      ('intrinsic_def_federated_collect',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_collect()),
-      ('intrinsic_def_federated_eval_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_server()),
-      ('intrinsic_def_federated_mean',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_mean()),
-      ('intrinsic_def_federated_sum',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_sum()),
-      ('intrinsic_def_federated_reduce',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_reduce()),
-      ('intrinsic_def_federated_value_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_server()),
-      ('intrinsic_def_federated_weighted_mean',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_weighted_mean()),
-      ('intrinsic_def_federated_zip_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_server()),
-      ('federated_type_at_server',
-       *executor_test_utils.create_dummy_value_at_server()),
-  ])
-  # pyformat: enable
-  def test_raises_value_error_with_no_target_executor_server(
-      self, value, type_signature):
-    executor = federating_executor.FederatingExecutor({
-        placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
-        None: eager_tf_executor.EagerTFExecutor()
-    })
-    value, type_signature = executor_test_utils.create_dummy_value_at_server()
+#   # pyformat: disable
+#   @parameterized.named_parameters([
+#       ('intrinsic_def_federated_aggregate',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_aggregate()),
+#       ('intrinsic_def_federated_apply',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_apply()),
+#       ('intrinsic_def_federated_collect',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_collect()),
+#       ('intrinsic_def_federated_eval_at_server',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_server()),
+#       ('intrinsic_def_federated_mean',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_mean()),
+#       ('intrinsic_def_federated_sum',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_sum()),
+#       ('intrinsic_def_federated_reduce',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_reduce()),
+#       ('intrinsic_def_federated_value_at_server',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_server()),
+#       ('intrinsic_def_federated_weighted_mean',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_weighted_mean()),
+#       ('intrinsic_def_federated_zip_at_server',
+#        *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_server()),
+#       ('federated_type_at_server',
+#        *executor_test_utils.create_dummy_value_at_server()),
+#   ])
+#   # pyformat: enable
+#   def test_raises_value_error_with_no_target_executor_server(
+#       self, value, type_signature):
+#     strategy = default_federating_strategy.DefaultFederatingStrategy({
+#         placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
+#     })
+#     executor = federating_executor.FederatingExecutor(
+#         strategy, eager_tf_executor.EagerTFExecutor())
+#     value, type_signature = executor_test_utils.create_dummy_value_at_server()
 
-    with self.assertRaises(ValueError):
-      self.run_sync(executor.create_value(value, type_signature))
+#     with self.assertRaises(ValueError):
+#       self.run_sync(executor.create_value(value, type_signature))
+
+#   def test_raises_value_error_with_no_target_executor_unplaced(self):
+#     strategy = default_federating_strategy.DefaultFederatingStrategy({
+#         placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
+#         placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
+#     })
+#     executor = federating_executor.FederatingExecutor(strategy, None)
+#     value, type_signature = executor_test_utils.create_dummy_value_unplaced()
+
+#     with self.assertRaises(ValueError):
+#       self.run_sync(executor.create_value(value, type_signature))
 
   def test_raises_value_error_with_unexpected_federated_type_at_clients(self):
     executor = create_test_executor()
@@ -541,7 +470,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
       arg = elements[0]
     result = self.run_sync(executor.create_call(comp, arg))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      comp_type.result.compact_representation())
     actual_result = self.run_sync(result.compute())
@@ -565,7 +494,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     arg = self.run_sync(executor.create_value(arg, arg_type))
     result = self.run_sync(executor.create_call(comp, arg))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      comp_type.result.compact_representation())
     actual_result = self.run_sync(result.compute())
@@ -587,7 +516,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     comp = self.run_sync(executor.create_value(comp, comp_type))
     result = self.run_sync(executor.create_call(comp))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      comp_type.result.compact_representation())
     actual_result = self.run_sync(result.compute())
@@ -708,10 +637,10 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     type_signature = computation_types.NamedTupleType([type_signature] * 3)
     result = self.run_sync(executor.create_tuple(elements))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
-    # TODO(b/153578410): Some `FederatingExecutorValue` that can can be
+    # TODO(b/153578410): Some `FederatingStrategyValue` that can can be
     # constructed, can not be computed.
 
   # pyformat: disable
@@ -735,7 +664,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     type_signature = computation_types.NamedTupleType([fn_type.result] * 3)
     result = self.run_sync(executor.create_tuple(elements))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
     actual_result = self.run_sync(result.compute())
@@ -757,7 +686,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     type_signature = computation_types.NamedTupleType([fn_type.result] * 3)
     result = self.run_sync(executor.create_tuple(elements))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
     actual_result = self.run_sync(result.compute())
@@ -784,7 +713,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     source = self.run_sync(executor.create_call(source))
     result = self.run_sync(executor.create_selection(source, index=0))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.result[0].compact_representation())
     actual_result = self.run_sync(result.compute())
@@ -801,7 +730,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     source = self.run_sync(executor.create_tuple(elements))
     result = self.run_sync(executor.create_selection(source, index=0))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature[0].compact_representation())
     actual_result = self.run_sync(result.compute())
@@ -817,7 +746,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     source = self.run_sync(executor.create_call(source))
     result = self.run_sync(executor.create_selection(source, name='a'))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.result['a'].compact_representation())
     actual_result = self.run_sync(result.compute())
@@ -836,7 +765,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     source = self.run_sync(executor.create_tuple(elements))
     result = self.run_sync(executor.create_selection(source, name='a'))
 
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
+    self.assertIsInstance(result, executor._strategy.value_type)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature['a'].compact_representation())
     actual_result = self.run_sync(result.compute())

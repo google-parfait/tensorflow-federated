@@ -53,8 +53,9 @@ from tensorflow_federated.python.core.impl.context_stack.context_stack_base impo
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context
 from tensorflow_federated.python.core.impl.executors.caching_executor import CachingExecutor
-from tensorflow_federated.python.core.impl.executors.composing_executor import ComposingExecutor
+from tensorflow_federated.python.core.impl.executors.composing_federating_strategy import ComposingFederatingStrategy
 from tensorflow_federated.python.core.impl.executors.default_executor import set_default_executor
+from tensorflow_federated.python.core.impl.executors.default_federating_strategy import DefaultFederatingStrategy
 from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_factory import create_executor_factory
@@ -65,6 +66,7 @@ from tensorflow_federated.python.core.impl.executors.executor_stacks import sizi
 from tensorflow_federated.python.core.impl.executors.executor_stacks import worker_pool_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.executors.federating_executor import FederatingExecutor
+from tensorflow_federated.python.core.impl.executors.federating_executor import FederatingStrategy
 from tensorflow_federated.python.core.impl.executors.reference_resolving_executor import ReferenceResolvingExecutor
 from tensorflow_federated.python.core.impl.executors.remote_executor import RemoteExecutor
 from tensorflow_federated.python.core.impl.executors.thread_delegating_executor import ThreadDelegatingExecutor

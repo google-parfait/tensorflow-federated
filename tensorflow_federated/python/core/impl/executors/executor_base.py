@@ -29,6 +29,15 @@ class Executor(object, metaclass=abc.ABCMeta):
   # factoring out parts of reference executor's `to_representation_for_type()`.
 
   @abc.abstractmethod
+  def close(self):
+    """Release resources associated with this Executor, if any.
+
+    If the executor has one or more target Executors, implementation of this
+    method must close them.
+    """
+    raise NotImplementedError
+
+  @abc.abstractmethod
   async def create_value(self, value, type_spec=None) -> evb.ExecutorValue:
     """A coroutine that creates embedded value from `value` of type `type_spec`.
 
@@ -97,14 +106,5 @@ class Executor(object, metaclass=abc.ABCMeta):
 
     Returns:
       An instance of `ExecutorValue` that represents the constructed selection.
-    """
-    raise NotImplementedError
-
-  @abc.abstractmethod
-  def close(self):
-    """Release resources associated with this Executor, if any.
-
-    If the executor has one or more target Executors, implementation of this
-    method must close them.
     """
     raise NotImplementedError
