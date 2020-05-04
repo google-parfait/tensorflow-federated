@@ -81,7 +81,7 @@ REQUIRED_PACKAGES = [
     'semantic-version~=2.8',
     'tensorflow-addons~=0.8.3',
     'tensorflow-model-optimization~=0.2.1',
-    'tensorflow-privacy~=0.2.2',
+    'tensorflow-privacy~=0.3.0',
     'tensorflow~=2.1.0',
 ]
 

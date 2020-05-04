@@ -44,6 +44,7 @@ def build_dp_query(clip,
                    clipped_count_budget_allocation=None,
                    expected_num_clients=None,
                    per_vector_clipping=False,
+                   geometric_clip_update=True,
                    model=None):
   """Makes a `DPQuery` to estimate vector averages with differential privacy.
 
@@ -58,9 +59,9 @@ def build_dp_query(clip,
     expected_total_weight: The expected total weight of all clients, used as the
       denominator for the average computation.
     adaptive_clip_learning_rate: Learning rate for quantile-based adaptive
-      clipping. If 0, fixed clipping is used. If per-vector clipping is enabled,
-      the learning rate of each vector is proportional to that vector's initial
-      clip.
+      clipping. If 0, fixed clipping is used. If `per_vector_clipping=True` and
+      `geometric_clip_update=False`, the learning rate of each vector is
+      proportional to that vector's initial clip.
     target_unclipped_quantile: Target unclipped quantile for adaptive clipping.
     clipped_count_budget_allocation: The fraction of privacy budget to use for
       estimating clipped counts.
@@ -71,6 +72,7 @@ def build_dp_query(clip,
       the initial clipping norm, in the case of adaptive clipping) is
       proportional to the sqrt of the vector dimensionality such that the root
       sum squared of the individual clips equals `clip`.
+    geometric_clip_update: If True, use geometric updating of the clip.
     model: A `tff.learning.Model` to determine the structure of model weights.
       Required only if per_vector_clipping is True.
 
@@ -112,13 +114,24 @@ def build_dp_query(clip,
           sum_stddev=vector_clip * noise_multiplier * num_vectors**0.5,
           denominator=expected_total_weight)
     else:
+      # Without geometric updating, the update is c = c - lr * loss, so for
+      # multiple vectors we set the learning rate to be on the same scale as the
+      # initial clip. That way big vectors get big updates, small vectors
+      # small updates. With geometric updating, the update is
+      # c = c * exp(-lr * loss) so the learning rate should be independent of
+      # the initial clip.
+      if geometric_clip_update:
+        learning_rate = adaptive_clip_learning_rate
+      else:
+        learning_rate = adaptive_clip_learning_rate * vector_clip / clip
       return tensorflow_privacy.QuantileAdaptiveClipAverageQuery(
           initial_l2_norm_clip=vector_clip,
           noise_multiplier=noise_multiplier,
           target_unclipped_quantile=target_unclipped_quantile,
-          learning_rate=adaptive_clip_learning_rate * vector_clip / clip,
+          learning_rate=learning_rate,
           clipped_count_stddev=clipped_count_stddev,
           expected_num_records=expected_num_clients,
+          geometric_update=geometric_clip_update,
           denominator=expected_total_weight)
 
   if per_vector_clipping:

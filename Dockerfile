@@ -70,7 +70,7 @@ RUN ${PIP} install --no-cache-dir \
     retrying~=1.3.3 \
     semantic-version~=2.8 \
     tensorflow-model-optimization~=0.2.1 \
-    tensorflow-privacy~=0.2.2 \
+    tensorflow-privacy~=0.3.0 \
     tf-nightly \
     tfa-nightly
 RUN pip freeze
