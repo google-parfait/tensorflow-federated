@@ -373,49 +373,8 @@ def create_tensorflow_binary_operator(operand_type, operator):
     incompatible with the TFF generic operators, as checked by
     `type_utils.is_generic_op_compatible_type`, or `operator` is not callable.
   """
-  operand_type = computation_types.to_type(operand_type)
-  py_typecheck.check_type(operand_type, computation_types.Type)
-  py_typecheck.check_callable(operator)
-  if not type_utils.is_generic_op_compatible_type(operand_type):
-    raise TypeError('The type {} contains a type other than '
-                    '`computation_types.TensorType` and '
-                    '`computation_types.NamedTupleType`; this is disallowed '
-                    'in the generic operators.'.format(operand_type))
-  with tf.Graph().as_default() as graph:
-    operand_1_value, operand_1_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', operand_type, graph)
-    operand_2_value, operand_2_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'y', operand_type, graph)
-
-    if isinstance(operand_type, computation_types.TensorType):
-      result_value = operator(operand_1_value, operand_2_value)
-    elif isinstance(operand_type, computation_types.NamedTupleType):
-      result_value = anonymous_tuple.map_structure(operator, operand_1_value,
-                                                   operand_2_value)
-    else:
-      raise TypeError('Operand type {} cannot be used in generic operations. '
-                      'The whitelist in '
-                      '`type_utils.is_generic_op_compatible_type` has allowed '
-                      'it to pass, and should be updated.'.format(operand_type))
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result_value, graph)
-
-  function_type = computation_types.FunctionType(
-      computation_types.NamedTupleType([operand_type, operand_type]),
-      result_type)
-  serialized_function_type = type_serialization.serialize_type(function_type)
-
-  parameter_binding = pb.TensorFlow.Binding(
-      tuple=pb.TensorFlow.NamedTupleBinding(
-          element=[operand_1_binding, operand_2_binding]))
-
-  proto = pb.Computation(
-      type=serialized_function_type,
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=parameter_binding,
-          result=result_binding))
-
+  proto = tensorflow_computation_factory.create_binary_operator(
+      operator, operand_type)
   return building_blocks.CompiledComputation(proto)
 
 
@@ -1928,8 +1887,9 @@ def create_binary_operator_with_upcast(type_signature, operator):
     second_arg = y_ref
   else:
     second_arg = _pack_into_type(y_ref, first_arg.type_signature)
-
-  fn = create_tensorflow_binary_operator(first_arg.type_signature, operator)
+  proto = tensorflow_computation_factory.create_binary_operator(
+      operator, first_arg.type_signature)
+  fn = building_blocks.CompiledComputation(proto)
   packed = building_blocks.Tuple([first_arg, second_arg])
   operated = building_blocks.Call(fn, packed)
   lambda_encapsulating_op = building_blocks.Lambda(ref_to_arg.name,

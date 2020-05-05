@@ -29,9 +29,24 @@ from tensorflow_federated.python.core.impl.compiler import type_serialization
 
 class CreateConstantTest(parameterized.TestCase):
 
-  def test_returns_computation_with_tensor_int(self):
-    value = 10
-    type_signature = computation_types.TensorType(tf.int32, [3])
+  # pyfomat: disable
+  @parameterized.named_parameters(
+      ('int', 10, computation_types.TensorType(tf.int32, [3]), [10] * 3),
+      ('float', 10.0, computation_types.TensorType(tf.float32,
+                                                   [3]), [10.0] * 3),
+      ('unnamed_tuple', 10, computation_types.NamedTupleType(
+          [tf.int32] * 3), anonymous_tuple.AnonymousTuple([(None, 10)] * 3)),
+      ('named_tuple', 10,
+       computation_types.NamedTupleType([
+           ('a', tf.int32), ('b', tf.int32), ('c', tf.int32)
+       ]), anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10), ('c', 10)])),
+      ('nested_tuple', 10, computation_types.NamedTupleType(
+          [[tf.int32] * 3] * 3),
+       anonymous_tuple.AnonymousTuple(
+           [(None, anonymous_tuple.AnonymousTuple([(None, 10)] * 3))] * 3)),
+  )
+  # pyfomat: enable
+  def test_returns_computation(self, value, type_signature, expected_result):
     proto = tensorflow_computation_factory.create_constant(
         value, type_signature)
 
@@ -39,96 +54,80 @@ class CreateConstantTest(parameterized.TestCase):
     actual_type = type_serialization.deserialize_type(proto.type)
     expected_type = computation_types.FunctionType(None, type_signature)
     self.assertEqual(actual_type, expected_type)
-    expected_value = [value] * 3
-    actual_value = test_utils.run_tensorflow(proto, expected_value)
-    self.assertCountEqual(actual_value, expected_value)
-
-  def test_returns_computation_with_tensor_float(self):
-    value = 10.0
-    type_signature = computation_types.TensorType(tf.float32, [3])
-    proto = tensorflow_computation_factory.create_constant(
-        value, type_signature)
-
-    self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = computation_types.FunctionType(None, type_signature)
-    self.assertEqual(actual_type, expected_type)
-    expected_value = [value] * 3
-    actual_value = test_utils.run_tensorflow(proto, expected_value)
-    self.assertCountEqual(actual_value, expected_value)
-
-  def test_returns_computation_with_tuple_unnamed(self):
-    value = 10
-    type_signature = computation_types.NamedTupleType([tf.int32] * 3)
-    proto = tensorflow_computation_factory.create_constant(
-        value, type_signature)
-
-    self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = computation_types.FunctionType(None, type_signature)
-    self.assertEqual(actual_type, expected_type)
-    expected_value = [value] * 3
-    actual_value = test_utils.run_tensorflow(proto, expected_value)
-    self.assertCountEqual(actual_value, expected_value)
-
-  def test_returns_computation_with_tuple_named(self):
-    value = 10
-    type_signature = computation_types.NamedTupleType([
-        ('a', tf.int32),
-        ('b', tf.int32),
-        ('c', tf.int32),
-    ])
-
-    proto = tensorflow_computation_factory.create_constant(
-        value, type_signature)
-
-    self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = computation_types.FunctionType(None, type_signature)
-    self.assertEqual(actual_type, expected_type)
-    expected_value = [value] * 3
-    actual_value = test_utils.run_tensorflow(proto, expected_value)
-    self.assertCountEqual(actual_value, expected_value)
-
-  def test_returns_computation_tuple_nested(self):
-    value = 10
-    type_signature = computation_types.NamedTupleType([[tf.int32] * 3] * 3)
-
-    proto = tensorflow_computation_factory.create_constant(
-        value, type_signature)
-
-    self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = computation_types.FunctionType(None, type_signature)
-    self.assertEqual(actual_type, expected_type)
-    expected_value = [[value] * 3] * 3
-    actual_value = test_utils.run_tensorflow(proto, expected_value)
-    for actual_nested, expected_nested in zip(actual_value, expected_value):
-      self.assertCountEqual(actual_nested, expected_nested)
-
-  def test_raises_type_error_with_non_scalar_value(self):
-    value = np.zeros([1])
-    type_signature = computation_types.TensorType(tf.int32)
-
-    with self.assertRaises(TypeError):
-      tensorflow_computation_factory.create_constant(value, type_signature)
+    actual_result = test_utils.run_tensorflow(proto)
+    if isinstance(expected_result, list):
+      self.assertCountEqual(actual_result, expected_result)
+    else:
+      self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(
-      ('none', None),
-      ('federated_type', type_factory.at_server(tf.int32)),
+      ('non_scalar_value', np.zeros([1]), computation_types.TensorType(
+          tf.int32)),
+      ('none_type', 10, None),
+      ('federated_type', 10, type_factory.at_server(tf.int32)),
+      ('bad_type', 10.0, computation_types.TensorType(tf.int32)),
   )
-  def test_raises_type_error_with_type(self, type_signature):
-    value = 0
-
+  def test_raises_type_error(self, value, type_signature):
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_constant(value, type_signature)
 
-  def test_raises_type_error_with_bad_type(self):
-    value = 10.0
-    type_signature = tf.int32
+
+class CreateBinaryOperatorTest(parameterized.TestCase):
+
+  # pyfomat: disable
+  @parameterized.named_parameters(
+      ('add_int', tf.math.add, computation_types.TensorType(tf.int32), [1, 2
+                                                                       ], 3),
+      ('add_float', tf.math.add, computation_types.TensorType(
+          tf.float32), [1.0, 2.25], 3.25),
+      ('add_unnamed_tuple', tf.math.add,
+       computation_types.NamedTupleType([tf.int32, tf.float32]), [
+           [1, 1.0], [2, 2.25]
+       ], anonymous_tuple.AnonymousTuple([(None, 3), (None, 3.25)])),
+      ('add_named_tuple', tf.math.add,
+       computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]), [
+           [1, 1.0], [2, 2.25]
+       ], anonymous_tuple.AnonymousTuple([('a', 3), ('b', 3.25)])),
+      ('multiply_int', tf.math.multiply, computation_types.TensorType(
+          tf.int32), [2, 2], 4),
+      ('multiply_float', tf.math.multiply,
+       computation_types.TensorType(tf.float32), [2.0, 2.25], 4.5),
+      ('divide_int', tf.math.divide, computation_types.TensorType(
+          tf.int32), [4, 2], 2.0),
+      ('divide_float', tf.math.divide, computation_types.TensorType(
+          tf.float32), [4.0, 2.0], 2.0),
+      ('divide_inf', tf.math.divide, computation_types.TensorType(
+          tf.int32), [1, 0], np.inf),
+  )
+  # pyfomat: enable
+  def test_returns_computation(self, operator, type_signature, operands,
+                               expected_result):
+    proto = tensorflow_computation_factory.create_binary_operator(
+        operator, type_signature)
+
+    self.assertIsInstance(proto, pb.Computation)
+    actual_type = type_serialization.deserialize_type(proto.type)
+    self.assertIsInstance(actual_type, computation_types.FunctionType)
+    # Note: It is only useful to test the parameter type; the result type
+    # depends on the `operator` used, not the implemenation
+    # `create_binary_operator`.
+    expected_parameter_type = computation_types.NamedTupleType(
+        [type_signature, type_signature])
+    self.assertEqual(actual_type.parameter, expected_parameter_type)
+    actual_result = test_utils.run_tensorflow(proto, operands)
+    self.assertEqual(actual_result, expected_result)
+
+  @parameterized.named_parameters(
+      ('non_callable_operator', 1, computation_types.TensorType(tf.int32)),
+      ('none_type', tf.math.add, None),
+      ('federated_type', tf.math.add, type_factory.at_server(tf.int32)),
+      ('sequence_type', tf.math.add, computation_types.SequenceType(tf.int32)),
+  )
+  def test_raises_type_error(self, operator, type_signature):
 
     with self.assertRaises(TypeError):
-      tensorflow_computation_factory.create_constant(value, type_signature)
+      tensorflow_computation_factory.create_binary_operator(
+          operator, type_signature)
 
 
 class CreateEmptyTupleTest(absltest.TestCase):
@@ -140,65 +139,35 @@ class CreateEmptyTupleTest(absltest.TestCase):
     actual_type = type_serialization.deserialize_type(proto.type)
     expected_type = computation_types.FunctionType(None, [])
     self.assertEqual(actual_type, expected_type)
-    expected_value = anonymous_tuple.AnonymousTuple([])
-    actual_value = test_utils.run_tensorflow(proto, expected_value)
-    self.assertEqual(actual_value, expected_value)
+    actual_result = test_utils.run_tensorflow(proto)
+    expected_result = anonymous_tuple.AnonymousTuple([])
+    self.assertEqual(actual_result, expected_result)
 
 
 class CreateIdentityTest(parameterized.TestCase):
 
-  def test_returns_computation_int(self):
-    type_signature = computation_types.TensorType(tf.int32)
-
+  # pyfomat: disable
+  @parameterized.named_parameters(
+      ('int', computation_types.TensorType(tf.int32), 10),
+      ('unnamed_tuple', computation_types.NamedTupleType([
+          tf.int32, tf.float32
+      ]), anonymous_tuple.AnonymousTuple([(None, 10), (None, 10.0)])),
+      ('named_tuple',
+       computation_types.NamedTupleType([
+           ('a', tf.int32), ('b', tf.float32)
+       ]), anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10.0)])),
+      ('sequence', computation_types.SequenceType(tf.int32), [10] * 3),
+  )
+  # pyfomat: enable
+  def test_returns_computation_int(self, type_signature, value):
     proto = tensorflow_computation_factory.create_identity(type_signature)
 
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
     expected_type = type_factory.unary_op(type_signature)
     self.assertEqual(actual_type, expected_type)
-    expected_value = 10
-    actual_value = test_utils.run_tensorflow(proto, expected_value)
-    self.assertEqual(actual_value, expected_value)
-
-  def test_returns_computation_tuple_unnamed(self):
-    type_signature = computation_types.NamedTupleType([tf.int32, tf.float32])
-
-    proto = tensorflow_computation_factory.create_identity(type_signature)
-
-    self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = type_factory.unary_op(type_signature)
-    self.assertEqual(actual_type, expected_type)
-    expected_value = anonymous_tuple.AnonymousTuple([(None, 10), (None, 10.0)])
-    actual_value = test_utils.run_tensorflow(proto, expected_value)
-    self.assertEqual(actual_value, expected_value)
-
-  def test_returns_computation_tuple_named(self):
-    type_signature = computation_types.NamedTupleType([('a', tf.int32),
-                                                       ('b', tf.float32)])
-
-    proto = tensorflow_computation_factory.create_identity(type_signature)
-
-    self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = type_factory.unary_op(type_signature)
-    self.assertEqual(actual_type, expected_type)
-    expected_value = anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10.0)])
-    actual_value = test_utils.run_tensorflow(proto, expected_value)
-    self.assertEqual(actual_value, expected_value)
-
-  def test_returns_computation_sequence(self):
-    type_signature = computation_types.SequenceType(tf.int32)
-
-    proto = tensorflow_computation_factory.create_identity(type_signature)
-
-    self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = type_factory.unary_op(type_signature)
-    self.assertEqual(actual_type, expected_type)
-    expected_value = [10] * 3
-    actual_value = test_utils.run_tensorflow(proto, expected_value)
-    self.assertEqual(actual_value, expected_value)
+    actual_result = test_utils.run_tensorflow(proto, value)
+    self.assertEqual(actual_result, value)
 
   @parameterized.named_parameters(
       ('none', None),

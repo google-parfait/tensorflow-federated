@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.executors import executor_base
@@ -103,25 +104,22 @@ def parse_federated_aggregate_argument_types(type_spec):
   return value_type, zero_type, accumulate_type, merge_type, report_type
 
 
-async def embed_tf_scalar_constant(executor, type_spec, val):
+async def embed_tf_scalar_constant(executor, type_spec, value):
   """Embeds a constant `val` of TFF type `type_spec` in `executor`.
 
   Args:
     executor: An instance of `tff.framework.Executor`.
     type_spec: An instance of `tff.Type`.
-    val: A scalar value.
+    value: A scalar value.
 
   Returns:
     An instance of `tff.framework.ExecutorValue` containing an embedded value.
   """
   py_typecheck.check_type(executor, executor_base.Executor)
-  fn_building_block = (
-      building_block_factory.create_tensorflow_constant(type_spec, val))
-  embedded_val = await executor.create_call(await executor.create_value(
-      fn_building_block.function.proto,
-      fn_building_block.function.type_signature))
-  type_utils.check_equivalent_types(embedded_val.type_signature, type_spec)
-  return embedded_val
+  proto = tensorflow_computation_factory.create_constant(value, type_spec)
+  type_signature = type_serialization.deserialize_type(proto.type)
+  result = await executor.create_value(proto, type_signature)
+  return await executor.create_call(result)
 
 
 async def embed_tf_binary_operator(executor, type_spec, op):
@@ -138,15 +136,9 @@ async def embed_tf_binary_operator(executor, type_spec, op):
     An instance of `tff.framework.ExecutorValue` representing the operator in
     a form embedded into the executor.
   """
-  # TODO(b/134543154): There is an opportunity here to import something more
-  # in line with the usage (no building block wrapping, etc.)
-  fn_building_block = (
-      building_block_factory.create_tensorflow_binary_operator(type_spec, op))
-  embedded_val = await executor.create_value(fn_building_block.proto,
-                                             fn_building_block.type_signature)
-  type_utils.check_equivalent_types(embedded_val.type_signature,
-                                    type_factory.binary_op(type_spec))
-  return embedded_val
+  proto = tensorflow_computation_factory.create_binary_operator(op, type_spec)
+  type_signature = type_serialization.deserialize_type(proto.type)
+  return await executor.create_value(proto, type_signature)
 
 
 def create_intrinsic_comp(intrinsic_def, type_spec):

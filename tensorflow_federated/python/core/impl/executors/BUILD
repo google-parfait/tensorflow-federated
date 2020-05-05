@@ -409,6 +409,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/compiler:placement_literals",
+        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/compiler:type_factory",
         "//tensorflow_federated/python/core/impl/compiler:type_serialization",
     ],
