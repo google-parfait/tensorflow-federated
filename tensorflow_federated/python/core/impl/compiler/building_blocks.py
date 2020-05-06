@@ -836,8 +836,7 @@ class CompiledComputation(ComputationBuildingBlock):
     if name is not None:
       self._name = name
     else:
-      self._name = '{:x}'.format(
-          zlib.adler32(repr(self._proto).encode()) & 0xFFFFFFFF)
+      self._name = '{:x}'.format(zlib.adler32(self._proto.SerializeToString()))
 
   @property
   def proto(self) -> pb.Computation:
