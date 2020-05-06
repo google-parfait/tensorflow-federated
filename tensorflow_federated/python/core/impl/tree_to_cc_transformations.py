@@ -58,9 +58,6 @@ class TFParser(object):
   7. There are no intrinsics present in the AST.
   """
 
-  # TODO(b/133328350): Allow for this to take in multiple selections from a
-  # single argument.
-
   def __init__(self):
     """Populates the parser library with mutually exclusive options."""
     self._parse_library = [
