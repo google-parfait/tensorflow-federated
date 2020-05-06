@@ -37,7 +37,6 @@ def transform_type_postorder(type_signature, transform_fn):
   """
   # TODO(b/134525440): Investigate unifying the recursive methods in type_utils,
   # rather than proliferating them.
-  # TODO(b/134595038): Revisit the change here to add a mutated flag.
   py_typecheck.check_type(type_signature, computation_types.Type)
   py_typecheck.check_callable(transform_fn)
   if isinstance(type_signature, computation_types.FederatedType):
