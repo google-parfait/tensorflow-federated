@@ -635,5 +635,6 @@ class ComposingExecutor(executor_base.Executor):
                 [arg.type_signature[0].member, arg.type_signature[1].member])))
 
   def close(self):
+    self._parent_executor.close()
     for e in self._child_executors:
       e.close()
