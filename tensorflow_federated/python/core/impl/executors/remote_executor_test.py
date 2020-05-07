@@ -23,7 +23,7 @@ from absl.testing import parameterized
 import grpc
 from grpc.framework.foundation import logging_pool
 import portpicker
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
