@@ -319,10 +319,12 @@ class IntrinsicFactory(object):
 
   def federated_value(self, value, placement):
     """Implements `federated_value` as defined in `api/intrinsics.py`."""
-    # TODO(b/113112108): Verify that neither the value, nor any of its parts
-    # are of a federated type.
-
     value = value_impl.to_value(value, None, self._context_stack)
+    if type_utils.type_tree_contains_types(value.type_signature,
+                                           computation_types.FederatedType):
+      raise TypeError('Cannt place value {} containing federated types at '
+                      'another placement; requested to be placed at {}.'.format(
+                          value, placement))
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_value(value, placement)
