@@ -14,7 +14,7 @@
 # limitations under the License.
 """Tests for exported, composite tree_transformations."""
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types

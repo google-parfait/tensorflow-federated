@@ -17,7 +17,7 @@
 import abc
 from typing import Callable, Mapping, List, Tuple, Any, Dict
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.compiler import placement_literals
