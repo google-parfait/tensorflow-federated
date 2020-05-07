@@ -15,7 +15,7 @@
 """General purpose test utilities for TFF."""
 
 from absl import logging
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.core.api import computations
 

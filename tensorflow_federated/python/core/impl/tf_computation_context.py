@@ -14,7 +14,7 @@
 # limitations under the License.
 """The implementation of a context to use in building TF computations."""
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base

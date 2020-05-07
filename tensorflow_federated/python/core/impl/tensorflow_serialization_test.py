@@ -17,7 +17,7 @@ import collections
 from typing import List, Set
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import test

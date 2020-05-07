@@ -19,7 +19,7 @@ import collections
 from typing import Any, Union
 
 import attr
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck

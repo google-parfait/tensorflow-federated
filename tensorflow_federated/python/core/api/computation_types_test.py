@@ -162,14 +162,14 @@ class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
 
     @attr.s
     class TestFoo(object):
-      A = attr.ib()
+      a = attr.ib()
 
-    t = computation_types.NamedTupleTypeWithPyContainerType([('A', tf.int32)],
+    t = computation_types.NamedTupleTypeWithPyContainerType([('a', tf.int32)],
                                                             TestFoo)
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), TestFoo)
-    self.assertEqual(repr(t), 'NamedTupleType([(\'A\', TensorType(tf.int32))])')
+    self.assertEqual(repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))])')
 
 
 class SequenceTypeTest(absltest.TestCase):
@@ -443,8 +443,8 @@ class ToTypeTest(absltest.TestCase):
 
     @attr.s
     class TestFoo(object):
-      A = attr.ib(type=tf.int32)
-      B = attr.ib(type=(tf.float32, [2]))
+      a = attr.ib(type=tf.int32)
+      b = attr.ib(type=(tf.float32, [2]))
 
     t = computation_types.to_type(TestFoo)
     self.assertIsInstance(t,
@@ -452,19 +452,19 @@ class ToTypeTest(absltest.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), TestFoo)
-    self.assertEqual(str(t), '<A=int32,B=float32[2]>')
+    self.assertEqual(str(t), '<a=int32,b=float32[2]>')
 
   def test_attrs_class_missing_type_fails(self):
 
     @attr.s
     class TestFoo(object):
-      A = attr.ib(type=tf.int32)
-      B = attr.ib()  # no type parameter
-      C = attr.ib()  # no type parameter
+      a = attr.ib(type=tf.int32)
+      b = attr.ib()  # no type parameter
+      c = attr.ib()  # no type parameter
 
     expected_msg = (
         "Cannot infer tff.Type for attr.s class 'TestFoo' because some "
-        "attributes were missing type specifications: ['B', 'C']")
+        "attributes were missing type specifications: ['b', 'c']")
     with self.assertRaisesWithLiteralMatch(TypeError, expected_msg):
       computation_types.to_type(TestFoo)
 
@@ -472,45 +472,45 @@ class ToTypeTest(absltest.TestCase):
 
     @attr.s
     class TestFoo(object):
-      A = attr.ib()
-      B = attr.ib()
+      a = attr.ib()
+      b = attr.ib()
 
-    t = computation_types.to_type(TestFoo(A=tf.int32, B=(tf.float32, [2])))
+    t = computation_types.to_type(TestFoo(a=tf.int32, b=(tf.float32, [2])))
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), TestFoo)
-    self.assertEqual(str(t), '<A=int32,B=float32[2]>')
+    self.assertEqual(str(t), '<a=int32,b=float32[2]>')
 
   def test_nested_attrs_class(self):
 
     @attr.s
     class TestFoo(object):
-      A = attr.ib()
-      B = attr.ib()
+      a = attr.ib()
+      b = attr.ib()
 
     @attr.s
     class TestFoo2(object):
-      C = attr.ib(type=(tf.float32, [2]))
+      c = attr.ib(type=(tf.float32, [2]))
 
-    t = computation_types.to_type(TestFoo(A=[tf.int32, tf.bool], B=TestFoo2))
+    t = computation_types.to_type(TestFoo(a=[tf.int32, tf.bool], b=TestFoo2))
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), TestFoo)
-    self.assertIsInstance(t.A,
+    self.assertIsInstance(t.a,
                           computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t.A), list)
-    self.assertIsInstance(t.B,
+            t.a), list)
+    self.assertIsInstance(t.b,
                           computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t.B), TestFoo2)
-    self.assertEqual(str(t), '<A=<int32,bool>,B=<C=float32[2]>>')
+            t.b), TestFoo2)
+    self.assertEqual(str(t), '<a=<int32,bool>,b=<c=float32[2]>>')
 
 
 class RepresentationTest(absltest.TestCase):
