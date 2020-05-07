@@ -16,7 +16,7 @@
 from typing import Optional, Sequence
 
 import attr
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 
 def _check_names_are_strings(instance, attribute, value):

@@ -16,7 +16,7 @@
 import collections
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test

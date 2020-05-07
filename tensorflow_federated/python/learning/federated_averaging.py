@@ -25,7 +25,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 import collections
 from typing import Any, Callable, Optional
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck

@@ -14,7 +14,7 @@
 # limitations under the License.
 """Tests for graph_optimizations.py."""
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.tensorflow_libs import graph_optimizations

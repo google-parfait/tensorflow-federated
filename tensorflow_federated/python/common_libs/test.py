@@ -15,7 +15,7 @@
 """General purpose test utils for TFF."""
 
 from absl.testing import absltest
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 
 class TestCase(tf.test.TestCase, absltest.TestCase):
