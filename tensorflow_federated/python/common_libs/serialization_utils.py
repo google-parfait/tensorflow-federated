@@ -14,7 +14,7 @@
 # limitations under the License.
 """Utilities for serializing and deserializing protocol buffers."""
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from google.protobuf import any_pb2
 from tensorflow_federated.python.common_libs import py_typecheck

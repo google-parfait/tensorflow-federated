@@ -22,7 +22,7 @@ import time
 
 from absl import logging
 from absl.testing import absltest
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import tracing
 

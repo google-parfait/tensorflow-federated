@@ -18,7 +18,7 @@ import collections
 from typing import Union
 
 import attr
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 
