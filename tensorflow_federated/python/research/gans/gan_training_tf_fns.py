@@ -21,7 +21,7 @@ away when b/130724878 is fixed.
 """
 
 import attr
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.research.gans import gan_losses
 from tensorflow_federated.python.tensorflow_libs import tensor_utils

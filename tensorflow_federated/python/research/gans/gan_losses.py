@@ -20,7 +20,7 @@ used as part of a federated computation in gan_training_tf_fns.py.
 
 import abc
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 # This controls the behavior of BatchNormalization Layers.
 # For some reason I don't fully understand, even though we are

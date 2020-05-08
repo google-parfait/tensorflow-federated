@@ -16,7 +16,7 @@
 import os
 
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_privacy
 
 from tensorflow_federated.python.research.gans import gan_losses

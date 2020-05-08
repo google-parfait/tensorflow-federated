@@ -14,7 +14,7 @@
 # limitations under the License.
 """A trivial one-dimensional problem, intended for use in testing."""
 
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 layers = tf.keras.layers
 

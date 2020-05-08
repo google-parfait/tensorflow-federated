@@ -19,7 +19,7 @@ import time
 
 from absl import logging
 import attr
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 
 from tensorflow_federated.python.research.gans import gan_training_tf_fns
 from tensorflow_federated.python.research.gans import tff_gans

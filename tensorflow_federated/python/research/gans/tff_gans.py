@@ -15,7 +15,7 @@
 """TFF orchestration logic for Federated GANs."""
 
 import attr
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 import tensorflow_federated as tff
 import tensorflow_privacy
 
