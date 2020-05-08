@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A library of static analysis functions that can be applied to ASTs."""
+"""A library of static analysis functions for ASTs."""
 
 from typing import AbstractSet, List
 

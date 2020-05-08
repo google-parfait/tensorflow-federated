@@ -12,7 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Contains composite transformations, upon which higher compiler levels depend."""
+"""A library of composite transformation functions.
+
+A composite transformation is one that applies multiple atomic transformation to
+an AST either pointwise or serially.
+"""
 
 from typing import Mapping
 

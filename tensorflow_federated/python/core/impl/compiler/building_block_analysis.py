@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utils for TFF computation building blocks."""
+"""A library of static analysis functions for building blocks."""
+
 import collections
 
 from tensorflow_federated.python.common_libs import py_typecheck

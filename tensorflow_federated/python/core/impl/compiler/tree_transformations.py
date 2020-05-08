@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A library of transformations that can be applied to a computation."""
+"""A library of transformation functions for ASTs."""
 
 import typing
 

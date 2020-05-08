@@ -11,7 +11,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # limitations under the License.
-"""Helper functions for constructing frequently-used TFF computation_types."""
+"""A library of contruction functions for computation type structures."""
 
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
