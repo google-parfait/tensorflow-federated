@@ -27,25 +27,70 @@ from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 
 
+class CreateBroadcastScalarToShapeTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('int_empty_shape', tf.int32, tf.TensorShape([]), 10, 10),
+      ('int', tf.int32, tf.TensorShape([3]), 10, [10, 10, 10]),
+      ('float', tf.float32, tf.TensorShape([3]), 10.0, [10.0, 10.0, 10.0]),
+  )
+  def test_returns_computation(self, type_signature, shape, value,
+                               expected_result):
+    proto = tensorflow_computation_factory.create_broadcast_scalar_to_shape(
+        type_signature, shape)
+
+    self.assertIsInstance(proto, pb.Computation)
+    actual_type = type_serialization.deserialize_type(proto.type)
+    result_type = computation_types.TensorType(type_signature, shape=shape)
+    expected_type = computation_types.FunctionType(type_signature, result_type)
+    self.assertEqual(actual_type, expected_type)
+    actual_result = test_utils.run_tensorflow(proto, value)
+    if isinstance(expected_result, list):
+      self.assertCountEqual(actual_result, expected_result)
+    else:
+      self.assertEqual(actual_result, expected_result)
+
+  @parameterized.named_parameters(
+      ('int_type', int, tf.TensorShape([])),
+      ('list_shape', tf.int32, [1, 1]),
+  )
+  def test_raises_type_error(self, type_signature, shape):
+    with self.assertRaises(TypeError):
+      tensorflow_computation_factory.create_broadcast_scalar_to_shape(
+          type_signature, shape)
+
+  def test_raises_value_error_with_partially_defined_shape(self):
+    type_signature = tf.int32
+    shape = tf.TensorShape([None, 1])
+
+    with self.assertRaises(ValueError):
+      tensorflow_computation_factory.create_broadcast_scalar_to_shape(
+          type_signature, shape)
+
+
 class CreateConstantTest(parameterized.TestCase):
 
-  # pyfomat: disable
+  # pyformat: disable
   @parameterized.named_parameters(
-      ('int', 10, computation_types.TensorType(tf.int32, [3]), [10] * 3),
-      ('float', 10.0, computation_types.TensorType(tf.float32,
-                                                   [3]), [10.0] * 3),
-      ('unnamed_tuple', 10, computation_types.NamedTupleType(
-          [tf.int32] * 3), anonymous_tuple.AnonymousTuple([(None, 10)] * 3)),
+      ('int', 10,
+       computation_types.TensorType(tf.int32, [3]),
+       [10] * 3),
+      ('float', 10.0,
+       computation_types.TensorType(tf.float32, [3]),
+       [10.0] * 3),
+      ('unnamed_tuple', 10,
+       computation_types.NamedTupleType([tf.int32] * 3),
+       anonymous_tuple.AnonymousTuple([(None, 10)] * 3)),
       ('named_tuple', 10,
-       computation_types.NamedTupleType([
-           ('a', tf.int32), ('b', tf.int32), ('c', tf.int32)
-       ]), anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10), ('c', 10)])),
-      ('nested_tuple', 10, computation_types.NamedTupleType(
-          [[tf.int32] * 3] * 3),
+       computation_types.NamedTupleType(
+           [('a', tf.int32), ('b', tf.int32), ('c', tf.int32)]),
+       anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10), ('c', 10)])),
+      ('nested_tuple', 10,
+       computation_types.NamedTupleType([[tf.int32] * 3] * 3),
        anonymous_tuple.AnonymousTuple(
            [(None, anonymous_tuple.AnonymousTuple([(None, 10)] * 3))] * 3)),
   )
-  # pyfomat: enable
+  # pyformat: enable
   def test_returns_computation(self, value, type_signature, expected_result):
     proto = tensorflow_computation_factory.create_constant(
         value, type_signature)
@@ -74,32 +119,39 @@ class CreateConstantTest(parameterized.TestCase):
 
 class CreateBinaryOperatorTest(parameterized.TestCase):
 
-  # pyfomat: disable
+  # pyformat: disable
   @parameterized.named_parameters(
-      ('add_int', tf.math.add, computation_types.TensorType(tf.int32), [1, 2
-                                                                       ], 3),
-      ('add_float', tf.math.add, computation_types.TensorType(
-          tf.float32), [1.0, 2.25], 3.25),
+      ('add_int', tf.math.add,
+       computation_types.TensorType(tf.int32),
+       [1, 2], 3),
+      ('add_float', tf.math.add,
+       computation_types.TensorType(tf.float32),
+       [1.0, 2.25], 3.25),
       ('add_unnamed_tuple', tf.math.add,
-       computation_types.NamedTupleType([tf.int32, tf.float32]), [
-           [1, 1.0], [2, 2.25]
-       ], anonymous_tuple.AnonymousTuple([(None, 3), (None, 3.25)])),
+       computation_types.NamedTupleType([tf.int32, tf.float32]),
+       [[1, 1.0], [2, 2.25]],
+       anonymous_tuple.AnonymousTuple([(None, 3), (None, 3.25)])),
       ('add_named_tuple', tf.math.add,
-       computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]), [
-           [1, 1.0], [2, 2.25]
-       ], anonymous_tuple.AnonymousTuple([('a', 3), ('b', 3.25)])),
-      ('multiply_int', tf.math.multiply, computation_types.TensorType(
-          tf.int32), [2, 2], 4),
+       computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]),
+       [[1, 1.0], [2, 2.25]],
+       anonymous_tuple.AnonymousTuple([('a', 3), ('b', 3.25)])),
+      ('multiply_int', tf.math.multiply,
+       computation_types.TensorType(tf.int32),
+       [2, 2], 4),
       ('multiply_float', tf.math.multiply,
-       computation_types.TensorType(tf.float32), [2.0, 2.25], 4.5),
-      ('divide_int', tf.math.divide, computation_types.TensorType(
-          tf.int32), [4, 2], 2.0),
-      ('divide_float', tf.math.divide, computation_types.TensorType(
-          tf.float32), [4.0, 2.0], 2.0),
-      ('divide_inf', tf.math.divide, computation_types.TensorType(
-          tf.int32), [1, 0], np.inf),
+       computation_types.TensorType(tf.float32),
+       [2.0, 2.25], 4.5),
+      ('divide_int', tf.math.divide,
+       computation_types.TensorType(tf.int32),
+       [4, 2], 2.0),
+      ('divide_float', tf.math.divide,
+       computation_types.TensorType(tf.float32),
+       [4.0, 2.0], 2.0),
+      ('divide_inf', tf.math.divide,
+       computation_types.TensorType(tf.int32),
+       [1, 0], np.inf),
   )
-  # pyfomat: enable
+  # pyformat: enable
   def test_returns_computation(self, operator, type_signature, operands,
                                expected_result):
     proto = tensorflow_computation_factory.create_binary_operator(
@@ -146,20 +198,19 @@ class CreateEmptyTupleTest(absltest.TestCase):
 
 class CreateIdentityTest(parameterized.TestCase):
 
-  # pyfomat: disable
+  # pyformat: disable
   @parameterized.named_parameters(
       ('int', computation_types.TensorType(tf.int32), 10),
-      ('unnamed_tuple', computation_types.NamedTupleType([
-          tf.int32, tf.float32
-      ]), anonymous_tuple.AnonymousTuple([(None, 10), (None, 10.0)])),
+      ('unnamed_tuple',
+       computation_types.NamedTupleType([tf.int32, tf.float32]),
+       anonymous_tuple.AnonymousTuple([(None, 10), (None, 10.0)])),
       ('named_tuple',
-       computation_types.NamedTupleType([
-           ('a', tf.int32), ('b', tf.float32)
-       ]), anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10.0)])),
+       computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]),
+       anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10.0)])),
       ('sequence', computation_types.SequenceType(tf.int32), [10] * 3),
   )
-  # pyfomat: enable
-  def test_returns_computation_int(self, type_signature, value):
+  # pyformat: enable
+  def test_returns_computation(self, type_signature, value):
     proto = tensorflow_computation_factory.create_identity(type_signature)
 
     self.assertIsInstance(proto, pb.Computation)
@@ -176,6 +227,44 @@ class CreateIdentityTest(parameterized.TestCase):
   def test_raises_type_error(self, type_signature):
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_identity(type_signature)
+
+
+class CreateReplicateInputTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('int', computation_types.TensorType(tf.int32), 3, 10),
+      ('float', computation_types.TensorType(tf.float32), 3, 10.0),
+      ('unnamed_tuple', computation_types.NamedTupleType([
+          tf.int32, tf.float32
+      ]), 3, anonymous_tuple.AnonymousTuple([(None, 10), (None, 10.0)])),
+      ('named_tuple',
+       computation_types.NamedTupleType([
+           ('a', tf.int32), ('b', tf.float32)
+       ]), 3, anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10.0)])),
+      ('sequence', computation_types.SequenceType(tf.int32), 3, [10] * 3),
+  )
+  def test_returns_computation(self, type_signature, count, value):
+    proto = tensorflow_computation_factory.create_replicate_input(
+        type_signature, count)
+
+    self.assertIsInstance(proto, pb.Computation)
+    actual_type = type_serialization.deserialize_type(proto.type)
+    expected_type = computation_types.FunctionType(type_signature,
+                                                   [type_signature] * count)
+    self.assertEqual(actual_type, expected_type)
+    actual_result = test_utils.run_tensorflow(proto, value)
+    expected_result = anonymous_tuple.AnonymousTuple([(None, value)] * count)
+    self.assertEqual(actual_result, expected_result)
+
+  @parameterized.named_parameters(
+      ('none_type', None, 3),
+      ('none_count', computation_types.TensorType(tf.int32), None),
+      ('federated_type', type_factory.at_server(tf.int32), 3),
+  )
+  def test_raises_type_error(self, type_signature, count):
+    with self.assertRaises(TypeError):
+      tensorflow_computation_factory.create_replicate_input(
+          type_signature, count)
 
 
 if __name__ == '__main__':

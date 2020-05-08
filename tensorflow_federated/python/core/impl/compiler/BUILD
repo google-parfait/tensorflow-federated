@@ -90,7 +90,6 @@ py_test(
         ":intrinsic_defs",
         ":placement_literals",
         ":test_utils",
-        ":type_factory",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
