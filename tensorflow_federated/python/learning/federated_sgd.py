@@ -22,7 +22,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
