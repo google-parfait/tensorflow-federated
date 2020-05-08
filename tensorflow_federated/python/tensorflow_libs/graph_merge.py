@@ -17,7 +17,7 @@
 import collections
 import uuid
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.tensorflow_libs import graph_spec
 
