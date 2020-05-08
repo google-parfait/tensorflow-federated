@@ -64,4 +64,3 @@ def create_autoencoder_model():
   ])
 
   return model
-
