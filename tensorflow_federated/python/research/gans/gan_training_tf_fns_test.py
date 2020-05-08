@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow_federated.python.research.gans import gan_losses
 from tensorflow_federated.python.research.gans import gan_training_tf_fns
