@@ -15,7 +15,7 @@
 
 from absl.testing import absltest
 
-from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class PlacementLiteralsTest(absltest.TestCase):

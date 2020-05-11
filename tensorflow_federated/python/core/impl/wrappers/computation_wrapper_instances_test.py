@@ -20,8 +20,8 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 tf.compat.v1.enable_v2_behavior()

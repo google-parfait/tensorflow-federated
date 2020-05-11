@@ -14,7 +14,7 @@
 # limitations under the License.
 """Defines common types of placements for use in defining TFF computations."""
 
-from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 # The collective of all the client devices, a TFF placement constant.
 CLIENTS = placement_literals.CLIENTS

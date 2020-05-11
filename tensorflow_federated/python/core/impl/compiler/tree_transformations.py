@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
-from tensorflow_federated.python.core.impl.compiler import type_transformations
+from tensorflow_federated.python.core.impl.types import type_transformations
 
 
 class TransformationError(Exception):

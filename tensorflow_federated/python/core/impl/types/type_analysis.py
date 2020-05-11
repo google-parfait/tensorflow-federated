@@ -15,7 +15,7 @@
 """A library of static analysis functions for computation types."""
 
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.compiler import type_transformations
+from tensorflow_federated.python.core.impl.types import type_transformations
 
 
 def _visit_type(type_signature, function):

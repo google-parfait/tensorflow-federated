@@ -24,7 +24,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 

@@ -20,9 +20,9 @@ from typing import Callable, Mapping, List, Tuple, Any, Dict
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import sizing_executor
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 CardinalitiesType = Mapping[placement_literals.PlacementLiteral, int]
 

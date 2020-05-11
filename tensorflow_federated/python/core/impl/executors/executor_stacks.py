@@ -20,7 +20,6 @@ from typing import List, Tuple
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.compiler import placement_literals
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import composing_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
@@ -30,6 +29,7 @@ from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 def _complete_stack(ex):

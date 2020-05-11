@@ -18,8 +18,8 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl.compiler import placement_literals
-from tensorflow_federated.python.core.impl.compiler import type_transformations
+from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_transformations
 
 
 def _convert_tensor_to_float(type_spec):
