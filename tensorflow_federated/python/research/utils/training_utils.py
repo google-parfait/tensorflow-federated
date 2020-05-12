@@ -15,6 +15,7 @@
 """Shared library for setting up federated training experiments."""
 
 import collections
+import functools
 
 from absl import logging
 import numpy as np
@@ -112,20 +113,30 @@ def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
   return evaluate_fn
 
 
-def build_client_datasets_fn(train_dataset, train_clients_per_round):
+def build_client_datasets_fn(train_dataset,
+                             train_clients_per_round,
+                             set_random_seed=True):
   """Builds the function for generating client datasets at each round.
+
+  The function samples a number of clients and returns their datasets.
 
   Args:
     train_dataset: A `tff.simulation.ClientData` object.
     train_clients_per_round: The number of client participants in each round.
+    set_random_seed: A boolean indicating whether to set the random seed before
+      sampling. If True, the random seed is set to the current round number.
+      Note that this random seed is only used for sampling clients. It does
+      not affect model initialization, shuffling, or other such aspects of the
+      federated training process.
 
   Returns:
     A function which returns a list of `tff.simulation.ClientData` objects at a
     given round round_num.
   """
 
-  def client_datasets(round_num):
-    del round_num  # Unused.
+  def client_datasets(round_num, set_random_seed):
+    if set_random_seed:
+      np.random.seed(round_num)
     sampled_clients = np.random.choice(
         train_dataset.client_ids, size=train_clients_per_round, replace=False)
     return [
@@ -133,4 +144,4 @@ def build_client_datasets_fn(train_dataset, train_clients_per_round):
         for client in sampled_clients
     ]
 
-  return client_datasets
+  return functools.partial(client_datasets, set_random_seed=set_random_seed)

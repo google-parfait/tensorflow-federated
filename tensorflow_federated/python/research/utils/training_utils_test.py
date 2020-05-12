@@ -56,11 +56,41 @@ class TrainingUtilsTest(tf.test.TestCase):
   def test_build_client_datasets_fn(self):
     tff_dataset = tff.simulation.client_data.ConcreteClientData(
         [2], create_tf_dataset_for_client)
-    client_datasets_fn = training_utils.build_client_datasets_fn(tff_dataset, 1)
-    client_datasets = client_datasets_fn(7)
+    client_datasets_fn = training_utils.build_client_datasets_fn(
+        tff_dataset, train_clients_per_round=1, set_random_seed=False)
+    client_datasets = client_datasets_fn(round_num=7)
     sample_batch = next(iter(client_datasets[0]))
     reference_batch = next(iter(create_tf_dataset_for_client(2)))
     self.assertAllClose(sample_batch, reference_batch)
+
+  def test_client_datasets_fn_with_random_seed(self):
+    tff_dataset = tff.simulation.client_data.ConcreteClientData(
+        [0, 1, 2, 3, 4], create_tf_dataset_for_client)
+    client_datasets_fn = training_utils.build_client_datasets_fn(
+        tff_dataset, train_clients_per_round=1, set_random_seed=True)
+    client_datasets_1 = client_datasets_fn(round_num=5)
+    sample_batch_1 = next(iter(client_datasets_1[0]))
+
+    client_datasets_2 = client_datasets_fn(round_num=5)
+    sample_batch_2 = next(iter(client_datasets_2[0]))
+
+    self.assertAllClose(sample_batch_1, sample_batch_2)
+
+  def test_client_datasets_fn_without_random_seed(self):
+    tff_dataset = tff.simulation.client_data.ConcreteClientData(
+        list(range(100)), create_tf_dataset_for_client)
+    client_datasets_fn = training_utils.build_client_datasets_fn(
+        tff_dataset, train_clients_per_round=50, set_random_seed=False)
+    client_datasets = client_datasets_fn(round_num=0)
+    sample_batches_1 = [
+        next(iter(client_dataset)) for client_dataset in client_datasets
+    ]
+
+    client_datasets = client_datasets_fn(round_num=0)
+    sample_batches_2 = [
+        next(iter(client_dataset)) for client_dataset in client_datasets
+    ]
+    self.assertNotAllClose(sample_batches_1, sample_batches_2)
 
   def test_build_evaluate_fn(self):
 
