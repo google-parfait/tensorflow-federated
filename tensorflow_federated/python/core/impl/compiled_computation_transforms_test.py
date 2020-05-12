@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.impl import compiled_computation_transform
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import proto_transformations
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_transformations
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import type_serialization
@@ -80,7 +80,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
         [tf.int32, tf.float32])
 
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
-    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
+    foo_pruned_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
+        foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, index=0)
@@ -120,7 +121,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                                                              ('b', tf.float32)])
 
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
-    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
+    foo_pruned_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
+        foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, name='a')
@@ -170,7 +172,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
     ])
 
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
-    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
+    foo_pruned_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
+        foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, index=0)
@@ -217,7 +220,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
         ('x', nested_type1), ('y', nested_type2)
     ])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
-    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
+    foo_pruned_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
+        foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, name='x')
@@ -319,7 +323,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                      foo.proto.tensorflow.result)
     self.assertEqual(mapped_to_identity.proto.tensorflow.initialize_op,
                      foo.proto.tensorflow.initialize_op)
-    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
+    foo_pruned_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
+        foo.proto)
     self.assertProtoEquals(
         serialization_utils.unpack_graph_def(
             mapped_to_identity.proto.tensorflow.graph_def),
@@ -331,7 +336,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
     computation_arg_type = computation_types.NamedTupleType([('a', tf.int32),
                                                              ('b', tf.float32)])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
-    foo_pruned_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
+    foo_pruned_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
+        foo.proto)
 
     mapped_to_identity = compiled_computation_transforms.permute_graph_inputs(
         foo, [0, 1])
@@ -365,7 +371,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                      permuted_arg_type)
     self.assertEqual(permuted_inputs.type_signature.result,
                      foo.type_signature.result)
-    pruned_foo_proto = proto_transformations.prune_tensorflow_proto(foo.proto)
+    pruned_foo_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
+        foo.proto)
     self.assertProtoEquals(
         serialization_utils.unpack_graph_def(
             permuted_inputs.proto.tensorflow.graph_def),

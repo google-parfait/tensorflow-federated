@@ -22,7 +22,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import proto_transformations
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_transformations
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -53,17 +53,18 @@ class PruneTensorFlowProtoTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      proto_transformations.prune_tensorflow_proto(None)
+      tensorflow_computation_transformations.prune_tensorflow_proto(None)
 
   def test_raises_on_compiled_computation(self):
     comp = building_block_factory.create_compiled_identity(tf.int32)
     with self.assertRaises(TypeError):
-      proto_transformations.prune_tensorflow_proto(comp)
+      tensorflow_computation_transformations.prune_tensorflow_proto(comp)
 
   def test_does_not_reduce_no_unnecessary_ops(self):
     comp = building_block_factory.create_compiled_identity(tf.int32)
     pruned = building_blocks.CompiledComputation(
-        proto_transformations.prune_tensorflow_proto(comp.proto))
+        tensorflow_computation_transformations.prune_tensorflow_proto(
+            comp.proto))
     ops_before = building_block_analysis.count_tensorflow_ops_in(comp)
     ops_after = building_block_analysis.count_tensorflow_ops_in(pruned)
     self.assertEqual(ops_before, ops_after)
@@ -71,7 +72,8 @@ class PruneTensorFlowProtoTest(absltest.TestCase):
   def test_reduces_unnecessary_ops(self):
     proto = _create_proto_with_unnecessary_op()
     comp = building_blocks.CompiledComputation(proto)
-    reduced_proto = proto_transformations.prune_tensorflow_proto(proto)
+    reduced_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
+        proto)
     reduced_comp = building_blocks.CompiledComputation(reduced_proto)
     ops_before = building_block_analysis.count_tensorflow_ops_in(comp)
     ops_after = building_block_analysis.count_tensorflow_ops_in(reduced_comp)
@@ -79,7 +81,8 @@ class PruneTensorFlowProtoTest(absltest.TestCase):
 
   def test_prune_does_not_change_exeuction(self):
     proto = _create_proto_with_unnecessary_op()
-    reduced_proto = proto_transformations.prune_tensorflow_proto(proto)
+    reduced_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
+        proto)
     for k in range(5):
       self.assertEqual(
           test_utils.run_tensorflow(proto, k),

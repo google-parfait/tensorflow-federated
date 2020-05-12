@@ -183,38 +183,6 @@ py_test(
 )
 
 py_library(
-    name = "proto_transformations",
-    srcs = ["proto_transformations.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-    ],
-)
-
-py_test(
-    name = "proto_transformations_test",
-    size = "small",
-    srcs = ["proto_transformations_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":building_block_analysis",
-        ":building_block_factory",
-        ":building_blocks",
-        ":proto_transformations",
-        ":test_utils",
-        ":type_serialization",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-    ],
-)
-
-py_library(
     name = "tensorflow_computation_factory",
     srcs = ["tensorflow_computation_factory.py"],
     srcs_version = "PY3",
@@ -244,6 +212,38 @@ py_test(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_factory",
+    ],
+)
+
+py_library(
+    name = "tensorflow_computation_transformations",
+    srcs = ["tensorflow_computation_transformations.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+    ],
+)
+
+py_test(
+    name = "tensorflow_computation_transformations_test",
+    size = "small",
+    srcs = ["tensorflow_computation_transformations_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":building_block_analysis",
+        ":building_block_factory",
+        ":building_blocks",
+        ":tensorflow_computation_transformations",
+        ":test_utils",
+        ":type_serialization",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:serialization_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )
 
