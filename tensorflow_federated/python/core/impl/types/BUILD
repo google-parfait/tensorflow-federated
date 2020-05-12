@@ -54,6 +54,25 @@ py_library(
 )
 
 py_library(
+    name = "type_factory",
+    srcs = ["type_factory.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+    ],
+)
+
+py_test(
+    name = "type_factory_test",
+    size = "small",
+    srcs = ["type_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":type_factory"],
+)
+
+py_library(
     name = "type_transformations",
     srcs = ["type_transformations.py"],
     srcs_version = "PY3",

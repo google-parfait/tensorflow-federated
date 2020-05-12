@@ -76,10 +76,10 @@ py_test(
         ":value_base",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl:test",
-        "//tensorflow_federated/python/core/impl/compiler:type_factory",
         "//tensorflow_federated/python/core/impl/executors:default_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
         "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
+        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 

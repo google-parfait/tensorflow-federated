@@ -35,8 +35,8 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks as bb
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 

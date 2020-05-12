@@ -16,7 +16,7 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.impl.compiler import type_factory
+from tensorflow_federated.python.core.impl.types import type_factory
 
 
 class TypeConstructorsTest(absltest.TestCase):

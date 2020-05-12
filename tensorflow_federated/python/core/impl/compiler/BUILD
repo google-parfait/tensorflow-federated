@@ -138,10 +138,10 @@ py_library(
     srcs = ["computation_factory.py"],
     srcs_version = "PY3",
     deps = [
-        ":type_factory",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -152,10 +152,10 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_factory",
-        ":type_factory",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -164,9 +164,9 @@ py_library(
     srcs = ["intrinsic_defs.py"],
     srcs_version = "PY3",
     deps = [
-        ":type_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -239,11 +239,11 @@ py_test(
     deps = [
         ":tensorflow_computation_factory",
         ":test_utils",
-        ":type_factory",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -416,25 +416,6 @@ py_test(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl:type_utils",
     ],
-)
-
-py_library(
-    name = "type_factory",
-    srcs = ["type_factory.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:placements",
-    ],
-)
-
-py_test(
-    name = "type_factory_test",
-    size = "small",
-    srcs = ["type_factory_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":type_factory"],
 )
 
 py_library(

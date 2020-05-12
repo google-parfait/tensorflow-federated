@@ -16,8 +16,8 @@
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.types import type_factory
 
 
 def create_lambda_empty_tuple() -> pb.Computation:

@@ -22,9 +22,9 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import transforming_executor
+from tensorflow_federated.python.core.impl.types import type_factory
 
 tf.compat.v1.enable_v2_behavior()
 

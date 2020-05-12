@@ -24,8 +24,8 @@ from tensorflow_federated.python.core.impl import value_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import type_factory
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import type_factory
 
 
 class IntrinsicFactory(object):
