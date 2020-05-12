@@ -546,7 +546,11 @@ def deserialize_dataset(serialized_bytes):
     with zipfile.ZipFile(temp_zip, 'r') as z:
       z.extractall(path=temp_dir)
     loaded = tf.compat.v2.saved_model.load(temp_dir)
-    ds = loaded.dataset_fn()
+    # TODO(b/156302055): Follow up here when bug is resolved, either remove
+    # if this function call stops failing by default, or leave if this is
+    # working as intended.
+    with tf.device('cpu'):
+      ds = loaded.dataset_fn()
   except Exception as e:  # pylint: disable=broad-except
     raise SerializationError(
         'Error deserializing tff.Sequence value. Inner error: {!s}'.format(

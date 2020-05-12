@@ -168,8 +168,6 @@ class DatasetSerializationTest(test.TestCase):
       _ = tensorflow_serialization.serialize_dataset(
           tf.data.Dataset.range(5), max_serialized_size_bytes=0)
 
-  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test.skip_test_for_gpu
   def test_roundtrip_sequence_of_scalars(self):
     x = tf.data.Dataset.range(5).map(lambda x: x * 2)
     serialized_bytes = tensorflow_serialization.serialize_dataset(x)
@@ -178,8 +176,6 @@ class DatasetSerializationTest(test.TestCase):
     self.assertEqual(x.element_spec, y.element_spec)
     self.assertAllEqual([y_val for y_val in y], [x * 2 for x in range(5)])
 
-  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test.skip_test_for_gpu
   def test_roundtrip_sequence_of_tuples(self):
     x = tf.data.Dataset.range(5).map(
         lambda x: (x * 2, tf.cast(x, tf.int32), tf.cast(x - 1, tf.float32)))
@@ -191,8 +187,6 @@ class DatasetSerializationTest(test.TestCase):
         self.evaluate([y_val for y_val in y]),
         [(x * 2, x, x - 1.) for x in range(5)])
 
-  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test.skip_test_for_gpu
   def test_roundtrip_sequence_of_singleton_tuples(self):
     x = tf.data.Dataset.range(5).map(lambda x: (x,))
     serialized_bytes = tensorflow_serialization.serialize_dataset(x)
@@ -203,8 +197,6 @@ class DatasetSerializationTest(test.TestCase):
     actual_values = self.evaluate([y_val for y_val in y])
     self.assertAllEqual(expected_values, actual_values)
 
-  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test.skip_test_for_gpu
   def test_roundtrip_sequence_of_namedtuples(self):
     test_tuple_type = collections.namedtuple('TestTuple', ['a', 'b', 'c'])
 
@@ -221,8 +213,6 @@ class DatasetSerializationTest(test.TestCase):
         self.evaluate([y_val for y_val in y]),
         [test_tuple_type(a=x * 2, b=x, c=x - 1.) for x in range(5)])
 
-  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test.skip_test_for_gpu
   def test_roundtrip_sequence_of_nested_structures(self):
     test_tuple_type = collections.namedtuple('TestTuple', ['u', 'v'])
 
