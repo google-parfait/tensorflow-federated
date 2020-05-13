@@ -13,12 +13,17 @@
 # limitations under the License.
 """A library of transformation functions for computation types."""
 
+from typing import Callable, Tuple
+
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 
 
-def transform_type_postorder(type_signature, transform_fn):
+def transform_type_postorder(
+    type_signature: computation_types.Type,
+    transform_fn: Callable[[computation_types.Type],
+                           Tuple[computation_types.Type, bool]]):
   """Walks type tree of `type_signature` postorder, calling `transform_fn`.
 
   Args:
@@ -46,45 +51,51 @@ def transform_type_postorder(type_signature, transform_fn):
       type_signature = computation_types.FederatedType(transformed_member,
                                                        type_signature.placement,
                                                        type_signature.all_equal)
-    fed_type_signature, type_signature_mutated = transform_fn(type_signature)
-    return fed_type_signature, type_signature_mutated or member_mutated
+    type_signature, type_signature_mutated = transform_fn(type_signature)
+    return type_signature, type_signature_mutated or member_mutated
   elif isinstance(type_signature, computation_types.SequenceType):
     transformed_element, element_mutated = transform_type_postorder(
         type_signature.element, transform_fn)
     if element_mutated:
       type_signature = computation_types.SequenceType(transformed_element)
-    seq_type_signature, type_signature_mutated = transform_fn(type_signature)
-    return seq_type_signature, type_signature_mutated or element_mutated
+    type_signature, type_signature_mutated = transform_fn(type_signature)
+    return type_signature, type_signature_mutated or element_mutated
   elif isinstance(type_signature, computation_types.FunctionType):
-    transformed_param, param_mutated = transform_type_postorder(
-        type_signature.parameter, transform_fn)
+    if type_signature.parameter is not None:
+      transformed_parameter, parameter_mutated = transform_type_postorder(
+          type_signature.parameter, transform_fn)
+    else:
+      transformed_parameter, parameter_mutated = (None, False)
     transformed_result, result_mutated = transform_type_postorder(
         type_signature.result, transform_fn)
-    if param_mutated or result_mutated:
-      type_signature = computation_types.FunctionType(transformed_param,
+    if parameter_mutated or result_mutated:
+      type_signature = computation_types.FunctionType(transformed_parameter,
                                                       transformed_result)
-    fn_type_signature, fn_mutated = transform_fn(type_signature)
-    return fn_type_signature, fn_mutated or param_mutated or result_mutated
+    type_signature, type_signature_mutated = transform_fn(type_signature)
+    return type_signature, (
+        type_signature_mutated or parameter_mutated or result_mutated)
   elif isinstance(type_signature, computation_types.NamedTupleType):
-    elems = []
-    elems_mutated = False
+    elements = []
+    elements_mutated = False
     for element in anonymous_tuple.iter_elements(type_signature):
       transformed_element, element_mutated = transform_type_postorder(
           element[1], transform_fn)
-      elems_mutated = elems_mutated or element_mutated
-      elems.append((element[0], transformed_element))
-    if elems_mutated:
+      elements_mutated = elements_mutated or element_mutated
+      elements.append((element[0], transformed_element))
+    if elements_mutated:
       if isinstance(type_signature,
                     computation_types.NamedTupleTypeWithPyContainerType):
+        container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            type_signature)
         type_signature = computation_types.NamedTupleTypeWithPyContainerType(
-            elems,
-            computation_types.NamedTupleTypeWithPyContainerType
-            .get_container_type(type_signature))
+            elements, container_type)
       else:
-        type_signature = computation_types.NamedTupleType(elems)
-    tuple_type_signature, tuple_mutated = transform_fn(type_signature)
-    return tuple_type_signature, elems_mutated or tuple_mutated
-  elif isinstance(type_signature,
-                  (computation_types.AbstractType, computation_types.TensorType,
-                   computation_types.PlacementType)):
+        type_signature = computation_types.NamedTupleType(elements)
+    type_signature, type_signature_mutated = transform_fn(type_signature)
+    return type_signature, type_signature_mutated or elements_mutated
+  elif isinstance(type_signature, (
+      computation_types.AbstractType,
+      computation_types.PlacementType,
+      computation_types.TensorType,
+  )):
     return transform_fn(type_signature)

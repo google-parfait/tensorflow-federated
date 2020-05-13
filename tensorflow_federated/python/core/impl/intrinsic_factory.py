@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_factory
 
 
@@ -320,8 +321,8 @@ class IntrinsicFactory(object):
   def federated_value(self, value, placement):
     """Implements `federated_value` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
-    if type_utils.type_tree_contains_types(value.type_signature,
-                                           computation_types.FederatedType):
+    if type_analysis.contains_types(value.type_signature,
+                                    computation_types.FederatedType):
       raise TypeError('Cannt place value {} containing federated types at '
                       'another placement; requested to be placed at {}.'.format(
                           value, placement))

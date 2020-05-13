@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def get_intrinsic_bodies(context_stack):
@@ -71,7 +72,7 @@ def get_intrinsic_bodies(context_stack):
     """Packs arguments to binary operator into a single arg."""
 
     def _only_tuple_or_tensor(value):
-      return type_utils.type_tree_contains_only(
+      return type_analysis.contains_only_types(
           value.type_signature,
           (computation_types.NamedTupleType, computation_types.TensorType))
 
@@ -102,11 +103,11 @@ def get_intrinsic_bodies(context_stack):
 
   def _check_top_level_compatibility_with_generic_operators(x, y, op_name):
     """Performs non-recursive check on the types of `x` and `y`."""
-    x_compatible = type_utils.type_tree_contains_only(
+    x_compatible = type_analysis.contains_only_types(
         x.type_signature,
         (computation_types.NamedTupleType, computation_types.TensorType,
          computation_types.FederatedType))
-    y_compatible = type_utils.type_tree_contains_only(
+    y_compatible = type_analysis.contains_only_types(
         y.type_signature,
         (computation_types.NamedTupleType, computation_types.TensorType,
          computation_types.FederatedType))

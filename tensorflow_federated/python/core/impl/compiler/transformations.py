@@ -470,8 +470,10 @@ def remove_duplicate_called_graphs(comp):
     comp_to_check = comp.result
   else:
     comp_to_check = comp
-  if tree_analysis.count_types(
-      comp_to_check, (building_blocks.Lambda, building_blocks.Block)) > 0:
+  if tree_analysis.contains_types(comp_to_check, (
+      building_blocks.Block,
+      building_blocks.Lambda,
+  )):
     logging.warning(
         'The preprocessors have failed to remove called lambdas '
         'and blocks; falling back to less efficient, but '

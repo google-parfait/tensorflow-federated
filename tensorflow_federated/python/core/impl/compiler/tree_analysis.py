@@ -10,11 +10,11 @@
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
+# See the License for the specific language governing permisions and
 # limitations under the License.
 """A library of static analysis functions for ASTs."""
 
-from typing import AbstractSet, List
+from typing import AbstractSet, Callable, List, Optional, Tuple, Type, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
@@ -26,39 +26,89 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
 
-
-def _visit_postorder(comp, function):
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-
-  def _function(inner_comp):
-    function(inner_comp)
-    return inner_comp, False
-
-  transformation_utils.transform_postorder(comp, _function)
+_TypeOrTupleOfTypes = Union[
+    Type[building_blocks.ComputationBuildingBlock],
+    Tuple[Type[building_blocks.ComputationBuildingBlock]]]
 
 
-def count_types(comp, types):
-  return count(comp, lambda x: isinstance(x, types))
+def _visit_postorder(
+    tree: building_blocks.ComputationBuildingBlock,
+    function: Callable[[building_blocks.ComputationBuildingBlock], None]):
+  py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
+
+  def _visit(building_block):
+    function(building_block)
+    return building_block, False
+
+  transformation_utils.transform_postorder(tree, _visit)
 
 
-def count(comp, predicate=None):
-  """Returns the number of computations in `comp` matching `predicate`.
+def count(
+    tree: building_blocks.ComputationBuildingBlock,
+    predicate: Optional[Callable[[building_blocks.ComputationBuildingBlock],
+                                 bool]] = None
+) -> int:
+  """Returns the number of building blocks in `tree` matching `predicate`.
 
   Args:
-    comp: The computation to test.
-    predicate: An optional Python function that takes a computation as a
-      parameter and returns a boolean value. If `None`, all computations are
-      counted.
+    tree: A tree of `building_blocks.ComputationBuildingBlock`s to count.
+    predicate: An optional Python function that takes a tree as a parameter and
+      returns a boolean value. If `None`, all computations are counted.
   """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  counter = [0]
+  counter = 0
 
-  def _function(comp):
-    if predicate is None or predicate(comp):
-      counter[0] += 1
+  def _function(building_block):
+    nonlocal counter
+    if predicate is None or predicate(building_block):
+      counter += 1
 
-  _visit_postorder(comp, _function)
-  return counter[0]
+  _visit_postorder(tree, _function)
+  return counter
+
+
+def count_types(tree: building_blocks.ComputationBuildingBlock,
+                types: _TypeOrTupleOfTypes) -> int:
+  """Returns the number of instances of `types` in `tree`.
+
+  Args:
+    tree: A tree of `building_blocks.ComputationBuildingBlock`s to count.
+    types: A `building_blocks.ComputationBuildingBlock` type or a tuple of
+      `building_blocks.ComputationBuildingBlock` types; the same as what is
+      accepted by `isinstance`.
+  """
+  return count(tree, lambda x: isinstance(x, types))
+
+
+def contains_types(tree: building_blocks.ComputationBuildingBlock,
+                   types: _TypeOrTupleOfTypes) -> bool:
+  """Checks if `tree` contains any instance of `types`.
+
+  Args:
+    tree: A tree of `building_blocks.ComputationBuildingBlock`s to test.
+    types: A `building_blocks.ComputationBuildingBlock` type or a tuple of
+      `building_blocks.ComputationBuildingBlock` types; the same as what is
+      accepted by `isinstance`.
+
+  Returns:
+    `True` if `tree` contains any instance of `types`, otherwise `False`.
+  """
+  return count_types(tree, types) > 0
+
+
+def contains_only_types(tree: building_blocks.ComputationBuildingBlock,
+                        types: _TypeOrTupleOfTypes) -> bool:
+  """Checks if `tree` contains only instances of `types`.
+
+  Args:
+    tree: A tree of `building_blocks.ComputationBuildingBlock`s to test.
+    types: A `building_blocks.ComputationBuildingBlock` type or a tuple of
+      `building_blocks.ComputationBuildingBlock` types; the same as what is
+      accepted by `isinstance`.
+
+  Returns:
+    `True` if `tree` contains only instances of `types`, otherwise `False`.
+  """
+  return count(tree, lambda x: not isinstance(x, types)) == 0
 
 
 def check_has_single_placement(comp, single_placement):
@@ -519,7 +569,7 @@ def _find_aggregation_in_tree(
     if isinstance(comp.function, building_blocks.Lambda):
       return
     # Aggregation cannot be occurring if the output type is not federated
-    if not type_analysis.contains_federated_type(
+    if not type_analysis.contains_federated_types(
         comp.function.type_signature.result):
       return
 
@@ -537,7 +587,7 @@ def _find_aggregation_in_tree(
     #
     # This means that this check *must* come after the check above ensuring
     # that we're only talking about calls to `building_blocks.Intrinsic`s.
-    if comp.argument is None or not type_analysis.contains_tensors(
+    if comp.argument is None or not type_analysis.contains_tensor_types(
         comp.argument.type_signature):
       return
 

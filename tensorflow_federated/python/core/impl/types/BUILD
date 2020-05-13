@@ -9,6 +9,7 @@ package_group(
         "//tensorflow_federated/python/core/impl/compiler/...",
         "//tensorflow_federated/python/core/impl/context_stack/...",
         "//tensorflow_federated/python/core/impl/executors/...",
+        "//tensorflow_federated/python/core/impl/utils/...",
         "//tensorflow_federated/python/core/impl/wrappers/...",
 
         # TODO(b/143772942): This package is temporary and can be removed once
@@ -49,6 +50,19 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":type_transformations",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "type_analysis_test",
+    size = "small",
+    srcs = ["type_analysis_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":type_analysis",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
 )

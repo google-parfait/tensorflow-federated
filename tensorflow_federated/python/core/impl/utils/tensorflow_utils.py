@@ -28,6 +28,7 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.utils import function_utils
 
 TENSOR_REPRESENTATION_TYPES = (
@@ -763,9 +764,10 @@ def make_dummy_element_for_type_spec(type_spec, none_dim_replacement=0):
     compatible with `type_spec`.
   """
   type_spec = computation_types.to_type(type_spec)
-  if not type_utils.type_tree_contains_only(
-      type_spec,
-      (computation_types.TensorType, computation_types.NamedTupleType)):
+  if not type_analysis.contains_only_types(type_spec, (
+      computation_types.NamedTupleType,
+      computation_types.TensorType,
+  )):
     raise ValueError('Cannot construct array for TFF type containing anything '
                      'other than `computation_types.TensorType` or '
                      '`computation_types.NamedTupleType`; you have passed the '

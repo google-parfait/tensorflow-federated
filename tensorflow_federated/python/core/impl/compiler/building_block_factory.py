@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
@@ -1285,13 +1286,13 @@ def create_generic_constant(type_spec, scalar_value):
     raise TypeError(
         'Must pass a scalar value to `create_generic_constant`; encountered a '
         'value {}'.format(scalar_value))
-  if not type_utils.type_tree_contains_only(type_spec, (
+  if not type_analysis.contains_only_types(type_spec, (
       computation_types.FederatedType,
       computation_types.NamedTupleType,
       computation_types.TensorType,
   )):
     raise TypeError
-  if type_utils.type_tree_contains_only(type_spec, (
+  if type_analysis.contains_only_types(type_spec, (
       computation_types.NamedTupleType,
       computation_types.TensorType,
   )):
@@ -1765,7 +1766,7 @@ def create_zip(comp):
 
 def _check_generic_operator_type(type_spec):
   """Checks that `type_spec` can be the signature of args to a generic op."""
-  if not type_utils.type_tree_contains_only(type_spec, (
+  if not type_analysis.contains_only_types(type_spec, (
       computation_types.FederatedType,
       computation_types.NamedTupleType,
       computation_types.TensorType,
