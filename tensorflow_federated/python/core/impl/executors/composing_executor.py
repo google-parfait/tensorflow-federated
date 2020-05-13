@@ -237,36 +237,32 @@ class ComposingExecutor(executor_base.Executor):
               (k, i) for (k, _), i in zip(type_elemnents_iter, items)))
     elif isinstance(type_spec, computation_types.FederatedType):
       if type_spec.placement == placement_literals.SERVER:
-        if type_spec.all_equal:
-          return CompositeValue(
-              await self._parent_executor.create_value(value, type_spec.member),
-              type_spec)
-        else:
-          raise ValueError('A non-all_equal value on the server is unexpected.')
+        if not type_spec.all_equal:
+          raise ValueError(
+              'Expected an all equal value at the `SERVER` placement, '
+              'found {}.'.format(type_spec))
+        results = await self._parent_executor.create_value(
+            value, type_spec.member)
+        return CompositeValue(results, type_spec)
       elif type_spec.placement == placement_literals.CLIENTS:
         if type_spec.all_equal:
-          return CompositeValue(
-              await asyncio.gather(*[
-                  c.create_value(value, type_spec)
-                  for c in self._child_executors
-              ]), type_spec)
+          results = await asyncio.gather(*[
+              c.create_value(value, type_spec) for c in self._child_executors
+          ])
+          return CompositeValue(results, type_spec)
         else:
           py_typecheck.check_type(value, list)
           cardinalities = await self._get_cardinalities()
-          py_typecheck.check_len(cardinalities, len(self._child_executors))
-          count = sum(cardinalities)
-          py_typecheck.check_len(value, count)
-          result = []
+          total_clients = sum(cardinalities)
+          py_typecheck.check_len(value, total_clients)
+          results = []
           offset = 0
-          for c, n in zip(self._child_executors, cardinalities):
-            new_offset = offset + n
-            # The slice opporator is not supported on all the types `value`
-            # supports.
-            # pytype: disable=unsupported-operands
-            result.append(c.create_value(value[offset:new_offset], type_spec))
-            # pytype: enable=unsupported-operands
+          for child, num_clients in zip(self._child_executors, cardinalities):
+            new_offset = offset + num_clients
+            result = child.create_value(value[offset:new_offset], type_spec)
+            results.append(result)
             offset = new_offset
-          return CompositeValue(await asyncio.gather(*result), type_spec)
+          return CompositeValue(await asyncio.gather(*results), type_spec)
       else:
         raise ValueError('Unexpected placement {}.'.format(type_spec.placement))
     else:
