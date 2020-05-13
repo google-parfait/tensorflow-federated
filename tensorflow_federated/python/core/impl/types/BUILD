@@ -73,6 +73,35 @@ py_test(
 )
 
 py_library(
+    name = "type_serialization",
+    srcs = ["type_serialization.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":placement_literals",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_test(
+    name = "type_serialization_test",
+    size = "small",
+    srcs = ["type_serialization_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":type_serialization",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl:type_utils",
+    ],
+)
+
+py_library(
     name = "type_transformations",
     srcs = ["type_transformations.py"],
     srcs_version = "PY3",

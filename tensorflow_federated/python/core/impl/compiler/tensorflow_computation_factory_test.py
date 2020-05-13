@@ -23,8 +23,8 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import test_utils
-from tensorflow_federated.python.core.impl.compiler import type_serialization
 from tensorflow_federated.python.core.impl.types import type_factory
+from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 class CreateBroadcastScalarToShapeTest(parameterized.TestCase):
