@@ -324,7 +324,7 @@ def parse_tff_to_tf(comp):
         new_comp, parser_callable)
 
   # TODO(b/156385459): Remove this gating and only use newer path.
-  if version_check.is_tensorflow_version_newer('2.3.0', tf):
+  if version_check.is_tensorflow_version_newer('2.2.0', tf):
     # TODO(b/154352798): We copy TF's RewriterConfig toggle enum values as it
     # is not exposed. There is ongoing discussion with TF API owners on exposing
     # the ability to call into Grappler offline; follow up here when we land on
