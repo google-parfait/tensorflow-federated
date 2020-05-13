@@ -65,6 +65,7 @@ divide-and-conquer.
 
 import collections
 
+from absl import logging
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -328,6 +329,7 @@ def parse_tff_to_tf(comp):
     # is not exposed. There is ongoing discussion with TF API owners on exposing
     # the ability to call into Grappler offline; follow up here when we land on
     # something.
+    logging.info('Using Grappler on `CanonicalForm` TensorFlow graphs.')
     off = 2
     aggressive = 3
 
@@ -343,6 +345,9 @@ def parse_tff_to_tf(comp):
 
     tf_parsed, _ = transformations.optimize_tensorflow_graphs(
         tf_parsed, grappler_config_proto)
+  else:
+    logging.info('Old TensorFlow version detected; not using Grappler on '
+                 '`CanonicalForm` TensorFlow graphs.')
   return tf_parsed
 
 

@@ -20,6 +20,16 @@ import semantic_version
 def is_tensorflow_version_newer(version: str, tf_module):
   """Determines the Tensorflow module is newer than a specified version.
 
+  This function should be used when we wish to take dependency on some behavior
+  present in newer but not older versions of TensorFlow. When adding a usage
+  of this, please perform the following steps:
+
+  1. File a bug to clean up the usage of this check--once the latest released
+     TensorFlow version contains this behavior, we want to remove it.
+
+  2. Log in the true and false cases, and ensure that the default behavior is
+     the one you expect.
+
   Args:
     version: a `str` in the semantic versioning format 'major.minor.patch'.
     tf_module: the TensorFlow module to assert the version against.

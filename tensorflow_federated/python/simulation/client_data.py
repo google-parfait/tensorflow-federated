@@ -111,12 +111,15 @@ class ClientData(object, metaclass=abc.ABCMeta):
 
     # TODO(b/154763092): remove this check and only use the newer path.
     if version_check.is_tensorflow_version_newer('2.3.0', tf):
+      logging.info('Using newer tf.data.Dataset construction behavior.')
       # This works in tf-nightly, but isn't in a released tensorflow
       # version yet.
       client_datasets = [d for d in self.datasets(seed=seed)]
       nested_dataset = tf.data.Dataset.from_tensor_slices(client_datasets)
       example_dataset = nested_dataset.flat_map(lambda x: x)
     else:
+      logging.info('Old TensorFlow version detected; defaulting to slower '
+                   'tf.data.Dataset construction.')
 
       def _generator():
         for dataset in self.datasets(seed=seed):
