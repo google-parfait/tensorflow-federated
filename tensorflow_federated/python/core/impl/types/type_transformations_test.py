@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
@@ -64,7 +66,7 @@ def _convert_tuple_to_tensor(type_spec):
   return type_spec, False
 
 
-class TransformTypePostorderTest(tf.test.TestCase):
+class TransformTypePostorderTest(absltest.TestCase):
 
   def test_raises_on_none_type(self):
     with self.assertRaises(TypeError):
@@ -318,5 +320,54 @@ class TransformTypePostorderTest(tf.test.TestCase):
       type_utils.reconcile_value_with_type_spec(comp, tf.int32)
 
 
+class VisitPreorderTest(parameterized.TestCase):
+
+  # pyformat: disable
+  @parameterized.named_parameters([
+      ('abstract_type', computation_types.AbstractType('T'), 1),
+      ('nested_federated_type',
+       computation_types.FederatedType(
+           computation_types.FederatedType(
+               computation_types.FederatedType(
+                   tf.int32, placement_literals.CLIENTS),
+               placement_literals.CLIENTS),
+           placement_literals.CLIENTS),
+       4),
+      ('nested_function_type',
+       computation_types.FunctionType(
+           computation_types.FunctionType(
+               computation_types.FunctionType(tf.int32, tf.int32),
+               tf.int32),
+           tf.int32),
+       7),
+      ('nested_sequence_type',
+       computation_types.SequenceType(
+           computation_types.SequenceType(
+               computation_types.SequenceType(tf.int32))),
+       4),
+      ('named_tuple_type',
+       computation_types.NamedTupleType([
+           tf.int32,
+           tf.bool,
+           computation_types.SequenceType(tf.int32)]),
+       5),
+      ('placement_type', computation_types.PlacementType(), 1),
+  ])
+  # pyformat: enable
+  def test_preorder_call_count(self, type_signature, expected_count):
+
+    class Counter(object):
+      k = 0
+
+    def _count_hits(given_type, arg):
+      del given_type  # Unused.
+      Counter.k += 1
+      return arg
+
+    type_transformations.visit_preorder(type_signature, _count_hits, None)
+    actual_count = Counter.k
+    self.assertEqual(actual_count, expected_count)
+
+
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()

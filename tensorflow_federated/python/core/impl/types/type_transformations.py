@@ -13,13 +13,16 @@
 # limitations under the License.
 """A library of transformation functions for computation types."""
 
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple, TypeVar
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 
+T = TypeVar('T')
 
+
+# TODO(b/134525440): Unifying the recursive methods in type_analysis.
 def transform_type_postorder(
     type_signature: computation_types.Type,
     transform_fn: Callable[[computation_types.Type],
@@ -40,8 +43,6 @@ def transform_type_postorder(
   Raises:
     TypeError: If the types don't match the specification above.
   """
-  # TODO(b/134525440): Investigate unifying the recursive methods in type_utils,
-  # rather than proliferating them.
   py_typecheck.check_type(type_signature, computation_types.Type)
   py_typecheck.check_callable(transform_fn)
   if isinstance(type_signature, computation_types.FederatedType):
@@ -99,3 +100,33 @@ def transform_type_postorder(
       computation_types.TensorType,
   )):
     return transform_fn(type_signature)
+
+
+# TODO(b/134525440): Unifying the recursive methods in type_analysis.
+def visit_preorder(type_spec: Any, fn: Callable[[Any, T], T], context: T):
+  """Recursively calls `fn` on the possibly nested structure `type_spec`.
+
+  Walks the tree in a preorder manner. Updates `context` on the way down with
+  the appropriate information, as defined in `fn`.
+
+  Args:
+    type_spec: A `computation_types.Type` or object convertible to it by
+      `computation_types.to_type`.
+    fn: A function to apply to each of the constituent elements of `type_spec`
+      with the argument `context`. Must return an updated version of `context`
+      which incorporated the information we'd like to track as we move down the
+      type tree.
+    context: Initial state of information to be passed down the tree.
+  """
+  type_signature = computation_types.to_type(type_spec)
+  context = fn(type_signature, context)
+  if isinstance(type_signature, computation_types.FederatedType):
+    visit_preorder(type_signature.member, fn, context)
+  elif isinstance(type_signature, computation_types.SequenceType):
+    visit_preorder(type_signature.element, fn, context)
+  elif isinstance(type_signature, computation_types.FunctionType):
+    visit_preorder(type_signature.parameter, fn, context)
+    visit_preorder(type_signature.result, fn, context)
+  elif isinstance(type_signature, computation_types.NamedTupleType):
+    for _, element in anonymous_tuple.iter_elements(type_signature):
+      visit_preorder(element, fn, context)

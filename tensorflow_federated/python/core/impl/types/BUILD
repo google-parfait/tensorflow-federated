@@ -62,6 +62,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":placement_literals",
         ":type_analysis",
         "//tensorflow_federated/python/core/api:computation_types",
     ],

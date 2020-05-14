@@ -17,9 +17,9 @@
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import function_utils
 
@@ -66,7 +66,7 @@ class ComputationImpl(function_utils.ConcreteFunction):
             'annotated_type: {!s}'.format(type_spec, annotated_type))
       type_spec = annotated_type
 
-    type_utils.check_well_formed(type_spec)
+    type_analysis.check_well_formed(type_spec)
 
     if not isinstance(type_spec, computation_types.FunctionType):
       raise TypeError('{} is not a functional type, from proto: {}'.format(

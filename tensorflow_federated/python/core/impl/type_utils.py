@@ -14,7 +14,6 @@
 """Utilities for type conversion, type checking, type inference, etc."""
 
 import collections
-from typing import Any, Callable, Dict, Type, TypeVar
 
 import attr
 import numpy as np
@@ -432,93 +431,6 @@ def get_named_tuple_element_type(type_spec, name):
   raise ValueError('The name \'{}\' of the element does not correspond to any '
                    'of the names {} in the named tuple type.'.format(
                        name, [e[0] for e in elements if e[0]]))
-
-T = TypeVar('T')
-
-
-def preorder_call(given_type: Any, fn: Callable[[Any, T], T], arg: T):
-  """Recursively calls `fn` on the possibly nested structure `given_type`.
-
-  Walks the tree in a preorder manner. Updates `arg` on the way down with
-  the appropriate information, as defined in `fn`.
-
-  Args:
-    given_type: Possibly nested `computation_types.Type` or object convertible
-      to it by `computation_types.to_type`.
-    fn: Function to apply to each of the constituent elements of `given_type`
-      with the argument `arg`. Must return an updated version of `arg` which
-      incorporated the information we'd like to track as we move down the nested
-      type tree.
-    arg: Initial state of information to be passed down the tree.
-  """
-  type_signature = computation_types.to_type(given_type)
-  arg = fn(type_signature, arg)
-  if isinstance(type_signature, computation_types.FederatedType):
-    preorder_call(type_signature.member, fn, arg)
-  elif isinstance(type_signature, computation_types.SequenceType):
-    preorder_call(type_signature.element, fn, arg)
-  elif isinstance(type_signature, computation_types.FunctionType):
-    preorder_call(type_signature.parameter, fn, arg)
-    preorder_call(type_signature.result, fn, arg)
-  elif isinstance(type_signature, computation_types.NamedTupleType):
-    for element in anonymous_tuple.iter_elements(type_signature):
-      preorder_call(element[1], fn, arg)
-
-
-def check_well_formed(type_spec):
-  """Checks that `type_spec` represents a well-formed type.
-
-  Performs the following checks of well-formedness for `type_spec`:
-    1. If `type_spec` contains a  `computation_types.FederatedType`, checks
-    that its `member` contains nowhere in its structure intances
-    of `computation_types.FunctionType` or `computation_types.FederatedType`.
-    2. If `type_spec` contains a `computation_types.SequenceType`, checks that
-    its `element` contains nowhere in its structure instances of
-    `computation_types.SequenceType`,  `computation_types.FederatedType`
-    or `computation_types.FunctionType`.
-
-  Args:
-    type_spec: The type specification to check, either an instance of
-      `computation_types.Type` or something convertible to it by
-      `computation_types.to_type()`.
-
-  Raises:
-    TypeError: if `type_spec` is not a well-formed TFF type.
-  """
-
-  # TODO(b/113112885): Reinstate a call to `check_all_abstract_types_are_bound`
-  # after revising the definition of well-formedness.
-  type_signature = computation_types.to_type(type_spec)
-
-  def _check_for_disallowed_type(
-      type_to_check: Any,
-      disallowed_types: Dict[Type[Any], str],
-  ) -> Dict[Type[Any], str]:
-    """Checks subtree of `type_to_check` for `disallowed_types`."""
-    for disallowed_type, disallowed_context in disallowed_types.items():
-      if isinstance(type_to_check, disallowed_type):
-        raise TypeError('{} has been encountered in the type signature {}. '
-                        '{} is disallowed inside of {}.'.format(
-                            type_to_check,
-                            type_signature,
-                            disallowed_type,
-                            disallowed_context,
-                        ))
-    if isinstance(type_to_check, computation_types.FederatedType):
-      context = 'federated types (types placed @CLIENT or @SERVER)'
-      disallowed_types = {
-          **disallowed_types, computation_types.FederatedType: context,
-          computation_types.FunctionType: context
-      }
-    if isinstance(type_to_check, computation_types.SequenceType):
-      context = 'sequence types'
-      disallowed_types = {
-          **disallowed_types, computation_types.FederatedType: context,
-          computation_types.SequenceType: context
-      }
-    return disallowed_types
-
-  preorder_call(type_signature, _check_for_disallowed_type, dict())
 
 
 def is_tensorflow_compatible_type(type_spec):

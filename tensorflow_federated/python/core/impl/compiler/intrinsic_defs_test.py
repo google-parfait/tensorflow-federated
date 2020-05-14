@@ -16,8 +16,8 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def _get_intrinsic_names():
@@ -44,7 +44,8 @@ class IntrinsicDefsTest(parameterized.TestCase):
   @parameterized.named_parameters(
       *[(name.lower(), name) for name in _get_intrinsic_names()])
   def test_types_are_well_formed(self, name):
-    type_utils.check_well_formed(getattr(intrinsic_defs, name).type_signature)
+    type_signature = getattr(intrinsic_defs, name).type_signature
+    type_analysis.check_well_formed(type_signature)
 
   @parameterized.named_parameters(
       ('federated_broadcast', 'FEDERATED_BROADCAST', '(T@SERVER -> T@CLIENTS)'),

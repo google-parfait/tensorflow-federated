@@ -111,6 +111,7 @@ py_library(
         "//tensorflow_federated/python/core/api:typed_object",
         "//tensorflow_federated/python/core/impl:type_utils",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
 )
@@ -179,7 +180,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":intrinsic_defs",
-        "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],
 )
 

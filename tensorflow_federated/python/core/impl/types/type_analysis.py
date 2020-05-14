@@ -111,3 +111,58 @@ def contains_only_types(type_signature: computation_types.Type,
     `False`.
   """
   return count(type_signature, lambda x: not isinstance(x, types)) == 0
+
+
+def check_well_formed(type_spec):
+  """Checks that `type_spec` represents a well-formed type.
+
+  Performs the following checks of well-formedness for `type_spec`:
+    1. If `type_spec` contains a  `computation_types.FederatedType`, checks
+    that its `member` contains nowhere in its structure intances
+    of `computation_types.FunctionType` or `computation_types.FederatedType`.
+    2. If `type_spec` contains a `computation_types.SequenceType`, checks that
+    its `element` contains nowhere in its structure instances of
+    `computation_types.SequenceType`,  `computation_types.FederatedType`
+    or `computation_types.FunctionType`.
+
+  Args:
+    type_spec: The type specification to check, either an instance of
+      `computation_types.Type` or something convertible to it by
+      `computation_types.to_type()`.
+
+  Raises:
+    TypeError: if `type_spec` is not a well-formed TFF type.
+  """
+  # TODO(b/113112885): Reinstate a call to `check_all_abstract_types_are_bound`
+  # after revising the definition of well-formedness.
+  type_signature = computation_types.to_type(type_spec)
+
+  def _check_for_disallowed_type(type_to_check, disallowed_types):
+    """Checks subtree of `type_to_check` for `disallowed_types`."""
+    for disallowed_type, disallowed_context in disallowed_types.items():
+      if isinstance(type_to_check, disallowed_type):
+        raise TypeError('{} has been encountered in the type signature {}. '
+                        '{} is disallowed inside of {}.'.format(
+                            type_to_check,
+                            type_signature,
+                            disallowed_type,
+                            disallowed_context,
+                        ))
+    if isinstance(type_to_check, computation_types.FederatedType):
+      context = 'federated types (types placed @CLIENT or @SERVER)'
+      disallowed_types = {
+          **disallowed_types,
+          computation_types.FederatedType: context,
+          computation_types.FunctionType: context,
+      }
+    if isinstance(type_to_check, computation_types.SequenceType):
+      context = 'sequence types'
+      disallowed_types = {
+          **disallowed_types,
+          computation_types.FederatedType: context,
+          computation_types.SequenceType: context,
+      }
+    return disallowed_types
+
+  type_transformations.visit_preorder(type_signature,
+                                      _check_for_disallowed_type, dict())

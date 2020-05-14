@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -101,7 +102,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
         types.to_type().
     """
     type_signature = computation_types.to_type(type_spec)
-    type_utils.check_well_formed(type_signature)
+    type_analysis.check_well_formed(type_signature)
     self._type_signature = type_signature
 
   @property
