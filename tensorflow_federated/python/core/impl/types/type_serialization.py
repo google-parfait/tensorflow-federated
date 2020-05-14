@@ -69,7 +69,6 @@ def serialize_type(type_spec) -> Optional[pb.Type]:
     NotImplementedError: for type variants for which serialization is not
       implemented.
   """
-  # TODO(b/113112885): Implement serialization of the remaining types.
   if type_spec is None:
     return None
   target = computation_types.to_type(type_spec)
@@ -128,7 +127,6 @@ def deserialize_type(
     NotImplementedError: for type variants for which deserialization is not
       implemented.
   """
-  # TODO(b/113112885): Implement deserialization of the remaining types.
   if type_proto is None:
     return None
   py_typecheck.check_type(type_proto, pb.Type)
