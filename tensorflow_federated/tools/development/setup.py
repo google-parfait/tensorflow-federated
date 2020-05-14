@@ -79,10 +79,10 @@ REQUIRED_PACKAGES = [
     'portpicker~=1.3.1',
     'retrying~=1.3.3',
     'semantic-version~=2.8',
-    'tensorflow-addons~=0.8.3',
-    'tensorflow-model-optimization~=0.2.1',
+    'tensorflow-addons~=0.9.1',
+    'tensorflow-model-optimization~=0.3.0',
     'tensorflow-privacy~=0.3.0',
-    'tensorflow~=2.1.0',
+    'tensorflow~=2.2.0',
 ]
 
 setuptools.setup(
