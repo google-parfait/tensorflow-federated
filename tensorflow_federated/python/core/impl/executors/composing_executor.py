@@ -164,39 +164,39 @@ class ComposingExecutor(executor_base.Executor):
     self._cardinalities_task = None
 
   async def _get_cardinalities(self):
-    """A coroutine which returns information about the number of child executors.
+    """Returns information about the number of clients in the child executors.
 
     Returns:
-      An iterable with one value for each element in `self._child_executors`.
-      Each element is a number representing the total number of terminal
-      clients located under the corresponding child executor.
+      A `list` with one element for each element in `self._child_executors`;
+      each of these elements is an integer representing the total number of
+      clients located in the corresponding child executor.
     """
 
+    # This helper function and the logic to cache the `_cardinalities_task` is
+    # is required because `functools.lru_cache` is not compatible with async
+    # coroutines. See https://bugs.python.org/issue35040 for more information.
     async def _get_cardinalities_helper():
-      """Helper function which does the actual work of fetching cardinalities."""
-      one_type = type_factory.at_clients(tf.int32, all_equal=True)
-      sum_type = computation_types.FunctionType(
-          type_factory.at_clients(tf.int32), type_factory.at_server(tf.int32))
-      sum_comp = executor_utils.create_intrinsic_comp(
-          intrinsic_defs.FEDERATED_SUM, sum_type)
 
-      async def _count_leaf_executors(ex):
-        """Counts the total number of leaf executors under `ex`."""
-        one_fut = ex.create_value(1, one_type)
-        sum_comp_fut = ex.create_value(sum_comp, sum_type)
-        one_val, sum_comp_val = tuple(await
-                                      asyncio.gather(one_fut, sum_comp_fut))
-        sum_result = await (await ex.create_call(sum_comp_val,
-                                                 one_val)).compute()
-        if isinstance(sum_result, tf.Tensor):
-          return sum_result.numpy()
+      async def _num_clients(executor):
+        """Returns the number of clients for the given `executor`."""
+        intrinsic_type = computation_types.FunctionType(
+            type_factory.at_clients(tf.int32), type_factory.at_server(tf.int32))
+        intrinsic = executor_utils.create_intrinsic_comp(
+            intrinsic_defs.FEDERATED_SUM, intrinsic_type)
+        arg_type = type_factory.at_clients(tf.int32, all_equal=True)
+        fn, arg = tuple(await asyncio.gather(
+            executor.create_value(intrinsic, intrinsic_type),
+            executor.create_value(1, arg_type)))
+        call = await executor.create_call(fn, arg)
+        result = await call.compute()
+        if isinstance(result, tf.Tensor):
+          return result.numpy()
         else:
-          return sum_result
+          return result
 
       return await asyncio.gather(
-          *[_count_leaf_executors(c) for c in self._child_executors])
+          *[_num_clients(c) for c in self._child_executors])
 
-    # Cache the Task that fetches cardinalities.
     if self._cardinalities_task is None:
       self._cardinalities_task = asyncio.ensure_future(
           _get_cardinalities_helper())
@@ -511,26 +511,33 @@ class ComposingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def _compute_intrinsic_federated_mean(self, arg):
+    type_utils.check_federated_type(
+        arg.type_signature, placement=placement_literals.CLIENTS)
     member_type = arg.type_signature.member
-    ones = await self.create_value(
-        1, type_factory.at_clients(member_type, all_equal=True))
-    totals = (await self._compute_intrinsic_federated_sum(
-        await self._compute_intrinsic_federated_zip_at_clients(
-            await self.create_tuple([arg, ones])))).internal_representation
-    py_typecheck.check_type(totals, executor_value_base.ExecutorValue)
-    fed_sum, count = tuple(await asyncio.gather(
-        self._parent_executor.create_selection(totals, index=0),
-        self._parent_executor.create_selection(totals, index=1)))
-    count_val = await count.compute()
-    factor, multiply = tuple(await asyncio.gather(*[
-        executor_utils.embed_tf_scalar_constant(
-            self._parent_executor, member_type, float(1.0 / count_val)),
+
+    async def _compute_total():
+      total = await self._compute_intrinsic_federated_sum(arg)
+      total = await total.compute()
+      return await self._parent_executor.create_value(total, member_type)
+
+    async def _compute_factor():
+      cardinalities = await self._get_cardinalities()
+      count = sum(cardinalities)
+      return await executor_utils.embed_tf_scalar_constant(
+          self._parent_executor, member_type, float(1.0 / count))
+
+    async def _compute_multiply_arg():
+      total, factor = tuple(await asyncio.gather(_compute_total(),
+                                                 _compute_factor()))
+      return await self._parent_executor.create_tuple([total, factor])
+
+    multiply_fn, multiply_arg = tuple(await asyncio.gather(
         executor_utils.embed_tf_binary_operator(self._parent_executor,
-                                                member_type, tf.multiply)
-    ]))
-    multiply_arg = await self._parent_executor.create_tuple([fed_sum, factor])
-    result = await self._parent_executor.create_call(multiply, multiply_arg)
-    return CompositeValue(result, type_factory.at_server(member_type))
+                                                member_type, tf.multiply),
+        _compute_multiply_arg()))
+    result = await self._parent_executor.create_call(multiply_fn, multiply_arg)
+    type_signature = type_factory.at_server(member_type)
+    return CompositeValue(result, type_signature)
 
   @tracing.trace
   async def _compute_intrinsic_federated_sum(self, arg):
