@@ -16,6 +16,7 @@ py_test(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
+        "//tensorflow_federated/python/common_libs:test",
     ],
 )
 
