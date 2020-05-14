@@ -81,7 +81,6 @@ from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.tensorflow_libs import version_check
 
 
 class CanonicalFormCompilationError(Exception):
@@ -323,32 +322,28 @@ def parse_tff_to_tf(comp):
     tf_parsed, _ = transformation_utils.transform_postorder(
         new_comp, parser_callable)
 
-  # TODO(b/156385459): Remove this gating and only use newer path.
-  if version_check.is_tensorflow_version_newer('2.2.0', tf):
-    # TODO(b/154352798): We copy TF's RewriterConfig toggle enum values as it
-    # is not exposed. There is ongoing discussion with TF API owners on exposing
-    # the ability to call into Grappler offline; follow up here when we land on
-    # something.
-    logging.info('Using Grappler on `CanonicalForm` TensorFlow graphs.')
-    off = 2
-    aggressive = 3
+  # TODO(b/154352798): We copy TF's RewriterConfig toggle enum values as it
+  # is not exposed. There is ongoing discussion with TF API owners on exposing
+  # the ability to call into Grappler offline; follow up here when we land on
+  # something.
+  logging.info('Using Grappler on `CanonicalForm` TensorFlow graphs.')
+  off = 2
+  aggressive = 3
 
-    grappler_config_proto = tf.compat.v1.ConfigProto()
+  grappler_config_proto = tf.compat.v1.ConfigProto()
 
-    # TODO(b/155127458): Enable function optimization when possible.
-    grappler_config_proto.graph_options.rewrite_options.function_optimization = off
+  # TODO(b/155127458): Enable function optimization when possible.
+  grappler_config_proto.graph_options.rewrite_options.function_optimization = off
 
-    grappler_config_proto.graph_options.rewrite_options.memory_optimization = aggressive
-    grappler_config_proto.graph_options.rewrite_options.constant_folding = aggressive
-    grappler_config_proto.graph_options.rewrite_options.arithmetic_optimization = aggressive
-    grappler_config_proto.graph_options.rewrite_options.loop_optimization = aggressive
+  grappler_config_proto.graph_options.rewrite_options.memory_optimization = aggressive
+  grappler_config_proto.graph_options.rewrite_options.constant_folding = aggressive
+  grappler_config_proto.graph_options.rewrite_options.arithmetic_optimization = aggressive
+  grappler_config_proto.graph_options.rewrite_options.loop_optimization = aggressive
 
-    tf_parsed, _ = transformations.optimize_tensorflow_graphs(
-        tf_parsed, grappler_config_proto)
-  else:
-    logging.info('Old TensorFlow version detected; not using Grappler on '
-                 '`CanonicalForm` TensorFlow graphs.')
-  return tf_parsed
+  optimized_tf, _ = transformations.optimize_tensorflow_graphs(
+      tf_parsed, grappler_config_proto)
+
+  return optimized_tf
 
 
 def force_align_and_split_by_intrinsics(comp, uri):
