@@ -739,8 +739,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
         'federated_map(<(_var4 -> _var4[1]),_var2>)>)')
     self.assertEqual(
         str(deep_zeroth_index_extracted.result.argument),
-        'federated_map(<(_var5 -> <_var5[0],_var5[1]>),federated_map(<(_var6 -> _var6),(let _var7=<_var1[0][0],_var1[2][0]> in federated_zip_at_clients(<_var7[0],_var7[1]>))>)>)'
-    )
+        'federated_zip_at_clients(<_var1[0][0],_var1[2][0]>)')
 
   def test_binding_multiple_args_results_in_unique_names(self):
     fed_at_clients = computation_types.FederatedType(tf.int32,

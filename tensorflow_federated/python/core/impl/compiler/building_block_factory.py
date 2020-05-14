@@ -16,7 +16,7 @@
 
 import random
 import string
-from typing import Sequence
+from typing import List, Sequence, Tuple
 
 import tensorflow as tf
 
@@ -161,11 +161,11 @@ def construct_tensorflow_selecting_and_packing_outputs(
     arg_type: `computation_types.Type` of the argument on which the constructed
       function will be called. Should be an instance of
       `computation_types.NamedTupleType`.
-    output_structure: `anonymous_tuple.AnonymousTuple` with `SelectionSpec`
-      or `anonymous_tupl.AnonymousTupl` elements, mapping from elements of
-      the nested argument tuple to the desired result of the generated
-      computation. `output_structure` must contain all the names desired on
-      the output of the computation.
+    output_structure: `anonymous_tuple.AnonymousTuple` with `SelectionSpec` or
+      `anonymous_tupl.AnonymousTuple` elements, mapping from elements of the
+      nested argument tuple to the desired result of the generated computation.
+      `output_structure` must contain all the names desired on the output of the
+      computation.
 
   Returns:
     A `building_blocks.CompiledComputation` representing the specification
@@ -1151,11 +1151,97 @@ def _create_flat_federated_zip(value):
     fn = building_blocks.Lambda(ref.name, ref.type_signature, values)
     sel = building_blocks.Selection(value, index=0)
     return map_fn(fn, sel)
+  elif length == 2:
+    # No point building and tearing down a tree if we can just federated_zip
+    # Note: this branch is purely an optimization and is not necessary.
+    if any((name is not None for name in names_to_add)):
+      # Remove names if necessary
+      named_ref = building_blocks.Reference('named', value.type_signature)
+      value = building_blocks.Block(
+          [(named_ref.name, value)],
+          building_blocks.Tuple((
+              building_blocks.Selection(named_ref, index=0),
+              building_blocks.Selection(named_ref, index=1),
+          )))
+    unnamed_zip = create_zip_two_values(value)
   else:
-    zipped_args = _create_chain_zipped_values(value)
-    append_fn = _create_fn_to_append_chain_zipped_values(value)
-    unnamed_zip = map_fn(append_fn, zipped_args)
-    return create_named_federated_tuple(unnamed_zip, names_to_add)
+    # Build a binary tree of federated zips
+    args = building_blocks.Reference('value', value.type_signature)
+    zipped, paths = _build_tree_of_zips_and_paths_to_elements(
+        args, 0,
+        len(value.type_signature) - 1)
+    zipped_block = building_blocks.Block([(args.name, value)], zipped)
+    # Select the values out of the tree back into a flat tuple
+    zipped_tree_ref = building_blocks.Reference('zipped_tree',
+                                                zipped.type_signature.member)
+    flattened_tree = building_blocks.Tuple(
+        [_selection_from_path(zipped_tree_ref, path) for path in paths])
+    flatten_fn = building_blocks.Lambda(zipped_tree_ref.name,
+                                        zipped_tree_ref.type_signature,
+                                        flattened_tree)
+    unnamed_zip = map_fn(flatten_fn, zipped_block)
+  return create_named_federated_tuple(unnamed_zip, names_to_add)
+
+
+def _prepend_to_paths(paths: List[List[int]], element: int):
+  for path in paths:
+    path.insert(0, element)
+
+
+def _build_tree_of_zips_and_paths_to_elements(
+    args: building_blocks.Reference,
+    start_index: int,
+    end_index: int,
+) -> Tuple[building_blocks.ComputationBuildingBlock, List[List[int]]]:
+  """Builds a binary tree of federated_zips and a list of paths to each element.
+
+  Args:
+    args: A reference to the values to be zipped.
+    start_index: The index of the first element of `args` to zip.
+    end_index: The index of the last element of `args` to zip.
+
+  Returns:
+    A tuple containing the tree of zips as well as a list of paths to the
+    element at each index. A single path is a list of indices that can be used
+    with `_selection_from_path` to select an element out of the result.
+  """
+  py_typecheck.check_type(args, building_blocks.Reference)
+  py_typecheck.check_type(args.type_signature, computation_types.NamedTupleType)
+  if start_index == end_index:
+    # Base case for one element
+    tree = building_blocks.Selection(args, index=start_index)
+    paths = [[]]
+  elif start_index + 1 == end_index:
+    # Base case for two elements
+    first = building_blocks.Selection(args, index=start_index)
+    second = building_blocks.Selection(args, index=end_index)
+    values = building_blocks.Tuple((first, second))
+    tree = create_zip_two_values(values)
+    paths = [[0], [1]]
+  else:
+    # Recursive case for three or more elements
+    split_point = int((start_index + end_index) / 2)
+    left_tree, left_paths = _build_tree_of_zips_and_paths_to_elements(
+        args, start_index, split_point)
+    right_tree, right_paths = _build_tree_of_zips_and_paths_to_elements(
+        args, split_point + 1, end_index)
+    values = building_blocks.Tuple((left_tree, right_tree))
+    tree = create_zip_two_values(values)
+    _prepend_to_paths(left_paths, 0)
+    _prepend_to_paths(right_paths, 1)
+    paths = left_paths + right_paths
+  py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
+  assert len(paths) == (end_index - start_index + 1)
+  return (tree, paths)
+
+
+def _selection_from_path(
+    selected: building_blocks.ComputationBuildingBlock,
+    path: List[int],
+) -> building_blocks.ComputationBuildingBlock:
+  for path_element in path:
+    selected = building_blocks.Selection(selected, index=path_element)
+  return selected
 
 
 def create_federated_zip(value):
@@ -1218,7 +1304,7 @@ def create_federated_zip(value):
                     'containing at least one FederatedType.')
   elif len(all_placements) > 1:
     raise TypeError('federated_zip requires all nested FederatedTypes to '
-                    'have the same placement.')
+                    'have the same placement')
 
   placement = all_placements.pop()
 
@@ -1328,64 +1414,6 @@ def create_generic_constant(type_spec, scalar_value):
         'generic constant cases, and failed to raise.'.format(type_spec))
 
 
-def _create_chain_zipped_values(value):
-  r"""Creates a chain of called federated zip with two values.
-
-                Block--------
-               /             \
-  [value=Tuple]               Call
-         |                   /    \
-         [Comp1,    Intrinsic      Tuple
-          Comp2,                   |
-          ...]                     [Call,  Sel(n)]
-                                   /    \        \
-                          Intrinsic      Tuple    Ref(value)
-                                         |
-                                         [Sel(0),       Sel(1)]
-                                                \             \
-                                                 Ref(value)    Ref(value)
-
-  Note: This function is intended to be used in conjunction with
-  `_create_fn_to_append_chain_zipped_values` and will drop the tuple names. The
-  names will be added back to the resulting computation when the zipped values
-  are mapped to a function that flattens the chain. This nested zip -> flatten
-  structure must be used since length of a named tuple type in the TFF type
-  system is an element of the type proper. That is, a named tuple type of
-  length 2 is a different type than a named tuple type of length 3, they are
-  not simply items with the same type and different values, as would be the
-  case if you were thinking of these as Python `list`s. It may be better to
-  think of named tuple types in TFF as more like `struct`s.
-
-  Args:
-    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
-      of type `computation_types.NamedTupleType` containing at least two
-      elements.
-
-  Returns:
-    A `building_blocks.Call`.
-
-  Raises:
-    TypeError: If any of the types do not match.
-    ValueError: If `value` does not contain at least two elements.
-  """
-  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
-  length = len(named_type_signatures)
-  if length < 2:
-    raise ValueError(
-        'Expected a value with at least two elements, received {} elements.'
-        .format(named_type_signatures))
-  ref = building_blocks.Reference('value', value.type_signature)
-  symbols = ((ref.name, value),)
-  sel_0 = building_blocks.Selection(ref, index=0)
-  result = sel_0
-  for i in range(1, length):
-    sel = building_blocks.Selection(ref, index=i)
-    values = building_blocks.Tuple((result, sel))
-    result = create_zip_two_values(values)
-  return building_blocks.Block(symbols, result)
-
-
 def create_zip_two_values(value):
   r"""Creates a called federated zip with two values.
 
@@ -1422,7 +1450,7 @@ def create_zip_two_values(value):
     raise ValueError(
         'Expected a value with exactly two elements, received {} elements.'
         .format(named_type_signatures))
-  placement = value[0].type_signature.placement
+  placement = value.type_signature[0].placement
   if placement is placement_literals.CLIENTS:
     uri = intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri
     all_equal = False
@@ -1443,69 +1471,6 @@ def create_zip_two_values(value):
   intrinsic_type = computation_types.FunctionType(parameter_type, result_type)
   intrinsic = building_blocks.Intrinsic(uri, intrinsic_type)
   return building_blocks.Call(intrinsic, value)
-
-
-def _create_fn_to_append_chain_zipped_values(value):
-  r"""Creates a function to append a chain of zipped values.
-
-  Lambda(arg3)
-            \
-             append([Call,    Sel(1)])
-                    /    \            \
-        Lambda(arg2)      Sel(0)       Ref(arg3)
-                  \             \
-                   \             Ref(arg3)
-                    \
-                     append([Call,    Sel(1)])
-                            /    \            \
-                Lambda(arg1)      Sel(0)       Ref(arg2)
-                            \           \
-                             \           Ref(arg2)
-                              \
-                               Ref(arg1)
-
-  Note that this function will not respect any names it is passed; names
-  for tuples will be cached at a higher level than this function and added back
-  in a single call to federated map or federated apply.
-
-  Args:
-    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
-      of type `computation_types.NamedTupleType` containing at least two
-      elements.
-
-  Returns:
-    A `building_blocks.Call`.
-
-  Raises:
-    TypeError: If any of the types do not match.
-  """
-  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
-  length = len(named_type_signatures)
-  if length < 2:
-    raise ValueError(
-        'Expected a value with at least two elements, received {} elements.'
-        .format(named_type_signatures))
-  _, first_type_signature = named_type_signatures[0]
-  _, second_type_signature = named_type_signatures[1]
-  ref_type = computation_types.NamedTupleType((
-      first_type_signature.member,
-      second_type_signature.member,
-  ))
-  ref = building_blocks.Reference('arg', ref_type)
-  fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
-  for _, type_signature in named_type_signatures[2:]:
-    ref_type = computation_types.NamedTupleType((
-        fn.type_signature.parameter,
-        type_signature.member,
-    ))
-    ref = building_blocks.Reference('arg', ref_type)
-    sel_0 = building_blocks.Selection(ref, index=0)
-    call = building_blocks.Call(fn, sel_0)
-    sel_1 = building_blocks.Selection(ref, index=1)
-    result = create_computation_appending(call, sel_1)
-    fn = building_blocks.Lambda(ref.name, ref.type_signature, result)
-  return fn
 
 
 def create_sequence_map(fn, arg):
@@ -1670,6 +1635,12 @@ def create_named_federated_tuple(tuple_to_name, names_to_add):
                           building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(tuple_to_name.type_signature,
                           computation_types.FederatedType)
+  existing_names = (name for name, _ in anonymous_tuple.to_elements(
+      tuple_to_name.type_signature.member))
+  if all((existing_name == name_to_add
+          for existing_name, name_to_add in zip(existing_names, names_to_add))):
+    # The names are already correct, so no work is necessary
+    return tuple_to_name
 
   naming_fn = _create_naming_function(tuple_to_name.type_signature.member,
                                       names_to_add)
