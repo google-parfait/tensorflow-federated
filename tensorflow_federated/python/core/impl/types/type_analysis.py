@@ -21,7 +21,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.types import type_transformations
 
 _TypeOrTupleOfTypes = Union[Type[computation_types.Type],
-                            Tuple[Type[computation_types.Type]]]
+                            Tuple[Type[computation_types.Type], ...]]
 
 
 def _visit_postorder(type_signature: computation_types.Type,

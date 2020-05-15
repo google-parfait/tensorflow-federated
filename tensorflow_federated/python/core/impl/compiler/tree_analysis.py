@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 
 _TypeOrTupleOfTypes = Union[
     Type[building_blocks.ComputationBuildingBlock],
-    Tuple[Type[building_blocks.ComputationBuildingBlock]]]
+    Tuple[Type[building_blocks.ComputationBuildingBlock], ...]]
 
 
 def _visit_postorder(
