@@ -161,67 +161,6 @@ def check_type(val, type_spec):
             type_spec, val_type))
 
 
-def tf_dtypes_and_shapes_to_type(dtypes, shapes):
-  """Returns computation_types.Type for the given TF (dtypes, shapes) tuple.
-
-  The returned dtypes and shapes match those used by `tf.data.Dataset`s to
-  indicate the type and shape of their elements. They can be used, e.g., as
-  arguments in constructing an iterator over a string handle. Note that the
-  nested structure of dtypes and shapes must be identical.
-
-  Args:
-    dtypes: A nested structure of dtypes, such as what is returned by Dataset's
-      output_dtypes property.
-    shapes: A nested structure of shapes, such as what is returned by Dataset's
-      output_shapes property.
-
-  Returns:
-    The corresponding instance of computation_types.Type.
-
-  Raises:
-    TypeError: if the arguments are of types that weren't recognized.
-  """
-  tf.nest.assert_same_structure(dtypes, shapes)
-
-  def _parallel_dict_to_element_list(dtype_dict, shape_dict):
-    return [(name, tf_dtypes_and_shapes_to_type(dtype_elem, shape_dict[name]))
-            for name, dtype_elem in dtype_dict.items()]
-
-  if isinstance(dtypes, tf.DType):
-    return computation_types.TensorType(dtypes, shapes)
-  elif py_typecheck.is_named_tuple(dtypes):
-    # Special handling needed for collections.namedtuple due to the lack of
-    # a base class. Note this must precede the test for being a list.
-    dtype_dict = dtypes._asdict()
-    shape_dict = shapes._asdict()
-    return computation_types.NamedTupleTypeWithPyContainerType(
-        _parallel_dict_to_element_list(dtype_dict, shape_dict), type(dtypes))
-  elif py_typecheck.is_attrs(dtypes):
-    dtype_dict = attr.asdict(
-        dtypes, dict_factory=collections.OrderedDict, recurse=False)
-    shapes_dict = attr.asdict(
-        shapes, dict_factory=collections.OrderedDict, recurse=False)
-    return computation_types.NamedTupleTypeWithPyContainerType(
-        _parallel_dict_to_element_list(dtype_dict, shapes_dict), type(dtypes))
-  elif isinstance(dtypes, dict):
-    if isinstance(dtypes, collections.OrderedDict):
-      items = dtypes.items()
-    else:
-      items = sorted(dtypes.items())
-    elements = [(name, tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[name]))
-                for name, dtypes_elem in items]
-    return computation_types.NamedTupleTypeWithPyContainerType(
-        elements, type(dtypes))
-  elif isinstance(dtypes, (list, tuple)):
-    return computation_types.NamedTupleTypeWithPyContainerType([
-        tf_dtypes_and_shapes_to_type(dtypes_elem, shapes[idx])
-        for idx, dtypes_elem in enumerate(dtypes)
-    ], type(dtypes))
-  else:
-    raise TypeError('Unrecognized: dtypes {}, shapes {}.'.format(
-        dtypes, shapes))
-
-
 def type_to_tf_dtypes_and_shapes(type_spec):
   """Returns nested structures of tensor dtypes and shapes for a given TFF type.
 
