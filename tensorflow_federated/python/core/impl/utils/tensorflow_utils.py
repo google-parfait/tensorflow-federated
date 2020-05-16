@@ -29,6 +29,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.utils import function_utils
 
 TENSOR_REPRESENTATION_TYPES = (
@@ -164,12 +165,12 @@ def get_tf_typespec_and_binding(parameter_type, arg_names, unpack=None):
   for i, arg_type in enumerate(arg_types):
     name = get_arg_name(i)
     typespec, binding = _get_one_typespec_and_binding(name, arg_type)
-    typespec = type_utils.convert_to_py_container(typespec, arg_type)
+    typespec = type_conversions.type_to_py_container(typespec, arg_type)
     arg_typespecs.append(typespec)
     bindings.append(binding)
   for name, kwarg_type in kwarg_types.items():
     typespec, binding = _get_one_typespec_and_binding(name, kwarg_type)
-    typespec = type_utils.convert_to_py_container(typespec, kwarg_type)
+    typespec = type_conversions.type_to_py_container(typespec, kwarg_type)
     kwarg_typespecs[name] = typespec
     bindings.append(binding)
 
@@ -386,7 +387,7 @@ def make_dataset_from_variant_tensor(variant_tensor, type_spec):
             variant_tensor.dtype))
   return tf.data.experimental.from_variant(
       variant_tensor,
-      structure=(type_utils.type_to_tf_structure(
+      structure=(type_conversions.type_to_tf_structure(
           computation_types.to_type(type_spec))))
 
 
@@ -1036,7 +1037,7 @@ def fetch_value_in_session(sess, value):
   py_typecheck.check_type(sess, tf.compat.v1.Session)
   # TODO(b/113123634): Investigate handling `list`s and `tuple`s of
   # `tf.data.Dataset`s and what the API would look like to support this.
-  if isinstance(value, type_utils.TF_DATASET_REPRESENTATION_TYPES):
+  if isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
     with sess.graph.as_default():
       iterator = tf.compat.v1.data.make_one_shot_iterator(value)
       next_element = iterator.get_next()
@@ -1052,7 +1053,7 @@ def fetch_value_in_session(sess, value):
     dataset_results = {}
     flat_tensors = []
     for idx, v in enumerate(flattened_value):
-      if isinstance(v, type_utils.TF_DATASET_REPRESENTATION_TYPES):
+      if isinstance(v, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
         dataset_tensors = fetch_value_in_session(sess, v)
         if not dataset_tensors:
           # An empty list has been returned; we must pack the shape information
@@ -1190,7 +1191,8 @@ def coerce_dataset_elements_to_tff_type_spec(dataset, element_type):
     ValueError: if the elements of `dataset` cannot be coerced into
       `element_type`.
   """
-  py_typecheck.check_type(dataset, type_utils.TF_DATASET_REPRESENTATION_TYPES)
+  py_typecheck.check_type(dataset,
+                          type_conversions.TF_DATASET_REPRESENTATION_TYPES)
   py_typecheck.check_type(element_type, computation_types.Type)
 
   if isinstance(element_type, computation_types.TensorType):

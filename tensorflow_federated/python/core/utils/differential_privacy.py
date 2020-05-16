@@ -25,7 +25,7 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.utils import computation_utils
 
 # TODO(b/140236959): Make the nomenclature consistent (b/w 'record' and 'value')
@@ -253,7 +253,7 @@ def build_dp_aggregate(query,
     # TODO(b/123092620): We should have the expected container type here.
     value_type = value_type_fn(value)
 
-    tensor_specs = type_utils.type_to_tf_tensor_specs(value_type)
+    tensor_specs = type_conversions.type_to_tf_tensor_specs(value_type)
 
     @computations.tf_computation
     def zero():

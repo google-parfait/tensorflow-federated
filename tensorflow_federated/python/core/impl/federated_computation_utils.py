@@ -18,10 +18,10 @@ from typing import Any, Optional, Tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import federated_computation_context
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import type_conversions
 
 
 def zero_or_one_arg_fn_to_building_block(
@@ -81,7 +81,7 @@ def zero_or_one_arg_fn_to_building_block(
           'The function defined on line {} of file {} has returned a '
           '`NoneType`, but all TFF functions must return some non-`None` '
           'value.'.format(fn.__code__.co_firstlineno, fn.__code__.co_filename))
-    annotated_result_type = type_utils.infer_type(result)
+    annotated_result_type = type_conversions.infer_type(result)
     result = value_impl.to_value(result, annotated_result_type, context_stack)
     result_comp = value_impl.ValueImpl.get_comp(result)
     annotated_type = computation_types.FunctionType(parameter_type,

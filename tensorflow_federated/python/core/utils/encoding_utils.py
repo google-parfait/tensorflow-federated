@@ -28,7 +28,7 @@ import tree
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding
 
@@ -71,7 +71,7 @@ def build_encoded_broadcast(values, encoders):
       lambda e, v: _validate_encoder(e, v, tensor_encoding.core.SimpleEncoder),
       encoders, values)
 
-  value_type = type_utils.type_from_tensors(values)
+  value_type = type_conversions.type_from_tensors(values)
 
   initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
 
@@ -147,7 +147,7 @@ def build_encoded_sum(values, encoders):
       lambda e, v: _validate_encoder(e, v, tensor_encoding.core.GatherEncoder),
       encoders, values)
 
-  value_type = type_utils.type_from_tensors(values)
+  value_type = type_conversions.type_from_tensors(values)
 
   initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
 
@@ -184,7 +184,7 @@ def build_encoded_mean(values, encoders):
       lambda e, v: _validate_encoder(e, v, tensor_encoding.core.GatherEncoder),
       encoders, values)
 
-  value_type = type_utils.type_from_tensors(values)
+  value_type = type_conversions.type_from_tensors(values)
 
   initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
 
@@ -356,10 +356,10 @@ def _build_tf_computations_for_gather(state_type, value_type, encoders):
   def zero_fn():
     values = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype),
-        type_utils.type_to_tf_tensor_specs(part_decoded_x_type))
+        type_conversions.type_to_tf_tensor_specs(part_decoded_x_type))
     state_update_tensors = tf.nest.map_structure(
         lambda s: tf.zeros(s.shape, s.dtype),
-        type_utils.type_to_tf_tensor_specs(state_update_tensors_type))
+        type_conversions.type_to_tf_tensor_specs(state_update_tensors_type))
     return _accumulator_value(values, state_update_tensors)
 
   accumulator_type = zero_fn.type_signature.result

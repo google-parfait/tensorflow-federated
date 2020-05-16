@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.types import type_conversions
 
 
 class RetryableError(Exception):
@@ -122,7 +123,7 @@ async def _invoke(executor, comp, arg):
   py_typecheck.check_type(result, executor_value_base.ExecutorValue)
   result_val = _unwrap(await result.compute())
   if type_utils.is_anon_tuple_with_py_container(result_val, result_type):
-    return type_utils.convert_to_py_container(result_val, result_type)
+    return type_conversions.type_to_py_container(result_val, result_type)
   else:
     return result_val
 

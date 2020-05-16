@@ -42,6 +42,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
@@ -144,15 +145,15 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   if callable_handler is not None:
     py_typecheck.check_callable(callable_handler)
 
-  # Note: We do not simply call `type_utils.infer_type()` on `value`, as the
-  # representations of values in the reference executor are only a subset of
+  # Note: We do not simply call `type_conversions.infer_type()` on `value`, as
+  # the representations of values in the reference executor are only a subset of
   # the Python types recognized by that helper function.
 
   if isinstance(type_spec, computation_types.TensorType):
     if tf.executing_eagerly() and isinstance(value, (tf.Tensor, tf.Variable)):
       value = value.numpy()
     py_typecheck.check_type(value, tensorflow_utils.TENSOR_REPRESENTATION_TYPES)
-    inferred_type_spec = type_utils.infer_type(value)
+    inferred_type_spec = type_conversions.infer_type(value)
     if not type_utils.is_assignable_from(type_spec, inferred_type_spec):
       raise TypeError(
           'The tensor type {} of the value representation does not match '
@@ -674,13 +675,13 @@ class ReferenceExecutor(context_base.Context):
     def _convert_to_py_container(value, type_spec):
       """Converts value to a Python container if type_spec has an annotation."""
       if type_utils.is_anon_tuple_with_py_container(value, type_spec):
-        return type_utils.convert_to_py_container(value, type_spec)
+        return type_conversions.type_to_py_container(value, type_spec)
       elif isinstance(type_spec, computation_types.SequenceType):
         if all(
             type_utils.is_anon_tuple_with_py_container(
                 element, type_spec.element) for element in value):
           return [
-              type_utils.convert_to_py_container(element, type_spec.element)
+              type_conversions.type_to_py_container(element, type_spec.element)
               for element in value
           ]
       return value
@@ -890,7 +891,7 @@ class ReferenceExecutor(context_base.Context):
 
   def _sequence_sum(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape).
-    inferred_type_spec = type_utils.infer_type(arg.value[0])
+    inferred_type_spec = type_conversions.infer_type(arg.value[0])
     py_typecheck.check_type(arg.type_signature, computation_types.SequenceType)
     total = self._generic_zero(inferred_type_spec)
     for v in arg.value:

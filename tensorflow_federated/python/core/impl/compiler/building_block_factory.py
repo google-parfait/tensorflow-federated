@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.impl.compiler import tensorflow_computatio
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
@@ -652,7 +653,7 @@ def create_federated_aggregate(value, zero, accumulate, merge, report):
                                                 placement_literals.SERVER)
 
   intrinsic_type = computation_types.FunctionType((
-      type_utils.to_non_all_equal(value.type_signature),
+      type_conversions.type_to_non_all_equal(value.type_signature),
       zero_arg_type,
       accumulate.type_signature,
       merge.type_signature,
@@ -742,7 +743,7 @@ def create_federated_collect(value):
   result_type = computation_types.FederatedType(type_signature,
                                                 placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType(
-      type_utils.to_non_all_equal(value.type_signature), result_type)
+      type_conversions.type_to_non_all_equal(value.type_signature), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_COLLECT.uri,
                                         intrinsic_type)
   return building_blocks.Call(intrinsic, value)
@@ -915,15 +916,17 @@ def create_federated_mean(value, weight):
                                                 placement_literals.SERVER)
   if weight is not None:
     intrinsic_type = computation_types.FunctionType(
-        (type_utils.to_non_all_equal(value.type_signature),
-         type_utils.to_non_all_equal(weight.type_signature)), result_type)
+        (type_conversions.type_to_non_all_equal(value.type_signature),
+         type_conversions.type_to_non_all_equal(weight.type_signature)),
+        result_type)
     intrinsic = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri, intrinsic_type)
     values = building_blocks.Tuple((value, weight))
     return building_blocks.Call(intrinsic, values)
   else:
     intrinsic_type = computation_types.FunctionType(
-        type_utils.to_non_all_equal(value.type_signature), result_type)
+        type_conversions.type_to_non_all_equal(value.type_signature),
+        result_type)
     intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_MEAN.uri,
                                           intrinsic_type)
     return building_blocks.Call(intrinsic, value)
@@ -956,7 +959,7 @@ def create_federated_reduce(value, zero, op):
   result_type = computation_types.FederatedType(op.type_signature.result,
                                                 placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType((
-      type_utils.to_non_all_equal(value.type_signature),
+      type_conversions.type_to_non_all_equal(value.type_signature),
       zero.type_signature,
       op.type_signature,
   ), result_type)
@@ -989,7 +992,7 @@ def create_federated_secure_sum(value, bitwidth):
   result_type = computation_types.FederatedType(value.type_signature.member,
                                                 placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType([
-      type_utils.to_non_all_equal(value.type_signature),
+      type_conversions.type_to_non_all_equal(value.type_signature),
       bitwidth.type_signature,
   ], result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_SECURE_SUM.uri,
@@ -1018,7 +1021,7 @@ def create_federated_sum(value):
   result_type = computation_types.FederatedType(value.type_signature.member,
                                                 placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType(
-      type_utils.to_non_all_equal(value.type_signature), result_type)
+      type_conversions.type_to_non_all_equal(value.type_signature), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_SUM.uri,
                                         intrinsic_type)
   return building_blocks.Call(intrinsic, value)
@@ -1366,7 +1369,7 @@ def create_generic_constant(type_spec, scalar_value):
   """
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  inferred_scalar_value_type = type_utils.infer_type(scalar_value)
+  inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
   if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
       or inferred_scalar_value_type.shape != tf.TensorShape(())):
     raise TypeError(

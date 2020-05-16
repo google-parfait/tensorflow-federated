@@ -35,6 +35,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
@@ -294,7 +295,7 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
   # Checks that the types of all the individual elements are compatible with the
   # requested type of the sequence as a while.
   for elem in elements:
-    elem_type = type_utils.infer_type(elem)
+    elem_type = type_conversions.infer_type(elem)
     if not type_utils.is_assignable_from(element_type, elem_type):
       raise TypeError(
           'Expected all sequence elements to be {}, found {}.'.format(

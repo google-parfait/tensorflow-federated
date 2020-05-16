@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
@@ -130,7 +131,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
       result_fns.append(lambda x: x)
     else:
       py_typecheck.check_type(spec, computation_types.SequenceType)
-      structure = type_utils.type_to_tf_structure(spec.element)
+      structure = type_conversions.type_to_tf_structure(spec.element)
 
       def fn(x, structure=structure):
         return tf.data.experimental.from_variant(x, structure)
@@ -274,7 +275,8 @@ def to_representation_for_type(value,
     if isinstance(value, list):
       value = tensorflow_utils.make_data_set_from_elements(
           None, value, type_spec.element)
-    py_typecheck.check_type(value, type_utils.TF_DATASET_REPRESENTATION_TYPES)
+    py_typecheck.check_type(value,
+                            type_conversions.TF_DATASET_REPRESENTATION_TYPES)
     element_type = computation_types.to_type(value.element_spec)
     value_type = computation_types.SequenceType(element_type)
     type_utils.check_assignable_from(type_spec, value_type)

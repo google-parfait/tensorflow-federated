@@ -74,8 +74,8 @@ from tensorflow_federated.python.core.impl.tree_to_cc_transformations import TFP
 from tensorflow_federated.python.core.impl.type_utils import are_equivalent_types
 from tensorflow_federated.python.core.impl.type_utils import is_assignable_from
 from tensorflow_federated.python.core.impl.type_utils import is_tensorflow_compatible_type
-from tensorflow_federated.python.core.impl.type_utils import type_from_tensors
-from tensorflow_federated.python.core.impl.type_utils import type_to_tf_tensor_specs
+from tensorflow_federated.python.core.impl.types.type_conversions import type_from_tensors
+from tensorflow_federated.python.core.impl.types.type_conversions import type_to_tf_tensor_specs
 from tensorflow_federated.python.core.impl.types.type_serialization import deserialize_type
 from tensorflow_federated.python.core.impl.types.type_serialization import serialize_type
 from tensorflow_federated.python.core.impl.types.type_transformations import transform_type_postorder

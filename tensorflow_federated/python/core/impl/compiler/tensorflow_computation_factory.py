@@ -22,6 +22,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -92,7 +93,7 @@ def create_constant(scalar_value, type_spec) -> pb.Computation:
     raise TypeError(
         'Type spec {} cannot be constructed as a TensorFlow constant in TFF; '
         ' only nested tuples and tensors are permitted.'.format(type_spec))
-  inferred_scalar_value_type = type_utils.infer_type(scalar_value)
+  inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
   if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
       or inferred_scalar_value_type.shape != tf.TensorShape(())):
     raise TypeError(

@@ -23,16 +23,16 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.utils import differential_privacy
 
 tf.compat.v1.enable_v2_behavior()
 
 
 def wrap_aggregate_fn(dp_aggregate_fn, sample_value):
-  tff_types = type_utils.type_from_tensors(sample_value)
+  tff_types = type_conversions.type_from_tensors(sample_value)
 
   @computations.federated_computation
   def run_initialize():
