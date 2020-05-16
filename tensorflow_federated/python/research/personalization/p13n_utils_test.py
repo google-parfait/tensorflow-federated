@@ -19,7 +19,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.research.personalization import p13n_utils
 
 
@@ -60,8 +59,6 @@ class P13NUtilsTest(tf.test.TestCase):
         'mean_absolute_error': 1.0
     }, metrics)
 
-  # TODO(b/155198591): bring GPU test back after the fix for tf.function.
-  @test.skip_test_for_gpu
   def test_build_personalize_fn_succeeds_with_valid_args(self):
     model = _model_fn()
     dataset = _create_dataset()
