@@ -1,3 +1,39 @@
+# Release 0.14.0
+
+## Major Features and Improvements
+
+*   Multiple TFF execution speedups.
+*   New `tff.templates.MeasuredProcess` specialization of `IterativeProcess`.
+*   Increased optimization of the `tff.templates.IterativeProcess` ->
+    `tff.backends.mapreduce.CanonicalForm` compiler.
+
+## Breaking Changes
+
+*   Moved `tff.utils.IterativeProcess` to `tff.templates.IterativeProcess`.
+*   Removed `tff.learning.TrainableModel`, client optimizers are now arguments
+    on the `tff.learning.build_federated_averaging_process`.
+*   Bump required version of pip packages for tensorflow (2.2), numpy (1.18),
+    pandas (0.24), grpcio (1.29).
+
+## Bug Fixes
+
+*   Issue with GPUs in multimachine simulations not being utilized, and bug on
+    deserializing datasets with GPU-backed runtime.
+*   TensorFlow lookup table initialization failures.
+
+## Known Bugs
+
+*   In some situations, TF will attempt to push Datasets inside of tf.functions
+    over GPU device boundaries, which fails by default. This can be hit by
+    certain usages of TFF,
+    [e.g. as tracked here](https://github.com/tensorflow/federated/issues/832).
+
+## Thanks to our Contributors
+
+This release contains contributions from many people at Google, as well as:
+
+jvmcns@
+
 # Release 0.13.1
 
 ## Bug Fixes
