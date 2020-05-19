@@ -22,6 +22,13 @@ import numpy as np
 import tensorflow as tf
 
 
+#  Settings for a multiplicative linear congruential generator (aka Lehmer
+#  generator) suggested in 'Random Number Generators: Good
+#  Ones are Hard to Find' by Park and Miller.
+MLCG_MODULUS = 2**(31) - 1
+MLCG_MULTIPLIER = 16807
+
+
 # TODO(b/143440780): Create more comprehensive tuple conversion by adding an
 # explicit namedtuple checking utility.
 def convert_to_tuple_dataset(dataset):
@@ -115,7 +122,7 @@ def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
 
 def build_client_datasets_fn(train_dataset,
                              train_clients_per_round,
-                             set_random_seed=True):
+                             random_seed=None):
   """Builds the function for generating client datasets at each round.
 
   The function samples a number of clients and returns their datasets.
@@ -123,20 +130,29 @@ def build_client_datasets_fn(train_dataset,
   Args:
     train_dataset: A `tff.simulation.ClientData` object.
     train_clients_per_round: The number of client participants in each round.
-    set_random_seed: A boolean indicating whether to set the random seed before
-      sampling. If True, the random seed is set to the current round number.
-      Note that this random seed is only used for sampling clients. It does
-      not affect model initialization, shuffling, or other such aspects of the
-      federated training process.
+    random_seed: If random_seed is set as an integer, then we use it as a
+      random seed for which clients are sampled at each round. In this case,
+      we set a random seed before sampling clients according
+      to a multiplicative linear congruential generator (aka Lehmer generator,
+      see 'The Art of Computer Programming, Vol. 3' by Donald Knuth for
+      reference). This does not affect model initialization,
+      shuffling, or other such aspects of the federated training process.
 
   Returns:
     A function which returns a list of `tff.simulation.ClientData` objects at a
     given round round_num.
   """
+  if isinstance(random_seed, int):
+    np.random.seed(random_seed)
+    mlcg_start = np.random.randint(1, MLCG_MODULUS - 1)
 
-  def client_datasets(round_num, set_random_seed):
-    if set_random_seed:
-      np.random.seed(round_num)
+    def get_pseudo_random_int(round_num):
+      return pow(MLCG_MULTIPLIER, round_num,
+                 MLCG_MODULUS) * mlcg_start % MLCG_MODULUS
+
+  def client_datasets(round_num, random_seed):
+    if isinstance(random_seed, int):
+      np.random.seed(get_pseudo_random_int(round_num))
     sampled_clients = np.random.choice(
         train_dataset.client_ids, size=train_clients_per_round, replace=False)
     return [
@@ -144,4 +160,4 @@ def build_client_datasets_fn(train_dataset,
         for client in sampled_clients
     ]
 
-  return functools.partial(client_datasets, set_random_seed=set_random_seed)
+  return functools.partial(client_datasets, random_seed=random_seed)
