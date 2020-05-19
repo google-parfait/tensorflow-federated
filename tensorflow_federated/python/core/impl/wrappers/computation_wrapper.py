@@ -19,7 +19,7 @@ from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.tensorflow_libs import function
 
@@ -91,8 +91,8 @@ def _wrap(fn, parameter_type, wrapper_fn):
   concrete_fn = wrapper_fn(fn, parameter_type, unpack=None)
   py_typecheck.check_type(concrete_fn, function_utils.ConcreteFunction,
                           'value returned by the wrapper')
-  if not type_utils.are_equivalent_types(concrete_fn.type_signature.parameter,
-                                         parameter_type):
+  if not type_analysis.are_equivalent_types(
+      concrete_fn.type_signature.parameter, parameter_type):
     raise TypeError(
         'Expected a concrete function that takes parameter {}, got one '
         'that takes {}.'.format(

@@ -22,7 +22,6 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import intrinsic_factory
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -85,11 +84,11 @@ def get_intrinsic_bodies(context_stack):
     elif (isinstance(x.type_signature, computation_types.FederatedType) and
           isinstance(y.type_signature, computation_types.FederatedType) and
           x.type_signature.placement == y.type_signature.placement):
-      if not type_utils.is_binary_op_with_upcast_compatible_pair(
+      if not type_analysis.is_binary_op_with_upcast_compatible_pair(
           x.type_signature.member, y.type_signature.member):
         raise TypeError(
             'The members of the federated types {} and {} are not division '
-            'compatible; see `type_utils.is_binary_op_with_upcast_compatible_pair` '
+            'compatible; see `type_analysis.is_binary_op_with_upcast_compatible_pair` '
             'for more details.'.format(x.type_signature, y.type_signature))
       packed_arg = value_impl.ValueImpl(
           building_blocks.Tuple([
@@ -139,11 +138,11 @@ def get_intrinsic_bodies(context_stack):
     if isinstance(x.type_signature, computation_types.FederatedType):
       if (not isinstance(y.type_signature, computation_types.FederatedType) or
           x.type_signature.placement != y.type_signature.placement or
-          not type_utils.is_binary_op_with_upcast_compatible_pair(
+          not type_analysis.is_binary_op_with_upcast_compatible_pair(
               x.type_signature.member, y.type_signature.member)):
         raise TypeError(top_level_mismatch_string)
     if isinstance(x.type_signature, computation_types.NamedTupleType):
-      if type_utils.is_binary_op_with_upcast_compatible_pair(
+      if type_analysis.is_binary_op_with_upcast_compatible_pair(
           x.type_signature, y.type_signature):
         return None
       elif not isinstance(y.type_signature,
@@ -184,7 +183,7 @@ def get_intrinsic_bodies(context_stack):
     return intrinsics.federated_aggregate(x, zero, op, op, identity)
 
   def _generic_op_can_be_applied(x, y):
-    return type_utils.is_binary_op_with_upcast_compatible_pair(
+    return type_analysis.is_binary_op_with_upcast_compatible_pair(
         x.type_signature, y.type_signature) or isinstance(
             x.type_signature, computation_types.FederatedType)
 

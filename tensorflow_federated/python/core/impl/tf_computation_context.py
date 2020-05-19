@@ -20,8 +20,8 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 class TensorFlowComputationContext(context_base.Context):
@@ -38,7 +38,7 @@ class TensorFlowComputationContext(context_base.Context):
     return list(self._init_ops)
 
   def ingest(self, val, type_spec):
-    type_utils.check_type(val, type_spec)
+    type_analysis.check_type(val, type_spec)
     return val
 
   def invoke(self, comp, arg):

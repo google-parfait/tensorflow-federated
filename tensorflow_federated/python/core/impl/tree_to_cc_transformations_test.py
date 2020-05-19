@@ -21,7 +21,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -30,6 +29,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 tf.compat.v1.enable_v2_behavior()
@@ -39,8 +39,8 @@ def _create_chained_dummy_federated_applys(functions, arg):
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   for fn in functions:
     py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
-    if not type_utils.is_assignable_from(fn.parameter_type,
-                                         arg.type_signature.member):
+    if not type_analysis.is_assignable_from(fn.parameter_type,
+                                            arg.type_signature.member):
       raise TypeError(
           'The parameter of the function is of type {}, and the argument is of '
           'an incompatible type {}.'.format(
@@ -54,8 +54,8 @@ def _create_chained_dummy_federated_maps(functions, arg):
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   for fn in functions:
     py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
-    if not type_utils.is_assignable_from(fn.parameter_type,
-                                         arg.type_signature.member):
+    if not type_analysis.is_assignable_from(fn.parameter_type,
+                                            arg.type_signature.member):
       raise TypeError(
           'The parameter of the function is of type {}, and the argument is of '
           'an incompatible type {}.'.format(

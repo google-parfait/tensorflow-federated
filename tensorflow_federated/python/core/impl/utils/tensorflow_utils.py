@@ -27,7 +27,6 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.utils import function_utils
@@ -1002,7 +1001,7 @@ def make_data_set_from_elements(graph, elements, element_type):
           singleton_ds = _make(elements[i:i + 1])
           ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
     ds_element_type = computation_types.to_type(ds.element_spec)
-    if not type_utils.is_assignable_from(element_type, ds_element_type):
+    if not type_analysis.is_assignable_from(element_type, ds_element_type):
       raise TypeError(
           'Failure during data set construction, expected elements of type {}, '
           'but the constructed data set has elements of type {}.'.format(

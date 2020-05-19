@@ -24,13 +24,13 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_factory
 
 # TODO(b/139903095): Factor out more commonalities with federated executor code
@@ -207,8 +207,8 @@ class ComposingExecutor(executor_base.Executor):
     type_spec = computation_types.to_type(type_spec)
     py_typecheck.check_type(type_spec, computation_types.Type)
     if isinstance(value, intrinsic_defs.IntrinsicDef):
-      if not type_utils.is_concrete_instance_of(type_spec,
-                                                value.type_signature):  # pytype: disable=attribute-error
+      if not type_analysis.is_concrete_instance_of(type_spec,
+                                                   value.type_signature):  # pytype: disable=attribute-error
         raise TypeError('Incompatible type {} used with intrinsic {}.'.format(
             type_spec, value.uri))  # pytype: disable=attribute-error
       else:
@@ -277,7 +277,7 @@ class ComposingExecutor(executor_base.Executor):
       py_typecheck.check_type(comp.type_signature,
                               computation_types.FunctionType)
       param_type = comp.type_signature.parameter
-      type_utils.check_assignable_from(param_type, arg.type_signature)
+      type_analysis.check_assignable_from(param_type, arg.type_signature)
       arg = CompositeValue(arg.internal_representation, param_type)
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')
@@ -411,7 +411,7 @@ class ComposingExecutor(executor_base.Executor):
     fn_type = arg.type_signature[0]
     py_typecheck.check_type(fn_type, computation_types.FunctionType)
     val_type = arg.type_signature[1]
-    type_utils.check_federated_type(
+    type_analysis.check_federated_type(
         val_type, fn_type.parameter, placement_literals.SERVER, all_equal=True)
     fn = arg.internal_representation[0]
     py_typecheck.check_type(fn, pb.Computation)
@@ -511,7 +511,7 @@ class ComposingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def _compute_intrinsic_federated_mean(self, arg):
-    type_utils.check_federated_type(
+    type_analysis.check_federated_type(
         arg.type_signature, placement=placement_literals.CLIENTS)
     member_type = arg.type_signature.member
 
@@ -541,7 +541,7 @@ class ComposingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def _compute_intrinsic_federated_sum(self, arg):
-    type_utils.check_federated_type(
+    type_analysis.check_federated_type(
         arg.type_signature, placement=placement_literals.CLIENTS)
     zero, plus, identity = tuple(await asyncio.gather(*[
         executor_utils.embed_tf_scalar_constant(self, arg.type_signature.member,
@@ -587,7 +587,7 @@ class ComposingExecutor(executor_base.Executor):
     vals = [arg.internal_representation[n] for n in [0, 1]]
     types = [arg.type_signature[n] for n in [0, 1]]
     for n in [0, 1]:
-      type_utils.check_federated_type(
+      type_analysis.check_federated_type(
           types[n], placement=placement_literals.CLIENTS)
       types[n] = type_factory.at_clients(types[n].member)
       py_typecheck.check_type(vals[n], list)
@@ -626,7 +626,7 @@ class ComposingExecutor(executor_base.Executor):
                             anonymous_tuple.AnonymousTuple)
     py_typecheck.check_len(arg.internal_representation, 2)
     for n in [0, 1]:
-      type_utils.check_federated_type(
+      type_analysis.check_federated_type(
           arg.type_signature[n],
           placement=placement_literals.SERVER,
           all_equal=True)

@@ -27,12 +27,12 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import compiled_computation_transforms
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def prepare_for_rebinding(comp):
@@ -206,8 +206,8 @@ def construct_tensorflow_calling_lambda_on_concrete_arg(
   py_typecheck.check_type(body, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(concrete_arg,
                           building_blocks.ComputationBuildingBlock)
-  type_utils.check_equivalent_types(parameter.type_signature,
-                                    concrete_arg.type_signature)
+  type_analysis.check_equivalent_types(parameter.type_signature,
+                                       concrete_arg.type_signature)
 
   encapsulating_lambda = _generate_simple_tensorflow(
       building_blocks.Lambda(parameter.name, parameter.type_signature, body))
@@ -455,7 +455,7 @@ def remove_duplicate_called_graphs(comp):
       `comp` is a lambda itself. This function exits early and logs a warning if
       this assumption is violated. Additionally, `comp` must contain only
       computations which can be represented in TensorFlow, IE, satisfy the type
-      restriction in `type_utils.is_tensorflow_compatible_type`.
+      restriction in `type_analysis.is_tensorflow_compatible_type`.
 
   Returns:
     Either a called instance of `building_blocks.CompiledComputation` or a

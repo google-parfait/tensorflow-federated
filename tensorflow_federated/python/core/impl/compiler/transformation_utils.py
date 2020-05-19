@@ -23,8 +23,8 @@ from typing import Callable, Dict, Set, Tuple
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def transform_postorder(comp, transform):
@@ -950,8 +950,8 @@ class BoundVariableTracker(object, metaclass=abc.ABCMeta):
         isinstance(other.value, building_blocks.ComputationBuildingBlock)):
       return (self.value.compact_representation() ==
               other.value.compact_representation() and
-              type_utils.are_equivalent_types(self.value.type_signature,
-                                              other.value.type_signature))
+              type_analysis.are_equivalent_types(self.value.type_signature,
+                                                 other.value.type_signature))
     return self.value is other.value
 
   def __ne__(self, other):

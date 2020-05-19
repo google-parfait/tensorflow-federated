@@ -21,12 +21,12 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 class UniqueNameGeneratorTest(absltest.TestCase):
@@ -179,13 +179,13 @@ class CreateFederatedGetattrCallTest(parameterized.TestCase):
     self.assertEqual(str(name_a.type_signature.member), 'int32')
     self.assertEqual(str(name_b.type_signature.member), 'bool')
     try:
-      type_utils.check_federated_type(
+      type_analysis.check_federated_type(
           name_a.type_signature, placement=placement)
     except TypeError:
       self.fail(
           'Function \'check_federated_type\' raised TypeError unexpectedly.')
     try:
-      type_utils.check_federated_type(
+      type_analysis.check_federated_type(
           name_b.type_signature, placement=placement)
     except TypeError:
       self.fail(
@@ -221,12 +221,14 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
     self.assertEqual(str(idx_0.type_signature.member), 'int32')
     self.assertEqual(str(idx_1.type_signature.member), 'bool')
     try:
-      type_utils.check_federated_type(idx_0.type_signature, placement=placement)
+      type_analysis.check_federated_type(
+          idx_0.type_signature, placement=placement)
     except TypeError:
       self.fail(
           'Function \'check_federated_type\' raised TypeError unexpectedly.')
     try:
-      type_utils.check_federated_type(idx_1.type_signature, placement=placement)
+      type_analysis.check_federated_type(
+          idx_1.type_signature, placement=placement)
     except TypeError:
       self.fail(
           'Function \'check_federated_type\' raised TypeError unexpectedly.')
@@ -236,7 +238,7 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
                           computation_types.FederatedType)
     self.assertEqual(str(flipped.type_signature.member), '<b=bool,a=int32>')
     try:
-      type_utils.check_federated_type(
+      type_analysis.check_federated_type(
           flipped.type_signature, placement=placement)
     except TypeError:
       self.fail(
@@ -262,13 +264,13 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
     self.assertEqual(str(unnamed_idx_0.type_signature.member), 'int32')
     self.assertEqual(str(unnamed_idx_1.type_signature.member), 'bool')
     try:
-      type_utils.check_federated_type(
+      type_analysis.check_federated_type(
           unnamed_idx_0.type_signature, placement=placement)
     except TypeError:
       self.fail(
           'Function \'check_federated_type\' raised TypeError unexpectedly.')
     try:
-      type_utils.check_federated_type(
+      type_analysis.check_federated_type(
           unnamed_idx_1.type_signature, placement=placement)
     except TypeError:
       self.fail(
@@ -279,7 +281,7 @@ class CreateFederatedGetitemCallTest(parameterized.TestCase):
                           computation_types.FederatedType)
     self.assertEqual(str(unnamed_flipped.type_signature.member), '<bool,int32>')
     try:
-      type_utils.check_federated_type(
+      type_analysis.check_federated_type(
           unnamed_flipped.type_signature, placement=placement)
     except TypeError:
       self.fail(
@@ -371,8 +373,8 @@ class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
     lam = building_block_factory.create_named_tuple_setattr_lambda(
         good_type, 'a', value_comp)
     self.assertTrue(
-        type_utils.are_equivalent_types(lam.type_signature.parameter,
-                                        lam.type_signature.result))
+        type_analysis.are_equivalent_types(lam.type_signature.parameter,
+                                           lam.type_signature.result))
 
 
 class CreateFederatedSetatterCallTest(parameterized.TestCase):
@@ -460,8 +462,8 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
     federated_setattr = building_block_factory.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     self.assertTrue(
-        type_utils.are_equivalent_types(federated_setattr.type_signature,
-                                        federated_comp.type_signature))
+        type_analysis.are_equivalent_types(federated_setattr.type_signature,
+                                           federated_comp.type_signature))
 
   def test_constructs_correct_computation_clients(self):
     named_tuple_type = computation_types.NamedTupleType([('a', tf.int32),

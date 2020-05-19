@@ -19,13 +19,13 @@ import typing
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_transformations
 
 
@@ -1414,7 +1414,7 @@ def insert_called_tf_identity_at_leaves(comp):
 
   def _should_decorate(comp):
     return (isinstance(comp, building_blocks.Reference) and
-            type_utils.is_tensorflow_compatible_type(comp.type_signature))
+            type_analysis.is_tensorflow_compatible_type(comp.type_signature))
 
   def _decorate(comp):
     identity_function = building_block_factory.create_compiled_identity(

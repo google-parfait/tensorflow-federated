@@ -42,6 +42,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -154,7 +155,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       value = value.numpy()
     py_typecheck.check_type(value, tensorflow_utils.TENSOR_REPRESENTATION_TYPES)
     inferred_type_spec = type_conversions.infer_type(value)
-    if not type_utils.is_assignable_from(type_spec, inferred_type_spec):
+    if not type_analysis.is_assignable_from(type_spec, inferred_type_spec):
       raise TypeError(
           'The tensor type {} of the value representation does not match '
           'the type spec {}.'.format(inferred_type_spec, type_spec))
@@ -191,7 +192,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
     if isinstance(value, tf.data.Dataset):
       inferred_type_spec = computation_types.SequenceType(
           computation_types.to_type(value.element_spec))
-      if not type_utils.is_assignable_from(type_spec, inferred_type_spec):
+      if not type_analysis.is_assignable_from(type_spec, inferred_type_spec):
         raise TypeError(
             'Value of type {!s} not assignable to expected type {!s}'.format(
                 inferred_type_spec, type_spec))
@@ -275,7 +276,7 @@ def stamp_computed_value_into_graph(
         value_type = computation_types.TensorType(
             tf.dtypes.as_dtype(value.value.dtype),
             tf.TensorShape(value.value.shape))
-        type_utils.check_assignable_from(value.type_signature, value_type)
+        type_analysis.check_assignable_from(value.type_signature, value_type)
         with graph.as_default():
           return tf.constant(value.value)
       else:
@@ -515,7 +516,7 @@ def fit_argument(arg: ComputedValue, type_spec,
   py_typecheck.check_type(type_spec, computation_types.Type)
   if context is not None:
     py_typecheck.check_type(context, ComputationContext)
-  type_utils.check_assignable_from(type_spec, arg.type_signature)
+  type_analysis.check_assignable_from(type_spec, arg.type_signature)
   if arg.type_signature == type_spec:
     return arg
   elif isinstance(type_spec, computation_types.NamedTupleType):
@@ -530,7 +531,7 @@ def fit_argument(arg: ComputedValue, type_spec,
     return ComputedValue(
         anonymous_tuple.AnonymousTuple(result_elements), type_spec)
   elif isinstance(type_spec, computation_types.FederatedType):
-    type_utils.check_federated_type(
+    type_analysis.check_federated_type(
         arg.type_signature, placement=type_spec.placement)
     if arg.type_signature.all_equal:
       member_val = ComputedValue(arg.value, arg.type_signature.member)
@@ -642,7 +643,7 @@ class ReferenceExecutor(context_base.Context):
 
     def _handle_callable(fn, fn_type):
       py_typecheck.check_type(fn, computation_base.Computation)
-      type_utils.check_assignable_from(fn.type_signature, fn_type)
+      type_analysis.check_assignable_from(fn.type_signature, fn_type)
       return fn
 
     return to_representation_for_type(arg, type_spec, _handle_callable)
@@ -655,7 +656,7 @@ class ReferenceExecutor(context_base.Context):
 
       def _handle_callable(fn, fn_type):
         py_typecheck.check_type(fn, computation_base.Computation)
-        type_utils.check_assignable_from(fn.type_signature, fn_type)
+        type_analysis.check_assignable_from(fn.type_signature, fn_type)
         computed_fn = self._compute(self._compile(fn), root_context)
         return computed_fn.value
 
@@ -669,16 +670,16 @@ class ReferenceExecutor(context_base.Context):
     else:
       computed_arg = None
     computed_comp = self._compute(comp, root_context)
-    type_utils.check_assignable_from(comp.type_signature,
-                                     computed_comp.type_signature)
+    type_analysis.check_assignable_from(comp.type_signature,
+                                        computed_comp.type_signature)
 
     def _convert_to_py_container(value, type_spec):
       """Converts value to a Python container if type_spec has an annotation."""
-      if type_utils.is_anon_tuple_with_py_container(value, type_spec):
+      if type_analysis.is_anon_tuple_with_py_container(value, type_spec):
         return type_conversions.type_to_py_container(value, type_spec)
       elif isinstance(type_spec, computation_types.SequenceType):
         if all(
-            type_utils.is_anon_tuple_with_py_container(
+            type_analysis.is_anon_tuple_with_py_container(
                 element, type_spec.element) for element in value):
           return [
               type_conversions.type_to_py_container(element, type_spec.element)
@@ -697,8 +698,8 @@ class ReferenceExecutor(context_base.Context):
     else:
       result = computed_comp.value(computed_arg)
       py_typecheck.check_type(result, ComputedValue)
-      type_utils.check_assignable_from(comp.type_signature.result,
-                                       result.type_signature)
+      type_analysis.check_assignable_from(comp.type_signature.result,
+                                          result.type_signature)
       value = result.value
       fn_result_type = fn.type_signature.result
       return _convert_to_py_container(value, fn_result_type)
@@ -781,16 +782,16 @@ class ReferenceExecutor(context_base.Context):
                             computation_types.FunctionType)
     if comp.argument is not None:
       computed_arg = self._compute(comp.argument, context)
-      type_utils.check_assignable_from(computed_fn.type_signature.parameter,
-                                       computed_arg.type_signature)
+      type_analysis.check_assignable_from(computed_fn.type_signature.parameter,
+                                          computed_arg.type_signature)
       computed_arg = fit_argument(computed_arg,
                                   computed_fn.type_signature.parameter, context)
     else:
       computed_arg = None
     result = computed_fn.value(computed_arg)
     py_typecheck.check_type(result, ComputedValue)
-    type_utils.check_assignable_from(computed_fn.type_signature.result,
-                                     result.type_signature)
+    type_analysis.check_assignable_from(computed_fn.type_signature.result,
+                                        result.type_signature)
     return result
 
   def _compute_tuple(self, comp, context):
@@ -799,8 +800,8 @@ class ReferenceExecutor(context_base.Context):
     result_type_elements = []
     for k, v in anonymous_tuple.iter_elements(comp):
       computed_v = self._compute(v, context)
-      type_utils.check_assignable_from(v.type_signature,
-                                       computed_v.type_signature)
+      type_analysis.check_assignable_from(v.type_signature,
+                                          computed_v.type_signature)
       result_elements.append((k, computed_v.value))
       result_type_elements.append((k, computed_v.type_signature))
     return ComputedValue(
@@ -822,7 +823,7 @@ class ReferenceExecutor(context_base.Context):
       assert comp.index is not None
       result_value = source.value[comp.index]
       result_type = source.type_signature[comp.index]
-    type_utils.check_assignable_from(comp.type_signature, result_type)
+    type_analysis.check_assignable_from(comp.type_signature, result_type)
     return ComputedValue(result_value, result_type)
 
   def _compute_lambda(self, comp, context):
@@ -838,8 +839,8 @@ class ReferenceExecutor(context_base.Context):
                   arg.type_signature))
         return context
       py_typecheck.check_type(arg, ComputedValue)
-      if not type_utils.is_assignable_from(comp.parameter_type,
-                                           arg.type_signature):
+      if not type_analysis.is_assignable_from(comp.parameter_type,
+                                              arg.type_signature):
         raise TypeError(
             'Expected the type of argument {} to be {}, found {}.'.format(
                 comp.parameter_name, comp.parameter_type, arg.type_signature))
@@ -903,8 +904,8 @@ class ReferenceExecutor(context_base.Context):
 
   def _federated_collect(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape).
-    type_utils.check_federated_type(arg.type_signature, None,
-                                    placements.CLIENTS, False)
+    type_analysis.check_federated_type(arg.type_signature, None,
+                                       placements.CLIENTS, False)
     return ComputedValue(
         arg.value,
         computation_types.FederatedType(
@@ -945,9 +946,9 @@ class ReferenceExecutor(context_base.Context):
     del context  # Unused (left as arg b.c. functions must have same shape).
     mapping_type = arg.type_signature[0]
     py_typecheck.check_type(mapping_type, computation_types.FunctionType)
-    type_utils.check_federated_type(arg.type_signature[1],
-                                    mapping_type.parameter, placements.CLIENTS,
-                                    False)
+    type_analysis.check_federated_type(arg.type_signature[1],
+                                       mapping_type.parameter,
+                                       placements.CLIENTS, False)
     fn = arg.value[0]
     result_val = [
         fn(ComputedValue(x, mapping_type.parameter)).value for x in arg.value[1]
@@ -960,7 +961,7 @@ class ReferenceExecutor(context_base.Context):
     del context  # Unused (left as arg b.c. functions must have same shape)
     mapping_type = arg.type_signature[0]
     py_typecheck.check_type(mapping_type, computation_types.FunctionType)
-    type_utils.check_federated_type(
+    type_analysis.check_federated_type(
         arg.type_signature[1],
         mapping_type.parameter,
         placements.CLIENTS,
@@ -975,9 +976,9 @@ class ReferenceExecutor(context_base.Context):
     del context  # Unused (left as arg b.c. functions must have same shape)
     mapping_type = arg.type_signature[0]
     py_typecheck.check_type(mapping_type, computation_types.FunctionType)
-    type_utils.check_federated_type(arg.type_signature[1],
-                                    mapping_type.parameter, placements.SERVER,
-                                    True)
+    type_analysis.check_federated_type(arg.type_signature[1],
+                                       mapping_type.parameter,
+                                       placements.SERVER, True)
     fn = arg.value[0]
     result_val = fn(ComputedValue(arg.value[1], mapping_type.parameter)).value
     result_type = computation_types.FederatedType(mapping_type.result,
@@ -992,8 +993,8 @@ class ReferenceExecutor(context_base.Context):
     return self._federated_sum(value, context)
 
   def _federated_sum(self, arg, context):
-    type_utils.check_federated_type(arg.type_signature, None,
-                                    placements.CLIENTS, False)
+    type_analysis.check_federated_type(arg.type_signature, None,
+                                       placements.CLIENTS, False)
     collected_val = self._federated_collect(arg, context)
     federated_apply_arg = anonymous_tuple.from_container(
         (lambda arg: self._sequence_sum(arg, context), collected_val.value))
@@ -1098,8 +1099,8 @@ class ReferenceExecutor(context_base.Context):
     py_typecheck.check_type(mapping_type, computation_types.FunctionType)
     sequence_type = arg.type_signature[1]
     py_typecheck.check_type(sequence_type, computation_types.SequenceType)
-    type_utils.check_assignable_from(mapping_type.parameter,
-                                     sequence_type.element)
+    type_analysis.check_assignable_from(mapping_type.parameter,
+                                        sequence_type.element)
     fn = arg.value[0]
     result_val = [
         fn(ComputedValue(x, mapping_type.parameter)).value for x in arg.value[1]
@@ -1116,8 +1117,8 @@ class ReferenceExecutor(context_base.Context):
     zero_type = arg.type_signature[1]
     op_type = arg.type_signature[2]
     py_typecheck.check_type(op_type, computation_types.FunctionType)
-    type_utils.check_assignable_from(op_type.parameter,
-                                     [zero_type, sequence_type.element])
+    type_analysis.check_assignable_from(op_type.parameter,
+                                        [zero_type, sequence_type.element])
     total = ComputedValue(arg.value[1], zero_type)
     reduce_fn = arg.value[2]
     for v in arg.value[0]:
@@ -1131,13 +1132,13 @@ class ReferenceExecutor(context_base.Context):
     py_typecheck.check_type(arg.type_signature,
                             computation_types.NamedTupleType)
     federated_type = arg.type_signature[0]
-    type_utils.check_federated_type(federated_type, None, placements.CLIENTS,
-                                    False)
+    type_analysis.check_federated_type(federated_type, None, placements.CLIENTS,
+                                       False)
     zero_type = arg.type_signature[1]
     op_type = arg.type_signature[2]
     py_typecheck.check_type(op_type, computation_types.FunctionType)
-    type_utils.check_assignable_from(op_type.parameter,
-                                     [zero_type, federated_type.member])
+    type_analysis.check_assignable_from(op_type.parameter,
+                                        [zero_type, federated_type.member])
     total = ComputedValue(arg.value[1], zero_type)
     reduce_fn = arg.value[2]
     for v in arg.value[0]:
@@ -1148,8 +1149,8 @@ class ReferenceExecutor(context_base.Context):
     return self._federated_value_at_server(total, context)
 
   def _federated_mean(self, arg, context):
-    type_utils.check_federated_type(arg.type_signature, None,
-                                    placements.CLIENTS, False)
+    type_analysis.check_federated_type(arg.type_signature, None,
+                                       placements.CLIENTS, False)
     py_typecheck.check_type(arg.value, list)
     server_sum = self._federated_sum(arg, context)
     unplaced_avg = multiply_by_scalar(
@@ -1163,8 +1164,8 @@ class ReferenceExecutor(context_base.Context):
     py_typecheck.check_type(arg.type_signature,
                             computation_types.NamedTupleType)
     for idx in range(len(arg.type_signature)):
-      type_utils.check_federated_type(arg.type_signature[idx], None,
-                                      placements.SERVER, True)
+      type_analysis.check_federated_type(arg.type_signature[idx], None,
+                                         placements.SERVER, True)
     return ComputedValue(
         arg.value,
         type_factory.at_server(
@@ -1185,7 +1186,8 @@ class ReferenceExecutor(context_base.Context):
       py_typecheck.check_type(val, list)
       zip_args.append(val)
       val_type = arg.type_signature[idx]
-      type_utils.check_federated_type(val_type, None, placements.CLIENTS, False)
+      type_analysis.check_federated_type(val_type, None, placements.CLIENTS,
+                                         False)
       zip_arg_types.append(val_type.member)
     zipped_val = [anonymous_tuple.from_container(x) for x in zip(*zip_args)]
     return ComputedValue(
@@ -1209,7 +1211,7 @@ class ReferenceExecutor(context_base.Context):
         context)
 
   def _federated_weighted_mean(self, arg, context):
-    type_utils.check_valid_federated_weighted_mean_argument_tuple_type(
+    type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
         arg.type_signature)
     v_type = arg.type_signature[0].member
     total = sum(arg.value[1])
@@ -1222,8 +1224,8 @@ class ReferenceExecutor(context_base.Context):
 
   def _federated_broadcast(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)
-    type_utils.check_federated_type(arg.type_signature, None, placements.SERVER,
-                                    True)
+    type_analysis.check_federated_type(arg.type_signature, None,
+                                       placements.SERVER, True)
     return ComputedValue(
         arg.value,
         computation_types.FederatedType(arg.type_signature.member,

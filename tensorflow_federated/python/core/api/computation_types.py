@@ -95,7 +95,7 @@ class TensorType(Type):
     # assumptions of `TensorType` (see the special casing in `repr` and `str`
     # below. This is related to compatibility checking,
     # and there are a few options. For now, simply adding a case in
-    # `impl/type_utils.is_assignable_from` to catch. We could alternatively
+    # `type_analysis.is_assignable_from` to catch. We could alternatively
     # treat this case the same as if we have been passed a shape of `None` in
     # this constructor.
     if shape is None:

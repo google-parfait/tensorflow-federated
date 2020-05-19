@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -62,7 +63,7 @@ def serialize_tensor_value(value, type_spec=None):
     if isinstance(value, np.ndarray):
       tensor_proto = tf.make_tensor_proto(
           value, dtype=type_spec.dtype, verify_shape=False)
-      type_utils.check_assignable_from(
+      type_analysis.check_assignable_from(
           type_spec,
           computation_types.TensorType(
               dtype=tf.dtypes.as_dtype(tensor_proto.dtype),
@@ -229,7 +230,7 @@ def serialize_value(value, type_spec=None):
 
     value_type = computation_types.SequenceType(
         computation_types.to_type(value.element_spec))
-    if not type_utils.is_assignable_from(type_spec, value_type):
+    if not type_analysis.is_assignable_from(type_spec, value_type):
       raise TypeError(
           'Cannot serialize dataset with elements of type {!s} as TFF type {!s}.'
           .format(value_type,
@@ -244,7 +245,7 @@ def serialize_value(value, type_spec=None):
     items = []
     for v in value:
       it, it_type = serialize_value(v, type_spec.member)
-      type_utils.check_assignable_from(type_spec.member, it_type)
+      type_analysis.check_assignable_from(type_spec.member, it_type)
       items.append(it)
     result_proto = executor_pb2.Value(
         federated=executor_pb2.Value.Federated(
@@ -299,7 +300,7 @@ def deserialize_value(value_proto):
     value = []
     for item in value_proto.federated.value:
       item_value, item_type = deserialize_value(item)
-      type_utils.check_assignable_from(type_spec.member, item_type)
+      type_analysis.check_assignable_from(type_spec.member, item_type)
       value.append(item_value)
     if type_spec.all_equal:
       if len(value) == 1:

@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -63,7 +64,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   comp_type = type_serialization.deserialize_type(comp.type)
   type_spec = computation_types.to_type(type_spec)
   if type_spec is not None:
-    if not type_utils.are_equivalent_types(type_spec, comp_type):
+    if not type_analysis.are_equivalent_types(type_spec, comp_type):
       raise TypeError('Expected a computation of type {}, got {}.'.format(
           type_spec, comp_type))
   else:
@@ -266,7 +267,7 @@ def to_representation_for_type(value,
       value = value.read_value()
     value_type = (
         computation_types.TensorType(value.dtype.base_dtype, value.shape))
-    if not type_utils.is_assignable_from(type_spec, value_type):
+    if not type_analysis.is_assignable_from(type_spec, value_type):
       raise TypeError(
           'The apparent type {} of a tensor {} does not match the expected '
           'type {}.'.format(value_type, value, type_spec))
@@ -279,7 +280,7 @@ def to_representation_for_type(value,
                             type_conversions.TF_DATASET_REPRESENTATION_TYPES)
     element_type = computation_types.to_type(value.element_spec)
     value_type = computation_types.SequenceType(element_type)
-    type_utils.check_assignable_from(type_spec, value_type)
+    type_analysis.check_assignable_from(type_spec, value_type)
     return value
   else:
     raise TypeError('Unexpected type {}.'.format(type_spec))

@@ -18,9 +18,9 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import federated_computation_utils
 from tensorflow_federated.python.core.impl import tensorflow_serialization
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 
@@ -42,7 +42,7 @@ def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
   del name  # Unused.
   target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
       target_fn, parameter_type, unpack)
-  if not type_utils.is_tensorflow_compatible_type(parameter_type):
+  if not type_analysis.is_tensorflow_compatible_type(parameter_type):
     raise TypeError('`tf_computation`s can accept only parameter types with '
                     'constituents `SequenceType`, `NamedTupleType` '
                     'and `TensorType`; you have attempted to create one '

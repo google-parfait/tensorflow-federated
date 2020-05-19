@@ -71,7 +71,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -81,6 +80,7 @@ from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 class CanonicalFormCompilationError(Exception):
@@ -117,8 +117,8 @@ def check_extraction_result(before_extraction, extracted):
           'computation {} represents a case the Tff-to-TF parser is missing.'
           .format(before_extraction.type_signature, extracted.function,
                   extracted.function.type_signature, before_extraction))
-  if not type_utils.are_equivalent_types(before_extraction.type_signature,
-                                         extracted.type_signature):
+  if not type_analysis.are_equivalent_types(before_extraction.type_signature,
+                                            extracted.type_signature):
     raise CanonicalFormCompilationError(
         'We have extracted a TensorFlow block of the correct Python type, but '
         'incorrect TFF type signature. Before extraction, we had a TFF '

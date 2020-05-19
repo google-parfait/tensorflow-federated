@@ -25,12 +25,12 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
@@ -122,7 +122,7 @@ async def _invoke(executor, comp, arg):
   result = await executor.create_call(comp, arg)
   py_typecheck.check_type(result, executor_value_base.ExecutorValue)
   result_val = _unwrap(await result.compute())
-  if type_utils.is_anon_tuple_with_py_container(result_val, result_type):
+  if type_analysis.is_anon_tuple_with_py_container(result_val, result_type):
     return type_conversions.type_to_py_container(result_val, result_type)
   else:
     return result_val

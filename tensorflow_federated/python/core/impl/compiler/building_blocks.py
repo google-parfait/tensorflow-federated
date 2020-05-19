@@ -82,8 +82,8 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
     if deserializer is not None:
       deserialized = deserializer(computation_proto)
       type_spec = type_serialization.deserialize_type(computation_proto.type)
-      if not type_utils.are_equivalent_types(deserialized.type_signature,
-                                             type_spec):
+      if not type_analysis.are_equivalent_types(deserialized.type_signature,
+                                                type_spec):
         raise ValueError(
             'The type {} derived from the computation structure does not '
             'match the type {} declared in its signature'.format(
@@ -446,8 +446,8 @@ class Call(ComputationBuildingBlock):
         raise TypeError('The invoked function expects an argument of type {}, '
                         'but got None instead.'.format(
                             fn.type_signature.parameter))
-      if not type_utils.is_assignable_from(fn.type_signature.parameter,
-                                           arg.type_signature):
+      if not type_analysis.is_assignable_from(fn.type_signature.parameter,
+                                              arg.type_signature):
         raise TypeError(
             'The parameter of the invoked function is expected to be of '
             'type {}, but the supplied argument is of an incompatible '
@@ -730,7 +730,7 @@ class Intrinsic(ComputationBuildingBlock):
     type_spec = computation_types.to_type(type_spec)
     intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(uri)
     if intrinsic_def:
-      typecheck = type_utils.is_concrete_instance_of(
+      typecheck = type_analysis.is_concrete_instance_of(
           type_spec, intrinsic_def.type_signature)
       if not typecheck:
         raise TypeError('Tried to construct an Intrinsic with bad type '

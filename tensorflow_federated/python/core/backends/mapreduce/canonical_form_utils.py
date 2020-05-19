@@ -28,7 +28,6 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import transformations
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -36,6 +35,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
 
@@ -856,7 +856,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   _check_placement(c6_type, placements.CLIENTS)
   zero_type = computation_types.FunctionType(
       None, before_aggregate.type_signature.result[0][1])
-  type_utils.check_tensorflow_compatible_type(zero_type.result)
+  type_analysis.check_tensorflow_compatible_type(zero_type.result)
   accumulate_type = before_aggregate.type_signature.result[0][2]
   _check_type(accumulate_type, computation_types.FunctionType)
   merge_type = before_aggregate.type_signature.result[0][3]
@@ -871,7 +871,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   _check_placement(c7_type, placements.CLIENTS)
   bitwidth_type = computation_types.FunctionType(
       None, before_aggregate.type_signature.result[1][1])
-  type_utils.check_tensorflow_compatible_type(bitwidth_type.result)
+  type_analysis.check_tensorflow_compatible_type(bitwidth_type.result)
 
   c3_type = computation_types.FederatedType([c1_type.member, c2_type.member],
                                             placements.CLIENTS)

@@ -23,9 +23,9 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.utils import function_utils
 
 tf.compat.v1.enable_v2_behavior()
@@ -34,7 +34,7 @@ tf.compat.v1.enable_v2_behavior()
 class NoopIngestContextForTest(context_base.Context):
 
   def ingest(self, val, type_spec):
-    type_utils.check_type(val, type_spec)
+    type_analysis.check_type(val, type_spec)
     return val
 
   def invoke(self, comp, arg):
@@ -247,12 +247,12 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(len(args), len(expected_args))
     for idx, arg in enumerate(args):
       self.assertTrue(
-          type_utils.are_equivalent_types(
+          type_analysis.are_equivalent_types(
               arg, computation_types.to_type(expected_args[idx])))
     self.assertEqual(set(kwargs.keys()), set(expected_kwargs.keys()))
     for k, v in kwargs.items():
       self.assertTrue(
-          type_utils.are_equivalent_types(
+          type_analysis.are_equivalent_types(
               computation_types.to_type(v), expected_kwargs[k]))
 
   def test_pack_args_into_anonymous_tuple_without_type_spec(self):

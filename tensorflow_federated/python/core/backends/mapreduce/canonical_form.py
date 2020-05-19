@@ -18,7 +18,7 @@ from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 class CanonicalForm(object):
@@ -334,8 +334,8 @@ class CanonicalForm(object):
     py_typecheck.check_type(accumulate.type_signature,
                             computation_types.FunctionType)
     py_typecheck.check_len(accumulate.type_signature.parameter, 2)
-    type_utils.check_assignable_from(accumulate.type_signature.parameter[0],
-                                     zero.type_signature.result)
+    type_analysis.check_assignable_from(accumulate.type_signature.parameter[0],
+                                        zero.type_signature.result)
     if (accumulate.type_signature.parameter[1] !=
         work.type_signature.result[0][0]):
 
@@ -344,23 +344,23 @@ class CanonicalForm(object):
           'which does not match the expected {} as implied by the type '
           'signature of `work`.'.format(accumulate.type_signature.parameter[1],
                                         work.type_signature.result[0][0]))
-    type_utils.check_assignable_from(accumulate.type_signature.parameter[0],
-                                     accumulate.type_signature.result)
+    type_analysis.check_assignable_from(accumulate.type_signature.parameter[0],
+                                        accumulate.type_signature.result)
 
     py_typecheck.check_type(merge.type_signature,
                             computation_types.FunctionType)
     py_typecheck.check_len(merge.type_signature.parameter, 2)
-    type_utils.check_assignable_from(merge.type_signature.parameter[0],
-                                     accumulate.type_signature.result)
-    type_utils.check_assignable_from(merge.type_signature.parameter[1],
-                                     accumulate.type_signature.result)
-    type_utils.check_assignable_from(merge.type_signature.parameter[0],
-                                     merge.type_signature.result)
+    type_analysis.check_assignable_from(merge.type_signature.parameter[0],
+                                        accumulate.type_signature.result)
+    type_analysis.check_assignable_from(merge.type_signature.parameter[1],
+                                        accumulate.type_signature.result)
+    type_analysis.check_assignable_from(merge.type_signature.parameter[0],
+                                        merge.type_signature.result)
 
     py_typecheck.check_type(report.type_signature,
                             computation_types.FunctionType)
-    type_utils.check_assignable_from(report.type_signature.parameter,
-                                     merge.type_signature.result)
+    type_analysis.check_assignable_from(report.type_signature.parameter,
+                                        merge.type_signature.result)
 
     py_typecheck.check_type(bitwidth.type_signature,
                             computation_types.FunctionType)

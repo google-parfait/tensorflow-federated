@@ -16,10 +16,10 @@
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 class FederatedComputationContext(context_base.Context):
@@ -68,7 +68,7 @@ class FederatedComputationContext(context_base.Context):
 
   def ingest(self, val, type_spec):
     val = value_impl.to_value(val, type_spec, self._context_stack)
-    type_utils.check_type(val, type_spec)
+    type_analysis.check_type(val, type_spec)
     return val
 
   def invoke(self, comp, arg):
@@ -80,7 +80,7 @@ class FederatedComputationContext(context_base.Context):
         raise ValueError(
             'A computation of type {} does not expect any arguments, but got '
             'an argument {}.'.format(tys, arg))
-      type_utils.check_type(arg, tys.parameter)
+      type_analysis.check_type(arg, tys.parameter)
       ret_val = fn(arg)
     else:
       if tys.parameter is not None:
@@ -88,5 +88,5 @@ class FederatedComputationContext(context_base.Context):
             'A computation of type {} expects an argument of type {}, but got '
             ' no argument.'.format(tys, tys.parameter))
       ret_val = fn()
-    type_utils.check_type(ret_val, tys.result)
+    type_analysis.check_type(ret_val, tys.result)
     return ret_val

@@ -25,7 +25,6 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
@@ -194,7 +193,7 @@ def construct_tensorflow_selecting_and_packing_outputs(
   output_spec = anonymous_tuple.flatten(output_structure)
   type_spec = computation_types.to_type(arg_type)
   py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
-  type_utils.check_tensorflow_compatible_type(type_spec)
+  type_analysis.check_tensorflow_compatible_type(type_spec)
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', type_spec, graph)
@@ -303,7 +302,7 @@ def create_tensorflow_binary_operator(operand_type, operator):
   Notice that we have quite serious restrictions on `operand_type` here; not
   only must it be compatible with stamping into a TensorFlow graph, but
   additionally cannot contain a `computation_types.SequenceType`, as checked by
-  `type_utils.is_generic_op_compatible_type`.
+  `type_analysis.is_generic_op_compatible_type`.
 
   Notice also that if `operand_type` is a `computation_types.NamedTupleType`,
   `operator` will be applied pointwise. This places the burden on callers of
@@ -325,7 +324,8 @@ def create_tensorflow_binary_operator(operand_type, operator):
   Raises:
     TypeError: If the type tree of `operand_type` contains any type which is
     incompatible with the TFF generic operators, as checked by
-    `type_utils.is_generic_op_compatible_type`, or `operator` is not callable.
+    `type_analysis.is_generic_op_compatible_type`, or `operator` is not
+    callable.
   """
   proto = tensorflow_computation_factory.create_binary_operator(
       operator, operand_type)
@@ -471,8 +471,8 @@ def create_named_tuple_setattr_lambda(named_tuple_signature, name, value_comp):
   for idx, (key, element_type) in enumerate(
       anonymous_tuple.to_elements(named_tuple_signature)):
     if key == name:
-      if not type_utils.is_assignable_from(element_type,
-                                           value_comp.type_signature):
+      if not type_analysis.is_assignable_from(element_type,
+                                              value_comp.type_signature):
         raise TypeError(
             '`setattr` has attempted to set element {} of type {} with incompatible type {}'
             .format(key, element_type, value_comp.type_signature))
@@ -648,7 +648,7 @@ def create_federated_aggregate(value, zero, accumulate, merge, report):
   # without being the exact type. This occurs when accumulate has a type like
   # (<int32[?], int32> -> int32[?]) but zero is int32[0].
   zero_arg_type = accumulate.type_signature.parameter[0]
-  type_utils.check_assignable_from(zero_arg_type, zero.type_signature)
+  type_analysis.check_assignable_from(zero_arg_type, zero.type_signature)
   result_type = computation_types.FederatedType(report.type_signature.result,
                                                 placement_literals.SERVER)
 
@@ -1754,14 +1754,14 @@ def _check_generic_operator_type(type_spec):
     raise TypeError(
         'We are trying to construct a generic operator declaring argument that '
         'is not a two-tuple, the type {}.'.format(type_spec))
-  if not type_utils.is_binary_op_with_upcast_compatible_pair(
+  if not type_analysis.is_binary_op_with_upcast_compatible_pair(
       type_spec[0], type_spec[1]):
     raise TypeError(
         'The two-tuple you have passed in is incompatible with upcasted '
         'binary operators. You have passed the tuple type {}, which fails the '
         'check that the two members of the tuple are either the same type, or '
         'the second is a scalar with the same dtype as the leaves of the '
-        'first. See `type_utils.is_binary_op_with_upcast_compatible_pair` for '
+        'first. See `type_analysis.is_binary_op_with_upcast_compatible_pair` for '
         'more details.'.format(type_spec))
 
 
@@ -1809,8 +1809,8 @@ def create_binary_operator_with_upcast(type_signature, operator):
   y_ref = building_blocks.Selection(ref_to_arg, index=1)
   first_arg = building_blocks.Selection(ref_to_arg, index=0)
 
-  if type_utils.are_equivalent_types(first_arg.type_signature,
-                                     y_ref.type_signature):
+  if type_analysis.are_equivalent_types(first_arg.type_signature,
+                                        y_ref.type_signature):
     second_arg = y_ref
   else:
     second_arg = _pack_into_type(y_ref, first_arg.type_signature)

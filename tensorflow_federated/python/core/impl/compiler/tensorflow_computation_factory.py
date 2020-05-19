@@ -21,7 +21,7 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_transformations
@@ -89,7 +89,7 @@ def create_constant(scalar_value, type_spec) -> pb.Computation:
   """
   type_spec = computation_types.to_type(type_spec)
 
-  if not type_utils.is_generic_op_compatible_type(type_spec):
+  if not type_analysis.is_generic_op_compatible_type(type_spec):
     raise TypeError(
         'Type spec {} cannot be constructed as a TensorFlow constant in TFF; '
         ' only nested tuples and tensors are permitted.'.format(type_spec))
@@ -173,7 +173,7 @@ def create_binary_operator(operator, operand_type) -> pb.Computation:
       is not callable.
   """
   operand_type = computation_types.to_type(operand_type)
-  if not type_utils.is_generic_op_compatible_type(operand_type):
+  if not type_analysis.is_generic_op_compatible_type(operand_type):
     raise TypeError(
         'The type {} contains a type other than `computation_types.TensorType` '
         'and `computation_types.NamedTupleType`; this is disallowed in the '
@@ -193,7 +193,7 @@ def create_binary_operator(operator, operand_type) -> pb.Computation:
     else:
       raise TypeError(
           'Operand type {} cannot be used in generic operations. The whitelist '
-          'in `type_utils.is_generic_op_compatible_type` has allowed it to '
+          'in `type_analysis.is_generic_op_compatible_type` has allowed it to '
           'pass, and should be updated.'.format(operand_type))
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result_value, graph)
@@ -247,7 +247,7 @@ def create_identity(type_spec) -> pb.Computation:
       TensorFlow bindings.
   """
   type_spec = computation_types.to_type(type_spec)
-  type_utils.check_tensorflow_compatible_type(type_spec)
+  type_analysis.check_tensorflow_compatible_type(type_spec)
 
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
@@ -281,7 +281,7 @@ def create_replicate_input(type_spec, count: int) -> pb.Computation:
       TensorFlow bindings or if `which` is not an integer.
   """
   type_spec = computation_types.to_type(type_spec)
-  type_utils.check_tensorflow_compatible_type(type_spec)
+  type_analysis.check_tensorflow_compatible_type(type_spec)
   py_typecheck.check_type(count, int)
 
   with tf.Graph().as_default() as graph:
