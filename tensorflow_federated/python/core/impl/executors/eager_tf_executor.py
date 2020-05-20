@@ -69,6 +69,11 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
           type_spec, comp_type))
   else:
     type_spec = comp_type
+  # TODO(b/155198591): Currently, TF will raise on any function returning a
+  # `tf.data.Dataset` not pinned to CPU. We should follow up here and remove
+  # this gating when we can.
+  must_pin_function_to_cpu = type_analysis.contains_types(
+      type_spec.result, computation_types.SequenceType)
   which_computation = comp.WhichOneof('computation')
   if which_computation != 'tensorflow':
     raise TypeError('Expected a TensorFlow computation, found {}.'.format(
@@ -106,7 +111,10 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
           input_map=dict(list(zip(input_tensor_names, args))),
           return_elements=output_tensor_names)
 
-    if device is not None:
+    if must_pin_function_to_cpu:
+      with tf.device('cpu'):
+        return _import_fn()
+    elif device is not None:
       with tf.device(device):
         return _import_fn()
     else:
@@ -171,15 +179,21 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
 
   fn_to_return = lambda arg, p=param_fns, w=wrapped_fn: _fn_to_return(arg, p, w)
 
-  if device is not None:
+  # pylint: disable=function-redefined
+  if must_pin_function_to_cpu:
     old_fn_to_return = fn_to_return
 
-    # pylint: disable=function-redefined
+    def fn_to_return(x):
+      with tf.device('cpu'):
+        return old_fn_to_return(x)
+  elif device is not None:
+    old_fn_to_return = fn_to_return
+
     def fn_to_return(x):
       with tf.device(device):
         return old_fn_to_return(x)
 
-    # pylint: enable=function-redefined
+  # pylint: enable=function-redefined
 
   if param_type is not None:
     return lambda arg: fn_to_return(arg)  # pylint: disable=unnecessary-lambda
