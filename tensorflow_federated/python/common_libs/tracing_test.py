@@ -95,7 +95,8 @@ class DebugLoggingTest(absltest.TestCase):
     async def foo():
       return await asyncio.sleep(1)
 
-    self._test_debug_logging_with_async_function(foo, '1.0')
+    self._test_debug_logging_with_async_function(
+        foo, r'<locals>\.foo\. ' + ELAPSED_ONE_REGEX)
 
   def test_logging_non_blocking_function(self):
 
