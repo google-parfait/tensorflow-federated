@@ -154,7 +154,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     named_tuple_setattr_lambda = building_block_factory.create_named_tuple_setattr_lambda(
         self._comp.type_signature, name, value_comp)
     new_comp = building_blocks.Call(named_tuple_setattr_lambda, self._comp)
-    super(ValueImpl, self).__setattr__('_comp', new_comp)
+    super().__setattr__('_comp', new_comp)
 
   def __bool__(self):
     raise TypeError(

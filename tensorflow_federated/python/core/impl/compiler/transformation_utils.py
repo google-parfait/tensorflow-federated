@@ -1029,7 +1029,7 @@ class ReferenceCounter(BoundVariableTracker):
   """
 
   def __init__(self, name, value):
-    super(ReferenceCounter, self).__init__(name, value)
+    super().__init__(name, value)
     self.count = 0
 
   def update(self, reference=None):
@@ -1057,7 +1057,7 @@ class TrackRemovedReferences(BoundVariableTracker):
   """transformation_utils.SymbolTree node for removing References in ASTs."""
 
   def __init__(self, name, value):
-    super(TrackRemovedReferences, self).__init__(name, value)
+    super().__init__(name, value)
     self._removed = False
 
   @property

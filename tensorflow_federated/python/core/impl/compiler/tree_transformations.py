@@ -571,7 +571,7 @@ class MergeChainedFederatedMapsOrApplys(transformation_utils.TransformSpec):
     Raises:
       TypeError: If types do not match.
     """
-    super(MergeChainedFederatedMapsOrApplys, self).__init__()
+    super().__init__()
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
     self._name_generator = building_block_factory.unique_name_generator(comp)
 
@@ -732,7 +732,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       TypeError: If types do not match.
       ValueError: If the `uri` has an unexpected value.
     """
-    super(MergeTupleIntrinsics, self).__init__()
+    super().__init__()
     py_typecheck.check_type(uri, str)
     self._name_generator = building_block_factory.unique_name_generator(comp)
     expected_uri = (
@@ -1111,7 +1111,7 @@ class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
   """
 
   def __init__(self):
-    super(ReplaceCalledLambdaWithBlock, self).__init__(global_transform=True)
+    super().__init__(global_transform=True)
 
   def should_transform(self, comp, referred):
     return (isinstance(comp, building_blocks.Call) and
@@ -1265,7 +1265,7 @@ def uniquify_reference_names(comp):
     """transformation_utils.SymbolTree node for renaming References in ASTs."""
 
     def __init__(self, name, value):
-      super(_RenameNode, self).__init__(name, value)
+      super().__init__(name, value)
       py_typecheck.check_type(name, str)
       self.new_name = next(name_generator)
 
@@ -1554,7 +1554,7 @@ def unwrap_placement(comp):
       """transformation_utils.SymbolTree node for tracking unbound variables."""
 
       def __init__(self, name, value):
-        super(_UnboundVariableIdentifier, self).__init__(name, value)
+        super().__init__(name, value)
         self.unbound = False
 
       def __str__(self):

@@ -179,7 +179,7 @@ class Reference(ComputationBuildingBlock):
       TypeError: if the arguments are of the wrong types.
     """
     py_typecheck.check_type(name, str)
-    super(Reference, self).__init__(type_spec)
+    super().__init__(type_spec)
     self._name = name
     self._context = context
 
@@ -265,7 +265,7 @@ class Selection(ComputationBuildingBlock):
       else:
         # Normalize, in case we are dealing with a Unicode type or some such.
         name = str(name)
-        super(Selection, self).__init__(
+        super().__init__(
             type_utils.get_named_tuple_element_type(source_type, name))
         self._name = name
         self._index = None
@@ -274,7 +274,7 @@ class Selection(ComputationBuildingBlock):
       py_typecheck.check_type(index, int)
       elements = anonymous_tuple.to_elements(source_type)
       if index >= 0 and index < len(elements):
-        super(Selection, self).__init__(elements[index][1])
+        super().__init__(elements[index][1])
         self._name = None
         self._index = index
       else:
@@ -456,7 +456,7 @@ class Call(ComputationBuildingBlock):
       raise TypeError(
           'The invoked function does not expect any parameters, but got '
           'an argument of type {}.'.format(py_typecheck.type_string(type(arg))))
-    super(Call, self).__init__(fn.type_signature.result)
+    super().__init__(fn.type_signature.result)
     # By now, this condition should hold, so we only double-check in debug mode.
     assert (arg is not None) == (fn.type_signature.parameter is not None)
     self._function = fn
@@ -661,7 +661,7 @@ class Block(ComputationBuildingBlock):
       py_typecheck.check_type(value, ComputationBuildingBlock)
       updated_locals.append((name, value))
     py_typecheck.check_type(result, ComputationBuildingBlock)
-    super(Block, self).__init__(result.type_signature)
+    super().__init__(result.type_signature)
     self._locals = updated_locals
     self._result = result
 
@@ -737,7 +737,7 @@ class Intrinsic(ComputationBuildingBlock):
                         'signature; Intrinsic {} expects type signature {}, '
                         'and you tried to construct one of type {}.'.format(
                             uri, intrinsic_def.type_signature, type_spec))
-    super(Intrinsic, self).__init__(type_spec)
+    super().__init__(type_spec)
     self._uri = uri
 
   @property
@@ -790,7 +790,7 @@ class Data(ComputationBuildingBlock):
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
     type_spec = computation_types.to_type(type_spec)
-    super(Data, self).__init__(type_spec)
+    super().__init__(type_spec)
     self._uri = uri
 
   @property

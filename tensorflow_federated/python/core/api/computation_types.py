@@ -193,7 +193,7 @@ class NamedTupleTypeWithPyContainerType(NamedTupleType):
   def __init__(self, elements, container_type):
     py_typecheck.check_type(container_type, type)
     self._container_type = container_type
-    super(NamedTupleTypeWithPyContainerType, self).__init__(elements)
+    super().__init__(elements)
 
   @classmethod
   def get_container_type(cls, value):

@@ -445,7 +445,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
       def __init__(self, name, value):
         variable_binding_order.append(name)
-        super(PreorderHookTracker, self).__init__(name, value)
+        super().__init__(name, value)
 
       def update(self, value):
         pass
