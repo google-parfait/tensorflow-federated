@@ -26,9 +26,11 @@ from tensorflow_federated.python.research.optimization.shared import fed_avg_sch
 _Batch = collections.namedtuple('Batch', ['x', 'y'])
 
 
-def _batch_fn():
+def _batch_fn(has_nan=False):
   batch = _Batch(
       x=np.ones([1, 784], dtype=np.float32), y=np.ones([1, 1], dtype=np.int64))
+  if has_nan:
+    batch[0][0, 0] = np.nan
   return batch
 
 
@@ -51,13 +53,14 @@ class ModelDeltaProcessTest(tf.test.TestCase):
 
   def _run_rounds(self, iterative_process, federated_data, num_rounds):
     train_outputs = []
-    state = iterative_process.initialize()
+    initial_state = iterative_process.initialize()
+    state = initial_state
     for round_num in range(num_rounds):
       iteration_result = iterative_process.next(state, federated_data)
       train_outputs.append(iteration_result.metrics)
       logging.info('Round %d: %s', round_num, iteration_result.metrics)
       state = iteration_result.state
-    return state, train_outputs
+    return state, train_outputs, initial_state
 
   def test_fed_avg_without_schedule_decreases_loss(self):
     federated_data = [[_batch_fn()]]
@@ -67,7 +70,7 @@ class ModelDeltaProcessTest(tf.test.TestCase):
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
-    _, train_outputs = self._run_rounds(iterative_process, federated_data, 5)
+    _, train_outputs, _ = self._run_rounds(iterative_process, federated_data, 5)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
   def test_fed_avg_with_custom_client_weight_fn(self):
@@ -82,8 +85,56 @@ class ModelDeltaProcessTest(tf.test.TestCase):
         server_optimizer_fn=tf.keras.optimizers.SGD,
         client_weight_fn=client_weight_fn)
 
-    _, train_outputs = self._run_rounds(iterative_process, federated_data, 5)
+    _, train_outputs, _ = self._run_rounds(iterative_process, federated_data, 5)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
+
+  def test_client_update_with_finite_delta(self):
+    federated_data = [_batch_fn()]
+    model = _uncompiled_model_builder()
+    client_optimizer = tf.keras.optimizers.SGD(0.1)
+    client_update = fed_avg_schedule.create_client_update_fn()
+    outputs = client_update(model, federated_data,
+                            fed_avg_schedule._get_weights(model),
+                            client_optimizer)
+    self.assertAllEqual(self.evaluate(outputs.client_weight), 1)
+    self.assertAllEqual(
+        self.evaluate(outputs.optimizer_output['num_examples']), 1)
+
+  def test_client_update_with_non_finite_delta(self):
+    federated_data = [_batch_fn(has_nan=True)]
+    model = _uncompiled_model_builder()
+    client_optimizer = tf.keras.optimizers.SGD(0.1)
+    client_update = fed_avg_schedule.create_client_update_fn()
+    outputs = client_update(model, federated_data,
+                            fed_avg_schedule._get_weights(model),
+                            client_optimizer)
+    self.assertAllEqual(self.evaluate(outputs.client_weight), 0)
+
+  def test_server_update_with_nan_data_is_noop(self):
+    federated_data = [[_batch_fn(has_nan=True)]]
+
+    iterative_process = fed_avg_schedule.build_fed_avg_process(
+        _uncompiled_model_builder,
+        client_optimizer_fn=tf.keras.optimizers.SGD,
+        server_optimizer_fn=tf.keras.optimizers.SGD)
+
+    state, _, initial_state = self._run_rounds(iterative_process,
+                                               federated_data, 1)
+    self.assertAllClose(state.model, initial_state.model, 1e-8)
+
+  def test_server_update_with_inf_weight_is_noop(self):
+    federated_data = [[_batch_fn()]]
+    client_weight_fn = lambda x: np.inf
+
+    iterative_process = fed_avg_schedule.build_fed_avg_process(
+        _uncompiled_model_builder,
+        client_optimizer_fn=tf.keras.optimizers.SGD,
+        server_optimizer_fn=tf.keras.optimizers.SGD,
+        client_weight_fn=client_weight_fn)
+
+    state, _, initial_state = self._run_rounds(iterative_process,
+                                               federated_data, 1)
+    self.assertAllClose(state.model, initial_state.model, 1e-8)
 
   def test_fed_avg_with_client_schedule(self):
     federated_data = [[_batch_fn()]]
@@ -98,7 +149,7 @@ class ModelDeltaProcessTest(tf.test.TestCase):
         client_lr=lr_schedule,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
-    _, train_outputs = self._run_rounds(iterative_process, federated_data, 4)
+    _, train_outputs, _ = self._run_rounds(iterative_process, federated_data, 4)
     self.assertLess(train_outputs[1]['loss'], train_outputs[0]['loss'])
     self.assertNear(
         train_outputs[2]['loss'], train_outputs[3]['loss'], err=1e-4)
@@ -116,7 +167,7 @@ class ModelDeltaProcessTest(tf.test.TestCase):
         server_optimizer_fn=tf.keras.optimizers.SGD,
         server_lr=lr_schedule)
 
-    _, train_outputs = self._run_rounds(iterative_process, federated_data, 4)
+    _, train_outputs, _ = self._run_rounds(iterative_process, federated_data, 4)
     self.assertLess(train_outputs[1]['loss'], train_outputs[0]['loss'])
     self.assertNear(
         train_outputs[2]['loss'], train_outputs[3]['loss'], err=1e-4)
@@ -131,7 +182,7 @@ class ModelDeltaProcessTest(tf.test.TestCase):
         server_optimizer_fn=tf.keras.optimizers.SGD,
         server_lr=lambda x: 1.0 / (x + 1)**2)
 
-    _, train_outputs = self._run_rounds(iterative_process, federated_data, 6)
+    _, train_outputs, _ = self._run_rounds(iterative_process, federated_data, 6)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
     train_gap_first_half = train_outputs[0]['loss'] - train_outputs[2]['loss']
     train_gap_second_half = train_outputs[3]['loss'] - train_outputs[5]['loss']
@@ -145,7 +196,7 @@ class ModelDeltaProcessTest(tf.test.TestCase):
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
-    state, _ = self._run_rounds(iterative_process, federated_data, 1)
+    state, _, _ = self._run_rounds(iterative_process, federated_data, 1)
     converted_state = fed_avg_schedule.ServerState.from_tff_result(state)
     self.assertIsInstance(converted_state, fed_avg_schedule.ServerState)
     self.assertIsInstance(converted_state.model, fed_avg_schedule.ModelWeights)

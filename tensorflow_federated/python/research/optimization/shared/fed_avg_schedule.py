@@ -38,6 +38,7 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.utils import adapters
+from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
 
@@ -125,6 +126,11 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   # Server optimizer variables must be initialized prior to invoking this
   tff.utils.assign(server_optimizer.variables(), server_state.optimizer_state)
 
+  weights_delta, has_non_finite_weight = (
+      tensor_utils.zero_all_if_any_non_finite(weights_delta))
+  if has_non_finite_weight > 0:
+    return server_state
+
   # Apply the update to the model. We must multiply weights_delta by -1.0 to
   # view it as a gradient that should be applied to the server_optimizer.
   grads_and_vars = [
@@ -204,13 +210,16 @@ def create_client_update_fn():
       client_optimizer.apply_gradients(grads_and_vars)
       num_examples += tf.shape(output.predictions)[0]
 
-    with tf.control_dependencies([num_examples]):
-      aggregated_outputs = model.report_local_outputs()
-      weights_delta = tf.nest.map_structure(lambda a, b: a - b,
-                                            model_weights.trainable,
-                                            initial_weights.trainable)
+    aggregated_outputs = model.report_local_outputs()
+    weights_delta = tf.nest.map_structure(lambda a, b: a - b,
+                                          model_weights.trainable,
+                                          initial_weights.trainable)
+    weights_delta, has_non_finite_weight = (
+        tensor_utils.zero_all_if_any_non_finite(weights_delta))
 
-    if client_weight_fn is None:
+    if has_non_finite_weight > 0:
+      client_weight = tf.constant(0, dtype=tf.float32)
+    elif client_weight_fn is None:
       client_weight = tf.cast(num_examples, dtype=tf.float32)
     else:
       client_weight = client_weight_fn(aggregated_outputs)

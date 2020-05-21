@@ -9,6 +9,7 @@ py_library(
     deps = [
         "//tensorflow_federated",
         "//tensorflow_federated/python/research/utils:adapters",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
 
