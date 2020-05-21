@@ -3645,7 +3645,7 @@ class InsertTensorFlowIdentityAtLeavesTest(test.TestCase):
                           building_blocks.Reference)
     self.assertEqual(transformed_tuple[0].argument.name, 'x')
     self.assertEqual(transformed_tuple[0].argument.type_signature,
-                     computation_types.to_type(tf.int32))
+                     computation_types.TensorType(tf.int32))
 
   def test_does_not_transform_references_to_federated_types(self):
     fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)

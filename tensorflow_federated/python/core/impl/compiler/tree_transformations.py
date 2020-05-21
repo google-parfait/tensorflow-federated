@@ -911,7 +911,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(self._uri)
     arg = self._transform_args(comp, intrinsic_def.type_signature.parameter)
     named_comps = anonymous_tuple.to_elements(comp)
-    parameter_type = computation_types.to_type(arg.type_signature)
+    parameter_type = arg.type_signature
     type_signature = [call.type_signature.member for _, call in named_comps]
     result_type = computation_types.FederatedType(
         type_signature, intrinsic_def.type_signature.result.placement,

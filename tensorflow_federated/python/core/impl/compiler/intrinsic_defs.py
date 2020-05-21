@@ -29,21 +29,21 @@ class IntrinsicDef(object):
   that deals with intrinsics.
   """
 
-  def __init__(self, name, uri, type_spec):
+  def __init__(self, name: str, uri: str,
+               type_signature: computation_types.Type):
     """Constructs a definition of an intrinsic.
 
     Args:
       name: The short human-friendly name of this intrinsic.
       uri: The URI of this intrinsic.
-      type_spec: The type of the intrinsic.
+      type_signature: The type of the intrinsic.
     """
     py_typecheck.check_type(name, str)
     py_typecheck.check_type(uri, str)
-    type_spec = computation_types.to_type(type_spec)
-    py_typecheck.check_type(type_spec, computation_types.Type)
+    py_typecheck.check_type(type_signature, computation_types.Type)
     self._name = str(name)
     self._uri = str(uri)
-    self._type_signature = type_spec
+    self._type_signature = type_signature
     _intrinsic_registry[str(uri)] = self
 
   # TODO(b/113112885): Add support for an optional type checking function that
