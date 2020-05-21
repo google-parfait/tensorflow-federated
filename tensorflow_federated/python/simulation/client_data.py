@@ -22,7 +22,7 @@ data for the simulation and is not part of the TensorFlow Federated core APIs.
 """
 
 import abc
-from typing import List, Iterable
+from typing import Callable, Iterable, List, Optional, Tuple
 
 from absl import logging
 import numpy as np
@@ -62,7 +62,9 @@ class ClientData(object, metaclass=abc.ABCMeta):
     """
     pass
 
-  def datasets(self, limit_count=None, seed=None) -> Iterable[tf.data.Dataset]:
+  def datasets(self,
+               limit_count: Optional[int] = None,
+               seed: Optional[int] = None) -> Iterable[tf.data.Dataset]:
     """Yields the `tf.data.Dataset` for each client in random order.
 
     This function is intended for use building a static array of client data
@@ -86,7 +88,9 @@ class ClientData(object, metaclass=abc.ABCMeta):
       py_typecheck.check_type(dataset, tf.data.Dataset)
       yield dataset
 
-  def create_tf_dataset_from_all_clients(self, seed=None) -> tf.data.Dataset:
+  def create_tf_dataset_from_all_clients(self,
+                                         seed: Optional[int] = None
+                                        ) -> tf.data.Dataset:
     """Creates a new `tf.data.Dataset` containing _all_ client examples.
 
     This function is intended for use training centralized, non-distributed
@@ -134,17 +138,22 @@ class ClientData(object, metaclass=abc.ABCMeta):
                                                        shapes)
     return example_dataset
 
-  def preprocess(self, preprocess_fn):
+  def preprocess(
+      self, preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]
+  ) -> 'ConcreteClientData':
     """Applies `preprocess_fn` to each client's data."""
     py_typecheck.check_callable(preprocess_fn)
 
-    def get_dataset(client_id):
+    def get_dataset(client_id: str) -> tf.data.Dataset:
       return preprocess_fn(self.create_tf_dataset_for_client(client_id))
 
     return ConcreteClientData(self.client_ids, get_dataset)
 
   @classmethod
-  def from_clients_and_fn(cls, client_ids, create_tf_dataset_for_client_fn):
+  def from_clients_and_fn(
+      cls, client_ids: Iterable[str],
+      create_tf_dataset_for_client_fn: Callable[[str], tf.data.Dataset]
+  ) -> 'ConcreteClientData':
     """Constructs a `ClientData` based on the given function.
 
     Args:
@@ -159,7 +168,9 @@ class ClientData(object, metaclass=abc.ABCMeta):
     return ConcreteClientData(client_ids, create_tf_dataset_for_client_fn)
 
   @classmethod
-  def train_test_client_split(cls, client_data, num_test_clients):
+  def train_test_client_split(
+      cls, client_data: 'ClientData',
+      num_test_clients: int) -> Tuple['ClientData', 'ClientData']:
     """Returns a pair of (train, test) `ClientData`.
 
     This method partitions the clients of `client_data` into two `ClientData`
@@ -210,7 +221,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
       client_id = train_client_ids.pop()
       dataset = client_data.create_tf_dataset_for_client(client_id)
       try:
-        _ = next(iter(dataset))
+        _ = next(dataset.__iter__())
       except StopIteration:
         logging.warning('Client %s had no data, skipping.', client_id)
         clients_with_insufficient_batches.append(client_id)
@@ -221,7 +232,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
     # Invariant for successful exit of the above loop:
     assert len(test_client_ids) == num_test_clients
 
-    def from_ids(client_ids):
+    def from_ids(client_ids: Iterable[str]) -> 'ConcreteClientData':
       return cls.from_clients_and_fn(client_ids,
                                      client_data.create_tf_dataset_for_client)
 
@@ -239,7 +250,9 @@ class ConcreteClientData(ClientData):
   used to wrap another `ClientData` with an additional preprocessing function.
   """
 
-  def __init__(self, client_ids, create_tf_dataset_for_client_fn):
+  def __init__(self, client_ids: Iterable[str],
+               create_tf_dataset_for_client_fn: Callable[[str],
+                                                         tf.data.Dataset]):
     """Arguments correspond to the corresponding members of `ClientData`.
 
     Args:
@@ -247,22 +260,22 @@ class ConcreteClientData(ClientData):
       create_tf_dataset_for_client_fn: A function that takes a client_id from
         the above list, and returns a `tf.data.Dataset`.
     """
-    py_typecheck.check_type(client_ids, list)
+    py_typecheck.check_type(client_ids, Iterable)
     py_typecheck.check_callable(create_tf_dataset_for_client_fn)
     if not client_ids:
       raise ValueError('At least one client_id is required.')
 
-    self._client_ids = client_ids
+    self._client_ids = list(client_ids)
     self._create_tf_dataset_for_client_fn = create_tf_dataset_for_client_fn
 
-    example_dataset = create_tf_dataset_for_client_fn(client_ids[0])
+    example_dataset = create_tf_dataset_for_client_fn(next(iter(client_ids)))
     self._element_type_structure = example_dataset.element_spec
 
   @property
-  def client_ids(self):
+  def client_ids(self) -> List[str]:
     return self._client_ids
 
-  def create_tf_dataset_for_client(self, client_id):
+  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
     return self._create_tf_dataset_for_client_fn(client_id)
 
   @property

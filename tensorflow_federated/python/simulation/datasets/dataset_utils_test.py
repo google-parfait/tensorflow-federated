@@ -20,8 +20,6 @@ import tensorflow as tf
 from tensorflow_federated.python.simulation import client_data
 from tensorflow_federated.python.simulation.datasets import dataset_utils
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class DatasetUtilsTest(tf.test.TestCase):
 
@@ -100,21 +98,20 @@ class DatasetUtilsTest(tf.test.TestCase):
 
   def test_build_synthethic_iid_client_data(self):
     # Create a fake, very non-IID ClientData.
-    client_datasets = collections.OrderedDict([
-        ('a', tf.data.Dataset.from_tensor_slices([1] * 3)),
-        ('b', tf.data.Dataset.from_tensor_slices([2] * 5)),
-        ('c', tf.data.Dataset.from_tensor_slices([3] * 7)),
-    ])
+    client_datasets = collections.OrderedDict(
+        a=tf.data.Dataset.from_tensor_slices([1] * 3),
+        b=tf.data.Dataset.from_tensor_slices([2] * 5),
+        c=tf.data.Dataset.from_tensor_slices([3] * 7))
     non_iid_client_data = client_data.ClientData.from_clients_and_fn(
-        list(client_datasets.keys()),
-        lambda client_id: client_datasets[client_id])
+        client_datasets.keys(), lambda client_id: client_datasets[client_id])
+
+    iid_client_data_iter = iter(
+        dataset_utils.build_synthethic_iid_datasets(
+            non_iid_client_data, client_dataset_size=5))
 
     num_synthethic_clients = 3
-    iid_client_data_iter = iter(
-        dataset_utils.build_synthethic_iid_datasets(non_iid_client_data, 5))
-
     run_results = []
-    for _ in range(10):
+    for _ in range(5):
       actual_iid_client_datasets = []
       for _ in range(num_synthethic_clients):
         dataset = next(iid_client_data_iter)

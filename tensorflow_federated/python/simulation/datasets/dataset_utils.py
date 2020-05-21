@@ -92,7 +92,8 @@ def build_synthethic_iid_datasets(client_data, client_dataset_size):
   the global distribution.
   """
   global_dataset = client_data.create_tf_dataset_from_all_clients()
-  global_dataset = global_dataset.repeat(None)  # Repeat forever
+  # Maximum of shuffle of 10,000 items. Limited by the input dataset.
   global_dataset = global_dataset.shuffle(
-      buffer_size=10000, reshuffle_each_iteration=True)  # Add shuffling.
+      buffer_size=10000, reshuffle_each_iteration=True)
+  global_dataset = global_dataset.repeat(None)  # Repeat forever
   return global_dataset.window(client_dataset_size)
