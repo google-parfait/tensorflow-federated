@@ -210,13 +210,8 @@ def client_update(model, dataset, server_message, client_optimizer):
     num_examples += batch_size
     loss_sum += loss * tf.cast(batch_size, tf.float32)
 
-  # TODO(b/142341957): This control_dependency should not be needed, but is
-  # currently necessary to work around a TF bug with how tf.function handles
-  # tf.data.Datasets.
-  with tf.control_dependencies([num_examples]):
-    weights_delta = tf.nest.map_structure(lambda a, b: a - b,
-                                          model_weights.trainable,
-                                          initial_weights.trainable)
-
+  weights_delta = tf.nest.map_structure(lambda a, b: a - b,
+                                        model_weights.trainable,
+                                        initial_weights.trainable)
   client_weight = tf.cast(num_examples, tf.float32)
   return ClientOutput(weights_delta, client_weight, loss_sum / client_weight)
