@@ -1,10 +1,8 @@
+# Using TFF for Federated Learning Research
+
 <!-- Note that some section headings are used as deep links into the document.
      If you update those section headings, please make sure you also update
      any links to the section. -->
-
-# Using TFF for Federated Learning Research
-
-**Note: This page is currently being populated**
 
 ## Overview
 
@@ -70,17 +68,15 @@ be solved with federated learning. Datasets include:
 
 ## High performance simulations
 
-<!-- TODO(b/143692319): Referent discussion in the in our paper. -->
-
 While the wall-clock time of an FL _simulation_ is not a relevant metric for
 evaluating algorithms (as simulation hardware isn't representative of real FL
 deployment environments), being able to run FL simulations quickly is critical
 for research productivity. Hence, TFF has invested heavily in providing
 high-performance single and multi-machine runtimes. Documentation is under
 development, but for now see the
-[High-performance simulations with TFF](https://github.com/tensorflow/federated/blob/master/docs/tutorials/simulations.ipynb)
+[High-performance simulations with TFF](https://www.tensorflow.org/federated/tutorials/simulations)
 tutorial as well as instructions on
-[setting up simulations with TFF on GCP](https://github.com/tensorflow/federated/blob/master/docs/gcp_setup.md).
+[setting up simulations with TFF on GCP](https://www.tensorflow.org/federated/gcp_setup).
 The high-performance TFF runtime is enabled by default.
 
 ## TFF for different research areas
