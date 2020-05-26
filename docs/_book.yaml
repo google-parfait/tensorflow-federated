@@ -38,6 +38,8 @@ upper_tabs:
         path: /federated/federated_learning
       - title: Federated Core
         path: /federated/federated_core
+      - title: TFF for Federated Learning Reserach
+        path: /federated/tff_for_research
     - name: API
       skip_translation: true
       contents:
