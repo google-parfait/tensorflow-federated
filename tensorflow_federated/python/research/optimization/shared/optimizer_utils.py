@@ -15,6 +15,7 @@
 
 import inspect
 from typing import Callable
+from typing import Optional
 
 from absl import flags
 from absl import logging
@@ -101,17 +102,21 @@ def define_optimizer_flags(prefix: str) -> None:
       else:
         return '{!s}_{!s}'.format(optimizer_name, basename)
 
+    def is_param_of_type(param, typ):
+      return (param.default is None and param.annotation == Optional[typ] or
+              isinstance(param.default, typ))
+
     for param in constructor_params:
       if param.name in ['kwargs', 'args', 'learning_rate']:
         continue
 
-      if isinstance(param.default, bool):
+      if is_param_of_type(param, bool):
         define_flag_fn = flags.DEFINE_bool
-      elif isinstance(param.default, float):
+      elif is_param_of_type(param, float):
         define_flag_fn = flags.DEFINE_float
-      elif isinstance(param.default, int):
+      elif is_param_of_type(param, int):
         define_flag_fn = flags.DEFINE_integer
-      elif isinstance(param.default, str):
+      elif is_param_of_type(param, str):
         define_flag_fn = flags.DEFINE_string
       else:
         raise NotImplementedError('Cannot handle flag [{!s}] of type [{!s}] on '
