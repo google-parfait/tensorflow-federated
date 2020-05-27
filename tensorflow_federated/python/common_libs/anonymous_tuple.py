@@ -195,11 +195,11 @@ def name_list(an_anonymous_tuple):
 
   Returns:
     The list of string names for the fields that are named. Names appear in
-  order, skipping names that are `None`.
+    order, skipping names that are `None`.
   """
-  return [
-      name for name, _ in iter_elements(an_anonymous_tuple) if name is not None
-  ]
+  py_typecheck.check_type(an_anonymous_tuple, AnonymousTuple)
+  names = an_anonymous_tuple._name_array  # pylint: disable=protected-access
+  return [n for n in names if n is not None]
 
 
 def to_elements(an_anonymous_tuple):
@@ -523,3 +523,15 @@ def to_container_recursive(value, container_fn):
       return v
 
   return container_fn([(k, recurse(v)) for k, v in to_elements(value)])
+
+
+def has_field(structure: AnonymousTuple, field: str) -> bool:
+  """Returns `True` if the `structure` has the `field`.
+
+  Args:
+    structure: An instance of `AnonymousTuple`.
+    field: A string, the field to test for.
+  """
+  py_typecheck.check_type(structure, AnonymousTuple)
+  names = structure._name_array  # pylint: disable=protected-access
+  return field in names

@@ -424,7 +424,7 @@ class CheckTypeTest(absltest.TestCase):
     self.assertRaises(TypeError, type_analysis.check_type, 10, tf.bool)
 
 
-class CheckFederatedTypeTest(parameterized.TestCase):
+class CheckFederatedTypeTest(absltest.TestCase):
 
   def test_raises_type_error(self):
     type_spec = computation_types.FederatedType(tf.int32,

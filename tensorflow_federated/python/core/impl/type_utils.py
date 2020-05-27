@@ -46,33 +46,6 @@ def to_canonical_value(value):
   return value
 
 
-def get_named_tuple_element_type(type_spec, name):
-  """Returns the type of a named tuple member.
-
-  Args:
-    type_spec: Type specification, either an instance of computation_types.Type
-      or something convertible to it by computation_types.to_type().
-    name: The string name of the named tuple member.
-
-  Returns:
-    The TFF type of the element.
-
-  Raises:
-    TypeError: if arguments are of the wrong computation_types.
-    ValueError: if the tuple does not have an element with the given name.
-  """
-  py_typecheck.check_type(name, str)
-  type_spec = computation_types.to_type(type_spec)
-  py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
-  elements = anonymous_tuple.iter_elements(type_spec)
-  for elem_name, elem_type in elements:
-    if name == elem_name:
-      return elem_type
-  raise ValueError('The name \'{}\' of the element does not correspond to any '
-                   'of the names {} in the named tuple type.'.format(
-                       name, [e[0] for e in elements if e[0]]))
-
-
 def reconcile_value_with_type_spec(value, type_spec):
   """Reconciles the type of `value` with the given `type_spec`.
 

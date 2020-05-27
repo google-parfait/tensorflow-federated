@@ -24,7 +24,6 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -245,15 +244,14 @@ class Selection(ComputationBuildingBlock):
         is not compatible with the type signature of the source, or neither or
         both are defined (not None).
     """
+    py_typecheck.check_type(source, ComputationBuildingBlock)
     if name is None and index is None:
       raise ValueError(
           'Must define either a name or index, and neither was specified.')
     if name is not None and index is not None:
       raise ValueError(
           'Cannot simultaneously specify a name and an index, choose one.')
-    py_typecheck.check_type(source, ComputationBuildingBlock)
-    self._source = source
-    source_type = self._source.type_signature
+    source_type = source.type_signature
     if not isinstance(source_type, computation_types.NamedTupleType):
       raise TypeError(
           'Expected the source of selection to be a TFF named tuple, '
@@ -262,27 +260,26 @@ class Selection(ComputationBuildingBlock):
       py_typecheck.check_type(name, str)
       if not name:
         raise ValueError('The name of the selected element cannot be empty.')
-      else:
-        # Normalize, in case we are dealing with a Unicode type or some such.
-        name = str(name)
-        super().__init__(
-            type_utils.get_named_tuple_element_type(source_type, name))
-        self._name = name
-        self._index = None
-    else:
-      # Index must have been specified, since name is None.
-      py_typecheck.check_type(index, int)
-      elements = anonymous_tuple.to_elements(source_type)
-      if index >= 0 and index < len(elements):
-        super().__init__(elements[index][1])
-        self._name = None
-        self._index = index
-      else:
+      # Normalize, in case we are dealing with a Unicode type or some such.
+      name = str(name)
+      if not anonymous_tuple.has_field(source_type, name):
         raise ValueError(
-            'The index of the selected element {} does not fit into the '
-            'valid range 0..{} determined by the source type '
-            'signature.'.format(index,
-                                len(elements) - 1))
+            'The name \'{}\' does not correspond to any of the names in the '
+            'named tuple type: {}.'.format(
+                name, anonymous_tuple.name_list(source_type)))
+      type_signature = source_type[name]
+    else:
+      py_typecheck.check_type(index, int)
+      length = len(source_type)
+      if index < 0 or index >= length:
+        raise ValueError(
+            'The index \'{}\' does not fit into the valid range in the named '
+            'tuple type: 0..{}.'.format(name, length))
+      type_signature = source_type[index]
+    super().__init__(type_signature)
+    self._source = source
+    self._name = name
+    self._index = index
 
   @property
   def proto(self):
