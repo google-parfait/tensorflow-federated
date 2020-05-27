@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, Krishna Pillutla and Sham M. Kakade and Zaid Harchaoui.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
