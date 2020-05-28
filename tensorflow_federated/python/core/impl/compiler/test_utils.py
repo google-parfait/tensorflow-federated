@@ -19,10 +19,10 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -119,7 +119,7 @@ def create_dummy_called_federated_aggregate(accumulate_parameter_name,
       CLIENTS.
   """
   federated_value_type = computation_types.FederatedType(
-      value_type, placements.CLIENTS)
+      value_type, placement_literals.CLIENTS)
   value = building_blocks.Data('data', federated_value_type)
   zero = building_blocks.Data('data', tf.float32)
   accumulate_type = computation_types.NamedTupleType((tf.float32, value_type))
@@ -153,7 +153,8 @@ def create_dummy_called_federated_apply(parameter_name,
     parameter_type: The type of the parameter.
   """
   fn = create_identity_function(parameter_name, parameter_type)
-  arg_type = computation_types.FederatedType(parameter_type, placements.SERVER)
+  arg_type = computation_types.FederatedType(parameter_type,
+                                             placement_literals.SERVER)
   arg = building_blocks.Data('data', arg_type)
   return building_block_factory.create_federated_apply(fn, arg)
 
@@ -169,7 +170,7 @@ def create_dummy_called_federated_broadcast(value_type=tf.int32):
     value_type: The type of the value.
   """
   federated_type = computation_types.FederatedType(value_type,
-                                                   placements.SERVER)
+                                                   placement_literals.SERVER)
   value = building_blocks.Data('data', federated_type)
   return building_block_factory.create_federated_broadcast(value)
 
@@ -190,7 +191,8 @@ def create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
     parameter_type: The type of the parameter.
   """
   fn = create_identity_function(parameter_name, parameter_type)
-  arg_type = computation_types.FederatedType(parameter_type, placements.CLIENTS)
+  arg_type = computation_types.FederatedType(parameter_type,
+                                             placement_literals.CLIENTS)
   arg = building_blocks.Data('data', arg_type)
   return building_block_factory.create_federated_map(fn, arg)
 
@@ -213,7 +215,7 @@ def create_dummy_called_federated_map_all_equal(parameter_name,
   """
   fn = create_identity_function(parameter_name, parameter_type)
   arg_type = computation_types.FederatedType(
-      parameter_type, placements.CLIENTS, all_equal=True)
+      parameter_type, placement_literals.CLIENTS, all_equal=True)
   arg = building_blocks.Data('data', arg_type)
   return building_block_factory.create_federated_map_all_equal(fn, arg)
 
@@ -229,7 +231,7 @@ def create_dummy_called_federated_secure_sum(value_type=tf.int32):
     value_type: The type of the value.
   """
   federated_type = computation_types.FederatedType(value_type,
-                                                   placements.CLIENTS)
+                                                   placement_literals.CLIENTS)
   value = building_blocks.Data('data', federated_type)
   bitwidth = building_blocks.Data('data', value_type)
   return building_block_factory.create_federated_secure_sum(value, bitwidth)
@@ -246,7 +248,7 @@ def create_dummy_called_federated_sum(value_type=tf.int32):
     value_type: The type of the value.
   """
   federated_type = computation_types.FederatedType(value_type,
-                                                   placements.CLIENTS)
+                                                   placement_literals.CLIENTS)
   value = building_blocks.Data('data', federated_type)
   return building_block_factory.create_federated_sum(value)
 

@@ -16,7 +16,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -27,6 +26,7 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class RemoveLambdasAndBlocksTest(test.TestCase):
@@ -87,7 +87,8 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
   def test_with_structure_replacing_federated_zip(self):
     fed_tuple = building_blocks.Reference(
         'tup',
-        computation_types.FederatedType([tf.int32] * 3, placements.CLIENTS))
+        computation_types.FederatedType([tf.int32] * 3,
+                                        placement_literals.CLIENTS))
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     zipped = building_block_factory.create_federated_zip(unzipped)
     placement_unwrapped, _ = tree_transformations.unwrap_placement(zipped)
@@ -779,7 +780,8 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
   def test_aggregate_with_selection_from_block_by_index_results_in_single_aggregate(
       self):
     data = building_blocks.Reference(
-        'a', computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        'a',
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     tup_of_data = building_blocks.Tuple([data, data])
     block_holding_tup = building_blocks.Block([], tup_of_data)
     index_0_from_block = building_blocks.Selection(
@@ -825,7 +827,8 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
   def test_aggregate_with_selection_from_block_by_name_results_in_single_aggregate(
       self):
     data = building_blocks.Reference(
-        'a', computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        'a',
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     tup_of_data = building_blocks.Tuple([('a', data), ('b', data)])
     block_holding_tup = building_blocks.Block([], tup_of_data)
     index_0_from_block = building_blocks.Selection(
