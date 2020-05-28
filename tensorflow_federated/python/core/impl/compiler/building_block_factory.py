@@ -15,7 +15,7 @@
 
 import random
 import string
-from typing import List, Sequence, Tuple
+from typing import Any, Callable, Iterator, List, Sequence, Optional, Tuple, Union
 
 import tensorflow as tf
 
@@ -35,7 +35,8 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
-def unique_name_generator(comp, prefix='_var'):
+def unique_name_generator(comp: building_blocks.ComputationBuildingBlock,
+                          prefix: str = '_var') -> Iterator[str]:
   """Yields a new unique name that does not exist in `comp`.
 
   Args:
@@ -57,7 +58,7 @@ def unique_name_generator(comp, prefix='_var'):
     index += 1
 
 
-def create_compiled_empty_tuple():
+def create_compiled_empty_tuple() -> building_blocks.Call:
   """Returns called graph representing the empty tuple.
 
   Returns:
@@ -70,7 +71,9 @@ def create_compiled_empty_tuple():
   return building_blocks.Call(compiled, None)
 
 
-def create_compiled_identity(type_signature, name=None):
+def create_compiled_identity(
+    type_signature: computation_types.Type,
+    name: Optional[str] = None) -> building_blocks.CompiledComputation:
   """Creates CompiledComputation representing identity function.
 
   Args:
@@ -137,7 +140,9 @@ def _extract_selections(parameter_value, output_spec):
 
 
 def construct_tensorflow_selecting_and_packing_outputs(
-    arg_type, output_structure: anonymous_tuple.AnonymousTuple):
+    arg_type: computation_types.Type,
+    output_structure: anonymous_tuple.AnonymousTuple
+) -> building_blocks.CompiledComputation:
   """Constructs TensorFlow selecting and packing elements from its input.
 
   The result of this function can be called on a deduplicated
@@ -213,7 +218,9 @@ def construct_tensorflow_selecting_and_packing_outputs(
   return building_blocks.CompiledComputation(proto)
 
 
-def create_tensorflow_constant(type_spec, scalar_value, name=None):
+def create_tensorflow_constant(type_spec: computation_types.Type,
+                               scalar_value: Union[int, float, str],
+                               name=None) -> building_blocks.Call:
   """Creates called graph returning constant `scalar_value` of type `type_spec`.
 
   `scalar_value` must be a scalar, and cannot be a float if any of the tensor
@@ -242,7 +249,9 @@ def create_tensorflow_constant(type_spec, scalar_value, name=None):
   return building_blocks.Call(compiled, None)
 
 
-def create_compiled_input_replication(type_signature, n_replicas):
+def create_compiled_input_replication(
+    type_signature: computation_types.Type,
+    n_replicas: int) -> building_blocks.CompiledComputation:
   """Creates a compiled computation which replicates its argument.
 
   Args:
@@ -266,7 +275,9 @@ def create_compiled_input_replication(type_signature, n_replicas):
   return building_blocks.CompiledComputation(proto)
 
 
-def create_tensorflow_to_broadcast_scalar(scalar_type, new_shape):
+def create_tensorflow_to_broadcast_scalar(
+    scalar_type: tf.dtypes.DType,
+    new_shape: tf.TensorShape) -> building_blocks.CompiledComputation:
   """Creates TF function broadcasting scalar to shape `new_shape`.
 
   Args:
@@ -291,7 +302,9 @@ def create_tensorflow_to_broadcast_scalar(scalar_type, new_shape):
   return building_blocks.CompiledComputation(proto)
 
 
-def create_tensorflow_binary_operator(operand_type, operator):
+def create_tensorflow_binary_operator(
+    operand_type: computation_types.Type,
+    operator: Callable[[Any, Any], Any]) -> building_blocks.CompiledComputation:
   """Creates a TensorFlow computation for the binary `operator`.
 
   For `T` the `operand_type`, the type signature of the constructed operator
@@ -331,7 +344,9 @@ def create_tensorflow_binary_operator(operand_type, operator):
   return building_blocks.CompiledComputation(proto)
 
 
-def create_federated_getitem_call(arg, idx):
+def create_federated_getitem_call(
+    arg: building_blocks.ComputationBuildingBlock,
+    idx: Union[int, slice]) -> building_blocks.Call:
   """Creates computation building block passing getitem to federated value.
 
   Args:
@@ -357,7 +372,8 @@ def create_federated_getitem_call(arg, idx):
   return create_federated_map_or_apply(getitem_comp, arg)
 
 
-def create_federated_getattr_call(arg, name):
+def create_federated_getattr_call(arg: building_blocks.ComputationBuildingBlock,
+                                  name: str) -> building_blocks.Call:
   """Creates computation building block passing getattr to federated value.
 
   Args:
@@ -383,7 +399,10 @@ def create_federated_getattr_call(arg, name):
   return create_federated_map_or_apply(getattr_comp, arg)
 
 
-def create_federated_setattr_call(federated_comp, name, value_comp):
+def create_federated_setattr_call(
+    federated_comp: building_blocks.ComputationBuildingBlock, name: str,
+    value_comp: building_blocks.ComputationBuildingBlock
+) -> building_blocks.Call:
   """Returns building block for `setattr(name, value_comp)` on `federated_comp`.
 
   Creates an appropriate communication intrinsic (either `federated_map` or
@@ -423,7 +442,10 @@ def create_federated_setattr_call(federated_comp, name, value_comp):
   return create_federated_map_or_apply(setattr_lambda, federated_comp)
 
 
-def create_named_tuple_setattr_lambda(named_tuple_signature, name, value_comp):
+def create_named_tuple_setattr_lambda(
+    named_tuple_signature: computation_types.NamedTupleType, name: str,
+    value_comp: building_blocks.ComputationBuildingBlock
+) -> building_blocks.Lambda:
   """Creates a building block for replacing one attribute in a named tuple.
 
   Returns an instance of `building_blocks.Lambda` which takes an
@@ -485,7 +507,9 @@ def create_named_tuple_setattr_lambda(named_tuple_signature, name, value_comp):
   return building_blocks.Block(symbols, lambda_to_return)
 
 
-def create_federated_getattr_comp(comp, name):
+def create_federated_getattr_comp(
+    comp: building_blocks.ComputationBuildingBlock,
+    name: str) -> building_blocks.Lambda:
   """Function to construct computation for `federated_apply` of `__getattr__`.
 
   Creates a `building_blocks.ComputationBuildingBlock`
@@ -521,7 +545,9 @@ def create_federated_getattr_comp(comp, name):
   return apply_lambda
 
 
-def create_federated_getitem_comp(comp, key):
+def create_federated_getitem_comp(
+    comp: building_blocks.ComputationBuildingBlock,
+    key: Union[int, slice]) -> building_blocks.Lambda:
   """Function to construct computation for `federated_apply` of `__getitem__`.
 
   Creates a `building_blocks.ComputationBuildingBlock`
@@ -561,7 +587,9 @@ def create_federated_getitem_comp(comp, key):
   return apply_lambda
 
 
-def create_computation_appending(comp1, comp2):
+def create_computation_appending(
+    comp1: building_blocks.ComputationBuildingBlock,
+    comp2: building_blocks.ComputationBuildingBlock):
   r"""Returns a block appending `comp2` to `comp1`.
 
                 Block
@@ -612,7 +640,12 @@ def create_computation_appending(comp1, comp2):
   return building_blocks.Block(symbols, result)
 
 
-def create_federated_aggregate(value, zero, accumulate, merge, report):
+def create_federated_aggregate(
+    value: building_blocks.ComputationBuildingBlock,
+    zero: building_blocks.ComputationBuildingBlock,
+    accumulate: building_blocks.ComputationBuildingBlock,
+    merge: building_blocks.ComputationBuildingBlock,
+    report: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated aggregate.
 
             Call
@@ -664,7 +697,9 @@ def create_federated_aggregate(value, zero, accumulate, merge, report):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_apply(fn, arg):
+def create_federated_apply(
+    fn: building_blocks.ComputationBuildingBlock,
+    arg: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated apply.
 
             Call
@@ -695,7 +730,8 @@ def create_federated_apply(fn, arg):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_broadcast(value):
+def create_federated_broadcast(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated broadcast.
 
             Call
@@ -721,7 +757,8 @@ def create_federated_broadcast(value):
   return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_collect(value):
+def create_federated_collect(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated collect.
 
             Call
@@ -751,7 +788,7 @@ def create_federated_collect(value):
 def create_federated_eval(
     fn: building_blocks.ComputationBuildingBlock,
     placement: placement_literals.PlacementLiteral,
-) -> building_blocks.ComputationBuildingBlock:
+) -> building_blocks.Call:
   r"""Creates a called federated eval.
 
             Call
@@ -786,7 +823,9 @@ def create_federated_eval(
   return building_blocks.Call(intrinsic, fn)
 
 
-def create_federated_map(fn, arg):
+def create_federated_map(
+    fn: building_blocks.ComputationBuildingBlock,
+    arg: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated map.
 
             Call
@@ -819,7 +858,9 @@ def create_federated_map(fn, arg):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_map_all_equal(fn, arg):
+def create_federated_map_all_equal(
+    fn: building_blocks.ComputationBuildingBlock,
+    arg: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated map of equal values.
 
             Call
@@ -855,7 +896,9 @@ def create_federated_map_all_equal(fn, arg):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_map_or_apply(fn, arg):
+def create_federated_map_or_apply(
+    fn: building_blocks.ComputationBuildingBlock,
+    arg: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated map or apply depending on `arg`s placement.
 
             Call
@@ -888,7 +931,9 @@ def create_federated_map_or_apply(fn, arg):
         arg.type_signature.placement))
 
 
-def create_federated_mean(value, weight):
+def create_federated_mean(
+    value: building_blocks.ComputationBuildingBlock,
+    weight: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated mean.
 
             Call
@@ -931,7 +976,10 @@ def create_federated_mean(value, weight):
     return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_reduce(value, zero, op):
+def create_federated_reduce(
+    value: building_blocks.ComputationBuildingBlock,
+    zero: building_blocks.ComputationBuildingBlock,
+    op: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated reduce.
 
             Call
@@ -968,7 +1016,9 @@ def create_federated_reduce(value, zero, op):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_secure_sum(value, bitwidth):
+def create_federated_secure_sum(
+    value: building_blocks.ComputationBuildingBlock,
+    bitwidth: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called secure sum.
 
             Call
@@ -1000,7 +1050,8 @@ def create_federated_secure_sum(value, bitwidth):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_sum(value):
+def create_federated_sum(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated sum.
 
             Call
@@ -1026,7 +1077,8 @@ def create_federated_sum(value):
   return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_unzip(value):
+def create_federated_unzip(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Block:
   r"""Creates a tuple of called federated maps or applies.
 
                 Block
@@ -1077,7 +1129,9 @@ def create_federated_unzip(value):
   return building_blocks.Block(symbols, result)
 
 
-def create_federated_value(value, placement):
+def create_federated_value(
+    value: building_blocks.ComputationBuildingBlock,
+    placement: placement_literals.PlacementLiteral) -> building_blocks.Call:
   r"""Creates a called federated value.
 
             Call
@@ -1246,7 +1300,8 @@ def _selection_from_path(
   return selected
 
 
-def create_federated_zip(value):
+def create_federated_zip(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated zip.
 
   This function accepts a value whose type signature is a (potentially) nested
@@ -1347,7 +1402,10 @@ def create_federated_zip(value):
     raise TypeError('Unsupported placement {}.'.format(placement))
 
 
-def create_generic_constant(type_spec, scalar_value):
+def create_generic_constant(
+    type_spec: computation_types.Type,
+    scalar_value: Union[int,
+                        float]) -> building_blocks.ComputationBuildingBlock:
   """Creates constant for a combination of federated, tuple and tensor types.
 
   Args:
@@ -1416,7 +1474,8 @@ def create_generic_constant(type_spec, scalar_value):
         'generic constant cases, and failed to raise.'.format(type_spec))
 
 
-def create_zip_two_values(value):
+def create_zip_two_values(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated zip with two values.
 
             Call
@@ -1475,7 +1534,9 @@ def create_zip_two_values(value):
   return building_blocks.Call(intrinsic, value)
 
 
-def create_sequence_map(fn, arg):
+def create_sequence_map(
+    fn: building_blocks.ComputationBuildingBlock,
+    arg: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called sequence map.
 
             Call
@@ -1505,7 +1566,10 @@ def create_sequence_map(fn, arg):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_sequence_reduce(value, zero, op):
+def create_sequence_reduce(
+    value: building_blocks.ComputationBuildingBlock,
+    zero: building_blocks.ComputationBuildingBlock,
+    op: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called sequence reduce.
 
             Call
@@ -1540,7 +1604,8 @@ def create_sequence_reduce(value, zero, op):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_sequence_sum(value):
+def create_sequence_sum(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called sequence sum.
 
             Call
@@ -1601,7 +1666,9 @@ def _create_naming_function(tuple_type_to_name, names_to_add):
                                 named_result)
 
 
-def create_named_federated_tuple(tuple_to_name, names_to_add):
+def create_named_federated_tuple(
+    tuple_to_name: building_blocks.ComputationBuildingBlock,
+    names_to_add: Sequence[str]) -> building_blocks.ComputationBuildingBlock:
   """Name tuple elements with names in `names_to_add`.
 
   Certain intrinsics, e.g. `federated_zip`, only accept unnamed tuples as
@@ -1649,7 +1716,9 @@ def create_named_federated_tuple(tuple_to_name, names_to_add):
   return create_federated_map_or_apply(naming_fn, tuple_to_name)
 
 
-def create_named_tuple(comp, names):
+def create_named_tuple(
+    comp: building_blocks.ComputationBuildingBlock,
+    names: Sequence[str]) -> building_blocks.ComputationBuildingBlock:
   """Creates a computation that applies `names` to `comp`.
 
   Args:
@@ -1676,7 +1745,8 @@ def create_named_tuple(comp, names):
   return building_blocks.Call(fn, comp)
 
 
-def create_zip(comp):
+def create_zip(
+    comp: building_blocks.ComputationBuildingBlock) -> building_blocks.Block:
   r"""Returns a computation which zips `comp`.
 
   Returns the following computation where `x` is `comp` unless `comp` is a
@@ -1764,7 +1834,9 @@ def _check_generic_operator_type(type_spec):
         'more details.'.format(type_spec))
 
 
-def create_binary_operator_with_upcast(type_signature, operator):
+def create_binary_operator_with_upcast(
+    type_signature: computation_types.Type,
+    operator: Callable[[Any, Any], Any]) -> building_blocks.CompiledComputation:
   """Creates lambda upcasting its argument and applying `operator`.
 
   The concept of upcasting is explained further in the docstring for
@@ -1824,7 +1896,9 @@ def create_binary_operator_with_upcast(type_signature, operator):
   return lambda_encapsulating_op
 
 
-def apply_binary_operator_with_upcast(arg, operator):
+def apply_binary_operator_with_upcast(
+    arg: building_blocks.ComputationBuildingBlock,
+    operator: Callable[[Any, Any], Any]) -> building_blocks.Call:
   """Constructs result of applying `operator` to `arg` upcasting if appropriate.
 
   Notice `arg` here must be of federated type, with a named tuple member of
@@ -1848,7 +1922,7 @@ def apply_binary_operator_with_upcast(arg, operator):
       represented by the federated `arg`.
 
   Returns:
-    Instance of `building_blocks.ComputationBuildingBlock`
+    Instance of `building_blocks.Call`
     encapsulating the result of formally applying `operator` to
     `arg[0], `arg[1]`, upcasting `arg[1]` in the condition described above.
 
