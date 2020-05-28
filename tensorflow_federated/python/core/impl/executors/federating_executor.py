@@ -698,11 +698,11 @@ class FederatingExecutor(executor_base.Executor):
     if count < 1.0:
       raise RuntimeError('Cannot compute a federated mean over an empty group.')
     child = self._target_executors[placement_literals.SERVER][0]
-    factor, multiply = tuple(await asyncio.gather(*[
+    factor, multiply = await asyncio.gather(
         executor_utils.embed_tf_scalar_constant(child, member_type,
                                                 float(1.0 / count)),
-        executor_utils.embed_tf_binary_operator(child, member_type, tf.multiply)
-    ]))
+        executor_utils.embed_tf_binary_operator(child, member_type,
+                                                tf.multiply))
     multiply_arg = await child.create_tuple(
         anonymous_tuple.AnonymousTuple([(None,
                                          arg_sum.internal_representation[0]),
@@ -757,13 +757,11 @@ class FederatingExecutor(executor_base.Executor):
   @tracing.trace
   async def _compute_intrinsic_federated_sum(self, arg):
     py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
-    zero, plus = tuple(await
-                       asyncio.gather(*[
-                           executor_utils.embed_tf_scalar_constant(
-                               self, arg.type_signature.member, 0),
-                           executor_utils.embed_tf_binary_operator(
-                               self, arg.type_signature.member, tf.add)
-                       ]))
+    zero, plus = await asyncio.gather(
+        executor_utils.embed_tf_scalar_constant(self, arg.type_signature.member,
+                                                0),
+        executor_utils.embed_tf_binary_operator(self, arg.type_signature.member,
+                                                tf.add))
     return await self._compute_intrinsic_federated_reduce(
         FederatingExecutorValue(
             anonymous_tuple.AnonymousTuple([

@@ -184,9 +184,9 @@ class ComposingExecutor(executor_base.Executor):
         intrinsic = executor_utils.create_intrinsic_comp(
             intrinsic_defs.FEDERATED_SUM, intrinsic_type)
         arg_type = type_factory.at_clients(tf.int32, all_equal=True)
-        fn, arg = tuple(await asyncio.gather(
+        fn, arg = await asyncio.gather(
             executor.create_value(intrinsic, intrinsic_type),
-            executor.create_value(1, arg_type)))
+            executor.create_value(1, arg_type))
         call = await executor.create_call(fn, arg)
         result = await call.compute()
         if isinstance(result, tf.Tensor):
@@ -378,22 +378,22 @@ class ComposingExecutor(executor_base.Executor):
 
     async def _child_fn(ex, v):
       py_typecheck.check_type(v, executor_value_base.ExecutorValue)
-      aggr_func, aggr_args = tuple(await asyncio.gather(
+      aggr_func, aggr_args = await asyncio.gather(
           ex.create_value(aggr_comp, aggr_type),
           ex.create_tuple([v] + list(await asyncio.gather(
               ex.create_value(zero, zero_type),
               ex.create_value(accumulate, accumulate_type),
               ex.create_value(merge, merge_type),
-              ex.create_value(identity_report, identity_report_type))))))
+              ex.create_value(identity_report, identity_report_type)))))
       return await (await ex.create_call(aggr_func, aggr_args)).compute()
 
     vals = await asyncio.gather(
         *[_child_fn(c, v) for c, v in zip(self._child_executors, val)])
     parent_vals = await asyncio.gather(
         *[self._parent_executor.create_value(v, zero_type) for v in vals])
-    parent_merge, parent_report = tuple(await asyncio.gather(
+    parent_merge, parent_report = await asyncio.gather(
         self._parent_executor.create_value(merge, merge_type),
-        self._parent_executor.create_value(report, report_type)))
+        self._parent_executor.create_value(report, report_type))
     merge_result = parent_vals[0]
     for next_val in parent_vals[1:]:
       merge_result = await self._parent_executor.create_call(
@@ -443,7 +443,7 @@ class ComposingExecutor(executor_base.Executor):
       py_typecheck.check_type(ex, executor_base.Executor)
       create_eval = ex.create_value(eval_comp, eval_type)
       create_fn = ex.create_value(fn, fn_type)
-      eval_val, fn_val = tuple(await asyncio.gather(create_eval, create_fn))
+      eval_val, fn_val = await asyncio.gather(create_eval, create_fn)
       return await ex.create_call(eval_val, fn_val)
 
     result_vals = await asyncio.gather(
@@ -491,8 +491,8 @@ class ComposingExecutor(executor_base.Executor):
     async def _child_fn(ex, v):
       py_typecheck.check_type(v, executor_value_base.ExecutorValue)
       fn_val = await ex.create_value(fn, fn_type)
-      map_val, map_arg = tuple(await asyncio.gather(
-          ex.create_value(map_comp, map_type), ex.create_tuple([fn_val, v])))
+      map_val, map_arg = await asyncio.gather(
+          ex.create_value(map_comp, map_type), ex.create_tuple([fn_val, v]))
       return await ex.create_call(map_val, map_arg)
 
     result_vals = await asyncio.gather(
@@ -527,14 +527,13 @@ class ComposingExecutor(executor_base.Executor):
           self._parent_executor, member_type, float(1.0 / count))
 
     async def _compute_multiply_arg():
-      total, factor = tuple(await asyncio.gather(_compute_total(),
-                                                 _compute_factor()))
+      total, factor = await asyncio.gather(_compute_total(), _compute_factor())
       return await self._parent_executor.create_tuple([total, factor])
 
-    multiply_fn, multiply_arg = tuple(await asyncio.gather(
+    multiply_fn, multiply_arg = await asyncio.gather(
         executor_utils.embed_tf_binary_operator(self._parent_executor,
                                                 member_type, tf.multiply),
-        _compute_multiply_arg()))
+        _compute_multiply_arg())
     result = await self._parent_executor.create_call(multiply_fn, multiply_arg)
     type_signature = type_factory.at_server(member_type)
     return CompositeValue(result, type_signature)
@@ -543,7 +542,7 @@ class ComposingExecutor(executor_base.Executor):
   async def _compute_intrinsic_federated_sum(self, arg):
     type_analysis.check_federated_type(
         arg.type_signature, placement=placement_literals.CLIENTS)
-    zero, plus, identity = tuple(await asyncio.gather(*[
+    zero, plus, identity = await asyncio.gather(
         executor_utils.embed_tf_scalar_constant(self, arg.type_signature.member,
                                                 0),
         executor_utils.embed_tf_binary_operator(self, arg.type_signature.member,
@@ -551,8 +550,7 @@ class ComposingExecutor(executor_base.Executor):
         self.create_value(
             computation_factory.create_lambda_identity(
                 arg.type_signature.member),
-            type_factory.unary_op(arg.type_signature.member))
-    ]))
+            type_factory.unary_op(arg.type_signature.member)))
     aggregate_args = await self.create_tuple([arg, zero, plus, plus, identity])
     return await self._compute_intrinsic_federated_aggregate(aggregate_args)
 
