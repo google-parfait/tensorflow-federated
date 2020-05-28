@@ -31,11 +31,11 @@ from tensorflow_federated.python.core.impl.executors import executor_test_utils
 tf.compat.v1.enable_v2_behavior()
 
 
-def _get_physical_devices_for_testing(device_list=('CPU', 'GPU')):
+def _get_logical_devices_for_testing(device_list=('CPU', 'GPU', 'TPU')):
   result = []
-  for dev in tf.config.experimental.list_physical_devices():
+  for dev in tf.config.list_logical_devices():
     parts = dev.name.split(':')
-    if ((len(parts) == 3) and (parts[0] == '/physical_device') and
+    if ((len(parts) == 3) and (parts[0] == '/device') and
         (parts[1] in device_list)):
       result.append(':'.join(parts[1:]))
   return result
@@ -53,8 +53,9 @@ class EagerTFExecutorTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
-    self._physical_devices_cpu = _get_physical_devices_for_testing(['CPU'])
-    self._physical_devices_gpu = _get_physical_devices_for_testing(['GPU'])
+    self._logical_devices_cpu = _get_logical_devices_for_testing(['CPU'])
+    self._logical_devices_gpu = _get_logical_devices_for_testing(['GPU'])
+    self._logical_devices_tpu = _get_logical_devices_for_testing(['TPU'])
 
   def test_embed_tensorflow_computation_with_int_arg_and_result(self):
 
@@ -462,7 +463,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
 
     self.assertEqual(result, 10)
 
-  # TODO(b/155239129): used list_physical_device in `setUp` for GPU tests.
+  # TODO(b/155239129): used list_logical_device in `setUp` for GPU tests.
   def _get_wrap_function_on_device(self, device):
     with tf.Graph().as_default() as graph:
       x = tf.compat.v1.placeholder(tf.int32, shape=[])
@@ -487,13 +488,18 @@ class EagerTFExecutorTest(tf.test.TestCase):
     result = fn(tf.constant(10))
     return result
 
-  def test_wrap_function_on_all_available_physical_devices_cpu(self):
-    for device in self._physical_devices_cpu:
+  def test_wrap_function_on_all_available_logical_devices_cpu(self):
+    for device in self._logical_devices_cpu:
       self.assertTrue(
           self._get_wrap_function_on_device(device).device.endswith(device))
 
-  def test_wrap_function_on_all_available_physical_devices_gpu(self):
-    for device in self._physical_devices_gpu:
+  def test_wrap_function_on_all_available_logical_devices_gpu(self):
+    for device in self._logical_devices_gpu:
+      self.assertTrue(
+          self._get_wrap_function_on_device(device).device.endswith(device))
+
+  def test_wrap_function_on_all_available_logical_devices_tpu(self):
+    for device in self._logical_devices_tpu:
       self.assertTrue(
           self._get_wrap_function_on_device(device).device.endswith(device))
 
@@ -509,7 +515,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
       eager_tf_executor.embed_tensorflow_computation(
           comp_proto, comp.type_signature, device='/there_is_no_such_device')
 
-  # TODO(b/155239129): used list_physical_device in `setUp` for GPU tests.
+  # TODO(b/155239129): used list_logical_device in `setUp` for GPU tests.
   def _get_embed_tensorflow_computation_succeeds_with_device(self, device):
 
     @computations.tf_computation(tf.int32)
@@ -524,18 +530,24 @@ class EagerTFExecutorTest(tf.test.TestCase):
     return result
 
   def test_embed_tensorflow_computation_succeeds_with_cpu(self):
-    for device in self._physical_devices_cpu:
+    for device in self._logical_devices_cpu:
       self.assertTrue(
           self._get_embed_tensorflow_computation_succeeds_with_device(
               device).device.endswith(device))
 
   def test_embed_tensorflow_computation_succeeds_with_gpu(self):
-    for device in self._physical_devices_gpu:
+    for device in self._logical_devices_gpu:
       self.assertTrue(
           self._get_embed_tensorflow_computation_succeeds_with_device(
               device).device.endswith(device))
 
-  # TODO(b/155239129): used list_physical_device in `setUp` for GPU tests.
+  def test_embed_tensorflow_computation_succeeds_with_tpu(self):
+    for device in self._logical_devices_tpu:
+      self.assertTrue(
+          self._get_embed_tensorflow_computation_succeeds_with_device(
+              device).device.endswith(device))
+
+  # TODO(b/155239129): used list_logical_device in `setUp` for GPU tests.
   def _get_to_representation_for_type_succeeds_on_device(self, device):
 
     @computations.tf_computation(tf.int32)
@@ -550,13 +562,19 @@ class EagerTFExecutorTest(tf.test.TestCase):
     return result
 
   def test_to_representation_for_type_succeeds_on_devices_cpu(self):
-    for device in self._physical_devices_cpu:
+    for device in self._logical_devices_cpu:
       self.assertTrue(
           self._get_to_representation_for_type_succeeds_on_device(
               device).device.endswith(device))
 
   def test_to_representation_for_type_succeeds_on_devices_gpu(self):
-    for device in self._physical_devices_cpu:
+    for device in self._logical_devices_gpu:
+      self.assertTrue(
+          self._get_to_representation_for_type_succeeds_on_device(
+              device).device.endswith(device))
+
+  def test_to_representation_for_type_succeeds_on_devices_tpu(self):
+    for device in self._logical_devices_tpu:
       self.assertTrue(
           self._get_to_representation_for_type_succeeds_on_device(
               device).device.endswith(device))
