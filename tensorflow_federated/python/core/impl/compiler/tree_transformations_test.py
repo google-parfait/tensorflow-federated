@@ -1922,6 +1922,37 @@ class MergeTupleIntrinsicsTest(test.TestCase):
         str(transformed_comp.type_signature), '<bool@SERVER,bool@SERVER>')
     self.assertTrue(modified)
 
+  def test_merges_federated_aggregates_with_unknown_parameter_dim(self):
+    self.skipTest('b/157655969')
+    value_type = tf.int32
+    federated_value_type = computation_types.FederatedType(
+        value_type, placements.CLIENTS)
+    value = building_blocks.Data('data', federated_value_type)
+
+    # Concrete zero has fixed dimension, but the federated aggregate will
+    # declare a parameter with unknown dimension.
+    zero = building_blocks.Data(
+        'data', computation_types.TensorType(tf.float32, shape=[0]))
+    zero_type = computation_types.TensorType(tf.float32, shape=[None])
+    accumulate_type = computation_types.NamedTupleType((zero_type, value_type))
+    accumulate_result = building_blocks.Data('data', zero_type)
+    accumulate = building_blocks.Lambda('a', accumulate_type, accumulate_result)
+    merge_type = computation_types.NamedTupleType((zero_type, zero_type))
+    merge_result = building_blocks.Data('data', zero_type)
+    merge = building_blocks.Lambda('b', merge_type, merge_result)
+    report_result = building_blocks.Data('data', tf.bool)
+    report = building_blocks.Lambda('c', zero_type, report_result)
+
+    called_intrinsic = building_block_factory.create_federated_aggregate(
+        value, zero, accumulate, merge, report)
+    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    comp = calls
+
+    transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
+        comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
   def test_merges_multiple_federated_aggregates(self):
     called_intrinsic = test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
