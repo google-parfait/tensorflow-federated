@@ -185,20 +185,12 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   @parameterized.named_parameters([
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
-      ('computation_call',
-       *executor_test_utils.create_dummy_computation_call()),
       ('computation_intrinsic',
        *executor_test_utils.create_dummy_computation_intrinsic()),
       ('computation_lambda',
        *executor_test_utils.create_dummy_computation_lambda_empty()),
-      ('computation_placement',
-       *executor_test_utils.create_dummy_computation_placement()),
-      ('computation_selection',
-       *executor_test_utils.create_dummy_computation_selection()),
       ('computation_tensorflow',
        *executor_test_utils.create_dummy_computation_tensorflow_empty()),
-      ('computation_tuple',
-       *executor_test_utils.create_dummy_computation_tuple()),
       ('federated_type_at_clients',
        *executor_test_utils.create_dummy_value_at_clients()),
       ('federated_type_at_clients_all_equal',
@@ -222,20 +214,12 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   @parameterized.named_parameters([
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
-      ('computation_call',
-       *executor_test_utils.create_dummy_computation_call()),
       ('computation_intrinsic',
        *executor_test_utils.create_dummy_computation_intrinsic()),
       ('computation_lambda',
        *executor_test_utils.create_dummy_computation_lambda_empty()),
-      ('computation_placement',
-       *executor_test_utils.create_dummy_computation_placement()),
-      ('computation_selection',
-       *executor_test_utils.create_dummy_computation_selection()),
       ('computation_tensorflow',
        *executor_test_utils.create_dummy_computation_tensorflow_empty()),
-      ('computation_tuple',
-       *executor_test_utils.create_dummy_computation_tuple()),
   ])
   # pyformat: enable
   def test_returns_value_with_value_only(self, value, type_signature):
@@ -297,8 +281,6 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_computation_intrinsic()),
       ('computation_lambda',
        *executor_test_utils.create_dummy_computation_lambda_empty()),
-      ('computation_placement',
-       *executor_test_utils.create_dummy_computation_placement()),
       ('computation_selection',
        *executor_test_utils.create_dummy_computation_selection()),
       ('computation_tensorflow',
@@ -326,9 +308,16 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
 
   # pyformat: disable
   @parameterized.named_parameters([
+      ('computation_call',
+       *executor_test_utils.create_dummy_computation_call()),
+      ('computation_placement',
+       *executor_test_utils.create_dummy_computation_placement()),
       ('computation_reference',
        *executor_test_utils.create_dummy_computation_reference()),
-      ('function_type', lambda: 10, type_factory.unary_op(tf.int32)),
+      ('computation_selection',
+       *executor_test_utils.create_dummy_computation_selection()),
+      ('computation_tuple',
+       *executor_test_utils.create_dummy_computation_tuple()),
   ])
   # pyformat: enable
   def test_raises_value_error_with_value(self, value, type_signature):
@@ -425,16 +414,6 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
         None: eager_tf_executor.EagerTFExecutor()
     })
     value, type_signature = executor_test_utils.create_dummy_value_at_server()
-
-    with self.assertRaises(ValueError):
-      self.run_sync(executor.create_value(value, type_signature))
-
-  def test_raises_value_error_with_no_target_executor_unplaced(self):
-    executor = federating_executor.FederatingExecutor({
-        placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
-        placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
-    })
-    value, type_signature = executor_test_utils.create_dummy_value_unplaced()
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
@@ -574,29 +553,6 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     else:
       self.assertEqual(actual_result, expected_result)
 
-  def test_returns_value_with_intrinsic_def_federated_value_at_server_and_tuple(
-      self):
-    executor = create_test_executor(number_of_clients=3)
-    arg, arg_type = executor_test_utils.create_dummy_computation_tuple()
-    intrinsic_def = intrinsic_defs.FEDERATED_VALUE_AT_SERVER
-    comp_type = computation_types.FunctionType(arg_type,
-                                               type_factory.at_server(arg_type))
-    comp = pb.Computation(
-        type=type_serialization.serialize_type(comp_type),
-        intrinsic=pb.Intrinsic(uri=intrinsic_def.uri))
-
-    comp = self.run_sync(executor.create_value(comp, comp_type))
-    arg = self.run_sync(executor.create_value(arg, arg_type))
-    result = self.run_sync(executor.create_call(comp, arg))
-
-    self.assertIsInstance(result, federating_executor.FederatingExecutorValue)
-    self.assertEqual(result.type_signature.compact_representation(),
-                     comp_type.result.compact_representation())
-    actual_result = self.run_sync(result.compute())
-    expected_result = [10.0] * 2
-    for actual_element, expected_element in zip(actual_result, expected_result):
-      self.assertEqual(actual_element, expected_element)
-
   def test_returns_value_with_intrinsic_def_federated_eval_at_clients_and_random(
       self):
     executor = create_test_executor(number_of_clients=3)
@@ -681,10 +637,6 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   @parameterized.named_parameters([
       ('computation_lambda',
        *executor_test_utils.create_dummy_computation_lambda_empty()),
-      ('computation_placement',
-       *executor_test_utils.create_dummy_computation_placement()),
-      ('computation_tuple',
-       *executor_test_utils.create_dummy_computation_tuple()),
       ('federated_type_at_clients',
        *executor_test_utils.create_dummy_value_at_clients()),
       ('federated_type_at_clients_all_equal',
@@ -738,14 +690,6 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
   @parameterized.named_parameters([
       ('placement_literal',
        *executor_test_utils.create_dummy_placement_literal()),
-      ('computation_call',
-       *executor_test_utils.create_dummy_computation_call()),
-      ('computation_placement',
-       *executor_test_utils.create_dummy_computation_placement()),
-      ('computation_selection',
-       *executor_test_utils.create_dummy_computation_selection()),
-      ('computation_tuple',
-       *executor_test_utils.create_dummy_computation_tuple()),
       ('federated_type_at_clients',
        *executor_test_utils.create_dummy_value_at_clients()),
       ('federated_type_at_clients_all_equal',

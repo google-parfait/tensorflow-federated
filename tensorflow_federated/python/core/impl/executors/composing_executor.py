@@ -39,7 +39,7 @@ from tensorflow_federated.python.core.impl.types import type_factory
 class CompositeValue(executor_value_base.ExecutorValue):
   """Represents a value embedded in the composite executor."""
 
-  def __init__(self, value, type_spec):
+  def __init__(self, value, type_signature):
     """Creates an instance of `CompositeValue`.
 
     The kinds of supported internal representations (`value`) and types are as
@@ -61,16 +61,12 @@ class CompositeValue(executor_value_base.ExecutorValue):
     Args:
       value: An internal value representation (of one of the allowed types, as
         defined above).
-      type_spec: An instance of `tff.Type` or something convertible to it that
-        is compatible with `value` (as defined above).
+      type_signature: An instance of `tff.Type` or something convertible to it
+        that is compatible with `value` (as defined above).
     """
-    py_typecheck.check_type(value, (intrinsic_defs.IntrinsicDef, pb.Computation,
-                                    executor_value_base.ExecutorValue, list,
-                                    anonymous_tuple.AnonymousTuple))
-    type_spec = computation_types.to_type(type_spec)
-    py_typecheck.check_type(type_spec, computation_types.Type)
+    py_typecheck.check_type(type_signature, computation_types.Type)
     self._value = value
-    self._type_signature = type_spec
+    self._type_signature = computation_types.to_type(type_signature)
 
   @property
   def internal_representation(self):
@@ -84,36 +80,33 @@ class CompositeValue(executor_value_base.ExecutorValue):
   async def compute(self):
     if isinstance(self._value, executor_value_base.ExecutorValue):
       return await self._value.compute()
+    elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
+      results = await asyncio.gather(*[
+          CompositeValue(v, t).compute()
+          for v, t in zip(self._value, self._type_signature)
+      ])
+      element_types = anonymous_tuple.iter_elements(self._type_signature)
+      return anonymous_tuple.AnonymousTuple(
+          (n, v) for (n, _), v in zip(element_types, results))
     elif isinstance(self._value, list):
       py_typecheck.check_type(self._type_signature,
                               computation_types.FederatedType)
+      for value in self._value:
+        py_typecheck.check_type(value, executor_value_base.ExecutorValue)
       if self._type_signature.all_equal:
         return await self._value[0].compute()
       else:
         result = []
-        for x in await asyncio.gather(*[v.compute() for v in self._value]):
-          py_typecheck.check_type(x, list)
-          result.extend(x)
+        values = await asyncio.gather(*[v.compute() for v in self._value])
+        for value in values:
+          py_typecheck.check_type(value, list)
+          result.extend(value)
         return result
     else:
-      py_typecheck.check_type(self._value, anonymous_tuple.AnonymousTuple)
-
-      async def _compute_element(element):
-        py_typecheck.check_type(
-            element,
-            (anonymous_tuple.AnonymousTuple, executor_value_base.ExecutorValue))
-        if isinstance(element, anonymous_tuple.AnonymousTuple):
-          return await _compute_tuple(element)
-        else:
-          return await element.compute()
-
-      async def _compute_tuple(anon_tuple):
-        elements = anonymous_tuple.to_elements(anon_tuple)
-        keys = [k for k, _ in elements]
-        vals = await asyncio.gather(*[_compute_element(v) for _, v in elements])
-        return anonymous_tuple.AnonymousTuple(zip(keys, vals))
-
-      return await _compute_tuple(self._value)
+      raise RuntimeError(
+          'Computing values of type {} represented as {} is not supported in '
+          'this executor.'.format(self._type_signature,
+                                  py_typecheck.type_string(type(self._value))))
 
 
 class ComposingExecutor(executor_base.Executor):
@@ -162,6 +155,11 @@ class ComposingExecutor(executor_base.Executor):
     self._child_executors = child_executors
     self._cardinalities_task = None
 
+  def close(self):
+    self._parent_executor.close()
+    for e in self._child_executors:
+      e.close()
+
   async def _get_cardinalities(self):
     """Returns information about the number of clients in the child executors.
 
@@ -204,36 +202,25 @@ class ComposingExecutor(executor_base.Executor):
   @tracing.trace(span=True, stats=False)
   async def create_value(self, value, type_spec=None):
     type_spec = computation_types.to_type(type_spec)
-    py_typecheck.check_type(type_spec, computation_types.Type)
     if isinstance(value, intrinsic_defs.IntrinsicDef):
       if not type_analysis.is_concrete_instance_of(type_spec,
                                                    value.type_signature):  # pytype: disable=attribute-error
         raise TypeError('Incompatible type {} used with intrinsic {}.'.format(
-            type_spec, value.uri))  # pytype: disable=attribute-error
-      else:
-        return CompositeValue(value, type_spec)
+            type_spec, value.uri))
+      return CompositeValue(value, type_spec)
     elif isinstance(value, pb.Computation):
       which_computation = value.WhichOneof('computation')
-      if which_computation in ['tensorflow', 'lambda']:
+      if which_computation in ['lambda', 'tensorflow']:
         return CompositeValue(value, type_spec)
       elif which_computation == 'intrinsic':
-        intr = intrinsic_defs.uri_to_intrinsic_def(value.intrinsic.uri)
-        if intr is None:
+        intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(value.intrinsic.uri)
+        if intrinsic_def is None:
           raise ValueError('Encountered an unrecognized intrinsic "{}".'.format(
               value.intrinsic.uri))
-        py_typecheck.check_type(intr, intrinsic_defs.IntrinsicDef)
-        return await self.create_value(intr, type_spec)
+        return await self.create_value(intrinsic_def, type_spec)
       else:
         raise NotImplementedError(
             'Unimplemented computation type {}.'.format(which_computation))
-    elif isinstance(type_spec, computation_types.NamedTupleType):
-      value_tuple = anonymous_tuple.from_container(value)
-      items = await asyncio.gather(
-          *[self.create_value(v, t) for v, t in zip(value_tuple, type_spec)])
-      type_elemnents_iter = anonymous_tuple.iter_elements(type_spec)
-      return self.create_tuple(
-          anonymous_tuple.AnonymousTuple(
-              (k, i) for (k, _), i in zip(type_elemnents_iter, items)))
     elif isinstance(type_spec, computation_types.FederatedType):
       if type_spec.placement == placement_literals.SERVER:
         if not type_spec.all_equal:
@@ -281,17 +268,15 @@ class ComposingExecutor(executor_base.Executor):
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')
       if which_computation == 'tensorflow':
-        call_args = [
-            self._parent_executor.create_value(comp.internal_representation,
-                                               comp.type_signature)
-        ]
+        child = self._parent_executor
+        embedded_comp = await child.create_value(comp.internal_representation,
+                                                 comp.type_signature)
         if arg is not None:
-          call_args.append(
-              executor_utils.delegate_entirely_to_executor(
-                  arg.internal_representation, arg.type_signature,
-                  self._parent_executor))
-        result = await self._parent_executor.create_call(*(
-            await asyncio.gather(*call_args)))
+          embedded_arg = await executor_utils.delegate_entirely_to_executor(
+              arg.internal_representation, arg.type_signature, child)
+        else:
+          embedded_arg = None
+        result = await child.create_call(embedded_comp, embedded_arg)
         return CompositeValue(result, result.type_signature)
       else:
         raise ValueError(
@@ -314,41 +299,49 @@ class ComposingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def create_tuple(self, elements):
-    values = []
-    type_specs = []
+    element_values = []
+    element_types = []
     for name, value in anonymous_tuple.iter_elements(
         anonymous_tuple.from_container(elements)):
       py_typecheck.check_type(value, CompositeValue)
-      values.append((name, value.internal_representation))
+      element_values.append((name, value.internal_representation))
       if name is not None:
-        type_spec = (name, value.type_signature)
+        element_types.append((name, value.type_signature))
       else:
-        type_spec = value.type_signature
-      type_specs.append(type_spec)
-    return CompositeValue(
-        anonymous_tuple.AnonymousTuple(values),
-        computation_types.NamedTupleType(type_specs))
+        element_types.append(value.type_signature)
+    value = anonymous_tuple.AnonymousTuple(element_values)
+    type_signature = computation_types.NamedTupleType(element_types)
+    return CompositeValue(value, type_signature)
 
   @tracing.trace
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, CompositeValue)
     py_typecheck.check_type(source.type_signature,
                             computation_types.NamedTupleType)
+    if index is None and name is None:
+      raise ValueError(
+          'Expected either `index` or `name` to be specificed, found both are '
+          '`None`.')
     if isinstance(source.internal_representation,
                   executor_value_base.ExecutorValue):
-      result = await self._parent_executor.create_selection(
+      child = self._parent_executor
+      value = await child.create_selection(
           source.internal_representation, index=index, name=name)
-      return CompositeValue(result, result.type_signature)
-    else:
-      py_typecheck.check_type(source.internal_representation,
-                              anonymous_tuple.AnonymousTuple)
-      if index is not None:
-        return CompositeValue(source.internal_representation[index],
-                              source.type_signature[index])
+      return CompositeValue(value, value.type_signature)
+    elif isinstance(source.internal_representation,
+                    anonymous_tuple.AnonymousTuple):
+      if name is not None:
+        value = source.internal_representation[name]
+        type_signature = source.type_signature[name]
       else:
-        return CompositeValue(
-            getattr(source.internal_representation, name),
-            getattr(source.type_signature, name))
+        value = source.internal_representation[index]
+        type_signature = source.type_signature[index]
+      return CompositeValue(value, type_signature)
+    else:
+      raise ValueError(
+          'Unexpected internal representation while creating selection. '
+          'Expected one of `AnonymousTuple` or value embedded in target '
+          'executor, received {}'.format(source.internal_representation))
 
   @tracing.trace
   async def _compute_intrinsic_federated_aggregate(self, arg):
@@ -633,8 +626,3 @@ class ComposingExecutor(executor_base.Executor):
         type_factory.at_server(
             computation_types.NamedTupleType(
                 [arg.type_signature[0].member, arg.type_signature[1].member])))
-
-  def close(self):
-    self._parent_executor.close()
-    for e in self._child_executors:
-      e.close()

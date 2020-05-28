@@ -38,11 +38,11 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 class FederatingExecutorValue(executor_value_base.ExecutorValue):
   """A value embedded in a `FederatedExecutor`."""
 
-  def __init__(self, value, type_spec):
+  def __init__(self, value, type_signature):
     """Creates an embedded instance of a value in this executor.
 
-    The kinds of supported `value`s or internal representations and `type_spec`
-    are:
+    The kinds of supported `value`s or internal representations and
+    `type_signature` are:
 
     * An instance of `intrinsic_defs.IntrinsicDef` in case of a federated
       operator (to be interpreted by this executor upon invocation).
@@ -55,31 +55,31 @@ class FederatingExecutorValue(executor_value_base.ExecutorValue):
       placement,  selection, tensorflow, and tuple.
 
     * A Python `list` of values embedded in subordinate executors in the case
-      where `type_spec` is a federated type. The `value` must be a list even if
-      it is of an `all_equal` type or if there is only a single participant
-      associated with the given placement.
+      where `type_signature` is a federated type. The `value` must be a list
+      even if it is of an `all_equal` type or if there is only a single
+      participant associated with the given placement.
 
     * A single value embedded in a subordinate executor in the case where
-      `type_spec` is of a non-federated and non-functional type.
+      `type_signature` is of a non-federated and non-functional type.
 
     * An instance of `anonymous_tuple.AnonymousTuple` with values being one of
       the supported types listed above.
 
-    Note: This constructor does not check that the `value` and `type_spec` are
-    of a kind supported by the `FederatingExecutor`.
+    Note: This constructor does not check that the `value` and `type_signature`
+    are of a kind supported by the `FederatingExecutor`.
 
     Args:
       value: An internal value representation (one of the allowed types,
         defined above).
-      type_spec: An instance of `tff.Type` or something convertible to it that
-        is compatible with `value` (as defined above).
+      type_signature: An instance of `tff.Type` or something convertible to it
+        that is compatible with `value` (as defined above).
 
     Raises:
       TypeError: If `type_spec` is not a `tff.Type`.
     """
-    py_typecheck.check_type(type_spec, computation_types.Type)
+    py_typecheck.check_type(type_signature, computation_types.Type)
     self._value = value
-    self._type_signature = computation_types.to_type(type_spec)
+    self._type_signature = computation_types.to_type(type_signature)
 
   @property
   def internal_representation(self):
@@ -93,14 +93,6 @@ class FederatingExecutorValue(executor_value_base.ExecutorValue):
   async def compute(self):
     if isinstance(self._value, executor_value_base.ExecutorValue):
       return await self._value.compute()
-    elif isinstance(self._type_signature, computation_types.FederatedType):
-      py_typecheck.check_type(self._value, list)
-      for value in self._value:
-        py_typecheck.check_type(value, executor_value_base.ExecutorValue)
-      if self._type_signature.all_equal:
-        return await self._value[0].compute()
-      else:
-        return await asyncio.gather(*[v.compute() for v in self._value])
     elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
       results = await asyncio.gather(*[
           FederatingExecutorValue(v, t).compute()
@@ -109,6 +101,15 @@ class FederatingExecutorValue(executor_value_base.ExecutorValue):
       element_types = anonymous_tuple.iter_elements(self._type_signature)
       return anonymous_tuple.AnonymousTuple(
           (n, v) for (n, _), v in zip(element_types, results))
+    elif isinstance(self._value, list):
+      py_typecheck.check_type(self._type_signature,
+                              computation_types.FederatedType)
+      for value in self._value:
+        py_typecheck.check_type(value, executor_value_base.ExecutorValue)
+      if self._type_signature.all_equal:
+        return await self._value[0].compute()
+      else:
+        return await asyncio.gather(*[v.compute() for v in self._value])
     else:
       raise RuntimeError(
           'Computing values of type {} represented as {} is not supported in '
@@ -253,79 +254,30 @@ class FederatingExecutor(executor_base.Executor):
       which_computation = value.WhichOneof('computation')
       if which_computation in ['lambda', 'tensorflow']:
         return FederatingExecutorValue(value, type_spec)
-      elif which_computation == 'reference':
-        raise ValueError(
-            'Encountered an unexpected unbound references "{}".'.format(
-                value.reference.name))
       elif which_computation == 'intrinsic':
-        intr = intrinsic_defs.uri_to_intrinsic_def(value.intrinsic.uri)
-        if intr is None:
+        intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(value.intrinsic.uri)
+        if intrinsic_def is None:
           raise ValueError('Encountered an unrecognized intrinsic "{}".'.format(
               value.intrinsic.uri))
-        py_typecheck.check_type(intr, intrinsic_defs.IntrinsicDef)
-        return await self.create_value(intr, type_spec)
-      elif which_computation == 'placement':
-        return await self.create_value(
-            placement_literals.uri_to_placement_literal(value.placement.uri),
-            type_spec)
-      elif which_computation == 'call':
-        parts = [value.call.function]
-        if value.call.argument.WhichOneof('computation'):
-          parts.append(value.call.argument)
-        parts = await asyncio.gather(*[self.create_value(x) for x in parts])
-        return await self.create_call(parts[0],
-                                      parts[1] if len(parts) > 1 else None)
-      elif which_computation == 'tuple':
-        element_values = await asyncio.gather(
-            *[self.create_value(x.value) for x in value.tuple.element])
-        return await self.create_tuple(
-            anonymous_tuple.AnonymousTuple(
-                (e.name if e.name else None, v)
-                for e, v in zip(value.tuple.element, element_values)))
-      elif which_computation == 'selection':
-        which_selection = value.selection.WhichOneof('selection')
-        if which_selection == 'name':
-          name = value.selection.name
-          index = None
-        elif which_selection != 'index':
-          raise ValueError(
-              'Unrecognized selection type: "{}".'.format(which_selection))
-        else:
-          index = value.selection.index
-          name = None
-        return await self.create_selection(
-            await self.create_value(value.selection.source),
-            index=index,
-            name=name)
+        return await self.create_value(intrinsic_def, type_spec)
       else:
         raise ValueError(
             'Unsupported computation building block of type "{}".'.format(
                 which_computation))
+    elif isinstance(type_spec, computation_types.FederatedType):
+      self._check_value_compatible_with_placement(value, type_spec.placement,
+                                                  type_spec.all_equal)
+      children = self._target_executors[type_spec.placement]
+      if type_spec.all_equal:
+        value = [value for _ in children]
+      results = await asyncio.gather(*[
+          c.create_value(v, type_spec.member) for v, c in zip(value, children)
+      ])
+      return FederatingExecutorValue(results, type_spec)
     else:
-      py_typecheck.check_type(type_spec, computation_types.Type)
-      if isinstance(type_spec, computation_types.FunctionType):
-        raise ValueError(
-            'Encountered a value of a functional TFF type {} and Python type '
-            '{} that is not of one of the recognized representations.'.format(
-                type_spec, py_typecheck.type_string(type(value))))
-      elif isinstance(type_spec, computation_types.FederatedType):
-        children = self._target_executors.get(type_spec.placement)
-        self._check_value_compatible_with_placement(value, type_spec.placement,
-                                                    type_spec.all_equal)
-        if type_spec.all_equal:
-          value = [value for _ in children]
-        child_vals = await asyncio.gather(*[
-            c.create_value(v, type_spec.member)
-            for v, c in zip(value, children)
-        ])
-        return FederatingExecutorValue(child_vals, type_spec)
-      else:
-        child = self._target_executors.get(None)
-        if not child or len(child) > 1:
-          raise ValueError('Executor is not configured for unplaced values.')
-        else:
-          return FederatingExecutorValue(
-              await child[0].create_value(value, type_spec), type_spec)
+      child = self._target_executors[None][0]
+      return FederatingExecutorValue(await child.create_value(value, type_spec),
+                                     type_spec)
 
   @tracing.trace
   async def create_call(self, comp, arg=None):
@@ -360,7 +312,6 @@ class FederatingExecutor(executor_base.Executor):
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')
       if which_computation == 'tensorflow':
-        # Run tensorflow computations.
         child = self._target_executors[None][0]
         embedded_comp = await child.create_value(comp.internal_representation,
                                                  comp.type_signature)
@@ -406,16 +357,19 @@ class FederatingExecutor(executor_base.Executor):
       TypeError: If the `elements` are not embedded in the executor, before
         calling `create_call`.
     """
-    for value in elements:
+    element_values = []
+    element_types = []
+    for name, value in anonymous_tuple.iter_elements(
+        anonymous_tuple.from_container(elements)):
       py_typecheck.check_type(value, FederatingExecutorValue)
-    elements = anonymous_tuple.to_elements(
-        anonymous_tuple.from_container(elements))
-    return FederatingExecutorValue(
-        anonymous_tuple.AnonymousTuple(
-            (k, v.internal_representation) for k, v in elements),
-        computation_types.NamedTupleType(
-            (k, v.type_signature) if k else v.type_signature
-            for k, v in elements))
+      element_values.append((name, value.internal_representation))
+      if name is not None:
+        element_types.append((name, value.type_signature))
+      else:
+        element_types.append(value.type_signature)
+    value = anonymous_tuple.AnonymousTuple(element_values)
+    type_signature = computation_types.NamedTupleType(element_types)
+    return FederatingExecutorValue(value, type_signature)
 
   @tracing.trace
   async def create_selection(self, source, index=None, name=None):
@@ -443,22 +397,21 @@ class FederatingExecutor(executor_base.Executor):
       raise ValueError(
           'Expected either `index` or `name` to be specificed, found both are '
           '`None`.')
-    if name is not None:
-      elements = anonymous_tuple.iter_elements(source.type_signature)
-      name_to_index = dict((n, i) for i, (n, _) in enumerate(elements))
-      index = name_to_index[name]
     if isinstance(source.internal_representation,
-                  anonymous_tuple.AnonymousTuple):
-      val = source.internal_representation
-      selected = val[index]
-      return FederatingExecutorValue(selected, source.type_signature[index])
-    elif isinstance(source.internal_representation,
-                    executor_value_base.ExecutorValue):
-      val = source.internal_representation
+                  executor_value_base.ExecutorValue):
       child = self._target_executors[None][0]
-      return FederatingExecutorValue(
-          await child.create_selection(val, index=index),
-          source.type_signature[index])
+      value = await child.create_selection(
+          source.internal_representation, index=index, name=name)
+      return FederatingExecutorValue(value, value.type_signature)
+    elif isinstance(source.internal_representation,
+                    anonymous_tuple.AnonymousTuple):
+      if name is not None:
+        value = source.internal_representation[name]
+        type_signature = source.type_signature[name]
+      else:
+        value = source.internal_representation[index]
+        type_signature = source.type_signature[index]
+      return FederatingExecutorValue(value, type_signature)
     else:
       raise ValueError(
           'Unexpected internal representation while creating selection. '
@@ -577,7 +530,8 @@ class FederatingExecutor(executor_base.Executor):
   async def _zip(self, arg, placement, all_equal):
     self._check_arg_is_anonymous_tuple(arg)
     py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
-    cardinality = len(self._target_executors[placement])
+    children = self._target_executors[placement]
+    cardinality = len(children)
     elements = anonymous_tuple.to_elements(arg.internal_representation)
     for _, v in elements:
       py_typecheck.check_type(v, list)
@@ -588,7 +542,6 @@ class FederatingExecutor(executor_base.Executor):
     for idx in range(cardinality):
       new_vals.append(
           anonymous_tuple.AnonymousTuple([(k, v[idx]) for k, v in elements]))
-    children = self._target_executors[placement]
     new_vals = await asyncio.gather(
         *[c.create_tuple(x) for c, x in zip(children, new_vals)])
     return FederatingExecutorValue(
