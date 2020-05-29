@@ -13,7 +13,7 @@
 """A library of contruction functions for computation type structures."""
 
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 def reduction_op(result_type_spec, element_type_spec):
@@ -74,7 +74,7 @@ def at_server(type_spec):
   """
   type_spec = computation_types.to_type(type_spec)
   return computation_types.FederatedType(
-      type_spec, placements.SERVER, all_equal=True)
+      type_spec, placement_literals.SERVER, all_equal=True)
 
 
 def at_clients(type_spec, all_equal=False):
@@ -91,4 +91,4 @@ def at_clients(type_spec, all_equal=False):
   """
   type_spec = computation_types.to_type(type_spec)
   return computation_types.FederatedType(
-      type_spec, placements.CLIENTS, all_equal=all_equal)
+      type_spec, placement_literals.CLIENTS, all_equal=all_equal)
