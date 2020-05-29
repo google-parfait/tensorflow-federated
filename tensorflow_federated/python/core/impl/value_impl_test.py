@@ -22,7 +22,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl import reference_executor
@@ -30,6 +29,7 @@ from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class ValueImplTest(parameterized.TestCase):
@@ -234,7 +234,7 @@ class ValueImplTest(parameterized.TestCase):
     self.assertEqual(str(v), '<a=foo,b=bar>')
 
   def test_to_value_for_placement_literals(self):
-    clients = value_impl.to_value(placements.CLIENTS, None,
+    clients = value_impl.to_value(placement_literals.CLIENTS, None,
                                   context_stack_impl.context_stack)
     self.assertIsInstance(clients, value_base.Value)
     self.assertEqual(str(clients.type_signature), 'placement')
@@ -406,8 +406,8 @@ class ValueImplTest(parameterized.TestCase):
         building_blocks.Reference(
             'test',
             computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.CLIENTS, False)), None,
-        context_stack_impl.context_stack)
+                                            placement_literals.CLIENTS, False)),
+        None, context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value.type_signature), '{<int32,bool>}@CLIENTS')
     federated_attribute = federated_value[0]
@@ -418,8 +418,8 @@ class ValueImplTest(parameterized.TestCase):
         building_blocks.Reference(
             'test',
             computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.CLIENTS, False)), None,
-        context_stack_impl.context_stack)
+                                            placement_literals.CLIENTS, False)),
+        None, context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value.type_signature), '{<int32,bool>}@CLIENTS')
     identity = federated_value[:]
@@ -431,8 +431,8 @@ class ValueImplTest(parameterized.TestCase):
         building_blocks.Reference(
             'test',
             computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.SERVER, True)), None,
-        context_stack_impl.context_stack)
+                                            placement_literals.SERVER, True)),
+        None, context_stack_impl.context_stack)
     self.assertEqual(str(federated_value.type_signature), '<int32,bool>@SERVER')
     federated_attribute = federated_value[0]
     self.assertEqual(str(federated_attribute.type_signature), 'int32@SERVER')
@@ -442,8 +442,8 @@ class ValueImplTest(parameterized.TestCase):
         building_blocks.Reference(
             'test',
             computation_types.FederatedType([tf.int32, tf.bool],
-                                            placements.SERVER, True)), None,
-        context_stack_impl.context_stack)
+                                            placement_literals.SERVER, True)),
+        None, context_stack_impl.context_stack)
     self.assertEqual(str(federated_value.type_signature), '<int32,bool>@SERVER')
     identity = federated_value[:]
     self.assertEqual(str(identity.type_signature), '<int32,bool>@SERVER')
@@ -455,8 +455,8 @@ class ValueImplTest(parameterized.TestCase):
         building_blocks.Reference(
             'test',
             computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.SERVER, True)), None,
-        context_stack_impl.context_stack)
+                                            placement_literals.SERVER, True)),
+        None, context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value.type_signature), '<a=int32,b=bool>@SERVER')
     federated_attribute = federated_value['a']
@@ -470,8 +470,8 @@ class ValueImplTest(parameterized.TestCase):
         building_blocks.Reference(
             'test',
             computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.SERVER, True)), None,
-        context_stack_impl.context_stack)
+                                            placement_literals.SERVER, True)),
+        None, context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value.type_signature), '<a=int32,b=bool>@SERVER')
     federated_attribute = federated_value.a
@@ -482,8 +482,8 @@ class ValueImplTest(parameterized.TestCase):
         building_blocks.Reference(
             'test',
             computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.CLIENTS, False)), None,
-        context_stack_impl.context_stack)
+                                            placement_literals.CLIENTS, False)),
+        None, context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value.type_signature), '{<a=int32,b=bool>}@CLIENTS')
     federated_attribute = federated_value.a
@@ -494,8 +494,8 @@ class ValueImplTest(parameterized.TestCase):
         building_blocks.Reference(
             'test',
             computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.CLIENTS, True)), None,
-        context_stack_impl.context_stack)
+                                            placement_literals.CLIENTS, True)),
+        None, context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value_clients.type_signature), '<a=int32,b=bool>@CLIENTS')
     with self.assertRaisesRegex(ValueError, r'has no element of name `c`'):
@@ -504,8 +504,8 @@ class ValueImplTest(parameterized.TestCase):
         building_blocks.Reference(
             'test',
             computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                            placements.SERVER, True)), None,
-        context_stack_impl.context_stack)
+                                            placement_literals.SERVER, True)),
+        None, context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value_server.type_signature), '<a=int32,b=bool>@SERVER')
     with self.assertRaisesRegex(ValueError, r'has no element of name `c`'):
@@ -591,7 +591,7 @@ class ValueImplTest(parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                        placements.SERVER,
+                                        placement_literals.SERVER,
                                         all_equal=True))
     def foo(x):
       x.a = 10
@@ -607,7 +607,7 @@ class ValueImplTest(parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       x.a = 10
       return x
@@ -625,7 +625,7 @@ class ValueImplTest(parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       x.b = False
       return x
@@ -643,7 +643,8 @@ class ValueImplTest(parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), (None, tf.float32),
-                                         ('b', tf.bool)], placements.CLIENTS))
+                                         ('b', tf.bool)],
+                                        placement_literals.CLIENTS))
     def foo(x):
       x.b = False
       return x
@@ -675,7 +676,7 @@ class ValueImplTest(parameterized.TestCase):
 
       @computations.federated_computation(
           computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
-                                          placements.CLIENTS))
+                                          placement_literals.CLIENTS))
       def _(x):
         x.b = 10
         return x

@@ -23,7 +23,6 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import intrinsic_factory
@@ -35,6 +34,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
@@ -163,21 +163,21 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_to_representation_for_type_with_placement_type(self):
     self.assertIs(
         reference_executor.to_representation_for_type(
-            placements.CLIENTS, computation_types.PlacementType()),
-        placements.CLIENTS)
+            placement_literals.CLIENTS, computation_types.PlacementType()),
+        placement_literals.CLIENTS)
 
   def test_to_representation_for_type_with_federated_type(self):
     self.assertEqual(
         reference_executor.to_representation_for_type(
             10,
             computation_types.FederatedType(
-                tf.int32, placements.SERVER, all_equal=True)), 10)
+                tf.int32, placement_literals.SERVER, all_equal=True)), 10)
     x = [1, 2, 3]
     self.assertEqual(
         reference_executor.to_representation_for_type(
             x,
             computation_types.FederatedType(
-                tf.int32, placements.CLIENTS, all_equal=False)), x)
+                tf.int32, placement_literals.CLIENTS, all_equal=False)), x)
 
   def test_stamp_computed_value_into_graph_with_undefined_tensor_dims(self):
     v_type = computation_types.TensorType(tf.int32, [None])
@@ -230,12 +230,12 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
   def test_computation_context_get_cardinality(self):
     c1 = reference_executor.ComputationContext(None, None,
-                                               {placements.CLIENTS: 10})
-    self.assertEqual(c1.get_cardinality(placements.CLIENTS), 10)
+                                               {placement_literals.CLIENTS: 10})
+    self.assertEqual(c1.get_cardinality(placement_literals.CLIENTS), 10)
     with self.assertRaises(ValueError):
-      c1.get_cardinality(placements.SERVER)
+      c1.get_cardinality(placement_literals.SERVER)
     c2 = reference_executor.ComputationContext(c1)
-    self.assertEqual(c2.get_cardinality(placements.CLIENTS), 10)
+    self.assertEqual(c2.get_cardinality(placement_literals.CLIENTS), 10)
 
   def test_tensorflow_computation_with_no_argument(self):
 
@@ -388,7 +388,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     sequence_type = computation_types.SequenceType(
         computation_types.TensorType(tf.int32, ds1_shape))
     federated_type = computation_types.FederatedType(sequence_type,
-                                                     placements.CLIENTS)
+                                                     placement_literals.CLIENTS)
 
     @computations.tf_computation(sequence_type)
     def foo(z):
@@ -410,7 +410,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     sequence_type = computation_types.SequenceType(
         computation_types.TensorType(tf.int32, ds1_shape))
     federated_type = computation_types.FederatedType(sequence_type,
-                                                     placements.CLIENTS)
+                                                     placement_literals.CLIENTS)
 
     @computations.tf_computation(sequence_type)
     def foo(z):
@@ -436,7 +436,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
             batch_type(
                 x=computation_types.TensorType(tf.float32, [None, 2]),
                 y=computation_types.TensorType(tf.float32, [None, 1]))),
-        placements.CLIENTS,
+        placement_literals.CLIENTS,
         all_equal=False)
 
     @computations.tf_computation(federated_sequence_type.member)
@@ -475,7 +475,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_helpful_failure_federated_int_sequence(self):
     sequence_type = computation_types.SequenceType(tf.int32)
     federated_type = computation_types.FederatedType(sequence_type,
-                                                     placements.CLIENTS)
+                                                     placement_literals.CLIENTS)
 
     @computations.tf_computation(sequence_type)
     def foo(z):
@@ -498,7 +498,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_graph_mode_dataset_fails_well(self):
     sequence_type = computation_types.SequenceType(tf.int32)
     federated_type = computation_types.FederatedType(sequence_type,
-                                                     placements.CLIENTS)
+                                                     placement_literals.CLIENTS)
 
     with tf.Graph().as_default():
 
@@ -677,7 +677,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     new_arg = reference_executor.fit_argument(
         old_arg, [('A', type_factory.at_clients(tf.int32))],
         reference_executor.ComputationContext(
-            cardinalities={placements.CLIENTS: 3}))
+            cardinalities={placement_literals.CLIENTS: 3}))
     self.assertEqual(str(new_arg.type_signature), '<A={int32}@CLIENTS>')
     self.assertEqual(new_arg.value.A, [10, 10, 10])
 
@@ -769,7 +769,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_collect_with_list_of_integers(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return intrinsics.federated_collect(x)
 
@@ -784,7 +784,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
       return x + 1
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def bar(x):
       return intrinsics.federated_map(foo, x)
 
@@ -800,7 +800,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType(
-            tf.int32, placements.CLIENTS, all_equal=True))
+            tf.int32, placement_literals.CLIENTS, all_equal=True))
     def bar(x):
       factory = intrinsic_factory.IntrinsicFactory(
           context_stack_impl.context_stack)
@@ -817,7 +817,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
       return x + 1
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.SERVER, True))
+        computation_types.FederatedType(tf.int32, placement_literals.SERVER,
+                                        True))
     def bar(x):
       return intrinsics.federated_map(foo, x)
 
@@ -837,7 +838,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType(
-            computation_types.SequenceType(tf.int32), placements.SERVER, True))
+            computation_types.SequenceType(tf.int32), placement_literals.SERVER,
+            True))
     def baz(x):
       return intrinsics.federated_map(bar, x)
 
@@ -849,7 +851,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_sum_with_list_of_integers(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return intrinsics.federated_sum(x)
 
@@ -860,7 +862,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_secure_sum_with_list_of_integers(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return intrinsics.federated_secure_sum(x, 8)
 
@@ -873,8 +875,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     @computations.federated_computation(tf.int32)
     def foo(x):
       return [
-          intrinsics.federated_value(x, placements.CLIENTS),
-          intrinsics.federated_value(x, placements.SERVER)
+          intrinsics.federated_value(x, placement_literals.CLIENTS),
+          intrinsics.federated_value(x, placement_literals.SERVER)
       ]
 
     self.assertEqual(
@@ -940,7 +942,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     def foo():
       return zero_for(
           computation_types.FederatedType(
-              tf.int32, placements.SERVER, all_equal=True),
+              tf.int32, placement_literals.SERVER, all_equal=True),
           context_stack_impl.context_stack)
 
     self.assertEqual(str(foo.type_signature), '( -> int32@SERVER)')
@@ -1029,7 +1031,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
       return x + tf.cast(y > 0.5, tf.int32)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
     def bar(x):
       return intrinsics.federated_reduce(x, 0, foo)
 
@@ -1040,7 +1042,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_mean_with_floats(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
     def foo(x):
       return intrinsics.federated_mean(x)
 
@@ -1052,7 +1054,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('A', tf.float32), ('B', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return intrinsics.federated_mean(x)
 
@@ -1075,8 +1077,10 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_zip_at_server(self):
 
     @computations.federated_computation([
-        computation_types.FederatedType(tf.int32, placements.SERVER, True),
-        computation_types.FederatedType(tf.int32, placements.SERVER, True)
+        computation_types.FederatedType(tf.int32, placement_literals.SERVER,
+                                        True),
+        computation_types.FederatedType(tf.int32, placement_literals.SERVER,
+                                        True)
     ])
     def foo(x):
       return intrinsics.federated_zip(x)
@@ -1096,8 +1100,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_zip_at_clients(self):
 
     @computations.federated_computation([
-        computation_types.FederatedType(tf.int32, placements.CLIENTS),
-        computation_types.FederatedType(tf.int32, placements.CLIENTS)
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS),
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS)
     ])
     def foo(x):
       return intrinsics.federated_zip(x)
@@ -1126,7 +1130,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
       return tf.cast(a.sum, tf.float32) / tf.cast(a.n, tf.float32)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return intrinsics.federated_aggregate(
           x, collections.OrderedDict([('sum', 0), ('n', 0)]), accumulate, merge,
@@ -1139,8 +1143,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_weighted_average_with_floats(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS),
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS),
+        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
     def foo(v, w):
       return intrinsics.federated_mean(v, w)
 
@@ -1152,7 +1156,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_broadcast_without_data_on_clients(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.SERVER, True))
+        computation_types.FederatedType(tf.int32, placement_literals.SERVER,
+                                        True))
     def foo(x):
       return intrinsics.federated_broadcast(x)
 
@@ -1162,8 +1167,9 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_broadcast_zipped_with_client_data(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS),
-        computation_types.FederatedType(tf.int32, placements.SERVER, True))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS),
+        computation_types.FederatedType(tf.int32, placement_literals.SERVER,
+                                        True))
     def foo(x, y):
       return intrinsics.federated_zip([x, intrinsics.federated_broadcast(y)])
 
@@ -1181,11 +1187,11 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_eval_at_clients_simple_number(self, comp_wrapper):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       del x
       return_five = comp_wrapper(lambda: 5)
-      return intrinsics.federated_eval(return_five, placements.CLIENTS)
+      return intrinsics.federated_eval(return_five, placement_literals.CLIENTS)
 
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> {int32}@CLIENTS)')
@@ -1199,11 +1205,11 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_eval_at_server_simple_number(self, comp_wrapper):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       del x
       return_five = comp_wrapper(lambda: 5)
-      return intrinsics.federated_eval(return_five, placements.SERVER)
+      return intrinsics.federated_eval(return_five, placement_literals.SERVER)
 
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
@@ -1212,11 +1218,11 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_federated_eval_at_clients_random(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       del x
       rand = computations.tf_computation(lambda: tf.random.normal([]))
-      return intrinsics.federated_eval(rand, placements.CLIENTS)
+      return intrinsics.federated_eval(rand, placement_literals.CLIENTS)
 
     self.assertEqual(
         str(foo.type_signature), '({int32}@CLIENTS -> {float32}@CLIENTS)')
@@ -1288,7 +1294,8 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
     int_ref = bb.Reference('x', tf.int32)
     int_id = bb.Lambda('x', tf.int32, int_ref)
     fed_ref = bb.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        'x',
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
@@ -1312,7 +1319,8 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
     int_ref = bb.Reference('x', tf.int32)
     int_id = bb.Lambda('x', tf.int32, int_ref)
     fed_ref = bb.Reference(
-        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
+        'x', computation_types.FederatedType(tf.int32,
+                                             placement_literals.SERVER))
     applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
@@ -1337,7 +1345,7 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
     fed_tuple = bb.Reference(
         'tup',
         computation_types.FederatedType([tf.int32, tf.float32] * 2,
-                                        placements.SERVER))
+                                        placement_literals.SERVER))
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     zipped = building_block_factory.create_federated_zip(unzipped)
     placement_unwrapped, modified = tree_transformations.unwrap_placement(
@@ -1363,7 +1371,7 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
     fed_tuple = bb.Reference(
         'tup',
         computation_types.FederatedType([tf.int32, tf.float32] * 2,
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     zipped = building_block_factory.create_federated_zip(unzipped)
     placement_unwrapped, modified = tree_transformations.unwrap_placement(
@@ -1387,7 +1395,8 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
 class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
 
   def test_merge_tuple_intrinsics_executes_with_federated_aggregate(self):
-    value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    value_type = computation_types.FederatedType(tf.int32,
+                                                 placement_literals.CLIENTS)
     ref_type = computation_types.NamedTupleType(
         (value_type, tf.float32, tf.float32, tf.float32, tf.bool))
     ref = bb.Reference('a', ref_type)
@@ -1418,7 +1427,8 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
         transformed_comp_impl(((2,), 4.0, 5.0, 6.0, True)))
 
   def test_merge_tuple_intrinsics_executes_with_federated_apply(self):
-    ref_type = computation_types.FederatedType(tf.int32, placements.SERVER)
+    ref_type = computation_types.FederatedType(tf.int32,
+                                               placement_literals.SERVER)
     ref = bb.Reference('a', ref_type)
     fn = test_utils.create_identity_function('b')
     arg = ref
@@ -1437,7 +1447,8 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
 
   def test_merge_tuple_intrinsics_executes_with_federated_broadcast(self):
     self.skipTest('b/135279151')
-    ref_type = computation_types.FederatedType(tf.int32, placements.SERVER)
+    ref_type = computation_types.FederatedType(tf.int32,
+                                               placement_literals.SERVER)
     ref = bb.Reference('a', ref_type)
     called_intrinsic = building_block_factory.create_federated_broadcast(ref)
     tup = bb.Tuple((called_intrinsic, called_intrinsic))
@@ -1453,7 +1464,8 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     self.assertEqual(comp_impl(10), transformed_comp_impl(10))
 
   def test_merge_tuple_intrinsics_executes_with_federated_map(self):
-    ref_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    ref_type = computation_types.FederatedType(tf.int32,
+                                               placement_literals.CLIENTS)
     ref = bb.Reference('a', ref_type)
     fn = test_utils.create_identity_function('b')
     arg = ref
@@ -1474,11 +1486,12 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType(
-            (computation_types.SequenceType(tf.string)), placements.CLIENTS))
+            (computation_types.SequenceType(tf.string)),
+            placement_literals.CLIENTS))
     def compute_clients(examples):
       del examples  # Unused.
       return intrinsics.federated_sum(
-          intrinsics.federated_value(1, placements.CLIENTS))
+          intrinsics.federated_value(1, placement_literals.CLIENTS))
 
     self.assertEqual(compute_clients([['a', 'b', 'c'], ['a'], ['a', 'b']]), 3)
 

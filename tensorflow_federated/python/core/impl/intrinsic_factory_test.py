@@ -16,13 +16,13 @@ from absl.testing import absltest
 import numpy as np
 
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class FederatedSecureSumTest(absltest.TestCase):
 
   def test_type_signature_with_int(self):
-    value = intrinsics.federated_value(1, placements.CLIENTS)
+    value = intrinsics.federated_value(1, placement_literals.CLIENTS)
     bitwidth = 8
 
     intrinsic = intrinsics.federated_secure_sum(value, bitwidth)
@@ -31,7 +31,7 @@ class FederatedSecureSumTest(absltest.TestCase):
                      'int32@SERVER')
 
   def test_type_signature_with_structure_of_ints(self):
-    value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
+    value = intrinsics.federated_value([1, [1, 1]], placement_literals.CLIENTS)
     bitwidth = [8, [4, 2]]
 
     intrinsic = intrinsics.federated_secure_sum(value, bitwidth)
@@ -41,7 +41,7 @@ class FederatedSecureSumTest(absltest.TestCase):
 
   def test_type_signature_with_one_tensor_and_bitwidth(self):
     value = intrinsics.federated_value(
-        np.ndarray(shape=(5, 37), dtype=np.int16), placements.CLIENTS)
+        np.ndarray(shape=(5, 37), dtype=np.int16), placement_literals.CLIENTS)
     bitwidth = 2
 
     intrinsic = intrinsics.federated_secure_sum(value, bitwidth)
@@ -51,7 +51,8 @@ class FederatedSecureSumTest(absltest.TestCase):
 
   def test_type_signature_with_structure_of_tensors_and_bitwidths(self):
     np_array = np.ndarray(shape=(5, 37), dtype=np.int16)
-    value = intrinsics.federated_value((np_array, np_array), placements.CLIENTS)
+    value = intrinsics.federated_value((np_array, np_array),
+                                       placement_literals.CLIENTS)
     bitwidth = (2, 2)
 
     intrinsic = intrinsics.federated_secure_sum(value, bitwidth)
@@ -60,21 +61,21 @@ class FederatedSecureSumTest(absltest.TestCase):
                      '<int16[5,37],int16[5,37]>@SERVER')
 
   def test_raises_type_error_with_value_float(self):
-    value = intrinsics.federated_value(1.0, placements.CLIENTS)
-    bitwidth = intrinsics.federated_value(1, placements.SERVER)
+    value = intrinsics.federated_value(1.0, placement_literals.CLIENTS)
+    bitwidth = intrinsics.federated_value(1, placement_literals.SERVER)
 
     with self.assertRaises(TypeError):
       intrinsics.federated_secure_sum(value, bitwidth)
 
   def test_raises_type_error_with_bitwith_int_at_server(self):
-    value = intrinsics.federated_value(1, placements.CLIENTS)
-    bitwidth = intrinsics.federated_value(1, placements.SERVER)
+    value = intrinsics.federated_value(1, placement_literals.CLIENTS)
+    bitwidth = intrinsics.federated_value(1, placement_literals.SERVER)
 
     with self.assertRaises(TypeError):
       intrinsics.federated_secure_sum(value, bitwidth)
 
   def test_raises_type_error_with_different_structures(self):
-    value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
+    value = intrinsics.federated_value([1, [1, 1]], placement_literals.CLIENTS)
     bitwidth = 8
 
     with self.assertRaises(TypeError):

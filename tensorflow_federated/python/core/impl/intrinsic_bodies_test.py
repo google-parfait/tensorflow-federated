@@ -19,11 +19,11 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 tf.compat.v1.enable_v2_behavior()
 
@@ -36,7 +36,7 @@ class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_SUM.uri](x)
 
@@ -52,7 +52,7 @@ class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_SUM.uri](x)
 
@@ -75,7 +75,7 @@ class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri]([x, x])
 
@@ -92,7 +92,7 @@ class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType([[('a', tf.float32),
                                           ('b', tf.float32)], tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri](x)
 
@@ -113,7 +113,7 @@ class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_MEAN.uri](x)
 
@@ -129,7 +129,7 @@ class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.float32), ('b', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_MEAN.uri](x)
 
@@ -154,7 +154,7 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType([[('a', tf.float32),
                                           ('b', tf.float32)], tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_DIVIDE.uri]([x[0], x[1]])
 
@@ -225,7 +225,8 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
 
-    fed_int = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    fed_int = computation_types.FederatedType(tf.int32,
+                                              placement_literals.CLIENTS)
 
     @computations.federated_computation([('a', fed_int), ('b', fed_int)])
     def foo(x):
@@ -246,7 +247,7 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_DIVIDE.uri]([x, x])
 
@@ -266,7 +267,7 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_DIVIDE.uri]([x, x])
 
@@ -282,7 +283,7 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([tf.int32, tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_DIVIDE.uri]([x, x])
 
@@ -308,7 +309,7 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType([[('a', tf.float32),
                                           ('b', tf.float32)], tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri]([x[0], x[1]])
 
@@ -346,7 +347,7 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri]([x, x])
 
@@ -380,7 +381,7 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([tf.int32, tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri]([x, x])
 
@@ -404,7 +405,7 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri]([x, x])
 
@@ -425,7 +426,8 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
 
-    fed_int = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    fed_int = computation_types.FederatedType(tf.int32,
+                                              placement_literals.CLIENTS)
 
     @computations.federated_computation([('a', fed_int), ('b', fed_int)])
     def foo(x):
@@ -466,7 +468,7 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, x])
 
@@ -482,7 +484,7 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([tf.int32, tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, x])
 
@@ -506,7 +508,7 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, x])
 
@@ -527,7 +529,8 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
 
-    fed_int = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    fed_int = computation_types.FederatedType(tf.int32,
+                                              placement_literals.CLIENTS)
 
     @computations.federated_computation([('a', fed_int), ('b', fed_int)])
     def foo(x):
@@ -583,7 +586,7 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType([[('a', tf.float32),
                                           ('b', tf.float32)], tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x[0], x[1]])
 

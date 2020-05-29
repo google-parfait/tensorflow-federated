@@ -15,7 +15,6 @@
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl import value_utils
@@ -23,6 +22,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_factory
 
@@ -46,7 +46,8 @@ class IntrinsicFactory(object):
   def federated_aggregate(self, value, zero, accumulate, merge, report):
     """Implements `federated_aggregate` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
-    value = value_utils.ensure_federated_value(value, placements.CLIENTS,
+    value = value_utils.ensure_federated_value(value,
+                                               placement_literals.CLIENTS,
                                                'value to be aggregated')
 
     zero = value_impl.to_value(zero, None, self._context_stack)
@@ -108,7 +109,7 @@ class IntrinsicFactory(object):
   def federated_broadcast(self, value):
     """Implements `federated_broadcast` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
-    value = value_utils.ensure_federated_value(value, placements.SERVER,
+    value = value_utils.ensure_federated_value(value, placement_literals.SERVER,
                                                'value to be broadcasted')
 
     if not value.type_signature.all_equal:
@@ -121,7 +122,8 @@ class IntrinsicFactory(object):
   def federated_collect(self, value):
     """Implements `federated_collect` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
-    value = value_utils.ensure_federated_value(value, placements.CLIENTS,
+    value = value_utils.ensure_federated_value(value,
+                                               placement_literals.CLIENTS,
                                                'value to be collected')
 
     value = value_impl.ValueImpl.get_comp(value)
@@ -176,22 +178,22 @@ class IntrinsicFactory(object):
     # TODO(b/144384398): Change structure to one that maps the placement type
     # to the building_block function that fits it, in a way that allows the
     # appropriate type checks.
-    if arg.type_signature.placement is placements.SERVER:
+    if arg.type_signature.placement is placement_literals.SERVER:
       if not arg.type_signature.all_equal:
         raise TypeError(
             'Arguments placed at {} should be equal at all locations.'.format(
-                placements.SERVER))
+                placement_literals.SERVER))
       fn = value_impl.ValueImpl.get_comp(fn)
       arg = value_impl.ValueImpl.get_comp(arg)
       comp = building_block_factory.create_federated_apply(fn, arg)
-    elif arg.type_signature.placement is placements.CLIENTS:
+    elif arg.type_signature.placement is placement_literals.CLIENTS:
       fn = value_impl.ValueImpl.get_comp(fn)
       arg = value_impl.ValueImpl.get_comp(arg)
       comp = building_block_factory.create_federated_map(fn, arg)
     else:
       raise TypeError(
           'The argument should be placed at {} or {}, placed at {} instead.'
-          .format(placements.SERVER, placements.CLIENTS,
+          .format(placement_literals.SERVER, placement_literals.CLIENTS,
                   arg.type_signature.placement))
 
     return value_impl.ValueImpl(comp, self._context_stack)
@@ -204,7 +206,7 @@ class IntrinsicFactory(object):
     # intrinsic this is based on to work with federated values of arbitrary
     # placement.
     arg = value_impl.to_value(arg, None, self._context_stack)
-    arg = value_utils.ensure_federated_value(arg, placements.CLIENTS,
+    arg = value_utils.ensure_federated_value(arg, placement_literals.CLIENTS,
                                              'value to be mapped')
 
     fn = value_impl.to_value(
@@ -242,7 +244,8 @@ class IntrinsicFactory(object):
     # variable.
 
     value = value_impl.to_value(value, None, self._context_stack)
-    value = value_utils.ensure_federated_value(value, placements.CLIENTS,
+    value = value_utils.ensure_federated_value(value,
+                                               placement_literals.CLIENTS,
                                                'value to be averaged')
     if not type_analysis.is_average_compatible(value.type_signature):
       raise TypeError(
@@ -251,7 +254,8 @@ class IntrinsicFactory(object):
 
     if weight is not None:
       weight = value_impl.to_value(weight, None, self._context_stack)
-      weight = value_utils.ensure_federated_value(weight, placements.CLIENTS,
+      weight = value_utils.ensure_federated_value(weight,
+                                                  placement_literals.CLIENTS,
                                                   'weight to use in averaging')
       py_typecheck.check_type(weight.type_signature.member,
                               computation_types.TensorType)
@@ -277,7 +281,8 @@ class IntrinsicFactory(object):
     # at this level of the API should probably be optional. TBD.
 
     value = value_impl.to_value(value, None, self._context_stack)
-    value = value_utils.ensure_federated_value(value, placements.CLIENTS,
+    value = value_utils.ensure_federated_value(value,
+                                               placement_literals.CLIENTS,
                                                'value to be reduced')
 
     zero = value_impl.to_value(zero, None, self._context_stack)
@@ -310,7 +315,8 @@ class IntrinsicFactory(object):
   def federated_sum(self, value):
     """Implements `federated_sum` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
-    value = value_utils.ensure_federated_value(value, placements.CLIENTS,
+    value = value_utils.ensure_federated_value(value,
+                                               placement_literals.CLIENTS,
                                                'value to be summed')
     type_analysis.check_is_sum_compatible(value.type_signature)
     value = value_impl.ValueImpl.get_comp(value)
@@ -353,7 +359,8 @@ class IntrinsicFactory(object):
   def federated_secure_sum(self, value, bitwidth):
     """Implements `federated_secure_sum` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
-    value = value_utils.ensure_federated_value(value, placements.CLIENTS,
+    value = value_utils.ensure_federated_value(value,
+                                               placement_literals.CLIENTS,
                                                'value to be summed')
     type_analysis.check_is_structure_of_integers(value.type_signature)
     bitwidth = value_impl.to_value(bitwidth, None, self._context_stack)
@@ -395,7 +402,7 @@ class IntrinsicFactory(object):
       local_fn = value_utils.get_curried(intrinsic_impl)(fn)
 
       if arg.type_signature.placement in [
-          placements.SERVER, placements.CLIENTS
+          placement_literals.SERVER, placement_literals.CLIENTS
       ]:
         return self.federated_map(local_fn, arg)
       else:
@@ -448,7 +455,7 @@ class IntrinsicFactory(object):
       fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
       fn_impl = value_impl.ValueImpl(fn, self._context_stack)
       if value.type_signature.placement in [
-          placements.SERVER, placements.CLIENTS
+          placement_literals.SERVER, placement_literals.CLIENTS
       ]:
         return self.federated_map(fn_impl, value)
       else:
@@ -480,7 +487,7 @@ class IntrinsicFactory(object):
                                             intrinsic_type)
       intrinsic_impl = value_impl.ValueImpl(intrinsic, self._context_stack)
       if value.type_signature.placement in [
-          placements.SERVER, placements.CLIENTS
+          placement_literals.SERVER, placement_literals.CLIENTS
       ]:
         return self.federated_map(intrinsic_impl, value)
       else:
