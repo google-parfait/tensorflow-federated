@@ -24,17 +24,17 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 class InferCardinalitiesTest(absltest.TestCase):
 
   def test_raises_none_value(self):
+    type_signature = computation_types.TensorType(tf.int32)
     with self.assertRaises(TypeError):
-      cardinalities_utils.infer_cardinalities(
-          None, computation_types.to_type(tf.int32))
+      cardinalities_utils.infer_cardinalities(None, type_signature)
 
   def test_raises_none_type(self):
     with self.assertRaises(TypeError):
       cardinalities_utils.infer_cardinalities(1, None)
 
   def test_noops_on_int(self):
-    int_type = computation_types.to_type(tf.int32)
-    cardinalities = cardinalities_utils.infer_cardinalities(1, int_type)
+    type_signature = computation_types.TensorType(tf.int32)
+    cardinalities = cardinalities_utils.infer_cardinalities(1, type_signature)
     self.assertEmpty(cardinalities)
 
   def test_raises_federated_type_integer(self):
@@ -103,7 +103,7 @@ class InferCardinalitiesTest(absltest.TestCase):
     ten_clients = list(range(10))
     mixed_cardinalities = cardinalities_utils.infer_cardinalities(
         [ten_clients, five_aggregators],
-        computation_types.to_type([client_int, aggregator_placed_int]))
+        computation_types.NamedTupleType([client_int, aggregator_placed_int]))
     self.assertEqual(mixed_cardinalities[placement_literals.CLIENTS], 10)
     self.assertEqual(mixed_cardinalities[new_placement], 5)
 
@@ -115,7 +115,7 @@ class InferCardinalitiesTest(absltest.TestCase):
              anonymous_tuple.AnonymousTuple([('C', [[1, 2], [3, 4], [5, 6]]),
                                              ('D', [True, False, True])]))
         ]),
-        computation_types.to_type([
+        computation_types.NamedTupleType([
             ('A',
              computation_types.FederatedType(tf.int32,
                                              placement_literals.CLIENTS)),
@@ -134,7 +134,7 @@ class InferCardinalitiesTest(absltest.TestCase):
     with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
       cardinalities_utils.infer_cardinalities(
           anonymous_tuple.AnonymousTuple([('A', [1, 2, 3]), ('B', [1, 2])]),
-          computation_types.to_type([
+          computation_types.NamedTupleType([
               ('A',
                computation_types.FederatedType(tf.int32,
                                                placement_literals.CLIENTS)),
