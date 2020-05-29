@@ -1931,10 +1931,12 @@ class CreateGenericConstantTest(absltest.TestCase):
             np.zeros([2, 2])))
 
   def test_create_unnamed_tuple_zero(self):
-    tuple_type = [computation_types.TensorType(tf.float32, [2, 2])] * 2
+    tensor_type = computation_types.TensorType(tf.float32, [2, 2])
+    tuple_type = computation_types.NamedTupleType([tensor_type] * 2)
+
     tuple_zero = building_block_factory.create_generic_constant(tuple_type, 0)
-    self.assertEqual(tuple_zero.type_signature,
-                     computation_types.to_type(tuple_type))
+
+    self.assertEqual(tuple_zero.type_signature, tuple_type)
     self.assertIsInstance(tuple_zero, building_blocks.Call)
     result = test_utils.run_tensorflow(tuple_zero.function.proto)
     self.assertLen(result, 2)
@@ -1942,11 +1944,13 @@ class CreateGenericConstantTest(absltest.TestCase):
     self.assertTrue(np.array_equal(result[1], np.zeros([2, 2])))
 
   def test_create_named_tuple_one(self):
-    tuple_type = [('a', computation_types.TensorType(tf.float32, [2, 2])),
-                  ('b', computation_types.TensorType(tf.float32, [2, 2]))]
+    tensor_type = computation_types.TensorType(tf.float32, [2, 2])
+    tuple_type = computation_types.NamedTupleType([('a', tensor_type),
+                                                   ('b', tensor_type)])
+
     tuple_zero = building_block_factory.create_generic_constant(tuple_type, 1)
-    self.assertEqual(tuple_zero.type_signature,
-                     computation_types.to_type(tuple_type))
+
+    self.assertEqual(tuple_zero.type_signature, tuple_type)
     self.assertIsInstance(tuple_zero, building_blocks.Call)
     result = test_utils.run_tensorflow(tuple_zero.function.proto)
     self.assertLen(result, 2)
@@ -1995,18 +1999,19 @@ class CreateGenericConstantTest(absltest.TestCase):
         computation_types.TensorType(tf.float32, [2, 2]),
         placement_literals.CLIENTS,
         all_equal=True)
-    tuple_type = [('a', fed_type), ('b', fed_type)]
+    tuple_type = computation_types.NamedTupleType([('a', fed_type),
+                                                   ('b', fed_type)])
+
     zero = building_block_factory.create_generic_constant(tuple_type, 0)
+
     fed_zero = zero.argument[0]
-    self.assertEqual(zero.type_signature, computation_types.to_type(tuple_type))
+    self.assertEqual(zero.type_signature, tuple_type)
     self.assertIsInstance(fed_zero.function, building_blocks.Intrinsic)
     self.assertEqual(fed_zero.function.uri,
                      intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri)
     self.assertIsInstance(fed_zero.argument, building_blocks.Call)
-    self.assertTrue(
-        np.array_equal(
-            test_utils.run_tensorflow(fed_zero.argument.function.proto),
-            np.zeros([2, 2])))
+    actual_result = test_utils.run_tensorflow(fed_zero.argument.function.proto)
+    self.assertTrue(np.array_equal(actual_result, np.zeros([2, 2])))
 
 
 class CreateSequenceMapTest(absltest.TestCase):
@@ -2094,7 +2099,8 @@ class CreateNamedFederatedTupleTest(parameterized.TestCase):
       building_block_factory.create_named_federated_tuple(None, ['a'])
 
   def test_raises_non_federated_type(self):
-    bad_comp = building_blocks.Data('x', computation_types.to_type(tf.int32))
+    tensor_type = computation_types.TensorType(tf.int32)
+    bad_comp = building_blocks.Data('x', tensor_type)
     with self.assertRaises(TypeError):
       building_block_factory.create_named_federated_tuple(bad_comp, ['a'])
 
