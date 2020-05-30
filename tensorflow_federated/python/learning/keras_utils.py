@@ -241,9 +241,8 @@ class _KerasModel(model_lib.Model):
     if not loss_fns:
       raise ValueError(
           'Must specify at least one loss_fns, got: {l}'.format(l=loss_fns))
-    if (bool(len(loss_fns) == 1) != tf.is_tensor(inner_model.output) or
-        (isinstance(inner_model.output, list) and
-         len(loss_fns) != len(inner_model.output))):
+    if (len(tf.nest.flatten(loss_fns)) != len(
+        tf.nest.flatten(inner_model.output))):
       raise ValueError('Must specify the same number of loss_fns as model '
                        'outputs.\nloss_fns: {l}\nmodel outputs: {o}'.format(
                            l=loss_fns, o=inner_model.output))
