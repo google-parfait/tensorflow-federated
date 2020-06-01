@@ -93,19 +93,20 @@ class CanonicalFormTest(test.TestCase):
         '        float32\n'
         '      >,\n'
         '      <\n'
-        '        float32,\n'
-        '        float32\n'
-        '      >,\n'
-        '      <\n'
-        '        float32,\n'
-        '        float32\n'
+        '        sparse_categorical_accuracy=<\n'
+        '          float32,\n'
+        '          float32\n'
+        '        >,\n'
+        '        loss=<\n'
+        '          float32,\n'
+        '          float32\n'
+        '        >\n'
         '      >\n'
         '    >,\n'
         '    <>\n'
         '  >,\n'
         '  <>\n'
-        '>)'
-    )
+        '>)')
     # pyformat: enable
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.

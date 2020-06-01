@@ -410,7 +410,8 @@ def build_run_one_round_fn_attacked(server_update_fn, client_update_fn,
 
     aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
         client_outputs.model_output)
-    aggregated_outputs = tff.federated_zip(aggregated_outputs)
+    if isinstance(aggregated_outputs.type_signature, tff.NamedTupleType):
+      aggregated_outputs = tff.federated_zip(aggregated_outputs)
 
     return server_state, aggregated_outputs
 
