@@ -1933,7 +1933,6 @@ class MergeTupleIntrinsicsTest(test.TestCase):
     self.assertTrue(modified)
 
   def test_merges_federated_aggregates_with_unknown_parameter_dim(self):
-    self.skipTest('b/157655969')
     value_type = tf.int32
     federated_value_type = computation_types.FederatedType(
         value_type, placement_literals.CLIENTS)

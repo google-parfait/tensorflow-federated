@@ -903,20 +903,114 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
         args.append(call.argument)
       return self._transform_args_with_type(args, type_signature)
 
+  def _create_merged_parameter_for_type(self, packed_parameter_types,
+                                        type_signature):
+    if isinstance(type_signature, computation_types.FederatedType):
+      return self._create_merged_parameter_for_federated_type(
+          packed_parameter_types, type_signature)
+    elif isinstance(type_signature, computation_types.FunctionType):
+      return self._create_merged_parameter_for_functional_type(
+          packed_parameter_types, type_signature)
+    elif isinstance(type_signature, computation_types.AbstractType):
+      return self._create_merged_parameter_for_abstract_type(
+          packed_parameter_types, type_signature)
+    else:
+      raise TypeError(
+          'Expected a FederatedType, FunctionalType, or an AbstractType, '
+          'found: {}'.format(type(type_signature)))
+
+  def _create_merged_parameter_for_abstract_type(self, param_types,
+                                                 type_signature):
+    del type_signature  # Unused
+    return computation_types.NamedTupleType(param_types)
+
+  def _create_merged_parameter_for_federated_type(self, param_types,
+                                                  type_signature):
+    del type_signature  # Unused
+    member_types = computation_types.NamedTupleType(
+        [x.member for x in param_types])
+    all_equal = all(x.all_equal for x in param_types)
+    placement = param_types[0].placement
+    return computation_types.FederatedType(
+        member=member_types, placement=placement, all_equal=all_equal)
+
+  def _create_merged_parameter_for_functional_type(self, param_types,
+                                                   type_signature):
+    if isinstance(type_signature.parameter, computation_types.NamedTupleType):
+      parameter_types = [[] for _ in range(len(type_signature.parameter))]
+      for functional_type in param_types:
+        named_type_signatures = anonymous_tuple.to_elements(
+            functional_type.parameter)
+        for index, (_, concrete_type) in enumerate(named_type_signatures):
+          parameter_types[index].append(concrete_type)
+    else:
+      parameter_types = [t.parameter for t in param_types]
+    result_types = computation_types.NamedTupleType(
+        [x.result for x in param_types])
+    return computation_types.FunctionType(parameter_types, result_types)
+
+  def _create_merged_parameter_type(self, comp, type_signature):
+    """Computes parameter types for merged intrinsic.
+
+    We must perform distinct operations on arguments and parameter types, as
+    we must construct a new intrinsic with correct type signature--and this
+    type signature cannot be inferred from the concrete arguments on which the
+    called intrinsics which we intend to merge have been called. Instead we
+    must construct a new parameter type from the parameters of the called
+    functions themselves, in addition to repacking the arguments.
+
+    For example, if we need to merge two federated aggregates, called on
+    concrete zeros of type `tf.int32[0]`, but which declare their zero-
+    parameter to be of type `tf.int32[?]` (and use this type signature in their
+    accumulate functions), constructing a merged federated aggregate which
+    declares a zero-parameter of type `[tf.int32[0], tf.int32[0]]` would be
+    incorrect--we wish to construct one of type `[tf.int32[?], tf.int32[?]]`
+    instead for compatibility with the merged accumulate functions.
+
+    Args:
+      comp: Tuple of called intrinsics we intend to merge.
+      type_signature: Abstract type signature of the merged intrinsic.
+
+    Returns:
+      An instance of `computation_types.Type` representing the concrete
+      parameter type of the merged intrinsic.
+    """
+    if isinstance(type_signature, computation_types.NamedTupleType):
+      packed_param_types = [[] for _ in range(len(type_signature))]
+      for _, call in anonymous_tuple.iter_elements(comp):
+        for index, parameter_type in enumerate(
+            call.function.type_signature.parameter):
+          packed_param_types[index].append(parameter_type)
+      param_types = []
+      for param_type, merged_type_spec in zip(packed_param_types,
+                                              type_signature):
+        param_type_element = self._create_merged_parameter_for_type(
+            param_type, merged_type_spec)
+        param_types.append(param_type_element)
+      return computation_types.NamedTupleType(param_types)
+    else:
+      packed_param_types = []
+      for _, call in anonymous_tuple.iter_elements(comp):
+        packed_param_types.append(call.function.type_signature.parameter)
+      return self._create_merged_parameter_for_type(packed_param_types,
+                                                    type_signature)
+
   def transform(self, comp):
     """Returns a new transformed computation or `comp`."""
     if not self.should_transform(comp):
       return comp, False
     intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(self._uri)
-    arg = self._transform_args(comp, intrinsic_def.type_signature.parameter)
+    merged_parameter_type = self._create_merged_parameter_type(
+        comp, intrinsic_def.type_signature.parameter)
     named_comps = anonymous_tuple.to_elements(comp)
-    parameter_type = arg.type_signature
     type_signature = [call.type_signature.member for _, call in named_comps]
     result_type = computation_types.FederatedType(
         type_signature, intrinsic_def.type_signature.result.placement,
         intrinsic_def.type_signature.result.all_equal)
-    intrinsic_type = computation_types.FunctionType(parameter_type, result_type)
+    intrinsic_type = computation_types.FunctionType(merged_parameter_type,
+                                                    result_type)
     intrinsic = building_blocks.Intrinsic(self._uri, intrinsic_type)
+    arg = self._transform_args(comp, intrinsic_def.type_signature.parameter)
     call = building_blocks.Call(intrinsic, arg)
     tup = building_block_factory.create_federated_unzip(call)
     names = [name for name, _ in named_comps]
