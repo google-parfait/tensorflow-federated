@@ -406,6 +406,84 @@ class ReferenceResolvingExecutor(executor_base.Executor):
                                                       value.type_signature)
 
   @tracing.trace(stats=False)
+  async def _evaluate_to_delegate(
+      self,
+      comp: pb.Computation,
+      scope: ReferenceResolvingExecutorScope,
+  ) -> ReferenceResolvingExecutorValue:
+    return ReferenceResolvingExecutorValue(
+        await self._target_executor.create_value(
+            comp, type_serialization.deserialize_type(comp.type)))
+
+  @tracing.trace(stats=False)
+  async def _evaluate_lambda(
+      self,
+      comp: pb.Computation,
+      scope: ReferenceResolvingExecutorScope,
+  ) -> ReferenceResolvingExecutorValue:
+    type_spec = type_serialization.deserialize_type(comp.type)
+    return ReferenceResolvingExecutorValue(
+        ScopedLambda(comp, scope), type_spec=type_spec)
+
+  @tracing.trace(stats=False)
+  async def _evaluate_reference(
+      self,
+      comp: pb.Computation,
+      scope: ReferenceResolvingExecutorScope,
+  ) -> ReferenceResolvingExecutorValue:
+    return scope.resolve_reference(comp.reference.name)
+
+  @tracing.trace(stats=False)
+  async def _evaluate_call(
+      self,
+      comp: pb.Computation,
+      scope: ReferenceResolvingExecutorScope,
+  ) -> ReferenceResolvingExecutorValue:
+    func = self._evaluate(comp.call.function, scope=scope)
+
+    async def get_arg():
+      if comp.call.argument.WhichOneof('computation') is not None:
+        return await self._evaluate(comp.call.argument, scope=scope)
+      else:
+        return None
+
+    func, arg = await asyncio.gather(func, get_arg())
+    return await self.create_call(func, arg=arg)
+
+  @tracing.trace(stats=False)
+  async def _evaluate_selection(
+      self,
+      comp: pb.Computation,
+      scope: ReferenceResolvingExecutorScope,
+  ) -> ReferenceResolvingExecutorValue:
+    which_selection = comp.selection.WhichOneof('selection')
+    source = await self._evaluate(comp.selection.source, scope=scope)
+    return await self.create_selection(
+        source, **{which_selection: getattr(comp.selection, which_selection)})
+
+  @tracing.trace(stats=False)
+  async def _evaluate_tuple(
+      self,
+      comp: pb.Computation,
+      scope: ReferenceResolvingExecutorScope,
+  ) -> ReferenceResolvingExecutorValue:
+    names = [str(e.name) if e.name else None for e in comp.tuple.element]
+    values = [self._evaluate(e.value, scope=scope) for e in comp.tuple.element]
+    values = await asyncio.gather(*values)
+    return await self.create_tuple(
+        anonymous_tuple.AnonymousTuple(zip(names, values)))
+
+  @tracing.trace(stats=False)
+  async def _evaluate_block(
+      self,
+      comp: pb.Computation,
+      scope: ReferenceResolvingExecutorScope,
+  ) -> ReferenceResolvingExecutorValue:
+    for loc in comp.block.local:
+      value = await self._evaluate(loc.value, scope)
+      scope = ReferenceResolvingExecutorScope({loc.name: value}, scope)
+    return await self._evaluate(comp.block.result, scope)
+
   async def _evaluate(
       self,
       comp: pb.Computation,
@@ -426,44 +504,19 @@ class ReferenceResolvingExecutor(executor_base.Executor):
     which_computation = comp.WhichOneof('computation')
     if which_computation in ['tensorflow', 'intrinsic', 'data', 'placement']:
       # nothing interesting here-- forward the creation to the child executor
-      return ReferenceResolvingExecutorValue(
-          await self._target_executor.create_value(
-              comp, type_serialization.deserialize_type(comp.type)))
+      return await self._evaluate_to_delegate(comp, scope)
     elif which_computation == 'lambda':
-      type_spec = type_serialization.deserialize_type(comp.type)
-      return ReferenceResolvingExecutorValue(
-          ScopedLambda(comp, scope), type_spec=type_spec)
+      return await self._evaluate_lambda(comp, scope)
     elif which_computation == 'reference':
-      return scope.resolve_reference(comp.reference.name)
+      return await self._evaluate_reference(comp, scope)
     elif which_computation == 'call':
-      func = self._evaluate(comp.call.function, scope=scope)
-
-      async def get_arg():
-        if comp.call.argument.WhichOneof('computation') is not None:
-          return await self._evaluate(comp.call.argument, scope=scope)
-        else:
-          return None
-
-      func, arg = await asyncio.gather(func, get_arg())
-      return await self.create_call(func, arg=arg)
+      return await self._evaluate_call(comp, scope)
     elif which_computation == 'selection':
-      which_selection = comp.selection.WhichOneof('selection')
-      source = await self._evaluate(comp.selection.source, scope=scope)
-      return await self.create_selection(
-          source, **{which_selection: getattr(comp.selection, which_selection)})
+      return await self._evaluate_selection(comp, scope)
     elif which_computation == 'tuple':
-      names = [str(e.name) if e.name else None for e in comp.tuple.element]
-      values = [
-          self._evaluate(e.value, scope=scope) for e in comp.tuple.element
-      ]
-      values = await asyncio.gather(*values)
-      return await self.create_tuple(
-          anonymous_tuple.AnonymousTuple(zip(names, values)))
+      return await self._evaluate_tuple(comp, scope)
     elif which_computation == 'block':
-      for loc in comp.block.local:
-        value = await self._evaluate(loc.value, scope)
-        scope = ReferenceResolvingExecutorScope({loc.name: value}, scope)
-      return await self._evaluate(comp.block.result, scope)
+      return await self._evaluate_block(comp, scope)
     else:
       raise NotImplementedError(
           'Unsupported computation type "{}".'.format(which_computation))
