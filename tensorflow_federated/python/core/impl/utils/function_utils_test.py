@@ -170,43 +170,48 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
         _ = signature.bind(*args, **kwargs)
 
   # pyformat: disable
-  # pylint: disable=g-complex-comprehension
-  @parameterized.parameters(
-      (function_utils.get_signature(params[0]),) + params[1:]
-      for params in [
-          (lambda a: None, [tf.int32], {}),
-          (lambda a, b=True: None, [tf.int32, tf.bool], {}),
-          (lambda a, b=True: None, [tf.int32], {'b': tf.bool}),
-          (lambda a, b=True: None, [tf.bool], {'b': tf.bool}),
-          (lambda a=10, b=True: None, [tf.int32], {'b': tf.bool}),
-      ]
+  @parameterized.named_parameters(
+      ('args_only',
+       function_utils.get_signature(lambda a: None),
+       [tf.int32],
+       collections.OrderedDict()),
+      ('args_and_kwargs_unnamed',
+       function_utils.get_signature(lambda a, b=True: None),
+       [tf.int32, tf.bool],
+       collections.OrderedDict()),
+      ('args_and_kwargs_named',
+       function_utils.get_signature(lambda a, b=True: None),
+       [tf.int32],
+       collections.OrderedDict(b=tf.bool)),
+      ('args_and_kwargs_default_int',
+       function_utils.get_signature(lambda a=10, b=True: None),
+       [tf.int32],
+       collections.OrderedDict(b=tf.bool)),
   )
-  # pylint: enable=g-complex-comprehension
   # pyformat: enable
-  def test_is_signature_compatible_with_types_true(self, signature, args,
-                                                   kwargs):
-    self.assertTrue(
-        function_utils.is_signature_compatible_with_types(
-            signature, *[computation_types.to_type(a) for a in args],
-            **{k: computation_types.to_type(v) for k, v in kwargs.items()}))
-
-  # pyformat: disable
-  # pylint: disable=g-complex-comprehension
-  @parameterized.parameters(
-      (function_utils.get_signature(params[0]),) + params[1:]
-      for params in [
-          (lambda a=True: None, [tf.int32], {}),
-          (lambda a=10, b=True: None, [tf.bool], {'b': tf.bool}),
-      ]
-  )
-  # pylint: enable=g-complex-comprehension
-  # pyformat: enable
-  def test_is_signature_compatible_with_types_false(self, signature, args,
-                                                    kwargs):
+  def test_is_signature_compatible_with_types_true(self, signature, *args,
+                                                   **kwargs):
     self.assertFalse(
         function_utils.is_signature_compatible_with_types(
-            signature, *[computation_types.to_type(a) for a in args],
-            **{k: computation_types.to_type(v) for k, v in kwargs.items()}))
+            signature, *args, **kwargs))
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('args_only',
+       function_utils.get_signature(lambda a=True: None),
+       [tf.int32],
+       collections.OrderedDict()),
+      ('args_and_kwargs',
+       function_utils.get_signature(lambda a=10, b=True: None),
+       [tf.bool],
+       collections.OrderedDict(b=tf.bool)),
+  )
+  # pyformat: enable
+  def test_is_signature_compatible_with_types_false(self, signature, *args,
+                                                    **kwargs):
+    self.assertFalse(
+        function_utils.is_signature_compatible_with_types(
+            signature, *args, **kwargs))
 
   # pyformat: disable
   @parameterized.parameters(
