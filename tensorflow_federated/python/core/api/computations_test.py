@@ -623,7 +623,8 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
       return x**2
 
     @computations.tf_computation(tf.int32, tf.int32)
-    def square_drop_y(x, y):  # pylint: disable=unused-argument
+    def square_drop_y(x, y):
+      del y  # Unused.
       return x * x
 
     self.assertEqual(

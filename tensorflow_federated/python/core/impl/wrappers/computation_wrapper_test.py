@@ -131,20 +131,25 @@ class ComputationWrapperTest(test.TestCase):
     with self.assertRaises(TypeError):
 
       @test_wrap(tf.int32)
-      def my_fn(x, y):  # pylint: disable=unused-variable,unused-argument
+      def my_fn(x, y):  # pylint: disable=unused-variable
+        del x, y  # Unused.
         pass
 
   def test_as_wrapper_with_non_tuple_argument_on_two_parameter_lambda(self):
     with self.assertRaises(TypeError):
-      test_wrap(
-          lambda x, y: None,  # pylint: disable=unused-variable,unused-argument
-          tf.int32)
+
+      def my_fn(x, y):
+        del x, y  # Unused.
+        pass
+
+      test_wrap(my_fn, tf.int32)
 
   def test_as_decorator_with_two_tuple_argument_on_three_param_py_fn(self):
     with self.assertRaises(TypeError):
 
       @test_wrap((tf.int32, tf.int32))
-      def my_fn(x, y, z):  # pylint: disable=unused-variable,unused-argument
+      def my_fn(x, y, z):  # pylint: disable=unused-variable
+        del x, y, z  # Unused.
         pass
 
   def test_as_wrapper_with_two_tuple_argument_on_three_param_lambda(self):
@@ -155,7 +160,8 @@ class ComputationWrapperTest(test.TestCase):
     with self.assertRaises(TypeError):
 
       @test_wrap([('x', tf.int32), ('y', tf.int32)])
-      def my_fn(x, z):  # pylint: disable=unused-variable,unused-argument
+      def my_fn(x, z):  # pylint: disable=unused-variable
+        del x, z  # Unused.
         pass
 
   def test_as_wrapper_with_arg_name_mismatching_element_name_in_lambda(self):
