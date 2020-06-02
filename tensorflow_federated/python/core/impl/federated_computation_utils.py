@@ -83,6 +83,10 @@ def zero_or_one_arg_fn_to_building_block(
     annotated_result_type = type_conversions.infer_type(result)
     result = value_impl.to_value(result, annotated_result_type, context_stack)
     result_comp = value_impl.ValueImpl.get_comp(result)
+    symbols_bound_in_context = context_stack.current.symbol_bindings
+    if symbols_bound_in_context:
+      result_comp = building_blocks.Block(
+          local_symbols=symbols_bound_in_context, result=result_comp)
     annotated_type = computation_types.FunctionType(parameter_type,
                                                     annotated_result_type)
     return building_blocks.Lambda(parameter_name, parameter_type,

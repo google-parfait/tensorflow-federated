@@ -24,7 +24,19 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 class FederatedComputationContext(context_base.Context):
-  """The context for building federated computations."""
+  """The context for building federated computations.
+
+  This context additionally holds a list of symbols which are bound to
+  `building_block.ComputationBuildingBlocks` during construction of
+  `tff.Values`, and which respect identical semantics to the binding of locals
+  in `building_blocks.Blocks`.
+
+  Any `tff.Value` constructed in this context may add such a symbol binding,
+  and thereafter refer to the returned reference in place of the bound
+  computation. It is then the responsibility of the installer of this context
+  to ensure that the symbols bound during the `tff.Value` construction process
+  are appropriately packaged in the result.
+  """
 
   def __init__(self, context_stack, suggested_name=None, parent=None):
     """Creates this context.
