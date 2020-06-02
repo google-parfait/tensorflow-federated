@@ -342,13 +342,10 @@ def sizing_executor_factory(
     sizing_exs = []
 
     def _standalone_stack_func(num_clients, num_client_executors):
-      # pylint: disable= unused-variable
       nonlocal sizing_exs
       stack, current_sizing_exs = _create_sizing_stack(num_clients,
                                                        num_client_executors)
       sizing_exs.extend(current_sizing_exs)
-
-      # pylint: enable= unused-variable
       return stack
 
     # Explicit case.
