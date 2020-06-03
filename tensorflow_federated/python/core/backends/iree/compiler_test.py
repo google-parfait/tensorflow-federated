@@ -92,6 +92,59 @@ class CompilerTest(tf.test.TestCase):
         '}',
     ])
 
+  def test_import_tf_comp_with_variable_assign_add_one(self):
+
+    @computations.tf_computation(tf.float32)
+    def comp(x):
+      v = tf.Variable(1.0)
+      with tf.control_dependencies([v.initializer]):
+        with tf.control_dependencies([v.assign_add(x)]):
+          return tf.identity(v)
+
+    _, mlir = self._import_compile_and_return_module_and_mlir(comp)
+
+    # TODO(b/153499219): Introduce the concept of local variables, so that code
+    # like what's in this section below can be dramatically simplified.
+    self._assert_mlir_contains_pattern(mlir, [
+        'flow.variable SOMETHING mutable dense<1.000000e+00> : tensor<f32>',
+        'func @fn(%arg0: tensor<f32>) -> tensor<f32> SOMETHING {',
+        '  %0 = flow.variable.address',
+        '  %1 = xla_hlo.constant dense<1.000000e+00>',
+        '  flow.variable.store.indirect %1, %0',
+        '  %2 = flow.variable.load.indirect %0',
+        '  %3 = xla_hlo.add %2, %arg0',
+        '  flow.variable.store.indirect %3, %0',
+        '  %4 = flow.variable.load.indirect %0',
+        '  return %4',
+        '}',
+    ])
+
+  def test_import_tf_comp_with_while_loop(self):
+
+    @computations.tf_computation(tf.float32)
+    def comp(x):
+      # An example of a loop with variables that computes 2^x by counting from
+      # a down to 0, and doubling b in each iteration.
+      a = tf.Variable(0.0)
+      b = tf.Variable(1.0)
+      with tf.control_dependencies([a.initializer, b.initializer]):
+        with tf.control_dependencies([a.assign(x)]):
+          cond_fn = lambda a, b: a > 0
+          body_fn = lambda a, b: (a - 1.0, b * 2.0)
+          return tf.while_loop(cond_fn, body_fn, (a, b))[1]
+
+    _, mlir = self._import_compile_and_return_module_and_mlir(comp)
+
+    # Not checking the full MLIR in the long generated body, just that the can
+    # successfully ingest TF code containing a while loop here, end-to-end. We
+    # need some form of looping support in lieu of `tf.data.Dataset.reduce()`.
+    self._assert_mlir_contains_pattern(
+        mlir, ['func @fn(%arg0: tensor<f32>) -> tensor<f32>'])
+
+    # TODO(b/153499219): Introduce tests agains the IREE runtime to verify that
+    # the generated code works end-to-end in examples like this, where checking
+    # the exact generated output in the test is simply impractical.
+
   def test_import_tf_comp_fails_with_non_tf_comp(self):
 
     @computations.federated_computation
