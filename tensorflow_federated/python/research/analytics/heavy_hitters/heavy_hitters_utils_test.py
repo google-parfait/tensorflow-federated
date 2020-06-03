@@ -24,6 +24,52 @@ class HeavyHittersUtilsTest(tf.test.TestCase):
     self.assertEqual(hh_utils.top_k(signal, 1), {'a': 3})
     self.assertEqual(hh_utils.top_k(signal, 2), {'a': 3, 'b': 2, 'c': 2})
 
+  def test_precision(self):
+    signal = {'a': 3, 'b': 2, 'c': 1, 'd': 0}
+
+    ground_truth = {'a': 3, 'b': 2, 'c': 1, 'd': 0}
+    self.assertAlmostEqual(hh_utils.precision(ground_truth, signal, 2), 1.0)
+
+    ground_truth = {'a': 3, 'c': 2, 'b': 1, 'd': 0}
+    self.assertAlmostEqual(hh_utils.precision(ground_truth, signal, 2), 0.5)
+
+    ground_truth = {'a': 3, 'c': 2, 'b': 1, 'd': 0}
+    self.assertAlmostEqual(hh_utils.precision(ground_truth, signal, 3), 1.0)
+
+    ground_truth = {'a': 3, 'd': 2, 'b': 2, 'c': 2}
+    self.assertAlmostEqual(hh_utils.precision(ground_truth, signal, 3), 1.0)
+
+  def test_recall(self):
+    signal = {'a': 3, 'b': 2, 'c': 1, 'd': 0}
+
+    ground_truth = {'a': 3, 'b': 2, 'c': 1, 'd': 0}
+    self.assertAlmostEqual(hh_utils.recall(ground_truth, signal, 2), 1.0)
+
+    ground_truth = {'a': 3, 'c': 2, 'b': 1, 'd': 0}
+    self.assertAlmostEqual(hh_utils.recall(ground_truth, signal, 2), 0.5)
+
+    ground_truth = {'a': 3, 'c': 2, 'b': 1, 'd': 0}
+    self.assertAlmostEqual(hh_utils.recall(ground_truth, signal, 3), 1.0)
+
+    ground_truth = {'a': 3, 'd': 2, 'b': 2, 'c': 2}
+    self.assertAlmostEqual(hh_utils.recall(ground_truth, signal, 3), 0.75)
+
+  def test_f1_score(self):
+    signal = {'a': 3, 'b': 2, 'c': 1, 'd': 0}
+
+    ground_truth = {'a': 3, 'b': 2, 'c': 1, 'd': 0}
+    self.assertAlmostEqual(hh_utils.f1_score(ground_truth, signal, 2), 1.0)
+
+    ground_truth = {'a': 3, 'c': 2, 'b': 1, 'd': 0}
+    self.assertAlmostEqual(hh_utils.f1_score(ground_truth, signal, 2), 0.5)
+
+    ground_truth = {'a': 3, 'c': 2, 'b': 1, 'd': 0}
+    self.assertAlmostEqual(hh_utils.f1_score(ground_truth, signal, 3), 1.0)
+
+    ground_truth = {'a': 3, 'd': 2, 'b': 2, 'c': 2}
+    self.assertAlmostEqual(
+        hh_utils.f1_score(ground_truth, signal, 3), 0.85714285)
+
 
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()

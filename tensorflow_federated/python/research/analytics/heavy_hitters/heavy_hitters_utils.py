@@ -14,6 +14,7 @@
 """A set of utilities for heavy hitter discovery."""
 
 import collections
+import statistics
 import time
 
 from absl import app
@@ -128,6 +129,56 @@ def distance_l1(ground_truth, signal, correction=1.0):
   for v in joined.values():
     total += abs(v)
   return total
+
+
+def precision(ground_truth, signal, k):
+  """Computes the precision for the top k words between frequency dicts.
+
+  Args:
+    ground_truth: The ground truth dict.
+    signal: The obtained heavy hitters dict.
+    k: The number of top items that are consider heavy hitters.
+
+  Returns:
+    Precision of the signal in detecting a top k item.
+  """
+  top_k_ground_truth = set(top_k(ground_truth, k).keys())
+  top_k_signal = set(top_k(signal, k).keys())
+  true_positives = len(top_k_signal.intersection(top_k_ground_truth))
+  return float(true_positives) / len(top_k_signal)
+
+
+def recall(ground_truth, signal, k):
+  """Computes the recall for the top k words between frequency dicts.
+
+  Args:
+    ground_truth: The ground truth dict.
+    signal: The obtained heavy hitters dict.
+    k: The number of top items that are consider heavy hitters.
+
+  Returns:
+    Recall of the signal in detecting a top k item.
+  """
+  top_k_ground_truth = set(top_k(ground_truth, k).keys())
+  top_k_signal = set(top_k(signal, k).keys())
+  true_positives = len(top_k_signal.intersection(top_k_ground_truth))
+  return float(true_positives) / len(top_k_ground_truth)
+
+
+def f1_score(ground_truth, signal, k):
+  """Computes the f1 score for the top k words between frequency dicts.
+
+  Args:
+    ground_truth: The ground truth dict.
+    signal: The obtained heavy hitters dict.
+    k: The number of top items that are consider heavy hitters.
+
+  Returns:
+    F1 score of the signal in detecting a top k item.
+  """
+  prec = precision(ground_truth, signal, k)
+  rec = recall(ground_truth, signal, k)
+  return statistics.harmonic_mean([prec, rec])
 
 
 def top_k(signal, k):
