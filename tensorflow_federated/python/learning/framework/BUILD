@@ -1,12 +1,16 @@
-package(default_visibility = [
-    # Subpackages
-    "//tensorflow_federated/python/learning/framework:__subpackages__",
+package_group(
+    name = "default_visibility",
+    packages = [
+        # Subpackages
+        "//tensorflow_federated/python/learning/...",
+        # TODO(b/151441025): This package is temporary and can be removed once the
+        # dependencies between `tff.learning` and `tff.learning.framework` are
+        # cleaned up.
+        "//tensorflow_federated/python/learning/...",
+    ],
+)
 
-    # TODO(b/151441025): This package is temporary and can be removed once the
-    # dependencies between `tff.learning` and `tff.learning.framework` are
-    # cleaned up.
-    "//tensorflow_federated/python/learning:__pkg__",
-])
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

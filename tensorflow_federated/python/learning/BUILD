@@ -1,7 +1,12 @@
-package(default_visibility = [
-    # Subpackages
-    "//tensorflow_federated/python/learning:__subpackages__",
-])
+package_group(
+    name = "default_visibility",
+    packages = [
+        # Subpackages
+        "//tensorflow_federated/python/learning/...",
+    ],
+)
+
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 
