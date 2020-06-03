@@ -44,6 +44,9 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_integer(
       'sequence_length', 80,
       'Length of character sequences to use for the RNN model.')
+  flags.DEFINE_integer(
+      'client_datasets_random_seed', 1, 'The random seed '
+      'governing the client dataset selection.')
 
 # Vocabulary with OOV ID, zero for the padding, and BOS, EOS IDs.
 VOCAB_SIZE = len(dataset.CHAR_VOCAB) + 4
@@ -97,7 +100,9 @@ def main(argv):
       client_weight_fn=client_weight_fn)
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
-      train_clientdata, FLAGS.clients_per_round)
+      train_dataset=train_clientdata,
+      train_clients_per_round=FLAGS.clients_per_round,
+      random_seed=FLAGS.client_datasets_random_seed)
 
   assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
 

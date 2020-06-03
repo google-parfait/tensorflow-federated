@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Trains and evaluates Stackoverflow NWP model using TFF."""
+"""Trains and evaluates Stackoverflow LR model using TFF."""
 
 import functools
 
@@ -46,7 +46,9 @@ with utils_impl.record_hparam_flags():
       'to use from test set for per-round validation.')
   flags.DEFINE_integer('max_elements_per_user', 1000, 'Max number of training '
                        'sentences to use per user.')
-
+  flags.DEFINE_integer(
+      'client_datasets_random_seed', 1, 'The random seed '
+      'governing the client dataset selection.')
 
 FLAGS = flags.FLAGS
 
@@ -93,7 +95,9 @@ def main(argv):
       metrics_builder=metrics_builder)
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
-      stackoverflow_train, FLAGS.clients_per_round)
+      train_dataset=stackoverflow_train,
+      train_clients_per_round=FLAGS.clients_per_round,
+      random_seed=FLAGS.client_datasets_random_seed)
 
   assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
 

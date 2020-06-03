@@ -44,6 +44,10 @@ with utils_impl.record_new_flags() as hparam_flags:
       'num_validation_examples', 10000, 'Number of examples '
       'to use from test set for per-round validation.')
 
+  flags.DEFINE_integer(
+      'client_datasets_random_seed', 1, 'The random seed '
+      'governing the client dataset selection.')
+
   # Modeling flags
   flags.DEFINE_integer('vocab_size', 10000, 'Size of vocab to use.')
   flags.DEFINE_integer('embedding_size', 96,
@@ -113,7 +117,9 @@ def main(argv):
       client_weight_fn=client_weight_fn)
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
-      train_set, FLAGS.clients_per_round)
+      train_dataset=train_set,
+      train_clients_per_round=FLAGS.clients_per_round,
+      random_seed=FLAGS.client_datasets_random_seed)
 
   assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
 

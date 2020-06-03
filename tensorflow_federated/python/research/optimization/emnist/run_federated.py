@@ -41,6 +41,9 @@ with utils_impl.record_hparam_flags():
   flags.DEFINE_integer(
       'client_epochs_per_round', 1,
       'Number of client (inner optimizer) epochs per federated round.')
+  flags.DEFINE_integer(
+      'client_datasets_random_seed', 1, 'The random seed '
+      'governing the client dataset selection.')
 
 FLAGS = flags.FLAGS
 
@@ -79,7 +82,9 @@ def main(argv):
       metrics_builder=metrics_builder)
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
-      emnist_train, FLAGS.clients_per_round)
+      train_dataset=emnist_train,
+      train_clients_per_round=FLAGS.clients_per_round,
+      random_seed=FLAGS.client_datasets_random_seed)
 
   assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
 

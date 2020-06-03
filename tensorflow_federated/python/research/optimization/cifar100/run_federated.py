@@ -35,6 +35,9 @@ with utils_impl.record_hparam_flags():
   flags.DEFINE_integer('client_batch_size', 32, 'Batch size on the clients.')
   flags.DEFINE_integer('clients_per_round', 2,
                        'How many clients to sample per round.')
+  flags.DEFINE_integer(
+      'client_datasets_random_seed', 1, 'The random seed '
+      'governing the client dataset selection.')
 
   # End of hyperparameter flags.
 
@@ -78,7 +81,9 @@ def main(argv):
       metrics_builder=metrics_builder)
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
-      cifar_train, FLAGS.clients_per_round)
+      train_dataset=cifar_train,
+      train_clients_per_round=FLAGS.clients_per_round,
+      random_seed=FLAGS.client_datasets_random_seed)
 
   assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
 
