@@ -1682,6 +1682,19 @@ class GetUniqueNamesTest(absltest.TestCase):
     names = transformation_utils.get_unique_names(block_2)
     self.assertCountEqual(names, ('x', 'y'))
 
+  def test_captures_reference_name(self):
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    names = transformation_utils.get_unique_names(ref_to_x)
+    self.assertCountEqual(names, ('x'))
+
+  def test_captures_unbound_reference_name(self):
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    data = building_blocks.Data('x', tf.int32)
+    block_1 = building_blocks.Block([('x', data)], ref_to_z)
+    block_2 = building_blocks.Block([('y', data)], block_1)
+    names = transformation_utils.get_unique_names(block_2)
+    self.assertCountEqual(names, ('x', 'y', 'z'))
+
 
 class HasUniqueNamesTest(absltest.TestCase):
 

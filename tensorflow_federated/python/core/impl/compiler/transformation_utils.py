@@ -1103,7 +1103,7 @@ def get_count_of_references_to_variables(comp):
 
 
 def get_unique_names(comp):
-  """Returns the unique names in `comp`."""
+  """Returns the unique names bound or referred to in `comp`."""
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   names = set()
 
@@ -1113,6 +1113,8 @@ def get_unique_names(comp):
     elif isinstance(comp, building_blocks.Lambda):
       if comp.parameter_type is not None:
         names.add(comp.parameter_name)
+    elif isinstance(comp, building_blocks.Reference):
+      names.add(comp.name)
     return comp, False
 
   transform_postorder(comp, _update)
