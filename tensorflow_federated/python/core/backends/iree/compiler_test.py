@@ -17,11 +17,18 @@ import re
 import numpy as np
 import tensorflow as tf
 
+from iree.bindings.python.pyiree import rt as iree_runtime
 from iree.integrations.tensorflow.bindings.python.pyiree.tf import compiler as iree_compiler
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.iree import compiler
 from tensorflow_federated.python.core.impl import computation_impl
+
+
+# The config must be shared across contexts, otherwise the runtime crashes.
+# TODO(b/153499219): Possibly remove this once IREE moves to the singleton
+# pattern to ensure there is never more than one config.
+_IREE_RUNTIME_CONFIG = iree_runtime.Config('vulkan')
 
 
 class CompilerTest(tf.test.TestCase):
@@ -32,13 +39,15 @@ class CompilerTest(tf.test.TestCase):
     def comp():
       return 99.0
 
-    _, mlir = self._import_compile_and_return_module_and_mlir(comp)
+    module, mlir = self._import_compile_and_return_module_and_mlir(comp)
     self._assert_mlir_contains_pattern(mlir, [
         'func @fn() -> tensor<f32> SOMETHING {',
         '  %0 = xla_hlo.constant dense<9.900000e+01>',
         '  return %0',
         '}',
     ])
+    result = self._run_imported_module_on_args(module)
+    self.assertEqual(result, 99.0)
 
   def test_import_tf_comp_with_one_variable_constant(self):
 
@@ -46,7 +55,7 @@ class CompilerTest(tf.test.TestCase):
     def comp():
       return tf.Variable(99.0)
 
-    _, mlir = self._import_compile_and_return_module_and_mlir(comp)
+    module, mlir = self._import_compile_and_return_module_and_mlir(comp)
     self._assert_mlir_contains_pattern(mlir, [
         'func @fn() -> tensor<f32> SOMETHING {',
         '  %0 = flow.variable.address',
@@ -56,6 +65,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %2',
         '}',
     ])
+    result = self._run_imported_module_on_args(module)
+    self.assertEqual(result, 99.0)
 
   def test_import_tf_comp_with_add_one(self):
 
@@ -63,7 +74,7 @@ class CompilerTest(tf.test.TestCase):
     def comp(x):
       return x + 1.0
 
-    _, mlir = self._import_compile_and_return_module_and_mlir(comp)
+    module, mlir = self._import_compile_and_return_module_and_mlir(comp)
     self._assert_mlir_contains_pattern(mlir, [
         'func @fn(%arg0: tensor<f32>) -> tensor<f32> SOMETHING {',
         '  %0 = xla_hlo.constant dense<1.000000e+00>',
@@ -71,6 +82,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %1',
         '}',
     ])
+    result = self._run_imported_module_on_args(module, np.float32(5.0))
+    self.assertEqual(result, 6.0)
 
   def test_import_tf_comp_with_variable_add_one(self):
 
@@ -80,7 +93,7 @@ class CompilerTest(tf.test.TestCase):
       with tf.control_dependencies([v.initializer]):
         return tf.add(v, x)
 
-    _, mlir = self._import_compile_and_return_module_and_mlir(comp)
+    module, mlir = self._import_compile_and_return_module_and_mlir(comp)
     self._assert_mlir_contains_pattern(mlir, [
         'func @fn(%arg0: tensor<f32>) -> tensor<f32> SOMETHING {',
         '  %0 = flow.variable.address',
@@ -91,6 +104,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %3',
         '}',
     ])
+    result = self._run_imported_module_on_args(module, np.float32(5.0))
+    self.assertEqual(result, 6.0)
 
   def test_import_tf_comp_with_variable_assign_add_one(self):
 
@@ -101,7 +116,7 @@ class CompilerTest(tf.test.TestCase):
         with tf.control_dependencies([v.assign_add(x)]):
           return tf.identity(v)
 
-    _, mlir = self._import_compile_and_return_module_and_mlir(comp)
+    module, mlir = self._import_compile_and_return_module_and_mlir(comp)
 
     # TODO(b/153499219): Introduce the concept of local variables, so that code
     # like what's in this section below can be dramatically simplified.
@@ -118,13 +133,15 @@ class CompilerTest(tf.test.TestCase):
         '  return %4',
         '}',
     ])
+    result = self._run_imported_module_on_args(module, np.float32(5.0))
+    self.assertEqual(result, 6.0)
 
   def test_import_tf_comp_with_while_loop(self):
 
     @computations.tf_computation(tf.float32)
     def comp(x):
       # An example of a loop with variables that computes 2^x by counting from
-      # a down to 0, and doubling b in each iteration.
+      # x down to 0, and doubling the result in each iteration.
       a = tf.Variable(0.0)
       b = tf.Variable(1.0)
       with tf.control_dependencies([a.initializer, b.initializer]):
@@ -135,15 +152,19 @@ class CompilerTest(tf.test.TestCase):
 
     _, mlir = self._import_compile_and_return_module_and_mlir(comp)
 
-    # Not checking the full MLIR in the long generated body, just that the can
+    # Not checking the full MLIR in the long generated body, just that we can
     # successfully ingest TF code containing a while loop here, end-to-end. We
     # need some form of looping support in lieu of `tf.data.Dataset.reduce()`.
     self._assert_mlir_contains_pattern(
         mlir, ['func @fn(%arg0: tensor<f32>) -> tensor<f32>'])
 
-    # TODO(b/153499219): Introduce tests agains the IREE runtime to verify that
-    # the generated code works end-to-end in examples like this, where checking
-    # the exact generated output in the test is simply impractical.
+    # TODO(b/153499219): Add the runtime test after fixing compilation errors,
+    # and/or switch to vmla as the backend for this test, as vulkan has issues
+    # with Boolean types.
+    # * [ERROR]: SPIRV type conversion failed: 'memref<i1>'
+    # * [ERROR]: failed to legalize operation 'iree.placeholder'
+    # * [ERROR]: failed to run translation of source executable to target
+    #            executable for backend vulkan.
 
   def test_import_tf_comp_fails_with_non_tf_comp(self):
 
@@ -223,6 +244,28 @@ class CompilerTest(tf.test.TestCase):
     escaped_pattern = '.*'.join(
         re.escape(x.strip()).replace('SOMETHING', '.*') for x in expected_list)
     self.assertRegex(actual_mlir.replace('\n', ' '), escaped_pattern)
+
+  def _run_imported_module_on_args(self, module, *args):
+    """Testing helper that runs the compiled module on a given set of args.
+
+    Args:
+      module: The module from `_import_compile_and_return_module_and_mlir()`.
+      *args: Arguments for invocation.
+
+    Returns:
+      The result of invocation on IREE.
+    """
+    flatbuffer_blob = module.compile(target_backends=['vulkan-spirv'])
+    vm_module = iree_runtime.VmModule.from_flatbuffer(flatbuffer_blob)
+    context = iree_runtime.SystemContext(config=_IREE_RUNTIME_CONFIG)
+    context.add_module(vm_module)
+    # TODO(b/153499219): Can we possibly name the modules somehow differently?
+    # This may not matter if we spawn a separate context for each, but it will
+    # matter eventually. Right now, this comes from the implicit "module {}"
+    # that wraps anything parsed from ASM that lacks an explicit module
+    # declaration. Possibly manually surround with "module @myName { ... }" in
+    # the compiler helpers.
+    return context.modules.module.fn(*args)
 
 
 if __name__ == '__main__':
