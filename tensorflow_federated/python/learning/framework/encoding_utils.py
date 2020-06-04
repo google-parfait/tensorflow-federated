@@ -19,14 +19,23 @@ to realize encoding (compression) of values being communicated between `SERVER`
 and `CLIENTS`.
 """
 
+from typing import Callable
+
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_model_optimization.python.core.internal import tensor_encoding
+
+# Type aliases.
+_ModelConstructor = Callable[[], model_lib.Model]
+_EncoderConstructor = Callable[[tf.Tensor], tensor_encoding.core.SimpleEncoder]
 
 
-def _weights_from_model_fn(model_fn) -> model_utils.ModelWeights:
+def _weights_from_model_fn(
+    model_fn: _ModelConstructor) -> model_utils.ModelWeights:
   py_typecheck.check_callable(model_fn)
   # This graph and the ones below are introduced in order to ensure that these
   # TF invocations don't leak into the global graph. In the future, it would
@@ -38,7 +47,9 @@ def _weights_from_model_fn(model_fn) -> model_utils.ModelWeights:
 
 
 # TODO(b/138081552): Move to tff.learning when ready.
-def build_encoded_broadcast_from_model(model_fn, encoder_fn):
+def build_encoded_broadcast_from_model(
+    model_fn: _ModelConstructor,
+    encoder_fn: _EncoderConstructor) -> tff.utils.StatefulBroadcastFn:
   """Builds `StatefulBroadcastFn` for weights of model returned by `model_fn`.
 
   This method creates a `SimpleEncoder` for every weight of model created by
@@ -67,7 +78,9 @@ def build_encoded_broadcast_from_model(model_fn, encoder_fn):
 
 
 # TODO(b/138081552): Move to tff.learning when ready.
-def build_encoded_sum_from_model(model_fn, encoder_fn):
+def build_encoded_sum_from_model(
+    model_fn: _ModelConstructor,
+    encoder_fn: _EncoderConstructor) -> tff.utils.StatefulAggregateFn:
   """Builds `StatefulAggregateFn` for weights of model returned by `model_fn`.
 
   This method creates a `GatherEncoder` for every trainable weight of model
@@ -96,7 +109,9 @@ def build_encoded_sum_from_model(model_fn, encoder_fn):
 
 
 # TODO(b/138081552): Move to tff.learning when ready.
-def build_encoded_mean_from_model(model_fn, encoder_fn):
+def build_encoded_mean_from_model(
+    model_fn: _ModelConstructor,
+    encoder_fn: _EncoderConstructor) -> tff.utils.StatefulAggregateFn:
   """Builds `StatefulAggregateFn` for weights of model returned by `model_fn`.
 
   This method creates a `GatherEncoder` for every trainable weight of model

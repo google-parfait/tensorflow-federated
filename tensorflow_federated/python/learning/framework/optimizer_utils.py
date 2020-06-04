@@ -15,6 +15,7 @@
 
 import abc
 import collections
+from typing import Callable, Collection, List, Tuple
 
 import attr
 import numpy as np
@@ -23,8 +24,14 @@ import tensorflow as tf
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
+
+
+# Type aliases.
+_ModelConstructor = Callable[[], model_lib.Model]
+_OptimizerConstructor = Callable[[], tf.keras.optimizers.Optimizer]
 
 
 @attr.s(eq=False, frozen=True)
@@ -82,7 +89,9 @@ class ClientDeltaFn(object, metaclass=abc.ABCMeta):
     pass
 
 
-def _build_server_optimizer(model, optimizer):
+def _build_server_optimizer(
+    model: model_lib.Model, optimizer: tf.keras.optimizers.Optimizer
+) -> Tuple[Callable[..., tf.Tensor], List[tf.Variable]]:
   """A helper for server computations that constructs  the optimizer.
 
   This code is needed both in server_init (to introduce variables so
@@ -90,7 +99,7 @@ def _build_server_optimizer(model, optimizer):
 
   Args:
     model: A `tff.learning.Model`.
-    optimizer: A `tf.train.Optimizer`.
+    optimizer: A `tf.keras.optimizers.Optimizer`.
 
   Returns:
     A tuple of (apply_delta_fn, optimizer_vars), where:
@@ -145,8 +154,11 @@ class ServerState(object):
   model_broadcast_state = attr.ib()
 
 
-def state_with_new_model_weights(server_state, trainable_weights,
-                                 non_trainable_weights):
+def state_with_new_model_weights(
+    server_state: ServerState,
+    trainable_weights: List[np.ndarray],
+    non_trainable_weights: List[np.ndarray],
+) -> ServerState:
   """Returns a `ServerState` with updated model weights.
 
   Args:
@@ -208,8 +220,12 @@ def state_with_new_model_weights(server_state, trainable_weights,
       model_broadcast_state=server_state.model_broadcast_state)
 
 
-def server_init(model_fn, optimizer_fn, delta_aggregate_state,
-                model_broadcast_state):
+def server_init(
+    model_fn: _ModelConstructor,
+    optimizer_fn: _OptimizerConstructor,
+    delta_aggregate_state,
+    model_broadcast_state,
+) -> ServerState:
   """Returns initial `tff.learning.framework.ServerState`.
 
   Args:
@@ -231,7 +247,12 @@ def server_init(model_fn, optimizer_fn, delta_aggregate_state,
       model_broadcast_state=model_broadcast_state)
 
 
-def server_update_model(server_state, weights_delta, model_fn, optimizer_fn):
+def server_update_model(
+    server_state: ServerState,
+    weights_delta: Collection[tf.Tensor],
+    model_fn: _ModelConstructor,
+    optimizer_fn: _OptimizerConstructor,
+) -> ServerState:
   """Updates `server_state` based on `weights_delta`.
 
   Args:
@@ -248,7 +269,7 @@ def server_update_model(server_state, weights_delta, model_fn, optimizer_fn):
     An updated `tff.learning.framework.ServerState`.
   """
   py_typecheck.check_type(server_state, ServerState)
-  py_typecheck.check_type(weights_delta, collections.Sequence)
+  py_typecheck.check_type(weights_delta, collections.Collection)
   model = model_utils.enhance(model_fn())
   optimizer = optimizer_fn()
   apply_delta_fn, optimizer_vars = _build_server_optimizer(model, optimizer)
@@ -285,7 +306,7 @@ def server_update_model(server_state, weights_delta, model_fn, optimizer_fn):
 #
 
 
-def build_stateless_mean():
+def build_stateless_mean() -> tff.utils.StatefulAggregateFn:
   """Just tff.federated_mean with empty state, to use as a default."""
   return tff.utils.StatefulAggregateFn(
       initialize_fn=lambda: (),
@@ -293,7 +314,7 @@ def build_stateless_mean():
           state, tff.federated_mean(value, weight=weight)))
 
 
-def build_stateless_broadcaster():
+def build_stateless_broadcaster() -> tff.utils.StatefulBroadcastFn:
   """Just tff.federated_broadcast with empty state, to use as a default."""
   return tff.utils.StatefulBroadcastFn(
       initialize_fn=lambda: (),
@@ -302,11 +323,14 @@ def build_stateless_broadcaster():
 
 
 def build_model_delta_optimizer_process(
-    model_fn,
-    model_to_client_delta_fn,
-    server_optimizer_fn,
-    stateful_delta_aggregate_fn=build_stateless_mean(),
-    stateful_model_broadcast_fn=build_stateless_broadcaster()):
+    model_fn: _ModelConstructor,
+    model_to_client_delta_fn: Callable[[model_lib.Model], ClientDeltaFn],
+    server_optimizer_fn: _OptimizerConstructor,
+    stateful_delta_aggregate_fn: tff.utils
+    .StatefulAggregateFn = build_stateless_mean(),
+    stateful_model_broadcast_fn: tff.utils
+    .StatefulBroadcastFn = build_stateless_broadcaster(),
+) -> tff.templates.IterativeProcess:
   """Constructs `tff.templates.IterativeProcess` for Federated Averaging or SGD.
 
   This provides the TFF orchestration logic connecting the common server logic

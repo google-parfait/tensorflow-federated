@@ -25,8 +25,6 @@ from tensorflow_federated.python.learning.framework import encoding_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
   """Tests for utilities for building StatefulFns."""
