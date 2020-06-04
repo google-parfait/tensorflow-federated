@@ -80,6 +80,14 @@ class KerasModelWrapper(object):
                      list(model_weights.non_trainable))
 
 
+def keras_evaluate(model, test_data, metric):
+  metric.reset_states()
+  for batch in test_data:
+    preds = model(batch['x'], training=False)
+    metric.update_state(y_true=batch['y'], y_pred=preds)
+  return metric.result()
+
+
 @attr.s(eq=False, frozen=True, slots=True)
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.

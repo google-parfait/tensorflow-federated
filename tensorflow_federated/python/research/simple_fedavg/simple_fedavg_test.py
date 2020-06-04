@@ -241,6 +241,18 @@ class SimpleFedAvgTest(tf.test.TestCase):
       losses.append(loss)
     self.assertLess(losses[1], losses[0])
 
+  def test_keras_evaluate(self):
+    keras_model = _create_test_cnn_model()
+    sample_data = [
+        collections.OrderedDict(
+            x=np.ones([1, 28, 28, 1], dtype=np.float32),
+            y=np.ones([1], dtype=np.int32))
+    ]
+    metric = tf.keras.metrics.SparseCategoricalAccuracy()
+    accuracy = simple_fedavg_tf.keras_evaluate(keras_model, sample_data, metric)
+    self.assertIsInstance(accuracy, tf.Tensor)
+    self.assertBetween(accuracy, 0.0, 1.0)
+
 
 def server_init(model, optimizer):
   """Returns initial `ServerState`.

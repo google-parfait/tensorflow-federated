@@ -129,14 +129,6 @@ def client_optimizer_fn():
   return tf.keras.optimizers.SGD(learning_rate=FLAGS.client_learning_rate)
 
 
-def keras_evaluate(model, test_data, metric):
-  metric.reset_states()
-  for batch in test_data:
-    preds = model(batch['x'], training=False)
-    metric(batch['y'], preds)
-  return metric.result()
-
-
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
@@ -170,7 +162,8 @@ def main(argv):
     print(f'Round {round_num} training loss: {train_metrics}')
     if round_num % FLAGS.rounds_per_eval == 0:
       model.from_weights(server_state.model_weights)
-      accuracy = keras_evaluate(model.keras_model, test_data, metric)
+      accuracy = simple_fedavg_tf.keras_evaluate(model.keras_model, test_data,
+                                                 metric)
       print(f'Round {round_num} validation accuracy: {accuracy * 100.0}')
 
 
