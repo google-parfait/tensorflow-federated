@@ -31,8 +31,6 @@ from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class IntrinsicsTest(parameterized.TestCase):
 

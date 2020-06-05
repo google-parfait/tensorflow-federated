@@ -31,8 +31,6 @@ from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def create_test_executor_factory():
   executor = eager_tf_executor.EagerTFExecutor()

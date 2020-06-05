@@ -18,8 +18,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import cifar100
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class LoadDataTest(tf.test.TestCase):
 

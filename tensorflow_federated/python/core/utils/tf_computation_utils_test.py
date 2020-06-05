@@ -18,8 +18,6 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.utils import tf_computation_utils
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class TfComputationUtilsTest(test.TestCase):
 

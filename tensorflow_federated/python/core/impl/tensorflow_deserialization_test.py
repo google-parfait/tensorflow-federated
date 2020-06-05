@@ -19,8 +19,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class TensorFlowDeserializationTest(test.TestCase):
 

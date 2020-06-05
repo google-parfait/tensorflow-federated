@@ -25,8 +25,6 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
 
-tf.compat.v1.enable_v2_behavior()
-
 
 @executor_test_utils.executors
 class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):

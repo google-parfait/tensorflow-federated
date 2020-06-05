@@ -24,8 +24,6 @@ from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning import personalization_eval as p13n_eval
 
-tf.compat.v1.enable_v2_behavior()
-
 
 @tf.function
 def _evaluate_fn(model, dataset, batch_size=1):

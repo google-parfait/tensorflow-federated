@@ -37,8 +37,6 @@ from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def get_iterative_process_for_sum_example():
   """Returns an iterative process for a sum example.

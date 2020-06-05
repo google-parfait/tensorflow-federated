@@ -106,8 +106,6 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  tf.compat.v1.enable_v2_behavior()
-
   # Datasets.
   preprocessed_train_dataset, preprocessed_test_dataset = (
       _load_and_preprocess_datasets())

@@ -54,7 +54,6 @@ landing_page:
       code_block: |
         <pre class = "prettyprint">
         import tensorflow as tf
-        tf.compat.v1.enable_v2_behavior()
         import tensorflow_federated as tff
 
         # Load simulation data.

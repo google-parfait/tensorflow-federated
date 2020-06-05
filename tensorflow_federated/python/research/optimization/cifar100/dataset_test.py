@@ -63,5 +63,4 @@ class DatasetTest(tf.test.TestCase):
       dataset.get_centralized_cifar100(train_batch_size=10, crop_shape=(32, 32))
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

@@ -22,8 +22,6 @@ from tensorflow_federated.python.core.impl import tf_computation_context
 from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class TensorFlowComputationContextTest(test.TestCase):
 

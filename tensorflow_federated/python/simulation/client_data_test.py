@@ -17,8 +17,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation import client_data as cd
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
 

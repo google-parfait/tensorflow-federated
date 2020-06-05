@@ -27,8 +27,6 @@ from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.types import type_factory
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class RetryableErrorTest(absltest.TestCase):
 

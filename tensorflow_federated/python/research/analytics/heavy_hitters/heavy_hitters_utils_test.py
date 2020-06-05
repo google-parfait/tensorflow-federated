@@ -72,5 +72,4 @@ class HeavyHittersUtilsTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

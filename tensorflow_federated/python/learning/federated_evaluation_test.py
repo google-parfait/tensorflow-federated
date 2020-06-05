@@ -24,8 +24,6 @@ from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.learning import model_utils
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class TestModel(model.Model):
 

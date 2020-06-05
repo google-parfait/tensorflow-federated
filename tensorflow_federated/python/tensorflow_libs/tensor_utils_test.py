@@ -20,8 +20,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class TensorUtilsTest(test.TestCase):
 

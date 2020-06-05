@@ -31,8 +31,6 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def _create_chained_dummy_federated_applys(functions, arg):
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)

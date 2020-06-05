@@ -29,7 +29,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation import file_per_user_client_data
 
-tf.compat.v1.enable_v2_behavior()
 
 # A fake columnar dataset of (user id, value 1, value 2, value 3), roughly
 # resembling a CSV file.

@@ -30,8 +30,6 @@ from tensorflow_federated.python.core.impl.executors import reference_resolving_
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_factory
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def create_test_executor_factory():
   executor = eager_tf_executor.EagerTFExecutor()

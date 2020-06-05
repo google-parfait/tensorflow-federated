@@ -20,8 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.utils import checkpoint_manager
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def _create_dummy_state(value=0):
   return collections.OrderedDict([

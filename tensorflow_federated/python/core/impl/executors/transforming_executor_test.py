@@ -25,8 +25,6 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import transforming_executor
 from tensorflow_federated.python.core.impl.types import type_factory
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class FakeEx(executor_base.Executor):
 

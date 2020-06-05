@@ -30,7 +30,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-tf.compat.v1.enable_v2_behavior()
 
 FLAGS = flags.FLAGS
 

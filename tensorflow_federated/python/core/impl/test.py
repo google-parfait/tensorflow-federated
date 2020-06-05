@@ -14,11 +14,8 @@
 """General purpose test utilities for TFF."""
 
 from absl import logging
-import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-
-tf.compat.v1.enable_v2_behavior()  # Required to create a local executor.
 
 
 def tf1_and_tf2(fn):

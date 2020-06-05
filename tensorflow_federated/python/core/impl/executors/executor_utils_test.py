@@ -14,7 +14,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import tensorflow as tf
 
 from tensorflow_federated.python.core.impl.executors import composing_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
@@ -25,8 +24,6 @@ from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_factory
-
-tf.compat.v1.enable_v2_behavior()
 
 
 def create_test_federating_executor(

@@ -33,8 +33,6 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def _create_compiled_computation(py_fn, arg_type):
   proto, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(

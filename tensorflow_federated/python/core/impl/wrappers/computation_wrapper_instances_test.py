@@ -23,8 +23,6 @@ from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class ComputationWrapperInstancesTest(test.TestCase):
 

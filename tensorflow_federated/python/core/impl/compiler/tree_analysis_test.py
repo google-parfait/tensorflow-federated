@@ -32,8 +32,6 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class IntrinsicsWhitelistedTest(absltest.TestCase):
 
