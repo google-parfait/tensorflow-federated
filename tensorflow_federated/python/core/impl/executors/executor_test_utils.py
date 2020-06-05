@@ -442,9 +442,9 @@ def create_dummy_computation_lambda_empty():
 
 def create_dummy_computation_lambda_identity():
   """Returns a lambda computation and type `(float32 -> float32)`."""
-  type_spec = tf.float32
-  value = computation_factory.create_lambda_identity(type_spec)
-  type_signature = computation_types.FunctionType(type_spec, type_spec)
+  tensor_type = computation_types.TensorType(tf.float32)
+  value = computation_factory.create_lambda_identity(tensor_type)
+  type_signature = computation_types.FunctionType(tensor_type, tensor_type)
   return value, type_signature
 
 
@@ -510,9 +510,9 @@ def create_dummy_computation_tensorflow_add():
 def create_dummy_computation_tensorflow_constant():
   """Returns a tensorflow computation and type `( -> float32)`."""
   value = 10.0
-  type_spec = tf.float32
-  value = tensorflow_computation_factory.create_constant(value, type_spec)
-  type_signature = computation_types.FunctionType(None, type_spec)
+  tensor_type = computation_types.TensorType(tf.float32)
+  value = tensorflow_computation_factory.create_constant(value, tensor_type)
+  type_signature = computation_types.FunctionType(None, tensor_type)
   return value, type_signature
 
 
@@ -525,9 +525,9 @@ def create_dummy_computation_tensorflow_empty():
 
 def create_dummy_computation_tensorflow_identity():
   """Returns a tensorflow computation and type `(float32 -> float32)`."""
-  type_spec = tf.float32
-  value = tensorflow_computation_factory.create_identity(type_spec)
-  type_signature = computation_types.FunctionType(type_spec, type_spec)
+  tensor_type = computation_types.TensorType(tf.float32)
+  value = tensorflow_computation_factory.create_identity(tensor_type)
+  type_signature = computation_types.FunctionType(tensor_type, tensor_type)
   return value, type_signature
 
 

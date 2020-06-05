@@ -436,6 +436,7 @@ py_test(
     deps = [
         ":tensorflow_deserialization",
         "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
     ],
 )

@@ -47,16 +47,16 @@ def create_broadcast_scalar_to_shape(scalar_type: tf.DType,
   py_typecheck.check_type(scalar_type, tf.DType)
   py_typecheck.check_type(shape, tf.TensorShape)
   shape.assert_is_fully_defined()
-  type_spec = computation_types.TensorType(scalar_type, shape=())
+  parameter_type = computation_types.TensorType(scalar_type, shape=())
 
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', type_spec, graph)
+        'x', parameter_type, graph)
     result = tf.broadcast_to(parameter_value, shape)
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 
-  type_signature = computation_types.FunctionType(type_spec, result_type)
+  type_signature = computation_types.FunctionType(parameter_type, result_type)
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
@@ -66,7 +66,8 @@ def create_broadcast_scalar_to_shape(scalar_type: tf.DType,
       tensorflow=tensorflow)
 
 
-def create_constant(scalar_value, type_spec) -> pb.Computation:
+def create_constant(scalar_value,
+                    type_spec: computation_types.Type) -> pb.Computation:
   """Returns a tensorflow computation returning a constant `scalar_value`.
 
   The returned computation has the type signature `( -> T)`, where `T` is
@@ -79,15 +80,13 @@ def create_constant(scalar_value, type_spec) -> pb.Computation:
   Args:
     scalar_value: A scalar value to place in all the tensor leaves of
       `type_spec`.
-    type_spec: A type convertible to instance of `computation_types.Type` via
-      `computation_types.to_type` and whose resulting type tree can only contain
-      named tuples and tensors.
+    type_spec: A `computation_types.Type` to use as the argument to the
+      constructed binary operator; must contain only named tuples and tensor
+      types.
 
   Raises:
     TypeError: If the constraints of `type_spec` are violated.
   """
-  type_spec = computation_types.to_type(type_spec)
-
   if not type_analysis.is_generic_op_compatible_type(type_spec):
     raise TypeError(
         'Type spec {} cannot be constructed as a TensorFlow constant in TFF; '
@@ -116,6 +115,8 @@ def create_constant(scalar_value, type_spec) -> pb.Computation:
         'for type spec {}.'.format(scalar_value,
                                    inferred_scalar_value_type.dtype, type_spec))
 
+  result_type = type_spec
+
   def _create_result_tensor(type_spec, scalar_value):
     """Packs `scalar_value` into `type_spec` recursively."""
     if isinstance(type_spec, computation_types.TensorType):
@@ -130,11 +131,11 @@ def create_constant(scalar_value, type_spec) -> pb.Computation:
     return result
 
   with tf.Graph().as_default() as graph:
-    result = _create_result_tensor(type_spec, scalar_value)
+    result = _create_result_tensor(result_type, scalar_value)
     _, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 
-  type_signature = computation_types.FunctionType(None, type_spec)
+  type_signature = computation_types.FunctionType(None, result_type)
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=None,
@@ -144,7 +145,8 @@ def create_constant(scalar_value, type_spec) -> pb.Computation:
       tensorflow=tensorflow)
 
 
-def create_binary_operator(operator, operand_type) -> pb.Computation:
+def create_binary_operator(
+    operator, operand_type: computation_types.Type) -> pb.Computation:
   """Returns a tensorflow computation representing the binary `operator`.
 
   The returned computation has the type signature `(<T,T> -> U)`, where `T` is
@@ -162,16 +164,14 @@ def create_binary_operator(operator, operand_type) -> pb.Computation:
     operator: A callable taking two arguments representing the operation to
       encode For example: `tf.math.add`, `tf.math.multiply`, and
         `tf.math.divide`.
-    operand_type: The type of the argument to the constructed binary operator; A
-      type convertible to instance of `computation_types.Type` via
-      `computation_types.to_type` which can only contain types which are
-      compatible with the TFF generic operators (named tuples and tensors).
+    operand_type: A `computation_types.Type` to use as the argument to the
+      constructed binary operator; must contain only named tuples and tensor
+      types.
 
   Raises:
     TypeError: If the constraints of `operand_type` are violated or `operator`
       is not callable.
   """
-  operand_type = computation_types.to_type(operand_type)
   if not type_analysis.is_generic_op_compatible_type(operand_type):
     raise TypeError(
         'The type {} contains a type other than `computation_types.TensorType` '
@@ -231,30 +231,30 @@ def create_empty_tuple() -> pb.Computation:
       tensorflow=tensorflow)
 
 
-def create_identity(type_spec) -> pb.Computation:
+def create_identity(type_signature: computation_types.Type) -> pb.Computation:
   """Returns a tensorflow computation representing an identity function.
 
   The returned computation has the type signature `(T -> T)`, where `T` is
-  `type_spec`.
+  `type_signature`.
 
   Args:
-    type_spec: A type convertible to instance of `computation_types.Type` via
-      `computation_types.to_type`.
+    type_signature: A `computation_types.Type` to use as the parameter type and
+      result type of the identity function.
 
   Raises:
-    TypeError: If `type_spec` contains any types which cannot appear in
+    TypeError: If `type_signature` contains any types which cannot appear in
       TensorFlow bindings.
   """
-  type_spec = computation_types.to_type(type_spec)
-  type_analysis.check_tensorflow_compatible_type(type_spec)
+  type_analysis.check_tensorflow_compatible_type(type_signature)
+  parameter_type = type_signature
 
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', type_spec, graph)
+        'x', parameter_type, graph)
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         parameter_value, graph)
 
-  type_signature = computation_types.FunctionType(type_spec, result_type)
+  type_signature = computation_types.FunctionType(parameter_type, result_type)
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
@@ -264,33 +264,33 @@ def create_identity(type_spec) -> pb.Computation:
       tensorflow=tensorflow)
 
 
-def create_replicate_input(type_spec, count: int) -> pb.Computation:
+def create_replicate_input(type_signature: computation_types.Type,
+                           count: int) -> pb.Computation:
   """Returns a tensorflow computation which returns `count` clones of an input.
 
   The returned computation has the type signature `(T -> <T, T, T, ...>)`, where
-  `T` is `type_spec` and the length of the result is `count`.
+  `T` is `type_signature` and the length of the result is `count`.
 
   Args:
-    type_spec: A type convertible to instance of `computation_types.Type` via
-      `computation_types.to_type`.
+    type_signature: A `computation_types.Type` to replicate.
     count: An integer, the number of times the input is replicated.
 
   Raises:
-    TypeError: If `type_spec` contains any types which cannot appear in
+    TypeError: If `type_signature` contains any types which cannot appear in
       TensorFlow bindings or if `which` is not an integer.
   """
-  type_spec = computation_types.to_type(type_spec)
-  type_analysis.check_tensorflow_compatible_type(type_spec)
+  type_analysis.check_tensorflow_compatible_type(type_signature)
   py_typecheck.check_type(count, int)
+  parameter_type = type_signature
 
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', type_spec, graph)
+        'x', parameter_type, graph)
     result = [parameter_value] * count
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 
-  type_signature = computation_types.FunctionType(type_spec, result_type)
+  type_signature = computation_types.FunctionType(parameter_type, result_type)
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,

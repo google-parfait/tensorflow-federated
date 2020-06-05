@@ -107,7 +107,8 @@ def _construct_trivial_instance_of_all_computation_building_blocks():
   cbb_list.append(('selection', selection))
   call = building_blocks.Call(lam, ref_to_x)
   cbb_list.append(('call', call))
-  compiled_comp = building_block_factory.create_compiled_identity(tf.int32)
+  tensor_type = computation_types.TensorType(tf.int32)
+  compiled_comp = building_block_factory.create_compiled_identity(tensor_type)
   cbb_list.append(('compiled_comp', compiled_comp))
   placement = building_blocks.Placement(placement_literals.CLIENTS)
   cbb_list.append(('placement', placement))
@@ -1441,7 +1442,8 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_get_count_of_references_to_variables_sequential_overwrite_in_block_locals(
       self):
 
-    make_10 = building_block_factory.create_tensorflow_constant(tf.int32, 10)
+    tensor_type = computation_types.TensorType(tf.int32)
+    make_10 = building_block_factory.create_tensorflow_constant(tensor_type, 10)
 
     dummy_x_reference = building_blocks.Reference('x', tf.int32)
 

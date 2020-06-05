@@ -906,8 +906,9 @@ class CreateFederatedReduceTest(absltest.TestCase):
 class CreateFederatedSecureSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
+    bitwidth_type = computation_types.TensorType(tf.int32)
     bitwidth = building_block_factory.create_compiled_identity(
-        tf.int32, name='b')
+        bitwidth_type, name='b')
 
     with self.assertRaises(TypeError):
       building_block_factory.create_federated_secure_sum(None, bitwidth)
@@ -924,8 +925,9 @@ class CreateFederatedSecureSumTest(absltest.TestCase):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
+    bitwidth_type = computation_types.TensorType(tf.int32)
     bitwidth = building_block_factory.create_tensorflow_constant(
-        tf.int32, 8, 'b')
+        bitwidth_type, 8, 'b')
     comp = building_block_factory.create_federated_secure_sum(value, bitwidth)
     self.assertEqual(comp.compact_representation(),
                      'federated_secure_sum(<v,comp#b()>)')
@@ -2373,111 +2375,6 @@ class CreateZipTest(absltest.TestCase):
     self.assertEqual(
         str(new_comp.type_signature),
         '<<int32,int32>,<float32,float32>,<bool,bool>>')
-
-
-class CreateTensorFlowBinaryOpTest(absltest.TestCase):
-
-  def test_raises_on_none_type(self):
-    with self.assertRaises(TypeError):
-      building_block_factory.create_tensorflow_binary_operator(None, tf.add)
-
-  def test_raises_non_callable_op(self):
-    with self.assertRaises(TypeError):
-      building_block_factory.create_tensorflow_binary_operator(tf.int32, 1)
-
-  def test_raises_on_federated_type(self):
-    fed_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.SERVER)
-    with self.assertRaises(TypeError):
-      building_block_factory.create_tensorflow_binary_operator(fed_type, tf.add)
-
-  def test_raises_on_nested_sequence_type(self):
-    hiding_sequence_type = computation_types.NamedTupleType(
-        [computation_types.SequenceType(tf.int32)])
-    with self.assertRaises(TypeError):
-      building_block_factory.create_tensorflow_binary_operator(
-          hiding_sequence_type, tf.add)
-
-  def test_divide_integers(self):
-    integer_division_func = building_block_factory.create_tensorflow_binary_operator(
-        tf.int32, tf.divide)
-    self.assertEqual(
-        integer_division_func.type_signature,
-        computation_types.FunctionType([tf.int32, tf.int32], tf.float64))
-    result_1 = test_utils.run_tensorflow(integer_division_func.proto, [1, 1])
-    self.assertEqual(result_1, 1)
-    result_2 = test_utils.run_tensorflow(integer_division_func.proto, [1, 2])
-    self.assertEqual(result_2, 0.5)
-    result_3 = test_utils.run_tensorflow(integer_division_func.proto, [2, 1])
-    self.assertEqual(result_3, 2)
-    result_4 = test_utils.run_tensorflow(integer_division_func.proto, [1, 0])
-    self.assertEqual(result_4, np.inf)
-
-  def test_divide_unnamed_tuple(self):
-    division_func = building_block_factory.create_tensorflow_binary_operator(
-        [tf.int32, tf.float32], tf.divide)
-    self.assertEqual(
-        division_func.type_signature,
-        computation_types.FunctionType(
-            [[tf.int32, tf.float32], [tf.int32, tf.float32]],
-            [tf.float64, tf.float32]))
-    self.assertEqual(
-        test_utils.run_tensorflow(division_func.proto, [[1, 0.], [1, 1.]])[0],
-        1)
-    self.assertEqual(
-        test_utils.run_tensorflow(division_func.proto, [[1, 0.], [1, 1.]])[1],
-        0.)
-
-  def test_divide_named_tuple(self):
-    integer_division_func = building_block_factory.create_tensorflow_binary_operator(
-        [('a', tf.int32), ('b', tf.float32)], tf.divide)
-    self.assertDictEqual(
-        anonymous_tuple.to_odict(
-            test_utils.run_tensorflow(integer_division_func.proto,
-                                      [[1, 0.], [1, 1.]])), {
-                                          'a': 1,
-                                          'b': 0.
-                                      })
-
-  def test_multiply_integers(self):
-    integer_multiplication_func = building_block_factory.create_tensorflow_binary_operator(
-        tf.int32, tf.multiply)
-    self.assertEqual(
-        test_utils.run_tensorflow(integer_multiplication_func.proto, [1, 1]), 1)
-    self.assertEqual(
-        test_utils.run_tensorflow(integer_multiplication_func.proto, [1, 2]), 2)
-    self.assertEqual(
-        test_utils.run_tensorflow(integer_multiplication_func.proto, [2, 1]), 2)
-
-  def test_multiply_named_tuple(self):
-    integer_multiplication_func = building_block_factory.create_tensorflow_binary_operator(
-        [('a', tf.int32), ('b', tf.float32)], tf.multiply)
-    self.assertDictEqual(
-        anonymous_tuple.to_odict(
-            test_utils.run_tensorflow(integer_multiplication_func.proto,
-                                      [[1, 0.], [1, 1.]])), {
-                                          'a': 1,
-                                          'b': 0.
-                                      })
-    self.assertDictEqual(
-        anonymous_tuple.to_odict(
-            test_utils.run_tensorflow(integer_multiplication_func.proto,
-                                      [[2, 2.], [1, 1.]])), {
-                                          'a': 2,
-                                          'b': 2.
-                                      })
-
-  def test_add_integers(self):
-    integer_add = building_block_factory.create_tensorflow_binary_operator(
-        tf.int32, tf.add)
-    result_1 = test_utils.run_tensorflow(integer_add.proto, [0, 0])
-    self.assertEqual(result_1, 0)
-    result_2 = test_utils.run_tensorflow(integer_add.proto, [1, 0])
-    self.assertEqual(result_2, 1)
-    result_3 = test_utils.run_tensorflow(integer_add.proto, [0, 1])
-    self.assertEqual(result_3, 1)
-    result_4 = test_utils.run_tensorflow(integer_add.proto, [1, 1])
-    self.assertEqual(result_4, 2)
 
 
 class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):

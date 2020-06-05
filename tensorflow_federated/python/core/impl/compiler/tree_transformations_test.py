@@ -78,7 +78,8 @@ def _count_called_intrinsics(comp, uri=None):
 
 
 def _create_complex_computation():
-  compiled = building_block_factory.create_compiled_identity(tf.int32, 'a')
+  tensor_type = computation_types.TensorType(tf.int32)
+  compiled = building_block_factory.create_compiled_identity(tensor_type, 'a')
   federated_type = computation_types.FederatedType(tf.int32,
                                                    placement_literals.SERVER)
   ref = building_blocks.Reference('b', federated_type)
@@ -3456,8 +3457,9 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
       tree_transformations.uniquify_compiled_computation_names(None)
 
   def test_replaces_name(self):
-    compiled_comp = building_block_factory.create_compiled_identity(tf.int32)
-    comp = compiled_comp
+    tensor_type = computation_types.TensorType(tf.int32)
+    compiled = building_block_factory.create_compiled_identity(tensor_type)
+    comp = compiled
 
     transformed_comp, modified = tree_transformations.uniquify_compiled_computation_names(
         comp)
@@ -3469,8 +3471,9 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
   def test_replaces_multiple_names(self):
     elements = []
     for _ in range(10):
-      compiled_comp = building_block_factory.create_compiled_identity(tf.int32)
-      elements.append(compiled_comp)
+      tensor_type = computation_types.TensorType(tf.int32)
+      compiled = building_block_factory.create_compiled_identity(tensor_type)
+      elements.append(compiled)
     compiled_comps = building_blocks.Tuple(elements)
     comp = compiled_comps
 
@@ -3773,8 +3776,9 @@ class InsertTensorFlowIdentityAtLeavesTest(test.TestCase):
 
   def test_noops_on_call_with_compiled_computation(self):
     ref_to_x = building_blocks.Reference('x', tf.int32)
-    compiled_comp = building_block_factory.create_compiled_identity(tf.int32)
-    call = building_blocks.Call(compiled_comp, ref_to_x)
+    tensor_type = computation_types.TensorType(tf.int32)
+    compiled = building_block_factory.create_compiled_identity(tensor_type)
+    call = building_blocks.Call(compiled, ref_to_x)
     lam = building_blocks.Lambda('x', tf.int32, call)
     _, modified = tree_transformations.insert_called_tf_identity_at_leaves(lam)
     self.assertFalse(modified)

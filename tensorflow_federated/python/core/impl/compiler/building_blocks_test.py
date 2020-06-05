@@ -288,7 +288,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x)
 
   def test_basic_functionality_of_compiled_computation_class(self):
-    x = building_block_factory.create_compiled_identity(tf.int32, 'a')
+    x_type = computation_types.TensorType(tf.int32)
+    x = building_block_factory.create_compiled_identity(x_type, 'a')
     self.assertEqual(x.type_signature.compact_representation(),
                      '(int32 -> int32)')
     self.assertIsInstance(x.proto, pb.Computation)
@@ -298,7 +299,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         'CompiledComputation(\'a\', FunctionType(TensorType(tf.int32), TensorType(tf.int32)))'
     )
     self.assertTrue(x.compact_representation(), 'comp#a')
-    y = building_block_factory.create_compiled_identity(tf.int32)
+    y_type = computation_types.TensorType(tf.int32)
+    y = building_block_factory.create_compiled_identity(y_type)
     self._serialize_deserialize_roundtrip_test(y)
 
   def test_basic_functionality_of_placement_class(self):
@@ -387,7 +389,8 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_compiled_computation(self):
-    comp = building_block_factory.create_compiled_identity(tf.int32, 'a')
+    tensor_type = computation_types.TensorType(tf.int32)
+    comp = building_block_factory.create_compiled_identity(tensor_type, 'a')
 
     self.assertEqual(comp.compact_representation(), 'comp#a')
     self.assertEqual(comp.formatted_representation(), 'comp#a')

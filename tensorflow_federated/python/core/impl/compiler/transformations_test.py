@@ -208,8 +208,9 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
         building_blocks.Reference('x', tf.int32),
         building_blocks.Reference('x', tf.int32)
     ])
+    int_constant_type = computation_types.TensorType(tf.int32)
     int_constant = building_block_factory.create_tensorflow_constant(
-        tf.int32, 0)
+        int_constant_type, 0)
     tf_block = transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
         param, body, int_constant)
     result = test_utils.run_tensorflow(tf_block.function.proto)
@@ -223,8 +224,9 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
         building_blocks.Selection(param, index=1),
         building_blocks.Selection(param, index=0)
     ])
+    int_constant_type = computation_types.NamedTupleType([tf.int32, tf.float32])
     int_constant = building_block_factory.create_tensorflow_constant(
-        [tf.int32, tf.float32], 1)
+        int_constant_type, 1)
     tf_block = transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
         param, body, int_constant)
     result = test_utils.run_tensorflow(tf_block.function.proto)
@@ -248,7 +250,8 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
 class BlockLocalsTFGraphTest(test.TestCase):
 
   def test_raises_with_naked_graph_as_block_local(self):
-    graph = building_block_factory.create_compiled_identity(tf.int32)
+    tensor_type = computation_types.TensorType(tf.int32)
+    graph = building_block_factory.create_compiled_identity(tensor_type)
     block_locals = [('graph', graph)]
     ref_to_graph = building_blocks.Reference('graph', graph.type_signature)
     block = building_blocks.Block(block_locals, ref_to_graph)
@@ -257,7 +260,9 @@ class BlockLocalsTFGraphTest(test.TestCase):
 
   def test_raises_with_lambda_in_result(self):
     ref_to_int = building_blocks.Reference('var', tf.int32)
-    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    first_tf_id_type = computation_types.TensorType(tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(
+        first_tf_id_type)
     called_tf_id = building_blocks.Call(first_tf_id, ref_to_int)
     block_locals = [('call', called_tf_id)]
     ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
@@ -269,10 +274,14 @@ class BlockLocalsTFGraphTest(test.TestCase):
 
   def test_returns_correct_structure_with_tuple_in_result(self):
     ref_to_int = building_blocks.Reference('var', tf.int32)
-    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    first_tf_id_type = computation_types.TensorType(tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(
+        first_tf_id_type)
     called_tf_id = building_blocks.Call(first_tf_id, ref_to_int)
     ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
-    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_tf_id_type = computation_types.TensorType(tf.int32)
+    second_tf_id = building_block_factory.create_compiled_identity(
+        second_tf_id_type)
     second_called = building_blocks.Call(second_tf_id, ref_to_call)
     ref_to_second_call = building_blocks.Reference('second_call',
                                                    called_tf_id.type_signature)
@@ -292,10 +301,14 @@ class BlockLocalsTFGraphTest(test.TestCase):
 
   def test_executes_correctly_with_tuple_in_result(self):
     ref_to_int = building_blocks.Reference('var', tf.int32)
-    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    first_tf_id_type = computation_types.TensorType(tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(
+        first_tf_id_type)
     called_tf_id = building_blocks.Call(first_tf_id, ref_to_int)
     ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
-    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_tf_id_type = computation_types.TensorType(tf.int32)
+    second_tf_id = building_block_factory.create_compiled_identity(
+        second_tf_id_type)
     second_called = building_blocks.Call(second_tf_id, ref_to_call)
     ref_to_second_call = building_blocks.Reference('second_call',
                                                    called_tf_id.type_signature)
@@ -313,12 +326,17 @@ class BlockLocalsTFGraphTest(test.TestCase):
     self.assertAllEqual(result_zeros, [0, 0])
 
   def test_returns_correct_structure_with_no_unbound_references(self):
+    concrete_int_type = computation_types.TensorType(tf.int32)
     concrete_int = building_block_factory.create_tensorflow_constant(
-        tf.int32, 1)
-    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+        concrete_int_type, 1)
+    first_tf_id_type = computation_types.TensorType(tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(
+        first_tf_id_type)
     called_tf_id = building_blocks.Call(first_tf_id, concrete_int)
     ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
-    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_tf_id_type = computation_types.TensorType(tf.int32)
+    second_tf_id = building_block_factory.create_compiled_identity(
+        second_tf_id_type)
     second_called = building_blocks.Call(second_tf_id, ref_to_call)
     ref_to_second_call = building_blocks.Reference('second_call',
                                                    called_tf_id.type_signature)
@@ -335,12 +353,17 @@ class BlockLocalsTFGraphTest(test.TestCase):
     self.assertIsNone(tf_representing_block.argument)
 
   def test_returned_tensorflow_executes_correctly_with_no_unbound_refs(self):
+    concrete_int_type = computation_types.TensorType(tf.int32)
     concrete_int = building_block_factory.create_tensorflow_constant(
-        tf.int32, 1)
-    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+        concrete_int_type, 1)
+    first_tf_id_type = computation_types.TensorType(tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(
+        first_tf_id_type)
     called_tf_id = building_blocks.Call(first_tf_id, concrete_int)
     ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
-    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_tf_id_type = computation_types.TensorType(tf.int32)
+    second_tf_id = building_block_factory.create_compiled_identity(
+        second_tf_id_type)
     second_called = building_blocks.Call(second_tf_id, ref_to_call)
     ref_to_second_call = building_blocks.Reference('second_call',
                                                    called_tf_id.type_signature)
@@ -374,10 +397,14 @@ class BlockLocalsTFGraphTest(test.TestCase):
 
   def test_returns_single_called_graph_after_resolving_multiple_variables(self):
     ref_to_int = building_blocks.Reference('var', tf.int32)
-    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    first_tf_id_type = computation_types.TensorType(tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(
+        first_tf_id_type)
     called_tf_id = building_blocks.Call(first_tf_id, ref_to_int)
     ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
-    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_tf_id_type = computation_types.TensorType(tf.int32)
+    second_tf_id = building_block_factory.create_compiled_identity(
+        second_tf_id_type)
     second_called = building_blocks.Call(second_tf_id, ref_to_call)
     ref_to_second_call = building_blocks.Reference('second_call',
                                                    called_tf_id.type_signature)
@@ -395,10 +422,14 @@ class BlockLocalsTFGraphTest(test.TestCase):
 
   def test_executes_correctly_after_resolving_multiple_variables(self):
     ref_to_int = building_blocks.Reference('var', tf.int32)
-    first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    first_tf_id_type = computation_types.TensorType(tf.int32)
+    first_tf_id = building_block_factory.create_compiled_identity(
+        first_tf_id_type)
     called_tf_id = building_blocks.Call(first_tf_id, ref_to_int)
     ref_to_call = building_blocks.Reference('call', called_tf_id.type_signature)
-    second_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+    second_tf_id_type = computation_types.TensorType(tf.int32)
+    second_tf_id = building_block_factory.create_compiled_identity(
+        second_tf_id_type)
     second_called = building_blocks.Call(second_tf_id, ref_to_call)
     ref_to_second_call = building_blocks.Reference('second_call',
                                                    called_tf_id.type_signature)
@@ -416,9 +447,12 @@ class BlockLocalsTFGraphTest(test.TestCase):
   def test_ops_not_duplicated_in_resulting_tensorflow(self):
 
     def _construct_block_and_inlined_tuple(k):
+      concrete_int_type = computation_types.TensorType(tf.int32)
       concrete_int = building_block_factory.create_tensorflow_constant(
-          tf.int32, 1)
-      first_tf_id = building_block_factory.create_compiled_identity(tf.int32)
+          concrete_int_type, 1)
+      first_tf_id_type = computation_types.TensorType(tf.int32)
+      first_tf_id = building_block_factory.create_compiled_identity(
+          first_tf_id_type)
       called_tf_id = building_blocks.Call(first_tf_id, concrete_int)
       for _ in range(k):
         # Simulating large TF computation
@@ -502,8 +536,10 @@ class DeduplicateCalledGraphsTest(test.TestCase):
     self.assertEqual(transformed.type_signature, lam.type_signature)
 
   def test_returns_called_tf_computation_with_non_functional_type(self):
+    constant_tuple_type = computation_types.NamedTupleType(
+        [tf.int32, tf.float32])
     constant_tuple = building_block_factory.create_tensorflow_constant(
-        [tf.int32, tf.float32], 1)
+        constant_tuple_type, 1)
     sel = building_blocks.Selection(source=constant_tuple, index=0)
     tup = building_blocks.Tuple([sel, sel, sel])
     transformed, modified_indicator = transformations.remove_duplicate_called_graphs(
@@ -518,8 +554,9 @@ class DeduplicateCalledGraphsTest(test.TestCase):
   def test_deduplicates_by_counting_ops(self):
 
     def _construct_inlined_tuple(k):
+      constant_tuple_type = computation_types.TensorType(tf.int32)
       concrete_int = building_block_factory.create_tensorflow_constant(
-          tf.int32, 1)
+          constant_tuple_type, 1)
       first_tf_fn = building_block_factory.create_tensorflow_binary_operator(
           concrete_int.type_signature, tf.add)
       call = building_blocks.Call(

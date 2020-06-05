@@ -217,7 +217,9 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     self.assertEqual(tf_count, 0)
 
   def test_single_tensorflow_node_count_agrees_with_node_count(self):
-    integer_identity = building_block_factory.create_compiled_identity(tf.int32)
+    tensor_type = computation_types.TensorType(tf.int32)
+    integer_identity = building_block_factory.create_compiled_identity(
+        tensor_type)
     node_tf_op_count = building_block_analysis.count_tensorflow_ops_in(
         integer_identity)
     tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(
@@ -225,7 +227,9 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     self.assertEqual(node_tf_op_count, tree_tf_op_count)
 
   def test_tensorflow_op_count_doubles_number_of_ops_in_two_tuple(self):
-    integer_identity = building_block_factory.create_compiled_identity(tf.int32)
+    tensor_type = computation_types.TensorType(tf.int32)
+    integer_identity = building_block_factory.create_compiled_identity(
+        tensor_type)
     node_tf_op_count = building_block_analysis.count_tensorflow_ops_in(
         integer_identity)
     tf_tuple = building_blocks.Tuple([integer_identity, integer_identity])
@@ -485,19 +489,28 @@ class ComputationsEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(comp_1, comp_2))
 
   def test_returns_false_for_compiled_computations_with_different_types(self):
-    compiled_1 = building_block_factory.create_compiled_identity(tf.int32, 'a')
+    tensor_type_1 = computation_types.TensorType(tf.int32)
+    compiled_1 = building_block_factory.create_compiled_identity(
+        tensor_type_1, 'a')
+    tensor_type_2 = computation_types.TensorType(tf.float32)
     compiled_2 = building_block_factory.create_compiled_identity(
-        tf.float32, 'a')
+        tensor_type_2, 'a')
     self.assertFalse(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations(self):
-    compiled_1 = building_block_factory.create_compiled_identity(tf.int32, 'a')
-    compiled_2 = building_block_factory.create_compiled_identity(tf.int32, 'a')
+    tensor_type = computation_types.TensorType(tf.int32)
+    compiled_1 = building_block_factory.create_compiled_identity(
+        tensor_type, 'a')
+    compiled_2 = building_block_factory.create_compiled_identity(
+        tensor_type, 'a')
     self.assertTrue(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_true_for_compiled_computations_with_different_names(self):
-    compiled_1 = building_block_factory.create_compiled_identity(tf.int32, 'a')
-    compiled_2 = building_block_factory.create_compiled_identity(tf.int32, 'b')
+    tensor_type = computation_types.TensorType(tf.int32)
+    compiled_1 = building_block_factory.create_compiled_identity(
+        tensor_type, 'a')
+    compiled_2 = building_block_factory.create_compiled_identity(
+        tensor_type, 'b')
     self.assertTrue(tree_analysis.trees_equal(compiled_1, compiled_2))
 
   def test_returns_false_for_data_with_different_types(self):

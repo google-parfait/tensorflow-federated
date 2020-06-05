@@ -15,6 +15,7 @@
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 
@@ -25,7 +26,8 @@ class TensorFlowDeserializationTest(test.TestCase):
 
   @test.graph_mode_test
   def test_deserialize_and_call_tf_computation_with_add_one(self):
-    identity_fn = building_block_factory.create_compiled_identity(tf.int32)
+    identity_type = computation_types.TensorType(tf.int32)
+    identity_fn = building_block_factory.create_compiled_identity(identity_type)
     init_op, result = tensorflow_deserialization.deserialize_and_call_tf_computation(
         identity_fn.proto, tf.constant(10), tf.compat.v1.get_default_graph())
     self.assertTrue(tf.is_tensor(result))

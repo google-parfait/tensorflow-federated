@@ -55,12 +55,14 @@ class PruneTensorFlowProtoTest(absltest.TestCase):
       tensorflow_computation_transformations.prune_tensorflow_proto(None)
 
   def test_raises_on_compiled_computation(self):
-    comp = building_block_factory.create_compiled_identity(tf.int32)
+    tensor_type = computation_types.TensorType(tf.int32)
+    comp = building_block_factory.create_compiled_identity(tensor_type)
     with self.assertRaises(TypeError):
       tensorflow_computation_transformations.prune_tensorflow_proto(comp)
 
   def test_does_not_reduce_no_unnecessary_ops(self):
-    comp = building_block_factory.create_compiled_identity(tf.int32)
+    tensor_type = computation_types.TensorType(tf.int32)
+    comp = building_block_factory.create_compiled_identity(tensor_type)
     pruned = building_blocks.CompiledComputation(
         tensorflow_computation_transformations.prune_tensorflow_proto(
             comp.proto))
