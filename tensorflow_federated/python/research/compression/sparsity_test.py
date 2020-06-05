@@ -71,8 +71,4 @@ class SparseQuantizingEncoderTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  # TODO(b/148756730): Delete this explicit graph mode enforcement. This is a
-  # temporary workaround due to a bug in tfmot package, and can be removed in a
-  # tfmot version following 0.2.1.
-  tf.compat.v1.disable_v2_behavior()
   tf.test.main()
