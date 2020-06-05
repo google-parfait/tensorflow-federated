@@ -25,8 +25,6 @@ from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def _invoke(ex, comp, arg=None):
   loop = asyncio.get_event_loop()

@@ -19,8 +19,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class KerasCallbacksTest(tf.test.TestCase):
 

@@ -33,9 +33,6 @@ from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-tf.compat.v1.enable_v2_behavior()
-
-
 def all_isinstance(objs: Iterable[Any], classinfo: Type[Any]) -> bool:
   return all(isinstance(x, classinfo) for x in objs)
 

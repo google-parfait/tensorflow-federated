@@ -38,8 +38,6 @@ from tensorflow_federated.python.core.impl.executors import reference_resolving_
 from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def create_remote_executor():
   port = portpicker.pick_unused_port()

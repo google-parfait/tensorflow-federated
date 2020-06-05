@@ -21,11 +21,9 @@ import time
 
 from absl import logging
 from absl.testing import absltest
-import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import tracing
 
-tf.compat.v1.enable_v2_behavior()
 
 # Traces may not run in _exactly_ one second, but we can assert it was at least
 # one second; and most importantly the time should be logged.

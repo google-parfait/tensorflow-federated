@@ -27,8 +27,6 @@ from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class SizingExecutorTest(parameterized.TestCase):
 

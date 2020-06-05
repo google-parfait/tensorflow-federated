@@ -15,14 +15,10 @@
 
 from absl.testing import absltest
 
-import tensorflow as tf
-
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.test import static_assert
-
-tf.compat.v1.enable_v2_behavior()
 
 
 @computations.federated_computation

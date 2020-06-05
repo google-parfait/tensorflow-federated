@@ -20,8 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import emnist
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class LoadDataTest(tf.test.TestCase, absltest.TestCase):
 

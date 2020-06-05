@@ -36,8 +36,6 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def _create_bottom_stack():
   return reference_resolving_executor.ReferenceResolvingExecutor(

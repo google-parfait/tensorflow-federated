@@ -21,8 +21,6 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class WrappedForTest(function_utils.ConcreteFunction):
   """A class that represents a wrapped function for testing purposes.

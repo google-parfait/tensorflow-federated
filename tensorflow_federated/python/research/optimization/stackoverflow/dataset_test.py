@@ -18,8 +18,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.optimization.stackoverflow import dataset
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class DatasetTest(tf.test.TestCase):
 

@@ -20,8 +20,6 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def _dummy_canonical_form_computations():
 

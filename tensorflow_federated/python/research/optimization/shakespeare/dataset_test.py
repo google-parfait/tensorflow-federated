@@ -16,8 +16,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.optimization.shakespeare import dataset
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class DatasetPreprocessingTest(tf.test.TestCase):
 

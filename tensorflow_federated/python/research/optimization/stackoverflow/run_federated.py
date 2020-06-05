@@ -67,7 +67,6 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Expected no command-line arguments, '
                          'got: {}'.format(argv))
-  tf.compat.v1.enable_v2_behavior()
 
   model_builder = functools.partial(
       models.create_recurrent_model,

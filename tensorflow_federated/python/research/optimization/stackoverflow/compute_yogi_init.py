@@ -47,7 +47,6 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Expected no command-line arguments, '
                          'got: {}'.format(argv))
-  tf.compat.v1.enable_v2_behavior()
   tff.framework.set_default_executor(
       tff.framework.local_executor_factory(max_fanout=10))
 

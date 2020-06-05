@@ -17,8 +17,6 @@ import tensorflow as tf
 from tensorflow_federated.python.research.optimization.shakespeare import models
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class ModelsTest(tf.test.TestCase):
 

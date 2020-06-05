@@ -15,15 +15,11 @@
 from unittest import mock
 from absl.testing import parameterized
 
-import tensorflow as tf
-
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.types import placement_literals
-
-tf.compat.v1.enable_v2_behavior()
 
 
 class ExecutorFactoryImplTest(parameterized.TestCase):

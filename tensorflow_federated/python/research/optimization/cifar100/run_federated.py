@@ -53,8 +53,6 @@ def main(argv):
     raise app.UsageError('Expected no command-line arguments, '
                          'got: {}'.format(argv))
 
-  tf.compat.v1.enable_v2_behavior()
-
   cifar_train, cifar_test = dataset.get_federated_cifar100(
       client_epochs_per_round=FLAGS.client_epochs_per_round,
       train_batch_size=FLAGS.client_batch_size,

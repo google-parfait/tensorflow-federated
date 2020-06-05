@@ -38,9 +38,6 @@ from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.types import type_factory
 
 
-tf.compat.v1.enable_v2_behavior()
-
-
 @computations.tf_computation(
     computation_types.SequenceType(tf.float32), tf.float32)
 def count_over(ds, t):

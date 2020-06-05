@@ -23,8 +23,6 @@ from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.templates import measured_process
 
-tf.compat.v1.enable_v2_behavior()
-
 
 # A test output for MeasuredProcess that matches the required type signature.
 @attr.s(frozen=True, slots=True, eq=False)

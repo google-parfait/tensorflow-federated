@@ -386,7 +386,6 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  tf.compat.v1.enable_v2_behavior()
   logging.set_verbosity(logging.INFO)
 
   # Flags.

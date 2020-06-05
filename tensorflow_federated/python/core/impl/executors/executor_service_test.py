@@ -30,8 +30,6 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class TestEnv(object):
   """A test environment that consists of a single client and backend service."""

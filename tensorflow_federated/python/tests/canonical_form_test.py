@@ -21,8 +21,6 @@ import tensorflow_federated as tff
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def construct_example_training_comp():
   """Constructs a `tff.templates.IterativeProcess` via the FL API."""

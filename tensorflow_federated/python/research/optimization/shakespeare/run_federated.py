@@ -74,8 +74,6 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  tf.compat.v1.enable_v2_behavior()
-
   train_clientdata, test_dataset = dataset.construct_character_level_datasets(
       FLAGS.client_batch_size, FLAGS.client_epochs_per_round,
       FLAGS.sequence_length)

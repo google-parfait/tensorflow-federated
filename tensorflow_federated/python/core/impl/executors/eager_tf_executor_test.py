@@ -27,8 +27,6 @@ from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def _get_logical_devices_for_testing(device_list=('CPU', 'GPU', 'TPU')):
   result = []

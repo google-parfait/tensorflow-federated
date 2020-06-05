@@ -17,7 +17,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.optimization.stackoverflow_lr import dataset
 
-tf.compat.v1.enable_v2_behavior()
 
 TEST_BATCH_SIZE = dataset.TEST_BATCH_SIZE
 

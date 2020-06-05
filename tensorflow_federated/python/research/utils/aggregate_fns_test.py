@@ -19,8 +19,6 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.utils import aggregate_fns
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def create_weights_delta(input_size=2, hidden_size=5, constant=0):
   """Returns deterministic weights delta for a linear model."""

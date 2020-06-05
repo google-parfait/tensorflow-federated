@@ -22,7 +22,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation import hdf5_client_data
 
-tf.compat.v1.enable_v2_behavior()
 
 TEST_DATA = {
     'CLIENT A': {

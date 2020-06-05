@@ -25,8 +25,6 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import executor_service_utils
 from tensorflow_federated.python.core.impl.types import type_factory
 
-tf.compat.v1.enable_v2_behavior()
-
 
 class ExecutorServiceUtilsTest(tf.test.TestCase):
 

@@ -49,8 +49,6 @@ FLAGS = flags.FLAGS
 
 def main(_):
 
-  tf.compat.v1.enable_v2_behavior()
-
   emnist_train, emnist_test = dataset.get_emnist_datasets(
       FLAGS.client_batch_size, FLAGS.client_epochs_per_round, only_digits=False)
 

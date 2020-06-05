@@ -22,8 +22,6 @@ from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.templates import iterative_process
 
-tf.compat.v1.enable_v2_behavior()
-
 
 # Create two tff.Computations that perform sum on a sequence: initializes the
 # state to 0 and add each item in a sequence to the state.

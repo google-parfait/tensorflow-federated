@@ -178,7 +178,6 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tff.framework.set_default_executor(
       tff.framework.local_executor_factory(max_fanout=25))
   tf.test.main()

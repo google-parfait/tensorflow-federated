@@ -28,8 +28,6 @@ from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_factory
 
-tf.compat.v1.enable_v2_behavior()
-
 
 def _temperature_sensor_example_next_fn():
 
