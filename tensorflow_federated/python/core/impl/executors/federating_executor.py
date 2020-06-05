@@ -306,14 +306,14 @@ class CentralizedIntrinsicStrategy(IntrinsicStrategy):
     item_type = val_type.member
     zero_type = arg.type_signature[1]
     op_type = arg.type_signature[2]
-    type_utils.check_equivalent_types(
+    type_analysis.check_equivalent_types(
         op_type, type_factory.reduction_op(zero_type, item_type))
 
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
     child = self._get_child_executors(placement_literals.SERVER, index=0)
 
-    async def move(v):
+    async def _move(v):
       return await child.create_value(await v.compute(), item_type)
 
     items = await asyncio.gather(*[_move(v) for v in val])
@@ -365,8 +365,8 @@ class CentralizedIntrinsicStrategy(IntrinsicStrategy):
 
     py_typecheck.check_type(pre_report.type_signature,
                             computation_types.FederatedType)
-    type_utils.check_equivalent_types(pre_report.type_signature.member,
-                                      report_type.parameter)
+    type_analysis.check_equivalent_types(pre_report.type_signature.member,
+                                         report_type.parameter)
 
     report = arg.internal_representation[4]
     return await fed_ex._compute_intrinsic_federated_apply(
