@@ -251,8 +251,7 @@ def _get_emnist_eval_hook_fn(exp_name, output_dir, hparams_dict, gan_loss_fns,
   summary_logdir = os.path.join(output_dir, 'logdir/{}'.format(exp_name))
   tf.io.gfile.makedirs(summary_logdir)
 
-  summary_writer = tf.compat.v2.summary.create_file_writer(
-      summary_logdir, name=exp_name)
+  summary_writer = tf.summary.create_file_writer(summary_logdir, name=exp_name)
 
   # Record the hyperparameter flag settings.
   with summary_writer.as_default():
@@ -290,7 +289,7 @@ def _get_emnist_eval_hook_fn(exp_name, output_dir, hparams_dict, gan_loss_fns,
     flat_metrics = collections.OrderedDict(flat_metrics)
     with summary_writer.as_default():
       for name, value in flat_metrics.items():
-        tf.compat.v2.summary.scalar(name, value, step=round_num)
+        tf.summary.scalar(name, value, step=round_num)
 
     # Print out the counters, and log how long it took to compute/write metrics.
     for k, v in server_state.counters.items():

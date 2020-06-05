@@ -113,7 +113,7 @@ def load(export_dir, obj_template):
     FileNotFoundError: No such file or directory.
   """
   if tf.io.gfile.exists(export_dir):
-    loaded = tf.compat.v2.saved_model.load(export_dir)
+    loaded = tf.saved_model.load(export_dir)
 
     flat_obj = loaded.build_obj_fn()
     obj = tf.nest.pack_sequence_as(obj_template, flat_obj)

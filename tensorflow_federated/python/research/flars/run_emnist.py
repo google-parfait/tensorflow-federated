@@ -233,7 +233,7 @@ class _MetricsHook(object):
     _check_not_exists(summary_logdir, FLAGS.disable_check_exists)
     tf.io.gfile.makedirs(summary_logdir)
 
-    self._summary_writer = tf.compat.v2.summary.create_file_writer(
+    self._summary_writer = tf.summary.create_file_writer(
         summary_logdir, name=experiment_name)
     with self._summary_writer.as_default():
       hp.hparams(hparam_dict)
@@ -279,7 +279,7 @@ class _MetricsHook(object):
     # Also write metrics to a tf.summary logdir
     with self._summary_writer.as_default():
       for name, value in flat_metrics.items():
-        tf.compat.v2.summary.scalar(name, value, step=round_num)
+        tf.summary.scalar(name, value, step=round_num)
 
     if tf.io.gfile.exists(self._results_file):
       metrics = pd.read_csv(

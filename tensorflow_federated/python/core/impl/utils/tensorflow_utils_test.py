@@ -979,7 +979,7 @@ class GraphUtilsTest(test.TestCase):
     with tf.Graph().as_default():
       ds = tensorflow_utils.make_dataset_from_variant_tensor(
           tf.data.experimental.to_variant(tf.data.Dataset.range(5)), tf.int64)
-      self.assertIsInstance(ds, tf.compat.v2.data.Dataset)
+      self.assertIsInstance(ds, tf.data.Dataset)
       result = ds.reduce(np.int64(0), lambda x, y: x + y)
       with tf.compat.v1.Session() as sess:
         self.assertEqual(sess.run(result), 10)

@@ -80,7 +80,7 @@ def _setup_outputs(root_output_dir, experiment_name, hparam_dict):
 
   summary_logdir = os.path.join(root_output_dir, 'logdir', experiment_name)
   create_if_not_exists(summary_logdir)
-  summary_writer = tf.compat.v2.summary.create_file_writer(summary_logdir)
+  summary_writer = tf.summary.create_file_writer(summary_logdir)
 
   hparam_dict['metrics_file'] = metrics_mngr.metrics_filename
   hparams_file = os.path.join(results_dir, 'hparams.csv')
@@ -117,7 +117,7 @@ def _write_metrics(metrics_mngr, summary_writer, metrics, round_num):
   # Also write metrics to a tf.summary logdir
   with summary_writer.as_default():
     for name, val in flat_metrics.items():
-      tf.compat.v2.summary.scalar(name, val, step=round_num)
+      tf.summary.scalar(name, val, step=round_num)
 
 
 def _compute_numpy_l2_difference(model, previous_model):

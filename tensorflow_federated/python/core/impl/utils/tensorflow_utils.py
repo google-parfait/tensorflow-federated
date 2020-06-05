@@ -479,8 +479,7 @@ def capture_result_from_graph(result, graph):
             pb.TensorFlow.Binding(
                 tuple=pb.TensorFlow.NamedTupleBinding(
                     element=[e[1] for e in element_type_binding_pairs])))
-  elif isinstance(result,
-                  (tf.compat.v1.data.Dataset, tf.compat.v2.data.Dataset)):
+  elif isinstance(result, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
     variant_tensor = tf.data.experimental.to_variant(result)
     element_structure = result.element_spec
     try:

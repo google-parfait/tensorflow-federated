@@ -545,7 +545,7 @@ def deserialize_dataset(serialized_bytes):
       f.write(serialized_bytes)
     with zipfile.ZipFile(temp_zip, 'r') as z:
       z.extractall(path=temp_dir)
-    loaded = tf.compat.v2.saved_model.load(temp_dir)
+    loaded = tf.saved_model.load(temp_dir)
     # TODO(b/156302055): Follow up here when bug is resolved, either remove
     # if this function call stops failing by default, or leave if this is
     # working as intended.

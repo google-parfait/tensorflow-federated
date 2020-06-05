@@ -160,7 +160,7 @@ class FileCheckpointManager(CheckpointManager):
     if not tf.io.gfile.exists(checkpoint_path):
       raise FileNotFoundError(
           'No such file or directory: {}'.format(checkpoint_path))
-    model = tf.compat.v2.saved_model.load(checkpoint_path)
+    model = tf.saved_model.load(checkpoint_path)
     flat_obj = model.build_obj_fn()
     state = tf.nest.pack_sequence_as(structure, flat_obj)
     round_num = self._round_num(checkpoint_path)
