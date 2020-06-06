@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.executors import default_federating_strategy
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federating_executor
@@ -39,7 +40,7 @@ def all_isinstance(objs: Iterable[Any], classinfo: Type[Any]) -> bool:
 
 def create_test_executor(
     number_of_clients: int = 3,
-    intrinsic_strategy_fn: Callable = federating_executor.CentralizedIntrinsicStrategy,
+    intrinsic_strategy_fn: Callable = default_federating_strategy.DefaultFederatingStrategy,
 ) -> federating_executor.FederatingExecutor:
 
   def create_bottom_stack():
