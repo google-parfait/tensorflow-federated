@@ -124,7 +124,7 @@ def _wass_grad_penalty_term(real_images,
     differences = gen_images - real_images
     batch_size = tf.shape(differences)[0]
     alpha_shape = [batch_size] + [1] * (differences.shape.ndims - 1)
-    alpha = tf.random_uniform(shape=alpha_shape)
+    alpha = tf.random.uniform(shape=alpha_shape)
     interpolates = real_images + (alpha * differences)
     return interpolates
 
