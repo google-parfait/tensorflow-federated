@@ -40,7 +40,7 @@ def all_isinstance(objs: Iterable[Any], classinfo: Type[Any]) -> bool:
 
 def create_test_executor(
     number_of_clients: int = 3,
-    intrinsic_strategy_fn: Callable = default_federating_strategy.DefaultFederatingStrategy,
+    strategy: Callable = default_federating_strategy.DefaultFederatingStrategy,
 ) -> federating_executor.FederatingExecutor:
 
   def create_bottom_stack():
@@ -55,7 +55,7 @@ def create_test_executor(
       None: create_bottom_stack(),
   }
   return federating_executor.FederatingExecutor(
-      target_executors, intrinsic_strategy_fn=intrinsic_strategy_fn)
+      target_executors, strategy=strategy)
 
 
 def get_named_parameters_for_supported_intrinsics() -> List[Tuple[str, Any]]:
@@ -376,9 +376,9 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   def test_raises_value_error_with_no_target_executor_clients(
       self, value, type_signature):
     executor = federating_executor.FederatingExecutor({
-        placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
-        None: eager_tf_executor.EagerTFExecutor()
-    })
+            placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
+            None: eager_tf_executor.EagerTFExecutor()},
+        strategy=default_federating_strategy.DefaultFederatingStrategy)
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
@@ -412,9 +412,9 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   def test_raises_value_error_with_no_target_executor_server(
       self, value, type_signature):
     executor = federating_executor.FederatingExecutor({
-        placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
-        None: eager_tf_executor.EagerTFExecutor()
-    })
+            placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
+            None: eager_tf_executor.EagerTFExecutor()},
+        strategy=default_federating_strategy.DefaultFederatingStrategy)
     value, type_signature = executor_test_utils.create_dummy_value_at_server()
 
     with self.assertRaises(ValueError):
@@ -884,11 +884,11 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
       self.run_sync(executor.create_selection(source, index=0))
 
 
-class IntrinsicStrategyTest(parameterized.TestCase):
+class FederatingStrategyTest(parameterized.TestCase):
 
-  def test_improper_intrinsic_strategy_fn(self):
+  def test_improper_federating_strategy(self):
 
-    class MockIntrinsicStrategy:
+    class MockFederatingStrategy:
 
       def __init__(self, parent_executor):
         self.executor = parent_executor
@@ -898,17 +898,17 @@ class IntrinsicStrategyTest(parameterized.TestCase):
         pass
 
     with self.assertRaises(TypeError):
-      create_test_executor(intrinsic_strategy_fn=MockIntrinsicStrategy)
+      create_test_executor(strategy=MockFederatingStrategy)
 
   def test_placement_validate_necessary(self):
 
-    class MockIntrinsicStrategy(federating_executor.IntrinsicStrategy):
+    class MockFederatingStrategy(federating_executor.FederatingStrategy):
 
       def __init__(self, parent_executor):
         self.executor = parent_executor
 
     with self.assertRaises(TypeError):
-      create_test_executor(intrinsic_strategy_fn=MockIntrinsicStrategy)
+      create_test_executor(strategy=MockFederatingStrategy)
 
 
 if __name__ == '__main__':

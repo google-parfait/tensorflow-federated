@@ -118,10 +118,10 @@ class FederatingExecutorValue(executor_value_base.ExecutorValue):
                                   py_typecheck.type_string(type(self._value))))
 
 
-class IntrinsicStrategy(abc.ABC):
+class FederatingStrategy(abc.ABC):
   """Base class for intrinsic strategies.
 
-  Defines the contract between IntrinsicStrategy implementations and
+  Defines the contract between FederatingStrategy implementations and
   FederatingExecutor. Includes some basic functionality that should be common
   to all intrinsic strategies, e.g. placement and mapping functions.
   See concrete implementations for more details.
@@ -182,7 +182,7 @@ class FederatingExecutor(executor_base.Executor):
 
   def __init__(self,
                target_executors,
-               intrinsic_strategy_fn=CentralizedIntrinsicStrategy):
+               strategy):
     """Creates a federated executor backed by a collection of target executors.
 
     Args:
@@ -193,18 +193,17 @@ class FederatingExecutor(executor_base.Executor):
         there only is a single participant associated with that placement, as
         would typically be the case with `tff.SERVER`) or lists of target
         executors.
-      intrinsic_strategy_fn: A callable mapping the current executor instance to
-        an instantiation of an IntrinsicStrategy implementation.
+      strategy: A callable mapping the current executor instance to
+        an instantiation of a FederatingStrategy implementation.
 
     Raises:
       ValueError: If the target_executors are improper for the given
-        intrinsic_strategy_fn.
+        strategy.
     """
-    py_typecheck.check_callable(intrinsic_strategy_fn)
-    intrinsic_strategy = intrinsic_strategy_fn(self)
-    py_typecheck.check_type(intrinsic_strategy, IntrinsicStrategy)
-    intrinsic_strategy.validate_executor_placements(target_executors)
-    self.intrinsic_strategy = intrinsic_strategy
+    py_typecheck.check_callable(strategy)
+    self._strategy = strategy(self)
+    py_typecheck.check_type(self._strategy, FederatingStrategy)
+    self._strategy.validate_executor_placements(target_executors)
 
     self._target_executors = {}
     for k, v in target_executors.items():
@@ -492,69 +491,68 @@ class FederatingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def _compute_intrinsic_federated_value_at_server(self, arg):
-    return await self.intrinsic_strategy.federated_value_at_server(arg)
+    return await self._strategy.federated_value_at_server(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_value_at_clients(self, arg):
-    return await self.intrinsic_strategy.federated_value_at_clients(arg)
+    return await self._strategy.federated_value_at_clients(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_eval_at_server(self, arg):
-    return await self.intrinsic_strategy.federated_eval_at_server(arg)
+    return await self._strategy.federated_eval_at_server(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_eval_at_clients(self, arg):
-    return await self.intrinsic_strategy.federated_eval_at_clients(arg)
+    return await self._strategy.federated_eval_at_clients(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_apply(self, arg):
-    return await self.intrinsic_strategy.federated_apply(arg)
+    return await self._strategy.federated_apply(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_map(self, arg):
-    return await self.intrinsic_strategy.federated_map(arg)
+    return await self._strategy.federated_map(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_map_all_equal(self, arg):
-    return await self.intrinsic_strategy.federated_map_all_equal(arg)
+    return await self._strategy.federated_map_all_equal(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_broadcast(self, arg):
-    return await self.intrinsic_strategy.federated_broadcast(arg)
+    return await self._strategy.federated_broadcast(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_zip_at_server(self, arg):
-    return await self.intrinsic_strategy.federated_zip_at_server(arg)
+    return await self._strategy.federated_zip_at_server(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_zip_at_clients(self, arg):
-    return await self.intrinsic_strategy.federated_zip_at_clients(arg)
+    return await self._strategy.federated_zip_at_clients(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_reduce(self, arg):
-    return await self.intrinsic_strategy.federated_reduce(arg)
+    return await self._strategy.federated_reduce(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_aggregate(self, arg):
-    return await self.intrinsic_strategy.federated_aggregate(arg)
+    return await self._strategy.federated_aggregate(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_sum(self, arg):
-    return await self.intrinsic_strategy.federated_sum(arg)
+    return await self._strategy.federated_sum(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_mean(self, arg):
-    return await self.intrinsic_strategy.federated_mean(arg)
+    return await self._strategy.federated_mean(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_weighted_mean(self, arg):
-    return await executor_utils.compute_intrinsic_federated_weighted_mean(
-        self, arg)
+    return await self._strategy.federated_weighted_mean(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_collect(self, arg):
-    return await self.intrinsic_strategy.federated_collect(arg)
+    return await self._strategy.federated_collect(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_secure_sum(self, arg):
-    return await self.intrinsic_strategy.federated_secure_sum(arg)
+    return await self._strategy.federated_secure_sum(arg)

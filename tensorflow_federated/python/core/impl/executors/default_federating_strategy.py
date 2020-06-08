@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_factory
 
+
 class DefaultFederatingStrategy(federating_executor.FederatingStrategy):
   """Strategy for parameter server style execution of intrinsics.
 
@@ -89,7 +90,7 @@ class DefaultFederatingStrategy(federating_executor.FederatingStrategy):
       return await child.create_call(await child.create_value(fn, fn_type))
 
     results = await asyncio.gather(*[call(child) for child in children])
-    return FederatingExecutorValue(
+    return federating_executor.FederatingExecutorValue(
         results,
         computation_types.FederatedType(
             fn_type.result, placement, all_equal=all_equal))
@@ -118,7 +119,7 @@ class DefaultFederatingStrategy(federating_executor.FederatingStrategy):
     results = await asyncio.gather(*[
         c.create_call(f, v) for c, (f, v) in zip(children, list(zip(fns, val)))
     ])
-    return FederatingExecutorValue(
+    return federating_executor.FederatingExecutorValue(
         results,
         computation_types.FederatedType(
             fn_type.result, val_type.placement, all_equal=all_equal))
@@ -141,7 +142,7 @@ class DefaultFederatingStrategy(federating_executor.FederatingStrategy):
           anonymous_tuple.AnonymousTuple([(k, v[idx]) for k, v in elements]))
     new_vals = await asyncio.gather(
         *[c.create_tuple(x) for c, x in zip(children, new_vals)])
-    return FederatingExecutorValue(
+    return federating_executor.FederatingExecutorValue(
         new_vals,
         computation_types.FederatedType(
             computation_types.NamedTupleType((
@@ -224,7 +225,7 @@ class DefaultFederatingStrategy(federating_executor.FederatingStrategy):
       result = await child.create_call(
           op, await child.create_tuple(
               anonymous_tuple.AnonymousTuple([(None, result), (None, item)])))
-    return FederatingExecutorValue([result],
+    return federating_executor.FederatingExecutorValue([result],
                                    computation_types.FederatedType(
                                        result.type_signature,
                                        placement_literals.SERVER,
@@ -251,7 +252,7 @@ class DefaultFederatingStrategy(federating_executor.FederatingStrategy):
     zero = arg.internal_representation[1]
     accumulate = arg.internal_representation[2]
     pre_report = await fed_ex._compute_intrinsic_federated_reduce(
-        FederatingExecutorValue(
+        federating_executor.FederatingExecutorValue(
             anonymous_tuple.AnonymousTuple([(None, val), (None, zero),
                                             (None, accumulate)]),
             computation_types.NamedTupleType(
@@ -264,7 +265,7 @@ class DefaultFederatingStrategy(federating_executor.FederatingStrategy):
 
     report = arg.internal_representation[4]
     return await fed_ex._compute_intrinsic_federated_apply(
-        FederatingExecutorValue(
+        federating_executor.FederatingExecutorValue(
             anonymous_tuple.AnonymousTuple([
                 (None, report), (None, pre_report.internal_representation)
             ]),
@@ -281,7 +282,7 @@ class DefaultFederatingStrategy(federating_executor.FederatingStrategy):
                                                 arg.type_signature.member,
                                                 tf.add))
     return await self.federating_executor._compute_intrinsic_federated_reduce(
-        FederatingExecutorValue(
+        federating_executor.FederatingExecutorValue(
             anonymous_tuple.AnonymousTuple([
                 (None, arg.internal_representation),
                 (None, zero.internal_representation),
@@ -309,10 +310,11 @@ class DefaultFederatingStrategy(federating_executor.FederatingStrategy):
                                          arg_sum.internal_representation[0]),
                                         (None, factor)]))
     result = await child.create_call(multiply, multiply_arg)
-    return FederatingExecutorValue([result], arg_sum.type_signature)
+    return federating_executor.FederatingExecutorValue(
+        [result], arg_sum.type_signature)
 
   async def federated_weighted_mean(self, arg):
-    return await executor_utils.compute_federated_weighted_mean(
+    return await executor_utils.compute_intrinsic_federated_weighted_mean(
         self.federating_executor, arg)
 
   async def federated_collect(self, arg):
@@ -326,7 +328,7 @@ class DefaultFederatingStrategy(federating_executor.FederatingStrategy):
     collected_items = await child.create_value(
         await asyncio.gather(*[v.compute() for v in val]),
         computation_types.SequenceType(member_type))
-    return FederatingExecutorValue(
+    return federating_executor.FederatingExecutorValue(
         [collected_items],
         computation_types.FederatedType(
             computation_types.SequenceType(member_type),

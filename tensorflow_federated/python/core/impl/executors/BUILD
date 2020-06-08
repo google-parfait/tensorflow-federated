@@ -170,6 +170,26 @@ py_test(
 )
 
 py_library(
+    name = "default_federating_strategy",
+    srcs = ["default_federating_strategy.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":executor_base",
+        ":executor_utils",
+        ":executor_value_base",
+        ":federating_executor",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:tracing",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_factory",
+    ],
+)
+
+py_library(
     name = "eager_tf_executor",
     srcs = ["eager_tf_executor.py"],
     srcs_version = "PY3",
@@ -477,6 +497,7 @@ py_test(
     deps = [
         ":eager_tf_executor",
         ":executor_test_utils",
+        ":default_federating_strategy",
         ":federating_executor",
         ":reference_resolving_executor",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
