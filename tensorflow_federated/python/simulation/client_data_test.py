@@ -35,7 +35,7 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
                      tf.TensorSpec(shape=(), dtype=tf.int64))
 
     def length(ds):
-      return tf.data.experimental.cardinality(ds).numpy()
+      return ds.cardinality().numpy()
 
     for i in client_ids:
       self.assertEqual(length(client_data.create_tf_dataset_for_client(i)), i)
