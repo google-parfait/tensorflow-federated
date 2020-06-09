@@ -17,8 +17,7 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 
 def serialize_computation(
@@ -65,5 +64,5 @@ def deserialize_computation(
     TypeError: If the argument is of the wrong type.
   """
   py_typecheck.check_type(computation_proto, pb.Computation)
-  return computation_wrapper_instances.building_block_to_computation(
-      building_blocks.ComputationBuildingBlock.from_proto(computation_proto))
+  return computation_impl.ComputationImpl(computation_proto,
+                                          context_stack_impl.context_stack)

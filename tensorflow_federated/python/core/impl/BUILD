@@ -172,8 +172,7 @@ py_library(
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )
 
