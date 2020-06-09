@@ -17,8 +17,6 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_transformations
 
@@ -283,40 +281,6 @@ class TransformTypePostorderTest(absltest.TestCase):
     self.assertEqual(noop_type, orig_type)
     self.assertTrue(mutated)
     self.assertFalse(not_mutated)
-
-  def test_reconcile_value_type_with_type_spec(self):
-    self.assertEqual(
-        str(type_utils.reconcile_value_type_with_type_spec(tf.int32, tf.int32)),
-        'int32')
-    self.assertEqual(
-        str(type_utils.reconcile_value_type_with_type_spec(tf.int32, None)),
-        'int32')
-    with self.assertRaises(TypeError):
-      type_utils.reconcile_value_type_with_type_spec(tf.int32, tf.bool)
-
-  def test_reconcile_value_with_type_spec(self):
-    self.assertEqual(
-        str(type_utils.reconcile_value_with_type_spec(10, tf.int32)), 'int32')
-
-    @computations.tf_computation(tf.bool)
-    def comp(x):
-      return x
-
-    self.assertEqual(
-        str(type_utils.reconcile_value_with_type_spec(comp, None)),
-        '(bool -> bool)')
-
-    self.assertEqual(
-        str(
-            type_utils.reconcile_value_with_type_spec(
-                comp, computation_types.FunctionType(tf.bool, tf.bool))),
-        '(bool -> bool)')
-
-    with self.assertRaises(TypeError):
-      type_utils.reconcile_value_with_type_spec(10, None)
-
-    with self.assertRaises(TypeError):
-      type_utils.reconcile_value_with_type_spec(comp, tf.int32)
 
 
 class VisitPreorderTest(parameterized.TestCase):

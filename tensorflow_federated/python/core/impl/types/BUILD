@@ -170,7 +170,5 @@ py_test(
         ":placement_literals",
         ":type_transformations",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl:type_utils",
     ],
 )

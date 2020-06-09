@@ -13,7 +13,7 @@
 """Utilities for type conversion, type checking, type inference, etc."""
 
 import collections
-
+from typing import Any, Optional
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -45,7 +45,8 @@ def to_canonical_value(value):
   return value
 
 
-def reconcile_value_with_type_spec(value, type_spec):
+def reconcile_value_with_type_spec(
+    value: Any, type_spec: computation_types.Type) -> computation_types.Type:
   """Reconciles the type of `value` with the given `type_spec`.
 
   The currently implemented logic only performs reconciliation of `value` and
@@ -57,7 +58,7 @@ def reconcile_value_with_type_spec(value, type_spec):
 
   Args:
     value: An object that represents a value.
-    type_spec: An instance of `tff.Type` or something convertible to it.
+    type_spec: An instance of `tff.Type`.
 
   Returns:
     An instance of `tff.Type`. If `value` is not a `tff.TypedObject`, this is
@@ -71,7 +72,6 @@ def reconcile_value_with_type_spec(value, type_spec):
     TypeError: If the `value` type and `type_spec` are incompatible, or if the
       type cannot be determined..
   """
-  type_spec = computation_types.to_type(type_spec)
   if isinstance(value, typed_object.TypedObject):
     return reconcile_value_type_with_type_spec(value.type_signature, type_spec)
   elif type_spec is not None:
@@ -81,14 +81,14 @@ def reconcile_value_with_type_spec(value, type_spec):
         'Cannot derive an eager representation for a value of an unknown type.')
 
 
-def reconcile_value_type_with_type_spec(value_type, type_spec):
+def reconcile_value_type_with_type_spec(
+    value_type: computation_types.Type,
+    type_spec: Optional[computation_types.Type]) -> computation_types.Type:
   """Reconciles a pair of types.
 
   Args:
-    value_type: An instance of `tff.Type` or something convertible to it. Must
-      not be `None`.
-    type_spec: An instance of `tff.Type`, something convertible to it, or
-      `None`.
+    value_type: An instance of `tff.Type`.
+    type_spec: An instance of `tff.Type`, or `None`.
 
   Returns:
     Either `value_type` if `type_spec` is `None`, or `type_spec` if `type_spec`
@@ -97,14 +97,10 @@ def reconcile_value_type_with_type_spec(value_type, type_spec):
   Raises:
     TypeError: If arguments are of incompatible types.
   """
-  value_type = computation_types.to_type(value_type)
   py_typecheck.check_type(value_type, computation_types.Type)
-  if type_spec is None:
-    return value_type
-  else:
-    type_spec = computation_types.to_type(type_spec)
-    if type_analysis.are_equivalent_types(value_type, type_spec):
-      return type_spec
-    else:
+  if type_spec is not None:
+    py_typecheck.check_type(value_type, computation_types.Type)
+    if not type_analysis.are_equivalent_types(value_type, type_spec):
       raise TypeError('Expected a value of type {}, found {}.'.format(
           type_spec, value_type))
+  return type_spec if type_spec is not None else value_type

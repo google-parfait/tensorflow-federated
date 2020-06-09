@@ -13,6 +13,8 @@
 # limitations under the License.
 """A simple executor that operates synchronously in eager TensorFlow mode."""
 
+from typing import Any, MutableMapping, Optional
+
 import cachetools
 import tensorflow as tf
 
@@ -200,10 +202,11 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     return lambda: fn_to_return(None)
 
 
-def to_representation_for_type(value,
-                               tf_function_cache,
-                               type_spec=None,
-                               device=None):
+def to_representation_for_type(value: Any,
+                               tf_function_cache: MutableMapping[str, Any],
+                               type_spec: Optional[
+                                   computation_types.Type] = None,
+                               device: Optional[str] = None) -> Any:
   """Verifies or converts the `value` to an eager object matching `type_spec`.
 
   WARNING: This function is only partially implemented. It does not support
@@ -240,7 +243,7 @@ def to_representation_for_type(value,
   elif isinstance(value, pb.Computation):
     key = (value.SerializeToString(), str(type_spec), device)
     cached_fn = tf_function_cache.get(key)
-    if cached_fn:
+    if cached_fn is not None:
       return cached_fn
     embedded_fn = embed_tensorflow_computation(value, type_spec, device)
     tf_function_cache[key] = embedded_fn

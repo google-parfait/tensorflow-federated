@@ -173,21 +173,26 @@ class EagerTFExecutorTest(tf.test.TestCase):
     self.assertAlmostEqual(results[1].numpy(), 1.2)
 
   def test_to_representation_for_type_with_int(self):
-    v = eager_tf_executor.to_representation_for_type(10, {}, tf.int32)
+    value = 10
+    type_signature = computation_types.TensorType(tf.int32)
+    v = eager_tf_executor.to_representation_for_type(value, {}, type_signature)
     self.assertIsInstance(v, tf.Tensor)
     self.assertEqual(v.numpy(), 10)
     self.assertEqual(v.dtype, tf.int32)
 
   def test_to_representation_for_tf_variable(self):
-    v = eager_tf_executor.to_representation_for_type(
-        tf.Variable(10, dtype=tf.int32), {},
-        type_spec=computation_types.TensorType(tf.int32))
+    value = tf.Variable(10, dtype=tf.int32)
+    type_signature = computation_types.TensorType(tf.int32)
+    v = eager_tf_executor.to_representation_for_type(value, {}, type_signature)
     self.assertIsInstance(v, tf.Tensor)
     self.assertEqual(v.numpy(), 10)
     self.assertEqual(v.dtype, tf.int32)
 
   def test_to_representation_for_type_with_int_on_specific_device(self):
-    v = eager_tf_executor.to_representation_for_type(10, {}, tf.int32, '/CPU:0')
+    value = 10
+    type_signature = computation_types.TensorType(tf.int32)
+    v = eager_tf_executor.to_representation_for_type(value, {}, type_signature,
+                                                     '/CPU:0')
     self.assertIsInstance(v, tf.Tensor)
     self.assertEqual(v.numpy(), 10)
     self.assertEqual(v.dtype, tf.int32)
