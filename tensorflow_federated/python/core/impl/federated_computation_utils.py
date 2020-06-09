@@ -12,7 +12,7 @@
 # limitations under the License.
 """Helpers for creating larger structures out of computating building blocks."""
 
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 def zero_or_one_arg_fn_to_building_block(
     fn,
     parameter_name: Optional[str],
-    parameter_type: Optional[Any],
+    parameter_type: Optional[computation_types.Type],
     context_stack: context_stack_base.ContextStack,
     suggested_name: Optional[str] = None,
 ) -> Tuple[building_blocks.ComputationBuildingBlock, computation_types.Type]:
@@ -37,7 +37,7 @@ def zero_or_one_arg_fn_to_building_block(
       i.e., that expects zero or one `values_base.Value` and returns a result
       convertible to the same.
     parameter_name: The name of the parameter, or `None` if there is't any.
-    parameter_type: The TFF type of the parameter, or `None` if there's none.
+    parameter_type: The `tff.Type` of the parameter, or `None` if there's none.
     context_stack: The context stack to use.
     suggested_name: The optional suggested name to use for the federated context
       that will be used to serialize this function's body (ideally the name of
@@ -56,7 +56,6 @@ def zero_or_one_arg_fn_to_building_block(
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if suggested_name is not None:
     py_typecheck.check_type(suggested_name, str)
-  parameter_type = computation_types.to_type(parameter_type)
   if isinstance(context_stack.current,
                 federated_computation_context.FederatedComputationContext):
     parent_context = context_stack.current
