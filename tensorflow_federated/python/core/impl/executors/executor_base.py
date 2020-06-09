@@ -51,10 +51,10 @@ class Executor(object, metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  async def create_call(self,
-                        comp,
-                        arg: Optional[evb.ExecutorValue] = None
-                       ) -> evb.ExecutorValue:
+  async def create_call(
+      self,
+      comp: evb.ExecutorValue,
+      arg: Optional[evb.ExecutorValue] = None) -> evb.ExecutorValue:
     """A coroutine that creates a call to `comp` with optional argument `arg`.
 
     Args:
@@ -86,7 +86,10 @@ class Executor(object, metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  async def create_selection(self, source, index=None, name=None):
+  async def create_selection(self,
+                             source,
+                             index=None,
+                             name=None) -> evb.ExecutorValue:
     """A coroutine that creates a selection from `source`.
 
     Args:

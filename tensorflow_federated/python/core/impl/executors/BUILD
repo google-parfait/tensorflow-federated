@@ -611,6 +611,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
+        ":executor_value_base",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:tracing",
     ],
