@@ -69,21 +69,12 @@ class DpUtilsTest(test.TestCase):
         expected_num_clients=10)
     self.assertIsInstance(query,
                           tensorflow_privacy.QuantileAdaptiveClipAverageQuery)
-
-    self.assertEqual(query._numerator._initial_l2_norm_clip, 1.0)
+    self.assertIsInstance(query._numerator,
+                          tensorflow_privacy.QuantileAdaptiveClipSumQuery)
 
     expected_sum_query_noise_multiplier = 2.0 * (1.0 - ccba)**(-0.5)
     self.assertAlmostEqual(query._numerator._noise_multiplier,
                            expected_sum_query_noise_multiplier)
-    self.assertEqual(query._numerator._target_unclipped_quantile, 0.5)
-    self.assertEqual(query._numerator._learning_rate, 0.05)
-    self.assertEqual(
-        query._numerator._clipped_fraction_query._numerator._l2_norm_clip, 0.5)
-    expected_clipped_count_stddev = 0.5 * 2.0 * ccba**(-0.5)
-    self.assertAlmostEqual(
-        query._numerator._clipped_fraction_query._numerator._stddev,
-        expected_clipped_count_stddev)
-    self.assertEqual(query._numerator._clipped_fraction_query._denominator, 10)
     self.assertEqual(query._denominator, 3.0)
 
   def test_build_dp_query_per_vector(self):
