@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import collections
+import functools
 
-from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -132,45 +132,105 @@ class UtilsTest(test.TestCase):
           non_trainable_weights=[np.array(3)])
 
 
-class ServerTest(test.TestCase, parameterized.TestCase):
+class ModelDeltaOptimizerTest(test.TestCase):
 
-  # pyformat: disable
-  @parameterized.named_parameters(
-      ('_sgd', lambda: tf.compat.v1.train.GradientDescentOptimizer(learning_rate=0.1),
-       0.1, 0),
-      # It looks like Adam introduces 2 + 2*num_model_variables additional vars.
-      ('_adam', lambda: tf.compat.v1.train.AdamOptimizer(  # pylint: disable=g-long-lambda
-          learning_rate=0.1, beta1=0.0, beta2=0.0, epsilon=1.0), 0.05, 6))
-  # pyformat: enable
-  def test_server_eager_mode(self, optimizer_fn, updated_val,
-                             num_optimizer_vars):
-    model_fn = lambda: model_examples.LinearRegression(feature_dim=2)
-
-    server_state = optimizer_utils.server_init(model_fn, optimizer_fn, (), ())
-    model_vars = self.evaluate(server_state.model)
-    train_vars = model_vars.trainable
-    self.assertLen(train_vars, 2)
-    self.assertAllClose(train_vars, [np.zeros((2, 1)), 0.0])
-    self.assertAllClose(model_vars.non_trainable, [0.0])
-    self.assertLen(server_state.optimizer_state, num_optimizer_vars)
-    weights_delta = [tf.constant([[1.0], [0.0]]), tf.constant(1.0)]
-    server_state = optimizer_utils.server_update_model(server_state,
-                                                       weights_delta, model_fn,
-                                                       optimizer_fn)
-
-    model_vars = self.evaluate(server_state.model)
-    train_vars = model_vars.trainable
-    # For SGD: learning_Rate=0.1, update=[1.0, 0.0], initial model=[0.0, 0.0],
-    # so updated_val=0.1
-    self.assertLen(train_vars, 2)
-    self.assertAllClose(train_vars, [[[updated_val], [0.0]], updated_val])
-    self.assertAllClose(model_vars.non_trainable, [0.0])
-
-  def test_orchestration_execute(self):
+  def test_contruction(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
+        server_optimizer_fn=tf.keras.optimizers.SGD)
+
+    server_state_type = tff.FederatedType(
+        optimizer_utils.ServerState(
+            model=model_utils.ModelWeights(
+                trainable=[
+                    tff.TensorType(tf.float32, [2, 1]),
+                    tff.TensorType(tf.float32)
+                ],
+                non_trainable=[tff.TensorType(tf.float32)]),
+            optimizer_state=[tf.int64],
+            delta_aggregate_state=(),
+            model_broadcast_state=()), tff.SERVER)
+
+    self.assertEqual(iterative_process.initialize.type_signature,
+                     tff.FunctionType(parameter=None, result=server_state_type))
+
+    dataset_type = tff.FederatedType(
+        tff.SequenceType(
+            collections.OrderedDict(
+                x=tff.TensorType(tf.float32, [None, 2]),
+                y=tff.TensorType(tf.float32, [None, 1]))), tff.CLIENTS)
+
+    metrics_type = tff.FederatedType(
+        collections.OrderedDict(
+            loss=tff.TensorType(tf.float32),
+            num_examples=tff.TensorType(tf.int32)), tff.SERVER)
+
+    self.assertEqual(
+        iterative_process.next.type_signature,
+        tff.FunctionType(
+            parameter=(server_state_type, dataset_type),
+            result=(server_state_type, metrics_type)))
+
+  def test_contruction_with_adam_optimizer(self):
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_examples.LinearRegression,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=tf.keras.optimizers.Adam)
+    # Assert that the optimizer_state includes the 5 variables (scalar for
+    # # of iterations, plus two copies of the kernel and bias in the model).
+    initialize_type = iterative_process.initialize.type_signature
+    self.assertLen(initialize_type.result.member.optimizer_state, 5)
+
+    next_type = iterative_process.next.type_signature
+    self.assertLen(next_type.parameter[0].member.optimizer_state, 5)
+    self.assertLen(next_type.result[0].member.optimizer_state, 5)
+
+  def test_contruction_with_aggregator_state(self):
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_examples.LinearRegression,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=tf.keras.optimizers.SGD,
+        stateful_delta_aggregate_fn=state_incrementing_mean)
+
+    expected_aggregate_state_type = tff.TensorType(tf.int32)
+
+    initialize_type = iterative_process.initialize.type_signature
+    self.assertEqual(initialize_type.result.member.delta_aggregate_state,
+                     expected_aggregate_state_type)
+
+    next_type = iterative_process.next.type_signature
+    self.assertEqual(next_type.parameter[0].member.delta_aggregate_state,
+                     expected_aggregate_state_type)
+    self.assertEqual(next_type.result[0].member.delta_aggregate_state,
+                     expected_aggregate_state_type)
+
+  def test_contruction_with_broadcast_state(self):
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_examples.LinearRegression,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=tf.keras.optimizers.SGD,
+        stateful_model_broadcast_fn=state_incrementing_broadcaster)
+
+    expected_broadcast_state_type = tff.TensorType(tf.int32)
+
+    initialize_type = iterative_process.initialize.type_signature
+    self.assertEqual(initialize_type.result.member.model_broadcast_state,
+                     expected_broadcast_state_type)
+
+    next_type = iterative_process.next.type_signature
+    self.assertEqual(next_type.parameter[0].member.model_broadcast_state,
+                     expected_broadcast_state_type)
+    self.assertEqual(next_type.result[0].member.model_broadcast_state,
+                     expected_broadcast_state_type)
+
+  def test_orchestration_execute_sgd(self):
+    learning_rate = 1.0
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_examples.LinearRegression,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=functools.partial(
+            tf.keras.optimizers.SGD, learning_rate=learning_rate),
         # A federated_mean that maintains an int32 state equal to the
         # number of times the federated_mean has been executed,
         # allowing us to test that a stateful aggregator's state
@@ -187,14 +247,18 @@ class ServerTest(test.TestCase, parameterized.TestCase):
     federated_ds = [ds] * 3
 
     state = iterative_process.initialize()
+    # SGD keeps track of a single scalar for the number of iterations.
+    self.assertAllEqual(state.optimizer_state, [0])
     self.assertAllClose(list(state.model.trainable), [np.zeros((2, 1)), 0.0])
     self.assertAllClose(list(state.model.non_trainable), [0.0])
     self.assertEqual(state.delta_aggregate_state, 0)
     self.assertEqual(state.model_broadcast_state, 0)
 
     state, outputs = iterative_process.next(state, federated_ds)
-    self.assertAllClose(list(state.model.trainable), [-np.ones((2, 1)), -1.0])
+    self.assertAllClose(
+        list(state.model.trainable), [-np.ones((2, 1)), -1.0 * learning_rate])
     self.assertAllClose(list(state.model.non_trainable), [0.0])
+    self.assertAllEqual(state.optimizer_state, [1])
     self.assertEqual(state.delta_aggregate_state, 1)
     self.assertEqual(state.model_broadcast_state, 1)
 
