@@ -37,6 +37,12 @@ class PlacementLiteralsTest(absltest.TestCase):
     self.assertEqual(foo[placement_literals.CLIENTS], 10)
     self.assertEqual(foo[placement_literals.SERVER], 20)
 
+  def test_comparison_to_none(self):
+    self.assertNotEqual(placement_literals.CLIENTS, None)
+    self.assertNotEqual(placement_literals.SERVER, None)
+    self.assertNotEqual(None, placement_literals.CLIENTS)
+    self.assertNotEqual(None, placement_literals.SERVER)
+
 
 if __name__ == '__main__':
   absltest.main()
