@@ -490,24 +490,28 @@ class FederatingExecutor(executor_base.Executor):
                 participants=len(children)))
 
   @tracing.trace
-  async def _compute_intrinsic_federated_value_at_server(self, arg):
-    return await self._strategy.federated_value_at_server(arg)
+  async def _compute_intrinsic_federated_aggregate(self, arg):
+    return await self._strategy.federated_aggregate(arg)
+  
+  @tracing.trace
+  async def _compute_intrinsic_federated_apply(self, arg):
+    return await self._strategy.federated_apply(arg)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_value_at_clients(self, arg):
-    return await self._strategy.federated_value_at_clients(arg)
+  async def _compute_intrinsic_federated_broadcast(self, arg):
+    return await self._strategy.federated_broadcast(arg)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_eval_at_server(self, arg):
-    return await self._strategy.federated_eval_at_server(arg)
+  async def _compute_intrinsic_federated_collect(self, arg):
+    return await self._strategy.federated_collect(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_eval_at_clients(self, arg):
     return await self._strategy.federated_eval_at_clients(arg)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_apply(self, arg):
-    return await self._strategy.federated_apply(arg)
+  async def _compute_intrinsic_federated_eval_at_server(self, arg):
+    return await self._strategy.federated_eval_at_server(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_map(self, arg):
@@ -518,41 +522,37 @@ class FederatingExecutor(executor_base.Executor):
     return await self._strategy.federated_map_all_equal(arg)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_broadcast(self, arg):
-    return await self._strategy.federated_broadcast(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_zip_at_server(self, arg):
-    return await self._strategy.federated_zip_at_server(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_zip_at_clients(self, arg):
-    return await self._strategy.federated_zip_at_clients(arg)
+  async def _compute_intrinsic_federated_mean(self, arg):
+    return await self._strategy.federated_mean(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_reduce(self, arg):
     return await self._strategy.federated_reduce(arg)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_aggregate(self, arg):
-    return await self._strategy.federated_aggregate(arg)
+  async def _compute_intrinsic_federated_secure_sum(self, arg):
+    return await self._strategy.federated_secure_sum(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_sum(self, arg):
     return await self._strategy.federated_sum(arg)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_mean(self, arg):
-    return await self._strategy.federated_mean(arg)
+  async def _compute_intrinsic_federated_value_at_clients(self, arg):
+    return await self._strategy.federated_value_at_clients(arg)
+
+  @tracing.trace
+  async def _compute_intrinsic_federated_value_at_server(self, arg):
+    return await self._strategy.federated_value_at_server(arg)
 
   @tracing.trace
   async def _compute_intrinsic_federated_weighted_mean(self, arg):
     return await self._strategy.federated_weighted_mean(arg)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_collect(self, arg):
-    return await self._strategy.federated_collect(arg)
+  async def _compute_intrinsic_federated_zip_at_clients(self, arg):
+    return await self._strategy.federated_zip_at_clients(arg)
 
   @tracing.trace
-  async def _compute_intrinsic_federated_secure_sum(self, arg):
-    return await self._strategy.federated_secure_sum(arg)
+  async def _compute_intrinsic_federated_zip_at_server(self, arg):
+    return await self._strategy.federated_zip_at_server(arg)
