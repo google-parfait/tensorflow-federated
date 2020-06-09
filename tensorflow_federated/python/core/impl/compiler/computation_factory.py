@@ -43,7 +43,7 @@ def create_lambda_empty_tuple() -> pb.Computation:
       type=type_serialization.serialize_type(type_signature), **{'lambda': fn})  # pytype: disable=wrong-keyword-args
 
 
-def create_lambda_identity(type_spec) -> pb.Computation:
+def create_lambda_identity(type_spec: computation_types.Type) -> pb.Computation:
   """Returns a lambda computation representing an identity function.
 
   Has the type signature:
@@ -51,13 +51,11 @@ def create_lambda_identity(type_spec) -> pb.Computation:
   (T -> T)
 
   Args:
-    type_spec: A type convertible to instance of `computation_types.Type` via
-      `computation_types.to_type`.
+    type_spec: A `computation_types.Type`.
 
   Returns:
     An instance of `pb.Computation`.
   """
-  type_spec = computation_types.to_type(type_spec)
   type_signature = type_factory.unary_op(type_spec)
   result = pb.Computation(
       type=type_serialization.serialize_type(type_spec),
