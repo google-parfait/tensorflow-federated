@@ -34,7 +34,10 @@ py_test(
     srcs = ["client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":client_data"],
+    deps = [
+        ":client_data",
+        "//tensorflow_federated/python/tensorflow_libs:version_check",
+    ],
 )
 
 py_library(
