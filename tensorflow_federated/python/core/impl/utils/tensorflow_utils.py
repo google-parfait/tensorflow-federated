@@ -1132,14 +1132,15 @@ def get_deps_for_graph_node(graph_def, node_name):
   py_typecheck.check_type(node_name, str)
   input_map = {}
   for node in graph_def.node:
-    input_map[node.name] = set([to_node_name(x) for x in node.input])
+    input_map[node.name] = set(to_node_name(x) for x in node.input)
   dependencies = set()
   initial_singleton = set([node_name])
-  todo = initial_singleton
-  while todo:
-    dependencies.update(todo)
-    todo = set.union(*[input_map[name]
-                       for name in todo]).difference(dependencies)
+  nodes_to_process = initial_singleton
+  while nodes_to_process:
+    dependencies.update(nodes_to_process)
+    nodes_to_process = set.union(
+        *[input_map[name]
+          for name in nodes_to_process]).difference(dependencies)
   return dependencies.difference(initial_singleton)
 
 
