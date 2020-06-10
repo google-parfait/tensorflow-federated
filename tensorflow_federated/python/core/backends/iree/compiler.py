@@ -22,13 +22,13 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.backends.iree import computation_module
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
-def import_tensorflow_computation(comp, type_spec=None, name='fn'):
-  """Converts a TF computation into an MLIR module that can be compiled by IREE.
+def import_tensorflow_computation(comp, name='fn'):
+  """Creates a `computation_module.ComputationModule` from a TF computation.
 
   WARNING: This helper function is under construction, and most capabilities are
   not implemented at this stage:
@@ -42,39 +42,25 @@ def import_tensorflow_computation(comp, type_spec=None, name='fn'):
 
   Args:
     comp: An instance of a `pb.Computation` with TensorFlow code to import.
-    type_spec: An optional `tff.Type` instance.
     name: An optional `str` name of the (single) function in the IREE module.
 
   Returns:
-    An instance of IREE compiler's `CompilerModule` class with the imported
-    function present.
+    An instance of `Module` with the imported function present.
 
   Raises:
     TypeError: If arguments are of the wrong types, e.g., in `comp` is not a
       TensorFlow computation.
   """
   py_typecheck.check_type(comp, pb.Computation)
-  comp_type = type_serialization.deserialize_type(comp.type)
-  if type_spec is not None:
-    py_typecheck.check_type(type_spec, computation_types.Type)
-    if not type_analysis.are_equivalent_types(type_spec, comp_type):
-      raise TypeError('Expected a computation of type {}, got {}.'.format(
-          type_spec, comp_type))
-  else:
-    type_spec = comp_type
-
-  if isinstance(type_spec, computation_types.FunctionType):
-    param_type = type_spec.parameter
-    result_type = type_spec.result
-  else:
-    param_type = None
-    result_type = type_spec
+  type_spec = type_serialization.deserialize_type(comp.type)
+  if not isinstance(type_spec, computation_types.FunctionType):
+    type_spec = computation_types.FunctionType(None, type_spec)
 
   # TODO(b/153499219): Replace this with a recursive check of the signature
   # after relaxing the type restrictions and introducing nested structures.
-  py_typecheck.check_type(result_type, computation_types.TensorType)
-  if param_type is not None:
-    py_typecheck.check_type(param_type, computation_types.TensorType)
+  py_typecheck.check_type(type_spec.result, computation_types.TensorType)
+  if type_spec.parameter is not None:
+    py_typecheck.check_type(type_spec.parameter, computation_types.TensorType)
 
   which_computation = comp.WhichOneof('computation')
   if which_computation != 'tensorflow':
@@ -83,7 +69,7 @@ def import_tensorflow_computation(comp, type_spec=None, name='fn'):
 
   output_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
       comp.tensorflow.result)
-  if param_type is not None:
+  if type_spec.parameter is not None:
     input_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
         comp.tensorflow.parameter)
   else:
@@ -138,5 +124,6 @@ def import_tensorflow_computation(comp, type_spec=None, name='fn'):
             legacy_init_op=initializer,
             strip_default_attrs=True)
         builder.save()
-      return iree_compiler.tf_load_signature_def_saved_model(
+      iree_module = iree_compiler.tf_load_signature_def_saved_model(
           model_dir, tags=set(['unused']), exported_names=[name])
+      return computation_module.ComputationModule(iree_module, name, type_spec)

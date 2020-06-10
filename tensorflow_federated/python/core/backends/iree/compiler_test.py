@@ -17,18 +17,13 @@ import re
 import numpy as np
 import tensorflow as tf
 
-from iree.bindings.python.pyiree import rt as iree_runtime
-from iree.integrations.tensorflow.bindings.python.pyiree.tf import compiler as iree_compiler
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import compiler
+from tensorflow_federated.python.core.backends.iree import computation_module
+from tensorflow_federated.python.core.backends.iree import runtime
 from tensorflow_federated.python.core.impl import computation_impl
-
-
-# The config must be shared across contexts, otherwise the runtime crashes.
-# TODO(b/153499219): Possibly remove this once IREE moves to the singleton
-# pattern to ensure there is never more than one config.
-_IREE_RUNTIME_CONFIG = iree_runtime.Config('vulkan')
 
 
 class CompilerTest(tf.test.TestCase):
@@ -46,7 +41,7 @@ class CompilerTest(tf.test.TestCase):
         '  return %0',
         '}',
     ])
-    result = self._run_imported_module_on_args(module)
+    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV)
     self.assertEqual(result, 99.0)
 
   def test_import_tf_comp_with_one_variable_constant(self):
@@ -65,7 +60,7 @@ class CompilerTest(tf.test.TestCase):
         '  return %2',
         '}',
     ])
-    result = self._run_imported_module_on_args(module)
+    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV)
     self.assertEqual(result, 99.0)
 
   def test_import_tf_comp_with_add_one(self):
@@ -82,7 +77,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %1',
         '}',
     ])
-    result = self._run_imported_module_on_args(module, np.float32(5.0))
+    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV,
+                                             np.float32(5.0))
     self.assertEqual(result, 6.0)
 
   def test_import_tf_comp_with_variable_add_one(self):
@@ -104,7 +100,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %3',
         '}',
     ])
-    result = self._run_imported_module_on_args(module, np.float32(5.0))
+    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV,
+                                             np.float32(5.0))
     self.assertEqual(result, 6.0)
 
   def test_import_tf_comp_with_variable_assign_add_one(self):
@@ -133,7 +130,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %4',
         '}',
     ])
-    result = self._run_imported_module_on_args(module, np.float32(5.0))
+    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV,
+                                             np.float32(5.0))
     self.assertEqual(result, 6.0)
 
   def test_import_tf_comp_with_while_loop(self):
@@ -150,7 +148,7 @@ class CompilerTest(tf.test.TestCase):
           body_fn = lambda a, b: (a - 1.0, b * 2.0)
           return tf.while_loop(cond_fn, body_fn, (a, b))[1]
 
-    _, mlir = self._import_compile_and_return_module_and_mlir(comp)
+    module, mlir = self._import_compile_and_return_module_and_mlir(comp)
 
     # Not checking the full MLIR in the long generated body, just that we can
     # successfully ingest TF code containing a while loop here, end-to-end. We
@@ -158,13 +156,15 @@ class CompilerTest(tf.test.TestCase):
     self._assert_mlir_contains_pattern(
         mlir, ['func @fn(%arg0: tensor<f32>) -> tensor<f32>'])
 
-    # TODO(b/153499219): Add the runtime test after fixing compilation errors,
-    # and/or switch to vmla as the backend for this test, as vulkan has issues
-    # with Boolean types.
+    # TODO(b/153499219): Switch the backend to VULKAN_SPIRV after fixing these
+    # compilation errors on VULKAN:
     # * [ERROR]: SPIRV type conversion failed: 'memref<i1>'
     # * [ERROR]: failed to legalize operation 'iree.placeholder'
     # * [ERROR]: failed to run translation of source executable to target
     #            executable for backend vulkan.
+    result = runtime.compile_and_run_on_args(module, backend_info.VMLA,
+                                             np.float32(5.0))
+    self.assertEqual(result, 32.0)
 
   def test_import_tf_comp_fails_with_non_tf_comp(self):
 
@@ -225,10 +225,9 @@ class CompilerTest(tf.test.TestCase):
       A tuple consisting of the compiler module and MLIR.
     """
     comp_proto = computation_impl.ComputationImpl.get_proto(comp)
-    comp_type = comp.type_signature
-    module = compiler.import_tensorflow_computation(comp_proto, comp_type)
-    self.assertIsInstance(module, iree_compiler.binding.CompilerModule)
-    mlir = module.to_asm(large_element_limit=100)
+    module = compiler.import_tensorflow_computation(comp_proto)
+    self.assertIsInstance(module, computation_module.ComputationModule)
+    mlir = module.compiler_module.to_asm(large_element_limit=100)
     return module, mlir
 
   def _assert_mlir_contains_pattern(self, actual_mlir, expected_list):
@@ -244,28 +243,6 @@ class CompilerTest(tf.test.TestCase):
     escaped_pattern = '.*'.join(
         re.escape(x.strip()).replace('SOMETHING', '.*') for x in expected_list)
     self.assertRegex(actual_mlir.replace('\n', ' '), escaped_pattern)
-
-  def _run_imported_module_on_args(self, module, *args):
-    """Testing helper that runs the compiled module on a given set of args.
-
-    Args:
-      module: The module from `_import_compile_and_return_module_and_mlir()`.
-      *args: Arguments for invocation.
-
-    Returns:
-      The result of invocation on IREE.
-    """
-    flatbuffer_blob = module.compile(target_backends=['vulkan-spirv'])
-    vm_module = iree_runtime.VmModule.from_flatbuffer(flatbuffer_blob)
-    context = iree_runtime.SystemContext(config=_IREE_RUNTIME_CONFIG)
-    context.add_module(vm_module)
-    # TODO(b/153499219): Can we possibly name the modules somehow differently?
-    # This may not matter if we spawn a separate context for each, but it will
-    # matter eventually. Right now, this comes from the implicit "module {}"
-    # that wraps anything parsed from ASM that lacks an explicit module
-    # declaration. Possibly manually surround with "module @myName { ... }" in
-    # the compiler helpers.
-    return context.modules.module.fn(*args)
 
 
 if __name__ == '__main__':
