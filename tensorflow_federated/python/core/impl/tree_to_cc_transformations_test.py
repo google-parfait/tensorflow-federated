@@ -14,89 +14,23 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
-from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import default_executor
-from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
-
-
-def _create_chained_dummy_federated_applys(functions, arg):
-  py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  for fn in functions:
-    py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
-    if not type_analysis.is_assignable_from(fn.parameter_type,
-                                            arg.type_signature.member):
-      raise TypeError(
-          'The parameter of the function is of type {}, and the argument is of '
-          'an incompatible type {}.'.format(
-              str(fn.parameter_type), str(arg.type_signature.member)))
-    call = building_block_factory.create_federated_apply(fn, arg)
-    arg = call
-  return call
-
-
-def _create_chained_dummy_federated_maps(functions, arg):
-  py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  for fn in functions:
-    py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
-    if not type_analysis.is_assignable_from(fn.parameter_type,
-                                            arg.type_signature.member):
-      raise TypeError(
-          'The parameter of the function is of type {}, and the argument is of '
-          'an incompatible type {}.'.format(
-              str(fn.parameter_type), str(arg.type_signature.member)))
-    call = building_block_factory.create_federated_map(fn, arg)
-    arg = call
-  return call
-
-
-def _create_lambda_to_dummy_cast(parameter_name, parameter_type, result_type):
-  py_typecheck.check_type(parameter_type, tf.dtypes.DType)
-  py_typecheck.check_type(result_type, tf.dtypes.DType)
-  arg = building_blocks.Data('data', result_type)
-  return building_blocks.Lambda(parameter_name, parameter_type, arg)
 
 
 def _create_compiled_computation(py_fn, arg_type):
   proto, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       py_fn, arg_type, context_stack_impl.context_stack)
   return building_blocks.CompiledComputation(proto)
-
-
-def _count_called_intrinsics(comp, uri=None):
-
-  def _predicate(comp):
-    return building_block_analysis.is_called_intrinsic(comp, uri)
-
-  return tree_analysis.count(comp, _predicate)
-
-
-def _create_complex_computation():
-  compiled_type = computation_types.TensorType(tf.int32)
-  compiled = building_block_factory.create_compiled_identity(compiled_type, 'a')
-  federated_type = computation_types.FederatedType(tf.int32,
-                                                   placement_literals.SERVER)
-  ref = building_blocks.Reference('b', federated_type)
-  called_federated_broadcast = building_block_factory.create_federated_broadcast(
-      ref)
-  called_federated_map = building_block_factory.create_federated_map(
-      compiled, called_federated_broadcast)
-  called_federated_mean = building_block_factory.create_federated_mean(
-      called_federated_map, None)
-  tup = building_blocks.Tuple([called_federated_mean, called_federated_mean])
-  return building_blocks.Lambda('b', tf.int32, tup)
 
 
 def parse_tff_to_tf(comp):
