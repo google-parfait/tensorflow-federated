@@ -11,6 +11,7 @@ Some pip packages are required by this library, and may need to be installed:
 pip install absl-py
 pip install attr
 pip install dm-tree
+pip install semantic-version
 pip install numpy
 pip install pandas
 pip install tensorflow
