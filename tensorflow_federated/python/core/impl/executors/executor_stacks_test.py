@@ -195,5 +195,29 @@ class ExecutorStacksTest(parameterized.TestCase):
       executor_factory_impl.create_executor(cardinalities)
 
 
+class UnplacedExecutorFactoryTest(absltest.TestCase):
+
+  def test_constructs_executor_factory(self):
+    unplaced_factory = executor_stacks.UnplacedExecutorFactory(use_caching=True)
+    self.assertIsInstance(unplaced_factory, executor_factory.ExecutorFactory)
+
+  def test_constructs_executor_factory_without_caching(self):
+    unplaced_factory_no_caching = executor_stacks.UnplacedExecutorFactory(
+        use_caching=False)
+    self.assertIsInstance(unplaced_factory_no_caching,
+                          executor_factory.ExecutorFactory)
+
+  def test_create_executor_returns_executor(self):
+    unplaced_factory = executor_stacks.UnplacedExecutorFactory(use_caching=True)
+    unplaced_executor = unplaced_factory.create_executor(cardinalities={})
+    self.assertIsInstance(unplaced_executor, executor_base.Executor)
+
+  def test_create_executor_raises_with_nonempty_cardinalitites(self):
+    unplaced_factory = executor_stacks.UnplacedExecutorFactory(use_caching=True)
+    with self.assertRaises(ValueError):
+      unplaced_factory.create_executor(
+          cardinalities={placement_literals.SERVER: 1})
+
+
 if __name__ == '__main__':
   absltest.main()

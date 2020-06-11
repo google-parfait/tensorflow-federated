@@ -14,7 +14,7 @@
 """A collection of constructors for basic types of executor stacks."""
 
 import functools
-from typing import List, Tuple
+from typing import Callable, List, Optional, Sequence, Tuple
 
 import tensorflow as tf
 
@@ -31,21 +31,72 @@ from tensorflow_federated.python.core.impl.executors import thread_delegating_ex
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 
-def _complete_stack(ex):
-  return reference_resolving_executor.ReferenceResolvingExecutor(
-      caching_executor.CachingExecutor(
-          thread_delegating_executor.ThreadDelegatingExecutor(ex)))
+def _wrap_executor_in_threading_stack(ex: executor_base.Executor,
+                                      use_caching: Optional[bool] = True):
+  threaded_ex = thread_delegating_executor.ThreadDelegatingExecutor(ex)
+  if use_caching:
+    threaded_ex = caching_executor.CachingExecutor(threaded_ex)
+  rre_wrapped_ex = reference_resolving_executor.ReferenceResolvingExecutor(
+      threaded_ex)
+  return rre_wrapped_ex
 
 
-def _create_bottom_stack(device=None):
-  return _complete_stack(eager_tf_executor.EagerTFExecutor(device=device))
+class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
+  """ExecutorFactory to construct executors which cannot understand placement.
+
+  This factory constructs executors which represent "local execution": work
+  that happens at the clients, at the server, or without placements. As such,
+  this executor manages the placement of work on local executors.
+  """
+
+  def __init__(
+      self,
+      *,
+      use_caching: bool,
+      server_device: Optional[tf.config.LogicalDevice] = None,
+      client_devices: Optional[Sequence[tf.config.LogicalDevice]] = ()):
+    self._use_caching = use_caching
+    self._server_device = server_device
+    self._client_devices = client_devices
+    self._client_device_index = 0
+
+  def _get_next_client_device(self):
+    if not self._client_devices:
+      return None
+    device = self._client_devices[self._client_device_index]
+    self._client_device_index = (self._client_device_index + 1) % len(
+        self._client_devices)
+    return device
+
+  def create_executor(
+      self,
+      *,
+      cardinalities: Optional[executor_factory.CardinalitiesType] = None,
+      placement: Optional[placement_literals.PlacementLiteral] = None
+  ) -> executor_base.Executor:
+    if cardinalities:
+      raise ValueError(
+          'Unplaced executors cannot accept nonempty cardinalities as '
+          'arguments. Received cardinalities: {}.'.format(cardinalities))
+    if placement == placement_literals.CLIENTS:
+      device = self._get_next_client_device()
+    elif placement == placement_literals.SERVER:
+      device = self._server_device
+    else:
+      device = None
+    eager_ex = eager_tf_executor.EagerTFExecutor(device=device)
+    return _wrap_executor_in_threading_stack(eager_ex)
+
+  def clean_up_executors(self):
+    # Does not hold any executors internally, so nothing to clean up.
+    pass
 
 
-def _create_federated_stack(num_clients, num_client_executors,
-                            device_scheduler):
+def _create_federated_stack(num_clients: int, num_client_executors: int,
+                            unplaced_ex_factory: UnplacedExecutorFactory):
   """Constructs local federated stack."""
   client_bottom_stacks = [
-      _create_bottom_stack(device=device_scheduler.next_client_device())
+      unplaced_ex_factory.create_executor(placement=placement_literals.CLIENTS)
       for _ in range(num_client_executors)
   ]
   executor_dict = {
@@ -54,41 +105,59 @@ def _create_federated_stack(num_clients, num_client_executors,
           for k in range(num_clients)
       ],
       placement_literals.SERVER:
-          _create_bottom_stack(device=device_scheduler.server_device()),
+          unplaced_ex_factory.create_executor(
+              placement=placement_literals.SERVER),
       None:
-          _create_bottom_stack(device=device_scheduler.server_device())
+          unplaced_ex_factory.create_executor(
+              placement=placement_literals.SERVER),
   }
-  return _complete_stack(federating_executor.FederatingExecutor(executor_dict))
+  return _wrap_executor_in_threading_stack(
+      federating_executor.FederatingExecutor(executor_dict))
 
 
-def _create_sizing_stack(num_clients, num_client_executors):
+def _create_sizing_stack(num_clients: int, num_client_executors: int,
+                         unplaced_ex_factory: UnplacedExecutorFactory):
   """Constructs local stack with sizing wired in at each client."""
-  sizing_stacks = [
-      sizing_executor.SizingExecutor(_create_bottom_stack())
-      for _ in range(num_client_executors)
-  ]
+  sizing_stacks = []
+  for _ in range(num_client_executors):
+    sizing_ex = sizing_executor.SizingExecutor(
+        unplaced_ex_factory.create_executor(
+            placement=placement_literals.CLIENTS))
+    sizing_stacks.append(sizing_ex)
+
   executor_dict = {
       placement_literals.CLIENTS: [
           sizing_stacks[k % len(sizing_stacks)] for k in range(num_clients)
       ],
-      placement_literals.SERVER: _create_bottom_stack(),
-      None: _create_bottom_stack()
+      placement_literals.SERVER:
+          unplaced_ex_factory.create_executor(
+              placement=placement_literals.SERVER),
+      None:
+          unplaced_ex_factory.create_executor(
+              placement=placement_literals.SERVER),
   }
-  return _complete_stack(
+  return _wrap_executor_in_threading_stack(
       federating_executor.FederatingExecutor(executor_dict)), sizing_stacks
 
 
-def _create_composite_stack(children):
-  return _complete_stack(
-      composing_executor.ComposingExecutor(_create_bottom_stack(), children))
+def _create_composite_stack(
+    children,
+    unplaced_ex_factory: UnplacedExecutorFactory) -> executor_base.Executor:
+  unplaced_executor = unplaced_ex_factory.create_executor()
+  return _wrap_executor_in_threading_stack(
+      composing_executor.ComposingExecutor(unplaced_executor, children))
 
 
-def _aggregate_stacks(executors, max_fanout):
+def _aggregate_stacks(
+    executors: Sequence[executor_base.Executor], max_fanout: int,
+    unplaced_ex_factory: UnplacedExecutorFactory) -> executor_base.Executor:
   """Aggregates multiple stacks into a single composite executor.
 
   Args:
     executors: Executors to aggregate as a `list`.
     max_fanout: The max fanout (see below).
+    unplaced_ex_factory: The unplaced executor factory to use in constructing
+      executors to execute unplaced computations in the hierarchy.
 
   Returns:
     An executor stack, potentially multi-level, that spans all `executors`.
@@ -111,7 +180,9 @@ def _aggregate_stacks(executors, max_fanout):
     while offset < len(executors):
       new_offset = offset + max_fanout
       new_executors.append(
-          _create_composite_stack(executors[offset:new_offset]))
+          _create_composite_stack(
+              executors[offset:new_offset],
+              unplaced_ex_factory=unplaced_ex_factory))
       offset = new_offset
     executors = new_executors
   if len(executors) != 1:
@@ -119,18 +190,25 @@ def _aggregate_stacks(executors, max_fanout):
   return executors[0]
 
 
-def _create_full_stack(num_clients, max_fanout, stack_func,
-                       num_client_executors):
+def _create_full_stack(
+    num_clients: int,
+    max_fanout: int,
+    stack_func: Callable[[int, int], executor_base.Executor],
+    num_client_executors: int,
+    unplaced_ex_factory: UnplacedExecutorFactory,
+) -> executor_base.Executor:
   """Creates a full executor stack.
 
   Args:
     num_clients: The number of clients to support. Must be 0 or larger.
     max_fanout: The maximum fanout at any point in the hierarchy. Must be 2 or
       larger.
-    stack_func: A function taking one argument which is the number of clients
-      and returns an executor_base.Executor.
+    stack_func: A function taking two integer arguments, the number of clients
+      and number of client executors, and returning an executor_base.Executor.
     num_client_executors: The maximum number of threads spun up locally to
       represent clients.
+    unplaced_ex_factory: The unplaced executor factory to use in constructing
+      executors to execute unplaced computations in the hierarchy.
 
   Returns:
     An executor stack, potentially multi-level, that spans all clients.
@@ -153,12 +231,14 @@ def _create_full_stack(num_clients, max_fanout, stack_func,
       n = min(num_clients, max_fanout)
       executors.append(stack_func(n, num_client_executors))
       num_clients -= n
-    return _aggregate_stacks(executors, max_fanout)
+    return _aggregate_stacks(executors, max_fanout, unplaced_ex_factory)
 
 
 def _create_explicit_cardinality_factory(
-    num_clients, max_fanout, stack_func,
-    num_client_executors) -> executor_factory.ExecutorFactory:
+    num_clients: int, max_fanout: int,
+    stack_func: Callable[[int, int], executor_base.Executor],
+    num_client_executors: int, unplaced_ex_factory: UnplacedExecutorFactory
+) -> executor_factory.ExecutorFactory:
   """Creates executor function with fixed cardinality."""
 
   def _return_executor(cardinalities):
@@ -167,16 +247,21 @@ def _create_explicit_cardinality_factory(
       raise ValueError('Expected to construct an executor with {} clients, '
                        'but executor is hardcoded for {}'.format(
                            n_requested_clients, num_clients))
-    return _create_full_stack(num_clients, max_fanout, stack_func,
-                              num_client_executors)
+    return _create_full_stack(
+        num_clients,
+        max_fanout,
+        stack_func,
+        num_client_executors,
+        unplaced_ex_factory=unplaced_ex_factory)
 
   return executor_factory.ExecutorFactoryImpl(
       executor_stack_fn=_return_executor)
 
 
 def _create_inferred_cardinality_factory(
-    max_fanout, stack_func,
-    num_client_executors) -> executor_factory.ExecutorFactory:
+    max_fanout, stack_func, num_client_executors,
+    unplaced_ex_factory: UnplacedExecutorFactory
+) -> executor_factory.ExecutorFactory:
   """Creates executor function with variable cardinality."""
 
   def _create_variable_clients_executors(cardinalities):
@@ -193,45 +278,10 @@ def _create_inferred_cardinality_factory(
 
     return _create_full_stack(
         cardinalities.get(placement_literals.CLIENTS, 0), max_fanout,
-        stack_func, num_client_executors)
+        stack_func, num_client_executors, unplaced_ex_factory)
 
   return executor_factory.ExecutorFactoryImpl(
       executor_stack_fn=_create_variable_clients_executors)
-
-
-class _DeviceScheduler():
-  """Assign server and clients to devices. Useful in multi-GPU environment."""
-
-  def __init__(self, server_tf_device, client_tf_devices):
-    """Initialize with server and client TF device placement.
-
-    Args:
-      server_tf_device: A `tf.config.LogicalDevice` to place server and other
-        computation without explicit TFF placement.
-      client_tf_devices: List/tuple of `tf.config.LogicalDevice` to place
-        clients for simulation. Possibly accelerators returned by
-        `tf.config.list_logical_devices()`.
-    """
-    py_typecheck.check_type(client_tf_devices, (tuple, list))
-    for device in client_tf_devices:
-      py_typecheck.check_type(device, tf.config.LogicalDevice)
-    self._client_devices = [d.name for d in client_tf_devices]
-    self._idx = 0
-    if server_tf_device is None:
-      self._server_device = None
-    else:
-      py_typecheck.check_type(server_tf_device, tf.config.LogicalDevice)
-      self._server_device = server_tf_device.name
-
-  def next_client_device(self):
-    """Gets a device to place the next client in cyclic order."""
-    if len(self._client_devices) < 1:
-      return None
-    self._idx = (self._idx + 1) % len(self._client_devices)
-    return self._client_devices[self._idx]
-
-  def server_device(self):
-    return self._server_device
 
 
 def local_executor_factory(
@@ -276,9 +326,12 @@ def local_executor_factory(
   if server_tf_device is not None:
     py_typecheck.check_type(server_tf_device, tf.config.LogicalDevice)
   py_typecheck.check_type(client_tf_devices, (tuple, list))
-  device_scheduler = _DeviceScheduler(server_tf_device, client_tf_devices)
+  unplaced_ex_factory = UnplacedExecutorFactory(
+      use_caching=True,
+      server_device=server_tf_device,
+      client_devices=client_tf_devices)
   stack_func = functools.partial(
-      _create_federated_stack, device_scheduler=device_scheduler)
+      _create_federated_stack, unplaced_ex_factory=unplaced_ex_factory)
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   if num_clients is not None:
@@ -288,10 +341,12 @@ def local_executor_factory(
                        'least one; you have passed {}.'.format(num_clients))
     return _create_explicit_cardinality_factory(num_clients, max_fanout,
                                                 stack_func,
-                                                num_client_executors)
+                                                num_client_executors,
+                                                unplaced_ex_factory)
   else:
     return _create_inferred_cardinality_factory(max_fanout, stack_func,
-                                                num_client_executors)
+                                                num_client_executors,
+                                                unplaced_ex_factory)
 
 
 def sizing_executor_factory(
@@ -340,11 +395,14 @@ def sizing_executor_factory(
       list of sizing executors underneath the top level executors.
     """
     sizing_exs = []
+    unplaced_ex_factory = UnplacedExecutorFactory(use_caching=True)
 
     def _standalone_stack_func(num_clients, num_client_executors):
       nonlocal sizing_exs
-      stack, current_sizing_exs = _create_sizing_stack(num_clients,
-                                                       num_client_executors)
+      stack, current_sizing_exs = _create_sizing_stack(
+          num_clients,
+          num_client_executors=num_client_executors,
+          unplaced_ex_factory=unplaced_ex_factory)
       sizing_exs.extend(current_sizing_exs)
       return stack
 
@@ -359,14 +417,21 @@ def sizing_executor_factory(
         raise ValueError('Expected to construct an executor with {} clients, '
                          'but executor is hardcoded for {}'.format(
                              n_requested_clients, num_clients))
-      return _create_full_stack(num_clients, max_fanout, _standalone_stack_func,
-                                num_client_executors), sizing_exs
+      return _create_full_stack(
+          num_clients,
+          max_fanout,
+          _standalone_stack_func,
+          num_client_executors,
+          unplaced_ex_factory=unplaced_ex_factory), sizing_exs
     # Inferred case.
     else:
       n_requested_clients = cardinalities.get(placement_literals.CLIENTS, 0)
-      return _create_full_stack(n_requested_clients, max_fanout,
-                                _standalone_stack_func,
-                                num_client_executors), sizing_exs
+      return _create_full_stack(
+          n_requested_clients,
+          max_fanout,
+          _standalone_stack_func,
+          num_client_executors,
+          unplaced_ex_factory=unplaced_ex_factory), sizing_exs
 
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
@@ -398,10 +463,12 @@ def worker_pool_executor_factory(executors,
     raise ValueError('The list executors cannot be empty.')
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
-  executors = [_complete_stack(e) for e in executors]
+  executors = [_wrap_executor_in_threading_stack(e) for e in executors]
+  unplaced_ex_factory = UnplacedExecutorFactory(use_caching=True)
 
   def _stack_fn(cardinalities):
     del cardinalities  # Unused
-    return _aggregate_stacks(executors, max_fanout)
+    return _aggregate_stacks(
+        executors, max_fanout, unplaced_ex_factory=unplaced_ex_factory)
 
   return executor_factory.ExecutorFactoryImpl(executor_stack_fn=_stack_fn)
