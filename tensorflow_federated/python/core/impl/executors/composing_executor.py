@@ -263,7 +263,7 @@ class ComposingExecutor(executor_base.Executor):
       py_typecheck.check_type(comp.type_signature,
                               computation_types.FunctionType)
       param_type = comp.type_signature.parameter
-      type_analysis.check_assignable_from(param_type, arg.type_signature)
+      param_type.check_assignable_from(arg.type_signature)
       arg = CompositeValue(arg.internal_representation, param_type)
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')

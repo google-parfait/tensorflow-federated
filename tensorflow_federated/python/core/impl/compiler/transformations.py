@@ -31,7 +31,6 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def prepare_for_rebinding(comp):
@@ -205,8 +204,7 @@ def construct_tensorflow_calling_lambda_on_concrete_arg(
   py_typecheck.check_type(body, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(concrete_arg,
                           building_blocks.ComputationBuildingBlock)
-  type_analysis.check_equivalent_types(parameter.type_signature,
-                                       concrete_arg.type_signature)
+  parameter.type_signature.check_equivalent_to(concrete_arg.type_signature)
 
   encapsulating_lambda = _generate_simple_tensorflow(
       building_blocks.Lambda(parameter.name, parameter.type_signature, body))

@@ -632,7 +632,7 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(square_drop_y(square_drop_y(10, 100), 5), int(1e4))
     with self.assertRaisesRegex(
         TypeError,
-        r'(is not assignable from source type)|'  # Reference executor
+        r'(Values of type .* cannot be cast to type .*)|'  # Reference executor
         '(Expected a value of type .*, found .*)'  # Local executor
     ):
       foo(square_drop_y, 10)

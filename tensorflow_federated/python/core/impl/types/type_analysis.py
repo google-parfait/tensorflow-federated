@@ -186,7 +186,7 @@ def check_type(val, type_spec):
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
   val_type = type_conversions.infer_type(val)
-  if not is_assignable_from(type_spec, val_type):
+  if not type_spec.is_assignable_from(val_type):
     raise TypeError(
         'Expected TFF type {}, which is not assignable from {}.'.format(
             type_spec, val_type))
@@ -246,7 +246,9 @@ def is_binary_op_with_upcast_compatible_pair(possibly_nested_type,
   if not (is_generic_op_compatible_type(possibly_nested_type) and
           is_generic_op_compatible_type(type_to_upcast)):
     return False
-  if are_equivalent_types(possibly_nested_type, type_to_upcast):
+  if possibly_nested_type is None:
+    return type_to_upcast is None
+  if possibly_nested_type.is_equivalent_to(type_to_upcast):
     return True
   if not (isinstance(type_to_upcast, computation_types.TensorType) and
           type_to_upcast.shape == tf.TensorShape(())):
@@ -503,7 +505,7 @@ def check_federated_type(type_spec,
   if member is not None:
     member = computation_types.to_type(member)
     py_typecheck.check_type(member, computation_types.Type)
-    check_assignable_from(member, type_spec.member)
+    member.check_assignable_from(type_spec.member)
   if placement is not None:
     py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
     if type_spec.placement is not placement:
@@ -544,122 +546,6 @@ def is_average_compatible(type_spec):
     return False
 
 
-def is_assignable_from(target_type, source_type):
-  """Determines whether `target_type` is assignable from `source_type`.
-
-  Args:
-    target_type: The expected type (that of the target of the assignment).
-    source_type: The actual type (that of the source of the assignment), tested
-      for being a specialization of the `target_type`.
-
-  Returns:
-    `True` iff `target_type` is assignable from `source_type`, or else `False`.
-
-  Raises:
-    TypeError: If the arguments are not TFF types.
-  """
-  target_type = computation_types.to_type(target_type)
-  source_type = computation_types.to_type(source_type)
-  py_typecheck.check_type(target_type, computation_types.Type)
-  py_typecheck.check_type(source_type, computation_types.Type)
-  if isinstance(target_type, computation_types.TensorType):
-
-    def _shape_is_assignable_from(x, y):
-
-      def _dimension_is_assignable_from(x, y):
-        return (x.value is None) or (x.value == y.value)
-
-      # TODO(b/123764922): See if we can pass to TensorShape's
-      # `is_compatible_with`.
-      return ((x.ndims == y.ndims) and ((x.dims is None) or all(
-          _dimension_is_assignable_from(x.dims[k], y.dims[k])
-          for k in range(x.ndims)))) or x.ndims is None
-
-    return (isinstance(source_type, computation_types.TensorType) and
-            (target_type.dtype == source_type.dtype) and
-            _shape_is_assignable_from(target_type.shape, source_type.shape))
-  elif isinstance(target_type, computation_types.NamedTupleType):
-    if not isinstance(source_type, computation_types.NamedTupleType):
-      return False
-    target_elements = anonymous_tuple.to_elements(target_type)
-    source_elements = anonymous_tuple.to_elements(source_type)
-    return ((len(target_elements) == len(source_elements)) and all(
-        ((source_elements[k][0] in [target_elements[k][0], None]) and
-         is_assignable_from(target_elements[k][1], source_elements[k][1]))
-        for k in range(len(target_elements))))
-  elif isinstance(target_type, computation_types.SequenceType):
-    return (isinstance(source_type, computation_types.SequenceType) and
-            is_assignable_from(target_type.element, source_type.element))
-  elif isinstance(target_type, computation_types.FunctionType):
-    return (isinstance(source_type, computation_types.FunctionType) and
-            (((source_type.parameter is None) and
-              (target_type.parameter is None)) or
-             ((source_type.parameter is not None) and
-              (target_type.parameter is not None) and is_assignable_from(
-                  source_type.parameter, target_type.parameter)) and
-             is_assignable_from(target_type.result, source_type.result)))
-  elif isinstance(target_type, computation_types.AbstractType):
-    # TODO(b/113112108): Revise this to extend the relation of assignability to
-    # abstract types.
-    raise TypeError('Abstract types are not comparable.')
-  elif isinstance(target_type, computation_types.PlacementType):
-    return isinstance(source_type, computation_types.PlacementType)
-  elif isinstance(target_type, computation_types.FederatedType):
-    if (not isinstance(source_type, computation_types.FederatedType) or
-        not is_assignable_from(target_type.member, source_type.member) or
-        target_type.all_equal and not source_type.all_equal):
-      return False
-    for val in [target_type, source_type]:
-      py_typecheck.check_type(val.placement,
-                              placement_literals.PlacementLiteral)
-    return target_type.placement is source_type.placement
-  else:
-    raise TypeError('Unexpected target type {}.'.format(target_type))
-
-
-def check_assignable_from(target, source):
-  target = computation_types.to_type(target)
-  source = computation_types.to_type(source)
-  if not is_assignable_from(target, source):
-    raise TypeError(
-        'The target type {} is not assignable from source type {}.'.format(
-            target, source))
-
-
-def are_equivalent_types(type1, type2):
-  """Determines whether `type1` and `type2` are equivalent.
-
-  We define equivaence in this context as both types being assignable from
-  one-another.
-
-  Args:
-    type1: One type.
-    type2: Another type.
-
-  Returns:
-    `True` iff `type1` anf `type2` are equivalent, or else `False`.
-  """
-  if type1 is None:
-    return type2 is None
-  else:
-    return type2 is not None and (is_assignable_from(type1, type2) and
-                                  is_assignable_from(type2, type1))
-
-
-def check_equivalent_types(type1, type2):
-  """Checks that `type1` and `type2` are equivalent.
-
-  Args:
-    type1: One type.
-    type2: Another type.
-
-  Raises:
-    TypeError: If `not are_equivalent_types(type1, type2)`.
-  """
-  if not are_equivalent_types(type1, type2):
-    raise TypeError('Types {} and {} are not equivalent.'.format(type1, type2))
-
-
 def is_anon_tuple_with_py_container(value, type_spec):
   return (isinstance(value, anonymous_tuple.AnonymousTuple) and isinstance(
       type_spec, computation_types.NamedTupleTypeWithPyContainerType))
@@ -674,8 +560,8 @@ def is_concrete_instance_of(type_with_concrete_elements,
   type trees in parallel, caching bindings for abstract types on the way. When
   it encounters a previously bound abstract type, it simply inlines this cached
   value. Finally, `abstract_types_can_be_concretized` delegates checking type
-  equivalence to `are_equivalent_types`, passing in the created concrete
-  structure for comparison with `type_with_concrete_elements`.
+  equivalence to `computation_types.Type.is_equivalent_to`, passing in the
+  created concrete structure for comparison with `type_with_concrete_elements`.
 
   Args:
     type_with_concrete_elements: Instance of `computation_types.Type` of
@@ -713,7 +599,9 @@ def is_concrete_instance_of(type_with_concrete_elements,
                        'structure of {}').format(type_with_abstract_elements,
                                                  type_with_concrete_elements)
 
-  def _concretize_abstract_types(abstract_type_spec, concrete_type_spec):
+  def _concretize_abstract_types(
+      abstract_type_spec: computation_types.Type,
+      concrete_type_spec: computation_types.Type) -> computation_types.Type:
     """Recursive helper function to construct concrete type spec."""
     if isinstance(abstract_type_spec, computation_types.AbstractType):
       bound_type = bound_abstract_types.get(str(abstract_type_spec.label))
@@ -749,8 +637,13 @@ def is_concrete_instance_of(type_with_concrete_elements,
     elif isinstance(abstract_type_spec, computation_types.FunctionType):
       if not isinstance(concrete_type_spec, computation_types.FunctionType):
         raise TypeError(type_error_string)
-      concretized_param = _concretize_abstract_types(
-          abstract_type_spec.parameter, concrete_type_spec.parameter)
+      if abstract_type_spec.parameter is None:
+        if concrete_type_spec.parameter is not None:
+          return TypeError(type_error_string)
+        concretized_param = None
+      else:
+        concretized_param = _concretize_abstract_types(
+            abstract_type_spec.parameter, concrete_type_spec.parameter)
       concretized_result = _concretize_abstract_types(abstract_type_spec.result,
                                                       concrete_type_spec.result)
       return computation_types.FunctionType(concretized_param,
@@ -767,10 +660,6 @@ def is_concrete_instance_of(type_with_concrete_elements,
       return computation_types.FederatedType(new_member,
                                              abstract_type_spec.placement,
                                              abstract_type_spec.all_equal)
-    elif abstract_type_spec is None:
-      if concrete_type_spec is not None:
-        raise TypeError(type_error_string)
-      return None
     else:
       raise TypeError(
           'Unexpected abstract typespec {}.'.format(abstract_type_spec))
@@ -778,8 +667,7 @@ def is_concrete_instance_of(type_with_concrete_elements,
   concretized_abstract_type = _concretize_abstract_types(
       type_with_abstract_elements, type_with_concrete_elements)
 
-  return are_equivalent_types(concretized_abstract_type,
-                              type_with_concrete_elements)
+  return concretized_abstract_type.is_equivalent_to(type_with_concrete_elements)
 
 
 def check_valid_federated_weighted_mean_argument_tuple_type(type_spec):

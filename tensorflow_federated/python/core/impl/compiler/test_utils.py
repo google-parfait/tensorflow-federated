@@ -23,7 +23,6 @@ from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
@@ -52,8 +51,7 @@ def create_chained_calls(functions, arg):
     A `building_blocks.Call`.
   """
   for fn in functions:
-    if not type_analysis.is_assignable_from(fn.parameter_type,
-                                            arg.type_signature):
+    if not fn.parameter_type.is_assignable_from(arg.type_signature):
       raise TypeError(
           'The parameter of the function is of type {}, and the argument is of '
           'an incompatible type {}.'.format(
@@ -459,7 +457,7 @@ def _stamp_value_into_graph(value, type_signature, graph):
     if isinstance(value, np.ndarray):
       value_type = computation_types.TensorType(
           tf.dtypes.as_dtype(value.dtype), tf.TensorShape(value.shape))
-      type_analysis.check_assignable_from(type_signature, value_type)
+      type_signature.is_assignable_from(value_type)
       with graph.as_default():
         return tf.constant(value)
     else:

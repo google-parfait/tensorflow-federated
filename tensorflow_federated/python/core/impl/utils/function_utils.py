@@ -94,7 +94,7 @@ def is_signature_compatible_with_types(signature: inspect.Signature, *args,
       continue
     arg_type = computation_types.to_type(arg_value)
     default_type = type_conversions.infer_type(p.default)
-    if not type_analysis.is_assignable_from(arg_type, default_type):
+    if not arg_type.is_assignable_from(default_type):
       return False
   return True
 
@@ -486,7 +486,7 @@ def wrap_as_zero_or_one_arg_callable(
         for idx, expected_type in enumerate(arg_types):
           element_value = arg[idx]
           actual_type = type_conversions.infer_type(element_value)
-          if not type_analysis.is_assignable_from(expected_type, actual_type):
+          if not expected_type.is_assignable_from(actual_type):
             raise TypeError(
                 'Expected element at position {} to be of type {}, found {}.'
                 .format(idx, expected_type, actual_type))
@@ -498,7 +498,7 @@ def wrap_as_zero_or_one_arg_callable(
         for name, expected_type in kwarg_types.items():
           element_value = getattr(arg, name)
           actual_type = type_conversions.infer_type(element_value)
-          if not type_analysis.is_assignable_from(expected_type, actual_type):
+          if not expected_type.is_assignable_from(actual_type):
             raise TypeError(
                 'Expected element named {} to be of type {}, found {}.'.format(
                     name, expected_type, actual_type))
@@ -520,7 +520,7 @@ def wrap_as_zero_or_one_arg_callable(
       # forwards the call as a last-minute check.
       def _call(fn, parameter_type, arg):
         arg_type = type_conversions.infer_type(arg)
-        if not type_analysis.is_assignable_from(parameter_type, arg_type):
+        if not parameter_type.is_assignable_from(arg_type):
           raise TypeError('Expected an argument of type {}, found {}.'.format(
               parameter_type, arg_type))
         if type_analysis.is_anon_tuple_with_py_container(arg, parameter_type):

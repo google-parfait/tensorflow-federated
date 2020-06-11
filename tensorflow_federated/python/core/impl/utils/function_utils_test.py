@@ -249,13 +249,11 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(len(args), len(expected_args))
     for idx, arg in enumerate(args):
       self.assertTrue(
-          type_analysis.are_equivalent_types(
-              arg, computation_types.to_type(expected_args[idx])))
+          arg.is_equivalent_to(computation_types.to_type(expected_args[idx])))
     self.assertEqual(set(kwargs.keys()), set(expected_kwargs.keys()))
     for k, v in kwargs.items():
       self.assertTrue(
-          type_analysis.are_equivalent_types(
-              computation_types.to_type(v), expected_kwargs[k]))
+          v.is_equivalent_to(computation_types.to_type(expected_kwargs[k])))
 
   def test_pack_args_into_anonymous_tuple_without_type_spec(self):
     self.assertEqual(

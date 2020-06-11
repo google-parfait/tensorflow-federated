@@ -25,7 +25,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],
 )
 
@@ -128,7 +127,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],
 )
 

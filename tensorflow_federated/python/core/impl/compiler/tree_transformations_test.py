@@ -27,15 +27,13 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def _create_chained_dummy_federated_applys(functions, arg):
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   for fn in functions:
     py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
-    if not type_analysis.is_assignable_from(fn.parameter_type,
-                                            arg.type_signature.member):
+    if not fn.parameter_type.is_assignable_from(arg.type_signature.member):
       raise TypeError(
           'The parameter of the function is of type {}, and the argument is of '
           'an incompatible type {}.'.format(
@@ -49,8 +47,7 @@ def _create_chained_dummy_federated_maps(functions, arg):
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   for fn in functions:
     py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
-    if not type_analysis.is_assignable_from(fn.parameter_type,
-                                            arg.type_signature.member):
+    if not fn.parameter_type.is_assignable_from(arg.type_signature.member):
       raise TypeError(
           'The parameter of the function is of type {}, and the argument is of '
           'an incompatible type {}.'.format(
@@ -4078,8 +4075,8 @@ class UnwrapPlacementTest(parameterized.TestCase):
     # therefore have a value with `all_equal=True`; the zip above had destroyed
     # this information in a lossy way.
     self.assertTrue(
-        type_analysis.is_assignable_from(zipped.type_signature,
-                                         placement_unwrapped.type_signature))
+        zipped.type_signature.is_assignable_from(
+            placement_unwrapped.type_signature))
     self.assertEqual(placement_unwrapped.function.uri,
                      intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri)
     self.assertEqual(

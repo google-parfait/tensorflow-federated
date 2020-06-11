@@ -260,7 +260,6 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:tensorflow_deserialization",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
@@ -281,7 +280,6 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:compiled_computation_transforms",
         "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],
 )
 
@@ -315,7 +313,6 @@ py_library(
         ":building_blocks",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],
 )
 
@@ -414,6 +411,5 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],
 )

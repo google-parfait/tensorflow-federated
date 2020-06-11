@@ -28,7 +28,6 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 class HashableWrapper(collections.Hashable):
@@ -222,9 +221,8 @@ class CachingExecutor(executor_base.Executor):
       # which may be a legitimate use case if (as it happens) the payload alone
       # does not uniquely determine the type, so we simply opt not to reuse the
       # cache value and fallback on the regular behavior.
-      if (cached_value is not None and
-          type_spec is not None and not type_analysis.are_equivalent_types(
-              cached_value.type_signature, type_spec)):
+      if (cached_value is not None and type_spec is not None and
+          not cached_value.type_signature.is_equivalent_to(type_spec)):
         identifier = None
     else:
       identifier = None
@@ -250,7 +248,7 @@ class CachingExecutor(executor_base.Executor):
       self._cache = {}
       raise e
     # No type check is necessary here; we have either checked
-    # `type_analysis.are_equivalent_types` or just constructed `target_value`
+    # `is_equivalent_to` or just constructed `target_value`
     # explicitly with `type_spec`.
     return cached_value
 
@@ -260,8 +258,7 @@ class CachingExecutor(executor_base.Executor):
     to_gather = [comp.target_future]
     if arg is not None:
       py_typecheck.check_type(arg, CachedValue)
-      type_analysis.check_assignable_from(comp.type_signature.parameter,
-                                          arg.type_signature)
+      comp.type_signature.parameter.check_assignable_from(arg.type_signature)
       to_gather.append(arg.target_future)
       identifier_str = '{}({})'.format(comp.identifier, arg.identifier)
     else:
@@ -285,7 +282,7 @@ class CachingExecutor(executor_base.Executor):
       # down.
       self._cache = {}
       raise e
-    type_analysis.check_assignable_from(type_spec, target_value.type_signature)
+    type_spec.check_assignable_from(target_value.type_signature)
     return cached_value
 
   async def create_tuple(self, elements):
@@ -326,7 +323,7 @@ class CachingExecutor(executor_base.Executor):
       # down.
       self._cache = {}
       raise e
-    type_analysis.check_assignable_from(type_spec, target_value.type_signature)
+    type_spec.check_assignable_from(target_value.type_signature)
     return cached_value
 
   async def create_selection(self, source, index=None, name=None):
@@ -360,5 +357,5 @@ class CachingExecutor(executor_base.Executor):
       # down.
       self._cache = {}
       raise e
-    type_analysis.check_assignable_from(type_spec, target_value.type_signature)
+    type_spec.check_assignable_from(target_value.type_signature)
     return cached_value

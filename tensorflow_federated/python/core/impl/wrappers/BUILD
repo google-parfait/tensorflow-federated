@@ -29,7 +29,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
         "//tensorflow_federated/python/tensorflow_libs:function",
     ],

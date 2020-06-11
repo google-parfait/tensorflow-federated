@@ -250,7 +250,7 @@ class FederatingExecutor(executor_base.Executor):
       if type_spec is None:
         type_spec = deserialized_type
       else:
-        type_analysis.check_assignable_from(type_spec, deserialized_type)
+        type_spec.check_assignable_from(deserialized_type)
       which_computation = value.WhichOneof('computation')
       if which_computation in ['lambda', 'tensorflow']:
         return FederatingExecutorValue(value, type_spec)
@@ -307,7 +307,7 @@ class FederatingExecutor(executor_base.Executor):
       py_typecheck.check_type(comp.type_signature,
                               computation_types.FunctionType)
       param_type = comp.type_signature.parameter
-      type_analysis.check_assignable_from(param_type, arg.type_signature)
+      param_type.check_assignable_from(arg.type_signature)
       arg = FederatingExecutorValue(arg.internal_representation, param_type)
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')
@@ -582,8 +582,7 @@ class FederatingExecutor(executor_base.Executor):
 
     py_typecheck.check_type(pre_report.type_signature,
                             computation_types.FederatedType)
-    type_analysis.check_equivalent_types(pre_report.type_signature.member,
-                                         report_type.parameter)
+    pre_report.type_signature.member.check_equivalent_to(report_type.parameter)
 
     report = arg.internal_representation[4]
     return await self._compute_intrinsic_federated_apply(
@@ -675,8 +674,7 @@ class FederatingExecutor(executor_base.Executor):
     item_type = val_type.member
     zero_type = arg.type_signature[1]
     op_type = arg.type_signature[2]
-    type_analysis.check_equivalent_types(
-        op_type, type_factory.reduction_op(zero_type, item_type))
+    op_type.check_equivalent_to(type_factory.reduction_op(zero_type, item_type))
 
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)

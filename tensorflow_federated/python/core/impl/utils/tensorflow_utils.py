@@ -999,7 +999,7 @@ def make_data_set_from_elements(graph, elements, element_type):
           singleton_ds = _make(elements[i:i + 1])
           ds = singleton_ds if ds is None else ds.concatenate(singleton_ds)
     ds_element_type = computation_types.to_type(ds.element_spec)
-    if not type_analysis.is_assignable_from(element_type, ds_element_type):
+    if not element_type.is_assignable_from(ds_element_type):
       raise TypeError(
           'Failure during data set construction, expected elements of type {}, '
           'but the constructed data set has elements of type {}.'.format(

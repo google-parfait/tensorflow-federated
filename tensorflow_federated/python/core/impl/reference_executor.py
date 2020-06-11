@@ -153,7 +153,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       value = value.numpy()
     py_typecheck.check_type(value, tensorflow_utils.TENSOR_REPRESENTATION_TYPES)
     inferred_type_spec = type_conversions.infer_type(value)
-    if not type_analysis.is_assignable_from(type_spec, inferred_type_spec):
+    if not type_spec.is_assignable_from(inferred_type_spec):
       raise TypeError(
           'The tensor type {} of the value representation does not match '
           'the type spec {}.'.format(inferred_type_spec, type_spec))
@@ -190,7 +190,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
     if isinstance(value, tf.data.Dataset):
       inferred_type_spec = computation_types.SequenceType(
           computation_types.to_type(value.element_spec))
-      if not type_analysis.is_assignable_from(type_spec, inferred_type_spec):
+      if not type_spec.is_assignable_from(inferred_type_spec):
         raise TypeError(
             'Value of type {!s} not assignable to expected type {!s}'.format(
                 inferred_type_spec, type_spec))
@@ -274,7 +274,7 @@ def stamp_computed_value_into_graph(
         value_type = computation_types.TensorType(
             tf.dtypes.as_dtype(value.value.dtype),
             tf.TensorShape(value.value.shape))
-        type_analysis.check_assignable_from(value.type_signature, value_type)
+        value.type_signature.check_assignable_from(value_type)
         with graph.as_default():
           return tf.constant(value.value)
       else:
@@ -514,7 +514,7 @@ def fit_argument(arg: ComputedValue, type_spec,
   py_typecheck.check_type(type_spec, computation_types.Type)
   if context is not None:
     py_typecheck.check_type(context, ComputationContext)
-  type_analysis.check_assignable_from(type_spec, arg.type_signature)
+  type_spec.check_assignable_from(arg.type_signature)
   if arg.type_signature == type_spec:
     return arg
   elif isinstance(type_spec, computation_types.NamedTupleType):
@@ -641,7 +641,7 @@ class ReferenceExecutor(context_base.Context):
 
     def _handle_callable(fn, fn_type):
       py_typecheck.check_type(fn, computation_base.Computation)
-      type_analysis.check_assignable_from(fn.type_signature, fn_type)
+      fn.type_signature.check_assignable_from(fn_type)
       return fn
 
     return to_representation_for_type(arg, type_spec, _handle_callable)
@@ -654,7 +654,7 @@ class ReferenceExecutor(context_base.Context):
 
       def _handle_callable(fn, fn_type):
         py_typecheck.check_type(fn, computation_base.Computation)
-        type_analysis.check_assignable_from(fn.type_signature, fn_type)
+        fn.type_signature.check_assignable_from(fn_type)
         computed_fn = self._compute(self._compile(fn), root_context)
         return computed_fn.value
 
@@ -668,8 +668,7 @@ class ReferenceExecutor(context_base.Context):
     else:
       computed_arg = None
     computed_comp = self._compute(comp, root_context)
-    type_analysis.check_assignable_from(comp.type_signature,
-                                        computed_comp.type_signature)
+    comp.type_signature.check_assignable_from(computed_comp.type_signature)
 
     def _convert_to_py_container(value, type_spec):
       """Converts value to a Python container if type_spec has an annotation."""
@@ -696,8 +695,7 @@ class ReferenceExecutor(context_base.Context):
     else:
       result = computed_comp.value(computed_arg)
       py_typecheck.check_type(result, ComputedValue)
-      type_analysis.check_assignable_from(comp.type_signature.result,
-                                          result.type_signature)
+      comp.type_signature.result.check_assignable_from(result.type_signature)
       value = result.value
       fn_result_type = fn.type_signature.result
       return _convert_to_py_container(value, fn_result_type)
@@ -780,16 +778,16 @@ class ReferenceExecutor(context_base.Context):
                             computation_types.FunctionType)
     if comp.argument is not None:
       computed_arg = self._compute(comp.argument, context)
-      type_analysis.check_assignable_from(computed_fn.type_signature.parameter,
-                                          computed_arg.type_signature)
+      computed_fn.type_signature.parameter.check_assignable_from(
+          computed_arg.type_signature)
       computed_arg = fit_argument(computed_arg,
                                   computed_fn.type_signature.parameter, context)
     else:
       computed_arg = None
     result = computed_fn.value(computed_arg)
     py_typecheck.check_type(result, ComputedValue)
-    type_analysis.check_assignable_from(computed_fn.type_signature.result,
-                                        result.type_signature)
+    computed_fn.type_signature.result.check_assignable_from(
+        result.type_signature)
     return result
 
   def _compute_tuple(self, comp, context):
@@ -798,8 +796,7 @@ class ReferenceExecutor(context_base.Context):
     result_type_elements = []
     for k, v in anonymous_tuple.iter_elements(comp):
       computed_v = self._compute(v, context)
-      type_analysis.check_assignable_from(v.type_signature,
-                                          computed_v.type_signature)
+      v.type_signature.check_assignable_from(computed_v.type_signature)
       result_elements.append((k, computed_v.value))
       result_type_elements.append((k, computed_v.type_signature))
     return ComputedValue(
@@ -821,7 +818,7 @@ class ReferenceExecutor(context_base.Context):
       assert comp.index is not None
       result_value = source.value[comp.index]
       result_type = source.type_signature[comp.index]
-    type_analysis.check_assignable_from(comp.type_signature, result_type)
+    comp.type_signature.check_assignable_from(result_type)
     return ComputedValue(result_value, result_type)
 
   def _compute_lambda(self, comp, context):
@@ -837,8 +834,7 @@ class ReferenceExecutor(context_base.Context):
                   arg.type_signature))
         return context
       py_typecheck.check_type(arg, ComputedValue)
-      if not type_analysis.is_assignable_from(comp.parameter_type,
-                                              arg.type_signature):
+      if not comp.parameter_type.is_assignable_from(arg.type_signature):
         raise TypeError(
             'Expected the type of argument {} to be {}, found {}.'.format(
                 comp.parameter_name, comp.parameter_type, arg.type_signature))
@@ -1101,8 +1097,7 @@ class ReferenceExecutor(context_base.Context):
     py_typecheck.check_type(mapping_type, computation_types.FunctionType)
     sequence_type = arg.type_signature[1]
     py_typecheck.check_type(sequence_type, computation_types.SequenceType)
-    type_analysis.check_assignable_from(mapping_type.parameter,
-                                        sequence_type.element)
+    mapping_type.parameter.check_assignable_from(sequence_type.element)
     fn = arg.value[0]
     result_val = [
         fn(ComputedValue(x, mapping_type.parameter)).value for x in arg.value[1]
@@ -1119,8 +1114,8 @@ class ReferenceExecutor(context_base.Context):
     zero_type = arg.type_signature[1]
     op_type = arg.type_signature[2]
     py_typecheck.check_type(op_type, computation_types.FunctionType)
-    type_analysis.check_assignable_from(op_type.parameter,
-                                        [zero_type, sequence_type.element])
+    op_type.parameter.check_assignable_from(
+        computation_types.NamedTupleType([zero_type, sequence_type.element]))
     total = ComputedValue(arg.value[1], zero_type)
     reduce_fn = arg.value[2]
     for v in arg.value[0]:
@@ -1139,8 +1134,8 @@ class ReferenceExecutor(context_base.Context):
     zero_type = arg.type_signature[1]
     op_type = arg.type_signature[2]
     py_typecheck.check_type(op_type, computation_types.FunctionType)
-    type_analysis.check_assignable_from(op_type.parameter,
-                                        [zero_type, federated_type.member])
+    op_type.parameter.check_assignable_from(
+        computation_types.NamedTupleType([zero_type, federated_type.member]))
     total = ComputedValue(arg.value[1], zero_type)
     reduce_fn = arg.value[2]
     for v in arg.value[0]:

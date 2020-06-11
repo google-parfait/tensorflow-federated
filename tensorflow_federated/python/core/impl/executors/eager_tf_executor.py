@@ -65,7 +65,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   comp_type = type_serialization.deserialize_type(comp.type)
   type_spec = computation_types.to_type(type_spec)
   if type_spec is not None:
-    if not type_analysis.are_equivalent_types(type_spec, comp_type):
+    if not type_spec.is_equivalent_to(comp_type):
       raise TypeError('Expected a computation of type {}, got {}.'.format(
           type_spec, comp_type))
   else:
@@ -283,7 +283,7 @@ def to_representation_for_type(value: Any,
       value = value.read_value()
     value_type = (
         computation_types.TensorType(value.dtype.base_dtype, value.shape))
-    if not type_analysis.is_assignable_from(type_spec, value_type):
+    if not type_spec.is_assignable_from(value_type):
       raise TypeError(
           'The apparent type {} of a tensor {} does not match the expected '
           'type {}.'.format(value_type, value, type_spec))
@@ -296,7 +296,7 @@ def to_representation_for_type(value: Any,
                             type_conversions.TF_DATASET_REPRESENTATION_TYPES)
     element_type = computation_types.to_type(value.element_spec)
     value_type = computation_types.SequenceType(element_type)
-    type_analysis.check_assignable_from(type_spec, value_type)
+    type_spec.check_assignable_from(value_type)
     return value
   else:
     raise TypeError('Unexpected type {}.'.format(type_spec))

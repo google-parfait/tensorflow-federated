@@ -19,7 +19,6 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -177,7 +176,7 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
       p2 = type_serialization.serialize_type(t2)
       self.assertEqual(repr(t1), repr(t2))
       self.assertEqual(repr(p1), repr(p2))
-      self.assertTrue(type_analysis.are_equivalent_types(t1, t2))
+      self.assertTrue(t1.is_equivalent_to(t2))
 
 
 if __name__ == '__main__':

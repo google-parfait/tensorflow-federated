@@ -80,8 +80,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
     if deserializer is not None:
       deserialized = deserializer(computation_proto)
       type_spec = type_serialization.deserialize_type(computation_proto.type)
-      if not type_analysis.are_equivalent_types(deserialized.type_signature,
-                                                type_spec):
+      if not deserialized.type_signature.is_equivalent_to(type_spec):
         raise ValueError(
             'The type {} derived from the computation structure does not '
             'match the type {} declared in its signature'.format(
@@ -442,8 +441,7 @@ class Call(ComputationBuildingBlock):
         raise TypeError('The invoked function expects an argument of type {}, '
                         'but got None instead.'.format(
                             fn.type_signature.parameter))
-      if not type_analysis.is_assignable_from(fn.type_signature.parameter,
-                                              arg.type_signature):
+      if not fn.type_signature.parameter.is_assignable_from(arg.type_signature):
         raise TypeError(
             'The parameter of the invoked function is expected to be of '
             'type {}, but the supplied argument is of an incompatible '

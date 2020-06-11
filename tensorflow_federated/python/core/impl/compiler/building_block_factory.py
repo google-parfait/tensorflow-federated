@@ -492,8 +492,7 @@ def create_named_tuple_setattr_lambda(
   for idx, (key, element_type) in enumerate(
       anonymous_tuple.to_elements(named_tuple_signature)):
     if key == name:
-      if not type_analysis.is_assignable_from(element_type,
-                                              value_comp.type_signature):
+      if not element_type.is_assignable_from(value_comp.type_signature):
         raise TypeError(
             '`setattr` has attempted to set element {} of type {} with incompatible type {}'
             .format(key, element_type, value_comp.type_signature))
@@ -680,7 +679,7 @@ def create_federated_aggregate(
   # without being the exact type. This occurs when accumulate has a type like
   # (<int32[?], int32> -> int32[?]) but zero is int32[0].
   zero_arg_type = accumulate.type_signature.parameter[0]
-  type_analysis.check_assignable_from(zero_arg_type, zero.type_signature)
+  zero_arg_type.check_assignable_from(zero.type_signature)
   result_type = computation_types.FederatedType(report.type_signature.result,
                                                 placement_literals.SERVER)
 
@@ -1880,8 +1879,7 @@ def create_binary_operator_with_upcast(
   y_ref = building_blocks.Selection(ref_to_arg, index=1)
   first_arg = building_blocks.Selection(ref_to_arg, index=0)
 
-  if type_analysis.are_equivalent_types(first_arg.type_signature,
-                                        y_ref.type_signature):
+  if first_arg.type_signature.is_equivalent_to(y_ref.type_signature):
     second_arg = y_ref
   else:
     second_arg = _pack_into_type(y_ref, first_arg.type_signature)

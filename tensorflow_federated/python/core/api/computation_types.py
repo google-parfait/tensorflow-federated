@@ -70,6 +70,26 @@ class Type(object, metaclass=abc.ABCMeta):
   def __ne__(self, other):
     return not self == other
 
+  def check_assignable_from(self, source_type: 'Type'):
+    """Raises if values of `source_type` cannot be cast to this type."""
+    if not self.is_assignable_from(source_type):
+      raise TypeError('Values of type {} cannot be cast to type {}.'.format(
+          source_type, self))
+
+  @abc.abstractmethod
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    """Returns whether values of `source_type` can be cast to this type."""
+    raise NotImplementedError
+
+  def check_equivalent_to(self, other: 'Type'):
+    """Raises if values of 'other' cannot be cast to and from this type."""
+    if not self.is_equivalent_to(other):
+      raise TypeError('Types {} and {} are not equivalent.'.format(self, other))
+
+  def is_equivalent_to(self, other: 'Type') -> bool:
+    """Returns whether values of `other` can be cast to and from this type."""
+    return self.is_assignable_from(other) and other.is_assignable_from(self)
+
 
 class TensorType(Type):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
@@ -94,7 +114,7 @@ class TensorType(Type):
     # assumptions of `TensorType` (see the special casing in `repr` and `str`
     # below. This is related to compatibility checking,
     # and there are a few options. For now, simply adding a case in
-    # `type_analysis.is_assignable_from` to catch. We could alternatively
+    # `is_assignable_from` to catch. We could alternatively
     # treat this case the same as if we have been passed a shape of `None` in
     # this constructor.
     if shape is None:
@@ -124,6 +144,30 @@ class TensorType(Type):
   def __eq__(self, other):
     return (isinstance(other, TensorType) and self._dtype == other.dtype and
             tensor_utils.same_shape(self._shape, other.shape))
+
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    if (not isinstance(source_type, TensorType) or
+        self.dtype != source_type.dtype):
+      return False
+    target_shape = self.shape
+    source_shape = source_type.shape
+    # TODO(b/123764922): See if we can pass to TensorShape's
+    # `is_compatible_with`.
+    if target_shape.ndims is None:
+      return True
+    if target_shape.ndims != source_shape.ndims:
+      return False
+    if target_shape.dims is None:
+      return True
+
+    def _dimension_is_assignable_from(target_dim, source_dim):
+      return (target_dim.value is
+              None) or (target_dim.value == source_dim.value)
+
+    return all(
+        _dimension_is_assignable_from(target_shape.dims[k],
+                                      source_shape.dims[k])
+        for k in range(target_shape.ndims))
 
 
 class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
@@ -183,6 +227,16 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
   def __eq__(self, other):
     return isinstance(other, NamedTupleType) and super().__eq__(other)
 
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    if not isinstance(source_type, NamedTupleType):
+      return False
+    target_elements = anonymous_tuple.to_elements(self)
+    source_elements = anonymous_tuple.to_elements(source_type)
+    return ((len(target_elements) == len(source_elements)) and all(
+        ((source_elements[k][0] in [target_elements[k][0], None]) and
+         target_elements[k][1].is_assignable_from(source_elements[k][1]))
+        for k in range(len(target_elements))))
+
 
 # While this lives in the `api` diretory, `NamedTupleTypeWithPyContainerType` is
 # intended to be TFF internal and not exposed in the public API.
@@ -221,6 +275,10 @@ class SequenceType(Type):
   def __eq__(self, other):
     return isinstance(other, SequenceType) and self._element == other.element
 
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    return (isinstance(source_type, SequenceType) and
+            self.element.is_assignable_from(source_type.element))
+
 
 class FunctionType(Type):
   """An implementation of `tff.Type` representing functional types in TFF."""
@@ -253,6 +311,16 @@ class FunctionType(Type):
     return (isinstance(other, FunctionType) and
             self._parameter == other.parameter and self._result == other.result)
 
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    if not isinstance(source_type, FunctionType):
+      return False
+    if (self.parameter is None) != (source_type.parameter is None):
+      return False
+    if (self.parameter is not None and
+        not self.parameter.is_assignable_from(source_type.parameter)):
+      return False
+    return self.result.is_assignable_from(source_type.result)
+
 
 class AbstractType(Type):
   """An implementation of `tff.Type` representing abstract types in TFF."""
@@ -277,6 +345,11 @@ class AbstractType(Type):
   def __eq__(self, other):
     return isinstance(other, AbstractType) and self._label == other.label
 
+  def is_assignable_from(self, _source_type: 'Type') -> bool:
+    # TODO(b/113112108): Revise this to extend the relation of assignability to
+    # abstract types.
+    raise TypeError('Abstract types are not comparable.')
+
 
 class PlacementType(Type):
   """An implementation of `tff.Type` representing the placement type in TFF.
@@ -291,6 +364,9 @@ class PlacementType(Type):
 
   def __eq__(self, other):
     return isinstance(other, PlacementType)
+
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    return isinstance(source_type, PlacementType)
 
 
 class FederatedType(Type):
@@ -338,7 +414,7 @@ class FederatedType(Type):
     return self._placement
 
   @property
-  def all_equal(self):
+  def all_equal(self) -> bool:
     return self._all_equal
 
   def __repr__(self):
@@ -351,6 +427,12 @@ class FederatedType(Type):
             self._member == other.member and
             self._placement == other.placement and
             self._all_equal == other.all_equal)
+
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    return (isinstance(source_type, FederatedType) and
+            self.member.is_assignable_from(source_type.member) and
+            (not self.all_equal or source_type.all_equal) and
+            self.placement is source_type.placement)
 
 
 def to_type(spec) -> Type:

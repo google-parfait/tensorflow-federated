@@ -371,8 +371,8 @@ class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
     lam = building_block_factory.create_named_tuple_setattr_lambda(
         good_type, 'a', value_comp)
     self.assertTrue(
-        type_analysis.are_equivalent_types(lam.type_signature.parameter,
-                                           lam.type_signature.result))
+        lam.type_signature.parameter.is_equivalent_to(
+            lam.type_signature.result))
 
 
 class CreateFederatedSetatterCallTest(parameterized.TestCase):
@@ -460,8 +460,8 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
     federated_setattr = building_block_factory.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
     self.assertTrue(
-        type_analysis.are_equivalent_types(federated_setattr.type_signature,
-                                           federated_comp.type_signature))
+        federated_setattr.type_signature.is_equivalent_to(
+            federated_comp.type_signature))
 
   def test_constructs_correct_computation_clients(self):
     named_tuple_type = computation_types.NamedTupleType([('a', tf.int32),

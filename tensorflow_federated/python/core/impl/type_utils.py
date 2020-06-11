@@ -19,7 +19,6 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def to_canonical_value(value):
@@ -100,7 +99,7 @@ def reconcile_value_type_with_type_spec(
   py_typecheck.check_type(value_type, computation_types.Type)
   if type_spec is not None:
     py_typecheck.check_type(value_type, computation_types.Type)
-    if not type_analysis.are_equivalent_types(value_type, type_spec):
+    if not value_type.is_equivalent_to(type_spec):
       raise TypeError('Expected a value of type {}, found {}.'.format(
           type_spec, value_type))
   return type_spec if type_spec is not None else value_type

@@ -73,8 +73,8 @@ class IntrinsicFactory(object):
       py_typecheck.check_type(op, value_base.Value)
       py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
 
-    if not type_analysis.is_assignable_from(
-        accumulate.type_signature.parameter[0], zero.type_signature):
+    if not accumulate.type_signature.parameter[0].is_assignable_from(
+        zero.type_signature):
       raise TypeError('Expected `zero` to be assignable to type {}, '
                       'but was of incompatible type {}.'.format(
                           accumulate.type_signature.parameter[0],
@@ -91,7 +91,7 @@ class IntrinsicFactory(object):
         ('merge', merge, merge_type_expected),
         ('report', report, report_type_expected)
     ]:
-      if not type_analysis.is_assignable_from(type_expected, op.type_signature):
+      if not type_expected.is_assignable_from(op.type_signature):
         raise TypeError(
             'Expected parameter `{}` to be of type {}, but received {} instead.'
             .format(op_name, type_expected, op.type_signature))
@@ -168,8 +168,8 @@ class IntrinsicFactory(object):
 
     py_typecheck.check_type(fn, value_base.Value)
     py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
-    if not type_analysis.is_assignable_from(fn.type_signature.parameter,
-                                            arg.type_signature.member):
+    if not fn.type_signature.parameter.is_assignable_from(
+        arg.type_signature.member):
       raise TypeError(
           'The mapping function expects a parameter of type {}, but member '
           'constituents of the mapped value are of incompatible type {}.'
@@ -217,8 +217,8 @@ class IntrinsicFactory(object):
 
     py_typecheck.check_type(fn, value_base.Value)
     py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
-    if not type_analysis.is_assignable_from(fn.type_signature.parameter,
-                                            arg.type_signature.member):
+    if not fn.type_signature.parameter.is_assignable_from(
+        arg.type_signature.member):
       raise TypeError(
           'The mapping function expects a parameter of type {}, but member '
           'constituents of the mapped value are of incompatible type {}.'
@@ -301,8 +301,7 @@ class IntrinsicFactory(object):
     py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
     op_type_expected = type_factory.reduction_op(zero.type_signature,
                                                  value.type_signature.member)
-    if not type_analysis.is_assignable_from(op_type_expected,
-                                            op.type_signature):
+    if not op_type_expected.is_assignable_from(op.type_signature):
       raise TypeError('Expected an operator of type {}, got {}.'.format(
           op_type_expected, op.type_signature))
 
@@ -428,8 +427,7 @@ class IntrinsicFactory(object):
       element_type = value.type_signature.member.element
     op_type_expected = type_factory.reduction_op(zero.type_signature,
                                                  element_type)
-    if not type_analysis.is_assignable_from(op_type_expected,
-                                            op.type_signature):
+    if not op_type_expected.is_assignable_from(op.type_signature):
       raise TypeError('Expected an operator of type {}, got {}.'.format(
           op_type_expected, op.type_signature))
 

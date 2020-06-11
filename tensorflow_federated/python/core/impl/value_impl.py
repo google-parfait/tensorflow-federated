@@ -236,8 +236,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
 
   def __add__(self, other):
     other = to_value(other, None, self._context_stack)
-    if not type_analysis.are_equivalent_types(self.type_signature,
-                                              other.type_signature):
+    if not self.type_signature.is_equivalent_to(other.type_signature):
       raise TypeError('Cannot add {} and {}.'.format(self.type_signature,
                                                      other.type_signature))
     return ValueImpl(
@@ -294,7 +293,7 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
   # requested type of the sequence as a while.
   for elem in elements:
     elem_type = type_conversions.infer_type(elem)
-    if not type_analysis.is_assignable_from(element_type, elem_type):
+    if not element_type.is_assignable_from(elem_type):
       raise TypeError(
           'Expected all sequence elements to be {}, found {}.'.format(
               element_type, elem_type))
@@ -429,7 +428,7 @@ def to_value(
             py_typecheck.type_string(type(arg))))
   py_typecheck.check_type(result, ValueImpl)
   if (type_spec is not None and
-      not type_analysis.is_assignable_from(type_spec, result.type_signature)):
+      not type_spec.is_assignable_from(result.type_signature)):
     raise TypeError(
         'The supplied argument maps to TFF type {}, which is incompatible with '
         'the requested type {}.'.format(result.type_signature, type_spec))

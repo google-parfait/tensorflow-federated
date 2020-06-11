@@ -16,7 +16,6 @@
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 class IterativeProcess(object):
@@ -80,8 +79,7 @@ class IterativeProcess(object):
       next_first_param_type = next_fn.type_signature.parameter[0]
     else:
       next_first_param_type = next_fn.type_signature.parameter
-    if not type_analysis.is_assignable_from(next_first_param_type,
-                                            initialize_result_type):
+    if not next_first_param_type.is_assignable_from(initialize_result_type):
       raise TypeError('The return type of initialize_fn must be assignable '
                       'to the first parameter of next_fn, but found\n'
                       'initialize_fn.type_signature.result=\n{}\n'
@@ -89,8 +87,7 @@ class IterativeProcess(object):
                           initialize_result_type, next_first_param_type))
 
     next_result_type = next_fn.type_signature.result
-    if not type_analysis.is_assignable_from(next_first_param_type,
-                                            next_result_type):
+    if not next_first_param_type.is_assignable_from(next_result_type):
       # This might be multiple output next_fn, check if the first argument might
       # be the state. If still not the right type, raise an error.
       if isinstance(next_result_type, computation_types.NamedTupleType):

@@ -144,12 +144,11 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":type_analysis",
+        ":placement_literals",
         ":type_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )
 

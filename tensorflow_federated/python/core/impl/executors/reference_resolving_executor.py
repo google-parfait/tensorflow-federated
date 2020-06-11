@@ -29,7 +29,6 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -327,7 +326,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
     else:
       py_typecheck.check_type(arg, ReferenceResolvingExecutorValue)
       arg_type = arg.type_signature  # pytype: disable=attribute-error
-      if not type_analysis.is_assignable_from(param_type, arg_type):
+      if not param_type.is_assignable_from(arg_type):
         raise TypeError('ReferenceResolvingExecutor asked to create call with '
                         'incompatible type specifications. Function '
                         'takes an argument of type {}, but was supplied '
