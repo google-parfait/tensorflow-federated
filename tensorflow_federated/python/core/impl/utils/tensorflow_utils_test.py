@@ -1003,6 +1003,20 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(tensorflow_utils.to_node_name('^foo:0'), 'foo')
 
   def test_get_deps_for_graph_node(self):
+    # Creates a graph (double edges are regular dependencies, single edges are
+    # control dependencies) like this:
+    #                      foo
+    #                   //      \\
+    #               foo:0        foo:1
+    #                  ||       //
+    #       abc       bar      //
+    #     //    \   //   \\   //
+    #  abc:0     bak       baz
+    #    ||
+    #   def
+    #    |
+    #   ghi
+    #
     graph_def = tf.compat.v1.GraphDef(node=[
         tf.compat.v1.NodeDef(name='foo', input=[]),
         tf.compat.v1.NodeDef(name='bar', input=['foo:0']),
@@ -1026,6 +1040,19 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(_get_deps('ghi'), 'abc,def')
 
   def test_add_control_deps_for_init_op(self):
+    # Creates a graph (double edges are regular dependencies, single edges are
+    # control dependencies) like this:
+    #
+    #  ghi
+    #   |
+    #  def
+    #   ||
+    #  def:0         foo
+    #   ||        //     ||
+    #  abc      bar      ||
+    #     \   //   \\    ||
+    #      bak        baz
+    #
     graph_def = tf.compat.v1.GraphDef(node=[
         tf.compat.v1.NodeDef(name='foo', input=[]),
         tf.compat.v1.NodeDef(name='bar', input=['foo']),
