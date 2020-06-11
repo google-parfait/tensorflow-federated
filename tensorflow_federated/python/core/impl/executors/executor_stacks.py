@@ -60,7 +60,7 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
     self._client_devices = client_devices
     self._client_device_index = 0
 
-  def _get_next_client_device(self):
+  def _get_next_client_device(self) -> Optional[tf.config.LogicalDevice]:
     if not self._client_devices:
       return None
     device = self._client_devices[self._client_device_index]
@@ -84,7 +84,11 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
       device = self._server_device
     else:
       device = None
-    eager_ex = eager_tf_executor.EagerTFExecutor(device=device)
+    if device is not None:
+      device_name = device.name
+    else:
+      device_name = None
+    eager_ex = eager_tf_executor.EagerTFExecutor(device=device_name)
     return _wrap_executor_in_threading_stack(eager_ex)
 
   def clean_up_executors(self):
