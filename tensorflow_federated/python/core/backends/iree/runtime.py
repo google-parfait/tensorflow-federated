@@ -17,6 +17,7 @@ import threading
 
 from iree.bindings.python.pyiree import rt as iree_runtime
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import computation_module
 
@@ -50,12 +51,60 @@ def _get_default_config_for_driver(driver_name):
     return config
 
 
+class ComputationCallable(typed_object.TypedObject):
+  """An internal callable that encapsulates the logic of a single computation.
+
+  NOTE: The exact structure and implementation of this class may change, or the
+  class may be removed or replaced with something else.
+  """
+
+  def __init__(self, module, backend):
+    """Creates this callable for a given computation moduel and backend.
+
+    Args:
+      module: An instance of `computation_module.ComputationModule`.
+      backend: An instance of `backend_info.BackendInfo`.
+    """
+    py_typecheck.check_type(module, computation_module.ComputationModule)
+    py_typecheck.check_type(backend, backend_info.BackendInfo)
+    flatbuffer_blob = module.compiler_module.compile(
+        target_backends=[backend.target_name])
+    # TODO(b/153499219): Find a way to name the modules somehow differently
+    # for debugging. Right now, module names come from the implicit "module {}"
+    # that wraps anything parsed from ASM that lacks an explicit module
+    # declaration. Possibly manually surround with "module @myName { ... }" in
+    # the compiler helpers.
+    self._vm_module = iree_runtime.VmModule.from_flatbuffer(flatbuffer_blob)
+    self._config = _get_default_config_for_driver(backend.driver_name)
+    self._function_name = module.function_name
+    self._type_signature = module.type_signature
+
+  @property
+  def type_signature(self):
+    return self._type_signature
+
+  def __call__(self, *args, **kwargs):
+    """Invokes this callable with the given set of arguments.
+
+    Args:
+      *args: Positional arguments.
+      **kwargs: Keyword arguments.
+
+    Returns:
+      The result of the call.
+    """
+    # Context creation can be expected to be on the order of milliseconds or
+    # less, so constructing one per call should be cheap enough, and can make
+    # things simpler while we look for ways to support true local variables
+    # in IREE and eliminate any kind of global state.
+    context = iree_runtime.SystemContext(config=self._config)
+    context.add_module(self._vm_module)
+    callable_fn = getattr(context.modules.module, self._function_name)
+    return callable_fn(*args, **kwargs)
+
+
 def compile_and_run_on_args(module, backend, *args, **kwargs):
   """Helper that compiles runs a given compiled module with a given set of args.
-
-  This helper constructs a separate runtime context, compiles and loads the
-  module into it, invokes it on the given arguments, and disposes of resources
-  if created to support the invocation.
 
   NOTE: The intended primary purpose of this helper is testing and debugging.
   The overhead of compilation and loading, and constructing a separate
@@ -71,20 +120,6 @@ def compile_and_run_on_args(module, backend, *args, **kwargs):
   Returns:
     The result of invocation on IREE.
   """
-  py_typecheck.check_type(module, computation_module.ComputationModule)
-  py_typecheck.check_type(backend, backend_info.BackendInfo)
-  flatbuffer_blob = module.compiler_module.compile(
-      target_backends=[backend.target_name])
-  vm_module = iree_runtime.VmModule.from_flatbuffer(flatbuffer_blob)
-  context = iree_runtime.SystemContext(
-      config=_get_default_config_for_driver(backend.driver_name))
-  context.add_module(vm_module)
-  function_name = module.function_name
-  # TODO(b/153499219): Can we possibly name the modules somehow differently?
-  # This may not matter if we spawn a separate context for each, but it will
-  # matter eventually. Right now, this comes from the implicit "module {}"
-  # that wraps anything parsed from ASM that lacks an explicit module
-  # declaration. Possibly manually surround with "module @myName { ... }" in
-  # the compiler helpers.
-  callable_fn = getattr(context.modules.module, function_name)
-  return callable_fn(*args, **kwargs)
+  # NOTE: Even though it's a one-liner, we want it as a way to isolate compiler
+  # tests from the internal details of how the runtime is plumbed together.
+  return ComputationCallable(module, backend)(*args, **kwargs)

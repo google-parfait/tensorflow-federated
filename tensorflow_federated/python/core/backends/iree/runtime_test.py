@@ -36,7 +36,7 @@ class RuntimeTest(tf.test.TestCase):
     self.assertIsInstance(c3, iree_runtime.Config)
     self.assertIsNot(c2, c3)
 
-  def test_compile_and_run_on_args(self):
+  def test_computation_callable(self):
     tf_module = tf.Module()
     fn = lambda x: x + 1.0
     sig = [tf.TensorSpec([], tf.float32)]
@@ -49,9 +49,10 @@ class RuntimeTest(tf.test.TestCase):
     my_computation_module = computation_module.ComputationModule(
         iree_compiler_module, 'foo',
         computation_types.FunctionType(tf.float32, tf.float32))
-    result = runtime.compile_and_run_on_args(my_computation_module,
-                                             backend_info.VULKAN_SPIRV,
-                                             np.float32(5.0))
+    computation_callable = runtime.ComputationCallable(
+        my_computation_module, backend_info.VULKAN_SPIRV)
+    self.assertTrue(callable(computation_callable))
+    result = computation_callable(np.float32(5.0))
     self.assertEqual(result, 6.0)
 
 

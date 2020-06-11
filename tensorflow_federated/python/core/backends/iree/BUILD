@@ -85,6 +85,48 @@ py_test(
 )
 
 py_library(
+    name = "executor",
+    srcs = ["executor.py"],
+    srcs_version = "PY3",
+    tags = [
+        "manual",
+    ],
+    deps = [
+        ":backend_info",
+        ":compiler",
+        ":runtime",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:tracing",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:typed_object",
+        "//tensorflow_federated/python/core/impl:computation_impl",
+        "//tensorflow_federated/python/core/impl:type_utils",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
+        "//tensorflow_federated/python/core/impl/executors:executor_value_base",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+    ],
+)
+
+py_test(
+    name = "executor_test",
+    srcs = ["executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    tags = [
+        "manual",
+    ],
+    deps = [
+        ":backend_info",
+        ":executor",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
+        "//tensorflow_federated/python/core/impl/executors:executor_factory",
+    ],
+)
+
+py_library(
     name = "runtime",
     srcs = ["runtime.py"],
     srcs_version = "PY3",
@@ -95,6 +137,7 @@ py_library(
         ":backend_info",
         ":computation_module",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:typed_object",
     ],
 )
 
