@@ -197,5 +197,59 @@ class ScalarMetricsManagerTest(tf.test.TestCase):
       metrics_manager.ScalarMetricsManager(temp_dir, prefix='foo')
 
 
+class UnzippedScalarMetricsManagerTest(tf.test.TestCase):
+
+  def test_metrics_are_appended(self):
+    metrics_mngr = metrics_manager.ScalarMetricsManager(
+        self.get_temp_dir(), use_bz2=False)
+    metrics = metrics_mngr.get_metrics()
+    self.assertTrue(metrics.empty)
+
+    metrics_mngr.update_metrics(0, _create_dummy_metrics())
+    metrics = metrics_mngr.get_metrics()
+    self.assertEqual(1, len(metrics.index))
+
+    metrics_mngr.update_metrics(1, _create_dummy_metrics())
+    metrics = metrics_mngr.get_metrics()
+    self.assertEqual(2, len(metrics.index))
+
+  def test_csvfile_is_saved(self):
+    temp_dir = self.get_temp_dir()
+    metrics_manager.ScalarMetricsManager(temp_dir, prefix='foo', use_bz2=False)
+    self.assertEqual(set(os.listdir(temp_dir)), set(['foo.metrics.csv']))
+
+  def test_reload_of_csvfile(self):
+    temp_dir = self.get_temp_dir()
+    metrics_mngr = metrics_manager.ScalarMetricsManager(
+        temp_dir, prefix='bar', use_bz2=False)
+    metrics_mngr.update_metrics(0, _create_dummy_metrics())
+    metrics_mngr.update_metrics(5, _create_dummy_metrics())
+
+    new_metrics_mngr = metrics_manager.ScalarMetricsManager(
+        temp_dir, prefix='bar', use_bz2=False)
+    metrics = new_metrics_mngr.get_metrics()
+    self.assertEqual(2, len(metrics.index),
+                     'There should be 2 rows of metrics (for rounds 0 and 5).')
+    self.assertEqual(5, metrics['round_num'].iloc[-1],
+                     'Last metrics are for round 5.')
+
+    self.assertEqual(set(os.listdir(temp_dir)), set(['bar.metrics.csv']))
+
+  def test_constructor_raises_value_error_if_csvfile_is_invalid(self):
+    dataframe_missing_round_num = pd.DataFrame.from_dict(
+        _create_dummy_metrics())
+
+    temp_dir = self.get_temp_dir()
+    # This csvfile is 'invalid' in that it was not originally created by an
+    # instance of ScalarMetricsManager, and is missing a column for
+    # round_num.
+    invalid_csvfile = os.path.join(temp_dir, 'foo.metrics.csv')
+    utils_impl.atomic_write_to_csv(dataframe_missing_round_num, invalid_csvfile)
+
+    with self.assertRaises(ValueError):
+      metrics_manager.ScalarMetricsManager(
+          temp_dir, prefix='foo', use_bz2=False)
+
+
 if __name__ == '__main__':
   tf.test.main()

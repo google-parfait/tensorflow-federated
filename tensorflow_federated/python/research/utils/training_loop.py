@@ -43,6 +43,11 @@ with utils_impl.record_hparam_flags():
       'experiment_name', None, 'The name of this experiment. Will be append to '
       '--root_output_dir to separate experiment results.')
 
+  # Metrics writing flags.
+  flags.DEFINE_boolean(
+      'write_metrics_with_bz2', True, 'Whether to use bz2 '
+      'compression when writing output metrics to a csv file.')
+
   # Checkpoint and evaluation flags.
   flags.DEFINE_integer('rounds_per_eval', 1,
                        'How often to evaluate the global model.')
@@ -76,7 +81,8 @@ def _setup_outputs(root_output_dir, experiment_name, hparam_dict):
 
   results_dir = os.path.join(root_output_dir, 'results', experiment_name)
   create_if_not_exists(results_dir)
-  metrics_mngr = metrics_manager.ScalarMetricsManager(results_dir)
+  metrics_mngr = metrics_manager.ScalarMetricsManager(
+      results_dir, use_bz2=FLAGS.write_metrics_with_bz2)
 
   summary_logdir = os.path.join(root_output_dir, 'logdir', experiment_name)
   create_if_not_exists(summary_logdir)

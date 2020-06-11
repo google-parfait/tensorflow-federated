@@ -32,21 +32,26 @@ class ScalarMetricsManager():
 
   def __init__(self,
                root_metrics_dir: str = '/tmp',
-               prefix: str = 'experiment'):
+               prefix: str = 'experiment',
+               use_bz2: bool = True):
     """Returns an initialized `ScalarMetricsManager`.
 
     This class will maintain metrics in a CSV file in the filesystem. The path
-    of the file is {`root_metrics_dir`}/{`prefix`}.metrics.csv.bz2. To use this
-    class upon restart of an experiment at an earlier round number, you can
-    initialize and then call the clear_rounds_after() method to remove all rows
-    for round numbers later than the restart round number. This ensures that no
-    duplicate rows of data exist in the CSV.
+    of the file is {`root_metrics_dir`}/{`prefix`}.metrics.csv (if use_bz2 is
+    set to False) or {`root_metrics_dir`}/{`prefix`}.metrics.csv.bz2 (if
+    use_bz2 is set to True). To use this class upon restart of an experiment at
+    an earlier round number, you can initialize and then call the
+    clear_rounds_after() method to remove all rows for round numbers later than
+    the restart round number. This ensures that no duplicate rows of data exist
+    in the CSV.
 
     Args:
       root_metrics_dir: A path on the filesystem to store CSVs.
       prefix: A string to use as the prefix of filename. Usually the name of a
         specific run in a larger grid of experiments sharing a common
         `root_metrics_dir`.
+      use_bz2: A boolean indicating whether to zip the result metrics csv using
+        bz2.
 
     Raises:
       ValueError: If `root_metrics_dir` is empty string.
@@ -59,10 +64,15 @@ class ScalarMetricsManager():
       raise ValueError('Empty string passed for root_metrics_dir argument.')
     if not prefix:
       raise ValueError('Empty string passed for prefix argument.')
-    # Using .bz2 rather than .zip due to
-    # https://github.com/pandas-dev/pandas/issues/26023
-    self._metrics_filename = os.path.join(root_metrics_dir,
-                                          f'{prefix}.metrics.csv.bz2')
+
+    if use_bz2:
+      # Using .bz2 rather than .zip due to
+      # https://github.com/pandas-dev/pandas/issues/26023
+      self._metrics_filename = os.path.join(root_metrics_dir,
+                                            f'{prefix}.metrics.csv.bz2')
+    else:
+      self._metrics_filename = os.path.join(root_metrics_dir,
+                                            f'{prefix}.metrics.csv')
     if not tf.io.gfile.exists(self._metrics_filename):
       utils_impl.atomic_write_to_csv(pd.DataFrame(), self._metrics_filename)
 
