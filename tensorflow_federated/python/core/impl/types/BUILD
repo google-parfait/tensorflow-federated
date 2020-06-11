@@ -117,7 +117,11 @@ py_test(
     srcs = ["type_factory_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":type_factory"],
+    deps = [
+        ":placement_literals",
+        ":type_factory",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
 )
 
 py_library(
