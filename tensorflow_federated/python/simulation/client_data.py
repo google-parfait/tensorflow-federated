@@ -21,6 +21,7 @@ data for the simulation and is not part of the TensorFlow Federated core APIs.
 """
 
 import abc
+import collections
 from typing import Callable, Iterable, List, Optional, Tuple
 
 from absl import logging
@@ -259,7 +260,7 @@ class ConcreteClientData(ClientData):
       create_tf_dataset_for_client_fn: A function that takes a client_id from
         the above list, and returns a `tf.data.Dataset`.
     """
-    py_typecheck.check_type(client_ids, Iterable)
+    py_typecheck.check_type(client_ids, collections.Iterable)
     py_typecheck.check_callable(create_tf_dataset_for_client_fn)
     if not client_ids:
       raise ValueError('At least one client_id is required.')
