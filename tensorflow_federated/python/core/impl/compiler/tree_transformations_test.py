@@ -4216,5 +4216,177 @@ class GroupBlockLocalsByNamespaceTest(test.TestCase):
     self.assertEqual(classes[1][0][1], ref_to_x)
 
 
+class GroupBlockLocalsByDependencyTest(test.TestCase):
+
+  def test_create_groups_of_block_locals_empty_list(self):
+    data = building_blocks.Data('b', tf.int32)
+    blk = building_blocks.Block([], data)
+    block_locals_packer = tree_transformations.GroupBlockLocalsByDependency(blk)
+    locals_repacked = block_locals_packer._create_groups_of_block_locals(blk)
+    self.assertEmpty(locals_repacked)
+
+  def test_create_groups_of_block_locals_two_independent_computations(self):
+    data = building_blocks.Data('b', tf.int32)
+    blk = building_blocks.Block([('x', data), ('y', data)], data)
+    block_locals_packer = tree_transformations.GroupBlockLocalsByDependency(blk)
+    locals_repacked = block_locals_packer._create_groups_of_block_locals(blk)
+    symbols_in_first_local_element = [name for name, _ in locals_repacked[0]]
+    comps_in_first_local_element = [comp for _, comp in locals_repacked[0]]
+    self.assertLen(locals_repacked, 1)
+    self.assertLen(locals_repacked[0], 2)
+    self.assertIn('x', symbols_in_first_local_element)
+    self.assertIn('y', symbols_in_first_local_element)
+    self.assertEqual(comps_in_first_local_element[0], data)
+    self.assertEqual(comps_in_first_local_element[1], data)
+
+  def test_create_groups_of_block_locals_two_classes_of_two_computations(self):
+    data = building_blocks.Data('b', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    ref_to_y = building_blocks.Reference('y', tf.int32)
+    blk = building_blocks.Block([('x', data), ('y', data), ('z', ref_to_x),
+                                 ('u', ref_to_y)], data)
+    block_locals_packer = tree_transformations.GroupBlockLocalsByDependency(blk)
+    locals_repacked = block_locals_packer._create_groups_of_block_locals(blk)
+    symbols_in_first_local_element = [name for name, _ in locals_repacked[0]]
+    comps_in_first_local_element = [comp for _, comp in locals_repacked[0]]
+    symbols_in_second_local_element = [name for name, _ in locals_repacked[1]]
+    comps_in_second_local_element = [comp for _, comp in locals_repacked[1]]
+    self.assertLen(locals_repacked, 2)
+    self.assertLen(locals_repacked[0], 2)
+    self.assertLen(locals_repacked[1], 2)
+    self.assertIn('x', symbols_in_first_local_element)
+    self.assertIn('y', symbols_in_first_local_element)
+    self.assertIn('z', symbols_in_second_local_element)
+    self.assertIn('u', symbols_in_second_local_element)
+    self.assertEqual(comps_in_first_local_element[0], data)
+    self.assertEqual(comps_in_first_local_element[1], data)
+    self.assertIn(ref_to_x, comps_in_second_local_element)
+    self.assertIn(ref_to_y, comps_in_second_local_element)
+
+  def test_noops_non_block(self):
+    data = building_blocks.Data('x', tf.int32)
+    transformed, modified = tree_transformations.group_block_locals_by_dependency(
+        data)
+    self.assertFalse(modified)
+    self.assertEqual(transformed.compact_representation(),
+                     data.compact_representation())
+    self.assertEqual(transformed.type_signature.compact_representation(),
+                     data.type_signature.compact_representation())
+
+  def test_noops_on_block_with_empty_locals(self):
+    single_data = building_blocks.Data('a', tf.int32)
+    block = building_blocks.Block([], single_data)
+    transformed_comp, modified = tree_transformations.group_block_locals_by_dependency(
+        block)
+    self.assertFalse(modified)
+    self.assertEqual(transformed_comp.compact_representation(), '(let  in a)')
+
+  def test_raises_rebound_reference(self):
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    block = building_blocks.Block([('x', ref_to_x)], ref_to_x)
+    with self.assertRaisesRegex(ValueError, 'do not rebind'):
+      tree_transformations.group_block_locals_by_dependency(block)
+
+  def test_no_change_to_single_block_local(self):
+    single_data = building_blocks.Data('a', tf.int32)
+    other_data = building_blocks.Data('b', tf.int32)
+    block = building_blocks.Block([('x', single_data)], other_data)
+    transformed_comp, modified = tree_transformations.group_block_locals_by_dependency(
+        block)
+    self.assertFalse(modified)
+    self.assertEqual(transformed_comp.compact_representation(),
+                     '(let var1=a in b)')
+
+  def test_transforms_result_with_single_block_local(self):
+    single_data = building_blocks.Data('a', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    block = building_blocks.Block([('x', single_data)], ref_to_x)
+    transformed_comp, modified = tree_transformations.group_block_locals_by_dependency(
+        block)
+    self.assertTrue(modified)
+    self.assertEqual(transformed_comp.compact_representation(),
+                     '(let var1=a in var1)')
+
+  def test_packs_independent_computations_together(self):
+    first_data = building_blocks.Data('a', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    second_data = building_blocks.Data('b', tf.int32)
+    ref_to_y = building_blocks.Reference('y', tf.int32)
+    block = building_blocks.Block([('x', first_data), ('y', second_data)],
+                                  building_blocks.Tuple([ref_to_y, ref_to_x]))
+    transformed_comp, modified = tree_transformations.group_block_locals_by_dependency(
+        block)
+    self.assertTrue(modified)
+    self.assertEqual(transformed_comp.compact_representation(),
+                     '(let var1=<a,b> in <var1[1],var1[0]>)')
+
+  def test_leaves_dependent_computations_as_chain(self):
+    data = building_blocks.Data('a', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    ref_to_y = building_blocks.Reference('y', tf.int32)
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    block = building_blocks.Block([('x', data), ('y', ref_to_x),
+                                   ('z', ref_to_y)], ref_to_z)
+    transformed_comp, modified = tree_transformations.group_block_locals_by_dependency(
+        block)
+    self.assertTrue(modified)
+    self.assertEqual(transformed_comp.compact_representation(),
+                     '(let var1=a,var2=var1,var3=var2 in var3)')
+
+  def test_moves_computation_at_end_no_unbound_ref_to_first_binding(self):
+    first_data = building_blocks.Data('a', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    second_data = building_blocks.Data('b', tf.int32)
+    block = building_blocks.Block([('x', first_data), ('y', ref_to_x),
+                                   ('z', second_data)],
+                                  building_blocks.Tuple([ref_to_x, ref_to_z]))
+    transformed_comp, modified = tree_transformations.group_block_locals_by_dependency(
+        block)
+    self.assertTrue(modified)
+    self.assertEqual(transformed_comp.compact_representation(),
+                     '(let var1=<a,b>,var2=var1[0] in <var1[0],var1[1]>)')
+
+  def test_moves_chained_computations_as_far_left_as_possible(self):
+    first_data = building_blocks.Data('a', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    ref_to_y = building_blocks.Reference('y', tf.int32)
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    ref_to_u = building_blocks.Reference('u', tf.int32)
+    second_data = building_blocks.Data('b', tf.int32)
+    block = building_blocks.Block([('x', first_data), ('u', ref_to_x),
+                                   ('v', ref_to_u), ('y', second_data),
+                                   ('z', ref_to_y)],
+                                  building_blocks.Tuple([ref_to_x, ref_to_z]))
+    transformed_comp, modified = tree_transformations.group_block_locals_by_dependency(
+        block)
+    self.assertTrue(modified)
+    self.assertEqual(
+        transformed_comp.compact_representation(),
+        '(let var1=<a,b>,var2=<var1[0],var1[1]>,var3=var2[0] in <var1[0],var2[1]>)'
+    )
+
+  def test_second_application_is_idempotent(self):
+    first_data = building_blocks.Data('a', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    ref_to_y = building_blocks.Reference('y', tf.int32)
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    ref_to_u = building_blocks.Reference('u', tf.int32)
+    second_data = building_blocks.Data('b', tf.int32)
+    block = building_blocks.Block([('x', first_data), ('u', ref_to_x),
+                                   ('v', ref_to_u), ('y', second_data),
+                                   ('z', ref_to_y)],
+                                  building_blocks.Tuple([ref_to_x, ref_to_z]))
+    transformed_comp, _ = tree_transformations.group_block_locals_by_dependency(
+        block)
+    second_application_of_transform, _ = tree_transformations.group_block_locals_by_dependency(
+        transformed_comp)
+    # The second application of the transform may have renamed the references;
+    # therefore we check that they are structurally equivalent
+    self.assertTrue(
+        tree_analysis.trees_equal(transformed_comp,
+                                  second_application_of_transform))
+
+
 if __name__ == '__main__':
   test.main()
