@@ -21,6 +21,7 @@ from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
@@ -30,6 +31,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
+@tracing.trace
 def serialize_tensor_value(value, type_spec=None):
   """Serializes a tensor value into `executor_pb2.Value`.
 
@@ -81,6 +83,7 @@ def serialize_tensor_value(value, type_spec=None):
   return executor_pb2.Value(tensor=any_pb), type_spec
 
 
+@tracing.trace
 def deserialize_tensor_value(value_proto):
   """Deserializes a tensor value from `executor_pb2.Value`.
 
@@ -116,6 +119,7 @@ def deserialize_tensor_value(value_proto):
   return tensor_value, value_type
 
 
+@tracing.trace
 def serialize_sequence_value(value):
   """Serializes a `tf.data.Dataset` value into `executor_pb2.Value`.
 
@@ -140,6 +144,7 @@ def serialize_sequence_value(value):
           element_type=type_serialization.serialize_type(element_type)))
 
 
+@tracing.trace
 def deserialize_sequence_value(sequence_value_proto):
   """Deserializes a `tf.data.Dataset`.
 
@@ -177,6 +182,7 @@ def deserialize_sequence_value(sequence_value_proto):
   return ds, computation_types.SequenceType(element=element_type)
 
 
+@tracing.trace
 def serialize_value(value, type_spec=None):
   """Serializes a value into `executor_pb2.Value`.
 
@@ -256,6 +262,7 @@ def serialize_value(value, type_spec=None):
             str(type_spec) if type_spec is not None else 'unknown'))
 
 
+@tracing.trace
 def deserialize_value(value_proto):
   """Deserializes a value (of any type) from `executor_pb2.Value`.
 
