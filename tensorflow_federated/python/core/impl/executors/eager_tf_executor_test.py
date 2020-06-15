@@ -62,7 +62,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
 
     fn = eager_tf_executor.embed_tensorflow_computation(
         computation_impl.ComputationImpl.get_proto(comp))
-    result = fn(10)
+    result = fn(tf.constant(10))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result.numpy(), 11)
 
@@ -74,7 +74,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
 
     fn = eager_tf_executor.embed_tensorflow_computation(
         computation_impl.ComputationImpl.get_proto(comp))
-    result = fn(10.0)
+    result = fn(tf.constant(10.0))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result.numpy(), 10.5)
 
@@ -143,7 +143,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
 
     fn = eager_tf_executor.embed_tensorflow_computation(
         computation_impl.ComputationImpl.get_proto(comp))
-    result = fn(30)
+    result = fn(tf.constant(30))
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result.numpy(), 60)
 

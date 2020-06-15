@@ -96,10 +96,17 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   output_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
       comp.tensorflow.result)
 
-  def function_to_wrap(*args):  # pylint: disable=missing-docstring
-    if len(args) != len(input_tensor_names):
-      raise RuntimeError('Expected {} arguments, found {}.'.format(
-          len(input_tensor_names), len(args)))
+  def function_to_wrap():
+    """No-arg function to import graph def.
+
+    We pass a no-arg function to `tf.compat.v1.wrap_function` to avoid
+    the leftover placeholders that can result from binding arguments to the
+    imported graphdef via `input_map`. The correct signature will be added to
+    this function later, via the `prune` call below.
+
+    Returns:
+      Result of importing graphdef backing `comp`.
+    """
     graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
     init_op = comp.tensorflow.initialize_op
     if init_op:
@@ -108,9 +115,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
 
     def _import_fn():
       return tf.import_graph_def(
-          graph_merge.uniquify_shared_names(graph_def),
-          input_map=dict(list(zip(input_tensor_names, args))),
-          return_elements=output_tensor_names)
+          graph_merge.uniquify_shared_names(graph_def), name='')
 
     if must_pin_function_to_cpu:
       with tf.device('cpu'):
@@ -121,19 +126,33 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     else:
       return _import_fn()
 
-  signature = []
   param_fns = []
   if param_type is not None:
     for spec in anonymous_tuple.flatten(type_spec.parameter):
       if isinstance(spec, computation_types.TensorType):
-        signature.append(tf.TensorSpec(spec.shape, spec.dtype))
         param_fns.append(lambda x: x)
       else:
         py_typecheck.check_type(spec, computation_types.SequenceType)
-        signature.append(tf.TensorSpec([], tf.variant))
         param_fns.append(tf.data.experimental.to_variant)
 
-  wrapped_fn = tf.compat.v1.wrap_function(function_to_wrap, signature)
+  wrapped_noarg_fn = tf.compat.v1.wrap_function(function_to_wrap, signature=[])
+  import_graph = wrapped_noarg_fn.graph
+  try:
+    wrapped_fn = wrapped_noarg_fn.prune(
+        feeds=tf.nest.map_structure(import_graph.as_graph_element,
+                                    input_tensor_names),
+        fetches=tf.nest.map_structure(import_graph.as_graph_element,
+                                      output_tensor_names),
+    )
+  except KeyError as e:
+    raise TypeError(
+        'Caught exception trying to prune graph `{g}` with '
+        'feeds {feeds} and fetches {fetches}. This indicates that these '
+        'names may not refer to tensors in the graph. .\nException: {e}'.format(
+            g=import_graph,
+            feeds=input_tensor_names,
+            fetches=output_tensor_names,
+            e=e))
 
   result_fns = []
   for spec in anonymous_tuple.flatten(result_type):
