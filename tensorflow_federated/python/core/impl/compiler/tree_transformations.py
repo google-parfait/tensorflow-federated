@@ -1066,7 +1066,10 @@ def remove_duplicate_block_locals(comp):
         comp = building_blocks.Block(variables, comp.result)
       return comp, True
     elif isinstance(comp, building_blocks.Reference):
-      value = symbol_tree.get_payload_with_name(comp.name).value
+      payload = symbol_tree.get_payload_with_name(comp.name)
+      if payload is None:
+        raise ValueError('Encountered unbound reference: {}'.format(comp.name))
+      value = payload.value
       if value is None:
         return comp, False
       while isinstance(value, building_blocks.Reference):
