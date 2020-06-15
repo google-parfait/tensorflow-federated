@@ -66,7 +66,6 @@ def at_server(type_spec: computation_types.Type) -> computation_types.Type:
   Returns:
     The type of the form `T@SERVER` where `T` is the `type_spec`.
   """
-  type_spec = computation_types.to_type(type_spec)
   return computation_types.FederatedType(
       type_spec, placement_literals.SERVER, all_equal=True)
 
