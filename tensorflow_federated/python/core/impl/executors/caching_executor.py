@@ -239,14 +239,14 @@ class CachingExecutor(executor_base.Executor):
       self._cache[identifier] = cached_value
     try:
       await cached_value.target_future
-    except Exception as e:
+    except Exception:
       # Invalidate the entire cache in the inner executor had an exception.
       # TODO(b/145514490): This is a bit heavy handed, there maybe caches where
       # only the current cache item needs to be invalidated; however this
       # currently only occurs when an inner RemoteExecutor has the backend go
       # down.
       self._cache = {}
-      raise e
+      raise
     # No type check is necessary here; we have either checked
     # `is_equivalent_to` or just constructed `target_value`
     # explicitly with `type_spec`.
@@ -275,13 +275,13 @@ class CachingExecutor(executor_base.Executor):
       self._cache[identifier] = cached_value
     try:
       target_value = await cached_value.target_future
-    except Exception as e:
+    except Exception:
       # TODO(b/145514490): This is a bit heavy handed, there maybe caches where
       # only the current cache item needs to be invalidated; however this
       # currently only occurs when an inner RemoteExecutor has the backend go
       # down.
       self._cache = {}
-      raise e
+      raise
     type_spec.check_assignable_from(target_value.type_signature)
     return cached_value
 
@@ -316,13 +316,13 @@ class CachingExecutor(executor_base.Executor):
       self._cache[identifier] = cached_value
     try:
       target_value = await cached_value.target_future
-    except Exception as e:
+    except Exception:
       # TODO(b/145514490): This is a bit heavy handed, there maybe caches where
       # only the current cache item needs to be invalidated; however this
       # currently only occurs when an inner RemoteExecutor has the backend go
       # down.
       self._cache = {}
-      raise e
+      raise
     type_spec.check_assignable_from(target_value.type_signature)
     return cached_value
 
@@ -350,12 +350,12 @@ class CachingExecutor(executor_base.Executor):
       self._cache[identifier] = cached_value
     try:
       target_value = await cached_value.target_future
-    except Exception as e:
+    except Exception:
       # TODO(b/145514490): This is a bit heavy handed, there maybe caches where
       # only the current cache item needs to be invalidated; however this
       # currently only occurs when an inner RemoteExecutor has the backend go
       # down.
       self._cache = {}
-      raise e
+      raise
     type_spec.check_assignable_from(target_value.type_signature)
     return cached_value

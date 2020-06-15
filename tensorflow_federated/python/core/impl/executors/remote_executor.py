@@ -185,7 +185,7 @@ def _request(rpc_func, request):
         logging.info('Received retryable gRPC error: %s', e)
         raise execution_context.RetryableError(e)
       else:
-        raise e
+        raise
 
 
 def _is_retryable_grpc_error(error):
