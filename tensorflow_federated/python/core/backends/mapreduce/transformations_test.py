@@ -237,6 +237,30 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
+  def test_handles_federated_broadcasts_nested_in_tuple(self):
+    self.skipTest('b/159060924')
+    first_broadcast = compiler_test_utils.create_dummy_called_federated_broadcast(
+    )
+    packed_broadcast = building_blocks.Tuple([
+        building_blocks.Data(
+            'a',
+            computation_types.FederatedType(
+                computation_types.TensorType(tf.int32), placements.SERVER)),
+        first_broadcast
+    ])
+    sel = building_blocks.Selection(packed_broadcast, index=0)
+    second_broadcast = building_block_factory.create_federated_broadcast(sel)
+    comp = building_blocks.Lambda('a', tf.int32, second_broadcast)
+    uri = [intrinsic_defs.FEDERATED_BROADCAST.uri]
+
+    before, after = transformations.force_align_and_split_by_intrinsics(
+        comp, uri)
+
+    self.assertIsInstance(before, building_blocks.Lambda)
+    self.assertFalse(tree_analysis.contains_called_intrinsic(before, uri))
+    self.assertIsInstance(after, building_blocks.Lambda)
+    self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
+
   def test_returns_trees_with_two_federated_broadcast(self):
     federated_broadcast = compiler_test_utils.create_dummy_called_federated_broadcast(
     )
