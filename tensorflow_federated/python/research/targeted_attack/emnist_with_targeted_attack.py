@@ -189,6 +189,14 @@ def log_tfboard(name, value, step):
   tf.summary.scalar(name, value, step=step)
 
 
+def create_if_not_exists(path):
+  try:
+    tf.io.gfile.makedirs(path)
+  except tf.errors.OpError:
+    print('Skipping creation of directory {}, directory already exists'.format(
+        path))
+
+
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
@@ -202,6 +210,7 @@ def main(argv):
   configs = '-'.join(
       ['{}={}'.format(k, flag_dict[k]) for k in keys if k != 'root_output_dir'])
   file_name = 'log' + configs
+  create_if_not_exists(FLAGS.root_output_dir)
   file_handle = open(os.path.join(FLAGS.root_output_dir, file_name), 'w')
 
   global_step = tf.Variable(1, name='global_step', dtype=tf.int64)
@@ -225,8 +234,8 @@ def main(argv):
   dataset_malicious, target_x, target_y = load_malicious_dataset(FLAGS.task_num)
 
   # prepare model_fn.
-  example_dataset = emnist_train.create_tf_dataset_for_client(
-      emnist_train.client_ids[0])
+  example_dataset = preprocess(
+      emnist_train.create_tf_dataset_for_client(emnist_train.client_ids[0]))
   input_spec = example_dataset.element_spec
 
   def model_fn():
