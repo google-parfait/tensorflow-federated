@@ -50,6 +50,15 @@ class ClipNormAggregateFnTest(tf.test.TestCase):
       state = tff.federated_value(aggregate_fn.initialize(), tff.SERVER)
       return aggregate_fn(state, deltas, weights)
 
+    self.assertEqual(
+        federated_aggregate_test.type_signature.result,
+        tff.NamedTupleType((
+            tff.FederatedType(
+                aggregate_fns.ClipNormAggregateState(
+                    clip_norm=tf.float32, max_norm=tf.float32), tff.SERVER),
+            tff.FederatedType(deltas_type, tff.SERVER),
+        )))
+
     state, mean = federated_aggregate_test(deltas, weights)
     mean = mean._asdict()
 

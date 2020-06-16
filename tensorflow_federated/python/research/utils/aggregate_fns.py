@@ -56,9 +56,10 @@ def build_clip_norm_aggregate_fn(
     clipped_deltas, client_norms = tff.federated_map(clip_by_global_norm,
                                                      (deltas, client_clip_norm))
     # clip_norm no-op update here but could be set using max_norm.
-    next_state = ClipNormAggregateState(
-        clip_norm=state.clip_norm,
-        max_norm=tff.utils.federated_max(client_norms))
+    next_state = tff.federated_zip(
+        ClipNormAggregateState(
+            clip_norm=state.clip_norm,
+            max_norm=tff.utils.federated_max(client_norms)))
     return next_state, tff.federated_mean(clipped_deltas, weight=weights)
 
   return tff.utils.StatefulAggregateFn(initialize_fn, next_fn)
