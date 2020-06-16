@@ -522,6 +522,10 @@ def _get_called_intrinsics(comp, uri):
 def _can_extract_intrinsics_to_top_level_lambda(comp, uri):
   """Tests if the intrinsic for the given `uri` can be extracted.
 
+  This currently maps identically to: the called intrinsics we intend to hoist
+  don't close over any intermediate variables. That is, any variables other than
+  potentiall the top-level parameter the computation itself declares.
+
   Args:
     comp: The `tff.framework.Lambda` to test. The names of lambda parameters and
       block variables in `comp` must be unique.
@@ -546,7 +550,7 @@ def _inline_block_variables_required_to_align_intrinsics(comp, uri):
   """Inlines the variables required to align the intrinsic for the given `uri`.
 
   This function inlines only the block variables required to align an intrinsic,
-  which is necessary because may transformations insert block variables that do
+  which is necessary because many transformations insert block variables that do
   not impact alignment and should not be inlined.
 
   Additionally, this function iteratively attempts to inline block variables a
@@ -594,6 +598,9 @@ def _inline_block_variables_required_to_align_intrinsics(comp, uri):
           'infinite loop. Expected to modify the AST by inlining the variable '
           'names: \'{}\', but no transformations to the AST: \n{}'.format(
               variable_names, comp.formatted_representation()))
+  comp, modified = tree_transformations.inline_selections_from_tuple(comp)
+  if modified:
+    comp, _ = tree_transformations.uniquify_reference_names(comp)
   return comp
 
 
@@ -617,6 +624,10 @@ def _extract_intrinsics_to_top_level_lambda(comp, uri):
 
   The order of the extracted called intrinsics matches the order of `uri`.
 
+  Note: if this function is passed an AST which contains nested called
+  intrinsics, it will fail, as it will mutate the subcomputation containing
+  the lower-level called intrinsics on the way back up the tree.
+
   Args:
     comp: The `tff.framework.Lambda` to transform. The names of lambda
       parameters and block variables in `comp` must be unique.
@@ -629,6 +640,9 @@ def _extract_intrinsics_to_top_level_lambda(comp, uri):
     ValueError: If all the intrinsics for the given `uri` in `comp` are not
       exclusively bound by `comp`.
   """
+  # TODO(b/159060924): This function currently relies on not having structures
+  # of nested called intrinsics to extract intrinsics to the top level lambda.
+  # This is unnecessary, and should be removed.
   py_typecheck.check_type(comp, building_blocks.Lambda)
   py_typecheck.check_type(uri, list)
   for x in uri:

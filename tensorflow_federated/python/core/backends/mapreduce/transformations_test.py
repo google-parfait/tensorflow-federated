@@ -238,7 +238,6 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
   def test_handles_federated_broadcasts_nested_in_tuple(self):
-    self.skipTest('b/159060924')
     first_broadcast = compiler_test_utils.create_dummy_called_federated_broadcast(
     )
     packed_broadcast = building_blocks.Tuple([
