@@ -23,6 +23,7 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.research.utils import checkpoint_manager
+from tensorflow_federated.python.research.utils import metrics_manager
 from tensorflow_federated.python.research.utils import training_loop
 
 _Batch = collections.namedtuple('Batch', ['x', 'y'])
@@ -256,6 +257,73 @@ class ExperimentRunnerTest(tf.test.TestCase):
     final_loss = keras_model.test_on_batch(federated_data[0][0].x,
                                            federated_data[0][0].y)
     self.assertEqual(final_loss, restored_loss)
+
+  def test_train_eval_writes_metrics(self):
+    FLAGS.total_rounds = 1
+    FLAGS.rounds_per_eval = 10
+    FLAGS.rounds_per_train_eval = 10
+    FLAGS.experiment_name = 'train_eval_metrics'
+    iterative_process = _build_federated_averaging_process()
+    batch = _batch_fn()
+    federated_data = [[batch]]
+
+    def client_datasets_fn(round_num):
+      del round_num
+      return federated_data
+
+    def evaluate(model):
+      keras_model = tff.simulation.models.mnist.create_keras_model(
+          compile_model=True)
+      model.assign_weights_to(keras_model)
+      return {'loss': keras_model.evaluate(batch.x, batch.y)}
+
+    temp_filepath = self.get_temp_dir()
+    FLAGS.root_output_dir = temp_filepath
+    training_loop.run(
+        iterative_process, client_datasets_fn, evaluate, train_eval_fn=evaluate)
+
+    results_dir = os.path.join(FLAGS.root_output_dir, 'results',
+                               FLAGS.experiment_name)
+
+    scalar_manager = metrics_manager.ScalarMetricsManager(results_dir)
+    metrics = scalar_manager.get_metrics()
+    self.assertEqual(2, len(metrics.index))
+    self.assertIn('eval/loss', metrics.columns)
+    self.assertIn('train_eval/loss', metrics.columns)
+    self.assertNotIn('test/loss', metrics.columns)
+
+  def test_fn_writes_metrics(self):
+    FLAGS.total_rounds = 1
+    FLAGS.rounds_per_eval = 10
+    FLAGS.experiment_name = 'test_metrics'
+    iterative_process = _build_federated_averaging_process()
+    batch = _batch_fn()
+    federated_data = [[batch]]
+
+    def client_datasets_fn(round_num):
+      del round_num
+      return federated_data
+
+    def evaluate(model):
+      keras_model = tff.simulation.models.mnist.create_keras_model(
+          compile_model=True)
+      model.assign_weights_to(keras_model)
+      return {'loss': keras_model.evaluate(batch.x, batch.y)}
+
+    temp_filepath = self.get_temp_dir()
+    FLAGS.root_output_dir = temp_filepath
+    training_loop.run(
+        iterative_process, client_datasets_fn, evaluate, test_fn=evaluate)
+
+    results_dir = os.path.join(FLAGS.root_output_dir, 'results',
+                               FLAGS.experiment_name)
+
+    scalar_manager = metrics_manager.ScalarMetricsManager(results_dir)
+    metrics = scalar_manager.get_metrics()
+    self.assertEqual(2, len(metrics.index))
+    self.assertIn('eval/loss', metrics.columns)
+    self.assertIn('test/loss', metrics.columns)
+    self.assertNotIn('train_eval/loss', metrics.columns)
 
 
 if __name__ == '__main__':

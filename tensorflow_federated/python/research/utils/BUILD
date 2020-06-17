@@ -97,6 +97,7 @@ py_test(
     deps = [
         ":adapters",
         ":checkpoint_manager",
+        ":metrics_manager",
         ":training_loop",
         "//tensorflow_federated",
     ],

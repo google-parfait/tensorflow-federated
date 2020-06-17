@@ -49,8 +49,12 @@ with utils_impl.record_hparam_flags():
       'compression when writing output metrics to a csv file.')
 
   # Checkpoint and evaluation flags.
-  flags.DEFINE_integer('rounds_per_eval', 1,
-                       'How often to evaluate the global model.')
+  flags.DEFINE_integer(
+      'rounds_per_eval', 1,
+      'How often to evaluate the global model on the validation dataset.')
+  flags.DEFINE_integer(
+      'rounds_per_train_eval', 100,
+      'How often to evaluate the global model on the entire training dataset.')
   flags.DEFINE_integer('rounds_per_checkpoint', 50,
                        'How often to checkpoint the global model.')
   flags.DEFINE_integer(
@@ -135,7 +139,8 @@ def _compute_numpy_l2_difference(model, previous_model):
 
 def run(iterative_process: adapters.IterativeProcessPythonAdapter,
         client_datasets_fn: Callable[[int], List[tf.data.Dataset]],
-        evaluate_fn: Callable[[Any], Dict[str, float]],
+        validation_fn: Callable[[Any], Dict[str, float]],
+        train_eval_fn: Optional[Callable[[Any], Dict[str, float]]] = None,
         test_fn: Optional[Callable[[Any], Dict[str, float]]] = None):
   """Runs federated training for the given TFF `IterativeProcess` instance.
 
@@ -144,9 +149,13 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     client_datasets_fn: Function accepting an integer argument (the round
       number) and returning a list of client datasets to use as federated data
       for that round, and a list of the corresponding client ids.
-    evaluate_fn: Callable accepting the `model` attribute of an
+    validation_fn: Callable accepting the `model` attribute of an
       `IterationResult.state`, and returning a dict of evaluation metrics. Used
       to compute validation metrics throughout the training process.
+    train_eval_fn: An optional callable accepting the `model` attribute of
+      an `IterationResult.state` and returning a dict of evaluation metrics.
+      Used to compute training metrics over the entire training dataset
+      throughout the course of the iterative process.
     test_fn: An optional callable accepting the `model` attribute of an
     `IterationResult.state`) and returning a dict of test metrics. Used to
     compute test metrics at the end of the training process.
@@ -160,8 +169,10 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
                     '`adapters.IterativeProcessPythonAdapter`.')
   if not callable(client_datasets_fn):
     raise TypeError('client_datasets_fn should be callable.')
-  if not callable(evaluate_fn):
-    raise TypeError('evaluate_fn should be callable.')
+  if not callable(validation_fn):
+    raise TypeError('validation_fn should be callable.')
+  if train_eval_fn is not None and not callable(train_eval_fn):
+    raise TypeError('train_eval_fn should be callable.')
   if test_fn is not None and not callable(test_fn):
     raise TypeError('test_fn should be callable.')
   total_rounds = FLAGS.total_rounds
@@ -233,26 +244,47 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
       train_metrics['save_checkpoint_secs'] = (
           time.time() - save_checkpoint_start_time)
 
-    metrics = {
-        'train': train_metrics,
-    }
+    metrics = {'train': train_metrics}
 
     if round_num % FLAGS.rounds_per_eval == 0:
+      # Compute validation metrics
       evaluate_start_time = time.time()
-      eval_metrics = evaluate_fn(state.model)
-      eval_metrics['evaluate_secs'] = time.time() - evaluate_start_time
+      validation_metrics = validation_fn(state.model)
+      validation_metrics['evaluate_secs'] = time.time() - evaluate_start_time
+      metrics['eval'] = validation_metrics
 
-      metrics['eval'] = eval_metrics
+    if train_eval_fn and round_num % FLAGS.rounds_per_train_eval == 0:
+      # Compute metrics over the entire training dataset
+      train_eval_start = time.time()
+      train_eval_metrics = train_eval_fn(state.model)
+      train_eval_metrics['evaluate_secs'] = time.time() - train_eval_start
+      metrics['train_eval'] = train_eval_metrics
 
     _write_metrics(metrics_mngr, summary_writer, metrics, round_num)
     round_num += 1
 
+  # Final metrics evaluation once the training has completed
+  metrics = {}
+
+  # Validation metrics
+  evaluate_start_time = time.time()
+  validation_metrics = validation_fn(state.model)
+  validation_metrics['evaluate_secs'] = time.time() - evaluate_start_time
+  metrics['eval'] = validation_metrics
+
+  # Training set metrics
+  if train_eval_fn:
+    train_eval_start = time.time()
+    train_eval_metrics = train_eval_fn(state.model)
+    train_eval_metrics['evaluate_secs'] = time.time() - train_eval_start
+    metrics['train_eval'] = train_eval_metrics
+
+  # Test set metrics
   if test_fn:
     test_start_time = time.time()
     test_metrics = test_fn(state.model)
-    test_metrics['test_evaluate_secs'] = time.time() - test_start_time
-
-    metrics = {'test': test_metrics}
-    _write_metrics(metrics_mngr, summary_writer, metrics, total_rounds)
+    test_metrics['evaluate_secs'] = time.time() - test_start_time
+    metrics['test'] = test_metrics
+  _write_metrics(metrics_mngr, summary_writer, metrics, total_rounds)
 
   return state
