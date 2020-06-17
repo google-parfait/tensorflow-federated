@@ -230,7 +230,11 @@ class ExtractComputation(transformation_utils.TransformSpec):
       name = next(self._name_generator)
       variables = [(name, comp.result)]
       result = building_blocks.Reference(name, comp.result.type_signature)
-      if not self._contains_unbound_reference(comp.result, comp.parameter_name):
+      if comp.parameter_name is None:
+        captured_names = set()
+      else:
+        captured_names = comp.parameter_name
+      if not self._contains_unbound_reference(comp.result, captured_names):
         fn = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
                                     result)
         block = building_blocks.Block(variables, fn)
