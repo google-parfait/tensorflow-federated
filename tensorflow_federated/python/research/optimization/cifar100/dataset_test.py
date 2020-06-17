@@ -21,6 +21,10 @@ from tensorflow_federated.python.research.optimization.cifar100 import dataset
 TEST_BATCH_SIZE = dataset.TEST_BATCH_SIZE
 
 
+def _compute_length_of_dataset(ds):
+  return ds.reduce(0, lambda x, _: x + 1)
+
+
 class DatasetTest(tf.test.TestCase):
 
   def test_centralized_cifar_structure(self):
@@ -61,6 +65,26 @@ class DatasetTest(tf.test.TestCase):
           client_epochs_per_round=1, train_batch_size=10, crop_shape=(32, 32))
     with self.assertRaises(ValueError):
       dataset.get_centralized_cifar100(train_batch_size=10, crop_shape=(32, 32))
+
+  def test_raises_no_repeat_and_no_take(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Argument client_epochs_per_round is set to -1'):
+      dataset.get_federated_cifar100(
+          client_epochs_per_round=-1,
+          train_batch_size=10,
+          max_batches_per_client=-1)
+
+  def test_take_with_repeat(self):
+    cifar_train, _ = dataset.get_federated_cifar100(
+        client_epochs_per_round=-1,
+        train_batch_size=10,
+        max_batches_per_client=10)
+    self.assertEqual(len(cifar_train.client_ids), 500)
+    for i in range(10):
+      client_ds = cifar_train.create_tf_dataset_for_client(
+          cifar_train.client_ids[i])
+      self.assertEqual(_compute_length_of_dataset(client_ds), 10)
+
 
 if __name__ == '__main__':
   tf.test.main()

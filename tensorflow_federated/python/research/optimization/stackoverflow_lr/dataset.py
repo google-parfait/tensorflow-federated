@@ -65,12 +65,15 @@ def build_to_ids_fn(vocab_tokens, vocab_tags):
   return to_ids
 
 
-def get_stackoverflow_datasets(vocab_tokens_size=10000,
-                               vocab_tags_size=500,
-                               max_training_elements_per_user=500,
-                               client_batch_size=100,
-                               client_epochs_per_round=1,
-                               num_validation_examples=10000):
+def get_stackoverflow_datasets(
+    vocab_tokens_size=10000,
+    vocab_tags_size=500,
+    max_training_elements_per_user=500,
+    client_batch_size=100,
+    client_epochs_per_round=1,
+    max_batches_per_user=-1,
+    num_validation_examples=10000,
+):
   """Preprocessing for Stackoverflow data.
 
   Notice that this preprocessing function *ignores* the heldout Stackoverflow
@@ -89,6 +92,8 @@ def get_stackoverflow_datasets(vocab_tokens_size=10000,
       elements to take per user. If -1, takes all elements for each user.
     client_batch_size: Integer representing the client batch size.
     client_epochs_per_round: Number of client epochs per round
+    max_batches_per_user: If set to a positive integer, the maximum number of
+      batches in each client's dataset.
     num_validation_examples: Number of elements to use for validation
 
   Returns:
@@ -107,6 +112,10 @@ def get_stackoverflow_datasets(vocab_tokens_size=10000,
     raise ValueError(
         'max_training_elements_per_user must be an integer at '
         'least -1; you have passed {}'.format(max_training_elements_per_user))
+  elif client_epochs_per_round == -1 and max_batches_per_user == -1:
+    raise ValueError('Argument client_epochs_per_round is set to -1. If this is'
+                     ' intended, then max_batches_per_user must be set to '
+                     'some positive integer.')
 
   # Ignoring held-out Stackoverflow users for consistency with other
   # StackOverflow experiments.
@@ -129,7 +138,9 @@ def get_stackoverflow_datasets(vocab_tokens_size=10000,
             # Map sentences to bag of words
             .map(to_ids, num_parallel_calls=tf.data.experimental.AUTOTUNE)
             # Batch
-            .batch(client_batch_size))
+            .batch(client_batch_size)
+            # Take a maximum number of batches
+            .take(max_batches_per_user))
 
   def preprocess_test_dataset(dataset):
     """Preprocess StackOverflow testing dataset."""

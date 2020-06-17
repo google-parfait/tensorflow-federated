@@ -29,8 +29,38 @@ def reshape_emnist_element(element):
 
 def get_emnist_datasets(client_batch_size,
                         client_epochs_per_round,
+                        max_batches_per_client=-1,
                         only_digits=False):
-  """Loads and preprocesses EMNIST training and testing sets."""
+  """Loads and preprocesses EMNIST training and testing sets.
+
+  Args:
+    client_batch_size: Integer representing the batch size on the clients.
+    client_epochs_per_round: Integer representing the number of epochs for which
+      each client should perform training. This is done by repeating the
+      dataset. If set to -1, the dataset is repeated indefinitely. In this case,
+      the `max_batches_per_client` argument should be set to some positive
+      integer, to ensure finite training time.
+    max_batches_per_client: The maximum number of batches (of size
+      `client_batch_size`) in the client dataset. This is enforced by using
+      `tf.data.Dataset.take`. If set to -1 (the default value), then no maximum
+      number of batches is enforced.
+    only_digits: A boolean representing whether to take the digits-only
+      EMNIST-10 (with only 10 labels) or the full EMNIST-62 dataset with digits
+      and characters (62 labels). If set to True, we use EMNIST-10, otherwise we
+      use EMNIST-62.
+
+  Returns:
+    emnist_train: An instance of a `tff.simulation.ClientData` representing the
+      training data.
+    emnist_test: An instance of a `tf.data.Dataset` representing the testing
+      data.
+  """
+
+  if client_epochs_per_round == -1 and max_batches_per_client == -1:
+    raise ValueError('Argument client_epochs_per_round is set to -1. If this is'
+                     ' intended, then max_batches_per_client must be set to '
+                     'some positive integer.')
+
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
       only_digits=only_digits)
 
@@ -43,6 +73,8 @@ def get_emnist_datasets(client_batch_size,
             .repeat(client_epochs_per_round)
             # Batch to a fixed client batch size
             .batch(client_batch_size, drop_remainder=False)
+            # Take a maximum number of batches
+            .take(max_batches_per_client)
             # Preprocessing step
             .map(
                 reshape_emnist_element,

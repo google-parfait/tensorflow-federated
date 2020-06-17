@@ -17,6 +17,7 @@ py_library(
 
 py_test(
     name = "dataset_test",
+    size = "large",
     srcs = ["dataset_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -24,7 +25,10 @@ py_test(
         "manual",
         "notap",
     ],
-    deps = [":dataset"],
+    deps = [
+        ":dataset",
+        "//tensorflow_federated/python/common_libs:test",
+    ],
 )
 
 py_test(

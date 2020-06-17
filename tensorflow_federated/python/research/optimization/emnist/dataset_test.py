@@ -64,7 +64,8 @@ class DatasetTest(tf.test.TestCase):
       self.assertEqual(_compute_length_of_dataset(client_ds), 10)
 
   def test_raises_no_repeat_and_no_take(self):
-    with self.assertRaises(ValueError):
+    with self.assertRaisesRegex(
+        ValueError, 'Argument client_epochs_per_round is set to -1'):
       dataset.get_emnist_datasets(
           client_batch_size=10,
           client_epochs_per_round=-1,

@@ -16,7 +16,12 @@ import collections
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.research.optimization.stackoverflow import dataset
+
+
+def _compute_length_of_dataset(ds):
+  return ds.reduce(0, lambda x, _: x + 1)
 
 
 class DatasetTest(tf.test.TestCase):
@@ -154,6 +159,33 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
     # BOS is len(vocab)+2, EOS is len(vocab)+3, pad is 0, OOV is len(vocab)+1
     self.assertAllEqual(
         self.evaluate(element[0]), np.array([[4, 1, 2, 3, 5, 0]]))
+
+  @test.skip_test_for_gpu
+  def test_take_with_repeat(self):
+    so_train, _, _ = dataset.construct_word_level_datasets(
+        vocab_size=1000,
+        client_batch_size=10,
+        client_epochs_per_round=-1,
+        max_batches_per_user=8,
+        max_seq_len=20,
+        max_training_elements_per_user=128,
+        num_validation_examples=500)
+    for i in range(10):
+      client_ds = so_train.create_tf_dataset_for_client(so_train.client_ids[i])
+      self.assertEqual(_compute_length_of_dataset(client_ds), 8)
+
+  @test.skip_test_for_gpu
+  def test_raises_no_repeat_and_no_take(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Argument client_epochs_per_round is set to -1'):
+      dataset.construct_word_level_datasets(
+          vocab_size=100,
+          client_batch_size=10,
+          client_epochs_per_round=-1,
+          max_batches_per_user=-1,
+          max_seq_len=20,
+          max_training_elements_per_user=128,
+          num_validation_examples=500)
 
 
 if __name__ == '__main__':

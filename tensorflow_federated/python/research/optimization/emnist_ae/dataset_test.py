@@ -19,6 +19,10 @@ from tensorflow_federated.python.research.optimization.emnist_ae import dataset
 TEST_BATCH_SIZE = dataset.TEST_BATCH_SIZE
 
 
+def _compute_length_of_dataset(ds):
+  return ds.reduce(0, lambda x, _: x + 1)
+
+
 class DatasetTest(tf.test.TestCase):
 
   def test_emnist_dataset_structure(self):
@@ -45,6 +49,26 @@ class DatasetTest(tf.test.TestCase):
     test_batch_shape = test_batch[0].shape
     self.assertEqual(train_batch_shape.as_list(), [32, 28*28])
     self.assertEqual(test_batch_shape.as_list(), [TEST_BATCH_SIZE, 28*28])
+
+  def test_take_with_repeat(self):
+    emnist_train, _ = dataset.get_emnist_datasets(
+        client_batch_size=10,
+        client_epochs_per_round=-1,
+        max_batches_per_client=10,
+        only_digits=True)
+    self.assertEqual(len(emnist_train.client_ids), 3383)
+    for i in range(10):
+      client_ds = emnist_train.create_tf_dataset_for_client(
+          emnist_train.client_ids[i])
+      self.assertEqual(_compute_length_of_dataset(client_ds), 10)
+
+  def test_raises_no_repeat_and_no_take(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Argument client_epochs_per_round is set to -1'):
+      dataset.get_emnist_datasets(
+          client_batch_size=10,
+          client_epochs_per_round=-1,
+          max_batches_per_client=-1)
 
 
 if __name__ == '__main__':

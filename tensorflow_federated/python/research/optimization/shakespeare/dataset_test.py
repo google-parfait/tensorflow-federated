@@ -17,6 +17,10 @@ import tensorflow as tf
 from tensorflow_federated.python.research.optimization.shakespeare import dataset
 
 
+def _compute_length_of_dataset(ds):
+  return ds.reduce(0, lambda x, _: x + 1)
+
+
 class DatasetPreprocessingTest(tf.test.TestCase):
 
   def test_to_ids(self):
@@ -86,6 +90,26 @@ class DatasetPreprocessingTest(tf.test.TestCase):
         0,
         msg='Not all expected output seen.\nLeft over expectations: {!s}'
         .format(expected_outputs))
+
+  def test_take_with_repeat(self):
+    shakespeare_train = dataset.construct_character_level_datasets(
+        client_batch_size=10,
+        client_epochs_per_round=-1,
+        max_batches_per_client=10,
+        shuffle_buffer_size=0)
+    self.assertEqual(len(shakespeare_train.client_ids), 715)
+    for i in range(10):
+      client_ds = shakespeare_train.create_tf_dataset_for_client(
+          shakespeare_train.client_ids[i])
+      self.assertEqual(_compute_length_of_dataset(client_ds), 10)
+
+  def test_raises_no_repeat_and_no_take(self):
+    with self.assertRaisesRegex(
+        ValueError, 'Argument client_epochs_per_round is set to -1'):
+      dataset.construct_character_level_datasets(
+          client_batch_size=10,
+          client_epochs_per_round=-1,
+          max_batches_per_client=-1)
 
 
 if __name__ == '__main__':

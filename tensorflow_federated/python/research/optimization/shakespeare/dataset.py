@@ -89,17 +89,20 @@ def convert_snippets_to_character_sequence_examples(
     dataset: tf.data.Dataset,
     batch_size: int,
     epochs: int,
-    shuffle_buffer_size: int = 100,
+    shuffle_buffer_size: int = 50,
     sequence_length: int = SEQUENCE_LENGTH,
-) -> tf.data.Dataset:
+    max_batches_per_client: int = -1) -> tf.data.Dataset:
   """Convert a dataset of string snippets to a dataset of input/output character ID sequences.
 
   Args:
     dataset: the `tf.data.Dataset` to apply preprocessing to.
     batch_size: the number of examples per yielded batch
     epochs: the number of times to repeat the dataset in one epoch.
-    shuffle_buffer_size: Buffer size for shuffling the dataset.
+    shuffle_buffer_size: Buffer size for shuffling the dataset. If nonpositive,
+      no shuffling occurs.
     sequence_length: the length of each example in the batch.
+    max_batches_per_client: If set to a positive integer, the maximum number of
+      batches in each client's dataset.
 
   Returns:
     A `tf.data.Dataset` yielding `(sequence of character IDs, sequence of
@@ -107,10 +110,11 @@ def convert_snippets_to_character_sequence_examples(
   """
   to_tokens = _build_tokenize_fn(split_length=sequence_length + 1)
   dataset = dataset.repeat(epochs)
+  if shuffle_buffer_size > 0:
+    dataset = dataset.shuffle(shuffle_buffer_size)
   return (
-      dataset.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True)
       # Convert snippets to int64 tokens and pad.
-      .map(to_tokens, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+      dataset.map(to_tokens, num_parallel_calls=tf.data.experimental.AUTOTUNE)
       # Separate into individual tokens
       .unbatch()
       # Join into sequences of the desired length. The previous call of
@@ -121,32 +125,55 @@ def convert_snippets_to_character_sequence_examples(
       .batch(batch_size)
       # Convert batches into training examples.
       .map(_split_target, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-      # Prefetch examples
-      .prefetch(tf.data.experimental.AUTOTUNE))
+      # Take a maximum number of batches
+      .take(max_batches_per_client))
 
 
 def construct_character_level_datasets(client_batch_size: int,
                                        client_epochs_per_round: int,
-                                       sequence_length: int = SEQUENCE_LENGTH):
-  """Preprocessing for Shakespeare dataset."""
-  train_client_data, test_client_data = (
-      tff.simulation.datasets.shakespeare.load_data())
+                                       sequence_length: int = SEQUENCE_LENGTH,
+                                       max_batches_per_client: int = -1,
+                                       shuffle_buffer_size: int = 50):
+  """Loads and preprocesses a federated Shakespeare training dataset."""
+
+  if client_epochs_per_round == -1 and max_batches_per_client == -1:
+    raise ValueError('Argument client_epochs_per_round is set to -1. If this is'
+                     ' intended, then max_batches_per_client must be set to '
+                     'some positive integer.')
+
+  train_client_data, _ = (tff.simulation.datasets.shakespeare.load_data())
 
   preprocessed_train_client_data = train_client_data.preprocess(
       functools.partial(
           convert_snippets_to_character_sequence_examples,
           batch_size=client_batch_size,
           epochs=client_epochs_per_round,
-          sequence_length=sequence_length))
+          shuffle_buffer_size=shuffle_buffer_size,
+          sequence_length=sequence_length,
+          max_batches_per_client=max_batches_per_client))
 
-  # Create an evaluation dataset over all the test client examples. This will
-  # be fed to `tf.keras.Model.evaluate()` during the experiment.
-  # Note: we do not use `ClientData.preprocess` here because that will lose
-  # implementation-specific optimizations of
-  # `ClientData.create_tf_dataset_from_all_clients`
-  eval_dataset = convert_snippets_to_character_sequence_examples(
+  return preprocessed_train_client_data
+
+
+def construct_centralized_datasets(batch_size: int = EVAL_BATCH_SIZE,
+                                   sequence_length: int = SEQUENCE_LENGTH,
+                                   shuffle_buffer_size: int = 0):
+  """Loads and preprocesses centralized training and test Shakespeare datasets."""
+  train_client_data, test_client_data = (
+      tff.simulation.datasets.shakespeare.load_data())
+
+  eval_train_dataset = convert_snippets_to_character_sequence_examples(
+      train_client_data.create_tf_dataset_from_all_clients(),
+      batch_size=batch_size,
+      epochs=1,
+      shuffle_buffer_size=shuffle_buffer_size,
+      sequence_length=sequence_length)
+
+  eval_test_dataset = convert_snippets_to_character_sequence_examples(
       test_client_data.create_tf_dataset_from_all_clients(),
-      batch_size=EVAL_BATCH_SIZE,
-      epochs=1)
+      batch_size=batch_size,
+      epochs=1,
+      shuffle_buffer_size=shuffle_buffer_size,
+      sequence_length=sequence_length)
 
-  return preprocessed_train_client_data, eval_dataset
+  return eval_train_dataset, eval_test_dataset

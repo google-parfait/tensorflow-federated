@@ -41,6 +41,7 @@ def preprocess_cifar_example(example, crop_shape, distort=False):
 def get_federated_cifar100(client_epochs_per_round,
                            train_batch_size,
                            crop_shape=CIFAR_SHAPE,
+                           max_batches_per_client=-1,
                            serializable=False):
   """Loads and preprocesses federated CIFAR100 training and testing sets.
 
@@ -54,6 +55,8 @@ def get_federated_cifar100(client_epochs_per_round,
       (CROP_HEIGHT, CROP_WIDTH, NUM_CHANNELS) which cannot have elements that
       exceed (32, 32, 3), element-wise. The element in the last index should be
       set to 3 to maintain the RGB image structure of the elements.
+    max_batches_per_client: If set to a positive integer, the maximum number of
+      batches in each client's dataset.
     serializable: Boolean indicating whether the returned datasets are intended
       to be serialized and shipped across RPC channels. If `True`, stateful
       transformations will be disallowed.
@@ -72,6 +75,11 @@ def get_federated_cifar100(client_epochs_per_round,
     raise TypeError(
         'serializable must be a Boolean; you passed {} of type {}.'.format(
             serializable, type(serializable)))
+  if client_epochs_per_round == -1 and max_batches_per_client == -1:
+    raise ValueError('Argument client_epochs_per_round is set to -1. If this is'
+                     ' intended, then max_batches_per_client must be set to '
+                     'some positive integer.')
+
   cifar_train, cifar_test = tff.simulation.datasets.cifar100.load_data()
   train_crop_shape = (train_batch_size,) + crop_shape
   test_crop_shape = (TEST_BATCH_SIZE,) + crop_shape
@@ -87,7 +95,8 @@ def get_federated_cifar100(client_epochs_per_round,
     if not serializable:
       dataset = dataset.shuffle(buffer_size=NUM_EXAMPLES_PER_CLIENT)
     return dataset.repeat(client_epochs_per_round).batch(
-        train_batch_size, drop_remainder=True).map(train_image_map)
+        train_batch_size,
+        drop_remainder=True).map(train_image_map).take(max_batches_per_client)
 
   def preprocess_test_dataset(dataset):
     """Preprocess CIFAR100 testing dataset."""
