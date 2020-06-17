@@ -13,8 +13,7 @@
 # limitations under the License.
 """A collection of constructors for basic types of executor stacks."""
 
-import functools
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import List, Callable, Optional, Sequence
 
 import tensorflow as tf
 
@@ -96,52 +95,115 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
     pass
 
 
-def _create_federated_stack(num_clients: int, num_client_executors: int,
-                            unplaced_ex_factory: UnplacedExecutorFactory):
-  """Constructs local federated stack."""
-  client_bottom_stacks = [
-      unplaced_ex_factory.create_executor(placement=placement_literals.CLIENTS)
-      for _ in range(num_client_executors)
-  ]
-  executor_dict = {
-      placement_literals.CLIENTS: [
-          client_bottom_stacks[k % len(client_bottom_stacks)]
-          for k in range(num_clients)
-      ],
-      placement_literals.SERVER:
-          unplaced_ex_factory.create_executor(
-              placement=placement_literals.SERVER),
-      None:
-          unplaced_ex_factory.create_executor(
-              placement=placement_literals.SERVER),
-  }
-  return _wrap_executor_in_threading_stack(
-      federating_executor.FederatingExecutor(executor_dict))
+class FederatingExecutorFactory(executor_factory.ExecutorFactory):
+  """Executor factory for stacks which delegate placed computations.
 
+  `FederatingExecutorFactory` validates cardinality requests and manages
+  the relationship between the clients and the client executors. Additionally,
+  `FederatingExecutorFactory` allows for the measurement of tensors crossing
+  the federated communication boundary via the
+  `sizing_executor.SizingExecutor`.
 
-def _create_sizing_stack(num_clients: int, num_client_executors: int,
-                         unplaced_ex_factory: UnplacedExecutorFactory):
-  """Constructs local stack with sizing wired in at each client."""
-  sizing_stacks = []
-  for _ in range(num_client_executors):
-    sizing_ex = sizing_executor.SizingExecutor(
-        unplaced_ex_factory.create_executor(
-            placement=placement_literals.CLIENTS))
-    sizing_stacks.append(sizing_ex)
+  This factory is initialized with:
+    * An integer number of client executors, indicating the number of client
+      executors that should be run in parallel. Setting this parameter to a low
+      number can aid with OOMs on accelerators, or speed up the computation in
+      the case of extremely lightweight client work.
+    * An `UnplacedExecutorFactory` to use to construct the executors for
+      computations after they have had their placement ingested and stripped by
+      the `FederatingExecutor`. That is, this factory produces the executors
+      used to run client, server and unplaced computations.
+    * An optional number of clients. In the case that this parameter is
+      unspecified, this factory will be polymorphic to number of clients
+      requested, relying on inference of this value from a higher level to
+      populate the `cardinalities` parameter to its `create_executor` method.
+      In the case that this parameter is specified, the `create_executor`
+      method will check that the requested cardinalities is consistent with
+      this hardcoded parameter.
+    * A boolean `use_sizing` to indicate whether to wire instances of
+      `sizing_executors.SizingExecutor` on top of the client stacks.
+  """
 
-  executor_dict = {
-      placement_literals.CLIENTS: [
-          sizing_stacks[k % len(sizing_stacks)] for k in range(num_clients)
-      ],
-      placement_literals.SERVER:
-          unplaced_ex_factory.create_executor(
-              placement=placement_literals.SERVER),
-      None:
-          unplaced_ex_factory.create_executor(
-              placement=placement_literals.SERVER),
-  }
-  return _wrap_executor_in_threading_stack(
-      federating_executor.FederatingExecutor(executor_dict)), sizing_stacks
+  def __init__(self,
+               *,
+               num_client_executors: int,
+               unplaced_ex_factory: UnplacedExecutorFactory,
+               num_clients: Optional[int] = None,
+               use_sizing: bool = False):
+    py_typecheck.check_type(num_client_executors, int)
+    py_typecheck.check_type(unplaced_ex_factory, UnplacedExecutorFactory)
+    self._num_client_executors = num_client_executors
+    self._unplaced_executor_factory = unplaced_ex_factory
+    if num_clients is not None:
+      py_typecheck.check_type(num_clients, int)
+      if num_clients < 0:
+        raise ValueError('Number of clients cannot be negative.')
+    self._num_clients = num_clients
+    self._use_sizing = use_sizing
+    if self._use_sizing:
+      self._sizing_executors = []
+    else:
+      self._sizing_executors = None
+
+  @property
+  def sizing_executors(self) -> List[sizing_executor.SizingExecutor]:
+    if not self._use_sizing:
+      raise ValueError('This federated factory is not configured to produce '
+                       'size information. Construct a new federated factory, '
+                       'passing argument `use_sizing=True`.')
+    else:
+      return self._sizing_executors
+
+  def _validate_requested_clients(
+      self, cardinalities: executor_factory.CardinalitiesType) -> int:
+    num_requested_clients = cardinalities.get(placement_literals.CLIENTS)
+    if num_requested_clients is None:
+      if self._num_clients is not None:
+        num_clients = self._num_clients
+      else:
+        num_clients = 0
+    elif (self._num_clients is not None and
+          self._num_clients != num_requested_clients):
+      raise ValueError(
+          'FederatingStackFactory configured to return {} '
+          'clients, but encountered a request for {} clients.'.format(
+              self._num_clients, num_requested_clients))
+    else:
+      num_clients = num_requested_clients
+    return num_clients
+
+  def create_executor(
+      self, cardinalities: executor_factory.CardinalitiesType
+  ) -> executor_base.Executor:
+    """Constructs a federated executor with requested cardinalities."""
+    num_clients = self._validate_requested_clients(cardinalities)
+    client_stacks = [
+        self._unplaced_executor_factory.create_executor(
+            cardinalities={}, placement=placement_literals.CLIENTS)
+        for _ in range(self._num_client_executors)
+    ]
+    if self._use_sizing:
+      client_stacks = [
+          sizing_executor.SizingExecutor(ex) for ex in client_stacks
+      ]
+      self._sizing_executors.extend(client_stacks)
+
+    executor_dict = {
+        placement_literals.CLIENTS: [
+            client_stacks[k % len(client_stacks)] for k in range(num_clients)
+        ],
+        placement_literals.SERVER:
+            self._unplaced_executor_factory.create_executor(
+                cardinalities={}, placement=placement_literals.SERVER),
+        None:
+            self._unplaced_executor_factory.create_executor(cardinalities={}),
+    }
+    return _wrap_executor_in_threading_stack(
+        federating_executor.FederatingExecutor(executor_dict))
+
+  def clean_up_executors(self):
+    # Does not hold any executors internally, so nothing to clean up.
+    pass
 
 
 def _create_composite_stack(
@@ -195,22 +257,20 @@ def _aggregate_stacks(
 
 
 def _create_full_stack(
-    num_clients: int,
+    cardinalities: executor_factory.CardinalitiesType,
     max_fanout: int,
-    stack_func: Callable[[int, int], executor_base.Executor],
-    num_client_executors: int,
+    stack_func: Callable[[executor_factory.CardinalitiesType],
+                         executor_base.Executor],
     unplaced_ex_factory: UnplacedExecutorFactory,
 ) -> executor_base.Executor:
   """Creates a full executor stack.
 
   Args:
-    num_clients: The number of clients to support. Must be 0 or larger.
+    cardinalities: The cardinalities to create at each placement.
     max_fanout: The maximum fanout at any point in the hierarchy. Must be 2 or
       larger.
-    stack_func: A function taking two integer arguments, the number of clients
-      and number of client executors, and returning an executor_base.Executor.
-    num_client_executors: The maximum number of threads spun up locally to
-      represent clients.
+    stack_func: A function taking a dict of cardinalities and returning an
+      `executor_base.Executor`.
     unplaced_ex_factory: The unplaced executor factory to use in constructing
       executors to execute unplaced computations in the hierarchy.
 
@@ -221,71 +281,20 @@ def _create_full_stack(
     ValueError: If the number of clients or fanout are not as specified.
     RuntimeError: If the stack construction fails.
   """
-  py_typecheck.check_type(num_clients, int)
+  num_clients = cardinalities.get(placement_literals.CLIENTS, 0)
   py_typecheck.check_type(max_fanout, int)
   if num_clients < 0:
     raise ValueError('Number of clients cannot be negative.')
-  if max_fanout < 2:
-    raise ValueError('Max fanout must be greater than 1.')
   if num_clients < 1:
-    return stack_func(0, 1)
+    return stack_func(cardinalities=cardinalities)  # pytype: disable=wrong-keyword-args
   else:
     executors = []
     while num_clients > 0:
       n = min(num_clients, max_fanout)
-      executors.append(stack_func(n, num_client_executors))
+      executors.append(
+          stack_func(cardinalities={placement_literals.CLIENTS: n}))  # pytype: disable=wrong-keyword-args
       num_clients -= n
     return _aggregate_stacks(executors, max_fanout, unplaced_ex_factory)
-
-
-def _create_explicit_cardinality_factory(
-    num_clients: int, max_fanout: int,
-    stack_func: Callable[[int, int], executor_base.Executor],
-    num_client_executors: int, unplaced_ex_factory: UnplacedExecutorFactory
-) -> executor_factory.ExecutorFactory:
-  """Creates executor function with fixed cardinality."""
-
-  def _return_executor(cardinalities):
-    n_requested_clients = cardinalities.get(placement_literals.CLIENTS)
-    if n_requested_clients is not None and n_requested_clients != num_clients:
-      raise ValueError('Expected to construct an executor with {} clients, '
-                       'but executor is hardcoded for {}'.format(
-                           n_requested_clients, num_clients))
-    return _create_full_stack(
-        num_clients,
-        max_fanout,
-        stack_func,
-        num_client_executors,
-        unplaced_ex_factory=unplaced_ex_factory)
-
-  return executor_factory.ExecutorFactoryImpl(
-      executor_stack_fn=_return_executor)
-
-
-def _create_inferred_cardinality_factory(
-    max_fanout, stack_func, num_client_executors,
-    unplaced_ex_factory: UnplacedExecutorFactory
-) -> executor_factory.ExecutorFactory:
-  """Creates executor function with variable cardinality."""
-
-  def _create_variable_clients_executors(cardinalities):
-    """Constructs executor stacks from `dict` argument."""
-    py_typecheck.check_type(cardinalities, dict)
-    for k, v in cardinalities.items():
-      py_typecheck.check_type(k, placement_literals.PlacementLiteral)
-      if k not in [placement_literals.CLIENTS, placement_literals.SERVER]:
-        raise ValueError('Unsupported placement: {}.'.format(k))
-      if v <= 0:
-        raise ValueError(
-            'Cardinality must be at '
-            'least one; you have passed {} for placement {}.'.format(v, k))
-
-    return _create_full_stack(
-        cardinalities.get(placement_literals.CLIENTS, 0), max_fanout,
-        stack_func, num_client_executors, unplaced_ex_factory)
-
-  return executor_factory.ExecutorFactoryImpl(
-      executor_stack_fn=_create_variable_clients_executors)
 
 
 def local_executor_factory(
@@ -330,27 +339,32 @@ def local_executor_factory(
   if server_tf_device is not None:
     py_typecheck.check_type(server_tf_device, tf.config.LogicalDevice)
   py_typecheck.check_type(client_tf_devices, (tuple, list))
+  py_typecheck.check_type(max_fanout, int)
+  py_typecheck.check_type(num_client_executors, int)
+  if num_clients is not None:
+    py_typecheck.check_type(num_clients, int)
+  if max_fanout < 2:
+    raise ValueError('Max fanout must be greater than 1.')
   unplaced_ex_factory = UnplacedExecutorFactory(
       use_caching=True,
       server_device=server_tf_device,
       client_devices=client_tf_devices)
-  stack_func = functools.partial(
-      _create_federated_stack, unplaced_ex_factory=unplaced_ex_factory)
-  if max_fanout < 2:
-    raise ValueError('Max fanout must be greater than 1.')
-  if num_clients is not None:
-    py_typecheck.check_type(num_clients, int)
-    if num_clients <= 0:
-      raise ValueError('If specifying `num_clients`, cardinality must be at '
-                       'least one; you have passed {}.'.format(num_clients))
-    return _create_explicit_cardinality_factory(num_clients, max_fanout,
-                                                stack_func,
-                                                num_client_executors,
-                                                unplaced_ex_factory)
-  else:
-    return _create_inferred_cardinality_factory(max_fanout, stack_func,
-                                                num_client_executors,
-                                                unplaced_ex_factory)
+  federating_executor_factory = FederatingExecutorFactory(
+      num_client_executors=num_client_executors,
+      unplaced_ex_factory=unplaced_ex_factory,
+      num_clients=num_clients,
+      use_sizing=False)
+
+  def _factory_fn(
+      cardinalities: executor_factory.CardinalitiesType
+  ) -> executor_base.Executor:
+    return _create_full_stack(
+        cardinalities,
+        max_fanout,
+        stack_func=federating_executor_factory.create_executor,
+        unplaced_ex_factory=unplaced_ex_factory)
+
+  return executor_factory.ExecutorFactoryImpl(_factory_fn)
 
 
 def sizing_executor_factory(
@@ -381,66 +395,31 @@ def sizing_executor_factory(
   Raises:
     ValueError: If the number of clients is specified and not one or larger.
   """
-
-  def _executor_stack_fn(
-      cardinalities: executor_factory.CardinalitiesType
-  ) -> Tuple[executor_base.Executor, List[sizing_executor.SizingExecutor]]:
-    """The function passed to SizingExecutorFactoryImpl to convert cardinalities into executor stack.
-
-    Unlike the function that is passed into ExecutorFactoryImpl, this one
-    outputs the sizing executors as well.
-
-    Args:
-      cardinalities: Cardinality representation used to determine how many
-        clients there are.
-
-    Returns:
-      A Tuple of the top level executor created from the cardinalities, and the
-      list of sizing executors underneath the top level executors.
-    """
-    sizing_exs = []
-    unplaced_ex_factory = UnplacedExecutorFactory(use_caching=True)
-
-    def _standalone_stack_func(num_clients, num_client_executors):
-      nonlocal sizing_exs
-      stack, current_sizing_exs = _create_sizing_stack(
-          num_clients,
-          num_client_executors=num_client_executors,
-          unplaced_ex_factory=unplaced_ex_factory)
-      sizing_exs.extend(current_sizing_exs)
-      return stack
-
-    # Explicit case.
-    if num_clients is not None:
-      py_typecheck.check_type(num_clients, int)
-      if num_clients <= 0:
-        raise ValueError('If specifying `num_clients`, cardinality must be at '
-                         'least one; you have passed {}.'.format(num_clients))
-      n_requested_clients = cardinalities.get(placement_literals.CLIENTS)
-      if n_requested_clients is not None and n_requested_clients != num_clients:
-        raise ValueError('Expected to construct an executor with {} clients, '
-                         'but executor is hardcoded for {}'.format(
-                             n_requested_clients, num_clients))
-      return _create_full_stack(
-          num_clients,
-          max_fanout,
-          _standalone_stack_func,
-          num_client_executors,
-          unplaced_ex_factory=unplaced_ex_factory), sizing_exs
-    # Inferred case.
-    else:
-      n_requested_clients = cardinalities.get(placement_literals.CLIENTS, 0)
-      return _create_full_stack(
-          n_requested_clients,
-          max_fanout,
-          _standalone_stack_func,
-          num_client_executors,
-          unplaced_ex_factory=unplaced_ex_factory), sizing_exs
-
+  py_typecheck.check_type(max_fanout, int)
+  py_typecheck.check_type(num_client_executors, int)
+  if num_clients is not None:
+    py_typecheck.check_type(num_clients, int)
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
+  unplaced_ex_factory = UnplacedExecutorFactory(use_caching=True)
+  federating_executor_factory = FederatingExecutorFactory(
+      num_client_executors=num_client_executors,
+      unplaced_ex_factory=unplaced_ex_factory,
+      num_clients=num_clients,
+      use_sizing=True)
 
-  return executor_factory.SizingExecutorFactoryImpl(_executor_stack_fn)
+  def _factory_fn(
+      cardinalities: executor_factory.CardinalitiesType
+  ) -> executor_base.Executor:
+    executor = _create_full_stack(
+        cardinalities,
+        max_fanout,
+        stack_func=federating_executor_factory.create_executor,
+        unplaced_ex_factory=unplaced_ex_factory)
+    sizing_executor_list = federating_executor_factory.sizing_executors
+    return executor, sizing_executor_list
+
+  return executor_factory.SizingExecutorFactoryImpl(_factory_fn)
 
 
 def worker_pool_executor_factory(executors,
