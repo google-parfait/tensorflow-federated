@@ -146,12 +146,9 @@ def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
     stateful_delta_aggregate_fn = rfa.build_stateless_robust_aggregation(
         model_type, num_communication_passes=num_passes, tolerance=tolerance)
 
-    stateful_model_broadcast_fn = tff.learning.framework.build_stateless_broadcaster(
-    )
-
     return tff.learning.framework.build_model_delta_optimizer_process(
         model_fn, client_fed_avg, server_optimizer_fn,
-        stateful_delta_aggregate_fn, stateful_model_broadcast_fn)
+        stateful_delta_aggregate_fn)
 
 
 def get_mean(dataset):
