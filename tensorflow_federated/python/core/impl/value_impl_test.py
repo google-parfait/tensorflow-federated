@@ -34,6 +34,12 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 
 class ValueImplTest(parameterized.TestCase):
 
+  def run(self, result=None):
+    fc_context = federated_computation_context.FederatedComputationContext(
+        context_stack_impl.context_stack)
+    with context_stack_impl.context_stack.install(fc_context):
+      super(ValueImplTest, self).run(result)
+
   def test_raises_on_boolean_ops(self):
     x_comp = building_blocks.Reference('foo', tf.bool)
     x = value_impl.ValueImpl(x_comp, context_stack_impl.context_stack)
@@ -114,7 +120,11 @@ class ValueImplTest(parameterized.TestCase):
     z = x(y)
     self.assertIsInstance(z, value_base.Value)
     self.assertEqual(str(z.type_signature), 'bool')
-    self.assertEqual(str(z), 'foo(bar)')
+    self.assertEqual(str(z), 'fc_FEDERATED_symbol_0')
+    bound_symbols = context_stack_impl.context_stack.current.symbol_bindings
+    self.assertLen(bound_symbols, 1)
+    self.assertEqual(bound_symbols[0][0], str(z))
+    self.assertEqual(str(bound_symbols[0][1]), 'foo(bar)')
     with self.assertRaises(TypeError):
       x()
     w = value_impl.ValueImpl(
@@ -131,14 +141,15 @@ class ValueImplTest(parameterized.TestCase):
         value_impl.ValueImpl(
             building_blocks.Reference(arg_name, arg_type),
             context_stack_impl.context_stack))
-    x = value_impl.ValueImpl(
-        building_blocks.Lambda(arg_name, arg_type,
-                               value_impl.ValueImpl.get_comp(result_value)),
-        context_stack_impl.context_stack)
-    self.assertIsInstance(x, value_base.Value)
-    self.assertEqual(
-        str(x.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
-    self.assertEqual(str(x), '(arg -> arg.f(arg.f(arg.x)))')
+    self.assertIsInstance(result_value, value_base.Value)
+    self.assertEqual(str(result_value.type_signature), 'int32')
+    self.assertEqual(str(result_value), 'fc_FEDERATED_symbol_1')
+    bound_symbols = context_stack_impl.context_stack.current.symbol_bindings
+    self.assertLen(bound_symbols, 2)
+    self.assertEqual(bound_symbols[1][0], 'fc_FEDERATED_symbol_1')
+    self.assertEqual(str(bound_symbols[1][1]), 'arg.f(fc_FEDERATED_symbol_0)')
+    self.assertEqual(bound_symbols[0][0], 'fc_FEDERATED_symbol_0')
+    self.assertEqual(str(bound_symbols[0][1]), 'arg.f(arg.x)')
 
   def test_value_impl_with_plus(self):
     x = value_impl.ValueImpl(
@@ -692,7 +703,4 @@ class ValueImplTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  with context_stack_impl.context_stack.install(
-      federated_computation_context.FederatedComputationContext(
-          context_stack_impl.context_stack)):
-    absltest.main()
+  absltest.main()

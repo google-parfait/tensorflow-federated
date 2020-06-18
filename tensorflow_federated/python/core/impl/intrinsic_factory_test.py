@@ -16,10 +16,18 @@ from absl.testing import absltest
 import numpy as np
 
 from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.impl import federated_computation_context
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class FederatedSecureSumTest(absltest.TestCase):
+
+  def run(self, result=None):
+    fc_context = federated_computation_context.FederatedComputationContext(
+        context_stack_impl.context_stack)
+    with context_stack_impl.context_stack.install(fc_context):
+      super(FederatedSecureSumTest, self).run(result)
 
   def test_type_signature_with_int(self):
     value = intrinsics.federated_value(1, placement_literals.CLIENTS)

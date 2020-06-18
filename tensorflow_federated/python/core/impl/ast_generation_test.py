@@ -46,20 +46,17 @@ class AstGenerationTest(test.TestCase):
     def federated_five():
       return five()
 
-    self.assert_ast_equal(federated_five,
-                          '( -> {}())'.format(self.formatted_computation(five)))
+    self.assert_ast_equal(
+        federated_five,
+        # pyformat: disable
+        '( -> (let\n'
+        '  fc_FEDERATED_symbol_0={}()\n'
+        ' in fc_FEDERATED_symbol_0))'.format(self.formatted_computation(five))
+        # pyformat: enable
+    )
 
-  def test_only_one_random_actually_generates_two_calls_to_random_bad(self):
-    """This test should *NOT* pass, but unfortunately it does.
+  def test_only_one_random_only_generates_a_single_call_to_random(self):
 
-    Today, we inline calls to TF computations in the AST.
-    This means that if the user creates multiple references to a value
-    originating from a TF computation, it will turn into multiple calls
-    to the computation, each with their own independent result. When combined
-    with nondeterministic TF computations, this results in confusing (wrong)
-    semantics (e.g. `x != x`).
-    """
-    # TODO(b/146084784)
     @computations.tf_computation
     def rand():
       return tf.random.normal([])
@@ -69,11 +66,17 @@ class AstGenerationTest(test.TestCase):
       single_random_number = rand()
       return (single_random_number, single_random_number)
 
-    rand = self.formatted_computation(rand)
-    self.assert_ast_equal(same_rand_tuple, ('( -> <\n'
-                                            '  {0}(),\n'
-                                            '  {0}()\n'
-                                            '>)').format(rand))
+    self.assert_ast_equal(
+        same_rand_tuple,
+        # pyformat: disable
+        '( -> (let\n'
+        '  fc_FEDERATED_symbol_0={}()\n'
+        ' in <\n'
+        '  fc_FEDERATED_symbol_0,\n'
+        '  fc_FEDERATED_symbol_0\n'
+        '>))'.format(self.formatted_computation(rand))
+        # pyformat: enable
+    )
 
 
 if __name__ == '__main__':

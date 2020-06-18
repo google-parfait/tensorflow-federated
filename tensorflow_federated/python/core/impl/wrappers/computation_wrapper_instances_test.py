@@ -90,7 +90,7 @@ class ComputationWrapperInstancesTest(test.TestCase):
 
     self.assertEqual(
         str(foo.to_building_block()),
-        '(FEDERATED_arg -> FEDERATED_arg[0](FEDERATED_arg[0](FEDERATED_arg[1])))'
+        '(FEDERATED_arg -> (let fc_FEDERATED_symbol_0=FEDERATED_arg[0](FEDERATED_arg[1]),fc_FEDERATED_symbol_1=FEDERATED_arg[0](fc_FEDERATED_symbol_0) in fc_FEDERATED_symbol_1))'
     )
 
   def test_tf_wrapper_fails_bad_types(self):

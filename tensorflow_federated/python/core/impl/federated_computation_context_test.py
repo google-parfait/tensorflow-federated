@@ -28,7 +28,8 @@ class FederatedComputationContextTest(absltest.TestCase):
     context = federated_computation_context.FederatedComputationContext(
         context_stack_impl.context_stack)
     comp = computations.tf_computation(lambda: tf.constant(10))
-    result = context.invoke(comp, None)
+    with context_stack_impl.context_stack.install(context):
+      result = context.invoke(comp, None)
     self.assertIsInstance(result, value_base.Value)
     self.assertEqual(str(result.type_signature), 'int32')
 

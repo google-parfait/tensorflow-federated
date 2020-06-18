@@ -32,6 +32,12 @@ _context_stack = context_stack_impl.context_stack
 
 class ValueUtilsTest(parameterized.TestCase):
 
+  def run(self, result=None):
+    fc_context = federated_computation_context.FederatedComputationContext(
+        context_stack_impl.context_stack)
+    with context_stack_impl.context_stack.install(fc_context):
+      super(ValueUtilsTest, self).run(result)
+
   def test_get_curried(self):
     add_numbers = value_impl.ValueImpl(
         building_blocks.ComputationBuildingBlock.from_proto(
@@ -95,7 +101,4 @@ class ValueUtilsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  with context_stack_impl.context_stack.install(
-      federated_computation_context.FederatedComputationContext(
-          context_stack_impl.context_stack)):
-    absltest.main()
+  absltest.main()

@@ -36,14 +36,14 @@ class ZeroOrOneArgFnToBuildingBlockTest(parameterized.TestCase):
        computation_types.NamedTupleType([
            ('f', computation_types.FunctionType(tf.int32, tf.int32)),
            ('x', tf.int32)]),
-       '(FEDERATED_foo -> FEDERATED_foo.f(FEDERATED_foo.f(FEDERATED_foo.x)))'),
+       '(FEDERATED_foo -> (let fc_FEDERATED_symbol_0=FEDERATED_foo.f(FEDERATED_foo.x),fc_FEDERATED_symbol_1=FEDERATED_foo.f(fc_FEDERATED_symbol_0) in fc_FEDERATED_symbol_1))'),
       ('nested_fn_different',
        lambda f, g, x: f(g(x)),
        computation_types.NamedTupleType([
            ('f', computation_types.FunctionType(tf.int32, tf.int32)),
            ('g', computation_types.FunctionType(tf.int32, tf.int32)),
            ('x', tf.int32)]),
-       '(FEDERATED_foo -> FEDERATED_foo.f(FEDERATED_foo.g(FEDERATED_foo.x)))'),
+       '(FEDERATED_foo -> (let fc_FEDERATED_symbol_0=FEDERATED_foo.g(FEDERATED_foo.x),fc_FEDERATED_symbol_1=FEDERATED_foo.f(fc_FEDERATED_symbol_0) in fc_FEDERATED_symbol_1))'),
       ('selection',
        lambda x: (x[1], x[0]),
        computation_types.NamedTupleType([tf.int32, tf.int32]),

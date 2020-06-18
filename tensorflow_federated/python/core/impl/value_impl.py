@@ -152,6 +152,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
       return
     named_tuple_setattr_lambda = building_block_factory.create_named_tuple_setattr_lambda(
         self._comp.type_signature, name, value_comp)
+    # TODO(b/159281959): Follow up and bind a reference here.
     new_comp = building_blocks.Call(named_tuple_setattr_lambda, self._comp)
     super().__setattr__('_comp', new_comp)
 
@@ -232,13 +233,17 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
       arg = ValueImpl.get_comp(to_value(arg, None, self._context_stack))
     else:
       arg = None
-    return ValueImpl(building_blocks.Call(self._comp, arg), self._context_stack)
+    fc_context = self._context_stack.current
+    call = building_blocks.Call(self._comp, arg)
+    ref = fc_context.bind_computation_to_reference(call)
+    return ValueImpl(ref, self._context_stack)
 
   def __add__(self, other):
     other = to_value(other, None, self._context_stack)
     if not self.type_signature.is_equivalent_to(other.type_signature):
       raise TypeError('Cannot add {} and {}.'.format(self.type_signature,
                                                      other.type_signature))
+    # TODO(b/159281959): Follow up and bind a reference here.
     return ValueImpl(
         building_blocks.Call(
             building_blocks.Intrinsic(
@@ -266,6 +271,7 @@ def _wrap_constant_as_value(const, context_stack):
   tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       lambda: tf.constant(const), None, context_stack)
   compiled_comp = building_blocks.CompiledComputation(tf_comp)
+  # TODO(b/159281959): Follow up and bind a reference here.
   called_comp = building_blocks.Call(compiled_comp)
   return ValueImpl(called_comp, context_stack)
 
@@ -306,6 +312,7 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
   # Wraps the dataset as a value backed by a no-argument TensorFlow computation.
   tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
       _create_dataset_from_elements, None, context_stack)
+  # TODO(b/159281959): Follow up and bind a reference here.
   return ValueImpl(
       building_blocks.Call(building_blocks.CompiledComputation(tf_comp)),
       context_stack)
@@ -355,6 +362,7 @@ def to_value(
       are encountered, as TensorFlow code should be sealed away from TFF
       federated context.
   """
+  # TODO(b/159281959): Follow up and bind references here where appropriate.
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)

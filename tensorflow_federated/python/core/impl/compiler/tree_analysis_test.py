@@ -690,15 +690,6 @@ def non_aggregation_intrinsics():
 
 
 @computations.federated_computation
-def unused_aggregation():
-  value_at_clients = intrinsics.federated_broadcast(
-      intrinsics.federated_value(5, placement_literals.SERVER))
-  value_at_server = intrinsics.federated_sum(value_at_clients)
-  del value_at_server
-  return ()
-
-
-@computations.federated_computation
 def trivial_aggregate():
   empty_at_clients = intrinsics.federated_value((), placement_literals.CLIENTS)
   zero = ()
@@ -757,7 +748,6 @@ class ContainsAggregationShared(parameterized.TestCase):
       ('trivial_tf', computations.tf_computation(lambda: ())),
       ('trivial_tff', computations.federated_computation(lambda: ())),
       ('non_aggregation_intrinsics', non_aggregation_intrinsics),
-      ('unused_aggregation', unused_aggregation),
       ('trivial_aggregate', trivial_aggregate),
       ('trivial_collect', trivial_collect),
       ('trivial_mean', trivial_mean),

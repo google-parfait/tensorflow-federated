@@ -43,6 +43,10 @@ class IntrinsicFactory(object):
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     self._context_stack = context_stack
 
+  def _bind_comp_as_reference(self, comp):
+    fc_context = self._context_stack.current
+    return fc_context.bind_computation_to_reference(comp)
+
   def federated_aggregate(self, value, zero, accumulate, merge, report):
     """Implements `federated_aggregate` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
@@ -104,6 +108,7 @@ class IntrinsicFactory(object):
 
     comp = building_block_factory.create_federated_aggregate(
         value, zero, accumulate, merge, report)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_broadcast(self, value):
@@ -117,6 +122,7 @@ class IntrinsicFactory(object):
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_broadcast(value)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_collect(self, value):
@@ -128,6 +134,7 @@ class IntrinsicFactory(object):
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_collect(value)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_eval(self, fn, placement):
@@ -147,6 +154,7 @@ class IntrinsicFactory(object):
 
     fn_comp = value_impl.ValueImpl.get_comp(fn)
     comp = building_block_factory.create_federated_eval(fn_comp, placement)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_map(self, fn, arg):
@@ -196,6 +204,7 @@ class IntrinsicFactory(object):
           .format(placement_literals.SERVER, placement_literals.CLIENTS,
                   arg.type_signature.placement))
 
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_map_all_equal(self, fn, arg):
@@ -227,6 +236,7 @@ class IntrinsicFactory(object):
     fn = value_impl.ValueImpl.get_comp(fn)
     arg = value_impl.ValueImpl.get_comp(arg)
     comp = building_block_factory.create_federated_map_all_equal(fn, arg)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_mean(self, value, weight):
@@ -272,6 +282,7 @@ class IntrinsicFactory(object):
     if weight is not None:
       weight = value_impl.ValueImpl.get_comp(weight)
     comp = building_block_factory.create_federated_mean(value, weight)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_reduce(self, value, zero, op):
@@ -309,6 +320,7 @@ class IntrinsicFactory(object):
     zero = value_impl.ValueImpl.get_comp(zero)
     op = value_impl.ValueImpl.get_comp(op)
     comp = building_block_factory.create_federated_reduce(value, zero, op)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_sum(self, value):
@@ -320,6 +332,7 @@ class IntrinsicFactory(object):
     type_analysis.check_is_sum_compatible(value.type_signature)
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_sum(value)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_value(self, value, placement):
@@ -333,6 +346,7 @@ class IntrinsicFactory(object):
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_value(value, placement)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_zip(self, value):
@@ -353,6 +367,7 @@ class IntrinsicFactory(object):
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_zip(value)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def federated_secure_sum(self, value, bitwidth):
@@ -375,6 +390,7 @@ class IntrinsicFactory(object):
     value = value_impl.ValueImpl.get_comp(value)
     bitwidth = value_impl.ValueImpl.get_comp(bitwidth)
     comp = building_block_factory.create_federated_secure_sum(value, bitwidth)
+    comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
   def sequence_map(self, fn, arg):
@@ -386,9 +402,9 @@ class IntrinsicFactory(object):
     if isinstance(arg.type_signature, computation_types.SequenceType):
       fn = value_impl.ValueImpl.get_comp(fn)
       arg = value_impl.ValueImpl.get_comp(arg)
-      return value_impl.ValueImpl(
-          building_block_factory.create_sequence_map(fn, arg),
-          self._context_stack)
+      comp = building_block_factory.create_sequence_map(fn, arg)
+      comp = self._bind_comp_as_reference(comp)
+      return value_impl.ValueImpl(comp, self._context_stack)
     elif isinstance(arg.type_signature, computation_types.FederatedType):
       parameter_type = computation_types.SequenceType(
           fn.type_signature.parameter)
@@ -435,9 +451,9 @@ class IntrinsicFactory(object):
     zero = value_impl.ValueImpl.get_comp(zero)
     op = value_impl.ValueImpl.get_comp(op)
     if isinstance(value.type_signature, computation_types.SequenceType):
-      return value_impl.ValueImpl(
-          building_block_factory.create_sequence_reduce(value, zero, op),
-          self._context_stack)
+      comp = building_block_factory.create_sequence_reduce(value, zero, op)
+      comp = self._bind_comp_as_reference(comp)
+      return value_impl.ValueImpl(comp, self._context_stack)
     else:
       value_type = computation_types.SequenceType(element_type)
       intrinsic_type = computation_types.FunctionType((
@@ -475,9 +491,9 @@ class IntrinsicFactory(object):
 
     if isinstance(value.type_signature, computation_types.SequenceType):
       value = value_impl.ValueImpl.get_comp(value)
-      return value_impl.ValueImpl(
-          building_block_factory.create_sequence_sum(value),
-          self._context_stack)
+      comp = building_block_factory.create_sequence_sum(value)
+      comp = self._bind_comp_as_reference(comp)
+      return value_impl.ValueImpl(comp, self._context_stack)
     elif isinstance(value.type_signature, computation_types.FederatedType):
       intrinsic_type = computation_types.FunctionType(
           value.type_signature.member, value.type_signature.member.element)

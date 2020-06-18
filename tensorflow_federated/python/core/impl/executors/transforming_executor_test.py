@@ -63,12 +63,13 @@ class TransformingExecutorTest(absltest.TestCase):
       return intrinsics.federated_map(_identity, x)
 
     def transformation_fn(x):
+      x, _ = tree_transformations.uniquify_reference_names(x)
+      x, _ = tree_transformations.inline_block_locals(x)
       x, _ = tree_transformations.remove_mapped_or_applied_identity(x)
       return x
 
     self.assertEqual(
-        _test_create_value(comp, transformation_fn),
-        '(FEDERATED_arg -> FEDERATED_arg)')
+        _test_create_value(comp, transformation_fn), '(_var1 -> _var1)')
 
   def test_with_inlining_of_blocks(self):
 

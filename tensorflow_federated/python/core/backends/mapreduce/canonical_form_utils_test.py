@@ -531,17 +531,24 @@ class CreateNextWithFakeClientOutputTest(test.TestCase):
     ip = get_iterative_process_for_sum_example_with_no_client_output()
     old_next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
+    expected_next_tree_result_first_index = building_blocks.Selection(
+        old_next_tree.result, index=0)
+    expected_next_tree_result_second_index = building_blocks.Selection(
+        old_next_tree.result, index=1)
 
     new_next_tree = canonical_form_utils._create_next_with_fake_client_output(
         old_next_tree)
 
     self.assertIsInstance(new_next_tree, building_blocks.Lambda)
     self.assertIsInstance(new_next_tree.result, building_blocks.Tuple)
+    self.assertIsInstance(old_next_tree.result, building_blocks.Block)
     self.assertLen(new_next_tree.result, 3)
-    self.assertEqual(new_next_tree.result[0].formatted_representation(),
-                     old_next_tree.result[0].formatted_representation())
-    self.assertEqual(new_next_tree.result[1].formatted_representation(),
-                     old_next_tree.result[1].formatted_representation())
+    self.assertEqual(
+        new_next_tree.result[0].formatted_representation(),
+        expected_next_tree_result_first_index.formatted_representation())
+    self.assertEqual(
+        new_next_tree.result[1].formatted_representation(),
+        expected_next_tree_result_second_index.formatted_representation())
 
     # pyformat: disable
     self.assertEqual(
@@ -730,26 +737,26 @@ class GetTypeInfoTest(test.TestCase):
         initialize_type='( -> <int32,int32>)',
         s1_type='<int32,int32>@SERVER',
         c1_type='{int32}@CLIENTS',
-        prepare_type='(<int32,int32> -> <<int32,int32>>)',
-        s2_type='<<int32,int32>>@SERVER',
-        c2_type='<<int32,int32>>@CLIENTS',
-        c3_type='{<int32,<<int32,int32>>>}@CLIENTS',
-        work_type='(<int32,<<int32,int32>>> -> <<<int32>,<int32>>,<>>)',
-        c4_type='{<<<int32>,<int32>>,<>>}@CLIENTS',
-        c5_type='{<<int32>,<int32>>}@CLIENTS',
-        c6_type='{<int32>}@CLIENTS',
-        c7_type='{<int32>}@CLIENTS',
+        prepare_type='(<int32,int32> -> <int32,int32>)',
+        s2_type='<int32,int32>@SERVER',
+        c2_type='<int32,int32>@CLIENTS',
+        c3_type='{<int32,<int32,int32>>}@CLIENTS',
+        work_type='(<int32,<int32,int32>> -> <<int32,int32>,<>>)',
+        c4_type='{<<int32,int32>,<>>}@CLIENTS',
+        c5_type='{<int32,int32>}@CLIENTS',
+        c6_type='{int32}@CLIENTS',
+        c7_type='{int32}@CLIENTS',
         c8_type='{<>}@CLIENTS',
-        zero_type='( -> <int32>)',
-        accumulate_type='(<<int32>,<int32>> -> <int32>)',
-        merge_type='(<<int32>,<int32>> -> <int32>)',
-        report_type='(<int32> -> <int32>)',
-        s3_type='<int32>@SERVER',
-        bitwidth_type='( -> <int32>)',
-        s4_type='<int32>@SERVER',
-        s5_type='<<int32>,<int32>>@SERVER',
-        s6_type='<<int32,int32>,<<int32>,<int32>>>@SERVER',
-        update_type='(<<int32,int32>,<<int32>,<int32>>> -> <<int32,int32>,<>>)',
+        zero_type='( -> int32)',
+        accumulate_type='(<int32,int32> -> int32)',
+        merge_type='(<int32,int32> -> int32)',
+        report_type='(int32 -> int32)',
+        s3_type='int32@SERVER',
+        bitwidth_type='( -> int32)',
+        s4_type='int32@SERVER',
+        s5_type='<int32,int32>@SERVER',
+        s6_type='<<int32,int32>,<int32,int32>>@SERVER',
+        update_type='(<<int32,int32>,<int32,int32>> -> <<int32,int32>,<>>)',
         s7_type='<<int32,int32>,<>>@SERVER',
         s8_type='<int32,int32>@SERVER',
         s9_type='<>@SERVER',

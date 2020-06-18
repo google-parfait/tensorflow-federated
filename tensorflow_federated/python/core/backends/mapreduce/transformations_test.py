@@ -17,7 +17,6 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
@@ -34,12 +33,13 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 
 class CheckExtractionResultTest(absltest.TestCase):
 
-  def get_function_from_argument_to_call_in_call_in_lambda(self, tree):
-    """Unwraps a function from a series of nested calls and lambdas.
+  def get_function_from_first_symbol_binding_in_lambda_result(self, tree):
+    """Unwraps a function from a series of nested calls, lambdas and blocks.
 
-    The specific shape being unwrapped is the following:
-      (_ -> _(_(_)))
-              ^ this value is what is returned
+    The specific shape being unwrapped here is:
+
+    (_ -> (let (_=_, ...) in _))
+                  ^ This is the computation being returned.
 
     Args:
       tree: A series of nested calls and lambdas as described above.
@@ -49,13 +49,14 @@ class CheckExtractionResultTest(absltest.TestCase):
     """
     self.assertIsInstance(tree, building_blocks.Lambda)
     self.assertIsNone(tree.parameter_type)
-    self.assertIsInstance(tree.result, building_blocks.Call)
-    self.assertIsInstance(tree.result.argument, building_blocks.Call)
-    return tree.result.argument.function
+    self.assertIsInstance(tree.result, building_blocks.Block)
+    comp_to_return = tree.result.locals[0][1]
+    self.assertIsInstance(comp_to_return, building_blocks.Call)
+    return comp_to_return.function
 
   def compiled_computation_for_initialize(self, initialize):
     block = mapreduce_test_utils.computation_to_building_block(initialize)
-    return self.get_function_from_argument_to_call_in_call_in_lambda(block)
+    return self.get_function_from_first_symbol_binding_in_lambda_result(block)
 
   def test_raises_on_none_args(self):
     with self.assertRaisesRegex(TypeError, 'None'):
@@ -196,7 +197,10 @@ class ConsolidateAndExtractTest(absltest.TestCase):
       self.assertEqual(executable_tf(k), executable_lam(k))
 
   def test_reduces_federated_value_at_server_to_equivalent_noarg_function(self):
-    federated_value = intrinsics.federated_value(0, placements.SERVER)._comp
+    zero = building_block_factory.create_tensorflow_constant(
+        computation_types.TensorType(tf.int32, shape=[]), 0)
+    federated_value = building_block_factory.create_federated_value(
+        zero, placements.SERVER)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
         federated_value)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
@@ -205,7 +209,10 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_reduces_federated_value_at_clients_to_equivalent_noarg_function(
       self):
-    federated_value = intrinsics.federated_value(0, placements.CLIENTS)._comp
+    zero = building_block_factory.create_tensorflow_constant(
+        computation_types.TensorType(tf.int32, shape=[]), 0)
+    federated_value = building_block_factory.create_federated_value(
+        zero, placements.CLIENTS)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
         federated_value)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
