@@ -37,7 +37,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
 
   *Rules of Composition*
   Given two `MeasuredProcess` _F(x)_ and _G(y)_, a new composition _C_ is
-  aslo a `MeasuredProcess` where:
+  also a `MeasuredProcess` where:
     - `C.state` is the concatenation `<F.state, G.state>`.
     - `C.result` is the result of _G_ applied to the result of
       _F_ `G(G.state, F(F.state, x).result).result`.
