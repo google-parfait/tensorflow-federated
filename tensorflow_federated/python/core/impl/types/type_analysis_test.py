@@ -302,19 +302,22 @@ class IsAverageCompatibleTest(parameterized.TestCase):
 class CheckTypeTest(absltest.TestCase):
 
   def test_raises_type_error(self):
-    type_analysis.check_type(10, tf.int32)
+    type_analysis.check_type(10, computation_types.TensorType(tf.int32))
     self.assertRaises(TypeError, type_analysis.check_type, 10, tf.bool)
 
 
 class CheckFederatedTypeTest(absltest.TestCase):
 
-  def test_raises_type_error(self):
+  def test_passes_or_raises_type_error(self):
     type_spec = computation_types.FederatedType(tf.int32,
                                                 placement_literals.CLIENTS,
                                                 False)
-    type_analysis.check_federated_type(type_spec, tf.int32,
+    type_analysis.check_federated_type(type_spec,
+                                       computation_types.TensorType(tf.int32),
                                        placement_literals.CLIENTS, False)
-    type_analysis.check_federated_type(type_spec, tf.int32, None, None)
+    type_analysis.check_federated_type(type_spec,
+                                       computation_types.TensorType(tf.int32),
+                                       None, None)
     type_analysis.check_federated_type(type_spec, None,
                                        placement_literals.CLIENTS, None)
     type_analysis.check_federated_type(type_spec, None, None, False)
@@ -329,8 +332,8 @@ class CheckFederatedTypeTest(absltest.TestCase):
 class IsStructureOfIntegersTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('int', tf.int32),
-      ('ints', ([tf.int32, tf.int32],)),
+      ('int', computation_types.TensorType(tf.int32)),
+      ('ints', computation_types.NamedTupleType([tf.int32, tf.int32])),
       ('federated_int_at_clients',
        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS)),
   )
@@ -338,9 +341,9 @@ class IsStructureOfIntegersTest(parameterized.TestCase):
     self.assertTrue(type_analysis.is_structure_of_integers(type_spec))
 
   @parameterized.named_parameters(
-      ('bool', tf.bool),
-      ('string', tf.string),
-      ('int_and_bool', ([tf.int32, tf.bool],)),
+      ('bool', computation_types.TensorType(tf.bool)),
+      ('string', computation_types.TensorType(tf.string)),
+      ('int_and_bool', computation_types.NamedTupleType([tf.int32, tf.bool])),
       ('sequence_of_ints', computation_types.SequenceType(tf.int32)),
       ('placement', computation_types.PlacementType()),
       ('function', computation_types.FunctionType(tf.int32, tf.int32)),
@@ -352,29 +355,46 @@ class IsStructureOfIntegersTest(parameterized.TestCase):
 
 class IsValidBitwidthTypeForValueType(parameterized.TestCase):
 
+  # pyformat: disable
   @parameterized.named_parameters(
-      ('single int', tf.int32, tf.int32),
-      ('tuple', (tf.int32, tf.int32), (tf.int32, tf.int32)),
-      ('named tuple', computation_types.NamedTupleType(
-          ['x', tf.int32]), computation_types.NamedTupleType(['x', tf.int32])),
-      ('single int for complex tensor', tf.int32,
-       tf.TensorSpec([5, 97, 204], dtype=tf.int32)),
-      ('different kinds of ints', tf.int32, tf.int8),
+      ('single int',
+       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(tf.int32)),
+      ('tuple',
+       computation_types.NamedTupleType([tf.int32, tf.int32]),
+       computation_types.NamedTupleType([tf.int32, tf.int32])),
+      ('named tuple',
+       computation_types.NamedTupleType([('x', tf.int32)]),
+       computation_types.NamedTupleType([('x', tf.int32)])),
+      ('single int for complex tensor',
+       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(tf.int32, [5, 97, 204])),
+      ('different kinds of ints',
+       computation_types.TensorType(tf.int32),
+       computation_types.TensorType(tf.int8)),
   )
+  # pyformat: enable
   def test_returns_true(self, bitwidth_type, value_type):
     self.assertTrue(
         type_analysis.is_valid_bitwidth_type_for_value_type(
             bitwidth_type, value_type))
 
+  # pyformat: disable
   @parameterized.named_parameters(
-      ('single int_for_tuple', tf.int32, (tf.int32, tf.int32)),
-      ('miscounted tuple', (tf.int32, tf.int32, tf.int32),
-       (tf.int32, tf.int32)),
-      ('miscounted tuple 2', (tf.int32, tf.int32),
-       (tf.int32, tf.int32, tf.int32)),
-      ('misnamed tuple', computation_types.NamedTupleType(
-          ['x', tf.int32]), computation_types.NamedTupleType(['y', tf.int32])),
+      ('single int_for_tuple',
+       computation_types.TensorType(tf.int32),
+       computation_types.NamedTupleType([tf.int32, tf.int32])),
+      ('miscounted tuple',
+       computation_types.NamedTupleType([tf.int32, tf.int32, tf.int32]),
+       computation_types.NamedTupleType([tf.int32, tf.int32])),
+      ('miscounted tuple 2',
+       computation_types.NamedTupleType([tf.int32, tf.int32]),
+       computation_types.NamedTupleType([tf.int32, tf.int32, tf.int32])),
+      ('misnamed tuple',
+       computation_types.NamedTupleType([('x', tf.int32)]),
+       computation_types.NamedTupleType([('y', tf.int32)])),
   )
+  # pyformat: enable
   def test_returns_false(self, bitwidth_type, value_type):
     self.assertFalse(
         type_analysis.is_valid_bitwidth_type_for_value_type(
@@ -408,19 +428,19 @@ class IsConcreteInstanceOf(absltest.TestCase):
 
   def test_raises_with_int_first_argument(self):
     with self.assertRaises(TypeError):
-      type_analysis.is_concrete_instance_of(1,
-                                            computation_types.to_type(tf.int32))
+      type_analysis.is_concrete_instance_of(
+          1, computation_types.TensorType(tf.int32))
 
   def test_raises_with_int_second_argument(self):
     with self.assertRaises(TypeError):
       type_analysis.is_concrete_instance_of(
-          computation_types.to_type(tf.int32), 1)
+          computation_types.TensorType(tf.int32), 1)
 
   def test_raises_different_structures(self):
     with self.assertRaises(TypeError):
       type_analysis.is_concrete_instance_of(
-          computation_types.to_type(tf.int32),
-          computation_types.to_type([tf.int32]))
+          computation_types.TensorType(tf.int32),
+          computation_types.NamedTupleType([tf.int32]))
 
   def test_raises_with_abstract_type_as_first_arg(self):
     t1 = computation_types.AbstractType('T1')
@@ -585,35 +605,44 @@ class IsBinaryOpWithUpcastCompatibleTest(absltest.TestCase):
 
   def test_passes_empty_tuples(self):
     self.assertTrue(
-        type_analysis.is_binary_op_with_upcast_compatible_pair([], []))
+        type_analysis.is_binary_op_with_upcast_compatible_pair(
+            computation_types.NamedTupleType([]),
+            computation_types.NamedTupleType([])))
 
   def test_fails_scalars_different_dtypes(self):
     self.assertFalse(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
-            tf.int32, tf.float32))
+            computation_types.TensorType(tf.int32),
+            computation_types.TensorType(tf.float32)))
 
   def test_passes_named_tuple_and_compatible_scalar(self):
     self.assertTrue(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
-            [('a', computation_types.TensorType(tf.int32, [2, 2]))], tf.int32))
+            computation_types.NamedTupleType([
+                ('a', computation_types.TensorType(tf.int32, [2, 2]))
+            ]), computation_types.TensorType(tf.int32)))
 
   def test_fails_named_tuple_and_incompatible_scalar(self):
     self.assertFalse(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
-            [('a', computation_types.TensorType(tf.int32, [2, 2]))],
-            tf.float32))
+            computation_types.NamedTupleType([
+                ('a', computation_types.TensorType(tf.int32, [2, 2]))
+            ]), computation_types.TensorType(tf.float32)))
 
   def test_fails_compatible_scalar_and_named_tuple(self):
     self.assertFalse(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
-            tf.float32,
-            [('a', computation_types.TensorType(tf.int32, [2, 2]))]))
+            computation_types.TensorType(tf.float32),
+            computation_types.NamedTupleType([
+                ('a', computation_types.TensorType(tf.int32, [2, 2]))
+            ])))
 
   def test_fails_named_tuple_type_and_non_scalar_tensor(self):
     self.assertFalse(
         type_analysis.is_binary_op_with_upcast_compatible_pair(
-            [('a', computation_types.TensorType(tf.int32, [2, 2]))],
-            computation_types.TensorType(tf.int32, [2])))
+            computation_types.NamedTupleType([
+                ('a', computation_types.TensorType(tf.int32, [2, 2]))
+            ]), computation_types.TensorType(tf.int32, [2])))
 
 
 class TestCheckValidFederatedWeightedMeanArgumentTupleTypeTest(
@@ -621,10 +650,12 @@ class TestCheckValidFederatedWeightedMeanArgumentTupleTypeTest(
 
   def test_raises_type_error(self):
     type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
-        computation_types.to_type([type_factory.at_clients(tf.float32)] * 2))
+        computation_types.NamedTupleType([type_factory.at_clients(tf.float32)] *
+                                         2))
     with self.assertRaises(TypeError):
       type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
-          computation_types.to_type([type_factory.at_clients(tf.int32)] * 2))
+          computation_types.NamedTupleType([type_factory.at_clients(tf.int32)] *
+                                           2))
 
 
 if __name__ == '__main__':

@@ -49,15 +49,15 @@ def _to_tensor_shape(tensor_type_proto: pb.TensorType) -> tf.TensorShape:
   return tf.TensorShape(dims)
 
 
-def serialize_type(type_spec) -> Optional[pb.Type]:
+def serialize_type(
+    type_spec: Optional[computation_types.Type]) -> Optional[pb.Type]:
   """Serializes 'type_spec' as a pb.Type.
 
   Note: Currently only serialization for tensor, named tuple, sequence, and
   function types is implemented.
 
   Args:
-    type_spec: Either an instance of computation_types.Type, or something
-      convertible to it by computation_types.to_type(), or None.
+    type_spec: A `computation_types.Type`, or `None`.
 
   Returns:
     The corresponding instance of `pb.Type`, or `None` if the argument was
@@ -70,39 +70,38 @@ def serialize_type(type_spec) -> Optional[pb.Type]:
   """
   if type_spec is None:
     return None
-  target = computation_types.to_type(type_spec)
-  py_typecheck.check_type(target, computation_types.Type)
-  if isinstance(target, computation_types.TensorType):
-    return pb.Type(tensor=_to_tensor_type_proto(target))
-  elif isinstance(target, computation_types.SequenceType):
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  if isinstance(type_spec, computation_types.TensorType):
+    return pb.Type(tensor=_to_tensor_type_proto(type_spec))
+  elif isinstance(type_spec, computation_types.SequenceType):
     return pb.Type(
-        sequence=pb.SequenceType(element=serialize_type(target.element)))
-  elif isinstance(target, computation_types.NamedTupleType):
+        sequence=pb.SequenceType(element=serialize_type(type_spec.element)))
+  elif isinstance(type_spec, computation_types.NamedTupleType):
     return pb.Type(
         tuple=pb.NamedTupleType(element=[
             pb.NamedTupleType.Element(name=e[0], value=serialize_type(e[1]))
-            for e in anonymous_tuple.iter_elements(target)
+            for e in anonymous_tuple.iter_elements(type_spec)
         ]))
-  elif isinstance(target, computation_types.FunctionType):
+  elif isinstance(type_spec, computation_types.FunctionType):
     return pb.Type(
         function=pb.FunctionType(
-            parameter=serialize_type(target.parameter),
-            result=serialize_type(target.result)))
-  elif isinstance(target, computation_types.PlacementType):
+            parameter=serialize_type(type_spec.parameter),
+            result=serialize_type(type_spec.result)))
+  elif isinstance(type_spec, computation_types.PlacementType):
     return pb.Type(placement=pb.PlacementType())
-  elif isinstance(target, computation_types.FederatedType):
-    if isinstance(target.placement, placement_literals.PlacementLiteral):
+  elif isinstance(type_spec, computation_types.FederatedType):
+    if isinstance(type_spec.placement, placement_literals.PlacementLiteral):
       return pb.Type(
           federated=pb.FederatedType(
-              member=serialize_type(target.member),
+              member=serialize_type(type_spec.member),
               placement=pb.PlacementSpec(
-                  value=pb.Placement(uri=target.placement.uri)),
-              all_equal=target.all_equal))
+                  value=pb.Placement(uri=type_spec.placement.uri)),
+              all_equal=type_spec.all_equal))
     else:
       raise NotImplementedError(
           'Serialization of federated types with placements specifications '
           'of type {} is not currently implemented yet.'.format(
-              type(target.placement)))
+              type(type_spec.placement)))
   else:
     raise NotImplementedError
 

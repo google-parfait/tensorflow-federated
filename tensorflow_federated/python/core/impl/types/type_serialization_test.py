@@ -40,7 +40,8 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
       ('scalar_boo', tf.bool, []),
   )
   def test_serialize_tensor_type(self, dtype, shape):
-    actual_proto = type_serialization.serialize_type((dtype, shape))
+    type_signature = computation_types.TensorType(dtype, shape)
+    actual_proto = type_serialization.serialize_type(type_signature)
     expected_proto = pb.Type(
         tensor=pb.TensorType(
             dtype=dtype.as_datatype_enum, dims=_shape_to_dims(shape)))
@@ -54,12 +55,13 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_tensor_tuple(self):
-    actual_proto = type_serialization.serialize_type([
+    type_signature = computation_types.NamedTupleType([
         ('x', tf.int32),
         ('y', tf.string),
         tf.float32,
         ('z', tf.bool),
     ])
+    actual_proto = type_serialization.serialize_type(type_signature)
     expected_proto = pb.Type(
         tuple=pb.NamedTupleType(element=[
             pb.NamedTupleType.Element(
@@ -74,9 +76,10 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_nested_tuple(self):
-    actual_proto = type_serialization.serialize_type([
+    type_signature = computation_types.NamedTupleType([
         ('x', [('y', [('z', tf.bool)])]),
     ])
+    actual_proto = type_serialization.serialize_type(type_signature)
 
     def _tuple_type_proto(elements):
       return pb.Type(tuple=pb.NamedTupleType(element=elements))
@@ -128,38 +131,47 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_deserialize_tensor_types(self):
-    self._serialize_deserialize_roundtrip_test(
-        [tf.int32, (tf.int32, [10]), (tf.int32, [None])])
+    self._serialize_deserialize_roundtrip_test([
+        computation_types.TensorType(tf.int32),
+        computation_types.TensorType(tf.int32, [10]),
+        computation_types.TensorType(tf.int32, [None]),
+    ])
 
   def test_serialize_deserialize_sequence_types(self):
     self._serialize_deserialize_roundtrip_test([
         computation_types.SequenceType(tf.int32),
         computation_types.SequenceType([tf.int32, tf.bool]),
         computation_types.SequenceType(
-            [tf.int32, computation_types.SequenceType(tf.bool)])
+            [tf.int32, computation_types.SequenceType(tf.bool)]),
     ])
 
   def test_serialize_deserialize_named_tuple_types(self):
-    self._serialize_deserialize_roundtrip_test([(tf.int32, tf.bool),
-                                                (tf.int32, ('x', tf.bool)),
-                                                ('x', tf.int32)])
+    self._serialize_deserialize_roundtrip_test([
+        computation_types.NamedTupleType([tf.int32, tf.bool]),
+        computation_types.NamedTupleType([
+            tf.int32,
+            computation_types.NamedTupleType([('x', tf.bool)]),
+        ]),
+        computation_types.NamedTupleType([('x', tf.int32)]),
+    ])
 
   def test_serialize_deserialize_function_types(self):
     self._serialize_deserialize_roundtrip_test([
         computation_types.FunctionType(tf.int32, tf.bool),
-        computation_types.FunctionType(None, tf.bool)
+        computation_types.FunctionType(None, tf.bool),
     ])
 
   def test_serialize_deserialize_placement_type(self):
-    self._serialize_deserialize_roundtrip_test(
-        [computation_types.PlacementType()])
+    self._serialize_deserialize_roundtrip_test([
+        computation_types.PlacementType(),
+    ])
 
   def test_serialize_deserialize_federated_types(self):
     self._serialize_deserialize_roundtrip_test([
-        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS,
-                                        True),
-        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS,
-                                        False)
+        computation_types.FederatedType(
+            tf.int32, placement_literals.CLIENTS, all_equal=True),
+        computation_types.FederatedType(
+            tf.int32, placement_literals.CLIENTS, all_equal=False),
     ])
 
   def _serialize_deserialize_roundtrip_test(self, type_list):
@@ -169,8 +181,7 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
       type_list: A list of instances of computation_types.Type or things
         convertible to it.
     """
-    for t in type_list:
-      t1 = computation_types.to_type(t)
+    for t1 in type_list:
       p1 = type_serialization.serialize_type(t1)
       t2 = type_serialization.deserialize_type(p1)
       p2 = type_serialization.serialize_type(t2)

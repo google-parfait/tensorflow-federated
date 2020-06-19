@@ -355,9 +355,9 @@ class ComposingExecutorTest(absltest.TestCase):
     dummy_intrinsic = intrinsic_defs.IntrinsicDef(
         'DUMMY_INTRINSIC', 'dummy_intrinsic',
         computation_types.AbstractType('T'))
-
+    type_signature = computation_types.TensorType(tf.int32)
     comp = pb.Computation(
-        type=type_serialization.serialize_type(tf.int32),
+        type=type_serialization.serialize_type(type_signature),
         intrinsic=pb.Intrinsic(uri='dummy_intrinsic'))
 
     loop = asyncio.get_event_loop()

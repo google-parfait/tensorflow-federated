@@ -31,7 +31,7 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 class InferTypeTest(parameterized.TestCase):
 
   def test_with_none(self):
-    self.assertEqual(type_conversions.infer_type(None), None)
+    self.assertIsNone(type_conversions.infer_type(None))
 
   def test_with_typed_object(self):
 
@@ -272,20 +272,27 @@ class InferTypeTest(parameterized.TestCase):
 class TypeToTfDtypesAndShapesTest(absltest.TestCase):
 
   def test_with_int_scalar(self):
-    dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(tf.int32)
+    type_signature = computation_types.TensorType(tf.int32)
+    dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
+        type_signature)
     test.assert_nested_struct_eq(dtypes, tf.int32)
     test.assert_nested_struct_eq(shapes, tf.TensorShape([]))
 
   def test_with_int_vector(self):
+    type_signature = computation_types.TensorType(tf.int32, [10])
     dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
-        (tf.int32, [10]))
+        type_signature)
     test.assert_nested_struct_eq(dtypes, tf.int32)
     test.assert_nested_struct_eq(shapes, tf.TensorShape([10]))
 
   def test_with_tensor_triple(self):
+    type_signature = computation_types.NamedTupleTypeWithPyContainerType([
+        ('a', computation_types.TensorType(tf.int32, [5])),
+        ('b', computation_types.TensorType(tf.bool)),
+        ('c', computation_types.TensorType(tf.float32, [3])),
+    ], collections.OrderedDict)
     dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
-        collections.OrderedDict([('a', (tf.int32, [5])), ('b', tf.bool),
-                                 ('c', (tf.float32, [3]))]))
+        type_signature)
     test.assert_nested_struct_eq(dtypes, {
         'a': tf.int32,
         'b': tf.bool,
@@ -298,16 +305,17 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
     })
 
   def test_with_two_level_tuple(self):
+    type_signature = computation_types.NamedTupleTypeWithPyContainerType([
+        ('a', tf.bool),
+        ('b',
+         computation_types.NamedTupleTypeWithPyContainerType([
+             ('c', computation_types.TensorType(tf.float32)),
+             ('d', computation_types.TensorType(tf.int32, [20])),
+         ], collections.OrderedDict)),
+        ('e', computation_types.NamedTupleType([])),
+    ], collections.OrderedDict)
     dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
-        collections.OrderedDict([
-            ('a', tf.bool),
-            ('b',
-             collections.OrderedDict([
-                 ('c', tf.float32),
-                 ('d', (tf.int32, [20])),
-             ])),
-            ('e', ()),
-        ]))
+        type_signature)
     test.assert_nested_struct_eq(dtypes, {
         'a': tf.bool,
         'b': {
@@ -330,17 +338,22 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
 class TypeToTfTensorSpecsTest(absltest.TestCase):
 
   def test_with_int_scalar(self):
-    tensor_specs = type_conversions.type_to_tf_tensor_specs(tf.int32)
+    type_signature = computation_types.TensorType(tf.int32)
+    tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
     test.assert_nested_struct_eq(tensor_specs, tf.TensorSpec([], tf.int32))
 
   def test_with_int_vector(self):
-    tensor_specs = type_conversions.type_to_tf_tensor_specs((tf.int32, [10]))
+    type_signature = computation_types.TensorType(tf.int32, [10])
+    tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
     test.assert_nested_struct_eq(tensor_specs, tf.TensorSpec([10], tf.int32))
 
   def test_with_tensor_triple(self):
-    tensor_specs = type_conversions.type_to_tf_tensor_specs(
-        collections.OrderedDict([('a', (tf.int32, [5])), ('b', tf.bool),
-                                 ('c', (tf.float32, [3]))]))
+    type_signature = computation_types.NamedTupleTypeWithPyContainerType([
+        ('a', computation_types.TensorType(tf.int32, [5])),
+        ('b', computation_types.TensorType(tf.bool)),
+        ('c', computation_types.TensorType(tf.float32, [3])),
+    ], collections.OrderedDict)
+    tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
     test.assert_nested_struct_eq(
         tensor_specs, {
             'a': tf.TensorSpec([5], tf.int32),
@@ -349,16 +362,16 @@ class TypeToTfTensorSpecsTest(absltest.TestCase):
         })
 
   def test_with_two_level_tuple(self):
-    tensor_specs = type_conversions.type_to_tf_tensor_specs(
-        collections.OrderedDict([
-            ('a', tf.bool),
-            ('b',
-             collections.OrderedDict([
-                 ('c', tf.float32),
-                 ('d', (tf.int32, [20])),
-             ])),
-            ('e', ()),
-        ]))
+    type_signature = computation_types.NamedTupleTypeWithPyContainerType([
+        ('a', tf.bool),
+        ('b',
+         computation_types.NamedTupleTypeWithPyContainerType([
+             ('c', computation_types.TensorType(tf.float32)),
+             ('d', computation_types.TensorType(tf.int32, [20])),
+         ], collections.OrderedDict)),
+        ('e', computation_types.NamedTupleType([])),
+    ], collections.OrderedDict)
+    tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
     test.assert_nested_struct_eq(
         tensor_specs, {
             'a': tf.TensorSpec([], tf.bool),
@@ -374,8 +387,8 @@ class TypeToTfTensorSpecsTest(absltest.TestCase):
       type_conversions.type_to_tf_tensor_specs(tf.constant([0.0]))
 
   def test_with_unnamed_element(self):
-    tensor_specs = type_conversions.type_to_tf_tensor_specs(
-        computation_types.NamedTupleType([tf.int32]))
+    type_signature = computation_types.NamedTupleType([tf.int32])
+    tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
     test.assert_nested_struct_eq(tensor_specs, (tf.TensorSpec([], tf.int32),))
 
 
@@ -390,7 +403,8 @@ class TypeToTfStructureTest(absltest.TestCase):
              ('d', tf.TensorSpec(shape=(20,), dtype=tf.int32)),
          ])),
     ])
-    type_spec = computation_types.to_type(expected_structure)
+    type_spec = computation_types.NamedTupleTypeWithPyContainerType(
+        expected_structure, collections.OrderedDict)
     tf_structure = type_conversions.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
       ds = tf.data.experimental.from_variant(
@@ -404,7 +418,8 @@ class TypeToTfStructureTest(absltest.TestCase):
         tf.TensorSpec(shape=(), dtype=tf.bool),
         tf.TensorSpec(shape=(), dtype=tf.int32),
     )
-    type_spec = computation_types.to_type(expected_structure)
+    type_spec = computation_types.NamedTupleTypeWithPyContainerType(
+        expected_structure, tuple)
     tf_structure = type_conversions.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
       ds = tf.data.experimental.from_variant(
@@ -414,7 +429,7 @@ class TypeToTfStructureTest(absltest.TestCase):
       self.assertEqual(expected_structure, actual_structure)
 
   def test_with_none(self):
-    with self.assertRaises(ValueError):
+    with self.assertRaises(TypeError):
       type_conversions.type_to_tf_structure(None)
 
   def test_with_sequence_type(self):

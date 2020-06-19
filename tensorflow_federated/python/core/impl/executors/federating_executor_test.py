@@ -328,10 +328,10 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     # A `ValueError` will be raised because `create_value` can not recognize the
     # following intrinsic, because it has not been added to the intrinsic
     # registry.
-    value = pb.Computation(
-        type=type_serialization.serialize_type(tf.int32),
-        intrinsic=pb.Intrinsic(uri='unregistered_intrinsic'))
     type_signature = computation_types.TensorType(tf.int32)
+    value = pb.Computation(
+        type=type_serialization.serialize_type(type_signature),
+        intrinsic=pb.Intrinsic(uri='unregistered_intrinsic'))
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
@@ -671,9 +671,10 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     dummy_intrinsic = intrinsic_defs.IntrinsicDef(
         'DUMMY_INTRINSIC', 'dummy_intrinsic',
         computation_types.AbstractType('T'))
+    type_signature = computation_types.TensorType(tf.int32)
     comp = pb.Computation(
         intrinsic=pb.Intrinsic(uri='dummy_intrinsic'),
-        type=type_serialization.serialize_type(tf.int32))
+        type=type_serialization.serialize_type(type_signature))
 
     comp = self.run_sync(executor.create_value(comp))
     with self.assertRaises(NotImplementedError):

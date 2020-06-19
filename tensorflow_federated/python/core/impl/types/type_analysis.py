@@ -13,7 +13,7 @@
 # limitations under the License.
 """A library of static analysis functions for computation types."""
 
-from typing import Callable, Optional, Tuple, Type, Union
+from typing import Any, Callable, Optional, Tuple, Type, Union
 
 import tensorflow as tf
 
@@ -117,7 +117,7 @@ def contains_only_types(type_signature: computation_types.Type,
   return count(type_signature, lambda x: not isinstance(x, types)) == 0
 
 
-def check_well_formed(type_spec):
+def check_well_formed(type_signature: computation_types.Type):
   """Checks that `type_spec` represents a well-formed type.
 
   Performs the following checks of well-formedness for `type_spec`:
@@ -130,16 +130,14 @@ def check_well_formed(type_spec):
     or `computation_types.FunctionType`.
 
   Args:
-    type_spec: The type specification to check, either an instance of
-      `computation_types.Type` or something convertible to it by
-      `computation_types.to_type()`.
+    type_signature: A `computation_types.Type`, the type specification to check.
 
   Raises:
     TypeError: if `type_spec` is not a well-formed TFF type.
   """
   # TODO(b/113112885): Reinstate a call to `check_all_abstract_types_are_bound`
   # after revising the definition of well-formedness.
-  type_signature = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_signature, computation_types.Type)
 
   def _check_for_disallowed_type(type_to_check, disallowed_types):
     """Checks subtree of `type_to_check` for `disallowed_types`."""
@@ -172,24 +170,23 @@ def check_well_formed(type_spec):
                                       _check_for_disallowed_type, dict())
 
 
-def check_type(val, type_spec):
+def check_type(value: Any, type_spec: computation_types.Type):
   """Checks whether `val` is of TFF type `type_spec`.
 
   Args:
-    val: The object to check.
-    type_spec: An instance of `tff.Type` or something convertible to it that the
-      `val` is checked against.
+    value: The object to check.
+    type_spec: A `computation_types.Type`, the type that `value` is checked
+      against.
 
   Raises:
-    TypeError: If the inefferred type of `val` is not `type_spec`.
+    TypeError: If the infferred type of `value` is not `type_spec`.
   """
-  type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  val_type = type_conversions.infer_type(val)
-  if not type_spec.is_assignable_from(val_type):
+  value_type = type_conversions.infer_type(value)
+  if not type_spec.is_assignable_from(value_type):
     raise TypeError(
         'Expected TFF type {}, which is not assignable from {}.'.format(
-            type_spec, val_type))
+            type_spec, value_type))
 
 
 def is_tensorflow_compatible_type(type_spec):
@@ -220,8 +217,9 @@ def is_generic_op_compatible_type(type_spec):
   ))
 
 
-def is_binary_op_with_upcast_compatible_pair(possibly_nested_type,
-                                             type_to_upcast):
+def is_binary_op_with_upcast_compatible_pair(
+    possibly_nested_type: Optional[computation_types.Type],
+    type_to_upcast: computation_types.Type) -> bool:
   """Checks unambiguity in applying `type_to_upcast` to `possibly_nested_type`.
 
   That is, checks that either these types are equivalent and contain only
@@ -234,15 +232,17 @@ def is_binary_op_with_upcast_compatible_pair(possibly_nested_type,
   by a scalar, but not the other way around.
 
   Args:
-    possibly_nested_type: Convertible to `computation_types.Type`.
-    type_to_upcast: Convertible to `computation_types.Type`.
+    possibly_nested_type: A `computation_types.Type`, or `None`.
+    type_to_upcast: A `computation_types.Type`, or `None`.
 
   Returns:
     Boolean indicating whether `type_to_upcast` can be upcast to
     `possibly_nested_type` in the manner described above.
   """
-  possibly_nested_type = computation_types.to_type(possibly_nested_type)
-  type_to_upcast = computation_types.to_type(type_to_upcast)
+  if possibly_nested_type is not None:
+    py_typecheck.check_type(possibly_nested_type, computation_types.Type)
+  if type_to_upcast is not None:
+    py_typecheck.check_type(type_to_upcast, computation_types.Type)
   if not (is_generic_op_compatible_type(possibly_nested_type) and
           is_generic_op_compatible_type(type_to_upcast)):
     return False
@@ -362,8 +362,7 @@ def check_all_abstract_types_are_bound(type_spec):
           type_spec.result, bound_labels.union(parameter_labels), check)
       return parameter_labels.union(result_labels)
 
-  _check_or_get_unbound_abstract_type_labels(
-      computation_types.to_type(type_spec), set(), True)
+  _check_or_get_unbound_abstract_type_labels(type_spec, set(), True)
 
 
 def is_numeric_dtype(dtype):
@@ -379,7 +378,7 @@ def is_numeric_dtype(dtype):
   return dtype.is_integer or dtype.is_floating or dtype.is_complex
 
 
-def is_sum_compatible(type_spec):
+def is_sum_compatible(type_spec: computation_types.Type) -> bool:
   """Determines if `type_spec` is a type that can be added to itself.
 
   Types that are sum-compatible are composed of scalars of numeric types,
@@ -388,13 +387,12 @@ def is_sum_compatible(type_spec):
   and placements.
 
   Args:
-    type_spec: Either an instance of computation_types.Type, or something
-      convertible to it.
+    type_spec: A `computation_types.Type`.
 
   Returns:
     `True` iff `type_spec` is sum-compatible, `False` otherwise.
   """
-  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     return is_numeric_dtype(type_spec.dtype)
   elif isinstance(type_spec, computation_types.NamedTupleType):
@@ -414,17 +412,16 @@ def check_is_sum_compatible(type_spec):
         .format(type_spec))
 
 
-def is_structure_of_integers(type_spec):
+def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
   """Determines if `type_spec` is a structure of integers.
 
   Args:
-    type_spec: Either an instance of computation_types.Type, or something
-      convertible to it.
+    type_spec: A `computation_types.Type`.
 
   Returns:
     `True` iff `type_spec` is a structure of integers, otherwise `False`.
   """
-  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     py_typecheck.check_type(type_spec.dtype, tf.DType)
     return type_spec.dtype.is_integer
@@ -445,18 +442,19 @@ def check_is_structure_of_integers(type_spec):
             type_spec))
 
 
-def is_valid_bitwidth_type_for_value_type(bitwidth_type, value_type):
+def is_valid_bitwidth_type_for_value_type(
+    bitwidth_type: computation_types.Type,
+    value_type: computation_types.Type) -> bool:
   """Whether or not `bitwidth_type` is a valid bitwidth type for `value_type`."""
 
   # NOTE: this function is primarily a helper for `intrinsic_factory.py`'s
   # `federated_secure_sum` function.
+  py_typecheck.check_type(bitwidth_type, computation_types.Type)
+  py_typecheck.check_type(value_type, computation_types.Type)
 
   def _both_are_type(first, second, ty):
     """Whether or not `first` and `second` are both instances of `ty`."""
     return isinstance(first, ty) and isinstance(second, ty)
-
-  bitwidth_type = computation_types.to_type(bitwidth_type)
-  value_type = computation_types.to_type(value_type)
 
   if _both_are_type(value_type, bitwidth_type, computation_types.TensorType):
     # Here, `value_type` refers to a tensor. Rather than check that
@@ -483,14 +481,15 @@ def is_valid_bitwidth_type_for_value_type(bitwidth_type, value_type):
     return False
 
 
-def check_federated_type(type_spec,
-                         member=None,
-                         placement=None,
-                         all_equal=None):
+def check_federated_type(
+    type_spec: computation_types.Type,
+    member: Optional[computation_types.Type] = None,
+    placement: Optional[placement_literals.PlacementLiteral] = None,
+    all_equal: Optional[bool] = None):
   """Checks that `type_spec` is a federated type with the given parameters.
 
   Args:
-    type_spec: The `tff.Type` to check (or something convertible to it).
+    type_spec: The `tff.Type` to check.
     member: The expected member type, or `None` if unspecified.
     placement: The desired placement, or `None` if unspecified.
     all_equal: The desired result of accessing the property
@@ -500,10 +499,8 @@ def check_federated_type(type_spec,
   Raises:
     TypeError: if `type_spec` is not a federated type of the given kind.
   """
-  type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.FederatedType)
   if member is not None:
-    member = computation_types.to_type(member)
     py_typecheck.check_type(member, computation_types.Type)
     member.check_assignable_from(type_spec.member)
   if placement is not None:
@@ -520,7 +517,7 @@ def check_federated_type(type_spec,
               all_equal, type_spec.all_equal))
 
 
-def is_average_compatible(type_spec):
+def is_average_compatible(type_spec: computation_types.Type) -> bool:
   """Determines if `type_spec` can be averaged.
 
   Types that are average-compatible are composed of numeric tensor types,
@@ -528,12 +525,12 @@ def is_average_compatible(type_spec):
   and possibly federated.
 
   Args:
-    type_spec: An instance of `types.Type`, or something convertible to it.
+    type_spec: a `computation_types.Type`.
 
   Returns:
     `True` iff `type_spec` is average-compatible, `False` otherwise.
   """
-  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     return type_spec.dtype.is_floating or type_spec.dtype.is_complex
   elif isinstance(type_spec, computation_types.NamedTupleType):
@@ -670,17 +667,16 @@ def is_concrete_instance_of(type_with_concrete_elements,
   return concretized_abstract_type.is_equivalent_to(type_with_concrete_elements)
 
 
-def check_valid_federated_weighted_mean_argument_tuple_type(type_spec):
+def check_valid_federated_weighted_mean_argument_tuple_type(
+    type_spec: computation_types.NamedTupleType):
   """Checks that `type_spec` is a valid type of a federated weighted mean arg.
 
   Args:
-    type_spec: An instance of `tff.Type` or something convertible to it.
+    type_spec: A `computation_types.NamedTupleType`.
 
   Raises:
     TypeError: If the check fails.
   """
-  type_spec = computation_types.to_type(type_spec)
-  py_typecheck.check_not_none(type_spec)
   py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
   if len(type_spec) != 2:
     raise TypeError('Expected a 2-tuple, found {}.'.format(type_spec))

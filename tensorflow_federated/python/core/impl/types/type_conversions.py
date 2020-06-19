@@ -13,6 +13,7 @@
 """Utilities for type conversion, type checking, type inference, etc."""
 
 import collections
+from typing import Any, Optional
 
 import attr
 import numpy as np
@@ -35,7 +36,7 @@ TF_DATASET_REPRESENTATION_TYPES = (
 )
 
 
-def infer_type(arg):
+def infer_type(arg: Any) -> Optional[computation_types.Type]:
   """Infers the TFF type of the argument (a `computation_types.Type` instance).
 
   WARNING: This function is only partially implemented.
@@ -61,8 +62,8 @@ def infer_type(arg):
   elif tf.is_tensor(arg):
     return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)
   elif isinstance(arg, TF_DATASET_REPRESENTATION_TYPES):
-    return computation_types.SequenceType(
-        computation_types.to_type(arg.element_spec))
+    element_type = computation_types.to_type(arg.element_spec)
+    return computation_types.SequenceType(element_type)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     return computation_types.NamedTupleType([
         (k, infer_type(v)) if k else infer_type(v)
@@ -122,7 +123,7 @@ def infer_type(arg):
             py_typecheck.type_string(type(arg)), err))
 
 
-def type_to_tf_dtypes_and_shapes(type_spec):
+def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
   """Returns nested structures of tensor dtypes and shapes for a given TFF type.
 
   The returned dtypes and shapes match those used by `tf.data.Dataset`s to
@@ -130,10 +131,9 @@ def type_to_tf_dtypes_and_shapes(type_spec):
   arguments in constructing an iterator over a string handle.
 
   Args:
-    type_spec: Type specification, either an instance of
-      `computation_types.Type`, or something convertible to it. The type
-      specification must be composed of only named tuples and tensors. In all
-      named tuples that appear in the type spec, all the elements must be named.
+    type_spec: A `computation_types.Type`, the type specification must be
+      composed of only named tuples and tensors. In all named tuples that appear
+      in the type spec, all the elements must be named.
 
   Returns:
     A pair of parallel nested structures with the dtypes and shapes of tensors
@@ -145,7 +145,7 @@ def type_to_tf_dtypes_and_shapes(type_spec):
     ValueError: if the `type_spec` is composed of something other than named
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
-  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     return (type_spec.dtype, type_spec.shape)
   elif isinstance(type_spec, computation_types.NamedTupleType):
@@ -208,7 +208,7 @@ def type_to_tf_dtypes_and_shapes(type_spec):
         py_typecheck.type_string(type(type_spec))))
 
 
-def type_to_tf_tensor_specs(type_spec):
+def type_to_tf_tensor_specs(type_spec: computation_types.Type):
   """Returns nested structure of `tf.TensorSpec`s for a given TFF type.
 
   The dtypes and shapes of the returned `tf.TensorSpec`s match those used by
@@ -216,10 +216,9 @@ def type_to_tf_tensor_specs(type_spec):
   be used, e.g., as arguments in constructing an iterator over a string handle.
 
   Args:
-    type_spec: Type specification, either an instance of
-      `computation_types.Type`, or something convertible to it. Ther type
-      specification must be composed of only named tuples and tensors. In all
-      named tuples that appear in the type spec, all the elements must be named.
+    type_spec: A `computation_types.Type`, the type specification must be
+      composed of only named tuples and tensors. In all named tuples that appear
+      in the type spec, all the elements must be named.
 
   Returns:
     A nested structure of `tf.TensorSpec`s with the dtypes and shapes of tensors
@@ -227,19 +226,19 @@ def type_to_tf_tensor_specs(type_spec):
     the layout of the nested type defined by `type_spec`. Named tuples are
     represented as dictionaries.
   """
+  py_typecheck.check_type(type_spec, computation_types.Type)
   dtypes, shapes = type_to_tf_dtypes_and_shapes(type_spec)
   return tf.nest.map_structure(lambda dtype, shape: tf.TensorSpec(shape, dtype),
                                dtypes, shapes)
 
 
-def type_to_tf_structure(type_spec):
+def type_to_tf_structure(type_spec: computation_types.Type):
   """Returns nested `tf.data.experimental.Structure` for a given TFF type.
 
   Args:
-    type_spec: Type specification, either an instance of
-      `computation_types.Type`, or something convertible to it. Ther type
-      specification must be composed of only named tuples and tensors. In all
-      named tuples that appear in the type spec, all the elements must be named.
+    type_spec: A `computation_types.Type`, the type specification must be
+      composed of only named tuples and tensors. In all named tuples that appear
+      in the type spec, all the elements must be named.
 
   Returns:
     An instance of `tf.data.experimental.Structure`, possibly nested, that
@@ -249,7 +248,7 @@ def type_to_tf_structure(type_spec):
     ValueError: if the `type_spec` is composed of something other than named
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
-  type_spec = computation_types.to_type(type_spec)
+  py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(type_spec, computation_types.TensorType):
     return tf.TensorSpec(type_spec.shape, type_spec.dtype)
   elif isinstance(type_spec, computation_types.NamedTupleType):
@@ -299,11 +298,10 @@ def type_from_tensors(tensors):
     return computation_types.TensorType(x.dtype.base_dtype, x.shape)
 
   if isinstance(tensors, anonymous_tuple.AnonymousTuple):
-    return computation_types.to_type(
-        anonymous_tuple.map_structure(_mapping_fn, tensors))
+    type_spec = anonymous_tuple.map_structure(_mapping_fn, tensors)
   else:
-    return computation_types.to_type(
-        tf.nest.map_structure(_mapping_fn, tensors))
+    type_spec = tf.nest.map_structure(_mapping_fn, tensors)
+  return computation_types.to_type(type_spec)
 
 
 def type_to_py_container(value, type_spec):
