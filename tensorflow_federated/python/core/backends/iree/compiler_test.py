@@ -156,13 +156,7 @@ class CompilerTest(tf.test.TestCase):
     self._assert_mlir_contains_pattern(
         mlir, ['func @fn(%arg0: tensor<f32>) -> tensor<f32>'])
 
-    # TODO(b/153499219): Switch the backend to VULKAN_SPIRV after fixing these
-    # compilation errors on VULKAN:
-    # * [ERROR]: SPIRV type conversion failed: 'memref<i1>'
-    # * [ERROR]: failed to legalize operation 'iree.placeholder'
-    # * [ERROR]: failed to run translation of source executable to target
-    #            executable for backend vulkan.
-    result = runtime.compile_and_run_on_args(module, backend_info.VMLA,
+    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV,
                                              np.float32(5.0))
     self.assertEqual(result, 32.0)
 
