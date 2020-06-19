@@ -83,11 +83,7 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
       device = self._server_device
     else:
       device = None
-    if device is not None:
-      device_name = device.name
-    else:
-      device_name = None
-    eager_ex = eager_tf_executor.EagerTFExecutor(device=device_name)
+    eager_ex = eager_tf_executor.EagerTFExecutor(device=device)
     return _wrap_executor_in_threading_stack(eager_ex)
 
   def clean_up_executors(self):

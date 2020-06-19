@@ -47,7 +47,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   Args:
     comp: An instance of `pb.Computation`.
     type_spec: An optional `tff.Type` instance or something convertible to it.
-    device: An optional device name.
+    device: An optional `tf.config.LogicalDevice`.
 
   Returns:
     Either a one-argument or a zero-argument callable that executes the
@@ -121,7 +121,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
       with tf.device('cpu'):
         return _import_fn()
     elif device is not None:
-      with tf.device(device):
+      with tf.device(device.name):
         return _import_fn()
     else:
       return _import_fn()
@@ -210,7 +210,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     old_fn_to_return = fn_to_return
 
     def fn_to_return(x):
-      with tf.device(device):
+      with tf.device(device.name):
         return old_fn_to_return(x)
 
   # pylint: enable=function-redefined
@@ -221,11 +221,11 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     return lambda: fn_to_return(None)
 
 
-def to_representation_for_type(value: Any,
-                               tf_function_cache: MutableMapping[str, Any],
-                               type_spec: Optional[
-                                   computation_types.Type] = None,
-                               device: Optional[str] = None) -> Any:
+def to_representation_for_type(
+    value: Any,
+    tf_function_cache: MutableMapping[str, Any],
+    type_spec: Optional[computation_types.Type] = None,
+    device: Optional[tf.config.LogicalDevice] = None) -> Any:
   """Verifies or converts the `value` to an eager object matching `type_spec`.
 
   WARNING: This function is only partially implemented. It does not support
@@ -246,7 +246,8 @@ def to_representation_for_type(value: Any,
       up previously embedded TensorFlow functions.
     type_spec: An instance of `tff.Type`, can be `None` for values that derive
       from `typed_object.TypedObject`.
-    device: The optional device to place the value on (for tensor-level values).
+    device: An optional `tf.config.LogicalDevice` to place the value on (for
+      tensor-level values).
 
   Returns:
     Either `value` itself, or a modified version of it.
@@ -260,7 +261,8 @@ def to_representation_for_type(value: Any,
         computation_impl.ComputationImpl.get_proto(value), tf_function_cache,
         type_spec, device)
   elif isinstance(value, pb.Computation):
-    key = (value.SerializeToString(), str(type_spec), device)
+    key = (value.SerializeToString(), str(type_spec),
+           device.name if device else None)
     cached_fn = tf_function_cache.get(key)
     if cached_fn is not None:
       return cached_fn
@@ -285,8 +287,8 @@ def to_representation_for_type(value: Any,
       result_elem.append((t_name, el_repr))
     return anonymous_tuple.AnonymousTuple(result_elem)
   elif device is not None:
-    py_typecheck.check_type(device, str)
-    with tf.device(device):
+    py_typecheck.check_type(device, tf.config.LogicalDevice)
+    with tf.device(device.name):
       return to_representation_for_type(
           value, tf_function_cache, type_spec=type_spec, device=None)
   elif isinstance(value, EagerValue):
@@ -334,7 +336,7 @@ class EagerValue(executor_value_base.ExecutorValue):
         look up previously embedded TensorFlow functions.
       type_spec: An instance of `tff.Type` that represents a tensor, a dataset,
         or a nested structure of these.
-      device: The optional device on which to place the value.
+      device: An optional `tf.config.LogicalDevice` on which to place the value.
     """
     if type_spec is None:
       py_typecheck.check_type(value, typed_object.TypedObject)
@@ -400,20 +402,20 @@ class EagerTFExecutor(executor_base.Executor):
     """Creates a new instance of an eager executor.
 
     Args:
-      device: An optional name of the device that this executor will schedule
-        all of its operations to run on. It is the caller's responsibility to
-        select a correct device name. For example, the list of physical devices
-        can be obtained using `tf.config.experimental.list_physical_devices()`.
+      device: An optional `tf.config.LogicalDevice` that this executor will
+        schedule all of its operations to run on. For example, the list of
+        logical devices can be obtained using
+        `tf.config.list_logical_devices()`.
 
     Raises:
       RuntimeError: If not executing eagerly.
-      TypeError: If the device name is not a string.
+      TypeError: If the device is not a `tf.config.LogicalDevice`.
       ValueError: If there is no device `device`.
     """
     if not tf.executing_eagerly():
       raise RuntimeError('The eager executor may only be used in eager mode.')
     if device is not None:
-      py_typecheck.check_type(device, str)
+      py_typecheck.check_type(device, tf.config.LogicalDevice)
       self._device = device
     else:
       self._device = None

@@ -28,16 +28,6 @@ from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
 
-def _get_logical_devices_for_testing(device_list=('CPU', 'GPU', 'TPU')):
-  result = []
-  for dev in tf.config.list_logical_devices():
-    parts = dev.name.split(':')
-    if ((len(parts) == 3) and (parts[0] == '/device') and
-        (parts[1] in device_list)):
-      result.append(':'.join(parts[1:]))
-  return result
-
-
 def create_test_executor_factory():
   executor = eager_tf_executor.EagerTFExecutor()
   return executor_factory.ExecutorFactoryImpl(lambda _: executor)
@@ -50,9 +40,9 @@ class EagerTFExecutorTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
-    self._logical_devices_cpu = _get_logical_devices_for_testing(['CPU'])
-    self._logical_devices_gpu = _get_logical_devices_for_testing(['GPU'])
-    self._logical_devices_tpu = _get_logical_devices_for_testing(['TPU'])
+    self._logical_devices_cpu = tf.config.list_logical_devices('CPU')
+    self._logical_devices_gpu = tf.config.list_logical_devices('GPU')
+    self._logical_devices_tpu = tf.config.list_logical_devices('TPU')
 
   def test_embed_tensorflow_computation_with_int_arg_and_result(self):
 
@@ -191,8 +181,8 @@ class EagerTFExecutorTest(tf.test.TestCase):
   def test_to_representation_for_type_with_int_on_specific_device(self):
     value = 10
     type_signature = computation_types.TensorType(tf.int32)
-    v = eager_tf_executor.to_representation_for_type(value, {}, type_signature,
-                                                     '/CPU:0')
+    v = eager_tf_executor.to_representation_for_type(
+        value, {}, type_signature, self._logical_devices_cpu[0])
     self.assertIsInstance(v, tf.Tensor)
     self.assertEqual(v.numpy(), 10)
     self.assertEqual(v.dtype, tf.int32)
@@ -210,7 +200,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
         eager_tf_executor.EagerTFExecutor()
 
   def test_executor_construction_with_correct_device_name(self):
-    eager_tf_executor.EagerTFExecutor('/CPU:0')
+    eager_tf_executor.EagerTFExecutor(self._logical_devices_cpu[0])
 
   def test_executor_construction_with_no_device_name(self):
     eager_tf_executor.EagerTFExecutor()
@@ -465,16 +455,15 @@ class EagerTFExecutorTest(tf.test.TestCase):
 
     self.assertEqual(result, 10)
 
-  # TODO(b/155239129): used list_logical_device in `setUp` for GPU tests.
+  # TODO(b/155239129): we have to acquire logical device list in `setUp`. It
+  # prevents us from using smart test style like parameterized test.
   def _get_wrap_function_on_device(self, device):
     with tf.Graph().as_default() as graph:
       x = tf.compat.v1.placeholder(tf.int32, shape=[])
       y = tf.add(x, tf.constant(1))
 
-    arg_for_tf_device = '/{}'.format(device)
-
     def _function_to_wrap(arg):
-      with tf.device(arg_for_tf_device):
+      with tf.device(device.name):
         return tf.import_graph_def(
             graph.as_graph_def(),
             input_map={x.name: arg},
@@ -484,7 +473,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
     wrapped_fn = tf.compat.v1.wrap_function(_function_to_wrap, signature)
 
     def fn(arg):
-      with tf.device(arg_for_tf_device):
+      with tf.device(device.name):
         return wrapped_fn(arg)
 
     result = fn(tf.constant(10))
@@ -493,31 +482,23 @@ class EagerTFExecutorTest(tf.test.TestCase):
   def test_wrap_function_on_all_available_logical_devices_cpu(self):
     for device in self._logical_devices_cpu:
       self.assertTrue(
-          self._get_wrap_function_on_device(device).device.endswith(device))
+          self._get_wrap_function_on_device(device).device.endswith(
+              device.name))
 
   def test_wrap_function_on_all_available_logical_devices_gpu(self):
     for device in self._logical_devices_gpu:
       self.assertTrue(
-          self._get_wrap_function_on_device(device).device.endswith(device))
+          self._get_wrap_function_on_device(device).device.endswith(
+              device.name))
 
   def test_wrap_function_on_all_available_logical_devices_tpu(self):
     for device in self._logical_devices_tpu:
       self.assertTrue(
-          self._get_wrap_function_on_device(device).device.endswith(device))
+          self._get_wrap_function_on_device(device).device.endswith(
+              device.name))
 
-  def test_embed_tensorflow_computation_fails_with_bogus_device(self):
-
-    @computations.tf_computation(tf.int32)
-    def comp(x):
-      return tf.add(x, 1)
-
-    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
-
-    with self.assertRaises(ValueError):
-      eager_tf_executor.embed_tensorflow_computation(
-          comp_proto, comp.type_signature, device='/there_is_no_such_device')
-
-  # TODO(b/155239129): used list_logical_device in `setUp` for GPU tests.
+  # TODO(b/155239129): we have to acquire logical device list in `setUp`. It
+  # prevents us from using smart test style like parameterized test.
   def _get_embed_tensorflow_computation_succeeds_with_device(self, device):
 
     @computations.tf_computation(tf.int32)
@@ -527,7 +508,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
     comp_proto = computation_impl.ComputationImpl.get_proto(comp)
 
     fn = eager_tf_executor.embed_tensorflow_computation(
-        comp_proto, comp.type_signature, device='/{}'.format(device))
+        comp_proto, comp.type_signature, device=device)
     result = fn(tf.constant(20))
     return result
 
@@ -535,21 +516,22 @@ class EagerTFExecutorTest(tf.test.TestCase):
     for device in self._logical_devices_cpu:
       self.assertTrue(
           self._get_embed_tensorflow_computation_succeeds_with_device(
-              device).device.endswith(device))
+              device).device.endswith(device.name))
 
   def test_embed_tensorflow_computation_succeeds_with_gpu(self):
     for device in self._logical_devices_gpu:
       self.assertTrue(
           self._get_embed_tensorflow_computation_succeeds_with_device(
-              device).device.endswith(device))
+              device).device.endswith(device.name))
 
   def test_embed_tensorflow_computation_succeeds_with_tpu(self):
     for device in self._logical_devices_tpu:
       self.assertTrue(
           self._get_embed_tensorflow_computation_succeeds_with_device(
-              device).device.endswith(device))
+              device).device.endswith(device.name))
 
-  # TODO(b/155239129): used list_logical_device in `setUp` for GPU tests.
+  # TODO(b/155239129): we have to acquire logical device list in `setUp`. It
+  # prevents us from using smart test style like parameterized test.
   def _get_to_representation_for_type_succeeds_on_device(self, device):
 
     @computations.tf_computation(tf.int32)
@@ -559,7 +541,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
     comp_proto = computation_impl.ComputationImpl.get_proto(comp)
 
     fn = eager_tf_executor.to_representation_for_type(
-        comp_proto, {}, comp.type_signature, device='/{}'.format(device))
+        comp_proto, {}, comp.type_signature, device=device)
     result = fn(tf.constant(20))
     return result
 
@@ -567,19 +549,19 @@ class EagerTFExecutorTest(tf.test.TestCase):
     for device in self._logical_devices_cpu:
       self.assertTrue(
           self._get_to_representation_for_type_succeeds_on_device(
-              device).device.endswith(device))
+              device).device.endswith(device.name))
 
   def test_to_representation_for_type_succeeds_on_devices_gpu(self):
     for device in self._logical_devices_gpu:
       self.assertTrue(
           self._get_to_representation_for_type_succeeds_on_device(
-              device).device.endswith(device))
+              device).device.endswith(device.name))
 
   def test_to_representation_for_type_succeeds_on_devices_tpu(self):
     for device in self._logical_devices_tpu:
       self.assertTrue(
           self._get_to_representation_for_type_succeeds_on_device(
-              device).device.endswith(device))
+              device).device.endswith(device.name))
 
 
 if __name__ == '__main__':
