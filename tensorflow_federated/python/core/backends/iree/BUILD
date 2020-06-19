@@ -7,7 +7,6 @@ py_library(
     srcs = ["backend_info.py"],
     srcs_version = "PY3",
     tags = [
-        "iree",
         "manual",
     ],
     deps = [
@@ -21,7 +20,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
-        "iree",
         "manual",
     ],
     deps = [":backend_info"],
@@ -32,7 +30,6 @@ py_library(
     srcs = ["compiler.py"],
     srcs_version = "PY3",
     tags = [
-        "iree",
         "manual",
     ],
     deps = [
@@ -52,7 +49,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
-        "iree",
         "manual",
     ],
     deps = [
@@ -71,7 +67,6 @@ py_library(
     srcs = ["computation_module.py"],
     srcs_version = "PY3",
     tags = [
-        "iree",
         "manual",
     ],
     deps = [
@@ -87,7 +82,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
-        "iree",
         "manual",
     ],
     deps = [
@@ -101,7 +95,6 @@ py_library(
     srcs = ["executor.py"],
     srcs_version = "PY3",
     tags = [
-        "iree",
         "manual",
     ],
     deps = [
@@ -128,7 +121,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
-        "iree",
         "manual",
     ],
     deps = [
@@ -145,7 +137,6 @@ py_library(
     srcs = ["runtime.py"],
     srcs_version = "PY3",
     tags = [
-        "iree",
         "manual",
     ],
     deps = [
@@ -162,7 +153,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
-        "iree",
         "manual",
     ],
     deps = [
