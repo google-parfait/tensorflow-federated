@@ -231,10 +231,7 @@ async def compute_intrinsic_federated_weighted_mean(
           computation_types.NamedTupleType(
               [arg.type_signature[0].member, arg.type_signature[1].member])))
 
-  # TODO(b/134543154): Replace with something that produces a section of
-  # plain TensorFlow code instead of constructing a lambda (so that this
-  # can be executed directly on top of a plain TensorFlow-based executor).
-  multiply_blk = building_block_factory.create_binary_operator_with_upcast(
+  multiply_blk = building_block_factory.create_tensorflow_binary_operator_with_upcast(
       zip1_type.result.member, tf.multiply)
 
   map_type = computation_types.FunctionType(
@@ -256,7 +253,7 @@ async def compute_intrinsic_federated_weighted_mean(
           computation_types.NamedTupleType(
               [sum1_type.result.member, sum2_type.result.member])))
 
-  divide_blk = building_block_factory.create_binary_operator_with_upcast(
+  divide_blk = building_block_factory.create_tensorflow_binary_operator_with_upcast(
       zip2_type.result.member, tf.divide)
 
   async def _compute_multiply_fn():

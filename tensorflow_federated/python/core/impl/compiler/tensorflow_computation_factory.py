@@ -14,7 +14,7 @@
 """A library of contruction functions for tensorflow computation structures."""
 
 import types
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import tensorflow as tf
 
@@ -202,6 +202,87 @@ def create_binary_operator(
 
   type_signature = computation_types.FunctionType([operand_type, operand_type],
                                                   result_type)
+  parameter_binding = pb.TensorFlow.Binding(
+      tuple=pb.TensorFlow.NamedTupleBinding(
+          element=[operand_1_binding, operand_2_binding]))
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+      parameter=parameter_binding,
+      result=result_binding)
+  return pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      tensorflow=tensorflow)
+
+
+def create_binary_operator_with_upcast(
+    type_signature: computation_types.Type,
+    operator: Callable[[Any, Any], Any]) -> pb.Computation:
+  """Creates TF computation upcasting its argument and applying `operator`.
+
+  Args:
+    type_signature: Value convertible to `computation_types.NamedTupleType`,
+      with two elements, both of the same type or the second able to be upcast
+      to the first, as explained in `apply_binary_operator_with_upcast`, and
+      both containing only tuples and tensors in their type tree.
+    operator: Callable defining the operator.
+
+  Returns:
+    A `building_blocks.CompiledComputation` encapsulating a function which
+    upcasts the second element of its argument and applies the binary
+    operator.
+  """
+
+  py_typecheck.check_callable(operator)
+  type_signature = computation_types.to_type(type_signature)
+  type_analysis.check_tensorflow_compatible_type(type_signature)
+  if not isinstance(
+      type_signature,
+      computation_types.NamedTupleType) or len(type_signature) != 2:
+    raise TypeError('To apply a binary operator, we must by definition have an '
+                    'argument which is a `NamedTupleType` with 2 elements; '
+                    'asked to create a binary operator for type: {t}'.format(
+                        t=type_signature))
+  if type_analysis.contains_types(type_signature,
+                                  computation_types.SequenceType):
+    raise TypeError(
+        'Applying binary operators in TensorFlow is only '
+        'supported on Tensors and NamedTupleTypes; you '
+        'passed {t} which contains a SequenceType.'.format(t=type_signature))
+
+  def _pack_into_type(to_pack, type_spec):
+    """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
+    if isinstance(type_spec, computation_types.NamedTupleType):
+      elem_iter = anonymous_tuple.iter_elements(type_spec)
+      return anonymous_tuple.AnonymousTuple([
+          (elem_name, _pack_into_type(to_pack, elem_type))
+          for elem_name, elem_type in elem_iter
+      ])
+    elif isinstance(type_spec, computation_types.TensorType):
+      return tf.broadcast_to(to_pack, type_spec.shape)
+
+  with tf.Graph().as_default() as graph:
+    first_arg, operand_1_binding = tensorflow_utils.stamp_parameter_in_graph(
+        'x', type_signature[0], graph)
+    operand_2_value, operand_2_binding = tensorflow_utils.stamp_parameter_in_graph(
+        'y', type_signature[1], graph)
+    if type_signature[0].is_equivalent_to(type_signature[1]):
+      second_arg = operand_2_value
+    else:
+      second_arg = _pack_into_type(operand_2_value, type_signature[0])
+
+    if isinstance(type_signature[0], computation_types.TensorType):
+      result_value = operator(first_arg, second_arg)
+    elif isinstance(type_signature[0], computation_types.NamedTupleType):
+      result_value = anonymous_tuple.map_structure(operator, first_arg,
+                                                   second_arg)
+    else:
+      raise TypeError('Encountered unexpected type {t}; can only handle Tensor '
+                      'and NamedTupleTypes.'.format(t=type_signature[0]))
+
+  result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+      result_value, graph)
+
+  type_signature = computation_types.FunctionType(type_signature, result_type)
   parameter_binding = pb.TensorFlow.Binding(
       tuple=pb.TensorFlow.NamedTupleBinding(
           element=[operand_1_binding, operand_2_binding]))

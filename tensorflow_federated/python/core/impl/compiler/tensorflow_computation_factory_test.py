@@ -181,6 +181,65 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
           operator, type_signature)
 
 
+class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('add_int_same_shape', tf.math.add,
+       [computation_types.TensorType(tf.int32),
+        computation_types.TensorType(tf.int32)],
+       [1, 2], 3),
+      ('add_int_different_shape', tf.math.add,
+       [computation_types.TensorType(tf.int32, shape=[1]),
+        computation_types.TensorType(tf.int32)],
+       [tf.constant(1, shape=[1]), 2], 3),
+      ('add_int_different_types', tf.math.add,
+       [[computation_types.TensorType(tf.int32, shape=[1])],
+        computation_types.TensorType(tf.int32)],
+       [[tf.constant(1, shape=[1])], 2], anonymous_tuple.AnonymousTuple([(None, 3)])),
+      ('multiply_int_same_shape', tf.math.multiply,
+       [computation_types.TensorType(tf.int32),
+        computation_types.TensorType(tf.int32)],
+       [1, 2], 2),
+      ('multiply_int_different_shape', tf.math.multiply,
+       [computation_types.TensorType(tf.int32, shape=[1]),
+        computation_types.TensorType(tf.int32)],
+       [tf.constant(1, shape=[1]), 2], 2),
+      ('multiply_int_different_types', tf.math.multiply,
+       [[computation_types.TensorType(tf.int32, shape=[1])],
+        computation_types.TensorType(tf.int32)],
+       [[tf.constant(1, shape=[1])], 2], anonymous_tuple.AnonymousTuple([(None, 2)])),
+      ('divide_int_same_shape', tf.math.divide,
+       [computation_types.TensorType(tf.int32),
+        computation_types.TensorType(tf.int32)],
+       [1, 2], 0.5),
+      ('divide_int_different_shape', tf.math.divide,
+       [computation_types.TensorType(tf.int32, shape=[1]),
+        computation_types.TensorType(tf.int32)],
+       [tf.constant(1, shape=[1]), 2], 0.5),
+      ('divide_int_different_types', tf.math.divide,
+       [[computation_types.TensorType(tf.int32, shape=[1])],
+        computation_types.TensorType(tf.int32)],
+       [[tf.constant(1, shape=[1])], 2], anonymous_tuple.AnonymousTuple([(None, 0.5)])),
+  )
+  # pyformat: enable
+  def test_returns_computation(self, operator, type_signature, operands,
+                               expected_result):
+    proto = tensorflow_computation_factory.create_binary_operator_with_upcast(
+        type_signature, operator)
+
+    self.assertIsInstance(proto, pb.Computation)
+    actual_type = type_serialization.deserialize_type(proto.type)
+    self.assertIsInstance(actual_type, computation_types.FunctionType)
+    # Note: It is only useful to test the parameter type; the result type
+    # depends on the `operator` used, not the implemenation
+    # `create_binary_operator_with_upcast`.
+    expected_parameter_type = computation_types.NamedTupleType(type_signature)
+    self.assertEqual(actual_type.parameter, expected_parameter_type)
+    actual_result = test_utils.run_tensorflow(proto, operands)
+    self.assertEqual(actual_result, expected_result)
+
+
 class CreateEmptyTupleTest(absltest.TestCase):
 
   def test_returns_coputation(self):

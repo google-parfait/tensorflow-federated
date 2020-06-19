@@ -1833,19 +1833,13 @@ def _check_generic_operator_type(type_spec):
         'more details.'.format(type_spec))
 
 
-def create_binary_operator_with_upcast(
+def create_tensorflow_binary_operator_with_upcast(
     type_signature: computation_types.Type,
     operator: Callable[[Any, Any], Any]) -> building_blocks.CompiledComputation:
-  """Creates lambda upcasting its argument and applying `operator`.
+  """Creates TF computation upcasting its argument and applying `operator`.
 
   The concept of upcasting is explained further in the docstring for
   `apply_binary_operator_with_upcast`.
-
-  Notice that since we are constructing a function here, e.g. for the body
-  of an intrinsic, the function we are constructing must be reducible to
-  TensorFlow. Therefore `type_signature` can only have named tuple or tensor
-  type elements; that is, we cannot handle federated types here in a generic
-  way.
 
   Args:
     type_signature: Value convertible to `computation_types.NamedTupleType`,
@@ -1855,43 +1849,18 @@ def create_binary_operator_with_upcast(
     operator: Callable defining the operator.
 
   Returns:
-    A `building_blocks.Lambda` encapsulating a function which
+    A `building_blocks.CompiledComputation` encapsulating a function which
     upcasts the second element of its argument and applies the binary
     operator.
   """
   py_typecheck.check_callable(operator)
   type_signature = computation_types.to_type(type_signature)
   _check_generic_operator_type(type_signature)
-  ref_to_arg = building_blocks.Reference('binary_operator_arg', type_signature)
-
-  def _pack_into_type(to_pack, type_spec):
-    """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
-    if isinstance(type_spec, computation_types.NamedTupleType):
-      elems = anonymous_tuple.to_elements(type_spec)
-      packed_elems = [(elem_name, _pack_into_type(to_pack, elem_type))
-                      for elem_name, elem_type in elems]
-      return building_blocks.Tuple(packed_elems)
-    elif isinstance(type_spec, computation_types.TensorType):
-      expand_fn = create_tensorflow_to_broadcast_scalar(
-          to_pack.type_signature.dtype, type_spec.shape)
-      return building_blocks.Call(expand_fn, to_pack)
-
-  y_ref = building_blocks.Selection(ref_to_arg, index=1)
-  first_arg = building_blocks.Selection(ref_to_arg, index=0)
-
-  if first_arg.type_signature.is_equivalent_to(y_ref.type_signature):
-    second_arg = y_ref
-  else:
-    second_arg = _pack_into_type(y_ref, first_arg.type_signature)
-  proto = tensorflow_computation_factory.create_binary_operator(
-      operator, first_arg.type_signature)
-  fn = building_blocks.CompiledComputation(proto)
-  packed = building_blocks.Tuple([first_arg, second_arg])
-  operated = building_blocks.Call(fn, packed)
-  lambda_encapsulating_op = building_blocks.Lambda(ref_to_arg.name,
-                                                   ref_to_arg.type_signature,
-                                                   operated)
-  return lambda_encapsulating_op
+  type_analysis.check_tensorflow_compatible_type(type_signature)
+  tf_proto = tensorflow_computation_factory.create_binary_operator_with_upcast(
+      type_signature, operator)
+  compiled = building_blocks.CompiledComputation(tf_proto)
+  return compiled
 
 
 def apply_binary_operator_with_upcast(
@@ -1940,12 +1909,12 @@ def apply_binary_operator_with_upcast(
         'Generic binary operators are only implemented for federated tuple and '
         'unplaced tuples; you have passed {}.'.format(arg.type_signature))
 
-  lambda_encapsulating_op = create_binary_operator_with_upcast(
+  tf_representing_op = create_tensorflow_binary_operator_with_upcast(
       tuple_type, operator)
 
   if isinstance(arg.type_signature, computation_types.FederatedType):
-    called = create_federated_map_or_apply(lambda_encapsulating_op, arg)
+    called = create_federated_map_or_apply(tf_representing_op, arg)
   else:
-    called = building_blocks.Call(lambda_encapsulating_op, arg)
+    called = building_blocks.Call(tf_representing_op, arg)
 
   return called

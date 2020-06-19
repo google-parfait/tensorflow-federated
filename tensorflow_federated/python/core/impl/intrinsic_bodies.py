@@ -167,7 +167,7 @@ def get_intrinsic_bodies(context_stack):
         building_block_factory.create_generic_constant(x.type_signature.member,
                                                        0), context_stack)
     plus_op = value_impl.ValueImpl(
-        building_block_factory.create_binary_operator_with_upcast(
+        building_block_factory.create_tensorflow_binary_operator_with_upcast(
             computation_types.NamedTupleType(
                 [x.type_signature.member, x.type_signature.member]), tf.add),
         context_stack)
