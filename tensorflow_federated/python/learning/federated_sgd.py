@@ -192,18 +192,22 @@ def build_federated_sgd_process(
   def client_sgd_avg(model_fn):
     return ClientSgd(model_fn(), client_weight_fn)
 
-  if stateful_delta_aggregate_fn is None:
-    stateful_delta_aggregate_fn = optimizer_utils.build_stateless_mean()
-  else:
+  if stateful_delta_aggregate_fn is not None:
     py_typecheck.check_type(stateful_delta_aggregate_fn,
                             tff.utils.StatefulAggregateFn)
-
-  if stateful_model_broadcast_fn is None:
-    stateful_model_broadcast_fn = optimizer_utils.build_stateless_broadcaster()
-  else:
+  if stateful_model_broadcast_fn is not None:
     py_typecheck.check_type(stateful_model_broadcast_fn,
                             tff.utils.StatefulBroadcastFn)
-
-  return optimizer_utils.build_model_delta_optimizer_process(
+  process = optimizer_utils.build_model_delta_optimizer_process(
       model_fn, client_sgd_avg, server_optimizer_fn,
       stateful_delta_aggregate_fn, stateful_model_broadcast_fn)
+
+  # TODO(b/159134668): Remove this wrapper that retains historical behavior.
+  @tff.federated_computation(process.next.type_signature.parameter)
+  def _wrapped_next(*args):
+    """Wrapper that only returns the `train` metrics to retain previous behavior."""
+    result = process.next(*args)
+    return result[0], result[1].train
+
+  return tff.templates.IterativeProcess(
+      initialize_fn=process.initialize, next_fn=_wrapped_next)

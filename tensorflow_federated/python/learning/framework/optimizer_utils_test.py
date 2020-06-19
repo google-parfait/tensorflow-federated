@@ -61,9 +61,13 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
                                                    client_weight)]))
 
 
+@tff.tf_computation(tf.int32)
+def _add_one(x):
+  return x + 1
+
+
 def _state_incrementing_mean_next(server_state, client_value, weight=None):
-  add_one = tff.tf_computation(lambda x: x + 1, tf.int32)
-  new_state = tff.federated_map(add_one, server_state)
+  new_state = tff.federated_map(_add_one, server_state)
   return (new_state, tff.federated_mean(client_value, weight=weight))
 
 
@@ -72,13 +76,62 @@ state_incrementing_mean = tff.utils.StatefulAggregateFn(
 
 
 def _state_incrementing_broadcast_next(server_state, server_value):
-  add_one = tff.tf_computation(lambda x: x + 1, tf.int32)
-  new_state = tff.federated_map(add_one, server_state)
+  new_state = tff.federated_map(_add_one, server_state)
   return (new_state, tff.federated_broadcast(server_value))
 
 
 state_incrementing_broadcaster = tff.utils.StatefulBroadcastFn(
     lambda: tf.constant(0), _state_incrementing_broadcast_next)
+
+
+def _build_test_measured_broadcast(
+    model_weights_type: tff.NamedTupleType) -> tff.templates.MeasuredProcess:
+  """Builds a test `MeasuredProcess` that has state and metrics."""
+
+  @tff.federated_computation()
+  def initialize_comp():
+    return tff.federated_value(0, tff.SERVER)
+
+  @tff.federated_computation(
+      tff.FederatedType(tf.int32, tff.SERVER),
+      tff.FederatedType(model_weights_type, tff.SERVER))
+  def next_comp(state, value):
+    return collections.OrderedDict(
+        state=tff.federated_map(_add_one, state),
+        result=tff.federated_broadcast(value),
+        # Arbitrary metrics for testing.
+        measurements=tff.federated_map(
+            tff.tf_computation(
+                lambda v: tf.linalg.global_norm(tf.nest.flatten(v)) + 3.0),
+            value))
+
+  return tff.templates.MeasuredProcess(
+      initialize_fn=initialize_comp, next_fn=next_comp)
+
+
+def _build_test_measured_mean(
+    model_update_type: tff.NamedTupleType) -> tff.templates.MeasuredProcess:
+  """Builds a test `MeasuredProcess` that has state and metrics."""
+
+  @tff.federated_computation()
+  def initialize_comp():
+    return tff.federated_value(0, tff.SERVER)
+
+  @tff.federated_computation(
+      tff.FederatedType(tf.int32, tff.SERVER),
+      tff.FederatedType(model_update_type, tff.CLIENTS),
+      tff.FederatedType(tf.float32, tff.CLIENTS))
+  def next_comp(state, value, weight):
+    return collections.OrderedDict(
+        state=tff.federated_map(_add_one, state),
+        result=tff.federated_mean(value, weight),
+        measurements=tff.federated_zip(
+            collections.OrderedDict(
+                num_clients=tff.federated_sum(
+                    tff.federated_value(1, tff.CLIENTS)))))
+
+  return tff.templates.MeasuredProcess(
+      initialize_fn=initialize_comp, next_fn=next_comp)
 
 
 class UtilsTest(test.TestCase):
@@ -134,7 +187,7 @@ class UtilsTest(test.TestCase):
 
 class ModelDeltaOptimizerTest(test.TestCase):
 
-  def test_contruction(self):
+  def test_construction(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
@@ -163,8 +216,11 @@ class ModelDeltaOptimizerTest(test.TestCase):
 
     metrics_type = tff.FederatedType(
         collections.OrderedDict(
-            loss=tff.TensorType(tf.float32),
-            num_examples=tff.TensorType(tf.int32)), tff.SERVER)
+            broadcast=(),
+            aggregation=(),
+            train=collections.OrderedDict(
+                loss=tff.TensorType(tf.float32),
+                num_examples=tff.TensorType(tf.int32))), tff.SERVER)
 
     self.assertEqual(
         iterative_process.next.type_signature,
@@ -172,7 +228,7 @@ class ModelDeltaOptimizerTest(test.TestCase):
             parameter=(server_state_type, dataset_type),
             result=(server_state_type, metrics_type)))
 
-  def test_contruction_with_adam_optimizer(self):
+  def test_construction_with_adam_optimizer(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
@@ -186,7 +242,7 @@ class ModelDeltaOptimizerTest(test.TestCase):
     self.assertLen(next_type.parameter[0].member.optimizer_state, 5)
     self.assertLen(next_type.result[0].member.optimizer_state, 5)
 
-  def test_contruction_with_aggregator_state(self):
+  def test_construction_with_stateful_aggregate_fn(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
@@ -205,7 +261,38 @@ class ModelDeltaOptimizerTest(test.TestCase):
     self.assertEqual(next_type.result[0].member.delta_aggregate_state,
                      expected_aggregate_state_type)
 
-  def test_contruction_with_broadcast_state(self):
+  def test_construction_with_aggregation_process(self):
+    with tf.Graph().as_default():
+      model_update_type = tff.framework.type_from_tensors(
+          model_utils.ModelWeights.from_model(
+              model_examples.LinearRegression()).trainable)
+    aggregation_process = _build_test_measured_mean(model_update_type)
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_examples.LinearRegression,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=tf.keras.optimizers.SGD,
+        aggregation_process=aggregation_process)
+
+    aggregation_state_type = aggregation_process.initialize.type_signature.result
+    initialize_type = iterative_process.initialize.type_signature
+    self.assertEqual(
+        tff.FederatedType(initialize_type.result.member.delta_aggregate_state,
+                          tff.SERVER), aggregation_state_type)
+
+    next_type = iterative_process.next.type_signature
+    self.assertEqual(
+        tff.FederatedType(next_type.parameter[0].member.delta_aggregate_state,
+                          tff.SERVER), aggregation_state_type)
+    self.assertEqual(
+        tff.FederatedType(next_type.result[0].member.delta_aggregate_state,
+                          tff.SERVER), aggregation_state_type)
+
+    aggregation_metrics_type = aggregation_process.next.type_signature.result.measurements
+    self.assertEqual(
+        tff.FederatedType(next_type.result[1].member.aggregation, tff.SERVER),
+        aggregation_metrics_type)
+
+  def test_construction_with_broadcast_stateful_fn(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
@@ -224,7 +311,33 @@ class ModelDeltaOptimizerTest(test.TestCase):
     self.assertEqual(next_type.result[0].member.model_broadcast_state,
                      expected_broadcast_state_type)
 
-  def test_orchestration_execute_sgd(self):
+  def test_construction_with_broadcast_process(self):
+    with tf.Graph().as_default():
+      model_weights_type = tff.framework.type_from_tensors(
+          model_utils.ModelWeights.from_model(
+              model_examples.LinearRegression()))
+    broadcast_process = _build_test_measured_broadcast(model_weights_type)
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_examples.LinearRegression,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=tf.keras.optimizers.SGD,
+        broadcast_process=broadcast_process)
+
+    expected_broadcast_state_type = broadcast_process.initialize.type_signature.result
+    initialize_type = iterative_process.initialize.type_signature
+    self.assertEqual(
+        tff.FederatedType(initialize_type.result.member.model_broadcast_state,
+                          tff.SERVER), expected_broadcast_state_type)
+
+    next_type = iterative_process.next.type_signature
+    self.assertEqual(
+        tff.FederatedType(next_type.parameter[0].member.model_broadcast_state,
+                          tff.SERVER), expected_broadcast_state_type)
+    self.assertEqual(
+        tff.FederatedType(next_type.result[0].member.model_broadcast_state,
+                          tff.SERVER), expected_broadcast_state_type)
+
+  def test_orchestration_execute_stateful_fn(self):
     learning_rate = 1.0
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
@@ -262,11 +375,66 @@ class ModelDeltaOptimizerTest(test.TestCase):
     self.assertEqual(state.delta_aggregate_state, 1)
     self.assertEqual(state.model_broadcast_state, 1)
 
-    # Since all predictions are 0, loss is:
-    #    (0.5 * (0-5)^2 + (0-6)^2) / 2 = 15.25
-    self.assertAlmostEqual(outputs.loss, 15.25, places=4)
-    # 3 clients * 2 examples per client = 6 examples.
-    self.assertAlmostEqual(outputs.num_examples, 6.0, places=8)
+    expected_outputs = anonymous_tuple.from_container(
+        collections.OrderedDict(
+            # The StatefulFn output no metrics.
+            broadcast=(),
+            aggregation=(),
+            train=collections.OrderedDict(
+                loss=15.25,
+                num_examples=6,
+            )),
+        recursive=True)
+    self.assertEqual(expected_outputs, outputs)
+
+  def test_orchestration_execute_measured_process(self):
+    with tf.Graph().as_default():
+      model_weights_type = tff.framework.type_from_tensors(
+          model_utils.ModelWeights.from_model(
+              model_examples.LinearRegression()))
+    learning_rate = 1.0
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_examples.LinearRegression,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=functools.partial(
+            tf.keras.optimizers.SGD, learning_rate=learning_rate),
+        broadcast_process=_build_test_measured_broadcast(model_weights_type),
+        aggregation_process=_build_test_measured_mean(
+            model_weights_type.trainable))
+
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[1.0, 2.0], [3.0, 4.0]]),
+            ('y', [[5.0], [6.0]]),
+        ])).batch(2)
+    federated_ds = [ds] * 3
+
+    state = iterative_process.initialize()
+    # SGD keeps track of a single scalar for the number of iterations.
+    self.assertAllEqual(state.optimizer_state, [0])
+    self.assertAllClose(list(state.model.trainable), [np.zeros((2, 1)), 0.0])
+    self.assertAllClose(list(state.model.non_trainable), [0.0])
+    self.assertEqual(state.delta_aggregate_state, 0)
+    self.assertEqual(state.model_broadcast_state, 0)
+
+    state, outputs = iterative_process.next(state, federated_ds)
+    self.assertAllClose(
+        list(state.model.trainable), [-np.ones((2, 1)), -1.0 * learning_rate])
+    self.assertAllClose(list(state.model.non_trainable), [0.0])
+    self.assertAllEqual(state.optimizer_state, [1])
+    self.assertEqual(state.delta_aggregate_state, 1)
+    self.assertEqual(state.model_broadcast_state, 1)
+
+    expected_outputs = anonymous_tuple.from_container(
+        collections.OrderedDict(
+            broadcast=3.0,
+            aggregation=collections.OrderedDict(num_clients=3),
+            train=collections.OrderedDict(
+                loss=15.25,
+                num_examples=6,
+            )),
+        recursive=True)
+    self.assertEqual(expected_outputs, outputs)
 
 
 if __name__ == '__main__':

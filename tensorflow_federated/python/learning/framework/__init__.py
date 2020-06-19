@@ -18,6 +18,7 @@ from tensorflow_federated.python.learning.framework.encoding_utils import build_
 from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_sum_from_model
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_process
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_stateless_broadcaster
+from tensorflow_federated.python.learning.framework.optimizer_utils import build_stateless_mean
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientDeltaFn
 from tensorflow_federated.python.learning.framework.optimizer_utils import ClientOutput
 from tensorflow_federated.python.learning.framework.optimizer_utils import ServerState
