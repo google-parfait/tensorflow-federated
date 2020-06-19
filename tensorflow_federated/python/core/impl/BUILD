@@ -49,54 +49,6 @@ py_test(
 )
 
 py_library(
-    name = "compiled_computation_transforms",
-    srcs = ["compiled_computation_transforms.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_transformations",
-        "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
-        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-        "//tensorflow_federated/python/tensorflow_libs:graph_merge",
-        "//tensorflow_federated/python/tensorflow_libs:graph_optimizations",
-        "//tensorflow_federated/python/tensorflow_libs:graph_spec",
-    ],
-)
-
-py_test(
-    name = "compiled_computation_transforms_test",
-    size = "small",
-    srcs = ["compiled_computation_transforms_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":compiled_computation_transforms",
-        ":tensorflow_serialization",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_transformations",
-        "//tensorflow_federated/python/core/impl/compiler:test_utils",
-        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-    ],
-)
-
-py_library(
     name = "compiler_pipeline",
     srcs = ["compiler_pipeline.py"],
     srcs_version = "PY3",
@@ -520,9 +472,9 @@ py_library(
     srcs = ["tree_to_cc_transformations.py"],
     srcs_version = "PY3",
     deps = [
-        ":compiled_computation_transforms",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:compiled_computation_transforms",
     ],
 )
 

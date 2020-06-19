@@ -253,7 +253,6 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
   signature = function_utils.get_signature(target)
 
   with tf.Graph().as_default() as graph:
-    args = []
     if parameter_type is not None:
       if len(signature.parameters) != 1:
         raise ValueError(
@@ -262,16 +261,19 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
       parameter_name = next(iter(signature.parameters))
       parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
           parameter_name, parameter_type, graph)
-      args.append(parameter_value)
     else:
       if signature.parameters:
         raise ValueError(
             'Expected the target to declare no parameters, found {!r}.'.format(
                 signature.parameters))
+      parameter_value = None
       parameter_binding = None
     context = tf_computation_context.TensorFlowComputationContext(graph)
     with context_stack.install(context):
-      result = target(*args)
+      if parameter_value is not None:
+        result = target(parameter_value)
+      else:
+        result = target()
 
       # TODO(b/122081673): This needs to change for TF 2.0. We may also
       # want to allow the person creating a tff.tf_computation to specify
@@ -313,24 +315,21 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 
-  annotated_type = computation_types.FunctionType(parameter_type, result_type)
+  type_signature = computation_types.FunctionType(parameter_type, result_type)
 
   # WARNING: we do not really want to be modifying the graph here if we can
   # avoid it. This is purely to work around performance issues uncovered with
   # the non-standard usage of Tensorflow and have been discussed with the
   # Tensorflow core team before being added.
   clean_graph_def = _clean_graph_def(graph.as_graph_def())
-
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(clean_graph_def),
+      parameter=parameter_binding,
+      result=result_binding,
+      initialize_op=init_op_name)
   return pb.Computation(
-      type=pb.Type(
-          function=pb.FunctionType(
-              parameter=type_serialization.serialize_type(parameter_type),
-              result=type_serialization.serialize_type(result_type))),
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(clean_graph_def),
-          parameter=parameter_binding,
-          result=result_binding,
-          initialize_op=init_op_name)), annotated_type
+      type=type_serialization.serialize_type(type_signature),
+      tensorflow=tensorflow), type_signature
 
 
 def _clean_graph_def(graph_def: tf.compat.v1.GraphDef) -> tf.compat.v1.GraphDef:

@@ -13,6 +13,9 @@
 # limitations under the License.
 """A library of contruction functions for tensorflow computation structures."""
 
+import types
+from typing import Optional
+
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -29,7 +32,7 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 def create_broadcast_scalar_to_shape(scalar_type: tf.DType,
                                      shape: tf.TensorShape) -> pb.Computation:
-  """Returns a tensorflow computation broacasting a scalar to `shape`.
+  """Returns a tensorflow computation returning the result of `tf.broadcast_to`.
 
   The returned computation has the type signature `(T -> U)`, where
   `T` is `scalar_type` and the `U` is a `tff.TensorType` with a dtype of
@@ -147,7 +150,7 @@ def create_constant(scalar_value,
 
 def create_binary_operator(
     operator, operand_type: computation_types.Type) -> pb.Computation:
-  """Returns a tensorflow computation representing the binary `operator`.
+  """Returns a tensorflow computation computing a binary operation.
 
   The returned computation has the type signature `(<T,T> -> U)`, where `T` is
   `operand_type` and `U` is the result of applying the `operator` to a tuple of
@@ -266,7 +269,7 @@ def create_identity(type_signature: computation_types.Type) -> pb.Computation:
 
 def create_replicate_input(type_signature: computation_types.Type,
                            count: int) -> pb.Computation:
-  """Returns a tensorflow computation which returns `count` clones of an input.
+  """Returns a tensorflow computation returning `count` copies of its argument.
 
   The returned computation has the type signature `(T -> <T, T, T, ...>)`, where
   `T` is `type_signature` and the length of the result is `count`.
@@ -287,6 +290,43 @@ def create_replicate_input(type_signature: computation_types.Type,
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', parameter_type, graph)
     result = [parameter_value] * count
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        result, graph)
+
+  type_signature = computation_types.FunctionType(parameter_type, result_type)
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+      parameter=parameter_binding,
+      result=result_binding)
+  return pb.Computation(
+      type=type_serialization.serialize_type(type_signature),
+      tensorflow=tensorflow)
+
+
+def create_computation_for_py_fn(
+    fn: types.FunctionType,
+    parameter_type: Optional[computation_types.Type]) -> pb.Computation:
+  """Returns a tensorflow computation returning the result of `fn`.
+
+  The returned computation has the type signature `(T -> U)`, where `T` is
+  `parameter_type` and `U` is the type returned by `fn`.
+
+  Args:
+    fn: A Python function.
+    parameter_type: A `computation_types.Type`.
+  """
+  py_typecheck.check_type(fn, types.FunctionType)
+  if parameter_type is not None:
+    py_typecheck.check_type(parameter_type, computation_types.Type)
+
+  with tf.Graph().as_default() as graph:
+    if parameter_type is not None:
+      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
+          'x', parameter_type, graph)
+      result = fn(parameter_value)
+    else:
+      parameter_binding = None
+      result = fn()
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 

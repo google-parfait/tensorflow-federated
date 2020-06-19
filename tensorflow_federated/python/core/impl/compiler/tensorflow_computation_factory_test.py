@@ -266,5 +266,38 @@ class CreateReplicateInputTest(parameterized.TestCase):
           type_signature, count)
 
 
+class CreateComputationForPyFnTest(parameterized.TestCase):
+
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('const', lambda: 10, None, None, 10),
+      ('identity', lambda x: x, computation_types.TensorType(tf.int32), 10, 10),
+      ('add_one',
+       lambda x: x + 1,
+       computation_types.TensorType(tf.int32),
+       10,
+       11),
+  )
+  # pyformat: enable
+  def test_returns_computation(self, py_fn, type_signature, arg,
+                               expected_result):
+    proto = tensorflow_computation_factory.create_computation_for_py_fn(
+        py_fn, type_signature)
+
+    self.assertIsInstance(proto, pb.Computation)
+    actual_result = test_utils.run_tensorflow(proto, arg)
+    self.assertEqual(actual_result, expected_result)
+
+  @parameterized.named_parameters(
+      ('none_py_fn', None, computation_types.TensorType(tf.int32)),
+      ('none_type', lambda x: x, None),
+      ('unnecessary_type', lambda: 10, computation_types.TensorType(tf.int32)),
+  )
+  def test_raises_type_error_with_none(self, py_fn, type_signature):
+    with self.assertRaises(TypeError):
+      tensorflow_computation_factory.create_computation_for_py_fn(
+          py_fn, type_signature)
+
+
 if __name__ == '__main__':
   absltest.main()

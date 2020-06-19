@@ -14,8 +14,8 @@
 """A library of transformations that can be applied to a computation."""
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import compiled_computation_transforms
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import compiled_computation_transforms
 
 
 class TFParser(object):
