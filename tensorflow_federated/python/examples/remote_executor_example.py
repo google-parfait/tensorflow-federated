@@ -82,11 +82,13 @@ def make_remote_executor(inferred_cardinalities):
         create_worker_stack_on(
             tff.framework.RemoteExecutor(channel, rpc_mode='STREAMING')))
 
-  federated_ex = tff.framework.FederatingExecutor({
-      None: create_worker_stack_on(tff.framework.EagerTFExecutor()),
-      tff.SERVER: create_worker_stack_on(tff.framework.EagerTFExecutor()),
-      tff.CLIENTS: client_ex,
-  })
+  federated_ex = tff.framework.FederatingExecutor(
+      {
+          None: create_worker_stack_on(tff.framework.EagerTFExecutor()),
+          tff.SERVER: create_worker_stack_on(tff.framework.EagerTFExecutor()),
+          tff.CLIENTS: client_ex,
+      },
+      strategy=tff.DefaultFederatingStrategy)
 
   return tff.framework.ReferenceResolvingExecutor(federated_ex)
 

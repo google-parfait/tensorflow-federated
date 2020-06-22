@@ -16,6 +16,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 
 from tensorflow_federated.python.core.impl.executors import composing_executor
+from tensorflow_federated.python.core.impl.executors import default_federating_strategy
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import executor_utils
@@ -33,13 +34,14 @@ def create_test_federating_executor(
     executor = eager_tf_executor.EagerTFExecutor()
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
-  return federating_executor.FederatingExecutor({
-      placement_literals.SERVER: create_bottom_stack(),
-      placement_literals.CLIENTS: [
-          create_bottom_stack() for _ in range(num_clients)
-      ],
-      None: create_bottom_stack()
-  })
+  return federating_executor.FederatingExecutor(
+      {
+          placement_literals.SERVER: create_bottom_stack(),
+          placement_literals.CLIENTS:
+              [create_bottom_stack() for _ in range(num_clients)],
+          None: create_bottom_stack()
+      },
+      strategy=default_federating_strategy.DefaultFederatingStrategy)
 
 
 def create_test_composing_executor(
@@ -52,13 +54,14 @@ def create_test_composing_executor(
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
   def create_worker_stack():
-    return federating_executor.FederatingExecutor({
-        placement_literals.SERVER: create_bottom_stack(),
-        placement_literals.CLIENTS: [
-            create_bottom_stack() for _ in range(clients_per_stack)
-        ],
-        None: create_bottom_stack()
-    })
+    return federating_executor.FederatingExecutor(
+        {
+            placement_literals.SERVER: create_bottom_stack(),
+            placement_literals.CLIENTS:
+                [create_bottom_stack() for _ in range(clients_per_stack)],
+            None: create_bottom_stack()
+        },
+        strategy=default_federating_strategy.DefaultFederatingStrategy)
 
   def create_aggregation_stack(children):
     return composing_executor.ComposingExecutor(create_bottom_stack(), children)

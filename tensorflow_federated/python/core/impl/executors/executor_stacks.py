@@ -20,6 +20,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import composing_executor
+from tensorflow_federated.python.core.impl.executors import default_federating_strategy
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
@@ -195,7 +196,9 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
             self._unplaced_executor_factory.create_executor(cardinalities={}),
     }
     return _wrap_executor_in_threading_stack(
-        federating_executor.FederatingExecutor(executor_dict))
+        federating_executor.FederatingExecutor(
+            executor_dict,
+            strategy=default_federating_strategy.DefaultFederatingStrategy))
 
   def clean_up_executors(self):
     # Does not hold any executors internally, so nothing to clean up.

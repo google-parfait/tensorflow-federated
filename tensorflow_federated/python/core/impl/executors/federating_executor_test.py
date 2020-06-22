@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.executors import default_federating_strategy
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federating_executor
@@ -44,13 +45,16 @@ def create_test_executor(
     executor = eager_tf_executor.EagerTFExecutor()
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
-  return federating_executor.FederatingExecutor({
+  target_executors = {
       placement_literals.SERVER: create_bottom_stack(),
       placement_literals.CLIENTS: [
           create_bottom_stack() for _ in range(number_of_clients)
       ],
-      None: create_bottom_stack()
-  })
+      None: create_bottom_stack(),
+  }
+  return federating_executor.FederatingExecutor(
+      target_executors,
+      strategy=default_federating_strategy.DefaultFederatingStrategy)
 
 
 def get_named_parameters_for_supported_intrinsics() -> List[Tuple[str, Any]]:
@@ -370,10 +374,12 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: enable
   def test_raises_value_error_with_no_target_executor_clients(
       self, value, type_signature):
-    executor = federating_executor.FederatingExecutor({
-        placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
-        None: eager_tf_executor.EagerTFExecutor()
-    })
+    executor = federating_executor.FederatingExecutor(
+        {
+            placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
+            None: eager_tf_executor.EagerTFExecutor()
+        },
+        strategy=default_federating_strategy.DefaultFederatingStrategy)
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
@@ -406,10 +412,12 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: enable
   def test_raises_value_error_with_no_target_executor_server(
       self, value, type_signature):
-    executor = federating_executor.FederatingExecutor({
-        placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
-        None: eager_tf_executor.EagerTFExecutor()
-    })
+    executor = federating_executor.FederatingExecutor(
+        {
+            placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
+            None: eager_tf_executor.EagerTFExecutor()
+        },
+        strategy=default_federating_strategy.DefaultFederatingStrategy)
     value, type_signature = executor_test_utils.create_dummy_value_at_server()
 
     with self.assertRaises(ValueError):

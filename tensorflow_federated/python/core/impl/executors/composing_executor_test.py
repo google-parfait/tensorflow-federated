@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import composing_executor
+from tensorflow_federated.python.core.impl.executors import default_federating_strategy
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
@@ -45,11 +46,14 @@ def _create_bottom_stack():
 
 
 def _create_worker_stack():
-  return federating_executor.FederatingExecutor({
-      placement_literals.SERVER: _create_bottom_stack(),
-      placement_literals.CLIENTS: [_create_bottom_stack() for _ in range(2)],
-      None: _create_bottom_stack()
-  })
+  return federating_executor.FederatingExecutor(
+      {
+          placement_literals.SERVER: _create_bottom_stack(),
+          placement_literals.CLIENTS:
+              [_create_bottom_stack() for _ in range(2)],
+          None: _create_bottom_stack()
+      },
+      strategy=default_federating_strategy.DefaultFederatingStrategy)
 
 
 def _create_middle_stack(children):
