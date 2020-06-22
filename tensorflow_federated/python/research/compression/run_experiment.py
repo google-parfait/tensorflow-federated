@@ -33,11 +33,11 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.compression import compression_process_adapter
 from tensorflow_federated.python.research.compression import sparsity
-from tensorflow_federated.python.research.optimization.emnist import dataset
 from tensorflow_federated.python.research.optimization.emnist import models
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import emnist_dataset
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 
@@ -150,7 +150,7 @@ def _mean_encoder_fn(value):
 
 def run_experiment():
   """Data preprocessing and experiment execution."""
-  emnist_train, emnist_test = dataset.get_emnist_datasets(
+  emnist_train, emnist_test = emnist_dataset.get_emnist_datasets(
       FLAGS.client_batch_size,
       FLAGS.client_epochs_per_round,
       only_digits=FLAGS.only_digits)

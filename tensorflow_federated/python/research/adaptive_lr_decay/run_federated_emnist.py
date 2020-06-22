@@ -22,12 +22,11 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.adaptive_lr_decay import adaptive_fed_avg
 from tensorflow_federated.python.research.adaptive_lr_decay import decay_iterative_process_builder
-from tensorflow_federated.python.research.optimization.emnist import dataset
 from tensorflow_federated.python.research.optimization.emnist import models
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
-
+from tensorflow_federated.python.research.utils.datasets import emnist_dataset
 
 with utils_impl.record_hparam_flags():
   # Experiment hyperparameters
@@ -72,13 +71,13 @@ def main(argv):
     raise app.UsageError('Expected no command-line arguments, '
                          'got: {}'.format(argv))
 
-  emnist_train, emnist_test = dataset.get_emnist_datasets(
+  emnist_train, emnist_test = emnist_dataset.get_emnist_datasets(
       FLAGS.client_batch_size,
       FLAGS.client_epochs_per_round,
       max_batches_per_client=FLAGS.max_batches_per_client,
       only_digits=FLAGS.only_digits)
 
-  central_emnist_train, _ = dataset.get_centralized_emnist_datasets(
+  central_emnist_train, _ = emnist_dataset.get_centralized_emnist_datasets(
       batch_size=100, only_digits=FLAGS.only_digits, shuffle_train=False)
 
   input_spec = emnist_train.create_tf_dataset_for_client(

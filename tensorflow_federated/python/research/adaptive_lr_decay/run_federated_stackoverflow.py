@@ -23,11 +23,11 @@ import tensorflow as tf
 from tensorflow_federated.python.research.adaptive_lr_decay import adaptive_fed_avg
 from tensorflow_federated.python.research.adaptive_lr_decay import decay_iterative_process_builder
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
-from tensorflow_federated.python.research.optimization.stackoverflow import dataset
 from tensorflow_federated.python.research.optimization.stackoverflow import models
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import stackoverflow_dataset
 
 with utils_impl.record_new_flags() as hparam_flags:
   # Training hyperparameters
@@ -90,7 +90,7 @@ def main(argv):
   loss_builder = functools.partial(
       tf.keras.losses.SparseCategoricalCrossentropy, from_logits=True)
 
-  pad_token, oov_token, _, eos_token = dataset.get_special_tokens(
+  pad_token, oov_token, _, eos_token = stackoverflow_dataset.get_special_tokens(
       FLAGS.vocab_size)
 
   def metrics_builder():
@@ -107,7 +107,7 @@ def main(argv):
         keras_metrics.NumTokensCounter(masked_tokens=[pad_token])
     ]
 
-  train_set, validation_set, test_set = dataset.construct_word_level_datasets(
+  train_set, validation_set, test_set = stackoverflow_dataset.construct_word_level_datasets(
       FLAGS.vocab_size,
       FLAGS.client_batch_size,
       FLAGS.client_epochs_per_round,

@@ -22,12 +22,12 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.adaptive_lr_decay import adaptive_fed_avg
 from tensorflow_federated.python.research.adaptive_lr_decay import decay_iterative_process_builder
-from tensorflow_federated.python.research.optimization.shakespeare import dataset
 from tensorflow_federated.python.research.optimization.shakespeare import models
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import shakespeare_dataset
 
 FLAGS = flags.FLAGS
 
@@ -60,7 +60,7 @@ with utils_impl.record_new_flags() as hparam_flags:
       'for the client sampling.')
 
 # Vocabulary with OOV ID, zero for the padding, and BOS, EOS IDs.
-VOCAB_SIZE = len(dataset.CHAR_VOCAB) + 4
+VOCAB_SIZE = len(shakespeare_dataset.CHAR_VOCAB) + 4
 
 
 def model_builder():
@@ -71,7 +71,7 @@ def model_builder():
 
 def metrics_builder():
   """Returns a `list` of `tf.keras.metric.Metric` objects."""
-  pad_token, _, _, _ = dataset.get_special_tokens()
+  pad_token, _, _, _ = shakespeare_dataset.get_special_tokens()
 
   return [
       keras_metrics.NumBatchesCounter(),
@@ -85,14 +85,14 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  train_clientdata = dataset.construct_character_level_datasets(
+  train_clientdata = shakespeare_dataset.construct_character_level_datasets(
       FLAGS.client_batch_size,
       FLAGS.client_epochs_per_round,
       sequence_length=FLAGS.sequence_length,
       max_batches_per_client=FLAGS.max_batches_per_client,
       shuffle_buffer_size=0)
   eval_train_dataset, eval_test_dataset = (
-      dataset.construct_centralized_datasets())
+      shakespeare_dataset.construct_centralized_datasets())
 
   loss_fn_builder = functools.partial(
       tf.keras.losses.SparseCategoricalCrossentropy, from_logits=True)
