@@ -452,8 +452,14 @@ class ComposingExecutor(executor_base.Executor):
 
   @tracing.trace
   async def _compute_intrinsic_federated_eval_at_server(self, arg):
-    return await self._eval(arg, intrinsic_defs.FEDERATED_EVAL_AT_SERVER,
-                            placement_literals.SERVER, True)
+    py_typecheck.check_type(arg.type_signature, computation_types.FunctionType)
+    py_typecheck.check_type(arg.internal_representation, pb.Computation)
+    fn_type = arg.type_signature
+    embedded_fn = await self._parent_executor.create_value(
+        arg.internal_representation, fn_type)
+    evaled_at_parent = await self._parent_executor.create_call(embedded_fn)
+    return CompositeValue(evaled_at_parent,
+                          type_factory.at_server(fn_type.result))
 
   @tracing.trace
   async def _map(self, arg, all_equal=None):

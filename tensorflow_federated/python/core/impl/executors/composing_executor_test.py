@@ -118,6 +118,24 @@ class ComposingExecutorTest(absltest.TestCase):
     result = _invoke(executor, comp)
     self.assertEqual(result, 5)
 
+  def test_federated_eval_at_server_then_apply(self):
+
+    @computations.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @computations.federated_computation
+    def comp():
+      return_five = computations.tf_computation(lambda: 5)
+      five_at_server = intrinsics.federated_eval(return_five,
+                                                 placement_literals.SERVER)
+      six_at_server = intrinsics.federated_apply(add_one, five_at_server)
+      return six_at_server
+
+    executor, _ = _create_test_executor()
+    result = _invoke(executor, comp)
+    self.assertEqual(result, 6)
+
   def test_federated_eval_at_clients(self):
 
     @computations.federated_computation
