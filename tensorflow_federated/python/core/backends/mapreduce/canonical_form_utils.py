@@ -540,9 +540,9 @@ def _extract_work(before_aggregate, after_aggregate):
       transformations.zip_selection_as_argument_to_lower_level_lambda(
           before_aggregate,
           c3_elements_in_before_aggregate_parameter).result.function)
-  c6_index_in_before_aggregate_result = [[0, 0], [1, 0]]
-  c3_to_c6_computation = transformations.select_output_from_lambda(
-      c3_to_before_aggregate_computation, c6_index_in_before_aggregate_result)
+  c5_index_in_before_aggregate_result = [[0, 0], [1, 0]]
+  c3_to_c5_computation = transformations.select_output_from_lambda(
+      c3_to_before_aggregate_computation, c5_index_in_before_aggregate_result)
   c8_index_in_after_aggregate_result = 2
   after_aggregate_to_c8_computation = transformations.select_output_from_lambda(
       after_aggregate, c8_index_in_after_aggregate_result)
@@ -552,7 +552,7 @@ def _extract_work(before_aggregate, after_aggregate):
           after_aggregate_to_c8_computation,
           c3_elements_in_after_aggregate_parameter).result.function)
   c3_to_unzipped_c4_computation = transformations.concatenate_function_outputs(
-      c3_to_c6_computation, c3_to_c8_computation)
+      c3_to_c5_computation, c3_to_c8_computation)
   c3_to_c4_computation = building_blocks.Lambda(
       c3_to_unzipped_c4_computation.parameter_name,
       c3_to_unzipped_c4_computation.parameter_type,
