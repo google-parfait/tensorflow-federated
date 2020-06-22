@@ -133,7 +133,7 @@ def build_federated_sgd_process(
   methods:
 
   *   `initialize`: A `tff.Computation` with the functional type signature
-      `( -> S@SERVER)`, where `S` is a`tff.learning.framework.ServerState`
+      `( -> S@SERVER)`, where `S` is a `tff.learning.framework.ServerState`
       representing the initial state of the server.
   *   `next`: A `tff.Computation` with the functional type signature
       `(<S@SERVER, {B*}@CLIENTS> -> <S@SERVER, T@SERVER>)` where `S` is a

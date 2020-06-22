@@ -78,7 +78,7 @@ def from_keras_model(keras_model,
   pass and autodifferentiation steps. This function needs three pieces of
   information in order to accomplish this goal: a `tf.keras.Model` to use for
   its forward pass; a loss function (or group of loss functions) `loss`; and a
-  way to infer the TFF type signatures for the `tff.Computations` in which this
+  way to infer the TFF type signatures for the `tff.Computation` in which this
   model will appear, the `input_spec`.
 
   Notice that since TFF couples the `tf.keras.Model` and

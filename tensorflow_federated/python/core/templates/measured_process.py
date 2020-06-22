@@ -93,7 +93,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
     """A `tff.Computation` that runs one iteration of the process.
 
     The first argument of should always be the current state (originally
-    produced by `tff.templates.MeseauredProcess.initialize`), and the return
+    produced by `tff.templates.MeasuredProcess.initialize`), and the return
     type must me a named tuple matching the signature
     `<state=A,result=B,measurements=C>`.
 
