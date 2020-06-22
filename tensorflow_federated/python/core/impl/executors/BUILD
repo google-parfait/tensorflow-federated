@@ -92,13 +92,14 @@ py_test(
 )
 
 py_library(
-    name = "composing_executor",
-    srcs = ["composing_executor.py"],
+    name = "federated_composing_strategy",
+    srcs = ["federated_composing_strategy.py"],
     srcs_version = "PY3",
     deps = [
         ":executor_base",
         ":executor_utils",
         ":executor_value_base",
+        ":federating_executor",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -113,19 +114,17 @@ py_library(
 )
 
 py_test(
-    name = "composing_executor_test",
+    name = "federated_composing_strategy_test",
     size = "small",
-    srcs = ["composing_executor_test.py"],
+    srcs = ["federated_composing_strategy_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":caching_executor",
-        ":composing_executor",
-        ":default_federating_strategy",
         ":eager_tf_executor",
+        ":federated_composing_strategy",
+        ":federated_resolving_strategy",
         ":federating_executor",
         ":reference_resolving_executor",
-        ":thread_delegating_executor",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -170,8 +169,8 @@ py_test(
 )
 
 py_library(
-    name = "default_federating_strategy",
-    srcs = ["default_federating_strategy.py"],
+    name = "federated_resolving_strategy",
+    srcs = ["federated_resolving_strategy.py"],
     srcs_version = "PY3",
     deps = [
         ":executor_base",
@@ -185,6 +184,22 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_factory",
+    ],
+)
+
+py_test(
+    name = "federated_resolving_strategy_test",
+    size = "small",
+    srcs = ["federated_resolving_strategy_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":eager_tf_executor",
+        ":executor_test_utils",
+        ":federated_resolving_strategy",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
@@ -341,11 +356,11 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":caching_executor",
-        ":composing_executor",
-        ":default_federating_strategy",
         ":eager_tf_executor",
         ":executor_base",
         ":executor_factory",
+        ":federated_composing_strategy",
+        ":federated_resolving_strategy",
         ":federating_executor",
         ":reference_resolving_executor",
         ":sizing_executor",
@@ -447,12 +462,12 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":composing_executor",
-        ":default_federating_strategy",
         ":eager_tf_executor",
         ":executor_test_utils",
         ":executor_utils",
         ":executor_value_base",
+        ":federated_composing_strategy",
+        ":federated_resolving_strategy",
         ":federating_executor",
         ":reference_resolving_executor",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
@@ -496,9 +511,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":default_federating_strategy",
         ":eager_tf_executor",
         ":executor_test_utils",
+        ":executor_value_base",
+        ":federated_resolving_strategy",
         ":federating_executor",
         ":reference_resolving_executor",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -540,10 +556,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":default_federating_strategy",
         ":eager_tf_executor",
         ":executor_factory",
         ":executor_test_utils",
+        ":federated_resolving_strategy",
         ":federating_executor",
         ":reference_resolving_executor",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",

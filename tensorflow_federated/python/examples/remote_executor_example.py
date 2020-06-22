@@ -65,9 +65,9 @@ BATCH_SIZE = 20
 def make_remote_executor(inferred_cardinalities):
   """Make remote executor."""
 
-  def create_worker_stack_on(ex):
-    return tff.framework.ReferenceResolvingExecutor(
-        tff.framework.ThreadDelegatingExecutor(ex))
+  def create_worker_stack(ex):
+    ex = tff.framework.ThreadDelegatingExecutor(ex)
+    return tff.framework.ReferenceResolvingExecutor(ex)
 
   client_ex = []
   num_clients = inferred_cardinalities.get(tff.CLIENTS, None)
@@ -78,19 +78,19 @@ def make_remote_executor(inferred_cardinalities):
 
   for _ in range(num_clients or 0):
     channel = grpc.insecure_channel('{}:{}'.format(FLAGS.host, FLAGS.port))
-    client_ex.append(
-        create_worker_stack_on(
-            tff.framework.RemoteExecutor(channel, rpc_mode='STREAMING')))
+    remote_ex = tff.framework.RemoteExecutor(channel, rpc_mode='STREAMING')
+    worker_stack = create_worker_stack(remote_ex)
+    client_ex.append(worker_stack)
 
-  federated_ex = tff.framework.FederatingExecutor(
+  federating_strategy_factory = tff.framework.FederatedResovlingStrategy.factory(
       {
-          None: create_worker_stack_on(tff.framework.EagerTFExecutor()),
-          tff.SERVER: create_worker_stack_on(tff.framework.EagerTFExecutor()),
+          tff.SERVER: create_worker_stack(tff.framework.EagerTFExecutor()),
           tff.CLIENTS: client_ex,
-      },
-      strategy=tff.DefaultFederatingStrategy)
-
-  return tff.framework.ReferenceResolvingExecutor(federated_ex)
+      })
+  unplaced_ex = create_worker_stack(tff.framework.EagerTFExecutor())
+  federating_ex = tff.framework.FederatingExecutor(federating_strategy_factory,
+                                                   unplaced_ex)
+  return tff.framework.ReferenceResolvingExecutor(federating_ex)
 
 
 def main(argv):

@@ -22,10 +22,10 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.executors import default_federating_strategy
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
@@ -247,12 +247,9 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
   def test_with_federated_map(self):
     eager_ex = eager_tf_executor.EagerTFExecutor()
-    federated_ex = federating_executor.FederatingExecutor(
-        {
-            None: eager_ex,
-            placement_literals.SERVER: eager_ex
-        },
-        strategy=default_federating_strategy.DefaultFederatingStrategy)
+    factory = federated_resolving_strategy.FederatedResovlingStrategy.factory(
+        {placement_literals.SERVER: eager_ex})
+    federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
     loop = asyncio.get_event_loop()
 
@@ -273,13 +270,11 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
   def test_with_federated_map_and_broadcast(self):
     eager_ex = eager_tf_executor.EagerTFExecutor()
-    federated_ex = federating_executor.FederatingExecutor(
-        {
-            None: eager_ex,
-            placement_literals.SERVER: eager_ex,
-            placement_literals.CLIENTS: [eager_ex for _ in range(3)]
-        },
-        strategy=default_federating_strategy.DefaultFederatingStrategy)
+    factory = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+        placement_literals.SERVER: eager_ex,
+        placement_literals.CLIENTS: [eager_ex for _ in range(3)]
+    })
+    federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
     loop = asyncio.get_event_loop()
 
@@ -301,12 +296,10 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
   def test_raises_with_closure(self):
     eager_ex = eager_tf_executor.EagerTFExecutor()
-    federated_ex = federating_executor.FederatingExecutor(
-        {
-            None: eager_ex,
-            placement_literals.SERVER: eager_ex,
-        },
-        strategy=default_federating_strategy.DefaultFederatingStrategy)
+    factory = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+        placement_literals.SERVER: eager_ex,
+    })
+    federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
     loop = asyncio.get_event_loop()
 

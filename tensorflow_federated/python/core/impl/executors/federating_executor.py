@@ -11,12 +11,46 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""An executor that handles federated types and federated operators."""
+"""An executor that handles federated types and federated operators.
+
+                +------------+
+                | Federating |   +----------+
+            +-->+ Executor   +-->+ unplaced |
+            |   +--+---------+   | executor |
+            |      |             +----------+
+  +---------+--+   |
+  | Federating +<--+
+  | Strategy   |
+  +------------+
+
+  A `FederatingExecutor`:
+
+  * Only implements the `executor_base.Executor` API and therefore creates
+    values, calls, tuples, and selections, and does not implement the logic for
+    handling federated types and intrinsics.
+  * Delegates handling unplaced types, computations, and processing to the
+    `unplaced_executor`.
+  * Delegates handling federated types and intrinsics to a
+    `FederatingStrategy`; for the purposes of reasoning about the relationships
+    of the objects, the `FederatingExecutor` owns or is the parent to the
+    `FederatingStrategy`.
+
+  A `FederatingStrategy`:
+
+  * Only implements the logic for handling federated types and intrinsics, and
+    does not implement the `executor_base.Executor` API.
+  * Delegates handling unplaced types, computations, and processing back to the
+    `FederatingExecutor`. For example, in order to handle some federated
+    intrinics it might be useful to create a tuple or selection, this unplaced
+    processing is an example of something that is delegated back to the
+    `FederatingExecutor`.
+
+  Note: Neither the `FederatingExecutor` nor the `FederatingStrategy` handle
+  handling non-federated intrinsics.
+"""
 
 import abc
-import asyncio
-
-import absl.logging as logging
+from typing import Any, Callable, List, Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -34,226 +68,295 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-class FederatingExecutorValue(executor_value_base.ExecutorValue):
-  """A value embedded in a `FederatedExecutor`."""
-
-  def __init__(self, value, type_signature):
-    """Creates an embedded instance of a value in this executor.
-
-    The kinds of supported `value`s or internal representations and
-    `type_signature` are:
-
-    * An instance of `intrinsic_defs.IntrinsicDef` in case of a federated
-      operator (to be interpreted by this executor upon invocation).
-
-    * An instance of `placement_literals.PlacementLiteral`.
-
-    * An instance of `pb.Computation` in an unparsed form (to be relayed to one
-      of the executors responsible for the given placement later on), which
-      must be of one of the following varieties: call, intrinsic, lambda,
-      placement,  selection, tensorflow, and tuple.
-
-    * A Python `list` of values embedded in subordinate executors in the case
-      where `type_signature` is a federated type. The `value` must be a list
-      even if it is of an `all_equal` type or if there is only a single
-      participant associated with the given placement.
-
-    * A single value embedded in a subordinate executor in the case where
-      `type_signature` is of a non-federated and non-functional type.
-
-    * An instance of `anonymous_tuple.AnonymousTuple` with values being one of
-      the supported types listed above.
-
-    Note: This constructor does not check that the `value` and `type_signature`
-    are of a kind supported by the `FederatingExecutor`.
-
-    Args:
-      value: An internal value representation (one of the allowed types,
-        defined above).
-      type_signature: An instance of `tff.Type` or something convertible to it
-        that is compatible with `value` (as defined above).
-
-    Raises:
-      TypeError: If `type_spec` is not a `tff.Type`.
-    """
-    py_typecheck.check_type(type_signature, computation_types.Type)
-    self._value = value
-    self._type_signature = computation_types.to_type(type_signature)
-
-  @property
-  def internal_representation(self):
-    return self._value
-
-  @property
-  def type_signature(self):
-    return self._type_signature
-
-  @tracing.trace
-  async def compute(self):
-    if isinstance(self._value, executor_value_base.ExecutorValue):
-      return await self._value.compute()
-    elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
-      results = await asyncio.gather(*[
-          FederatingExecutorValue(v, t).compute()
-          for v, t in zip(self._value, self._type_signature)
-      ])
-      element_types = anonymous_tuple.iter_elements(self._type_signature)
-      return anonymous_tuple.AnonymousTuple(
-          (n, v) for (n, _), v in zip(element_types, results))
-    elif isinstance(self._value, list):
-      py_typecheck.check_type(self._type_signature,
-                              computation_types.FederatedType)
-      for value in self._value:
-        py_typecheck.check_type(value, executor_value_base.ExecutorValue)
-      if self._type_signature.all_equal:
-        return await self._value[0].compute()
-      else:
-        return await asyncio.gather(*[v.compute() for v in self._value])
-    else:
-      raise RuntimeError(
-          'Computing values of type {} represented as {} is not supported in '
-          'this executor.'.format(self._type_signature,
-                                  py_typecheck.type_string(type(self._value))))
-
-
 class FederatingStrategy(abc.ABC):
-  """Base class for intrinsic strategies.
+  """The abstract interface federating strategies must implement.
 
-  Defines the contract between FederatingStrategy implementations and
-  FederatingExecutor. Includes some basic functionality that should be common
-  to all intrinsic strategies, e.g. placement and mapping functions.
-  See concrete implementations for more details.
+  A `FederatingStrategy` defines the logic for how a `FederatingExecutor`
+  handles federated types and federated intrinsics, specificially:
+
+  * which federated intrinsics are implemented
+  * how federated types and federated intrinsics are implemented
+  * how federated values are represented in the execution stack
+  * how work is delegated to the target executors
+  * which placements are implemented
   """
 
-  def __init__(self, executor):
+  def __init__(self, executor: 'FederatingExecutor'):
+    """Creates a `FederatingStrategy`.
+
+    Args:
+      executor: A `FederatingExecutor` to use to handle unplaced types,
+        computations, and processing.
+
+    Raises:
+      TypeError: If `executor` is not a `FederatingExecutor`.
+    """
+    py_typecheck.check_type(executor, FederatingExecutor)
     self._executor = executor
 
-  @classmethod
   @abc.abstractmethod
-  def validate_executor_placements(cls, executor_placements):
-    pass
+  def close(self):
+    """Release resources associated with this strategy, if any."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def ingest_value(
+      self, value: Any, type_signature: computation_types.Type
+  ) -> executor_value_base.ExecutorValue:
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_value(
+      self, value: Any, type_signature: computation_types.Type
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded value for a federated type.
+
+    Args:
+      value: An object to embed in the executor.
+      type_signature: A `tff.Type`, the type of `value`.
+    """
+    raise NotImplementedError()
+
+  async def compute_federated_intrinsic(
+      self,
+      uri: str,
+      arg: Optional[executor_value_base.ExecutorValue] = None
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated intrinsic.
+
+    Args:
+      uri: The URI of an intrinsic to embed.
+      arg: An optional embedded argument of the call, or `None` if no argument
+        is supplied.
+    """
+    # Note: Relying on the names of the methods in order to select the function
+    # responsible for handling the given URI is safe because this abstract
+    # interface forces subclasses to explicitly implement all of the intrinsics
+    # with specificly named methods. In other words, this convenience is safe
+    # because this abstract interface owns the names of the methods.
+    fn = getattr(self, 'compute_{}'.format(uri), None)
+    if fn is not None:
+      return await fn(arg)  # pylint: disable=not-callable
+    else:
+      raise NotImplementedError(
+          'The intrinsic \'{}\' is not implemented.'.format(uri))
+
+  @abc.abstractmethod
+  async def compute_federated_aggregate(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated aggregate."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_apply(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated apply."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_broadcast(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated broadcast."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_collect(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated collect."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_eval_at_clients(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated eval at clients."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_eval_at_server(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated eval at server."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_map(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated map."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_map_all_equal(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated map all equal."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_mean(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated mean."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_reduce(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated reduce."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_secure_sum(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated secure sum."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_sum(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated sum."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_value_at_clients(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated value at clients."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_value_at_server(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated value at server."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_weighted_mean(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated weighted mean."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_zip_at_clients(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated zip at clients."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_zip_at_server(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated zip at server."""
+    raise NotImplementedError()
 
 
 class FederatingExecutor(executor_base.Executor):
-  """The federated executor orchestrates federated computations.
+  """An executor for handling federated types and intrinsics.
 
-  The intrinsics currently implemented include:
+  At a high-level, this executor is responsible for handling federated types
+  and federated intrinsics and delegating work to an underlying collection of
+  target executors associated with individual placements.
 
-  * federated_aggregate
-  * federated_apply
-  * federated_broadcast
-  * federated_collect
-  * federated_eval
-  * federated_map
-  * federated_mean
-  * federated_reduce
-  * federated_sum
-  * federated_value
-  * federated_weighted_mean
-  * federated_zip
+  The responsibility for handling federated types and federated intrinsics is
+  delegated to a `FederatingStrategy`, specifically:
 
-  This executor is only responsible for handling federated types and federated
-  operators, and a delegation of work to an underlying collection of target
-  executors associated with individual system participants. This executor does
-  not interpret lambda calculus and compositional constructs (blocks, etc.).
-  It understands placements, selected intrinsics (federated operators), it can
-  handle tuples, selections, and calls in a limited way (to the extent that it
-  deals with intrinsics or lambda expressions it can delegate).
+  * which federated intrinsics are implemented
+  * how federated types and federated intrinsics are implemented
+  * how federated values are represented in the execution stack
+  * how work is delegated to the target executors
+  * which placements are implemented
 
-  The initial implementation of the executor only supports the two basic types
-  of placements (SERVER and CLIENTS), and does not have a built-in concept of
-  intermediate aggregation, partitioning placements, clustering clients, etc.
+  The reponsibility for handling unplaced types, computations, and processing
+  is delegated to an `unplaced_executor`.
 
-  The initial implementation also does not attempt at performing optimizations
-  in case when the constituents of this executor are either located on the same
-  machine (where marshaling/unmarshaling could be avoided), or when they have
-  the `all_equal` property (and a single value could be shared by them all).
+  Expressed in a different way, this executor integrates a `FederatedStrategy`
+  with an execution stack, providing a way to inject the logic for handling
+  federated types and intrinsics into the execution stack.
   """
 
-  # TODO(b/134543154): Extend this executor to support intermediate aggregation
-  # and other optimizations hinted above.
-
-  # TODO(b/134543154): Add support for `data` as a building block.
-
-  # TODO(b/134543154): Implement the commonly used aggregation intrinsics so we
-  # can begin to use this executor in integration tests.
-
-  def __init__(self, target_executors, strategy):
-    """Creates a federated executor backed by a collection of target executors.
+  def __init__(self, strategy_factory: Callable[['FederatingExecutor'],
+                                                FederatingStrategy],
+               unplaced_executor: executor_base.Executor):
+    """Creates a `FederatingExecutor` backed by a `FederatingStrategy`.
 
     Args:
-      target_executors: A dictionary mapping placements to executors or lists of
-        executors associated with these placements. The keys in this dictionary
-        can be either placement literals, or `None` to specify the executor for
-        unplaced computations. The values can be either single executors (if
-        there only is a single participant associated with that placement, as
-        would typically be the case with `tff.SERVER`) or lists of target
-        executors.
-      strategy: A callable mapping the current executor instance to an
-        instantiation of a FederatingStrategy implementation.
-
-    Raises:
-      ValueError: If the target_executors are improper for the given
-        strategy.
+      strategy_factory: A function that accepts an instance of a
+        `FederatingExecutor` and returns a newly constructed
+        `FederatingStrategy` to use to handle federated types and intrinsics.
+      unplaced_executor: An `executor_base.Executor` to use to handle unplaced
+        types, computations, and processing.
     """
-    py_typecheck.check_callable(strategy)
-    self._strategy = strategy(self)
-    py_typecheck.check_type(self._strategy, FederatingStrategy)
-    self._strategy.validate_executor_placements(target_executors)
-
-    self._target_executors = {}
-    for k, v in target_executors.items():
-      # v is either an Executor or a list of Executors
-      if isinstance(v, executor_base.Executor):
-        self._target_executors[k] = [v]
-      else:
-        self._target_executors[k] = v.copy()
+    py_typecheck.check_type(unplaced_executor, executor_base.Executor)
+    self._strategy = strategy_factory(self)
+    self._unplaced_executor = unplaced_executor
 
   def close(self):
-    for p, v in self._target_executors.items():
-      for e in v:
-        logging.debug('Closing child executor for placement: %s', p)
-        e.close()
+    self._strategy.close()
+    self._unplaced_executor.close()
 
   @tracing.trace(stats=False)
-  async def create_value(self, value, type_spec=None):
-    """A coroutine that creates embedded value from `value` of type `type_spec`.
+  async def create_value(
+      self,
+      value: Any,
+      type_spec: Any = None) -> executor_value_base.ExecutorValue:
+    """Creates an embedded value from the given `value` and `type_spec`.
 
-    See the `FederatingExecutorValue` for detailed information about the
-    `value`s and `type_spec`s that can be embedded using `create_value`.
+    The kinds of supported `value`s are:
+
+    * An instance of `intrinsic_defs.IntrinsicDef`.
+
+    * An instance of `placement_literals.PlacementLiteral`.
+
+    * An instance of `pb.Computation` if of one of the following kinds:
+      intrinsic, lambda, and tensorflow.
+
+    * A Python `list` if `type_spec` is a federated type.
+
+      Note: The `value` must be a list even if it is of an `all_equal` type or
+      if there is only a single participant associated with the given placement.
+
+    * A Python value if `type_spec` is a non-functional, non-federated type.
 
     Args:
-      value: An object that represents the value to embed within the executor.
-      type_spec: An optional `tff.Type` of the value represented by this object,
-        or something convertible to it.
+      value: An object to embed in the executor, one of the supported types
+        defined by above.
+      type_spec: An optional type convertible to instance of `tff.Type` via
+        `tff.to_type`, the type of `value`.
 
     Returns:
-      An instance of `FederatingExecutorValue` that represents the embedded
-      value.
+      An instance of `executor_value_base.ExecutorValue` representing a value
+      embedded in the `FederatingExecutor` using a particular
+      `FederatingStrategy`.
 
     Raises:
       TypeError: If the `value` and `type_spec` do not match.
-      ValueError: If `value` is not a kind recognized by the
+      ValueError: If `value` is not a kind supported by the
         `FederatingExecutor`.
     """
     type_spec = computation_types.to_type(type_spec)
-    if isinstance(type_spec, computation_types.FederatedType):
-      self._check_executor_compatible_with_placement(type_spec.placement)
-    elif (isinstance(type_spec, computation_types.FunctionType) and
-          isinstance(type_spec.result, computation_types.FederatedType)):
-      self._check_executor_compatible_with_placement(type_spec.result.placement)
     if isinstance(value, intrinsic_defs.IntrinsicDef):
       if not type_analysis.is_concrete_instance_of(type_spec,
                                                    value.type_signature):
         raise TypeError('Incompatible type {} used with intrinsic {}.'.format(
             type_spec, value.uri))
-      return FederatingExecutorValue(value, type_spec)
+      return self._strategy.ingest_value(value, type_spec)
     elif isinstance(value, placement_literals.PlacementLiteral):
       if type_spec is None:
         type_spec = computation_types.PlacementType()
       else:
         py_typecheck.check_type(type_spec, computation_types.PlacementType)
-      return FederatingExecutorValue(value, type_spec)
+      return self._strategy.ingest_value(value, type_spec)
     elif isinstance(value, computation_impl.ComputationImpl):
       return await self.create_value(
           computation_impl.ComputationImpl.get_proto(value),
@@ -266,7 +369,7 @@ class FederatingExecutor(executor_base.Executor):
         type_spec.check_assignable_from(deserialized_type)
       which_computation = value.WhichOneof('computation')
       if which_computation in ['lambda', 'tensorflow']:
-        return FederatingExecutorValue(value, type_spec)
+        return self._strategy.ingest_value(value, type_spec)
       elif which_computation == 'intrinsic':
         intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(value.intrinsic.uri)
         if intrinsic_def is None:
@@ -278,103 +381,95 @@ class FederatingExecutor(executor_base.Executor):
             'Unsupported computation building block of type "{}".'.format(
                 which_computation))
     elif isinstance(type_spec, computation_types.FederatedType):
-      self._check_value_compatible_with_placement(value, type_spec.placement,
-                                                  type_spec.all_equal)
-      children = self._target_executors[type_spec.placement]
-      if type_spec.all_equal:
-        value = [value for _ in children]
-      results = await asyncio.gather(*[
-          c.create_value(v, type_spec.member) for v, c in zip(value, children)
-      ])
-      return FederatingExecutorValue(results, type_spec)
+      return await self._strategy.compute_federated_value(value, type_spec)
     else:
-      child = self._target_executors[None][0]
-      return FederatingExecutorValue(await child.create_value(value, type_spec),
-                                     type_spec)
+      result = await self._unplaced_executor.create_value(value, type_spec)
+      return self._strategy.ingest_value(result, type_spec)
 
   @tracing.trace
-  async def create_call(self, comp, arg=None):
-    """A coroutine that creates a call to `comp` with optional argument `arg`.
+  async def create_call(
+      self,
+      comp: executor_value_base.ExecutorValue,
+      arg: Optional[executor_value_base.ExecutorValue] = None
+  ) -> executor_value_base.ExecutorValue:
+    """Creates an embedded call for the given `comp` and optional `arg`.
+
+    The kinds of supported `comp`s are:
+
+    * An instance of `pb.Computation` if of one of the following kinds:
+      tensorflow.
+    * An instance of `intrinsic_defs.IntrinsicDef`.
 
     Args:
-      comp: The computation to invoke.
-      arg: An optional argument of the call, or `None` if no argument was
-        supplied.
+      comp: An embedded computation with a functional type signature
+        representing the function of the call.
+      arg: An optional embedded argument of the call, or `None` if no argument
+        is supplied.
 
     Returns:
-      An instance of `FederatingExecutorValue` that represents the constructed
-      call.
+      An instance of `executor_value_base.ExecutorValue` representing the
+      embedded call.
 
     Raises:
-      TypeError: If `comp` or `arg` are not embedded in the executor, before
-        calling `create_call` or if the `type_signature` of `arg` do not match
-        the expected `type_signature` of the parameter to `comp`.
-      ValueError: If `comp` is not a functional kind recognized by
-        `FederatingExecutor` or if `comp` is a lambda with an argument.
-      NotImplementedError: If `comp` is an intrinsic and it has not been
-        implemented by the `FederatingExecutor`.
+      TypeError: If `comp` or `arg` are not embedded in the executor; if the
+        `type_signature` of `comp` is not `tff.FunctionType`; or if the
+        `type_signature`s of `comp` and `arg` are not compatible.
+      ValueError: If `comp` is not a kind supported by the `FederatingExecutor`.
     """
-    py_typecheck.check_type(comp, FederatingExecutorValue)
+    py_typecheck.check_type(comp, executor_value_base.ExecutorValue)
     if arg is not None:
-      py_typecheck.check_type(arg, FederatingExecutorValue)
+      py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
       py_typecheck.check_type(comp.type_signature,
                               computation_types.FunctionType)
       param_type = comp.type_signature.parameter
       param_type.check_assignable_from(arg.type_signature)
-      arg = FederatingExecutorValue(arg.internal_representation, param_type)
+      arg = self._strategy.ingest_value(arg.internal_representation, param_type)
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')
       if which_computation == 'tensorflow':
-        child = self._target_executors[None][0]
-        embedded_comp = await child.create_value(comp.internal_representation,
-                                                 comp.type_signature)
+        embedded_comp = await self._unplaced_executor.create_value(
+            comp.internal_representation, comp.type_signature)
         if arg is not None:
           embedded_arg = await executor_utils.delegate_entirely_to_executor(
-              arg.internal_representation, arg.type_signature, child)
+              arg.internal_representation, arg.type_signature,
+              self._unplaced_executor)
         else:
           embedded_arg = None
-        result = await child.create_call(embedded_comp, embedded_arg)
-        return FederatingExecutorValue(result, result.type_signature)
+        result = await self._unplaced_executor.create_call(
+            embedded_comp, embedded_arg)
+        return self._strategy.ingest_value(result, result.type_signature)
       else:
         raise ValueError(
             'Directly calling computations of type {} is unsupported.'.format(
                 which_computation))
     elif isinstance(comp.internal_representation, intrinsic_defs.IntrinsicDef):
-      coro = getattr(
-          self,
-          '_compute_intrinsic_{}'.format(comp.internal_representation.uri),
-          None)
-      if coro is not None:
-        return await coro(arg)  # pylint: disable=not-callable
-      else:
-        raise NotImplementedError(
-            'Support for intrinsic "{}" has not been implemented yet.'.format(
-                comp.internal_representation.uri))
+      return await self._strategy.compute_federated_intrinsic(
+          comp.internal_representation.uri, arg)
     else:
       raise ValueError('Calling objects of type {} is unsupported.'.format(
           py_typecheck.type_string(type(comp.internal_representation))))
 
   @tracing.trace
-  async def create_tuple(self, elements):
-    """A coroutine that creates a tuple of `elements`.
+  async def create_tuple(
+      self, elements: List[executor_value_base.ExecutorValue]
+  ) -> executor_value_base.ExecutorValue:
+    """Creates an embedded tuple of the given `elements`.
 
     Args:
-      elements: A collection of `FederatingExecutorValue`s to create a tuple
-        from.
+      elements: A collection of embedded values.
 
     Returns:
-      An instance of `FederatingExecutorValue` that represents the constructed
-      tuple.
+      An instance of `executor_value_base.ExecutorValue` representing the
+      embedded tuple.
 
     Raises:
-      TypeError: If the `elements` are not embedded in the executor, before
-        calling `create_call`.
+      TypeError: If the `elements` are not embedded in the executor.
     """
     element_values = []
     element_types = []
     for name, value in anonymous_tuple.iter_elements(
         anonymous_tuple.from_container(elements)):
-      py_typecheck.check_type(value, FederatingExecutorValue)
+      py_typecheck.check_type(value, executor_value_base.ExecutorValue)
       element_values.append((name, value.internal_representation))
       if name is not None:
         element_types.append((name, value.type_signature))
@@ -382,28 +477,38 @@ class FederatingExecutor(executor_base.Executor):
         element_types.append(value.type_signature)
     value = anonymous_tuple.AnonymousTuple(element_values)
     type_signature = computation_types.NamedTupleType(element_types)
-    return FederatingExecutorValue(value, type_signature)
+    return self._strategy.ingest_value(value, type_signature)
 
   @tracing.trace
-  async def create_selection(self, source, index=None, name=None):
-    """A coroutine that creates a selection from `source`.
+  async def create_selection(
+      self,
+      source: executor_value_base.ExecutorValue,
+      index: Optional[int] = None,
+      name: Optional[str] = None) -> executor_value_base.ExecutorValue:
+    """Creates an embedded selection from the given `source`.
+
+    The kinds of supported `source`s are:
+
+    * An embedded value.
+    * An instance of `anonymous_tuple.AnonymousTuple`.
 
     Args:
-      source: The source to select from.
+      source: An embedded computation with a tuple type signature representing
+        the source from which to make a selection.
       index: An optional integer index. Either this, or `name` must be present.
       name: An optional string name. Either this, or `index` must be present.
 
     Returns:
-      An instance of `FederatingExecutorValue` that represents the constructed
-      selection.
+      An instance of `executor_value_base.ExecutorValue` representing the
+      embedded selection.
 
     Raises:
-      TypeError: If `source` is not embedded in the executor, before calling
-        `create_call` or if `source` is not a `tff.NamedTupleType`.
-      ValueError: If both `index` and `name` are `None` of if `source` is not a
-        kind recognized by `FederatingExecutor`.
+      TypeError: If `source` is not embedded in the executor or if the
+        `type_signature` of `source` is not a `tff.NamedTupleType`.
+      ValueError: If both `index` and `name` are `None` or if `source` is not a
+        kind supported by the `FederatingExecutor`.
     """
-    py_typecheck.check_type(source, FederatingExecutorValue)
+    py_typecheck.check_type(source, executor_value_base.ExecutorValue)
     py_typecheck.check_type(source.type_signature,
                             computation_types.NamedTupleType)
     if index is None and name is None:
@@ -412,10 +517,9 @@ class FederatingExecutor(executor_base.Executor):
           '`None`.')
     if isinstance(source.internal_representation,
                   executor_value_base.ExecutorValue):
-      child = self._target_executors[None][0]
-      value = await child.create_selection(
+      result = await self._unplaced_executor.create_selection(
           source.internal_representation, index=index, name=name)
-      return FederatingExecutorValue(value, value.type_signature)
+      return self._strategy.ingest_value(result, result.type_signature)
     elif isinstance(source.internal_representation,
                     anonymous_tuple.AnonymousTuple):
       if name is not None:
@@ -424,131 +528,9 @@ class FederatingExecutor(executor_base.Executor):
       else:
         value = source.internal_representation[index]
         type_signature = source.type_signature[index]
-      return FederatingExecutorValue(value, type_signature)
+      return self._strategy.ingest_value(value, type_signature)
     else:
       raise ValueError(
           'Unexpected internal representation while creating selection. '
           'Expected one of `AnonymousTuple` or value embedded in target '
           'executor, received {}'.format(source.internal_representation))
-
-  def _check_executor_compatible_with_placement(self, placement):
-    """Tests that this executor is compatible with the given `placement`.
-
-    This function checks that `value` is compatible with the configuration of
-    this executor for the given `placement`.
-
-    Args:
-      placement: A placement literal, the placement to test.
-
-    Raises:
-      ValueError: If `value` is not compatible.
-    """
-    children = self._target_executors.get(placement)
-    if not children:
-      # TODO(b/154328996): This executor does not have the context to know that
-      # the suggested solution is reasonable; the suggestion is here because it
-      # is probably the correct soltuion. We should establish a pattern for
-      # raising errors to a level in the stack where the appropriate context
-      # exists.
-      raise ValueError(
-          'Expected at least one participant for the \'{}\' placement, found '
-          'none. It is possible that the inferred number of clients is 0, you '
-          'can explicitly pass `num_clients` when constructing the execution '
-          'stack'.format(placement))
-
-  def _check_value_compatible_with_placement(self, value, placement, all_equal):
-    """Tests that `value` is compatible with the given `placement`.
-
-    Args:
-      value: A value to test.
-      placement: A placement literal indicating the placement of `value`.
-      all_equal: A `bool` indicating whether all elements of `value` are equal.
-
-    Raises:
-      ValueError: If `value` is not compatible.
-    """
-    if all_equal:
-      if isinstance(value, list):
-        raise ValueError(
-            'Expected a single value when \'all_equal\' is \'True\', found a '
-            'list.')
-    else:
-      py_typecheck.check_type(value, (list, tuple, set, frozenset))
-      children = self._target_executors.get(placement)
-      if len(value) != len(children):
-        raise ValueError(
-            'Expected a value that contains one element for each participant '
-            'for the given placement, found a value with {elements} elements '
-            'and this executor is configured to have {participants} '
-            'participants for the \'{placement}\' placement.'.format(
-                elements=len(value),
-                placement=placement,
-                participants=len(children)))
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_aggregate(self, arg):
-    return await self._strategy.federated_aggregate(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_apply(self, arg):
-    return await self._strategy.federated_apply(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_broadcast(self, arg):
-    return await self._strategy.federated_broadcast(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_collect(self, arg):
-    return await self._strategy.federated_collect(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_eval_at_clients(self, arg):
-    return await self._strategy.federated_eval_at_clients(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_eval_at_server(self, arg):
-    return await self._strategy.federated_eval_at_server(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_map(self, arg):
-    return await self._strategy.federated_map(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_map_all_equal(self, arg):
-    return await self._strategy.federated_map_all_equal(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_mean(self, arg):
-    return await self._strategy.federated_mean(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_reduce(self, arg):
-    return await self._strategy.federated_reduce(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_secure_sum(self, arg):
-    return await self._strategy.federated_secure_sum(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_sum(self, arg):
-    return await self._strategy.federated_sum(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_value_at_clients(self, arg):
-    return await self._strategy.federated_value_at_clients(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_value_at_server(self, arg):
-    return await self._strategy.federated_value_at_server(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_weighted_mean(self, arg):
-    return await self._strategy.federated_weighted_mean(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_zip_at_clients(self, arg):
-    return await self._strategy.federated_zip_at_clients(arg)
-
-  @tracing.trace
-  async def _compute_intrinsic_federated_zip_at_server(self, arg):
-    return await self._strategy.federated_zip_at_server(arg)

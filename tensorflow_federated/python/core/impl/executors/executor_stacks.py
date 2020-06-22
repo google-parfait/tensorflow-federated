@@ -19,11 +19,11 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.executors import caching_executor
-from tensorflow_federated.python.core.impl.executors import composing_executor
-from tensorflow_federated.python.core.impl.executors import default_federating_strategy
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import federated_composing_strategy
+from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
@@ -185,20 +185,21 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
       ]
       self._sizing_executors.extend(client_stacks)
 
-    executor_dict = {
-        placement_literals.CLIENTS: [
-            client_stacks[k % len(client_stacks)] for k in range(num_clients)
-        ],
-        placement_literals.SERVER:
-            self._unplaced_executor_factory.create_executor(
-                cardinalities={}, placement=placement_literals.SERVER),
-        None:
-            self._unplaced_executor_factory.create_executor(cardinalities={}),
-    }
-    return _wrap_executor_in_threading_stack(
-        federating_executor.FederatingExecutor(
-            executor_dict,
-            strategy=default_federating_strategy.DefaultFederatingStrategy))
+    federating_strategy_factory = federated_resolving_strategy.FederatedResovlingStrategy.factory(
+        {
+            placement_literals.CLIENTS: [
+                client_stacks[k % len(client_stacks)]
+                for k in range(num_clients)
+            ],
+            placement_literals.SERVER:
+                self._unplaced_executor_factory.create_executor(
+                    cardinalities={}, placement=placement_literals.SERVER),
+        })
+    unplaced_executor = self._unplaced_executor_factory.create_executor(
+        cardinalities={})
+    executor = federating_executor.FederatingExecutor(
+        federating_strategy_factory, unplaced_executor)
+    return _wrap_executor_in_threading_stack(executor)
 
   def clean_up_executors(self):
     # Does not hold any executors internally, so nothing to clean up.
@@ -206,11 +207,18 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
 
 
 def _create_composite_stack(
-    children,
+    target_executors,
     unplaced_ex_factory: UnplacedExecutorFactory) -> executor_base.Executor:
-  unplaced_executor = unplaced_ex_factory.create_executor()
-  return _wrap_executor_in_threading_stack(
-      composing_executor.ComposingExecutor(unplaced_executor, children))
+  """Creates a single composite stack."""
+  server_executor = unplaced_ex_factory.create_executor(
+      placement=placement_literals.SERVER)
+  federating_strategy_factory = federated_composing_strategy.FederatedComposingStrategy.factory(
+      server_executor, target_executors)
+  unplaced_executor = unplaced_ex_factory.create_executor(
+      placement=placement_literals.SERVER)
+  executor = federating_executor.FederatingExecutor(federating_strategy_factory,
+                                                    unplaced_executor)
+  return _wrap_executor_in_threading_stack(executor)
 
 
 def _aggregate_stacks(
