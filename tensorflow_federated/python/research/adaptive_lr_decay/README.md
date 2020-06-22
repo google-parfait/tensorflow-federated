@@ -92,3 +92,50 @@ learning rate from decaying for a number of rounds after it has decayed), or
 configure how many consecutive rounds of plateauing loss must be observed before
 decaying the learning rate (via the `patience` argument). For more details, see
 the documentation for `callbacks.py`.
+
+## Benchmarking experiments
+
+For the purposes of testing out our adaptive learning rate decay methods, we
+have also included federated training binaries for four different datasets,
+CIFAR-100, FEMNIST, Shakespeare, and Stack Overflow. For Stack Overflow, we
+perform two distinct tasks, tag prediction, and next word prediction. A summary
+of the datasets, models, and tasks are given below.
+
+Dataset        | Model                             | Task Summary
+-------------- | --------------------------------- | -------------------------
+CIFAR-100      | ResNet-18 (with GroupNorm layers) | Image classification
+FEMNIST        | Convolutional Neural Network      | Digit recognition
+Shakespeare    | RNN with 2 LSTM layers            | Next character prediction
+Stack Overflow | RNN with 1 LSTM layer             | Next word prediction
+Stack Overflow | Logistic regression classifier    | Tag prediction
+
+To run this code, we require [Bazel](https://www.bazel.build/). Instructions for
+installing Bazel can be found
+[here](https://docs.bazel.build/versions/master/install.html).
+
+To run a baseline classifier on CIFAR-100, for example, one would run (inside
+this directory):
+
+```
+bazel run :run_federated_cifar100 -- --total_rounds=100 --client_optimizer=sgd
+--client_learning_rate=0.1 --server_optimizer=sgd --server_learning_rate=0.1
+--clients_per_round=10 --client_epochs_per_round=1
+--experiment_name=cifar100_classification
+```
+
+This will run 100 communication rounds of federated averaging, using SGD on both
+the server and client, with 10 clients per round and 1 client epoch per round.
+If instead you wanted each client to perform 10 gradient steps (irrespective of
+the size of their local dataset), you could set `--client_epochs_per_round=1
+--max_batches_per_client=10`. For more details on such flags, see the
+corresponding binaries.
+
+In the example above, the client and server both use learning rates of 0.1. By
+default, when the loss plateaus, the iterative process constructed will
+adaptively decay the client learning rate by a factor of 0.1 and the server
+learning rate by a factor of 0.9. To customize the adaptive learning rate decay
+further, one could alter the server learning rate decay factor, the window size
+used to estimate the global loss, the minimum learning rate, and other
+configurations. These are configured via abseil flags. For a list of flags
+configuring the adaptive learning rate decay, see
+`decay_iterative_process_builder.py`.
