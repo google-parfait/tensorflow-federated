@@ -19,7 +19,6 @@ from typing import Optional
 
 from absl import flags
 from absl import logging
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.research.optimization.shared import yogi
@@ -423,44 +422,3 @@ def create_lr_schedule_from_flags(
   else:
     raise ValueError(
         'Unrecognized schedule type {!s}'.format(lr_schedule_type))
-
-
-def compute_yogi_init(dataset, model, num_clients):
-  """Computes an estimate for the Yogi initial accumulator.
-
-  Args:
-    dataset: A `tff.simulation.ClientData` object.
-    model: A `tff.learning.Model` object.
-    num_clients: The number of clients to sample batches from.
-
-  Returns:
-    A float estimate of the per-parameter Yogi initial accumulator value.
-  """
-  num_trainable_params = np.sum(
-      [np.prod(v.get_shape()) for v in model.trainable_variables])
-
-  client_list = dataset.client_ids
-  np.random.shuffle(client_list)
-  grad_norm_estimate = 0.0
-  num_clients_sampled = 0
-
-  @tf.function
-  def compute_batch_gradient_l2_norm_squared(model, batch):
-    with tf.GradientTape() as tape:
-      output = model.forward_pass(batch)
-    grads = tape.gradient(output.loss, model.trainable_variables)
-    grad_norms = tf.nest.map_structure(lambda x: tf.linalg.norm(x)**2, grads)
-    total_grad_norm = tf.reduce_sum(grad_norms)
-    return total_grad_norm
-
-  for client_id in client_list:
-    try:
-      batch = next(iter(dataset.create_tf_dataset_for_client(client_id)))
-      grad_norm_estimate += compute_batch_gradient_l2_norm_squared(
-          model, batch).numpy() / num_trainable_params
-      num_clients_sampled += 1
-      if num_clients_sampled == num_clients:
-        break
-    except StopIteration:
-      pass  # Client had no batches.
-  return grad_norm_estimate / num_clients_sampled

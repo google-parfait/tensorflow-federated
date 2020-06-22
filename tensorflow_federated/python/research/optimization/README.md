@@ -1,7 +1,9 @@
 # Federated Optimization
 
 This directory contains source code for evaluating federated learning with
-different optimizers on various models and tasks. For a more general look at
+different optimizers on various models and tasks. The code was developed for a
+paper, "Adaptive Federated Optimization"
+([arXiv link](https://arxiv.org/abs/2003.00295)). For a more general look at
 using TensorFlow Federated for research, see
 [Using TFF for Federated Learning Research](https://www.tensorflow.org/federated/tff_for_research).
 
@@ -76,3 +78,67 @@ directory.
 | stackoverflow_lr | [Stack Overflow](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/stackoverflow/load_data) | Logistic regression classifier    | Tag prediction            |
 
 <!-- mdformat on -->
+
+### Using different optimizers
+
+In our work, we compare 5 primary optimization methods: **FedAvg**, **FedAvgM**,
+**FedAdagrad**, **FedAdam**, and **FedYogi**. The first two use SGD on both
+client and server (with **FedAvgM** using server momentum of 0.9) and the last
+three use an adaptive optimizer on the server. To recreate our experimental
+results for each optimizer, use the following optimizer-specific flags:
+
+*   **FedAvg**: `--server_optimizer=sgd --server_sgd_momentum=0.0`
+*   **FedAvgM**: `--server_optimizer=sgd --server_sgd_momentum=0.9`
+*   **FedAdagrad**: `--server_optimizer=adagrad
+    --server_adagrad_initial_accumulator_value=0.0`
+*   **FedAdam**: `--server_optimizer=adam`
+*   **FedYogi**: `--server_optimizer=yogi
+    --server_yogi_initial_accumulator_value=0.0`
+
+Note that for adaptive optimizers, one should also set the parameter tau in the
+full description of our algorithms (see the accompanying paper). This parameter
+is referred to as epsilon in our code, and can be set via `--server_{adaptive
+optimizer}_epsilon={tau value}`. In general, we recommend a value of at least
+0.001 in most tasks. The best values for each task/optimizer are fully
+documented in the accompanying paper.
+
+For FedAdagrad and FedYogi, we use implementations of Adagrad and Yogi that
+allow one to select the `initial_accumulator_value` (see the Keras documentation
+on
+[Adagrad](https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/Adagrad)).
+For all experiments, we used initial accumulator values of 0 (which is the
+implicit value set by default in the Keras implementation of
+[Adam](https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/Adam)).
+While this can be tuned, we recommend first tuning other values, especially the
+`epsilon` value.
+
+In all of the cases above, the `--client_learning_rate` and
+`--server_learning_rate` must be set as well. For a detailed reference of the
+best hyperparameters for each optimizer and task, see the appendix in our
+accompanying paper.
+
+### Other hyperparameters and reproducibility
+
+All other hyperparameters are set by default to the values used in the `Constant
+learning rates` experiments of Section 5 in our paper. This includes the batch
+size, the number of clients per round, the number of client epochs, and model
+parameter flags. While they can be set for different behavior (such as varying
+the number of client epochs), they should not be changed if one wishes to
+reproduce the results from our paper. Thus, to recreate our experiments, one can
+use the command
+
+```
+bazel run optimization/{task}:run_federated -- {optimizer flags}
+--experiment_name={experiment name}
+```
+
+where the optimizer flags are discussed above. The metrics of the training
+procedure are logged and written to the directory `tmp/fed_opt/{experiment
+name}`.
+
+While we have attempted to make our results as reproducible as possible by even
+setting a seed to recreate which clients were sampled at each round (governed by
+`--client_dataset_seed`), we note that randomness in client sampling and
+heterogeneity across clients can lead to greater variance than in centralized
+machine learning settings. We also note that choices of optimizer
+hyperparameters are often vital.

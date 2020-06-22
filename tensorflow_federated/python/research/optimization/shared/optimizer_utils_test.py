@@ -16,9 +16,7 @@ import contextlib
 
 from absl import flags
 from absl.testing import parameterized
-import numpy as np
 import tensorflow as tf
-import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 
@@ -235,41 +233,6 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
       self.assertNear(lr_schedule(3), 1.0, err=1e-5)
       self.assertNear(lr_schedule(99), 0.2, err=1e-5)
       self.assertNear(lr_schedule(399), 0.1, err=1e-5)
-
-  def test_initial_yogi_accumulator(self):
-    x1 = 2 * np.ones([2, 1])
-    y1 = np.ones([2, 1])
-    x2 = 3 * np.ones([2, 1])
-    y2 = np.ones([2, 1])
-    tff_dataset = tff.simulation.FromTensorSlicesClientData({
-        '1': (x1, y1),
-        '2': (x2, y2)
-    })
-    tff_dataset = tff_dataset.preprocess(lambda x: x.batch(2))
-    input_spec = tff_dataset.create_tf_dataset_for_client('1').element_spec
-
-    def model_builder():
-      # Create a simple linear regression model, single output.
-      return tf.keras.Sequential([
-          tf.keras.layers.Dense(
-              1,
-              kernel_initializer='zeros',
-              bias_initializer='zeros',
-              input_shape=(1,))
-      ])
-
-    tff_model = tff.learning.from_keras_model(
-        keras_model=model_builder(),
-        input_spec=input_spec,
-        loss=tf.keras.losses.MeanSquaredError())
-    # (x1, y1) should have gradient [-4, -2]
-    # (x2, y2) should have gradient [-6, -2]
-    yogi_init = optimizer_utils.compute_yogi_init(
-        tff_dataset, tff_model, num_clients=2)
-    predicted_yogi_init1 = ((-4.0)**2 + (-2.0)**2) / 2
-    predicted_yogi_init2 = ((-6.0)**2 + (-2.0)**2) / 2
-    predicted_yogi_init = (predicted_yogi_init1 + predicted_yogi_init2) / 2.0
-    self.assertNear(yogi_init, predicted_yogi_init, err=1e-8)
 
 
 if __name__ == '__main__':

@@ -95,10 +95,7 @@ py_test(
     srcs = ["optimizer_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":optimizer_utils",
-        "//tensorflow_federated",
-    ],
+    deps = [":optimizer_utils"],
 )
 
 py_library(
