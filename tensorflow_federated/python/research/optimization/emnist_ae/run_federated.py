@@ -20,14 +20,13 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.emnist_ae import dataset
 from tensorflow_federated.python.research.optimization.emnist_ae import models
 from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
-
+from tensorflow_federated.python.research.utils.datasets import emnist_ae_dataset
 
 with utils_impl.record_hparam_flags():
   # Experiment hyperparameters
@@ -49,7 +48,7 @@ FLAGS = flags.FLAGS
 
 def main(_):
 
-  emnist_train, emnist_test = dataset.get_emnist_datasets(
+  emnist_train, emnist_test = emnist_ae_dataset.get_emnist_datasets(
       FLAGS.client_batch_size, FLAGS.client_epochs_per_round, only_digits=False)
 
   input_spec = emnist_train.create_tf_dataset_for_client(

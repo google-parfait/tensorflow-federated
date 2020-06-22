@@ -25,9 +25,9 @@ import tensorflow as tf
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
-from tensorflow_federated.python.research.optimization.stackoverflow import dataset
 from tensorflow_federated.python.research.optimization.stackoverflow import models
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import stackoverflow_dataset
 
 with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_string(
@@ -68,10 +68,10 @@ FLAGS = flags.FLAGS
 
 def run_experiment():
   """Runs the training experiment."""
-  _, validation_dataset, test_dataset = dataset.construct_word_level_datasets(
+  _, validation_dataset, test_dataset = stackoverflow_dataset.construct_word_level_datasets(
       FLAGS.vocab_size, FLAGS.batch_size, 1, FLAGS.sequence_length, -1,
       FLAGS.num_validation_examples)
-  train_dataset = dataset.get_centralized_train_dataset(
+  train_dataset = stackoverflow_dataset.get_centralized_train_dataset(
       FLAGS.vocab_size, FLAGS.batch_size, FLAGS.sequence_length,
       FLAGS.shuffle_buffer_size)
 
@@ -85,7 +85,7 @@ def run_experiment():
 
   logging.info('Training model: %s', model.summary())
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
-  pad_token, oov_token, _, eos_token = dataset.get_special_tokens(
+  pad_token, oov_token, _, eos_token = stackoverflow_dataset.get_special_tokens(
       FLAGS.vocab_size)
   model.compile(
       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),

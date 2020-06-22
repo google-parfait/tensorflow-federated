@@ -20,13 +20,13 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.cifar100 import dataset
 from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
 from tensorflow_federated.python.research.optimization.shared import resnet_models
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import cifar100_dataset
 
 with utils_impl.record_hparam_flags():
   # Experiment hyperparameters
@@ -53,7 +53,7 @@ def main(argv):
     raise app.UsageError('Expected no command-line arguments, '
                          'got: {}'.format(argv))
 
-  cifar_train, cifar_test = dataset.get_federated_cifar100(
+  cifar_train, cifar_test = cifar100_dataset.get_federated_cifar100(
       client_epochs_per_round=FLAGS.client_epochs_per_round,
       train_batch_size=FLAGS.client_batch_size,
       crop_shape=CROP_SHAPE)

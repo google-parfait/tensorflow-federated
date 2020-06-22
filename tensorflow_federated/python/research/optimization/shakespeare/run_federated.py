@@ -20,7 +20,6 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.shakespeare import dataset
 from tensorflow_federated.python.research.optimization.shakespeare import models
 from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
@@ -28,6 +27,7 @@ from tensorflow_federated.python.research.optimization.shared import keras_metri
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import shakespeare_dataset
 
 FLAGS = flags.FLAGS
 
@@ -49,7 +49,7 @@ with utils_impl.record_new_flags() as hparam_flags:
       'governing the client dataset selection.')
 
 # Vocabulary with OOV ID, zero for the padding, and BOS, EOS IDs.
-VOCAB_SIZE = len(dataset.CHAR_VOCAB) + 4
+VOCAB_SIZE = len(shakespeare_dataset.CHAR_VOCAB) + 4
 
 
 def model_builder():
@@ -60,7 +60,7 @@ def model_builder():
 
 def metrics_builder():
   """Returns a `list` of `tf.keras.metric.Metric` objects."""
-  pad_token, _, _, _ = dataset.get_special_tokens()
+  pad_token, _, _, _ = shakespeare_dataset.get_special_tokens()
 
   return [
       keras_metrics.NumBatchesCounter(),
@@ -74,7 +74,7 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  train_clientdata, test_dataset = dataset.construct_character_level_datasets(
+  train_clientdata, test_dataset = shakespeare_dataset.construct_character_level_datasets(
       FLAGS.client_batch_size, FLAGS.client_epochs_per_round,
       FLAGS.sequence_length)
   test_dataset = test_dataset.cache()

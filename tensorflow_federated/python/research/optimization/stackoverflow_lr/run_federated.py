@@ -23,11 +23,11 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
-from tensorflow_federated.python.research.optimization.stackoverflow_lr import dataset
 from tensorflow_federated.python.research.optimization.stackoverflow_lr import models
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import stackoverflow_lr_dataset
 
 
 with utils_impl.record_hparam_flags():
@@ -65,7 +65,7 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  stackoverflow_train, stackoverflow_validation, stackoverflow_test = dataset.get_stackoverflow_datasets(
+  stackoverflow_train, stackoverflow_validation, stackoverflow_test = stackoverflow_lr_dataset.get_stackoverflow_datasets(
       vocab_tokens_size=FLAGS.vocab_tokens_size,
       vocab_tags_size=FLAGS.vocab_tags_size,
       client_batch_size=FLAGS.client_batch_size,

@@ -22,11 +22,11 @@ from absl import logging
 import pandas as pd
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.cifar100 import dataset
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.optimization.shared import resnet_models
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import cifar100_dataset
 
 with utils_impl.record_new_flags() as hparam_flags:
   optimizer_utils.define_optimizer_flags('centralized')
@@ -81,7 +81,7 @@ def main(argv):
   logging.info('Saving hyper parameters to: [%s]', hparams_file)
   utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
-  cifar_train, cifar_test = dataset.get_centralized_cifar100(
+  cifar_train, cifar_test = cifar100_dataset.get_centralized_cifar100(
       train_batch_size=FLAGS.batch_size, crop_shape=CROP_SHAPE)
 
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()

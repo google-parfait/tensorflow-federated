@@ -23,12 +23,12 @@ import pandas as pd
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.optimization.shakespeare import dataset
 from tensorflow_federated.python.research.optimization.shakespeare import models
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import shakespeare_dataset
 
 FLAGS = flags.FLAGS
 
@@ -79,7 +79,7 @@ def main(argv):
       tff.simulation.datasets.shakespeare.load_data())
 
   def preprocess(ds):
-    return dataset.convert_snippets_to_character_sequence_examples(
+    return shakespeare_dataset.convert_snippets_to_character_sequence_examples(
         ds, FLAGS.batch_size, epochs=1).cache()
 
   train_dataset = train_client_data.create_tf_dataset_from_all_clients()
@@ -92,10 +92,10 @@ def main(argv):
 
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
 
-  pad_token, _, _, _ = dataset.get_special_tokens()
+  pad_token, _, _, _ = shakespeare_dataset.get_special_tokens()
 
   # Vocabulary with one OOV ID and zero for the mask.
-  vocab_size = len(dataset.CHAR_VOCAB) + 2
+  vocab_size = len(shakespeare_dataset.CHAR_VOCAB) + 2
   model = models.create_recurrent_model(
       vocab_size=vocab_size, batch_size=FLAGS.batch_size)
   model.compile(

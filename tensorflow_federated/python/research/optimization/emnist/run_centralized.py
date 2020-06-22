@@ -22,11 +22,11 @@ from absl import logging
 import pandas as pd
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.emnist import dataset
 from tensorflow_federated.python.research.optimization.emnist import models
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import emnist_dataset
 
 with utils_impl.record_new_flags() as hparam_flags:
   optimizer_utils.define_optimizer_flags('centralized')
@@ -79,7 +79,7 @@ def main(argv):
   logging.info('Saving hyper parameters to: [%s]', hparams_file)
   utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
-  train_dataset, eval_dataset = dataset.get_centralized_emnist_datasets(
+  train_dataset, eval_dataset = emnist_dataset.get_centralized_emnist_datasets(
       batch_size=FLAGS.batch_size, only_digits=False)
 
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()

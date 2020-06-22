@@ -40,13 +40,13 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":dataset",
         ":models",
         "//tensorflow_federated",
         "//tensorflow_federated/python/research/optimization/shared:keras_callbacks",
         "//tensorflow_federated/python/research/optimization/shared:keras_metrics",
         "//tensorflow_federated/python/research/optimization/shared:optimizer_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",
+        "//tensorflow_federated/python/research/utils/datasets:shakespeare_dataset",
     ],
 )
 
@@ -56,7 +56,6 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":dataset",
         ":models",
         "//tensorflow_federated/python/research/optimization/shared:fed_avg_schedule",
         "//tensorflow_federated/python/research/optimization/shared:iterative_process_builder",
@@ -64,5 +63,6 @@ py_binary(
         "//tensorflow_federated/python/research/utils:training_loop",
         "//tensorflow_federated/python/research/utils:training_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",
+        "//tensorflow_federated/python/research/utils/datasets:shakespeare_dataset",
     ],
 )

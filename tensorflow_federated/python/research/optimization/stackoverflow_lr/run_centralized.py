@@ -24,9 +24,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
-from tensorflow_federated.python.research.optimization.stackoverflow_lr import dataset
 from tensorflow_federated.python.research.optimization.stackoverflow_lr import models
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import stackoverflow_lr_dataset
 
 
 with utils_impl.record_new_flags() as hparam_flags:
@@ -77,7 +77,7 @@ def main(argv):
   logging.info('Saving hyper parameters to: [%s]', hparams_file)
   utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
-  train_dataset, eval_dataset = dataset.get_centralized_stackoverflow_datasets(
+  train_dataset, eval_dataset = stackoverflow_lr_dataset.get_centralized_stackoverflow_datasets(
       batch_size=FLAGS.batch_size,
       vocab_tokens_size=FLAGS.vocab_tokens_size,
       vocab_tags_size=FLAGS.vocab_tags_size)
