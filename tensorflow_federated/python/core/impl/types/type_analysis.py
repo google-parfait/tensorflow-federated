@@ -13,7 +13,8 @@
 # limitations under the License.
 """A library of static analysis functions for computation types."""
 
-from typing import Any, Callable, Optional, Tuple, Type, Union
+from typing import Any, Callable, Optional
+import attr
 
 import tensorflow as tf
 
@@ -24,97 +25,58 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_transformations
 
-_TypeOrTupleOfTypes = Union[Type[computation_types.Type],
-                            Tuple[Type[computation_types.Type], ...]]
+_TypePredicate = Callable[[computation_types.Type], bool]
 
 
-def _visit_postorder(type_signature: computation_types.Type,
-                     function: Callable[[computation_types.Type], None]):
-  py_typecheck.check_type(type_signature, computation_types.Type)
-
-  def _visit(inner_type):
-    function(inner_type)
-    return inner_type, False
-
-  type_transformations.transform_type_postorder(type_signature, _visit)
-
-
-def count(
-    type_signature: computation_types.Type,
-    predicate: Optional[Callable[[computation_types.Type],
-                                 bool]] = None) -> int:
+def count(type_signature: computation_types.Type,
+          predicate: _TypePredicate) -> int:
   """Returns the number of types in `type_signature` matching `predicate`.
 
   Args:
     type_signature: A tree of `computation_type.Type`s to count.
-    predicate: An optional Python function that takes a type as a parameter and
-      returns a boolean value. If `None`, all types are counted.
+    predicate: A Python function that takes a type as a parameter and
+      returns a boolean value.
   """
-  counter = 0
-
-  def _function(inner_type):
-    nonlocal counter
-    counter += 1 if predicate(inner_type) else 0
-
-  _visit_postorder(type_signature, _function)
+  counter = 1 if predicate(type_signature) else 0
+  counter += sum(count(child, predicate) for child in type_signature.children())
   return counter
 
 
-def count_types(type_signature: computation_types.Type,
-                types: _TypeOrTupleOfTypes) -> int:
-  """Returns the number of instances of `types` in `type_signature`.
-
-  Args:
-    type_signature: A tree of `computation_type.Type`s to count.
-    types: A `computation_types.Type` type or a tuple of
-      `computation_types.Type` types; the same as what is accepted by
-      `isinstance`.
-  """
-  return count(type_signature, lambda x: isinstance(x, types))
-
-
-def contains_types(type_signature: computation_types.Type,
-                   types: _TypeOrTupleOfTypes) -> bool:
-  """Checks if `type_signature` contains any instance of `types`.
-
-  Args:
-    type_signature: A tree of `computation_type.Type` to test.
-    types: A `computation_types.Type` type or a tuple of
-      `computation_types.Type` types; the same as what is accepted by
-      `isinstance`.
-
-  Returns:
-    `True` if `type_signature` contains any instance of `types`, otherwise
-    `False`.
-  """
-  return count_types(type_signature, types) > 0
+def contains(type_signature: computation_types.Type,
+             predicate: _TypePredicate) -> bool:
+  """Checks if `type_signature` contains any types that pass `predicate`."""
+  if predicate(type_signature):
+    return True
+  for child in type_signature.children():
+    if contains(child, predicate):
+      return True
+  return False
 
 
 def contains_federated_types(type_signature):
   """Returns whether or not `type_signature` contains a federated type."""
-  return contains_types(type_signature, computation_types.FederatedType)
+  return contains(type_signature, lambda t: t.is_federated())
 
 
 def contains_tensor_types(type_signature):
   """Returns whether or not `type_signature` contains a tensor type."""
-  return contains_types(type_signature, computation_types.TensorType)
+  return contains(type_signature, lambda t: t.is_tensor())
 
 
-def contains_only_types(type_signature: computation_types.Type,
-                        types: _TypeOrTupleOfTypes) -> bool:
-  """Checks if `type_signature` contains only instances of `types`.
+def contains_only(
+    type_signature: computation_types.Type,
+    predicate: _TypePredicate,
+) -> bool:
+  """Checks if `type_signature` contains only types that pass `predicate`."""
+  return not contains(type_signature, lambda t: not predicate(t))
 
-  Args:
-    type_signature: A tree of `computation_type.Type` to test.
-    types: A `computation_types.Type` type or a tuple of
-      `computation_types.Type` types; the same as what is accepted by
-      `isinstance`.
 
-  Returns:
-    `True` if `type_signature` contains only instance of `types`, otherwise
-    `False`.
-  """
-  return count(type_signature, lambda x: not isinstance(x, types)) == 0
+@attr.s(auto_attribs=True, slots=True)
+class _Disallowed:
+  """A set of possibly disallowed types with a string describing why."""
+  federated: Optional[str]
+  function: Optional[str]
+  sequence: Optional[str]
 
 
 def check_well_formed(type_signature: computation_types.Type):
@@ -139,35 +101,43 @@ def check_well_formed(type_signature: computation_types.Type):
   # after revising the definition of well-formedness.
   py_typecheck.check_type(type_signature, computation_types.Type)
 
-  def _check_for_disallowed_type(type_to_check, disallowed_types):
+  def _check_for_disallowed_type(type_to_check, disallowed_types: _Disallowed):
     """Checks subtree of `type_to_check` for `disallowed_types`."""
-    for disallowed_type, disallowed_context in disallowed_types.items():
-      if isinstance(type_to_check, disallowed_type):
-        raise TypeError('{} has been encountered in the type signature {}. '
-                        '{} is disallowed inside of {}.'.format(
-                            type_to_check,
-                            type_signature,
-                            disallowed_type,
-                            disallowed_context,
-                        ))
-    if isinstance(type_to_check, computation_types.FederatedType):
+
+    def _check_disallowed_against(disallowed, context):
+      if context is None:
+        return
+      raise TypeError('{} has been encountered in the type signature {}. '
+                      '{} is disallowed inside of {}.'.format(
+                          type_to_check,
+                          type_signature,
+                          disallowed,
+                          context,
+                      ))
+
+    if type_to_check.is_federated():
+      _check_disallowed_against('tff.FederatedType', disallowed_types.federated)
       context = 'federated types (types placed @CLIENT or @SERVER)'
-      disallowed_types = {
-          **disallowed_types,
-          computation_types.FederatedType: context,
-          computation_types.FunctionType: context,
-      }
-    if isinstance(type_to_check, computation_types.SequenceType):
+      return attr.evolve(
+          disallowed_types,
+          federated=context,
+          function=context,
+      )
+    if type_to_check.is_sequence():
+      _check_disallowed_against('tff.SequenceType', disallowed_types.sequence)
       context = 'sequence types'
-      disallowed_types = {
-          **disallowed_types,
-          computation_types.FederatedType: context,
-          computation_types.SequenceType: context,
-      }
+      return attr.evolve(
+          disallowed_types,
+          federated=context,
+          sequence=context,
+      )
+    if type_to_check.is_function():
+      _check_disallowed_against('tff.FunctionType', disallowed_types.function)
     return disallowed_types
 
   type_transformations.visit_preorder(type_signature,
-                                      _check_for_disallowed_type, dict())
+                                      _check_for_disallowed_type,
+                                      _Disallowed(None, None, None))
 
 
 def check_type(value: Any, type_spec: computation_types.Type):
@@ -193,11 +163,8 @@ def is_tensorflow_compatible_type(type_spec):
   """Checks `type_spec` against an explicit whitelist for `tf_computation`."""
   if type_spec is None:
     return True
-  return contains_only_types(type_spec, (
-      computation_types.NamedTupleType,
-      computation_types.SequenceType,
-      computation_types.TensorType,
-  ))
+  return contains_only(
+      type_spec, lambda t: t.is_tuple() or t.is_sequence() or t.is_tensor())
 
 
 def check_tensorflow_compatible_type(type_spec):
@@ -211,10 +178,7 @@ def is_generic_op_compatible_type(type_spec):
   """Checks `type_spec` against an explicit whitelist for generic operators."""
   if type_spec is None:
     return True
-  return contains_only_types(type_spec, (
-      computation_types.NamedTupleType,
-      computation_types.TensorType,
-  ))
+  return contains_only(type_spec, lambda t: t.is_tuple() or t.is_tensor())
 
 
 def is_binary_op_with_upcast_compatible_pair(
@@ -250,8 +214,8 @@ def is_binary_op_with_upcast_compatible_pair(
     return type_to_upcast is None
   if possibly_nested_type.is_equivalent_to(type_to_upcast):
     return True
-  if not (isinstance(type_to_upcast, computation_types.TensorType) and
-          type_to_upcast.shape == tf.TensorShape(())):
+  if not (type_to_upcast.is_tensor() and type_to_upcast.shape == tf.TensorShape(
+      ())):
     return False
 
   types_are_ok = [True]
@@ -259,9 +223,7 @@ def is_binary_op_with_upcast_compatible_pair(
   only_allowed_dtype = type_to_upcast.dtype
 
   def _check_tensor_types(type_spec):
-    if isinstance(
-        type_spec,
-        computation_types.TensorType) and type_spec.dtype != only_allowed_dtype:
+    if type_spec.is_tensor() and type_spec.dtype != only_allowed_dtype:
       types_are_ok[0] = False
     return type_spec, False
 
@@ -332,27 +294,27 @@ def check_all_abstract_types_are_bound(type_spec):
       TypeError: if unbound labels are found and check is True.
     """
     py_typecheck.check_type(type_spec, computation_types.Type)
-    if isinstance(type_spec, computation_types.TensorType):
+    if type_spec.is_tensor():
       return set()
-    elif isinstance(type_spec, computation_types.SequenceType):
+    elif type_spec.is_sequence():
       return _check_or_get_unbound_abstract_type_labels(type_spec.element,
                                                         bound_labels, check)
-    elif isinstance(type_spec, computation_types.FederatedType):
+    elif type_spec.is_federated():
       return _check_or_get_unbound_abstract_type_labels(type_spec.member,
                                                         bound_labels, check)
-    elif isinstance(type_spec, computation_types.NamedTupleType):
+    elif type_spec.is_tuple():
       return set().union(*[
           _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
           for _, v in anonymous_tuple.iter_elements(type_spec)
       ])
-    elif isinstance(type_spec, computation_types.AbstractType):
+    elif type_spec.is_abstract():
       if type_spec.label in bound_labels:
         return set()
       elif not check:
         return set([type_spec.label])
       else:
         raise TypeError('Unbound type label \'{}\'.'.format(type_spec.label))
-    elif isinstance(type_spec, computation_types.FunctionType):
+    elif type_spec.is_function():
       if type_spec.parameter is None:
         parameter_labels = set()
       else:
@@ -393,13 +355,13 @@ def is_sum_compatible(type_spec: computation_types.Type) -> bool:
     `True` iff `type_spec` is sum-compatible, `False` otherwise.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     return is_numeric_dtype(type_spec.dtype)
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     return all(
         is_sum_compatible(v)
         for _, v in anonymous_tuple.iter_elements(type_spec))
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif type_spec.is_federated():
     return is_sum_compatible(type_spec.member)
   else:
     return False
@@ -422,14 +384,14 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
     `True` iff `type_spec` is a structure of integers, otherwise `False`.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     py_typecheck.check_type(type_spec.dtype, tf.DType)
     return type_spec.dtype.is_integer
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     return all(
         is_structure_of_integers(v)
         for _, v in anonymous_tuple.iter_elements(type_spec))
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif type_spec.is_federated():
     return is_structure_of_integers(type_spec.member)
   else:
     return False
@@ -452,18 +414,13 @@ def is_valid_bitwidth_type_for_value_type(
   py_typecheck.check_type(bitwidth_type, computation_types.Type)
   py_typecheck.check_type(value_type, computation_types.Type)
 
-  def _both_are_type(first, second, ty):
-    """Whether or not `first` and `second` are both instances of `ty`."""
-    return isinstance(first, ty) and isinstance(second, ty)
-
-  if _both_are_type(value_type, bitwidth_type, computation_types.TensorType):
+  if value_type.is_tensor() and bitwidth_type.is_tensor():
     # Here, `value_type` refers to a tensor. Rather than check that
     # `bitwidth_type` is exactly the same, we check that it is a single integer,
     # since we want a single bitwidth integer per tensor.
     return bitwidth_type.dtype.is_integer and (
         bitwidth_type.shape.num_elements() == 1)
-  elif _both_are_type(value_type, bitwidth_type,
-                      computation_types.NamedTupleType):
+  elif value_type.is_tuple() and bitwidth_type.is_tuple():
     bitwidth_name_and_types = list(anonymous_tuple.iter_elements(bitwidth_type))
     value_name_and_types = list(anonymous_tuple.iter_elements(value_type))
     if len(bitwidth_name_and_types) != len(value_name_and_types):
@@ -531,21 +488,21 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
     `True` iff `type_spec` is average-compatible, `False` otherwise.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     return type_spec.dtype.is_floating or type_spec.dtype.is_complex
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     return all(
         is_average_compatible(v)
         for _, v in anonymous_tuple.iter_elements(type_spec))
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif type_spec.is_federated():
     return is_average_compatible(type_spec.member)
   else:
     return False
 
 
 def is_anon_tuple_with_py_container(value, type_spec):
-  return (isinstance(value, anonymous_tuple.AnonymousTuple) and isinstance(
-      type_spec, computation_types.NamedTupleTypeWithPyContainerType))
+  return (type_spec.is_tuple_with_py_container() and
+          isinstance(value, anonymous_tuple.AnonymousTuple))
 
 
 def is_concrete_instance_of(type_with_concrete_elements,
@@ -584,8 +541,7 @@ def is_concrete_instance_of(type_with_concrete_elements,
   py_typecheck.check_type(type_with_abstract_elements, computation_types.Type)
   py_typecheck.check_type(type_with_concrete_elements, computation_types.Type)
 
-  if contains_types(type_with_concrete_elements,
-                    computation_types.AbstractType):
+  if contains(type_with_concrete_elements, lambda t: t.is_abstract()):
     raise TypeError(
         '`type_with_concrete_elements` must contain no abstract types. You '
         'have passed {}'.format(type_with_concrete_elements))
@@ -600,17 +556,17 @@ def is_concrete_instance_of(type_with_concrete_elements,
       abstract_type_spec: computation_types.Type,
       concrete_type_spec: computation_types.Type) -> computation_types.Type:
     """Recursive helper function to construct concrete type spec."""
-    if isinstance(abstract_type_spec, computation_types.AbstractType):
+    if abstract_type_spec.is_abstract():
       bound_type = bound_abstract_types.get(str(abstract_type_spec.label))
       if bound_type:
         return bound_type
       else:
         bound_abstract_types[str(abstract_type_spec.label)] = concrete_type_spec
         return concrete_type_spec
-    elif isinstance(abstract_type_spec, computation_types.TensorType):
+    elif abstract_type_spec.is_tensor():
       return abstract_type_spec
-    elif isinstance(abstract_type_spec, computation_types.NamedTupleType):
-      if not isinstance(concrete_type_spec, computation_types.NamedTupleType):
+    elif abstract_type_spec.is_tuple():
+      if not concrete_type_spec.is_tuple():
         raise TypeError(type_error_string)
       abstract_elements = anonymous_tuple.to_elements(abstract_type_spec)
       concrete_elements = anonymous_tuple.to_elements(concrete_type_spec)
@@ -625,14 +581,14 @@ def is_concrete_instance_of(type_with_concrete_elements,
              _concretize_abstract_types(abstract_elements[k][1],
                                         concrete_elements[k][1])))
       return computation_types.NamedTupleType(concretized_tuple_elements)
-    elif isinstance(abstract_type_spec, computation_types.SequenceType):
-      if not isinstance(concrete_type_spec, computation_types.SequenceType):
+    elif abstract_type_spec.is_sequence():
+      if not concrete_type_spec.is_sequence():
         raise TypeError(type_error_string)
       return computation_types.SequenceType(
           _concretize_abstract_types(abstract_type_spec.element,
                                      concrete_type_spec.element))
-    elif isinstance(abstract_type_spec, computation_types.FunctionType):
-      if not isinstance(concrete_type_spec, computation_types.FunctionType):
+    elif abstract_type_spec.is_function():
+      if not concrete_type_spec.is_function():
         raise TypeError(type_error_string)
       if abstract_type_spec.parameter is None:
         if concrete_type_spec.parameter is not None:
@@ -645,12 +601,12 @@ def is_concrete_instance_of(type_with_concrete_elements,
                                                       concrete_type_spec.result)
       return computation_types.FunctionType(concretized_param,
                                             concretized_result)
-    elif isinstance(abstract_type_spec, computation_types.PlacementType):
-      if not isinstance(concrete_type_spec, computation_types.PlacementType):
+    elif abstract_type_spec.is_placement():
+      if not concrete_type_spec.is_placement():
         raise TypeError(type_error_string)
       return abstract_type_spec
-    elif isinstance(abstract_type_spec, computation_types.FederatedType):
-      if not isinstance(concrete_type_spec, computation_types.FederatedType):
+    elif abstract_type_spec.is_federated():
+      if not concrete_type_spec.is_federated():
         raise TypeError(type_error_string)
       new_member = _concretize_abstract_types(abstract_type_spec.member,
                                               concrete_type_spec.member)

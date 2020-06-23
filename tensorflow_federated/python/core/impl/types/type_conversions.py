@@ -146,9 +146,9 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     return (type_spec.dtype, type_spec.shape)
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     elements = anonymous_tuple.to_elements(type_spec)
     if not elements:
       output_dtypes = []
@@ -185,8 +185,7 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
         element_output = type_to_tf_dtypes_and_shapes(element_spec)
         output_dtypes.append(element_output[0])
         output_shapes.append(element_output[1])
-    if isinstance(type_spec,
-                  computation_types.NamedTupleTypeWithPyContainerType):
+    if type_spec.is_tuple_with_py_container():
       container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
           type_spec)
 
@@ -249,9 +248,9 @@ def type_to_tf_structure(type_spec: computation_types.Type):
       tuples and tensors, or if any of the elements in named tuples are unnamed.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     return tf.TensorSpec(type_spec.shape, type_spec.dtype)
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     elements = anonymous_tuple.to_elements(type_spec)
     if not elements:
       raise ValueError('Empty tuples are unsupported.')
@@ -259,8 +258,7 @@ def type_to_tf_structure(type_spec: computation_types.Type):
     named = element_outputs[0][0] is not None
     if not all((e[0] is not None) == named for e in element_outputs):
       raise ValueError('Tuple elements inconsistently named.')
-    if not isinstance(type_spec,
-                      computation_types.NamedTupleTypeWithPyContainerType):
+    if not type_spec.is_tuple_with_py_container():
       if named:
         output = collections.OrderedDict(element_outputs)
       else:
@@ -330,7 +328,7 @@ def type_to_py_container(value, type_spec):
     return value
 
   anon_tuple = value
-  if isinstance(type_spec, computation_types.FederatedType):
+  if type_spec.is_federated():
     structure_type_spec = type_spec.member
   else:
     structure_type_spec = type_spec
@@ -345,8 +343,7 @@ def type_to_py_container(value, type_spec):
             py_typecheck.is_attrs(container_type) or
             issubclass(container_type, dict))
 
-  if isinstance(structure_type_spec,
-                computation_types.NamedTupleTypeWithPyContainerType):
+  if structure_type_spec.is_tuple_with_py_container():
     container_type = (
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             structure_type_spec))

@@ -338,8 +338,7 @@ class IntrinsicFactory(object):
   def federated_value(self, value, placement):
     """Implements `federated_value` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
-    if type_analysis.contains_types(value.type_signature,
-                                    computation_types.FederatedType):
+    if type_analysis.contains(value.type_signature, lambda t: t.is_federated()):
       raise TypeError('Cannt place value {} containing federated types at '
                       'another placement; requested to be placed at {}.'.format(
                           value, placement))
@@ -399,13 +398,13 @@ class IntrinsicFactory(object):
     py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
     arg = value_impl.to_value(arg, None, self._context_stack)
 
-    if isinstance(arg.type_signature, computation_types.SequenceType):
+    if arg.type_signature.is_sequence():
       fn = value_impl.ValueImpl.get_comp(fn)
       arg = value_impl.ValueImpl.get_comp(arg)
       comp = building_block_factory.create_sequence_map(fn, arg)
       comp = self._bind_comp_as_reference(comp)
       return value_impl.ValueImpl(comp, self._context_stack)
-    elif isinstance(arg.type_signature, computation_types.FederatedType):
+    elif arg.type_signature.is_federated():
       parameter_type = computation_types.SequenceType(
           fn.type_signature.parameter)
       result_type = computation_types.SequenceType(fn.type_signature.result)
@@ -433,7 +432,7 @@ class IntrinsicFactory(object):
     value = value_impl.to_value(value, None, self._context_stack)
     zero = value_impl.to_value(zero, None, self._context_stack)
     op = value_impl.to_value(op, None, self._context_stack)
-    if isinstance(value.type_signature, computation_types.SequenceType):
+    if value.type_signature.is_sequence():
       element_type = value.type_signature.element
     else:
       py_typecheck.check_type(value.type_signature,
@@ -450,7 +449,7 @@ class IntrinsicFactory(object):
     value = value_impl.ValueImpl.get_comp(value)
     zero = value_impl.ValueImpl.get_comp(zero)
     op = value_impl.ValueImpl.get_comp(op)
-    if isinstance(value.type_signature, computation_types.SequenceType):
+    if value.type_signature.is_sequence():
       comp = building_block_factory.create_sequence_reduce(value, zero, op)
       comp = self._bind_comp_as_reference(comp)
       return value_impl.ValueImpl(comp, self._context_stack)
@@ -479,7 +478,7 @@ class IntrinsicFactory(object):
   def sequence_sum(self, value):
     """Implements `sequence_sum` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
-    if isinstance(value.type_signature, computation_types.SequenceType):
+    if value.type_signature.is_sequence():
       element_type = value.type_signature.element
     else:
       py_typecheck.check_type(value.type_signature,
@@ -489,12 +488,12 @@ class IntrinsicFactory(object):
       element_type = value.type_signature.member.element
     type_analysis.check_is_sum_compatible(element_type)
 
-    if isinstance(value.type_signature, computation_types.SequenceType):
+    if value.type_signature.is_sequence():
       value = value_impl.ValueImpl.get_comp(value)
       comp = building_block_factory.create_sequence_sum(value)
       comp = self._bind_comp_as_reference(comp)
       return value_impl.ValueImpl(comp, self._context_stack)
-    elif isinstance(value.type_signature, computation_types.FederatedType):
+    elif value.type_signature.is_federated():
       intrinsic_type = computation_types.FunctionType(
           value.type_signature.member, value.type_signature.member.element)
       intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_SUM.uri,

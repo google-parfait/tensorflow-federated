@@ -29,20 +29,20 @@ class CountTypesTest(parameterized.TestCase):
   @parameterized.named_parameters([
       ('one',
        computation_types.TensorType(tf.int32),
-       computation_types.TensorType,
+       lambda t: t.is_tensor(),
        1),
       ('three',
        computation_types.NamedTupleType([tf.int32] * 3),
-       computation_types.TensorType,
+       lambda t: t.is_tensor(),
        3),
       ('nested',
        computation_types.NamedTupleType([[tf.int32] * 3] * 3),
-       computation_types.TensorType,
+       lambda t: t.is_tensor(),
        9),
   ])
   # pyformat: enable
-  def test_returns_result(self, type_signature, types, expected_result):
-    result = type_analysis.count_types(type_signature, types)
+  def test_returns_result(self, type_signature, predicate, expected_result):
+    result = type_analysis.count(type_signature, predicate)
     self.assertEqual(result, expected_result)
 
 
@@ -65,7 +65,8 @@ class ContainsTypesTest(parameterized.TestCase):
   ])
   # pyformat: enable
   def test_returns_true(self, type_signature, types):
-    result = type_analysis.contains_types(type_signature, types)
+    result = type_analysis.contains(type_signature,
+                                    lambda x: isinstance(x, types))
     self.assertTrue(result)
 
   @parameterized.named_parameters([
@@ -73,7 +74,8 @@ class ContainsTypesTest(parameterized.TestCase):
        computation_types.NamedTupleType),
   ])
   def test_returns_false(self, type_signature, types):
-    result = type_analysis.contains_types(type_signature, types)
+    result = type_analysis.contains(type_signature,
+                                    lambda x: isinstance(x, types))
     self.assertFalse(result)
 
 
@@ -93,7 +95,8 @@ class ContainsOnlyTypesTest(parameterized.TestCase):
   ])
   # pyformat: enable
   def test_returns_true(self, type_signature, types):
-    result = type_analysis.contains_only_types(type_signature, types)
+    result = type_analysis.contains_only(type_signature,
+                                         lambda x: isinstance(x, types))
     self.assertTrue(result)
 
   # pyformat: disable
@@ -107,7 +110,8 @@ class ContainsOnlyTypesTest(parameterized.TestCase):
   ])
   # pyformat: enable
   def test_returns_false(self, type_signature, types):
-    result = type_analysis.contains_only_types(type_signature, types)
+    result = type_analysis.contains_only(type_signature,
+                                         lambda x: isinstance(x, types))
     self.assertFalse(result)
 
 
@@ -556,43 +560,43 @@ class IsConcreteInstanceOf(absltest.TestCase):
 
 
 def _convert_tensor_to_float(type_spec):
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     return computation_types.TensorType(tf.float32, shape=type_spec.shape), True
   return type_spec, False
 
 
 def _convert_abstract_type_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.AbstractType):
+  if type_spec.is_abstract():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 
 
 def _convert_placement_type_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.PlacementType):
+  if type_spec.is_placement():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 
 
 def _convert_function_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.FunctionType):
+  if type_spec.is_function():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 
 
 def _convert_federated_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.FederatedType):
+  if type_spec.is_federated():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 
 
 def _convert_sequence_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.SequenceType):
+  if type_spec.is_sequence():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 
 
 def _convert_tuple_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.NamedTupleType):
+  if type_spec.is_tuple():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 

@@ -95,8 +95,8 @@ def create_constant(scalar_value,
         'Type spec {} cannot be constructed as a TensorFlow constant in TFF; '
         ' only nested tuples and tensors are permitted.'.format(type_spec))
   inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
-  if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
-      or inferred_scalar_value_type.shape != tf.TensorShape(())):
+  if (not inferred_scalar_value_type.is_tensor() or
+      inferred_scalar_value_type.shape != tf.TensorShape(())):
     raise TypeError(
         'Must pass a scalar value to `create_tensorflow_constant`; encountered '
         'a value {}'.format(scalar_value))
@@ -104,7 +104,7 @@ def create_constant(scalar_value,
 
   def _pack_dtypes(type_signature):
     """Appends dtype of `type_signature` to nonlocal variable."""
-    if isinstance(type_signature, computation_types.TensorType):
+    if type_signature.is_tensor():
       tensor_dtypes_in_type_spec.append(type_signature.dtype)
     return type_signature, False
 
@@ -122,7 +122,7 @@ def create_constant(scalar_value,
 
   def _create_result_tensor(type_spec, scalar_value):
     """Packs `scalar_value` into `type_spec` recursively."""
-    if isinstance(type_spec, computation_types.TensorType):
+    if type_spec.is_tensor():
       type_spec.shape.assert_is_fully_defined()
       result = tf.constant(
           scalar_value, dtype=type_spec.dtype, shape=type_spec.shape)
@@ -187,11 +187,12 @@ def create_binary_operator(
     operand_2_value, operand_2_binding = tensorflow_utils.stamp_parameter_in_graph(
         'y', operand_type, graph)
 
-    if isinstance(operand_type, computation_types.TensorType):
-      result_value = operator(operand_1_value, operand_2_value)
-    elif isinstance(operand_type, computation_types.NamedTupleType):
-      result_value = anonymous_tuple.map_structure(operator, operand_1_value,
-                                                   operand_2_value)
+    if operand_type is not None:
+      if operand_type.is_tensor():
+        result_value = operator(operand_1_value, operand_2_value)
+      elif operand_type.is_tuple():
+        result_value = anonymous_tuple.map_structure(operator, operand_1_value,
+                                                     operand_2_value)
     else:
       raise TypeError(
           'Operand type {} cannot be used in generic operations. The whitelist '
@@ -235,15 +236,12 @@ def create_binary_operator_with_upcast(
   py_typecheck.check_callable(operator)
   type_signature = computation_types.to_type(type_signature)
   type_analysis.check_tensorflow_compatible_type(type_signature)
-  if not isinstance(
-      type_signature,
-      computation_types.NamedTupleType) or len(type_signature) != 2:
+  if not type_signature.is_tuple() or len(type_signature) != 2:
     raise TypeError('To apply a binary operator, we must by definition have an '
                     'argument which is a `NamedTupleType` with 2 elements; '
                     'asked to create a binary operator for type: {t}'.format(
                         t=type_signature))
-  if type_analysis.contains_types(type_signature,
-                                  computation_types.SequenceType):
+  if type_analysis.contains(type_signature, lambda t: t.is_sequence()):
     raise TypeError(
         'Applying binary operators in TensorFlow is only '
         'supported on Tensors and NamedTupleTypes; you '
@@ -251,13 +249,13 @@ def create_binary_operator_with_upcast(
 
   def _pack_into_type(to_pack, type_spec):
     """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
-    if isinstance(type_spec, computation_types.NamedTupleType):
+    if type_spec.is_tuple():
       elem_iter = anonymous_tuple.iter_elements(type_spec)
       return anonymous_tuple.AnonymousTuple([
           (elem_name, _pack_into_type(to_pack, elem_type))
           for elem_name, elem_type in elem_iter
       ])
-    elif isinstance(type_spec, computation_types.TensorType):
+    elif type_spec.is_tensor():
       return tf.broadcast_to(to_pack, type_spec.shape)
 
   with tf.Graph().as_default() as graph:
@@ -270,9 +268,9 @@ def create_binary_operator_with_upcast(
     else:
       second_arg = _pack_into_type(operand_2_value, type_signature[0])
 
-    if isinstance(type_signature[0], computation_types.TensorType):
+    if type_signature[0].is_tensor():
       result_value = operator(first_arg, second_arg)
-    elif isinstance(type_signature[0], computation_types.NamedTupleType):
+    elif type_signature[0].is_tuple():
       result_value = anonymous_tuple.map_structure(operator, first_arg,
                                                    second_arg)
     else:

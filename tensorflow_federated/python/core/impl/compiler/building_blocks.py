@@ -33,12 +33,21 @@ def _check_computation_oneof(
     computation_proto: pb.Computation,
     expected_computation_oneof: Optional[str],
 ):
-  """Asserts that `computation_proto` is a oneof of the expected variant."""
-  py_typecheck.check_type(computation_proto, pb.Computation)
+  """Checks that `computation_proto` is a oneof of the expected variant."""
   computation_oneof = computation_proto.WhichOneof('computation')
   if computation_oneof != expected_computation_oneof:
     raise TypeError('Expected a {} computation, found {}.'.format(
         expected_computation_oneof, computation_oneof))
+
+
+class UnexpectedBlockError(TypeError):
+
+  def __init__(self, expected: Type['ComputationBuildingBlock'],
+               actual: 'ComputationBuildingBlock'):
+    message = f'Expected block of kind {expected}, found block {actual}'
+    super().__init__(message)
+    self.actual = actual
+    self.expected = expected
 
 
 class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
@@ -90,6 +99,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
       raise NotImplementedError(
           'Deserialization for computations of type {} has not been '
           'implemented yet.'.format(computation_oneof))
+    return deserializer(computation_proto)
 
   def __init__(self, type_spec):
     """Constructs a computation building block with the given TFF type.
@@ -99,7 +109,6 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
         types.to_type().
     """
     type_signature = computation_types.to_type(type_spec)
-    type_analysis.check_well_formed(type_signature)
     self._type_signature = type_signature
 
   @property
@@ -117,6 +126,96 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def structural_representation(self):
     """Returns the structural string representation of this building block."""
     return _structural_representation(self)
+
+  def check_reference(self):
+    """Check that this is a 'Reference'."""
+    if not self.is_reference():
+      UnexpectedBlockError(Reference, self)
+
+  def is_reference(self):
+    """Returns whether or not this block is a `Reference`."""
+    return False
+
+  def check_selection(self):
+    """Check that this is a 'Selection'."""
+    if not self.is_selection():
+      UnexpectedBlockError(Selection, self)
+
+  def is_selection(self):
+    """Returns whether or not this block is a `Selection`."""
+    return False
+
+  def check_tuple(self):
+    """Check that this is a 'Tuple'."""
+    if not self.is_tuple():
+      UnexpectedBlockError(Tuple, self)
+
+  def is_tuple(self):
+    """Returns whether or not this block is a `Tuple`."""
+    return False
+
+  def check_call(self):
+    """Check that this is a 'Call'."""
+    if not self.is_call():
+      UnexpectedBlockError(Call, self)
+
+  def is_call(self):
+    """Returns whether or not this block is a `Call`."""
+    return False
+
+  def check_lambda(self):
+    """Check that this is a 'Lambda'."""
+    if not self.is_lambda():
+      UnexpectedBlockError(Lambda, self)
+
+  def is_lambda(self):
+    """Returns whether or not this block is a `Lambda`."""
+    return False
+
+  def check_block(self):
+    """Check that this is a 'Block'."""
+    if not self.is_block():
+      UnexpectedBlockError(Block, self)
+
+  def is_block(self):
+    """Returns whether or not this block is a `Block`."""
+    return False
+
+  def check_intrinsic(self):
+    """Check that this is an 'Intrinsic'."""
+    if not self.is_intrinsic():
+      UnexpectedBlockError(Intrinsic, self)
+
+  def is_intrinsic(self):
+    """Returns whether or not this block is an `Intrinsic`."""
+    return False
+
+  def check_data(self):
+    """Check that this is a 'Data'."""
+    if not self.is_data():
+      UnexpectedBlockError(Data, self)
+
+  def is_data(self):
+    """Returns whether or not this block is a `Data`."""
+    return False
+
+  def check_compiled_computation(self):
+    """Check that this is a 'CompiledComputation'."""
+    if not self.is_compiled_computation():
+      UnexpectedBlockError(CompiledComputation, self)
+
+  def is_compiled_computation(self):
+    """Returns whether or not this block is a `CompiledComputation`."""
+    return False
+
+  def check_placement(self):
+    """Check that this is a 'Placement'."""
+    if not self.is_placement():
+      UnexpectedBlockError(Placement, self)
+
+  def is_placement(self):
+    """Returns whether or not this block is a `Placement`."""
+    return False
 
   @abc.abstractproperty
   def proto(self):
@@ -186,6 +285,9 @@ class Reference(ComputationBuildingBlock):
         type=type_serialization.serialize_type(self.type_signature),
         reference=pb.Reference(name=self._name))
 
+  def is_reference(self):
+    return True
+
   @property
   def name(self):
     return self._name
@@ -250,7 +352,7 @@ class Selection(ComputationBuildingBlock):
       raise ValueError(
           'Cannot simultaneously specify a name and an index, choose one.')
     source_type = source.type_signature
-    if not isinstance(source_type, computation_types.NamedTupleType):
+    if not source_type.is_tuple():
       raise TypeError(
           'Expected the source of selection to be a TFF named tuple, '
           'instead found it to be of type {}.'.format(source_type))
@@ -288,6 +390,9 @@ class Selection(ComputationBuildingBlock):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         selection=selection)
+
+  def is_selection(self):
+    return True
 
   @property
   def source(self):
@@ -381,6 +486,9 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
         type=type_serialization.serialize_type(self.type_signature),
         tuple=pb.Tuple(element=elements))
 
+  def is_tuple(self):
+    return True
+
   def __repr__(self):
 
     def _element_repr(element):
@@ -432,7 +540,7 @@ class Call(ComputationBuildingBlock):
     py_typecheck.check_type(fn, ComputationBuildingBlock)
     if arg is not None:
       py_typecheck.check_type(arg, ComputationBuildingBlock)
-    if not isinstance(fn.type_signature, computation_types.FunctionType):
+    if not fn.type_signature.is_function():
       raise TypeError('Expected fn to be of a functional type, '
                       'but found that its type is {}.'.format(
                           fn.type_signature))
@@ -465,6 +573,9 @@ class Call(ComputationBuildingBlock):
       call = pb.Call(function=self._function.proto)
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature), call=call)
+
+  def is_call(self):
+    return True
 
   @property
   def function(self):
@@ -535,7 +646,6 @@ class Lambda(ComputationBuildingBlock):
     if parameter_name is not None:
       py_typecheck.check_type(parameter_name, str)
       parameter_type = computation_types.to_type(parameter_type)
-      assert isinstance(parameter_type, computation_types.Type)
     py_typecheck.check_type(result, ComputationBuildingBlock)
     super().__init__(
         computation_types.FunctionType(parameter_type, result.type_signature))
@@ -553,6 +663,9 @@ class Lambda(ComputationBuildingBlock):
     # `pb.Computation`.
     # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
     return pb.Computation(type=type_signature, **{'lambda': fn})  # pytype: disable=wrong-keyword-args
+
+  def is_lambda(self):
+    return True
 
   @property
   def parameter_name(self) -> Optional[str]:
@@ -672,6 +785,9 @@ class Block(ComputationBuildingBlock):
                 'result': self._result.proto
             }))
 
+  def is_block(self):
+    return True
+
   @property
   def locals(self) -> List[TypingTuple[str, ComputationBuildingBlock]]:
     return list(self._locals)
@@ -724,6 +840,7 @@ class Intrinsic(ComputationBuildingBlock):
     type_spec = computation_types.to_type(type_spec)
     intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(uri)
     if intrinsic_def:
+      # Note: this is really expensive.
       typecheck = type_analysis.is_concrete_instance_of(
           type_spec, intrinsic_def.type_signature)
       if not typecheck:
@@ -739,6 +856,9 @@ class Intrinsic(ComputationBuildingBlock):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         intrinsic=pb.Intrinsic(uri=self._uri))
+
+  def is_intrinsic(self):
+    return True
 
   @property
   def uri(self) -> str:
@@ -793,6 +913,9 @@ class Data(ComputationBuildingBlock):
         type=type_serialization.serialize_type(self.type_signature),
         data=pb.Data(uri=self._uri))
 
+  def is_data(self):
+    return True
+
   @property
   def uri(self) -> str:
     return self._uri
@@ -837,6 +960,9 @@ class CompiledComputation(ComputationBuildingBlock):
   def proto(self) -> pb.Computation:
     return self._proto
 
+  def is_compiled_computation(self):
+    return True
+
   @property
   def name(self) -> str:
     return self._name
@@ -858,9 +984,6 @@ class Placement(ComputationBuildingBlock):
       computation_proto: pb.Computation,
   ) -> 'Placement':
     _check_computation_oneof(computation_proto, 'placement')
-    py_typecheck.check_type(
-        type_serialization.deserialize_type(computation_proto.type),
-        computation_types.PlacementType)
     return cls(
         placement_literals.uri_to_placement_literal(
             str(computation_proto.placement.uri)))
@@ -883,6 +1006,9 @@ class Placement(ComputationBuildingBlock):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         placement=pb.Placement(uri=self._literal.uri))
+
+  def is_placement(self):
+    return True
 
   @property
   def uri(self) -> str:
@@ -970,7 +1096,7 @@ def _string_representation(
       formatted: A boolean indicating if the returned string should be
         formatted.
     """
-    if isinstance(comp, Block):
+    if comp.is_block():
       lines = []
       variables_lines = _lines_for_named_comps(comp.locals, formatted)
       if formatted:
@@ -982,31 +1108,31 @@ def _string_representation(
       lines.append(result_lines)
       lines.append([')'])
       return _join(lines)
-    elif isinstance(comp, Reference):
+    elif comp.is_reference():
       if comp.context is not None:
         return ['{}@{}'.format(comp.name, comp.context)]
       else:
         return [comp.name]
-    elif isinstance(comp, Selection):
+    elif comp.is_selection():
       source_lines = _lines_for_comp(comp.source, formatted)
       if comp.name is not None:
         return _join([source_lines, ['.{}'.format(comp.name)]])
       else:
         return _join([source_lines, ['[{}]'.format(comp.index)]])
-    elif isinstance(comp, Call):
+    elif comp.is_call():
       function_lines = _lines_for_comp(comp.function, formatted)
       if comp.argument is not None:
         argument_lines = _lines_for_comp(comp.argument, formatted)
         return _join([function_lines, ['('], argument_lines, [')']])
       else:
         return _join([function_lines, ['()']])
-    elif isinstance(comp, CompiledComputation):
+    elif comp.is_compiled_computation():
       return ['comp#{}'.format(comp.name)]
-    elif isinstance(comp, Data):
+    elif comp.is_data():
       return [comp.uri]
-    elif isinstance(comp, Intrinsic):
+    elif comp.is_intrinsic():
       return [comp.uri]
-    elif isinstance(comp, Lambda):
+    elif comp.is_lambda():
       result_lines = _lines_for_comp(comp.result, formatted)
       if comp.parameter_type is None:
         param_name = ''
@@ -1014,9 +1140,9 @@ def _string_representation(
         param_name = comp.parameter_name
       lines = [['({} -> '.format(param_name)], result_lines, [')']]
       return _join(lines)
-    elif isinstance(comp, Placement):
+    elif comp.is_placement():
       return [comp._literal.name]  # pylint: disable=protected-access
-    elif isinstance(comp, Tuple):
+    elif comp.is_tuple():
       if len(comp) == 0:  # pylint: disable=g-explicit-length-test
         return ['<>']
       elements = anonymous_tuple.to_elements(comp)
@@ -1255,26 +1381,26 @@ def _structural_representation(comp):
 
   def _get_node_label(comp):
     """Returns a string for node in the structure of the given `comp`."""
-    if isinstance(comp, Block):
+    if comp.is_block():
       return 'Block'
-    elif isinstance(comp, Call):
+    elif comp.is_call():
       return 'Call'
-    elif isinstance(comp, CompiledComputation):
+    elif comp.is_compiled_computation():
       return 'Compiled({})'.format(comp.name)
-    elif isinstance(comp, Data):
+    elif comp.is_data():
       return comp.uri
-    elif isinstance(comp, Intrinsic):
+    elif comp.is_intrinsic():
       return comp.uri
-    elif isinstance(comp, Lambda):
+    elif comp.is_lambda():
       return 'Lambda({})'.format(comp.parameter_name)
-    elif isinstance(comp, Reference):
+    elif comp.is_reference():
       return 'Ref({})'.format(comp.name)
-    elif isinstance(comp, Placement):
+    elif comp.is_placement():
       return 'Placement'
-    elif isinstance(comp, Selection):
+    elif comp.is_selection():
       key = comp.name if comp.name is not None else comp.index
       return 'Sel({})'.format(key)
-    elif isinstance(comp, Tuple):
+    elif comp.is_tuple():
       return 'Tuple'
     else:
       raise TypeError('Unexpected type found: {}.'.format(type(comp)))
@@ -1308,15 +1434,10 @@ def _structural_representation(comp):
     """
     node_label = _get_node_label(comp)
 
-    if isinstance(comp, (
-        CompiledComputation,
-        Data,
-        Intrinsic,
-        Placement,
-        Reference,
-    )):
+    if (comp.is_compiled_computation() or comp.is_data() or
+        comp.is_intrinsic() or comp.is_placement() or comp.is_reference()):
       return [node_label]
-    elif isinstance(comp, Block):
+    elif comp.is_block():
       variables_lines = _lines_for_named_comps(comp.locals)
       variables_width = len(variables_lines[0])
       variables_trailing_padding = _get_trailing_padding(variables_lines[0])
@@ -1338,7 +1459,7 @@ def _structural_representation(comp):
       leading_padding = _get_leading_padding(lines[0]) + 1
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       return _concatenate([node_line], lines, Alignment.LEFT)
-    elif isinstance(comp, Call):
+    elif comp.is_call():
       function_lines = _lines_for_comp(comp.function)
       function_width = len(function_lines[0])
       function_trailing_padding = _get_trailing_padding(function_lines[0])
@@ -1363,19 +1484,19 @@ def _structural_representation(comp):
       leading_padding = _get_leading_padding(lines[0]) + 1
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       return _concatenate([node_line], lines, Alignment.LEFT)
-    elif isinstance(comp, Lambda):
+    elif comp.is_lambda():
       result_lines = _lines_for_comp(comp.result)
       leading_padding = _get_leading_padding(result_lines[0])
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       edge_line = '{}|'.format(padding_char * leading_padding)
       return _concatenate([node_line, edge_line], result_lines, Alignment.LEFT)
-    elif isinstance(comp, Selection):
+    elif comp.is_selection():
       source_lines = _lines_for_comp(comp.source)
       leading_padding = _get_leading_padding(source_lines[0])
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       edge_line = '{}|'.format(padding_char * leading_padding)
       return _concatenate([node_line, edge_line], source_lines, Alignment.LEFT)
-    elif isinstance(comp, Tuple):
+    elif comp.is_tuple():
       elements = anonymous_tuple.to_elements(comp)
       elements_lines = _lines_for_named_comps(elements)
       leading_padding = _get_leading_padding(elements_lines[0])

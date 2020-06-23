@@ -17,7 +17,6 @@ from typing import AbstractSet, Callable, List, Optional, Tuple, Type, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -127,7 +126,7 @@ def check_has_single_placement(comp, single_placement):
 
   def _check_single_placement(comp):
     """Checks that the placement in `type_spec` matches `single_placement`."""
-    if (isinstance(comp.type_signature, computation_types.FederatedType) and
+    if (comp.type_signature.is_federated() and
         comp.type_signature.placement != single_placement):
       raise ValueError('Comp contains a placement other than {}; '
                        'placement {} on comp {} inside the structure. '.format(
@@ -166,8 +165,7 @@ def check_intrinsics_whitelisted_for_reduction(comp):
   )
 
   def _check_whitelisted(comp):
-    if (isinstance(comp, building_blocks.Intrinsic) and
-        comp.uri not in uri_whitelist):
+    if comp.is_intrinsic() and comp.uri not in uri_whitelist:
       raise ValueError(
           'Encountered an Intrinsic not currently reducible to aggregate or '
           'broadcast, the intrinsic {}'.format(comp.compact_representation()))
@@ -209,22 +207,21 @@ def extract_nodes_consuming(tree, predicate):
 
   def _are_children_in_dependent_set(comp, symbol_tree):
     """Checks if the dependencies of `comp` are present in `dependent_nodes`."""
-    if isinstance(
-        comp, (building_blocks.Intrinsic, building_blocks.Data,
-               building_blocks.Placement, building_blocks.CompiledComputation)):
+    if (comp.is_intrinsic() or comp.is_data() or comp.is_placement() or
+        comp.is_compiled_computation()):
       return False
-    elif isinstance(comp, building_blocks.Lambda):
+    elif comp.is_lambda():
       return comp.result in dependent_nodes
-    elif isinstance(comp, building_blocks.Block):
+    elif comp.is_block():
       return any(x[1] in dependent_nodes
                  for x in comp.locals) or comp.result in dependent_nodes
-    elif isinstance(comp, building_blocks.Tuple):
+    elif comp.is_tuple():
       return any(x in dependent_nodes for x in comp)
-    elif isinstance(comp, building_blocks.Selection):
+    elif comp.is_selection():
       return comp.source in dependent_nodes
-    elif isinstance(comp, building_blocks.Call):
+    elif comp.is_call():
       return comp.function in dependent_nodes or comp.argument in dependent_nodes
-    elif isinstance(comp, building_blocks.Reference):
+    elif comp.is_reference():
       return _is_reference_dependent(comp, symbol_tree)
 
   def _is_reference_dependent(comp, symbol_tree):
@@ -268,11 +265,11 @@ def check_broadcast_not_dependent_on_aggregate(tree):
   py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
 
   def aggregate_predicate(x):
-    return (isinstance(x, building_blocks.Intrinsic) and
+    return (x.is_intrinsic() and
             x.uri == intrinsic_defs.FEDERATED_AGGREGATE.uri)
 
   def broadcast_predicate(x):
-    return (isinstance(x, building_blocks.Intrinsic) and
+    return (x.is_intrinsic() and
             x.uri == intrinsic_defs.FEDERATED_BROADCAST.uri)
 
   nodes_dependent_on_aggregate = extract_nodes_consuming(
@@ -285,7 +282,7 @@ def check_broadcast_not_dependent_on_aggregate(tree):
   examples = []
 
   for node in nodes_dependent_on_aggregate:
-    if isinstance(node, building_blocks.Call):
+    if node.is_call():
       if (node.argument in nodes_dependent_on_aggregate and
           node.function in nodes_dependent_on_broadcast):
         broadcast_dependent = True
@@ -316,7 +313,7 @@ def count_tensorflow_ops_under(comp):
 
   def _count_tf_ops(inner_comp):
     nonlocal count_ops
-    if (isinstance(inner_comp, building_blocks.CompiledComputation) and
+    if (inner_comp.is_compiled_computation() and
         inner_comp.proto.WhichOneof('computation') == 'tensorflow'):
       count_ops += building_block_analysis.count_tensorflow_ops_in(inner_comp)
 
@@ -345,7 +342,7 @@ def count_tensorflow_variables_under(comp):
 
   def _count_tf_vars(inner_comp):
     nonlocal count_vars
-    if (isinstance(inner_comp, building_blocks.CompiledComputation) and
+    if (inner_comp.is_compiled_computation() and
         inner_comp.proto.WhichOneof('computation') == 'tensorflow'):
       count_vars += building_block_analysis.count_tensorflow_variables_in(
           inner_comp)
@@ -483,7 +480,7 @@ def trees_equal(comp_1, comp_2):
       return False
     if comp_1.type_signature != comp_2.type_signature:
       return False
-    if isinstance(comp_1, building_blocks.Block):
+    if comp_1.is_block():
       if len(comp_1.locals) != len(comp_2.locals):
         return False
       for (name_1, value_1), (name_2, value_2) in zip(comp_1.locals,
@@ -492,36 +489,36 @@ def trees_equal(comp_1, comp_2):
           return False
         reference_equivalences.append((name_1, name_2))
       return _trees_equal(comp_1.result, comp_2.result, reference_equivalences)
-    elif isinstance(comp_1, building_blocks.Call):
+    elif comp_1.is_call():
       return (_trees_equal(comp_1.function, comp_2.function,
                            reference_equivalences) and
               _trees_equal(comp_1.argument, comp_2.argument,
                            reference_equivalences))
-    elif isinstance(comp_1, building_blocks.CompiledComputation):
+    elif comp_1.is_compiled_computation():
       return _compiled_comp_equal(comp_1, comp_2)
-    elif isinstance(comp_1, building_blocks.Data):
+    elif comp_1.is_data():
       return comp_1.uri == comp_2.uri
-    elif isinstance(comp_1, building_blocks.Intrinsic):
+    elif comp_1.is_intrinsic():
       return comp_1.uri == comp_2.uri
-    elif isinstance(comp_1, building_blocks.Lambda):
+    elif comp_1.is_lambda():
       if comp_1.parameter_type != comp_2.parameter_type:
         return False
       reference_equivalences.append(
           (comp_1.parameter_name, comp_2.parameter_name))
       return _trees_equal(comp_1.result, comp_2.result, reference_equivalences)
-    elif isinstance(comp_1, building_blocks.Placement):
+    elif comp_1.is_placement():
       return comp_1.uri == comp_2.uri
-    elif isinstance(comp_1, building_blocks.Reference):
+    elif comp_1.is_reference():
       for comp_1_candidate, comp_2_candidate in reversed(
           reference_equivalences):
         if comp_1.name == comp_1_candidate:
           return comp_2.name == comp_2_candidate
       return comp_1.name == comp_2.name
-    elif isinstance(comp_1, building_blocks.Selection):
+    elif comp_1.is_selection():
       return (comp_1.name == comp_2.name and
               comp_1.index == comp_2.index and _trees_equal(
                   comp_1.source, comp_2.source, reference_equivalences))
-    elif isinstance(comp_1, building_blocks.Tuple):
+    elif comp_1.is_tuple():
       # The element names are checked as part of the `type_signature`.
       if len(comp_1) != len(comp_2):
         return False
@@ -561,11 +558,11 @@ def _find_aggregation_in_tree(
 
   def record_intrinsic_calls(comp):
     """Identifies matching calls and adds them to `aggregation_calls`."""
-    if not isinstance(comp, building_blocks.Call):
+    if not comp.is_call():
       return
     # Called lambdas will only trigger aggregation if they themselves contain
     # aggregation, which will be caught when the lambea itself is traversed.
-    if isinstance(comp.function, building_blocks.Lambda):
+    if comp.function.is_lambda():
       return
     # Aggregation cannot be occurring if the output type is not federated
     if not type_analysis.contains_federated_types(
@@ -574,7 +571,7 @@ def _find_aggregation_in_tree(
 
     # We can't tell whether an arbitrary AST fragment results in an intrinsic
     # with a given URI, so we report an error in this case.
-    if not isinstance(comp.function, building_blocks.Intrinsic):
+    if not comp.function.is_intrinsic():
       raise ValueError('Cannot determine whether call contains aggregation: ' +
                        str(comp))
 

@@ -40,18 +40,13 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 # Note: not a `ValueImpl` method because of the `__setattr__` override
 def _is_federated_named_tuple(vimpl: 'ValueImpl') -> bool:
-  return (isinstance(
-      vimpl._comp.type_signature,  # pylint: disable=protected-access
-      computation_types.FederatedType) and isinstance(
-          vimpl._comp.type_signature.member,  # pylint: disable=protected-access
-          computation_types.NamedTupleType))
+  comp_ty = vimpl._comp.type_signature  # pylint: disable=protected-access
+  return comp_ty.is_federated() and comp_ty.member.is_tuple()
 
 
 # Note: not a `ValueImpl` method because of the `__setattr__` override
 def _is_named_tuple(vimpl: 'ValueImpl') -> bool:
-  return isinstance(
-      vimpl._comp.type_signature,  # pylint: disable=protected-access
-      computation_types.NamedTupleType)
+  return vimpl._comp.type_signature.is_tuple()  # pylint: disable=protected-access
 
 
 def _check_is_optionally_federated_named_tuple(
@@ -119,7 +114,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
 
   def __dir__(self):
     attributes = ['type_signature']
-    if isinstance(self._comp.type_signature, computation_types.NamedTupleType):
+    if self._comp.type_signature.is_tuple():
       attributes.extend(dir(self._comp.type_signature))
     return attributes
 
@@ -135,7 +130,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
       raise AttributeError(
           'There is no such attribute \'{}\' in this tuple. Valid attributes: ({})'
           .format(name, ', '.join(dir(self._comp.type_signature))))
-    if isinstance(self._comp, building_blocks.Tuple):
+    if self._comp.is_tuple():
       return ValueImpl(getattr(self._comp, name), self._context_stack)
     return ValueImpl(
         building_blocks.Selection(self._comp, name=name), self._context_stack)
@@ -164,9 +159,9 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
 
   def __len__(self):
     type_signature = self._comp.type_signature
-    if isinstance(type_signature, computation_types.FederatedType):
+    if type_signature.is_federated():
       type_signature = type_signature.member
-    if not isinstance(type_signature, computation_types.NamedTupleType):
+    if not type_signature.is_tuple():
       raise TypeError(
           'Operator len() is only supported for (possibly federated) named '
           'tuples, but the object on which it has been invoked is of type {}.'
@@ -191,7 +186,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
       if key < 0 or key >= elem_length:
         raise IndexError(
             'The index of the selected element {} is out of range.'.format(key))
-      if isinstance(self._comp, building_blocks.Tuple):
+      if self._comp.is_tuple():
         return ValueImpl(self._comp[key], self._context_stack)
       else:
         return ValueImpl(
@@ -206,9 +201,9 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
 
   def __iter__(self):
     type_signature = self._comp.type_signature
-    if isinstance(type_signature, computation_types.FederatedType):
+    if type_signature.is_federated():
       type_signature = type_signature.member
-    if not isinstance(type_signature, computation_types.NamedTupleType):
+    if not type_signature.is_tuple():
       raise TypeError(
           'Operator iter() is only supported for (possibly federated) named '
           'tuples, but the object on which it has been invoked is of type {}.'
@@ -217,8 +212,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
       yield self[index]
 
   def __call__(self, *args, **kwargs):
-    if not isinstance(self._comp.type_signature,
-                      computation_types.FunctionType):
+    if not self._comp.type_signature.is_function():
       raise SyntaxError(
           'Function-like invocation is only supported for values of functional '
           'types, but the value being invoked is of type {} that does not '
@@ -392,8 +386,7 @@ def to_value(
     result = ValueImpl(
         building_blocks.CompiledComputation(
             computation_impl.ComputationImpl.get_proto(arg)), context_stack)
-  elif type_spec is not None and isinstance(type_spec,
-                                            computation_types.SequenceType):
+  elif type_spec is not None and type_spec.is_sequence():
     result = _wrap_sequence_as_value(arg, type_spec.element, context_stack)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     result = ValueImpl(

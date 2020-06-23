@@ -217,7 +217,7 @@ class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
 
   @tracing.trace
   async def compute(self):
-    if isinstance(self._type_signature, computation_types.FunctionType):
+    if self._type_signature.is_function():
       raise TypeError(
           'Materializing a computed value of a functional TFF type {} is not '
           'possible; only non-functional values can be materialized. Did you '
@@ -276,7 +276,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
           type_utils.reconcile_value_with_type_spec(value, type_spec))
     elif isinstance(value, pb.Computation):
       return await self._evaluate(value)
-    elif isinstance(type_spec, computation_types.NamedTupleType):
+    elif type_spec is not None and type_spec.is_tuple():
       v_el = anonymous_tuple.to_elements(anonymous_tuple.from_container(value))
       vals = await asyncio.gather(
           *[self.create_value(val, t) for (_, val), t in zip(v_el, type_spec)])

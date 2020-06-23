@@ -23,7 +23,6 @@ from absl import logging
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -220,7 +219,7 @@ def _replace_references_in_comp_with_selections_from_arg(
   """Uses `name_to_output_index` to rebind references in `comp`."""
 
   def _replace_values_with_selections(inner_comp):
-    if isinstance(inner_comp, building_blocks.Reference):
+    if inner_comp.is_reference():
       selected_index = name_to_output_index[inner_comp.name]
       return building_blocks.Selection(
           source=arg_ref, index=selected_index), True
@@ -292,8 +291,7 @@ def _get_unbound_ref(block):
   top_level_type_spec = None
 
   def _get_unbound_ref_type_spec(inner_comp):
-    if (isinstance(inner_comp, building_blocks.Reference) and
-        inner_comp.name == unbound_ref_name):
+    if (inner_comp.is_reference() and inner_comp.name == unbound_ref_name):
       nonlocal top_level_type_spec
       top_level_type_spec = inner_comp.type_signature
     return inner_comp, False
@@ -306,8 +304,7 @@ def _check_parameters_for_tf_block_generation(block):
   """Helper to validate parameters for parsing block locals into TF graphs."""
   py_typecheck.check_type(block, building_blocks.Block)
   for _, comp in block.locals:
-    if not (isinstance(comp, building_blocks.Call) and
-            isinstance(comp.function, building_blocks.CompiledComputation)):
+    if not (comp.is_call() and comp.function.is_compiled_computation()):
       raise ValueError(
           'create_tensorflow_representing_block may only be called '
           'on a block whose local variables are all bound to '
@@ -315,9 +312,8 @@ def _check_parameters_for_tf_block_generation(block):
           'bound to {}'.format(comp))
 
   def _check_contains_only_refs_sels_and_tuples(inner_comp):
-    if not isinstance(inner_comp,
-                      (building_blocks.Reference, building_blocks.Selection,
-                       building_blocks.Tuple)):
+    if not (inner_comp.is_reference() or inner_comp.is_selection() or
+            inner_comp.is_tuple()):
       raise ValueError(
           'create_tensorflow_representing_block may only be called '
           'on a block whose result contains only Selections, '
@@ -463,7 +459,7 @@ def remove_duplicate_called_graphs(comp):
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   tree_analysis.check_has_unique_names(comp)
   name_generator = building_block_factory.unique_name_generator(comp)
-  if isinstance(comp, building_blocks.Lambda):
+  if comp.is_lambda():
     comp_to_check = comp.result
   else:
     comp_to_check = comp
@@ -481,8 +477,7 @@ def remove_duplicate_called_graphs(comp):
 
   def _pack_called_graphs_into_block(inner_comp):
     """Packs deduplicated bindings to called graphs in `leaf_called_graphs`."""
-    if (isinstance(inner_comp, building_blocks.Call) and
-        isinstance(inner_comp.function, building_blocks.CompiledComputation)):
+    if inner_comp.is_call() and inner_comp.function.is_compiled_computation():
       for (name, x) in leaf_called_graphs:
         if tree_analysis.trees_equal(x, inner_comp):
           return building_blocks.Reference(name,
@@ -494,7 +489,7 @@ def remove_duplicate_called_graphs(comp):
 
     return inner_comp, False
 
-  if isinstance(comp, building_blocks.Lambda):
+  if comp.is_lambda():
     transformed_result, _ = transformation_utils.transform_postorder(
         comp.result, _pack_called_graphs_into_block)
     packed_into_block = building_blocks.Block(leaf_called_graphs,
@@ -541,8 +536,7 @@ class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
     self._interim_transform = interim_transform_spec
 
   def should_transform(self, comp):
-    return self._interim_transform.should_transform(comp) and isinstance(
-        comp, building_blocks.Tuple)
+    return self._interim_transform.should_transform(comp) and comp.is_tuple()
 
   def _construct_deduped_tuple_and_selection_map(self, comp):
     deduped_tuple = []
@@ -568,9 +562,7 @@ class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
         comp)
     transform_applied, _ = self._interim_transform.transform(
         building_blocks.Tuple(deduped_tuple))
-    if not isinstance(transform_applied.type_signature,
-                      computation_types.NamedTupleType):
-      raise TypeError
+    transform_applied.type_signature.check_tuple()
     if len(comp) == len(deduped_tuple):
       # Fall back if no optimization is made.
       return transform_applied, True
@@ -598,9 +590,8 @@ def dedupe_and_merge_tuple_intrinsics(comp, uri):
 
   def _remove_selection_from_block_holding_tuple(comp):
     """Reduces selection from a block holding a tuple."""
-    if (isinstance(comp, building_blocks.Selection) and
-        isinstance(comp.source, building_blocks.Block) and
-        isinstance(comp.source.result, building_blocks.Tuple)):
+    if (comp.is_selection() and comp.source.is_block() and
+        comp.source.result.is_tuple()):
       if comp.index is None:
         names = [
             x[0]

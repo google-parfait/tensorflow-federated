@@ -252,12 +252,13 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
   def ingest_value(
       self, value: Any, type_signature: computation_types.Type
   ) -> executor_value_base.ExecutorValue:
-    if isinstance(type_signature, computation_types.FederatedType):
-      self._check_strategy_compatible_with_placement(type_signature.placement)
-    elif (isinstance(type_signature, computation_types.FunctionType) and
-          isinstance(type_signature.result, computation_types.FederatedType)):
-      self._check_strategy_compatible_with_placement(
-          type_signature.result.placement)
+    if type_signature is not None:
+      if type_signature.is_federated():
+        self._check_strategy_compatible_with_placement(type_signature.placement)
+      elif type_signature.is_function() and type_signature.result.is_federated(
+      ):
+        self._check_strategy_compatible_with_placement(
+            type_signature.result.placement)
     return FederatedResovlingStrategyValue(value, type_signature)
 
   async def compute_federated_value(

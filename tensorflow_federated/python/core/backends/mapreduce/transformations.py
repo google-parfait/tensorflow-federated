@@ -90,9 +90,8 @@ def check_extraction_result(before_extraction, extracted):
   py_typecheck.check_type(before_extraction,
                           building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(extracted, building_blocks.ComputationBuildingBlock)
-  if isinstance(before_extraction.type_signature,
-                computation_types.FunctionType):
-    if not isinstance(extracted, building_blocks.CompiledComputation):
+  if before_extraction.type_signature.is_function():
+    if not extracted.is_compiled_computation():
       raise CanonicalFormCompilationError(
           'We expect to parse down to a `tff.framework.CompiledComputation`, '
           'since we have the functional type {} after unwrapping placement. '
@@ -100,14 +99,14 @@ def check_extraction_result(before_extraction, extracted):
               before_extraction.type_signature, extracted,
               extracted.type_signature))
   else:
-    if not isinstance(extracted, building_blocks.Call):
+    if not extracted.is_call():
       raise CanonicalFormCompilationError(
           'We expect to parse down to a `tff.framework.Call`, since we have '
           'the non-functional type {} after unwrapping placement. Instead we '
           'have the computation {} of type {}'.format(
               before_extraction.type_signature, extracted,
               extracted.type_signature))
-    if not isinstance(extracted.function, building_blocks.CompiledComputation):
+    if not extracted.function.is_compiled_computation():
       raise CanonicalFormCompilationError(
           'We expect to parse a computation of the non-functional type {} down '
           'to a called TensorFlow block. Instead we hav a call to the '
@@ -221,17 +220,17 @@ def consolidate_and_extract_local_processing(comp):
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   comp, _ = transformations.remove_lambdas_and_blocks(comp)
-  if isinstance(comp.type_signature, computation_types.FunctionType):
-    if isinstance(comp, building_blocks.CompiledComputation):
+  if comp.type_signature.is_function():
+    if comp.is_compiled_computation():
       return comp
-    elif not isinstance(comp, building_blocks.Lambda):
+    elif not comp.is_lambda():
       raise ValueError('Any `building_blocks.ComputationBuildingBlock` of '
                        'functional type passed to '
                        '`consolidate_and_extract_local_processing`  should be '
                        'either a `building_blocks.CompiledComputation` or a '
                        '`building_blocks.Lambda`; you have passed a {} of type '
                        '{}.'.format(type(comp), comp.type_signature))
-    if isinstance(comp.result.type_signature, computation_types.FederatedType):
+    if comp.result.type_signature.is_federated():
       comp, _ = tree_transformations.merge_chained_federated_maps_or_applys(
           comp)
       unwrapped, _ = tree_transformations.unwrap_placement(comp.result)
@@ -255,7 +254,7 @@ def consolidate_and_extract_local_processing(comp):
       extracted = parse_tff_to_tf(comp)
       check_extraction_result(comp, extracted)
       return extracted
-  elif isinstance(comp.type_signature, computation_types.FederatedType):
+  elif comp.type_signature.is_federated():
     comp, _ = tree_transformations.merge_chained_federated_maps_or_applys(comp)
     unwrapped, _ = tree_transformations.unwrap_placement(comp)
     # Unwrapped can be a call to `federated_value_at_P`, or
@@ -302,16 +301,15 @@ def parse_tff_to_tf(comp):
   preprocessed, _ = transformations.preprocess_for_tf_parse(comp)
   new_comp, _ = transformation_utils.transform_postorder(
       preprocessed, parser_callable)
-  if isinstance(new_comp, building_blocks.CompiledComputation) or isinstance(
-      new_comp, building_blocks.Call) and isinstance(
-          new_comp.function, building_blocks.CompiledComputation):
+  if (new_comp.is_compiled_computation() or
+      (new_comp.is_call() and new_comp.function.is_compiled_computation())):
     tf_parsed = new_comp
-  elif isinstance(new_comp, building_blocks.Lambda):
+  elif new_comp.is_lambda():
     leaves_decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
         new_comp)
     tf_parsed, _ = transformation_utils.transform_postorder(
         leaves_decorated, parser_callable)
-  elif isinstance(new_comp, building_blocks.Call):
+  elif new_comp.is_call():
     leaves_decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
         new_comp)
     tf_parsed, _ = transformation_utils.transform_postorder(
@@ -709,7 +707,7 @@ def _insert_comp_in_top_level_lambda(comp, name, comp_to_insert):
   tree_analysis.check_has_unique_names(comp)
 
   result = comp.result
-  if isinstance(result, building_blocks.Block):
+  if result.is_block():
     variables = result.locals
     result = result.result
   else:
@@ -851,7 +849,7 @@ def _split_by_intrinsics_in_top_level_lambda(comp):
   name, first_local = comp.result.locals[0]
   if building_block_analysis.is_called_intrinsic(first_local):
     result = first_local.argument
-  elif isinstance(first_local, building_blocks.Tuple):
+  elif first_local.is_tuple():
     elements = []
     for element in first_local:
       if not building_block_analysis.is_called_intrinsic(element):
@@ -990,15 +988,14 @@ def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):
 
   def _remove_selection_from_ref(inner_comp):
     """Pattern-matches selection from references."""
-    if isinstance(inner_comp, building_blocks.Selection) and isinstance(
-        inner_comp.source, building_blocks.Reference
-    ) and inner_comp.index == index and inner_comp.source.name == parameter_name:
+    if (inner_comp.is_selection() and inner_comp.source.is_reference() and
+        inner_comp.index == index and inner_comp.source.name == parameter_name):
       return new_ref, True
-    elif isinstance(inner_comp, building_blocks.Call) and isinstance(
-        inner_comp.function,
-        building_blocks.CompiledComputation) and isinstance(
-            inner_comp.argument, building_blocks.Reference) and (
-                inner_comp.argument.name == parameter_name):
+    elif (inner_comp.is_call() and
+          inner_comp.function.is_compiled_computation() and
+          inner_comp.argument is not None and
+          inner_comp.argument.is_reference() and
+          inner_comp.argument.name == parameter_name):
       raise ValueError('Encountered called graph on reference pattern in TFF '
                        'AST; this means relying on pattern-matching when '
                        'rebinding arguments may be insufficient. Ensure that '
@@ -1097,7 +1094,7 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
           'for the lambda parameter type {}, in the comp {}.'.format(
               selection_list, top_level_parameter_type, original_comp)) from e
 
-  if not all(isinstance(x, computation_types.FederatedType) for x in type_list):
+  if not all(x.is_federated() for x in type_list):
     raise TypeError(
         'All selected arguments should be of federated type; your selections '
         'have resulted in the list of types {}'.format(type_list))
@@ -1149,22 +1146,20 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
       selection = inner_comp  # Empty selection
       tuple_pattern_matched = True
       for selected_index in tup[::-1]:
-        if isinstance(
-            selection,
-            building_blocks.Selection) and selection.index == selected_index:
+        if selection.is_selection() and selection.index == selected_index:
           selection = selection.source
         else:
           tuple_pattern_matched = False
           break
       if tuple_pattern_matched:
-        if isinstance(selection, building_blocks.Reference
-                     ) and selection.name == top_level_parameter_name:
+        if (selection.is_reference() and
+            selection.name == top_level_parameter_name):
           return selections_from_zip[idx], True
-    if isinstance(inner_comp, building_blocks.Call) and isinstance(
-        inner_comp.function,
-        building_blocks.CompiledComputation) and isinstance(
-            inner_comp.argument, building_blocks.Reference) and (
-                inner_comp.argument.name == top_level_parameter_name):
+    if (inner_comp.is_call() and
+        inner_comp.function.is_compiled_computation() and
+        inner_comp.argument is not None and
+        inner_comp.argument.is_reference() and
+        inner_comp.argument.name == top_level_parameter_name):
       raise ValueError('Encountered called graph on reference pattern in TFF '
                        'AST; this means relying on pattern-matching when '
                        'rebinding arguments may be insufficient. Ensure that '
@@ -1218,14 +1213,14 @@ def select_output_from_lambda(comp, indices):
       return building_blocks.Selection(comp, index=index)
 
   result_tuple = comp.result
-  tuple_opt = isinstance(result_tuple, building_blocks.Tuple)
+  tuple_opt = result_tuple.is_tuple()
   elements = []
   if isinstance(indices, (tuple, list)):
     for x in indices:
       if isinstance(x, (tuple, list)):
         selected_output = result_tuple
         for y in x:
-          tuple_opt = isinstance(selected_output, building_blocks.Tuple)
+          tuple_opt = selected_output.is_tuple()
           selected_output = _create_selected_output(selected_output, y,
                                                     tuple_opt)
       else:
@@ -1279,8 +1274,7 @@ def concatenate_function_outputs(first_function, second_function):
                         second_function.type_signature))
 
   def _rename_first_function_arg(comp):
-    if isinstance(comp, building_blocks.Reference
-                 ) and comp.name == first_function.parameter_name:
+    if comp.is_reference() and comp.name == first_function.parameter_name:
       if comp.type_signature != second_function.parameter_type:
         raise AssertionError('{}, {}'.format(comp.type_signature,
                                              second_function.parameter_type))
@@ -1330,7 +1324,7 @@ def normalize_all_equal_bit(comp):
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
 
   def _normalize_reference_bit(comp):
-    if not isinstance(comp.type_signature, computation_types.FederatedType):
+    if not comp.type_signature.is_federated():
       return comp, False
     return building_blocks.Reference(
         comp.name,
@@ -1338,7 +1332,7 @@ def normalize_all_equal_bit(comp):
                                         comp.type_signature.placement)), True
 
   def _normalize_lambda_bit(comp):
-    if not isinstance(comp.parameter_type, computation_types.FederatedType):
+    if not comp.parameter_type.is_federated():
       return comp, False
     return building_blocks.Lambda(
         comp.parameter_name,
@@ -1364,11 +1358,11 @@ def normalize_all_equal_bit(comp):
     return new_intrinsic, True
 
   def _transform_switch(comp):
-    if isinstance(comp, building_blocks.Reference):
+    if comp.is_reference():
       return _normalize_reference_bit(comp)
-    elif isinstance(comp, building_blocks.Lambda):
+    elif comp.is_lambda():
       return _normalize_lambda_bit(comp)
-    elif isinstance(comp, building_blocks.Intrinsic):
+    elif comp.is_intrinsic():
       return _normalize_intrinsic_bit(comp)
     return comp, False
 

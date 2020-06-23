@@ -20,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
@@ -51,7 +50,7 @@ def get_type_information(value, type_spec):
     type_spec = value.type_signature
 
   # If the type_spec is a TensorType then we can calculate the size now.
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
 
     # If the type is a string, then the number of elements is the sum of all
     # the lengths of strings.
@@ -64,7 +63,7 @@ def get_type_information(value, type_spec):
     return [[num_elements, type_spec.dtype]]
 
   # If the type is a NamedTupleType we can continue traversing the type_spec.
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     type_info = []
     if isinstance(value, collections.OrderedDict):
       value = anonymous_tuple.from_container(value, recursive=False)

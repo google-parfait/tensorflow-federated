@@ -14,7 +14,7 @@
 """A library of transformation functions for ASTs."""
 
 import typing
-from typing import List, Tuple, Sequence, Set
+from typing import Dict, List, Tuple, Sequence, Set, Union
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -130,7 +130,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
 
   def _passes_test_or_block(self, comp):
     """Returns `True` if `comp` matches the `predicate` or is a block."""
-    return self._predicate(comp) or isinstance(comp, building_blocks.Block)
+    return self._predicate(comp) or comp.is_block()
 
   def should_transform(self, comp):
     """Returns `True` if `comp` should be transformed.
@@ -145,25 +145,25 @@ class ExtractComputation(transformation_utils.TransformSpec):
     Args:
       comp: The computation building block in which to test.
     """
-    if isinstance(comp, building_blocks.Block):
+    if comp.is_block():
       return (self._passes_test_or_block(comp.result) or
-              any(isinstance(e, building_blocks.Block) for _, e in comp.locals))
-    elif isinstance(comp, building_blocks.Call):
+              any(e.is_block() for _, e in comp.locals))
+    elif comp.is_call():
       return (self._passes_test_or_block(comp.function) or
               self._passes_test_or_block(comp.argument))
-    elif isinstance(comp, building_blocks.Lambda):
+    elif comp.is_lambda():
       if self._predicate(comp.result):
         return True
-      if isinstance(comp.result, building_blocks.Block):
+      if comp.result.is_block():
         for index, (_, variable) in enumerate(comp.result.locals):
           names = [n for n, _ in comp.result.locals[:index]]
           if (not self._contains_unbound_reference(variable,
                                                    comp.parameter_name) and
               not self._contains_unbound_reference(variable, names)):
             return True
-    elif isinstance(comp, building_blocks.Selection):
+    elif comp.is_selection():
       return self._passes_test_or_block(comp.source)
-    elif isinstance(comp, building_blocks.Tuple):
+    elif comp.is_tuple():
       return any(self._passes_test_or_block(e) for e in comp)
     return False
 
@@ -174,7 +174,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
       variables = comp.locals
       variables.append((name, comp.result))
       result = building_blocks.Reference(name, comp.result.type_signature)
-    elif isinstance(comp.result, building_blocks.Block):
+    elif comp.result.is_block():
       variables = comp.locals + comp.result.locals
       result = comp.result.result
     else:
@@ -184,7 +184,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
     def _remove_blocks_from_variables(variables):
       new_variables = []
       for name, variable in variables:
-        if isinstance(variable, building_blocks.Block):
+        if variable.is_block():
           new_variables.extend(variable.locals)
           new_variables.append((name, variable.result))
         else:
@@ -201,7 +201,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
       name = next(self._name_generator)
       variables.append((name, comp.function))
       function = building_blocks.Reference(name, comp.function.type_signature)
-    elif isinstance(comp.function, building_blocks.Block):
+    elif comp.function.is_block():
       block = comp.function
       variables.extend(block.locals)
       function = block.result
@@ -212,7 +212,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
         name = next(self._name_generator)
         variables.append((name, comp.argument))
         argument = building_blocks.Reference(name, comp.argument.type_signature)
-      elif isinstance(comp.argument, building_blocks.Block):
+      elif comp.argument.is_block():
         block = comp.argument
         variables.extend(block.locals)
         argument = block.result
@@ -299,15 +299,15 @@ class ExtractComputation(transformation_utils.TransformSpec):
     """Returns a new transformed computation or `comp`."""
     if not self.should_transform(comp):
       return comp, False
-    if isinstance(comp, building_blocks.Block):
+    if comp.is_block():
       comp = self._extract_from_block(comp)
-    elif isinstance(comp, building_blocks.Call):
+    elif comp.is_call():
       comp = self._extract_from_call(comp)
-    elif isinstance(comp, building_blocks.Lambda):
+    elif comp.is_lambda():
       comp = self._extract_from_lambda(comp)
-    elif isinstance(comp, building_blocks.Selection):
+    elif comp.is_selection():
       comp = self._extract_from_selection(comp)
-    elif isinstance(comp, building_blocks.Tuple):
+    elif comp.is_tuple():
       comp = self._extract_from_tuple(comp)
     return comp, True
 
@@ -328,7 +328,7 @@ def extract_computations(comp):
   """
 
   def _predicate(comp):
-    return not isinstance(comp, building_blocks.Reference)
+    return not comp.is_reference()
 
   return _apply_transforms(comp, ExtractComputation(comp, _predicate))
 
@@ -391,15 +391,14 @@ class InlineBlock(transformation_utils.TransformSpec):
     return self._variable_names is None or name in self._variable_names
 
   def should_transform(self, comp):
-    return ((isinstance(comp, building_blocks.Reference) and
-             self._should_inline_variable(comp.name)) or
-            (isinstance(comp, building_blocks.Block) and any(
+    return ((comp.is_reference() and self._should_inline_variable(comp.name)) or
+            (comp.is_block() and any(
                 self._should_inline_variable(name) for name, _ in comp.locals)))
 
   def transform(self, comp, symbol_tree):
     if not self.should_transform(comp):
       return comp, False
-    if isinstance(comp, building_blocks.Reference):
+    if comp.is_reference():
       payload = symbol_tree.get_payload_with_name(comp.name)
       if payload is None:
         value = None
@@ -409,7 +408,7 @@ class InlineBlock(transformation_utils.TransformSpec):
       if value is not None:
         return value, True
       return comp, False
-    elif isinstance(comp, building_blocks.Block):
+    elif comp.is_block():
       variables = [(name, value)
                    for name, value in comp.locals
                    if not self._should_inline_variable(name)]
@@ -448,20 +447,18 @@ class InlineSelectionsFromTuples(transformation_utils.TransformSpec):
     super().__init__(global_transform=True)
 
   def should_transform(self, comp, symbol_tree):
-    if isinstance(comp, building_blocks.Selection) and isinstance(
-        comp.source, building_blocks.Tuple):
+    if comp.is_selection() and comp.source.is_tuple():
       return True
-    elif (isinstance(comp, building_blocks.Selection) and
-          isinstance(comp.source, building_blocks.Reference)):
+    elif comp.is_selection() and comp.source.is_reference():
       resolved = symbol_tree.get_payload_with_name(comp.source.name)
-      return resolved is not None and isinstance(resolved.value,
-                                                 building_blocks.Tuple)
+      return (resolved is not None and resolved.value is not None and
+              resolved.value.is_tuple())
     return False
 
   def transform(self, comp, symbol_tree):
     if not self.should_transform(comp, symbol_tree):
       return comp, False
-    if isinstance(comp.source, building_blocks.Tuple):
+    if comp.source.is_tuple():
       tup = comp.source
     else:
       tup = symbol_tree.get_payload_with_name(comp.source.name).value
@@ -506,8 +503,7 @@ class MergeChainedBlocks(transformation_utils.TransformSpec):
 
   def should_transform(self, comp):
     """Returns `True` if `comp` is a block and its result is a block."""
-    return (isinstance(comp, building_blocks.Block) and
-            isinstance(comp.result, building_blocks.Block))
+    return comp.is_block() and comp.result.is_block()
 
   def transform(self, comp):
     """Returns a new transformed computation or `comp`."""
@@ -754,7 +750,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     self._uri = uri
 
   def should_transform(self, comp):
-    return (isinstance(comp, building_blocks.Tuple) and comp and
+    return (comp.is_tuple() and comp and
             building_block_analysis.is_called_intrinsic(comp[0], self._uri) and
             all(
                 building_block_analysis.is_called_intrinsic(
@@ -777,11 +773,11 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     Returns:
       A `building_blocks.Block`.
     """
-    if isinstance(type_signature, computation_types.FederatedType):
+    if type_signature.is_federated():
       return self._transform_args_with_federated_types(comps, type_signature)
-    elif isinstance(type_signature, computation_types.FunctionType):
+    elif type_signature.is_function():
       return self._transform_args_with_functional_types(comps, type_signature)
-    elif isinstance(type_signature, computation_types.AbstractType):
+    elif type_signature.is_abstract():
       return self._transform_args_with_abstract_types(comps, type_signature)
     else:
       raise TypeError(
@@ -851,7 +847,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     functions = building_blocks.Tuple(comps)
     fn_name = next(self._name_generator)
     fn_ref = building_blocks.Reference(fn_name, functions.type_signature)
-    if isinstance(type_signature.parameter, computation_types.NamedTupleType):
+    if type_signature.parameter.is_tuple():
       arg_type = [[] for _ in range(len(type_signature.parameter))]
       for functional_comp in comps:
         named_type_signatures = anonymous_tuple.to_elements(
@@ -862,7 +858,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       arg_type = [e.type_signature.parameter for e in comps]
     arg_name = next(self._name_generator)
     arg_ref = building_blocks.Reference(arg_name, arg_type)
-    if isinstance(type_signature.parameter, computation_types.NamedTupleType):
+    if type_signature.parameter.is_tuple():
       arg = building_block_factory.create_zip(arg_ref)
     else:
       arg = arg_ref
@@ -892,7 +888,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       A `building_blocks.ComputationBuildingBlock` representing the
       transformed arguments from `comp`.
     """
-    if isinstance(type_signature, computation_types.NamedTupleType):
+    if type_signature.is_tuple():
       comps = [[] for _ in range(len(type_signature))]
       for _, call in anonymous_tuple.iter_elements(comp):
         for index, arg in enumerate(call.argument):
@@ -910,13 +906,13 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
 
   def _create_merged_parameter_for_type(self, packed_parameter_types,
                                         type_signature):
-    if isinstance(type_signature, computation_types.FederatedType):
+    if type_signature.is_federated():
       return self._create_merged_parameter_for_federated_type(
           packed_parameter_types, type_signature)
-    elif isinstance(type_signature, computation_types.FunctionType):
+    elif type_signature.is_function():
       return self._create_merged_parameter_for_functional_type(
           packed_parameter_types, type_signature)
-    elif isinstance(type_signature, computation_types.AbstractType):
+    elif type_signature.is_abstract():
       return self._create_merged_parameter_for_abstract_type(
           packed_parameter_types, type_signature)
     else:
@@ -941,7 +937,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
 
   def _create_merged_parameter_for_functional_type(self, param_types,
                                                    type_signature):
-    if isinstance(type_signature.parameter, computation_types.NamedTupleType):
+    if type_signature.parameter.is_tuple():
       parameter_types = [[] for _ in range(len(type_signature.parameter))]
       for functional_type in param_types:
         named_type_signatures = anonymous_tuple.to_elements(
@@ -980,7 +976,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       An instance of `computation_types.Type` representing the concrete
       parameter type of the merged intrinsic.
     """
-    if isinstance(type_signature, computation_types.NamedTupleType):
+    if type_signature.is_tuple():
       packed_param_types = [[] for _ in range(len(type_signature))]
       for _, call in anonymous_tuple.iter_elements(comp):
         for index, parameter_type in enumerate(
@@ -1049,34 +1045,32 @@ def remove_duplicate_block_locals(comp):
 
   def _should_transform(comp):
     """Returns `True` if `comp` should be transformed."""
-    return (isinstance(comp, building_blocks.Block) or
-            isinstance(comp, building_blocks.Reference))
+    return comp.is_block() or comp.is_reference()
 
   def _transform(comp, symbol_tree):
     """Returns a new transformed computation or `comp`."""
     if not _should_transform(comp):
       return comp, False
-    if isinstance(comp, building_blocks.Block):
+    if comp.is_block():
       variables = []
       for name, value in comp.locals:
         symbol_tree.walk_down_one_variable_binding()
         payload = symbol_tree.get_payload_with_name(name)
-        if (not payload.removed and
-            not isinstance(value, building_blocks.Reference)):
+        if (not payload.removed) and (not value.is_reference()):
           variables.append((name, value))
       if not variables:
         comp = comp.result
       else:
         comp = building_blocks.Block(variables, comp.result)
       return comp, True
-    elif isinstance(comp, building_blocks.Reference):
+    elif comp.is_reference():
       payload = symbol_tree.get_payload_with_name(comp.name)
       if payload is None:
         raise ValueError('Encountered unbound reference: {}'.format(comp.name))
       value = payload.value
       if value is None:
         return comp, False
-      while isinstance(value, building_blocks.Reference):
+      while value.is_reference():
         new_value = symbol_tree.get_payload_with_name(value.name).value
         if new_value is None:
           comp = building_blocks.Reference(value.name, value.type_signature)
@@ -1137,8 +1131,7 @@ def remove_mapped_or_applied_identity(comp):
 
   def _should_transform(comp):
     """Returns `True` if `comp` is a mapped or applied identity function."""
-    if (isinstance(comp, building_blocks.Call) and
-        isinstance(comp.function, building_blocks.Intrinsic) and
+    if (comp.is_call() and comp.function.is_intrinsic() and
         comp.function.uri in (
             intrinsic_defs.FEDERATED_MAP.uri,
             intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
@@ -1162,7 +1155,7 @@ class RemoveUnusedBlockLocals(transformation_utils.TransformSpec):
   """Removes block local variables which are not used in the result."""
 
   def should_transform(self, comp):
-    return isinstance(comp, building_blocks.Block)
+    return comp.is_block()
 
   def transform(self, comp):
     if not self.should_transform(comp):
@@ -1215,30 +1208,29 @@ class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
     super().__init__(global_transform=True)
 
   def should_transform(self, comp, referred):
-    return (isinstance(comp, building_blocks.Call) and
-            (isinstance(comp.function, building_blocks.Lambda) or
-             isinstance(referred, building_blocks.Lambda))) or isinstance(
-                 comp, building_blocks.Block)
+    if comp.is_call():
+      return (comp.function.is_lambda() or
+              (referred is not None and referred.is_lambda()))
+    return comp.is_block()
 
   def _resolve_reference_to_concrete_value(self, ref, symbol_tree):
-    while isinstance(ref, building_blocks.Reference):
+    while ref.is_reference():
       referred_payload = symbol_tree.get_payload_with_name(ref.name)
       ref = referred_payload.value
     return ref
 
   def transform(self, comp, symbol_tree):
-    referred = None
-    if isinstance(comp, building_blocks.Call) and isinstance(
-        comp.function, building_blocks.Reference):
+    referred: typing.Optional[building_blocks.ComputationBuildingBlock] = None
+    if comp.is_call() and comp.function.is_reference():
       node = symbol_tree.get_payload_with_name(comp.function.name)
       if node is not None:
         referred = node.value
-        if isinstance(referred, building_blocks.Reference):
+        if referred is not None and referred.is_reference():
           referred = self._resolve_reference_to_concrete_value(
               referred, symbol_tree)
     if not self.should_transform(comp, referred):
       return comp, False
-    if isinstance(comp, building_blocks.Block):
+    if comp.is_block():
       new_locals = []
       for name, value in comp.locals:
         symbol_tree.walk_down_one_variable_binding()
@@ -1249,7 +1241,7 @@ class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
       elif len(new_locals) == len(comp.locals):
         return comp, False
       return building_blocks.Block(new_locals, comp.result), True
-    elif isinstance(referred, building_blocks.Lambda):
+    elif referred is not None and referred.is_lambda():
       referred = typing.cast(building_blocks.Lambda, referred)
       transformed_comp = building_blocks.Block(
           [(referred.parameter_name, comp.argument)], referred.result)
@@ -1293,8 +1285,7 @@ class ReplaceSelectionFromTuple(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (isinstance(comp, building_blocks.Selection) and
-            isinstance(comp.source, building_blocks.Tuple))
+    return comp.is_selection() and comp.source.is_tuple()
 
   def _get_index_from_name(self, selection_name, tuple_type_signature):
     named_type_signatures = anonymous_tuple.to_elements(tuple_type_signature)
@@ -1334,7 +1325,7 @@ def uniquify_compiled_computation_names(comp):
   name_generator = building_block_factory.unique_name_generator(None, prefix='')
 
   def _should_transform(comp):
-    return isinstance(comp, building_blocks.CompiledComputation)
+    return comp.is_compiled_computation()
 
   def _transform(comp):
     if not _should_transform(comp):
@@ -1376,21 +1367,21 @@ def uniquify_reference_names(comp):
 
   def _transform(comp, context_tree):
     """Renames References in `comp` to unique names."""
-    if isinstance(comp, building_blocks.Reference):
+    if comp.is_reference():
       payload = context_tree.get_payload_with_name(comp.name)
       if payload is None:
         return comp, False
       new_name = payload.new_name
       return building_blocks.Reference(new_name, comp.type_signature,
                                        comp.context), True
-    elif isinstance(comp, building_blocks.Block):
+    elif comp.is_block():
       new_locals = []
       for name, val in comp.locals:
         context_tree.walk_down_one_variable_binding()
         new_name = context_tree.get_payload_with_name(name).new_name
         new_locals.append((new_name, val))
       return building_blocks.Block(new_locals, comp.result), True
-    elif isinstance(comp, building_blocks.Lambda):
+    elif comp.is_lambda():
       if comp.parameter_type is None:
         return comp, False
       context_tree.walk_down_one_variable_binding()
@@ -1510,11 +1501,11 @@ def insert_called_tf_identity_at_leaves(comp):
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
 
-  if isinstance(comp, building_blocks.CompiledComputation):
+  if comp.is_compiled_computation():
     return comp, False
 
   def _should_decorate(comp):
-    return (isinstance(comp, building_blocks.Reference) and
+    return (comp is not None and comp.is_reference() and
             type_analysis.is_tensorflow_compatible_type(comp.type_signature))
 
   def _decorate(comp):
@@ -1524,8 +1515,7 @@ def insert_called_tf_identity_at_leaves(comp):
 
   def _decorate_if_reference_without_graph(comp):
     """Decorates references under `comp` if necessary."""
-    if (isinstance(comp, building_blocks.Tuple) and
-        any(_should_decorate(x) for x in comp)):
+    if (comp.is_tuple() and any(_should_decorate(x) for x in comp)):
       elems = []
       for x in anonymous_tuple.iter_elements(comp):
         if _should_decorate(x[1]):
@@ -1533,22 +1523,18 @@ def insert_called_tf_identity_at_leaves(comp):
         else:
           elems.append((x[0], x[1]))
       return building_blocks.Tuple(elems), True
-    elif (isinstance(comp, building_blocks.Call) and
-          not isinstance(comp.function, building_blocks.CompiledComputation) and
+    elif (comp.is_call() and not comp.function.is_compiled_computation() and
           _should_decorate(comp.argument)):
       arg = _decorate(comp.argument)
       return building_blocks.Call(comp.function, arg), True
-    elif (isinstance(comp, building_blocks.Selection) and
-          _should_decorate(comp.source)):
+    elif comp.is_selection() and _should_decorate(comp.source):
       return building_blocks.Selection(
           _decorate(comp.source), name=comp.name, index=comp.index), True
-    elif (isinstance(comp, building_blocks.Lambda) and
-          _should_decorate(comp.result)):
+    elif comp.is_lambda() and _should_decorate(comp.result):
       return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
                                     _decorate(comp.result)), True
-    elif isinstance(comp, building_blocks.Block) and (
-        any(_should_decorate(x[1]) for x in comp.locals) or
-        _should_decorate(comp.result)):
+    elif comp.is_block() and (any(_should_decorate(x[1]) for x in comp.locals)
+                              or _should_decorate(comp.result)):
       new_locals = []
       for x in comp.locals:
         if _should_decorate(x[1]):
@@ -1670,8 +1656,7 @@ def unwrap_placement(comp):
     symbol_tree.update_payload_with_name(unbound_variable_name)
 
     def _should_transform(comp, symbol_tree):
-      return (isinstance(comp, building_blocks.Reference) and
-              comp.name == unbound_variable_name and
+      return (comp.is_reference() and comp.name == unbound_variable_name and
               symbol_tree.get_payload_with_name(comp.name).unbound)
 
     def _rename_unbound_variable(comp, symbol_tree):
@@ -1717,7 +1702,7 @@ def unwrap_placement(comp):
     """
 
     def _remove_placement_from_type(type_spec):
-      if isinstance(type_spec, computation_types.FederatedType):
+      if type_spec.is_federated():
         return type_spec.member, True
       else:
         return type_spec, False
@@ -1799,43 +1784,38 @@ def unwrap_placement(comp):
     def _simplify_calls(comp):
       """Unwraps structures introduced by removing intrinsics."""
       zip_or_value_removed = (
-          isinstance(comp.function.result, building_blocks.Reference) and
+          comp.function.result.is_reference() and
           comp.function.result.name == comp.function.parameter_name)
       if zip_or_value_removed:
         return comp.argument
       else:
         map_removed = (
-            isinstance(comp.function.result, building_blocks.Call) and
-            isinstance(comp.function.result.function, building_blocks.Selection)
-            and comp.function.result.function.index == 0 and isinstance(
-                comp.function.result.argument, building_blocks.Selection) and
+            comp.function.result.is_call() and
+            comp.function.result.function.is_selection() and
+            comp.function.result.function.index == 0 and
+            comp.function.result.argument.is_selection() and
             comp.function.result.argument.index == 1 and
-            isinstance(comp.function.result.function.source,
-                       building_blocks.Reference) and
+            comp.function.result.function.source.is_reference() and
             comp.function.result.function.source.name ==
             comp.function.parameter_name and
-            isinstance(comp.function.result.function.source,
-                       building_blocks.Reference) and
+            comp.function.result.function.source.is_reference() and
             comp.function.result.function.source.name ==
-            comp.function.parameter_name and
-            isinstance(comp.argument, building_blocks.Tuple))
+            comp.function.parameter_name and comp.argument.is_tuple())
         if map_removed:
           return building_blocks.Call(comp.argument[0], comp.argument[1])
       return comp
 
     def _transform(comp):
       """Dispatches to helpers above."""
-      if isinstance(comp, building_blocks.Reference):
+      if comp.is_reference():
         return _remove_reference_placement(comp), True
-      elif isinstance(comp, building_blocks.Intrinsic):
+      elif comp.is_intrinsic():
         return _replace_intrinsics_with_functions(comp), True
-      elif isinstance(comp, building_blocks.Lambda):
+      elif comp.is_lambda():
         return _remove_lambda_placement(comp), True
-      elif isinstance(comp, building_blocks.Call) and isinstance(
-          comp.function, building_blocks.Lambda):
+      elif comp.is_call() and comp.function.is_lambda():
         return _simplify_calls(comp), True
-      elif (isinstance(comp, building_blocks.Data) and
-            isinstance(comp.type_signature, computation_types.FederatedType)):
+      elif comp.is_data() and comp.type_signature.is_federated():
         # TODO(b/135126947): Design and implement Data constructs.
         raise NotImplementedError
       return comp, False
@@ -1851,7 +1831,7 @@ def unwrap_placement(comp):
      unbound_reference_info) = _rename_unbound_variable(comp,
                                                         unbound_reference_name)
     (new_reference_name, unbound_reference_type) = unbound_reference_info
-    if not isinstance(unbound_reference_type, computation_types.FederatedType):
+    if not unbound_reference_type.is_federated():
       raise TypeError(
           'The lone unbound reference is not of federated type; this is '
           'disallowed. The unbound type is {}'.format(unbound_reference_type))
@@ -2011,10 +1991,15 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
 
   def should_transform(self,
                        comp: building_blocks.ComputationBuildingBlock) -> bool:
-    return isinstance(comp, building_blocks.Block) and comp.locals
+    return comp.is_block() and comp.locals
 
-  def _update_old_symbols_to_new_comp(self, new_symbol, new_comp,
-                                      symbols_to_comp_map):
+  def _update_old_symbols_to_new_comp(
+      self,
+      new_symbol: str,
+      new_comp: Union[building_blocks.Tuple,
+                      Tuple[str, building_blocks.ComputationBuildingBlock]],
+      symbols_to_comp_map: Dict[str, building_blocks.ComputationBuildingBlock],
+  ):
     """Creates mapping from old symbol names to replacement computations."""
     if isinstance(new_comp, building_blocks.Tuple):
       tup_type_spec_names_stripped = computation_types.NamedTupleType([
@@ -2077,14 +2062,15 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
                                            old_symbols_to_new_comp)
 
     def _transform(comp):
-      if (isinstance(comp, building_blocks.Reference) and
-          old_symbols_to_new_comp.get(comp.name)):
+      if (comp.is_reference() and old_symbols_to_new_comp.get(comp.name)):
         # It is safe to simply grab from this map here by the checks in
         # initialization.
         return old_symbols_to_new_comp[comp.name], True
       return comp, False
 
-    def _strip_old_names_from_new_symbols(new_symbol_bindings):
+    def _strip_old_names_from_new_symbols(new_symbol_bindings: List[Tuple[
+        str, Union[building_blocks.Tuple,
+                   Tuple[str, building_blocks.ComputationBuildingBlock]]]]):
       """Remove names from the bound tuples, which refer to the old symbols."""
       names_stripped = []
       for name, tup in new_symbol_bindings:

@@ -148,7 +148,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   # the representations of values in the reference executor are only a subset of
   # the Python types recognized by that helper function.
 
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     if tf.executing_eagerly() and isinstance(value, (tf.Tensor, tf.Variable)):
       value = value.numpy()
     py_typecheck.check_type(value, tensorflow_utils.TENSOR_REPRESENTATION_TYPES)
@@ -158,7 +158,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
           'The tensor type {} of the value representation does not match '
           'the type spec {}.'.format(inferred_type_spec, type_spec))
     return value
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     type_spec_elements = anonymous_tuple.to_elements(type_spec)
     # Special-casing unodered dictionaries to allow their elements to be fed in
     # the order in which they're defined in the named tuple type.
@@ -186,7 +186,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
                                                         callable_handler)
       result_elements.append((type_elem_name, converted_value_elem))
     return anonymous_tuple.AnonymousTuple(result_elements)
-  elif isinstance(type_spec, computation_types.SequenceType):
+  elif type_spec.is_sequence():
     if isinstance(value, tf.data.Dataset):
       inferred_type_spec = computation_types.SequenceType(
           computation_types.to_type(value.element_spec))
@@ -207,7 +207,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
         to_representation_for_type(v, type_spec.element, callable_handler)
         for v in value
     ]
-  elif isinstance(type_spec, computation_types.FunctionType):
+  elif type_spec.is_function():
     if callable_handler is not None:
       return callable_handler(value, type_spec)
     else:
@@ -216,13 +216,13 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
           'in this context. If you would like to supply here a function '
           'as a parameter, please construct a computation that contains '
           'this call.')
-  elif isinstance(type_spec, computation_types.AbstractType):
+  elif type_spec.is_abstract():
     raise TypeError(
         'Abstract types are not supported by the reference executor.')
-  elif isinstance(type_spec, computation_types.PlacementType):
+  elif type_spec.is_placement():
     py_typecheck.check_type(value, placement_literals.PlacementLiteral)
     return value
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif type_spec.is_federated():
     if type_spec.all_equal:
       return to_representation_for_type(value, type_spec.member,
                                         callable_handler)
@@ -269,7 +269,7 @@ def stamp_computed_value_into_graph(
         to_representation_for_type(value.value, value.type_signature),
         value.type_signature)
     py_typecheck.check_type(graph, tf.Graph)
-    if isinstance(value.type_signature, computation_types.TensorType):
+    if value.type_signature.is_tensor():
       if isinstance(value.value, np.ndarray):
         value_type = computation_types.TensorType(
             tf.dtypes.as_dtype(value.value.dtype),
@@ -283,7 +283,7 @@ def stamp_computed_value_into_graph(
               value.value,
               dtype=value.type_signature.dtype,
               shape=value.type_signature.shape)
-    elif isinstance(value.type_signature, computation_types.NamedTupleType):
+    elif value.type_signature.is_tuple():
       elements = anonymous_tuple.to_elements(value.value)
       type_elements = anonymous_tuple.to_elements(value.type_signature)
       stamped_elements = []
@@ -292,7 +292,7 @@ def stamp_computed_value_into_graph(
         stamped_v = stamp_computed_value_into_graph(computed_v, graph)
         stamped_elements.append((k, stamped_v))
       return anonymous_tuple.AnonymousTuple(stamped_elements)
-    elif isinstance(value.type_signature, computation_types.SequenceType):
+    elif value.type_signature.is_sequence():
       return tensorflow_utils.make_data_set_from_elements(
           graph, value.value, value.type_signature.element)
     else:
@@ -392,12 +392,12 @@ def multiply_by_scalar(value, multiplier):
   """
   py_typecheck.check_type(value, ComputedValue)
   py_typecheck.check_type(multiplier, (float, np.float32))
-  if isinstance(value.type_signature, computation_types.TensorType):
+  if value.type_signature.is_tensor():
     result_val = numpy_cast(value.value * multiplier,
                             value.type_signature.dtype,
                             value.type_signature.shape)
     return ComputedValue(result_val, value.type_signature)
-  elif isinstance(value.type_signature, computation_types.NamedTupleType):
+  elif value.type_signature.is_tuple():
     elements = anonymous_tuple.to_elements(value.value)
     type_elements = anonymous_tuple.to_elements(value.type_signature)
     result_elements = []
@@ -517,7 +517,7 @@ def fit_argument(arg: ComputedValue, type_spec,
   type_spec.check_assignable_from(arg.type_signature)
   if arg.type_signature == type_spec:
     return arg
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     py_typecheck.check_type(arg.value, anonymous_tuple.AnonymousTuple)
     result_elements = []
     for idx, (elem_name,
@@ -528,7 +528,7 @@ def fit_argument(arg: ComputedValue, type_spec,
       result_elements.append((elem_name, elem_val.value))
     return ComputedValue(
         anonymous_tuple.AnonymousTuple(result_elements), type_spec)
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif type_spec.is_federated():
     type_analysis.check_federated_type(
         arg.type_signature, placement=type_spec.placement)
     if arg.type_signature.all_equal:
@@ -674,7 +674,7 @@ class ReferenceExecutor(context_base.Context):
       """Converts value to a Python container if type_spec has an annotation."""
       if type_analysis.is_anon_tuple_with_py_container(value, type_spec):
         return type_conversions.type_to_py_container(value, type_spec)
-      elif isinstance(type_spec, computation_types.SequenceType):
+      elif type_spec.is_sequence():
         if all(
             type_analysis.is_anon_tuple_with_py_container(
                 element, type_spec.element) for element in value):
@@ -684,8 +684,7 @@ class ReferenceExecutor(context_base.Context):
           ]
       return value
 
-    if not isinstance(computed_comp.type_signature,
-                      computation_types.FunctionType):
+    if not computed_comp.type_signature.is_function():
       if computed_arg is not None:
         raise TypeError('Unexpected argument {}.'.format(arg))
       else:
@@ -735,25 +734,25 @@ class ReferenceExecutor(context_base.Context):
       NotImplementedError: For computation building blocks that are not yet
         supported by this executor.
     """
-    if isinstance(comp, building_blocks.CompiledComputation):
+    if comp.is_compiled_computation():
       return self._compute_compiled(comp, context)
-    elif isinstance(comp, building_blocks.Call):
+    elif comp.is_call():
       return self._compute_call(comp, context)
-    elif isinstance(comp, building_blocks.Tuple):
+    elif comp.is_tuple():
       return self._compute_tuple(comp, context)
-    elif isinstance(comp, building_blocks.Reference):
+    elif comp.is_reference():
       return self._compute_reference(comp, context)
-    elif isinstance(comp, building_blocks.Selection):
+    elif comp.is_selection():
       return self._compute_selection(comp, context)
-    elif isinstance(comp, building_blocks.Lambda):
+    elif comp.is_lambda():
       return self._compute_lambda(comp, context)
-    elif isinstance(comp, building_blocks.Block):
+    elif comp.is_block():
       return self._compute_block(comp, context)
-    elif isinstance(comp, building_blocks.Intrinsic):
+    elif comp.is_intrinsic():
       return self._compute_intrinsic(comp, context)
-    elif isinstance(comp, building_blocks.Data):
+    elif comp.is_data():
       return self._compute_data(comp, context)
-    elif isinstance(comp, building_blocks.Placement):
+    elif comp.is_placement():
       return self._compute_placement(comp, context)
     else:
       raise NotImplementedError(
@@ -865,7 +864,7 @@ class ReferenceExecutor(context_base.Context):
       # argument as a `ComputedValue` instance. Otherwise, if the intrinsic
       # is not a function, but a constant (such as `GENERIC_ZERO`), the
       # method accepts the type of the result.
-      if isinstance(comp.type_signature, computation_types.FunctionType):
+      if comp.type_signature.is_function():
         arg_type = comp.type_signature.parameter
         return ComputedValue(
             lambda x: my_method(fit_argument(x, arg_type, context), context),
@@ -1018,7 +1017,7 @@ class ReferenceExecutor(context_base.Context):
             arg.type_signature, placement_literals.SERVER, all_equal=True))
 
   def _generic_zero(self, type_spec):
-    if isinstance(type_spec, computation_types.TensorType):
+    if type_spec.is_tensor():
       # TODO(b/113116813): Replace this with something more efficient, probably
       # calling some helper method from Numpy.
       with tf.Graph().as_default() as graph:
@@ -1026,20 +1025,18 @@ class ReferenceExecutor(context_base.Context):
         with tf.compat.v1.Session(graph=graph) as sess:
           zeros_val = sess.run(zeros)
       return ComputedValue(zeros_val, type_spec)
-    elif isinstance(type_spec, computation_types.NamedTupleType):
+    elif type_spec.is_tuple():
       type_elements_iter = anonymous_tuple.iter_elements(type_spec)
       return ComputedValue(
           anonymous_tuple.AnonymousTuple(
               (k, self._generic_zero(v).value) for k, v in type_elements_iter),
           type_spec)
-    elif isinstance(
-        type_spec,
-        (computation_types.SequenceType, computation_types.FunctionType,
-         computation_types.AbstractType, computation_types.PlacementType)):
+    elif (type_spec.is_sequence() or type_spec.is_function() or
+          type_spec.is_abstract() or type_spec.is_placement()):
       raise TypeError(
           'The generic_zero is not well-defined for TFF type {}.'.format(
               type_spec))
-    elif isinstance(type_spec, computation_types.FederatedType):
+    elif type_spec.is_federated():
       if type_spec.all_equal:  # pytype: disable=attribute-error
         return ComputedValue(
             self._generic_zero(type_spec.member).value, type_spec)  # pytype: disable=attribute-error
@@ -1065,11 +1062,11 @@ class ReferenceExecutor(context_base.Context):
       raise TypeError('Generic plus is undefined for two-tuples of different '
                       'types ({} vs. {}).'.format(element_type,
                                                   arg.type_signature[1]))
-    if isinstance(element_type, computation_types.TensorType):
+    if element_type.is_tensor():
       val = numpy_cast(arg.value[0] + arg.value[1], element_type.dtype,
                        element_type.shape)
       return ComputedValue(val, element_type)
-    elif isinstance(element_type, computation_types.NamedTupleType):
+    elif element_type.is_tuple():
       py_typecheck.check_type(arg.value[0], anonymous_tuple.AnonymousTuple)
       py_typecheck.check_type(arg.value[1], anonymous_tuple.AnonymousTuple)
       result_val_elements = []

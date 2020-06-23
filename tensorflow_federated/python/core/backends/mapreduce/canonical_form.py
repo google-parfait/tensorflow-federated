@@ -306,8 +306,7 @@ class CanonicalForm(object):
               prepare.type_signature.parameter,
               initialize.type_signature.result))
 
-    if (not isinstance(work.type_signature.parameter,
-                       computation_types.NamedTupleType) or
+    if (not work.type_signature.parameter.is_tuple() or
         len(work.type_signature.parameter) != 2):
       raise TypeError(
           'The `work` computation expects an argument of type {} that is not '
@@ -320,8 +319,7 @@ class CanonicalForm(object):
           'which does not match the result type {} of `prepare`.'.format(
               work.type_signature.parameter[1], prepare.type_signature.result))
 
-    if (not isinstance(work.type_signature.result,
-                       computation_types.NamedTupleType) or
+    if (not work.type_signature.result.is_tuple() or
         len(work.type_signature.result) != 2):
       raise TypeError(
           'The `work` computation returns a result  of type {} that is not a '
@@ -374,8 +372,7 @@ class CanonicalForm(object):
           'signatures of `initialize`, `report`, and `work`.'.format(
               update.type_signature.parameter, expected_update_parameter_type))
 
-    if (not isinstance(update.type_signature.result,
-                       computation_types.NamedTupleType) or
+    if (not update.type_signature.result.is_tuple() or
         len(update.type_signature.result) != 2):
       raise TypeError(
           'The `update` computation returns a result  of type {} that is not '

@@ -64,21 +64,16 @@ def transform_postorder(comp, transform):
       that is currently not recognized.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  if isinstance(comp, (
-      building_blocks.CompiledComputation,
-      building_blocks.Data,
-      building_blocks.Intrinsic,
-      building_blocks.Placement,
-      building_blocks.Reference,
-  )):
+  if (comp.is_compiled_computation() or comp.is_data() or comp.is_intrinsic() or
+      comp.is_placement() or comp.is_reference()):
     return transform(comp)
-  elif isinstance(comp, building_blocks.Selection):
+  elif comp.is_selection():
     source, source_modified = transform_postorder(comp.source, transform)
     if source_modified:
       comp = building_blocks.Selection(source, comp.name, comp.index)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or source_modified
-  elif isinstance(comp, building_blocks.Tuple):
+  elif comp.is_tuple():
     elements = []
     elements_modified = False
     for key, value in anonymous_tuple.iter_elements(comp):
@@ -89,7 +84,7 @@ def transform_postorder(comp, transform):
       comp = building_blocks.Tuple(elements)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or elements_modified
-  elif isinstance(comp, building_blocks.Call):
+  elif comp.is_call():
     fn, fn_modified = transform_postorder(comp.function, transform)
     if comp.argument is not None:
       arg, arg_modified = transform_postorder(comp.argument, transform)
@@ -99,14 +94,14 @@ def transform_postorder(comp, transform):
       comp = building_blocks.Call(fn, arg)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or fn_modified or arg_modified
-  elif isinstance(comp, building_blocks.Lambda):
+  elif comp.is_lambda():
     result, result_modified = transform_postorder(comp.result, transform)
     if result_modified:
       comp = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
                                     result)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or result_modified
-  elif isinstance(comp, building_blocks.Block):
+  elif comp.is_block():
     variables = []
     variables_modified = False
     for key, value in comp.locals:
@@ -164,15 +159,11 @@ def transform_preorder(
   inner_comp, modified = transform(comp)
   if modified:
     return inner_comp, modified
-  if isinstance(inner_comp, (
-      building_blocks.CompiledComputation,
-      building_blocks.Data,
-      building_blocks.Intrinsic,
-      building_blocks.Placement,
-      building_blocks.Reference,
-  )):
+  if (inner_comp.is_compiled_computation() or inner_comp.is_data() or
+      inner_comp.is_intrinsic() or inner_comp.is_placement() or
+      inner_comp.is_reference()):
     return inner_comp, modified
-  elif isinstance(inner_comp, building_blocks.Lambda):
+  elif inner_comp.is_lambda():
     transformed_result, result_modified = transform_preorder(
         inner_comp.result, transform)
     if not (modified or result_modified):
@@ -180,7 +171,7 @@ def transform_preorder(
     return building_blocks.Lambda(inner_comp.parameter_name,
                                   inner_comp.parameter_type,
                                   transformed_result), True
-  elif isinstance(inner_comp, building_blocks.Tuple):
+  elif inner_comp.is_tuple():
     elements_modified = False
     elements = []
     for name, val in anonymous_tuple.iter_elements(inner_comp):
@@ -190,14 +181,14 @@ def transform_preorder(
     if not (modified or elements_modified):
       return inner_comp, False
     return building_blocks.Tuple(elements), True
-  elif isinstance(inner_comp, building_blocks.Selection):
+  elif inner_comp.is_selection():
     transformed_source, source_modified = transform_preorder(
         inner_comp.source, transform)
     if not (modified or source_modified):
       return inner_comp, False
     return building_blocks.Selection(transformed_source, inner_comp.name,
                                      inner_comp.index), True
-  elif isinstance(inner_comp, building_blocks.Call):
+  elif inner_comp.is_call():
     transformed_fn, fn_modified = transform_preorder(inner_comp.function,
                                                      transform)
     if inner_comp.argument is not None:
@@ -209,7 +200,7 @@ def transform_preorder(
     if not (modified or fn_modified or arg_modified):
       return inner_comp, False
     return building_blocks.Call(transformed_fn, transformed_arg), True
-  elif isinstance(inner_comp, building_blocks.Block):
+  elif inner_comp.is_block():
     transformed_variables = []
     values_modified = False
     for key, value in inner_comp.locals:
@@ -289,20 +280,19 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
                                                        ctxt_tree,
                                                        identifier_sequence):
     """Recursive helper function delegated to after binding comp_id sequence."""
-    if isinstance(comp, (building_blocks.CompiledComputation,
-                         building_blocks.Data, building_blocks.Intrinsic,
-                         building_blocks.Placement, building_blocks.Reference)):
+    if (comp.is_compiled_computation() or comp.is_data() or
+        comp.is_intrinsic() or comp.is_placement() or comp.is_reference()):
       return _traverse_leaf(comp, transform_fn, ctxt_tree, identifier_sequence)
-    elif isinstance(comp, building_blocks.Selection):
+    elif comp.is_selection():
       return _traverse_selection(comp, transform, ctxt_tree,
                                  identifier_sequence)
-    elif isinstance(comp, building_blocks.Tuple):
+    elif comp.is_tuple():
       return _traverse_tuple(comp, transform, ctxt_tree, identifier_sequence)
-    elif isinstance(comp, building_blocks.Call):
+    elif comp.is_call():
       return _traverse_call(comp, transform, ctxt_tree, identifier_sequence)
-    elif isinstance(comp, building_blocks.Lambda):
+    elif comp.is_lambda():
       return _traverse_lambda(comp, transform, ctxt_tree, identifier_sequence)
-    elif isinstance(comp, building_blocks.Block):
+    elif comp.is_block():
       return _traverse_block(comp, transform, ctxt_tree, identifier_sequence)
     else:
       raise NotImplementedError(
@@ -1089,7 +1079,7 @@ def get_count_of_references_to_variables(comp):
 
   def _should_transform(comp, context_tree):
     del context_tree  # Unused
-    return isinstance(comp, building_blocks.Reference)
+    return comp.is_reference()
 
   def transform_fn(comp, context_tree):
     if _should_transform(comp, context_tree):
@@ -1107,9 +1097,9 @@ def get_unique_names(comp):
   names = set()
 
   def _update(comp):
-    if isinstance(comp, building_blocks.Block):
+    if comp.is_block():
       names.update([name for name, _ in comp.locals])
-    elif isinstance(comp, building_blocks.Lambda):
+    elif comp.is_lambda():
       if comp.parameter_type is not None:
         names.add(comp.parameter_name)
     elif isinstance(comp, building_blocks.Reference):
@@ -1138,12 +1128,12 @@ def has_unique_names(comp):
     """Binds any names to external `names` set."""
     nonlocal unique
     if unique:
-      if isinstance(comp, building_blocks.Block):
+      if comp.is_block():
         for name, _ in comp.locals:
           if name in names:
             unique = False
           names.add(name)
-      elif isinstance(comp, building_blocks.Lambda):
+      elif comp.is_lambda():
         if comp.parameter_type is None:
           return comp, False
         if comp.parameter_name in names:
@@ -1177,9 +1167,9 @@ def get_map_of_unbound_references(
 
   def _update(comp):
     """Updates the Python dict of references."""
-    if isinstance(comp, building_blocks.Reference):
+    if comp.is_reference():
       references[comp] = set((comp.name,))
-    elif isinstance(comp, building_blocks.Block):
+    elif comp.is_block():
       references[comp] = set()
       names = []
       for name, variable in comp.locals:
@@ -1188,17 +1178,17 @@ def get_map_of_unbound_references(
         names.append(name)
       elements = references[comp.result]
       references[comp].update([e for e in elements if e not in names])
-    elif isinstance(comp, building_blocks.Call):
+    elif comp.is_call():
       elements = references[comp.function].copy()
       if comp.argument is not None:
         elements.update(references[comp.argument])
       references[comp] = elements
-    elif isinstance(comp, building_blocks.Lambda):
+    elif comp.is_lambda():
       elements = references[comp.result]
       references[comp] = set([e for e in elements if e != comp.parameter_name])
-    elif isinstance(comp, building_blocks.Selection):
+    elif comp.is_selection():
       references[comp] = references[comp.source]
-    elif isinstance(comp, building_blocks.Tuple):
+    elif comp.is_tuple():
       elements = [references[e] for e in comp]
       references[comp] = set(itertools.chain.from_iterable(elements))
     else:

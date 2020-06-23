@@ -325,7 +325,6 @@ py_library(
         ":tree_transformations",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",
     ],
 )
@@ -391,7 +390,6 @@ py_library(
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],

@@ -67,7 +67,7 @@ class ComputationImpl(function_utils.ConcreteFunction):
 
     type_analysis.check_well_formed(type_spec)
 
-    if not isinstance(type_spec, computation_types.FunctionType):
+    if not type_spec.is_function():
       raise TypeError('{} is not a functional type, from proto: {}'.format(
           str(type_spec), str(computation_proto)))
 

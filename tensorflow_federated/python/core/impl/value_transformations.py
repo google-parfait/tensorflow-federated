@@ -14,7 +14,6 @@
 """A library of transformations that can be applied to a computation."""
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import federated_computation_utils
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -51,8 +50,8 @@ def replace_intrinsics_with_callable(comp, uri, body, context_stack):
     raise TypeError('The body of the intrinsic must be a callable.')
 
   def _should_transform(comp):
-    return (isinstance(comp, building_blocks.Intrinsic) and comp.uri == uri and
-            isinstance(comp.type_signature, computation_types.FunctionType))
+    return (comp.is_intrinsic() and comp.uri == uri and
+            comp.type_signature.is_function())
 
   def _transform(comp):
     if not _should_transform(comp):

@@ -1331,8 +1331,7 @@ def create_federated_zip(
 
   # If the type signature is flat, just call _create_flat_federated_zip.
   elements = anonymous_tuple.to_elements(value.type_signature)
-  if all([(isinstance(type_sig, computation_types.FederatedType))
-          for (_, type_sig) in elements]):
+  if all(type_sig.is_federated() for (_, type_sig) in elements):
     return _create_flat_federated_zip(value)
 
   all_placements = set()
@@ -1340,10 +1339,10 @@ def create_federated_zip(
 
   def _make_nested_selections(nested):
     """Generates list of selections from nested representation."""
-    if isinstance(nested.type_signature, computation_types.FederatedType):
+    if nested.type_signature.is_federated():
       all_placements.add(nested.type_signature.placement)
       nested_selections.append(nested)
-    elif isinstance(nested.type_signature, computation_types.NamedTupleType):
+    elif nested.type_signature.is_tuple():
       for i in range(len(nested.type_signature)):
         inner_selection = building_blocks.Selection(nested, index=i)
         _make_nested_selections(inner_selection)
@@ -1374,9 +1373,9 @@ def create_federated_zip(
 
   def _make_flat_selections(type_signature, index):
     """Generates nested struct of selections from flattened representation."""
-    if isinstance(type_signature, computation_types.FederatedType):
+    if type_signature.is_federated():
       return building_blocks.Selection(ref, index=index), index + 1
-    elif isinstance(type_signature, computation_types.NamedTupleType):
+    elif type_signature.is_tuple():
       elements = anonymous_tuple.to_elements(type_signature)
       return_tuple = []
       for name, element in elements:
@@ -1424,25 +1423,21 @@ def create_generic_constant(
       the rsponsibility of this function.
   """
   type_spec = computation_types.to_type(type_spec)
-  py_typecheck.check_type(type_spec, computation_types.Type)
+  if type_spec is None:
+    return create_tensorflow_constant(type_spec, scalar_value)
   inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
-  if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
-      or inferred_scalar_value_type.shape != tf.TensorShape(())):
+  if (not inferred_scalar_value_type.is_tensor() or
+      inferred_scalar_value_type.shape != tf.TensorShape(())):
     raise TypeError(
         'Must pass a scalar value to `create_generic_constant`; encountered a '
         'value {}'.format(scalar_value))
-  if not type_analysis.contains_only_types(type_spec, (
-      computation_types.FederatedType,
-      computation_types.NamedTupleType,
-      computation_types.TensorType,
-  )):
+  if not type_analysis.contains_only(
+      type_spec, lambda t: t.is_federated() or t.is_tuple() or t.is_tensor()):
     raise TypeError
-  if type_analysis.contains_only_types(type_spec, (
-      computation_types.NamedTupleType,
-      computation_types.TensorType,
-  )):
+  if type_analysis.contains_only(type_spec,
+                                 lambda t: t.is_tuple() or t.is_tensor()):
     return create_tensorflow_constant(type_spec, scalar_value)
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif type_spec.is_federated():
     unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)
     if type_spec.placement == placement_literals.CLIENTS:
       placement_federated_type = computation_types.FederatedType(
@@ -1459,7 +1454,7 @@ def create_generic_constant(
       placement_function = building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri, placement_fn_type)
     return building_blocks.Call(placement_function, unplaced_zero)
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     elements = []
     for k in range(len(type_spec)):
       elements.append(create_generic_constant(type_spec[k], scalar_value))
@@ -1784,7 +1779,7 @@ def create_zip(
       raise TypeError(
           'Expected a NamedTupleType containing NamedTupleTypes with the same '
           'length, found: {}'.format(comp.type_signature))
-  if not isinstance(comp, building_blocks.Reference):
+  if not comp.is_reference():
     name_generator = unique_name_generator(comp)
     name = next(name_generator)
     ref = building_blocks.Reference(name, comp.type_signature)
@@ -1800,7 +1795,7 @@ def create_zip(
     tup = building_blocks.Tuple(columns)
     rows.append(tup)
   tup = building_blocks.Tuple(rows)
-  if not isinstance(comp, building_blocks.Reference):
+  if not comp.is_reference():
     return building_blocks.Block(((ref.name, comp),), tup)
   else:
     return tup
@@ -1808,17 +1803,13 @@ def create_zip(
 
 def _check_generic_operator_type(type_spec):
   """Checks that `type_spec` can be the signature of args to a generic op."""
-  if not type_analysis.contains_only_types(type_spec, (
-      computation_types.FederatedType,
-      computation_types.NamedTupleType,
-      computation_types.TensorType,
-  )):
+  if not type_analysis.contains_only(
+      type_spec, lambda t: t.is_federated() or t.is_tuple() or t.is_tensor()):
     raise TypeError(
         'Generic operators are only implemented for arguments both containing '
         'only federated, tuple and tensor types; you have passed an argument '
         'of type {} '.format(type_spec))
-  if not (isinstance(type_spec, computation_types.NamedTupleType) and
-          len(type_spec) == 2):
+  if not (type_spec.is_tuple() and len(type_spec) == 2):
     raise TypeError(
         'We are trying to construct a generic operator declaring argument that '
         'is not a two-tuple, the type {}.'.format(type_spec))
@@ -1898,11 +1889,10 @@ def apply_binary_operator_with_upcast(
   """
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_callable(operator)
-  if isinstance(arg.type_signature, computation_types.FederatedType):
-    py_typecheck.check_type(arg.type_signature.member,
-                            computation_types.NamedTupleType)
+  if arg.type_signature.is_federated():
     tuple_type = arg.type_signature.member
-  elif isinstance(arg.type_signature, computation_types.NamedTupleType):
+    assert tuple_type.is_tuple()
+  elif arg.type_signature.is_tuple():
     tuple_type = arg.type_signature
   else:
     raise TypeError(
@@ -1912,7 +1902,7 @@ def apply_binary_operator_with_upcast(
   tf_representing_op = create_tensorflow_binary_operator_with_upcast(
       tuple_type, operator)
 
-  if isinstance(arg.type_signature, computation_types.FederatedType):
+  if arg.type_signature.is_federated():
     called = create_federated_map_or_apply(tf_representing_op, arg)
   else:
     called = building_blocks.Call(tf_representing_op, arg)

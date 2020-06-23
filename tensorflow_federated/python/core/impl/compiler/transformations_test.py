@@ -34,9 +34,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
   def assertNoLambdasOrBlocks(self, comp):
 
     def _transform(comp):
-      if (isinstance(comp, building_blocks.Call) and
-          isinstance(comp.function, building_blocks.Lambda)) or isinstance(
-              comp, building_blocks.Block):
+      if (comp.is_call() and comp.function.is_lambda()) or comp.is_block():
         raise AssertionError('Encountered disallowed computation: {}'.format(
             comp.compact_representation()))
       return comp, True
@@ -848,8 +846,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
     fed_agg = []
 
     def _find_called_federated_aggregate(comp):
-      if (isinstance(comp, building_blocks.Call) and
-          isinstance(comp.function, building_blocks.Intrinsic) and
+      if (comp.is_call() and comp.function.is_intrinsic() and
           comp.function.uri == intrinsic_defs.FEDERATED_AGGREGATE.uri):
         fed_agg.append(comp.function)
       return comp, False
@@ -895,8 +892,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
     fed_agg = []
 
     def _find_called_federated_aggregate(comp):
-      if (isinstance(comp, building_blocks.Call) and
-          isinstance(comp.function, building_blocks.Intrinsic) and
+      if (comp.is_call() and comp.function.is_intrinsic() and
           comp.function.uri == intrinsic_defs.FEDERATED_AGGREGATE.uri):
         fed_agg.append(comp.function)
       return comp, False

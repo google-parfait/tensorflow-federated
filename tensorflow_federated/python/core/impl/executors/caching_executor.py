@@ -57,7 +57,7 @@ def _get_hashable_key(value, type_spec):
   Raises:
     TypeError: If there is no hashable key for this type of a value.
   """
-  if isinstance(type_spec, computation_types.NamedTupleType):
+  if type_spec.is_tuple():
     if isinstance(value, anonymous_tuple.AnonymousTuple):
       type_specs = anonymous_tuple.iter_elements(type_spec)
       r_elem = []
@@ -66,7 +66,7 @@ def _get_hashable_key(value, type_spec):
       return anonymous_tuple.AnonymousTuple(r_elem)
     else:
       return _get_hashable_key(anonymous_tuple.from_container(value), type_spec)
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif type_spec.is_federated():
     if type_spec.all_equal:
       return _get_hashable_key(value, type_spec.member)
     else:

@@ -453,7 +453,7 @@ def _stamp_value_into_graph(value, type_signature, graph):
   py_typecheck.check_type(graph, tf.Graph)
   if value is None:
     return None
-  if isinstance(type_signature, computation_types.TensorType):
+  if type_signature.is_tensor():
     if isinstance(value, np.ndarray):
       value_type = computation_types.TensorType(
           tf.dtypes.as_dtype(value.dtype), tf.TensorShape(value.shape))
@@ -464,7 +464,7 @@ def _stamp_value_into_graph(value, type_signature, graph):
       with graph.as_default():
         return tf.constant(
             value, dtype=type_signature.dtype, shape=type_signature.shape)
-  elif isinstance(type_signature, computation_types.NamedTupleType):
+  elif type_signature.is_tuple():
     if isinstance(value, (list, dict)):
       value = anonymous_tuple.from_container(value)
     stamped_elements = []
@@ -473,7 +473,7 @@ def _stamp_value_into_graph(value, type_signature, graph):
       stamped_element = _stamp_value_into_graph(element, type_signature, graph)
       stamped_elements.append((name, stamped_element))
     return anonymous_tuple.AnonymousTuple(stamped_elements)
-  elif isinstance(type_signature, computation_types.SequenceType):
+  elif type_signature.is_sequence():
     return tensorflow_utils.make_data_set_from_elements(graph, value,
                                                         type_signature.element)
   else:

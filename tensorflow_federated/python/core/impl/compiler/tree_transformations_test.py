@@ -3648,9 +3648,8 @@ class UniquifyReferenceNamesTest(test.TestCase):
 
 
 def _is_called_graph_pattern(comp):
-  return (isinstance(comp, building_blocks.Call) and
-          isinstance(comp.function, building_blocks.CompiledComputation) and
-          isinstance(comp.argument, building_blocks.Reference))
+  return (comp.is_call() and comp.function.is_compiled_computation() and
+          comp.argument.is_reference())
 
 
 class InsertTensorFlowIdentityAtLeavesTest(test.TestCase):
@@ -3862,7 +3861,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
     self.assertTrue(modified)
 
     def _fed_type_predicate(x):
-      return isinstance(x.type_signature, computation_types.FederatedType)
+      return x.type_signature.is_federated()
 
     self.assertEqual(placement_unwrapped.function.uri,
                      intrinsic_defs.FEDERATED_APPLY.uri)

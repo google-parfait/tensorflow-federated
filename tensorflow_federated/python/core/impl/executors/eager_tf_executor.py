@@ -73,14 +73,14 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   # TODO(b/155198591): Currently, TF will raise on any function returning a
   # `tf.data.Dataset` not pinned to CPU. We should follow up here and remove
   # this gating when we can.
-  must_pin_function_to_cpu = type_analysis.contains_types(
-      type_spec.result, computation_types.SequenceType)
+  must_pin_function_to_cpu = type_analysis.contains(type_spec.result,
+                                                    lambda t: t.is_sequence())
   which_computation = comp.WhichOneof('computation')
   if which_computation != 'tensorflow':
     raise TypeError('Expected a TensorFlow computation, found {}.'.format(
         which_computation))
 
-  if isinstance(type_spec, computation_types.FunctionType):
+  if type_spec.is_function():
     param_type = type_spec.parameter
     result_type = type_spec.result
   else:
@@ -129,7 +129,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   param_fns = []
   if param_type is not None:
     for spec in anonymous_tuple.flatten(type_spec.parameter):
-      if isinstance(spec, computation_types.TensorType):
+      if spec.is_tensor():
         param_fns.append(lambda x: x)
       else:
         py_typecheck.check_type(spec, computation_types.SequenceType)
@@ -156,7 +156,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
 
   result_fns = []
   for spec in anonymous_tuple.flatten(result_type):
-    if isinstance(spec, computation_types.TensorType):
+    if spec.is_tensor():
       result_fns.append(lambda x: x)
     else:
       py_typecheck.check_type(spec, computation_types.SequenceType)
@@ -269,7 +269,7 @@ def to_representation_for_type(
     embedded_fn = embed_tensorflow_computation(value, type_spec, device)
     tf_function_cache[key] = embedded_fn
     return embedded_fn
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     type_elem = anonymous_tuple.to_elements(type_spec)
     value_elem = (
         anonymous_tuple.to_elements(anonymous_tuple.from_container(value)))
@@ -296,7 +296,7 @@ def to_representation_for_type(
   elif isinstance(value, executor_value_base.ExecutorValue):
     raise TypeError(
         'Cannot accept a value embedded within a non-eager executor.')
-  elif isinstance(type_spec, computation_types.TensorType):
+  elif type_spec.is_tensor():
     if not tf.is_tensor(value):
       value = tf.convert_to_tensor(value, dtype=type_spec.dtype)
     elif hasattr(value, 'read_value'):
@@ -309,7 +309,7 @@ def to_representation_for_type(
           'The apparent type {} of a tensor {} does not match the expected '
           'type {}.'.format(value_type, value, type_spec))
     return value
-  elif isinstance(type_spec, computation_types.SequenceType):
+  elif type_spec.is_sequence():
     if isinstance(value, list):
       value = tensorflow_utils.make_data_set_from_elements(
           None, value, type_spec.element)
@@ -463,7 +463,7 @@ class EagerTFExecutor(executor_base.Executor):
     py_typecheck.check_type(comp, EagerValue)
     if arg is not None:
       py_typecheck.check_type(arg, EagerValue)
-    if not isinstance(comp.type_signature, computation_types.FunctionType):
+    if not comp.type_signature.is_function():
       raise TypeError('Expected a functional type, found {}'.format(
           comp.type_signature))
     if comp.type_signature.parameter is not None:

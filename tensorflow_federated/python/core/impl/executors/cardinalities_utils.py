@@ -69,12 +69,12 @@ def infer_cardinalities(value, type_spec):
   """
   py_typecheck.check_not_none(value)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.FederatedType):
+  if type_spec.is_federated():
     if type_spec.all_equal:
       return {}
     py_typecheck.check_type(value, collections.Sized)
     return {type_spec.placement: len(value)}
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     anonymous_tuple_value = anonymous_tuple.from_container(
         value, recursive=False)
     cardinality_dict = {}

@@ -55,7 +55,8 @@ class AnonymousTuple(object):
   Also note that the user will not be creating such tuples. They are a hidden
   part of the impementation designed to work together with function decorators.
   """
-  __slots__ = ('_hash', '_element_array', '_name_to_index', '_name_array')
+  __slots__ = ('_hash', '_element_array', '_name_to_index', '_name_array',
+               '_elements_cache')
 
   # TODO(b/113112108): Define more magic methods for convenience in handling
   # anonymous tuples. Possibly move out to a more generic location or replace
@@ -99,6 +100,12 @@ class AnonymousTuple(object):
     self._name_to_index = name_to_index
     self._name_array = names
     self._hash = None
+    self._elements_cache = None
+
+  def _elements(self):
+    if self._elements_cache is None:
+      self._elements_cache = list(zip(self._name_array, self._element_array))
+    return self._elements_cache
 
   def __len__(self):
     return len(self._element_array)
@@ -154,7 +161,7 @@ class AnonymousTuple(object):
 
   def __repr__(self):
     return 'AnonymousTuple([{}])'.format(', '.join(
-        '({!r}, {!r})'.format(n, v) for n, v in to_elements(self)))
+        '({!r}, {!r})'.format(n, v) for n, v in iter_elements(self)))
 
   def __str__(self):
 
@@ -164,7 +171,7 @@ class AnonymousTuple(object):
         return '{}={}'.format(name, value)
       return str(value)
 
-    return '<{}>'.format(','.join(_element_str(e) for e in to_elements(self)))
+    return '<{}>'.format(','.join(_element_str(e) for e in iter_elements(self)))
 
   def __hash__(self):
     if self._hash is None:
@@ -220,8 +227,7 @@ def to_elements(an_anonymous_tuple):
   """
   py_typecheck.check_type(an_anonymous_tuple, AnonymousTuple)
   # pylint: disable=protected-access
-  return list(
-      zip(an_anonymous_tuple._name_array, an_anonymous_tuple._element_array))
+  return an_anonymous_tuple._elements().copy()
   # pylint: enable=protected-access
 
 
@@ -235,8 +241,8 @@ def iter_elements(an_anonymous_tuple):
   Args:
     an_anonymous_tuple: An instance of `AnonymousTuple`.
 
-  Yields:
-    A 2-tuple of name, value pairs, representing the elements of
+  Returns:
+    An iterator of 2-tuples of name, value pairs, representing the elements of
       `an_anonymous_tuple`.
 
   Raises:
@@ -244,9 +250,7 @@ def iter_elements(an_anonymous_tuple):
   """
   py_typecheck.check_type(an_anonymous_tuple, AnonymousTuple)
   # pylint: disable=protected-access
-  for name, val in zip(an_anonymous_tuple._name_array,
-                       an_anonymous_tuple._element_array):
-    yield (name, val)
+  return iter(an_anonymous_tuple._elements())
   # pylint: enable=protected-access
 
 
@@ -296,7 +300,7 @@ def flatten(structure):
     return tf.nest.flatten(structure)
   else:
     result = []
-    for _, v in to_elements(structure):
+    for _, v in iter_elements(structure):
       result.extend(flatten(v))
     return result
 
@@ -330,7 +334,7 @@ def pack_sequence_as(structure, flat_sequence):
       return flat_sequence[position], position + 1
     else:
       elements = []
-      for k, v in to_elements(structure):
+      for k, v in iter_elements(structure):
         packed_v, position = _pack(v, flat_sequence, position)
         elements.append((k, packed_v))
       return AnonymousTuple(elements), position
@@ -521,7 +525,7 @@ def to_container_recursive(value, container_fn):
     else:
       return v
 
-  return container_fn([(k, recurse(v)) for k, v in to_elements(value)])
+  return container_fn([(k, recurse(v)) for k, v in iter_elements(value)])
 
 
 def has_field(structure: AnonymousTuple, field: str) -> bool:

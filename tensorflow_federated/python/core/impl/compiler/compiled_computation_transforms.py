@@ -602,8 +602,7 @@ def _called_graph_equality(comp1, comp2):
     return True
   elif type(comp1.argument) != type(comp2.argument):  # pylint: disable=unidiomatic-typecheck
     return False
-  elif isinstance(comp1.function, building_blocks.Lambda) or isinstance(
-      comp2.function, building_blocks.Lambda):
+  elif comp1.function.is_lambda() or comp2.function.is_lambda():
     return False
   elif not tree_analysis.trees_equal(comp1.function, comp2.function):
     return False
@@ -663,7 +662,7 @@ def construct_composed_function_capturing_selections(comp):
   def _construct_selection_spec(selection_leaf):
     """Constructs SelectionSpec from selections terminating in called graph."""
     selection_sequence = []
-    while isinstance(selection_leaf, building_blocks.Selection):
+    while selection_leaf.is_selection():
       index = selection_leaf.index
       if index is None:
         index = _index_from_name(selection_leaf.source.type_signature,
@@ -671,8 +670,8 @@ def construct_composed_function_capturing_selections(comp):
       selection_sequence.append(index)
       selection_leaf = selection_leaf.source
 
-    if not (isinstance(selection_leaf, building_blocks.Call) and isinstance(
-        selection_leaf.function, building_blocks.CompiledComputation)):
+    if not (selection_leaf.is_call() and
+            selection_leaf.function.is_compiled_computation()):
       raise ValueError('Sequence of selections must terminate a called '
                        '`building_blocks.CompiledComputation`; this sequence '
                        'of selections has terminated in {} instead.'.format(
@@ -688,15 +687,15 @@ def construct_composed_function_capturing_selections(comp):
 
   def _construct_output_data_spec(inner_comp):
     """Constructs output data specification, fills `deduped_called_graphs`."""
-    if isinstance(inner_comp, building_blocks.Tuple):
+    if inner_comp.is_tuple():
       names = (
           x[0]
           for x in anonymous_tuple.iter_elements(inner_comp.type_signature))
       return anonymous_tuple.AnonymousTuple(
           zip(names, (_construct_output_data_spec(x) for x in inner_comp)))
-    elif isinstance(inner_comp, building_blocks.Selection):
+    elif inner_comp.is_selection():
       return _construct_selection_spec(inner_comp)
-    elif isinstance(inner_comp, building_blocks.Call):
+    elif inner_comp.is_call():
       return _construct_selection_spec(inner_comp)
 
   output_data_structure = _construct_output_data_spec(comp)
@@ -940,9 +939,8 @@ class LambdaWrappingNoArgGraph(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (isinstance(comp, building_blocks.Lambda) and
-            isinstance(comp.result, building_blocks.Call) and isinstance(
-                comp.result.function, building_blocks.CompiledComputation) and
+    return (comp.is_lambda() and comp.result.is_call() and
+            comp.result.function.is_compiled_computation() and
             comp.result.argument is None)
 
   def transform(self, comp):
@@ -991,10 +989,9 @@ class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):
   """`TransformSpec` representing a composition of TF blocks."""
 
   def should_transform(self, comp):
-    return (isinstance(comp, building_blocks.Call) and
-            isinstance(comp.function, building_blocks.CompiledComputation) and
-            isinstance(comp.argument, building_blocks.Call) and isinstance(
-                comp.argument.function, building_blocks.CompiledComputation))
+    return (comp.is_call() and comp.function.is_compiled_computation() and
+            comp.argument is not None and comp.argument.is_call() and
+            comp.argument.function.is_compiled_computation())
 
   def transform(self, comp):
     if self.should_transform(comp):
@@ -1027,13 +1024,13 @@ class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    if not isinstance(comp, building_blocks.Call):
+    if not comp.is_call():
       return False
     function = comp.function
     argument = comp.argument
-    if not isinstance(function, building_blocks.CompiledComputation):
+    if not function.is_compiled_computation():
       return False
-    if not (isinstance(argument, building_blocks.Tuple) and len(argument) > 0):  # pylint: disable=g-explicit-length-test
+    if not (argument is not None and argument.is_tuple() and len(argument) > 0):  # pylint: disable=g-explicit-length-test
       return False
     first_arg = argument[0]
     return all(tree_analysis.trees_equal(x, first_arg) for x in argument[1:])  # pylint: disable=protected-access
@@ -1072,9 +1069,8 @@ class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (isinstance(comp, building_blocks.Selection) and
-            isinstance(comp.source, building_blocks.Call) and isinstance(
-                comp.source.function, building_blocks.CompiledComputation))
+    return (comp.is_selection() and comp.source.is_call() and
+            comp.source.function.is_compiled_computation())
 
   def transform(self, comp):
     if not self.should_transform(comp):
@@ -1095,8 +1091,7 @@ def _contains_reference_to(comp, name):
 
   def _transform(inner_comp):
     nonlocal contains_reference
-    if isinstance(inner_comp,
-                  building_blocks.Reference) and inner_comp.name == name:
+    if inner_comp.is_reference() and inner_comp.name == name:
       contains_reference = True
     return comp, False
 
@@ -1129,10 +1124,10 @@ class LambdaWrappingGraph(transformation_utils.TransformSpec):
 
   def should_transform(self, comp):
     return (
-        isinstance(comp, building_blocks.Lambda) and
-        isinstance(comp.result, building_blocks.Call) and isinstance(
-            comp.result.function, building_blocks.CompiledComputation) and
-        ((isinstance(comp.result.argument, building_blocks.Reference) and
+        comp.is_lambda() and comp.result.is_call() and
+        comp.result.function.is_compiled_computation() and
+        ((comp.result.argument is not None and
+          comp.result.argument.is_reference() and
           comp.result.argument.name == comp.parameter_name) or
          (not _contains_reference_to(comp.result.argument, comp.parameter_name)
           and comp.result.function.type_signature == comp.type_signature)))
@@ -1187,10 +1182,8 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
     self._only_equal_args = only_equal_args
 
   def should_transform(self, comp):
-    if not (isinstance(comp, building_blocks.Tuple) and
-            all(isinstance(x, building_blocks.Call) for x in comp) and all(
-                isinstance(x.function, building_blocks.CompiledComputation)
-                for x in comp)):
+    if not (comp.is_tuple() and all(
+        (x.is_call() and x.function.is_compiled_computation()) for x in comp)):
       return False
     if not self._only_equal_args:
       return True
@@ -1410,14 +1403,12 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (
-        isinstance(comp, building_blocks.Lambda) and
-        isinstance(comp.parameter_type, computation_types.NamedTupleType) and
-        isinstance(comp.result, building_blocks.Call) and isinstance(
-            comp.result.function, building_blocks.CompiledComputation) and
-        isinstance(comp.result.argument, building_blocks.Selection) and
-        isinstance(comp.result.argument.source, building_blocks.Reference) and
-        comp.result.argument.source.name == comp.parameter_name)
+    return (comp.is_lambda() and comp.parameter_type.is_tuple() and
+            comp.result.is_call() and
+            comp.result.function.is_compiled_computation() and
+            comp.result.argument.is_selection() and
+            comp.result.argument.source.is_reference() and
+            comp.result.argument.source.name == comp.parameter_name)
 
   def transform(self, comp):
     if not self.should_transform(comp):
@@ -1469,23 +1460,18 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
   """
 
   def should_transform(self, comp):
-    if not (isinstance(comp, building_blocks.Lambda) and
-            isinstance(comp.parameter_type, computation_types.NamedTupleType)):
+    if not (comp.is_lambda() and comp.parameter_type.is_tuple()):
       return False
     result = comp.result
-    if not (isinstance(result, building_blocks.Call) and
-            isinstance(result.function, building_blocks.CompiledComputation)):
+    if not (result.is_call() and result.function.is_compiled_computation()):
       return False
     compiled_comp_arg = result.argument
-    if not isinstance(compiled_comp_arg, building_blocks.Tuple):
+    if not compiled_comp_arg.is_tuple():
+      return False
+    if not all(tuple_elem.is_selection() for tuple_elem in compiled_comp_arg):
       return False
     if not all(
-        isinstance(tuple_elem, building_blocks.Selection)
-        for tuple_elem in compiled_comp_arg):
-      return False
-    if not all(
-        isinstance(tuple_elem.source, building_blocks.Reference)
-        for tuple_elem in compiled_comp_arg):
+        tuple_elem.source.is_reference() for tuple_elem in compiled_comp_arg):
       return False
     if not all(tuple_elem.source.name == comp.parameter_name
                for tuple_elem in compiled_comp_arg):
@@ -1554,19 +1540,17 @@ class NestedTupleOfSelectionsAndGraphs(transformation_utils.TransformSpec):
   """
 
   def _should_transform_helper(self, comp):
-    if isinstance(comp, building_blocks.Tuple):
+    if comp.is_tuple():
       return all(self._should_transform_helper(x) for x in comp)
-    elif isinstance(comp, building_blocks.Selection):
-      return not isinstance(
-          comp.source, building_blocks.Tuple) and self._should_transform_helper(
-              comp.source)
-    elif (isinstance(comp, building_blocks.Call) and
-          isinstance(comp.function, building_blocks.CompiledComputation)):
+    elif comp.is_selection():
+      return (not comp.source.is_tuple() and
+              self._should_transform_helper(comp.source))
+    elif comp.is_call() and comp.function.is_compiled_computation():
       return True
     return False
 
   def should_transform(self, comp):
-    if not isinstance(comp, building_blocks.Tuple):
+    if not comp.is_tuple():
       return False
     return self._should_transform_helper(comp)
 
@@ -1589,7 +1573,7 @@ class TensorFlowOptimizer(transformation_utils.TransformSpec):
     self._config_proto = config_proto
 
   def should_transform(self, comp):
-    return isinstance(comp, building_blocks.CompiledComputation)
+    return comp.is_compiled_computation()
 
   def transform(self, comp):
     if not self.should_transform(comp):

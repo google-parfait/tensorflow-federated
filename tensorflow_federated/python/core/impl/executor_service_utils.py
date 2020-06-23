@@ -209,9 +209,9 @@ def serialize_value(value, type_spec=None):
     return serialize_value(
         computation_impl.ComputationImpl.get_proto(value),
         type_utils.reconcile_value_with_type_spec(value, type_spec))
-  elif isinstance(type_spec, computation_types.TensorType):
+  elif type_spec.is_tensor():
     return serialize_tensor_value(value, type_spec)
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     type_elements = anonymous_tuple.to_elements(type_spec)
     val_elements = anonymous_tuple.to_elements(
         anonymous_tuple.from_container(value))
@@ -224,7 +224,7 @@ def serialize_value(value, type_spec=None):
     result_proto = (
         executor_pb2.Value(tuple=executor_pb2.Value.Tuple(element=tup_elems)))
     return result_proto, type_spec
-  elif isinstance(type_spec, computation_types.SequenceType):
+  elif type_spec.is_sequence():
     if not isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
       raise TypeError(
           'Cannot serialize Python type {!s} as TFF type {!s}.'.format(
@@ -240,7 +240,7 @@ def serialize_value(value, type_spec=None):
                   type_spec if type_spec is not None else 'unknown'))
 
     return serialize_sequence_value(value), type_spec
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif type_spec.is_federated():
     if type_spec.all_equal:
       value = [value]
     else:

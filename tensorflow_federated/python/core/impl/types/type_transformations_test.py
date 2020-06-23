@@ -22,43 +22,43 @@ from tensorflow_federated.python.core.impl.types import type_transformations
 
 
 def _convert_tensor_to_float(type_spec):
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     return computation_types.TensorType(tf.float32, shape=type_spec.shape), True
   return type_spec, False
 
 
 def _convert_abstract_type_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.AbstractType):
+  if type_spec.is_abstract():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 
 
 def _convert_placement_type_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.PlacementType):
+  if type_spec.is_placement():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 
 
 def _convert_function_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.FunctionType):
+  if type_spec.is_function():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 
 
 def _convert_federated_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.FederatedType):
+  if type_spec.is_federated():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 
 
 def _convert_sequence_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.SequenceType):
+  if type_spec.is_sequence():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 
 
 def _convert_tuple_to_tensor(type_spec):
-  if isinstance(type_spec, computation_types.NamedTupleType):
+  if type_spec.is_tuple():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 

@@ -119,7 +119,7 @@ def is_argument_tuple(arg) -> bool:
     return is_argument_tuple(arg.type_signature)
   else:
     arg = computation_types.to_type(arg)
-    if isinstance(arg, computation_types.NamedTupleType):
+    if arg.is_tuple():
       elements = anonymous_tuple.to_elements(arg)
     else:
       return False
@@ -291,7 +291,7 @@ def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any],
               parameter_type))
     else:
       single_positional_arg = (len(args) == 1) and not kwargs
-      if not isinstance(parameter_type, computation_types.NamedTupleType):
+      if not parameter_type.is_tuple():
         # If not a named tuple type, a single positional argument is the only
         # supported call style.
         if not single_positional_arg:

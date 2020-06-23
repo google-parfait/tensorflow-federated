@@ -26,7 +26,6 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 
 def _to_tensor_type_proto(
     tensor_type: computation_types.TensorType) -> pb.TensorType:
-  py_typecheck.check_type(tensor_type, computation_types.TensorType)
   shape = tensor_type.shape
   if shape.dims is None:
     dims = None
@@ -39,7 +38,6 @@ def _to_tensor_type_proto(
 
 
 def _to_tensor_shape(tensor_type_proto: pb.TensorType) -> tf.TensorShape:
-  py_typecheck.check_type(tensor_type_proto, pb.TensorType)
   if not hasattr(tensor_type_proto, 'dims'):
     if tensor_type_proto.unknown_rank:
       return tf.TensorShape(None)
@@ -70,38 +68,31 @@ def serialize_type(
   """
   if type_spec is None:
     return None
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     return pb.Type(tensor=_to_tensor_type_proto(type_spec))
-  elif isinstance(type_spec, computation_types.SequenceType):
+  elif type_spec.is_sequence():
     return pb.Type(
         sequence=pb.SequenceType(element=serialize_type(type_spec.element)))
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     return pb.Type(
         tuple=pb.NamedTupleType(element=[
             pb.NamedTupleType.Element(name=e[0], value=serialize_type(e[1]))
             for e in anonymous_tuple.iter_elements(type_spec)
         ]))
-  elif isinstance(type_spec, computation_types.FunctionType):
+  elif type_spec.is_function():
     return pb.Type(
         function=pb.FunctionType(
             parameter=serialize_type(type_spec.parameter),
             result=serialize_type(type_spec.result)))
-  elif isinstance(type_spec, computation_types.PlacementType):
+  elif type_spec.is_placement():
     return pb.Type(placement=pb.PlacementType())
-  elif isinstance(type_spec, computation_types.FederatedType):
-    if isinstance(type_spec.placement, placement_literals.PlacementLiteral):
-      return pb.Type(
-          federated=pb.FederatedType(
-              member=serialize_type(type_spec.member),
-              placement=pb.PlacementSpec(
-                  value=pb.Placement(uri=type_spec.placement.uri)),
-              all_equal=type_spec.all_equal))
-    else:
-      raise NotImplementedError(
-          'Serialization of federated types with placements specifications '
-          'of type {} is not currently implemented yet.'.format(
-              type(type_spec.placement)))
+  elif type_spec.is_federated():
+    return pb.Type(
+        federated=pb.FederatedType(
+            member=serialize_type(type_spec.member),
+            placement=pb.PlacementSpec(
+                value=pb.Placement(uri=type_spec.placement.uri)),
+            all_equal=type_spec.all_equal))
   else:
     raise NotImplementedError
 
@@ -140,10 +131,16 @@ def deserialize_type(
     return computation_types.SequenceType(
         deserialize_type(type_proto.sequence.element))
   elif type_variant == 'tuple':
-    return computation_types.NamedTupleType([
-        (lambda k, v: (k, v) if k else v)(e.name, deserialize_type(e.value))
-        for e in type_proto.tuple.element
-    ])
+
+    def empty_str_to_none(s):
+      if s == '':  # pylint: disable=g-explicit-bool-comparison
+        return None
+      return s
+
+    return computation_types.NamedTupleType(
+        [(empty_str_to_none(e.name), deserialize_type(e.value))
+         for e in type_proto.tuple.element],
+        convert=False)
   elif type_variant == 'function':
     return computation_types.FunctionType(
         parameter=deserialize_type(type_proto.function.parameter),

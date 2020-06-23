@@ -45,13 +45,12 @@ def create_variables(name, type_spec, **kwargs):
   """
   py_typecheck.check_type(name, str)
   type_spec = computation_types.to_type(type_spec)
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     return tf.Variable(
         initial_value=tf.zeros(dtype=type_spec.dtype, shape=type_spec.shape),
         name=name,
         **kwargs)
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
 
     def _scoped_name(var_name, index):
       if var_name is None:

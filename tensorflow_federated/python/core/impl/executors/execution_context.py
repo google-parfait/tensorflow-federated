@@ -85,8 +85,8 @@ async def _ingest(executor, val, type_spec):
   if isinstance(val, executor_value_base.ExecutorValue):
     return val
   elif (isinstance(val, anonymous_tuple.AnonymousTuple) and
-        not isinstance(type_spec, computation_types.FederatedType)):
-    py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
+        not type_spec.is_federated()):
+    type_spec.check_tuple()
     v_elem = anonymous_tuple.to_elements(val)
     t_elem = anonymous_tuple.to_elements(type_spec)
     if ([k for k, _ in v_elem] != [k for k, _ in t_elem]):

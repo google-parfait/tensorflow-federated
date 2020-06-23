@@ -354,8 +354,7 @@ class FederatingExecutor(executor_base.Executor):
     elif isinstance(value, placement_literals.PlacementLiteral):
       if type_spec is None:
         type_spec = computation_types.PlacementType()
-      else:
-        py_typecheck.check_type(type_spec, computation_types.PlacementType)
+      type_spec.check_placement()
       return self._strategy.ingest_value(value, type_spec)
     elif isinstance(value, computation_impl.ComputationImpl):
       return await self.create_value(
@@ -380,7 +379,7 @@ class FederatingExecutor(executor_base.Executor):
         raise ValueError(
             'Unsupported computation building block of type "{}".'.format(
                 which_computation))
-    elif isinstance(type_spec, computation_types.FederatedType):
+    elif type_spec is not None and type_spec.is_federated():
       return await self._strategy.compute_federated_value(value, type_spec)
     else:
       result = await self._unplaced_executor.create_value(value, type_spec)

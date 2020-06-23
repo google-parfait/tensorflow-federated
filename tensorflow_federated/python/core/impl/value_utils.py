@@ -79,7 +79,7 @@ def ensure_federated_value(value, placement=None, label=None):
   if label is not None:
     py_typecheck.check_type(label, str)
 
-  if not isinstance(value.type_signature, computation_types.FederatedType):
+  if not value.type_signature.is_federated():
     comp = value_impl.ValueImpl.get_comp(value)
     context_stack = value_impl.ValueImpl.get_context_stack(value)
     try:

@@ -210,7 +210,7 @@ def _create_next_with_fake_client_output(tree):
     A new `building_blocks.ComputationBuildingBlock` representing a next
     computaiton with a fake client output.
   """
-  if isinstance(tree.result, building_blocks.Tuple):
+  if tree.result.is_tuple():
     arg_1 = tree.result[0]
     arg_2 = tree.result[1]
   else:

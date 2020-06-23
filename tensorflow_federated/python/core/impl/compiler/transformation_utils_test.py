@@ -254,7 +254,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, building_blocks.Data):
+      if comp.is_data():
         leaf_name_order.append(comp.uri)
       return comp, False
 
@@ -269,7 +269,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, building_blocks.Block):
+      if comp.is_block():
         for name, _ in comp.locals:
           leaf_name_order.append(name)
       return comp, False
@@ -294,10 +294,10 @@ class TransformationUtilsTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, building_blocks.Block):
+      if comp.is_block():
         for name, _ in comp.locals:
           leaf_name_order.append(name)
-      elif isinstance(comp, building_blocks.Data):
+      elif comp.is_data():
         leaf_name_order.append(comp.uri)
       return comp, False
 
@@ -371,10 +371,8 @@ class TransformationUtilsTest(parameterized.TestCase):
     empty_context_tree = transformation_utils.SymbolTree(FakeTracker)
     same_comp, _ = transformation_utils.transform_postorder_with_symbol_bindings(
         comp, transform_noop, empty_context_tree)
-    if not isinstance(comp,
-                      (building_blocks.CompiledComputation,
-                       building_blocks.Data, building_blocks.Intrinsic,
-                       building_blocks.Placement, building_blocks.Reference)):
+    if not (comp.is_compiled_computation() or comp.is_data() or
+            comp.is_intrinsic() or comp.is_placement() or comp.is_reference()):
       self.assertEqual(id(comp), id(same_comp))
 
   def test_transform_postorder_with_symbol_bindings_hits_all_nodes_once(self):
@@ -411,7 +409,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
-      if isinstance(comp, building_blocks.Data):
+      if comp.is_data():
         leaf_order.append(comp.uri)
       return comp, False
 
@@ -427,7 +425,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
-      if isinstance(comp, building_blocks.Block):
+      if comp.is_block():
         for name, _ in comp.locals:
           block_locals_order.append(name)
       return comp, False
@@ -468,10 +466,10 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
-      if isinstance(comp, building_blocks.Block):
+      if comp.is_block():
         for name, _ in comp.locals:
           named_node_order.append(name)
-      elif isinstance(comp, building_blocks.Data):
+      elif comp.is_data():
         named_node_order.append(comp.uri)
       return comp, False
 
@@ -491,7 +489,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     value_holder = []
 
     def transform(comp, ctxt_tree):
-      if isinstance(comp, building_blocks.Reference):
+      if comp.is_reference():
         ctxt_tree.update_payload_with_name(comp.name)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
       return comp, False
@@ -512,7 +510,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     value_holder = []
 
     def transform(comp, ctxt_tree):
-      if isinstance(comp, building_blocks.Reference):
+      if comp.is_reference():
         ctxt_tree.update_payload_with_name(comp.name)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
       return comp, False
@@ -534,7 +532,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     value_holder = []
 
     def transform(comp, ctxt_tree):
-      if isinstance(comp, building_blocks.Reference):
+      if comp.is_reference():
         ctxt_tree.update_payload_with_name(comp.name)
         value_holder.append(ctxt_tree.get_payload_with_name(comp.name))
       return comp, False
@@ -1580,7 +1578,7 @@ class TransformPreorderTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, building_blocks.Data):
+      if comp.is_data():
         leaf_name_order.append(comp.uri)
       return comp, False
 
@@ -1595,7 +1593,7 @@ class TransformPreorderTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, building_blocks.Block):
+      if comp.is_block():
         for name, _ in comp.locals:
           leaf_name_order.append(name)
       return comp, False
@@ -1620,10 +1618,10 @@ class TransformPreorderTest(parameterized.TestCase):
     leaf_name_order = []
 
     def transform(comp):
-      if isinstance(comp, building_blocks.Block):
+      if comp.is_block():
         for name, _ in comp.locals:
           leaf_name_order.append(name)
-      elif isinstance(comp, building_blocks.Data):
+      elif comp.is_data():
         leaf_name_order.append(comp.uri)
       return comp, False
 

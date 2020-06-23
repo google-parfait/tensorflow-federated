@@ -53,7 +53,7 @@ def import_tensorflow_computation(comp, name='fn'):
   """
   py_typecheck.check_type(comp, pb.Computation)
   type_spec = type_serialization.deserialize_type(comp.type)
-  if not isinstance(type_spec, computation_types.FunctionType):
+  if not type_spec.is_function():
     type_spec = computation_types.FunctionType(None, type_spec)
 
   # TODO(b/153499219): Replace this with a recursive check of the signature
