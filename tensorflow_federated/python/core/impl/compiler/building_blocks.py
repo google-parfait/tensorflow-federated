@@ -442,7 +442,8 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
     Args:
       elements: The elements of the tuple, supplied as a list of (name, value)
         pairs, where 'name' can be None in case the corresponding element is not
-        named and only accessible via an index (see also AnonymousTuple).
+        named and only accessible via an index (see also
+        `anonymous_tuple.AnonymousTuple`).
 
     Raises:
       TypeError: if arguments are of the wrong types.

@@ -303,9 +303,9 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
 
   Returns:
     A tuple (val, binding), where 'val' is a Python object (such as a dataset,
-    a placeholder, or a AnonymousTuple that represents a named tuple) that
-    represents the stamped parameter for use in the body of a Python function
-    that consumes this parameter, and the 'binding' is an instance of
+    a placeholder, or a `anonymous_tuple.AnonymousTuple` that represents a named
+    tuple) that represents the stamped parameter for use in the body of a Python
+    function that consumes this parameter, and the 'binding' is an instance of
     TensorFlow.Binding that indicates how parts of the type signature relate
     to the tensors and ops stamped into the graph.
 

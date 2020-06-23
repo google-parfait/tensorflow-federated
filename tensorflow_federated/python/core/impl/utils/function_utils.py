@@ -111,7 +111,8 @@ def is_argument_tuple(arg) -> bool:
     that can be converted into the latter by computation_types.to_type().
 
   Raises:
-    TypeError: if the argument is neither an AnonymousTuple, nor a type spec.
+    TypeError: If the argument is neither an `anonymous_tuple.AnonymousTuple`,
+      nor a type spec.
   """
   if isinstance(arg, anonymous_tuple.AnonymousTuple):
     elements = anonymous_tuple.to_elements(arg)
@@ -138,8 +139,8 @@ def unpack_args_from_tuple(
   """Extracts argument types from a named tuple type.
 
   Args:
-    tuple_with_args: An instance of either an AnonymousTuple or
-      computation_types.NamedTupleType (or something convertible to it by
+    tuple_with_args: An instance of either an `anonymous_tuple.AnonymousTuple`
+      or computation_types.NamedTupleType (or something convertible to it by
       computation_types.to_type()), on which is_argument_tuple() is True.
 
   Returns:

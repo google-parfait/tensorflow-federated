@@ -89,9 +89,8 @@ class AnonymousTuple(object):
             'The names in {} are reserved. You passed the name {}.'.format(
                 reserved_names, name))
       elif name in name_to_index:
-        raise ValueError(
-            'AnonymousTuple does not support duplicated names, but found {}'
-            .format([e[0] for e in elements]))
+        raise ValueError('`AnonymousTuple` does not support duplicated names, '
+                         'found {}.'.format([e[0] for e in elements]))
       names.append(name)
       values.append(value)
       if name is not None:
@@ -117,7 +116,7 @@ class AnonymousTuple(object):
     """The list of names.
 
     IMPORTANT: `len(self)` may be greater than `len(dir(self))`, since field
-    names are not required by AnonymousTuple.
+    names are not required by `AnonymousTuple`.
 
     IMPORTANT: the Python `dir()` built-in sorts the list returned by this
     method.
@@ -182,13 +181,10 @@ class AnonymousTuple(object):
     return self._hash
 
   def _asdict(self, recursive=False):
-    """Returns an OrderedDict which maps field names to their values.
+    """Returns an `collections.OrderedDict` mapping field names to their values.
 
     Args:
-      recursive: Whether to convert nested AnonymousTuples recursively.
-
-    Returns:
-      An `OrderedDict`.
+      recursive: Whether to convert nested `AnonymousTuple`s recursively.
     """
     return to_odict(self, recursive=recursive)
 
@@ -255,17 +251,14 @@ def iter_elements(an_anonymous_tuple):
 
 
 def to_odict(anon_tuple, recursive=False):
-  """Returns anon_tuple as an `OrderedDict`, if possible.
+  """Returns `anon_tuple` as an `OrderedDict`, if possible.
 
   Args:
     anon_tuple: An `AnonymousTuple`.
-    recursive: Whether to convert nested AnonymousTuples recursively.
+    recursive: Whether to convert nested `AnonymousTuple`s recursively.
 
   Raises:
-    ValueError: If the anonymous tuple contains unnamed elements.
-
-  Returns:
-    An `OrderedDict`.
+    ValueError: If the `AnonymousTuple` contains unnamed elements.
   """
   py_typecheck.check_type(anon_tuple, AnonymousTuple)
 
@@ -273,8 +266,8 @@ def to_odict(anon_tuple, recursive=False):
     for name, _ in elements:
       if name is None:
         raise ValueError(
-            'Can\'t convert an AnonymousTuple with unnamed entries to an '
-            'OrderedDict: {}'.format(anon_tuple))
+            'Cannot convert an `AnonymousTuple` with unnamed entries to a '
+            '`collections.OrderedDict`: {}'.format(anon_tuple))
     return collections.OrderedDict(elements)
 
   if recursive:
@@ -286,8 +279,9 @@ def to_odict(anon_tuple, recursive=False):
 def flatten(structure):
   """Returns a list of values in a possibly recursively nested tuple.
 
-  N.B. This implementation is not compatible with the approach of
-  `tf.nest.flatten`, which enforces lexical order for `OrderedDict`s.
+  Note: This implementation is not compatible with the approach of
+  `tf.nest.flatten`, which enforces lexical order for
+  `collections.OrderedDict`s.
 
   Args:
     structure: An anonymous tuple, possibly recursively nested, or a non-tuple
@@ -321,15 +315,15 @@ def pack_sequence_as(structure, flat_sequence):
   py_typecheck.check_type(flat_sequence, list)
 
   def _pack(structure, flat_sequence, position):
-    """Pack a leaf element or recurvisely iterate over an AnonymousTuple."""
+    """Pack a leaf element or recurvisely iterate over an `AnonymousTuple`."""
     if not isinstance(structure, AnonymousTuple):
       if (isinstance(structure,
                      (list, dict)) or py_typecheck.is_named_tuple(structure) or
           py_typecheck.is_attrs(structure)):
-        raise TypeError('Cannot pack sequence into type {!s}, only '
-                        'structures of AnonymousTuple are supported (received '
-                        'a structure with types {!s}).'.format(
-                            type(structure), structure))
+        raise TypeError(
+            'Cannot pack sequence into type {!s}, only structures of '
+            '`AnonymousTuple` are supported, found a structure with types '
+            '{!s}).'.format(type(structure), structure))
 
       return flat_sequence[position], position + 1
     else:
@@ -357,7 +351,7 @@ def is_same_structure(a, b):
     True iff `a` and `b` have the same nested structure.
 
   Raises:
-    TypeError: if `a` or `b` are not of type AnonymousTuple.
+    TypeError: if `a` or `b` are not of type `AnonymousTuple`.
   """
   py_typecheck.check_type(a, AnonymousTuple)
   py_typecheck.check_type(b, AnonymousTuple)
@@ -400,7 +394,7 @@ def map_structure(fn, *structure):
 
   Raises:
     TypeError: if `fn` is not a callable, or *structure contains types other
-      than AnonymousTuple.
+      than `AnonymousTuple`.
     ValueError: if `*structure` is empty.
   """
   py_typecheck.check_callable(fn)
@@ -496,16 +490,15 @@ def from_container(value, recursive=False):
 
 
 def to_container_recursive(value, container_fn):
-  """Recursively converts the AnonymousTuple `value` to a new container type.
+  """Recursively converts the `AnonymousTuple` `value` to a new container type.
 
-  This function is always recursive, since the non-recursive version would
-  be just `container_fn(value)`.
+  This function is always recursive, since the non-recursive version would be
+  just `container_fn(value)`.
 
-  Note this function will only recurse through `AnonymousTuple`s, so if called
-  on the input
-  `AnonymousTuple([('a', 1), ('b', {'c': AnonymousTuple(...)})])`
-  the inner `AnonymousTuple` will not be converted, because we do not
-  recurse through Python dictionaries.
+  Note: This function will only recurse through `AnonymousTuple`s, so if called
+  on the input `AnonymousTuple([('a', 1), ('b', {'c': AnonymousTuple(...)})])`
+  the inner `AnonymousTuple` will not be converted, because we do not recurse
+  through Python `dict`s.
 
   Args:
     value: An `AnonymousTuple`, possibly nested.

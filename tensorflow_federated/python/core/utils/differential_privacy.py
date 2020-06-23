@@ -156,7 +156,7 @@ def _default_get_value_type_fn(value):
 
 # TODO(b/123092620): When fixed, should no longer need this method.
 def _default_from_tff_result_fn(record):
-  """Converts AnonymousTuple to dict or list if possible."""
+  """Converts `anonymous_tuple.AnonymousTuple` to dict or list if possible."""
   if isinstance(record, anonymous_tuple.AnonymousTuple):
     try:
       record = record._asdict()
@@ -181,12 +181,12 @@ def build_dp_aggregate(query,
                        from_tff_result_fn=_default_from_tff_result_fn):
   """Builds a stateful aggregator for tensorflow_privacy DPQueries.
 
-  The returned StatefulAggregateFn can be called with any nested structure for
+  The returned `StatefulAggregateFn` can be called with any nested structure for
   the values being statefully aggregated. However, it's necessary to provide two
-  functions as arguments which indicate the properties (the tff.Type and the
-  AnonymousTuple conversion) of the nested structure that will be used. If using
-  an OrderedDict as the value's nested structure, the defaults for the arguments
-  suffice.
+  functions as arguments which indicate the properties (the `tff.Type` and the
+  `anonymous_tuple.AnonymousTuple` conversion) of the nested structure that will
+  be used. If using a `collections.OrderedDict` as the value's nested structure,
+  the defaults for the arguments suffice.
 
   Args:
     query: A DPQuery to aggregate. For compatibility with tensorflow_federated,
@@ -195,20 +195,21 @@ def build_dp_aggregate(query,
     value_type_fn: Python function that takes the value argument of next_fn and
       returns the value type. This will be used in determining the TensorSpecs
       that establish the initial sample state. If the value being aggregated is
-      an OrderedDict, the default for this argument can be used. This argument
-      probably gets removed once b/123092620 is addressed (and the associated
-      processing step gets replaced with a simple call to
-      value.type_signature.member).
+      an `collections.OrderedDict`, the default for this argument can be used.
+      This argument probably gets removed once b/123092620 is addressed (and the
+      associated processing step gets replaced with a simple call to
+      `value.type_signature.member`).
     from_tff_result_fn: Python function that takes a client record and converts
       it to the container type that it was in before passing through TFF. (Right
       now, TFF computation causes the client record to be changed into an
-      AnonymousTuple, and this method corrects for that). If the value being
-      aggregated is an OrderedDict, the default for this argument can be used.
-      This argument likely goes away once b/123092620 is addressed. The default
-      behavior assumes that the client record (before being converted to
-      AnonymousTuple) was an OrderedDict containing a flat structure of Tensors
-      (as it is if using the tff.learning APIs like
-      tff.learning.build_federated_averaging_process).
+      `anonymous_tuple.AnonymousTuple`, and this method corrects for that). If
+      the value being aggregated is an `collections.OrderedDict`, the default
+      for this argument can be used. This argument likely goes away once
+      b/123092620 is addressed. The default behavior assumes that the client
+      record (before being converted to (as it `anonymous_tuple.AnonymousTuple`)
+      was an `collections.OrderedDict` containing a flat structure of Tensors is
+      if using the `tff.learning` APIs like
+      `tff.learning.build_federated_averaging_process`).
 
   Returns:
     A tuple of:

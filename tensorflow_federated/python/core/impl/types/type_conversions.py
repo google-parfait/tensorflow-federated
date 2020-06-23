@@ -303,18 +303,20 @@ def type_from_tensors(tensors):
 
 
 def type_to_py_container(value, type_spec):
-  """Recursively convert `AnonymousTuple`s to Python containers.
+  """Recursively convert `anonymous_tuple.AnonymousTuple`s to Python containers.
 
   This is in some sense the inverse operation to
   `anonymous_tuple.from_container`.
 
   Args:
-    value: An `AnonymousTuple`, in which case this method recurses, replacing
-      all `AnonymousTuple`s with the appropriate Python containers if possible
-      (and keeping AnonymousTuple otherwise); or some other value, in which case
-      that value is returned unmodified immediately (terminating the recursion).
+    value: An `anonymous_tuple.AnonymousTuple`, in which case this method
+      recurses, replacing all ``anonymous_tuple.AnonymousTuple``s with the
+      appropriate Python containers if possible (and keeping
+      `anonymous_tuple.AnonymousTuple` otherwise); or some other value, in which
+      case that value is returned unmodified immediately (terminating the
+      recursion).
     type_spec: The `tff.Type` to which value should conform, possibly including
-      `NamedTupleTypeWithPyContainerType`.
+      `computation_types.NamedTupleTypeWithPyContainerType`.
 
   Returns:
     The input value, with containers converted to appropriate Python
@@ -353,8 +355,8 @@ def type_to_py_container(value, type_spec):
     container_is_anon_tuple = True
     container_type = anonymous_tuple.AnonymousTuple
 
-  # Avoid projecting the AnonymousTuple into a Python container that is not
-  # supported.
+  # Avoid projecting the `anonymous_tuple.AnonymousTuple` into a Python
+  # container that is not supported.
   if not container_is_anon_tuple:
     num_named_elements = len(dir(anon_tuple))
     num_unnamed_elements = len(anon_tuple) - num_named_elements
@@ -389,13 +391,13 @@ def type_to_py_container(value, type_spec):
   if (py_typecheck.is_named_tuple(container_type) or
       py_typecheck.is_attrs(container_type)):
     # The namedtuple and attr.s class constructors cannot interpret a list of
-    # (name, value) tuples; instead call constructor using kwargs. Note
-    # that these classes already define an order of names internally,
-    # so order does not matter.
+    # (name, value) tuples; instead call constructor using kwargs. Note that
+    # these classes already define an order of names internally, so order does
+    # not matter.
     return container_type(**dict(elements))
   else:
-    # E.g., tuple and list when elements only has values,
-    # but also dict, OrderedDict, or AnonymousTuple when
+    # E.g., tuple and list when elements only has values, but also `dict`,
+    # `collections.OrderedDict`, or `anonymous_tuple.AnonymousTuple` when
     # elements has (name, value) tuples.
     return container_type(elements)
 
