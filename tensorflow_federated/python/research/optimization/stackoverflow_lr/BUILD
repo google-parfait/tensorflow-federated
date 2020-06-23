@@ -8,29 +8,6 @@ py_library(
     srcs_version = "PY3",
 )
 
-py_library(
-    name = "dataset",
-    srcs = ["dataset.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
-)
-
-py_test(
-    name = "dataset_test",
-    size = "large",
-    srcs = ["dataset_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    tags = [
-        "manual",
-        "notap",
-    ],
-    deps = [
-        ":dataset",
-        "//tensorflow_federated/python/common_libs:test",
-    ],
-)
-
 py_test(
     name = "models_test",
     srcs = ["models_test.py"],

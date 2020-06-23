@@ -2,25 +2,6 @@ package(default_visibility = ["//tensorflow_federated/python/research"])
 
 licenses(["notice"])
 
-py_library(
-    name = "dataset",
-    srcs = ["dataset.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
-)
-
-py_test(
-    name = "dataset_test",
-    srcs = ["dataset_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    tags = [
-        "manual",
-        "nopresubmit",
-    ],
-    deps = ["//tensorflow_federated/python/research/optimization/cifar100:dataset"],
-)
-
 py_binary(
     name = "run_centralized",
     srcs = ["run_centralized.py"],
