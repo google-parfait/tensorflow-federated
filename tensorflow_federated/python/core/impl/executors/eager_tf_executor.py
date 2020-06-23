@@ -41,6 +41,80 @@ from tensorflow_federated.python.tensorflow_libs import graph_merge
 _TF_FUNCTION_CACHE_SIZE = 100
 
 
+def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
+                                    device):
+  """Extracts the TensorFlow function from serialized computation.
+
+  Args:
+    comp: An instance of `pb.Computation`.
+    must_pin_function_to_cpu: A boolean flag to indicate if the computation is
+      forced to be on CPUs.
+    param_type: A `tff.Type` instance or None.
+    device: A `tf.config.LogicalDevice` or None.
+
+  Returns:
+    A TensorFlow ConcreteFunction.
+  """
+
+  def function_to_wrap():
+    """No-arg function to import graph def.
+
+    We pass a no-arg function to `tf.compat.v1.wrap_function` to avoid
+    the leftover placeholders that can result from binding arguments to the
+    imported graphdef via `input_map`. The correct signature will be added to
+    this function later, via the `prune` call below.
+
+    Returns:
+      Result of importing graphdef backing `comp`.
+    """
+    graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
+    init_op = comp.tensorflow.initialize_op
+    if init_op:
+      graph_def = tensorflow_utils.add_control_deps_for_init_op(
+          graph_def, init_op)
+
+    def _import_fn():
+      return tf.import_graph_def(
+          graph_merge.uniquify_shared_names(graph_def), name='')
+
+    if must_pin_function_to_cpu:
+      with tf.device('cpu'):
+        return _import_fn()
+    elif device is not None:
+      with tf.device(device.name):
+        return _import_fn()
+    else:
+      return _import_fn()
+
+  wrapped_noarg_fn = tf.compat.v1.wrap_function(function_to_wrap, signature=[])
+
+  if param_type is not None:
+    input_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
+        comp.tensorflow.parameter)
+  else:
+    input_tensor_names = []
+  output_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
+      comp.tensorflow.result)
+  import_graph = wrapped_noarg_fn.graph
+  try:
+    wrapped_fn = wrapped_noarg_fn.prune(
+        feeds=tf.nest.map_structure(import_graph.as_graph_element,
+                                    input_tensor_names),
+        fetches=tf.nest.map_structure(import_graph.as_graph_element,
+                                      output_tensor_names),
+    )
+  except KeyError as e:
+    raise TypeError(
+        'Caught exception trying to prune graph `{g}` with '
+        'feeds {feeds} and fetches {fetches}. This indicates that these '
+        'names may not refer to tensors in the graph. .\nException: {e}'.format(
+            g=import_graph,
+            feeds=input_tensor_names,
+            fetches=output_tensor_names,
+            e=e))
+  return wrapped_fn
+
+
 def embed_tensorflow_computation(comp, type_spec=None, device=None):
   """Embeds a TensorFlow computation for use in the eager context.
 
@@ -87,44 +161,8 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     param_type = None
     result_type = type_spec
 
-  if param_type is not None:
-    input_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
-        comp.tensorflow.parameter)
-  else:
-    input_tensor_names = []
-
-  output_tensor_names = tensorflow_utils.extract_tensor_names_from_binding(
-      comp.tensorflow.result)
-
-  def function_to_wrap():
-    """No-arg function to import graph def.
-
-    We pass a no-arg function to `tf.compat.v1.wrap_function` to avoid
-    the leftover placeholders that can result from binding arguments to the
-    imported graphdef via `input_map`. The correct signature will be added to
-    this function later, via the `prune` call below.
-
-    Returns:
-      Result of importing graphdef backing `comp`.
-    """
-    graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
-    init_op = comp.tensorflow.initialize_op
-    if init_op:
-      graph_def = tensorflow_utils.add_control_deps_for_init_op(
-          graph_def, init_op)
-
-    def _import_fn():
-      return tf.import_graph_def(
-          graph_merge.uniquify_shared_names(graph_def), name='')
-
-    if must_pin_function_to_cpu:
-      with tf.device('cpu'):
-        return _import_fn()
-    elif device is not None:
-      with tf.device(device.name):
-        return _import_fn()
-    else:
-      return _import_fn()
+  wrapped_fn = _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu,
+                                               param_type, device)
 
   param_fns = []
   if param_type is not None:
@@ -134,25 +172,6 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
       else:
         py_typecheck.check_type(spec, computation_types.SequenceType)
         param_fns.append(tf.data.experimental.to_variant)
-
-  wrapped_noarg_fn = tf.compat.v1.wrap_function(function_to_wrap, signature=[])
-  import_graph = wrapped_noarg_fn.graph
-  try:
-    wrapped_fn = wrapped_noarg_fn.prune(
-        feeds=tf.nest.map_structure(import_graph.as_graph_element,
-                                    input_tensor_names),
-        fetches=tf.nest.map_structure(import_graph.as_graph_element,
-                                      output_tensor_names),
-    )
-  except KeyError as e:
-    raise TypeError(
-        'Caught exception trying to prune graph `{g}` with '
-        'feeds {feeds} and fetches {fetches}. This indicates that these '
-        'names may not refer to tensors in the graph. .\nException: {e}'.format(
-            g=import_graph,
-            feeds=input_tensor_names,
-            fetches=output_tensor_names,
-            e=e))
 
   result_fns = []
   for spec in anonymous_tuple.flatten(result_type):

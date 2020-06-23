@@ -18,7 +18,9 @@ import collections
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -562,6 +564,38 @@ class EagerTFExecutorTest(tf.test.TestCase):
       self.assertTrue(
           self._get_to_representation_for_type_succeeds_on_device(
               device).device.endswith(device.name))
+
+  def test_get_no_arg_wrapped_function_from_comp_with_dataset_reduce(self):
+
+    @computations.tf_computation
+    def comp():
+      return tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
+
+    wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
+        computation_impl.ComputationImpl.get_proto(comp),
+        must_pin_function_to_cpu=False,
+        param_type=None,
+        device=None)
+    self.assertEqual(wrapped_fn(), np.int64(45))
+
+  def test_get_wrapped_function_from_comp_raises_with_incorrect_binding(self):
+
+    with tf.Graph().as_default() as graph:
+      var = tf.Variable(initial_value=0.0, name='var1', import_scope='')
+      assign_op = var.assign_add(tf.constant(1.0))
+      tf.add(1.0, assign_op)
+
+    result_binding = pb.TensorFlow.Binding(
+        tensor=pb.TensorFlow.TensorBinding(tensor_name='Invalid'))
+    print(result_binding, type(result_binding))
+    comp = pb.Computation(
+        tensorflow=pb.TensorFlow(
+            graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+            result=result_binding))
+    with self.assertRaises(TypeError):
+      wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
+          comp, must_pin_function_to_cpu=False, param_type=None, device=None)
+      wrapped_fn()
 
 
 if __name__ == '__main__':
