@@ -23,11 +23,11 @@ import tensorflow as tf
 from tensorflow_federated.python.research.adaptive_lr_decay import adaptive_fed_avg
 from tensorflow_federated.python.research.adaptive_lr_decay import decay_iterative_process_builder
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
-from tensorflow_federated.python.research.optimization.stackoverflow import models
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import stackoverflow_dataset
+from tensorflow_federated.python.research.utils.models import stackoverflow_models
 
 with utils_impl.record_new_flags() as hparam_flags:
   # Training hyperparameters
@@ -80,7 +80,7 @@ def main(argv):
                          'got: {}'.format(argv))
 
   model_builder = functools.partial(
-      models.create_recurrent_model,
+      stackoverflow_models.create_recurrent_model,
       vocab_size=FLAGS.vocab_size,
       embedding_size=FLAGS.embedding_size,
       latent_size=FLAGS.latent_size,

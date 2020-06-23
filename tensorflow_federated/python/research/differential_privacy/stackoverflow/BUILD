@@ -10,10 +10,10 @@ py_binary(
         "//tensorflow_federated/python/research/differential_privacy:dp_utils",
         "//tensorflow_federated/python/research/optimization/shared:keras_metrics",
         "//tensorflow_federated/python/research/optimization/shared:optimizer_utils",
-        "//tensorflow_federated/python/research/optimization/stackoverflow:models",
         "//tensorflow_federated/python/research/utils:training_loop",
         "//tensorflow_federated/python/research/utils:training_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",
         "//tensorflow_federated/python/research/utils/datasets:stackoverflow_dataset",
+        "//tensorflow_federated/python/research/utils/models:stackoverflow_models",
     ],
 )

@@ -23,9 +23,9 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.optimization.emnist import models as emnist_models
 from tensorflow_federated.python.research.personalization.p13n_utils import build_personalize_fn
 from tensorflow_federated.python.research.personalization.p13n_utils import evaluate_fn
+from tensorflow_federated.python.research.utils.models import emnist_models
 
 # All parameters (except the last one) defined here are for FedAvg training.
 # For simplicity, parameters used in personalization (or `p13n` for short) are

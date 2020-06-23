@@ -78,11 +78,11 @@ py_binary(
     deps = [
         ":adaptive_fed_avg",
         ":decay_iterative_process_builder",
-        "//tensorflow_federated/python/research/optimization/shared:resnet_models",
         "//tensorflow_federated/python/research/utils:training_loop",
         "//tensorflow_federated/python/research/utils:training_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",
         "//tensorflow_federated/python/research/utils/datasets:cifar100_dataset",
+        "//tensorflow_federated/python/research/utils/models:resnet_models",
     ],
 )
 
@@ -94,11 +94,11 @@ py_binary(
     deps = [
         ":adaptive_fed_avg",
         ":decay_iterative_process_builder",
-        "//tensorflow_federated/python/research/optimization/emnist:models",
         "//tensorflow_federated/python/research/utils:training_loop",
         "//tensorflow_federated/python/research/utils:training_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",
         "//tensorflow_federated/python/research/utils/datasets:emnist_dataset",
+        "//tensorflow_federated/python/research/utils/models:emnist_models",
     ],
 )
 
@@ -110,12 +110,12 @@ py_binary(
     deps = [
         ":adaptive_fed_avg",
         ":decay_iterative_process_builder",
-        "//tensorflow_federated/python/research/optimization/shakespeare:models",
         "//tensorflow_federated/python/research/optimization/shared:keras_metrics",
         "//tensorflow_federated/python/research/utils:training_loop",
         "//tensorflow_federated/python/research/utils:training_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",
         "//tensorflow_federated/python/research/utils/datasets:shakespeare_dataset",
+        "//tensorflow_federated/python/research/utils/models:shakespeare_models",
     ],
 )
 
@@ -128,11 +128,11 @@ py_binary(
         ":adaptive_fed_avg",
         ":decay_iterative_process_builder",
         "//tensorflow_federated/python/research/optimization/shared:keras_metrics",
-        "//tensorflow_federated/python/research/optimization/stackoverflow:models",
         "//tensorflow_federated/python/research/utils:training_loop",
         "//tensorflow_federated/python/research/utils:training_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",
         "//tensorflow_federated/python/research/utils/datasets:stackoverflow_dataset",
+        "//tensorflow_federated/python/research/utils/models:stackoverflow_models",
     ],
 )
 
@@ -144,10 +144,10 @@ py_binary(
     deps = [
         ":adaptive_fed_avg",
         ":decay_iterative_process_builder",
-        "//tensorflow_federated/python/research/optimization/stackoverflow_lr:models",
         "//tensorflow_federated/python/research/utils:training_loop",
         "//tensorflow_federated/python/research/utils:training_utils",
         "//tensorflow_federated/python/research/utils:utils_impl",
         "//tensorflow_federated/python/research/utils/datasets:stackoverflow_lr_dataset",
+        "//tensorflow_federated/python/research/utils/models:stackoverflow_lr_models",
     ],
 )

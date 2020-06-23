@@ -27,6 +27,6 @@ py_binary(
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
-        "//tensorflow_federated/python/research/optimization/emnist:models",
+        "//tensorflow_federated/python/research/utils/models:emnist_models",
     ],
 )

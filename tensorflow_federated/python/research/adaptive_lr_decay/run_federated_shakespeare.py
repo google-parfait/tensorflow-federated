@@ -22,12 +22,12 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.adaptive_lr_decay import adaptive_fed_avg
 from tensorflow_federated.python.research.adaptive_lr_decay import decay_iterative_process_builder
-from tensorflow_federated.python.research.optimization.shakespeare import models
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import shakespeare_dataset
+from tensorflow_federated.python.research.utils.models import shakespeare_models
 
 FLAGS = flags.FLAGS
 
@@ -65,7 +65,7 @@ VOCAB_SIZE = len(shakespeare_dataset.CHAR_VOCAB) + 4
 
 def model_builder():
   """Constructs a `tf.keras.Model` to train."""
-  return models.create_recurrent_model(
+  return shakespeare_models.create_recurrent_model(
       vocab_size=VOCAB_SIZE, sequence_length=FLAGS.sequence_length)
 
 

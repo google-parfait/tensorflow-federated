@@ -22,11 +22,11 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.adaptive_lr_decay import adaptive_fed_avg
 from tensorflow_federated.python.research.adaptive_lr_decay import decay_iterative_process_builder
-from tensorflow_federated.python.research.optimization.stackoverflow_lr import models
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import stackoverflow_lr_dataset
+from tensorflow_federated.python.research.utils.models import stackoverflow_lr_models
 
 with utils_impl.record_hparam_flags():
   # Experiment hyperparameters
@@ -87,7 +87,7 @@ def main(argv):
       stackoverflow_train.client_ids[0]).element_spec
 
   model_builder = functools.partial(
-      models.create_logistic_model,
+      stackoverflow_lr_models.create_logistic_model,
       vocab_tokens_size=FLAGS.vocab_tokens_size,
       vocab_tags_size=FLAGS.vocab_tags_size)
 
