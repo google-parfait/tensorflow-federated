@@ -185,7 +185,7 @@ def transform_preorder(
     elements = []
     for name, val in anonymous_tuple.iter_elements(inner_comp):
       result, result_modified = transform_preorder(val, transform)
-      elements_modified = modified or result_modified
+      elements_modified = elements_modified or result_modified
       elements.append((name, result))
     if not (modified or elements_modified):
       return inner_comp, False

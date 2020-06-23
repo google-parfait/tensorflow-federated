@@ -501,7 +501,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     self.assertEqual(value_holder[0].count, 1)
     self.assertEqual(value_holder[0].name, 'x')
-    self.assertEqual(value_holder[0].value, None)
+    self.assertIsNone(value_holder[0].value)
 
   def test_transform_postorder_with_symbol_bindings_binds_single_block_local(
       self):
@@ -858,7 +858,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     symbol_tree.walk_to_scope_beginning()
     symbol_tree.walk_down_one_variable_binding()
     self.assertEqual(symbol_tree.get_payload_with_name('x').name, 'x')
-    self.assertEqual(symbol_tree.get_payload_with_name('x').value, None)
+    self.assertIsNone(symbol_tree.get_payload_with_name('x').value)
 
   def test_symbol_tree_ingest_variable_binding_bad_args_fails(self):
     symbol_tree = transformation_utils.SymbolTree(FakeTracker)
@@ -1650,6 +1650,23 @@ class TransformPreorderTest(parameterized.TestCase):
     ]
 
     self.assertEqual(leaf_name_order, list(preorder_nodes))
+
+  def test_transform_preorder_passes_transform_through_tuple_correctly(self):
+
+    def transform_data_to_reference(comp):
+      if isinstance(comp, building_blocks.Data):
+        return building_blocks.Reference(comp.uri, comp.type_signature), True
+      return comp, False
+
+    tuple_holding_data = building_blocks.Tuple(
+        [building_blocks.Data('a', tf.int32)])
+    data_replaced, modified = transformation_utils.transform_preorder(
+        tuple_holding_data, transform_data_to_reference)
+    self.assertTrue(modified)
+    self.assertEqual(data_replaced.compact_representation(),
+                     tuple_holding_data.compact_representation())
+    self.assertLen(data_replaced, 1)
+    self.assertIsInstance(data_replaced[0], building_blocks.Reference)
 
 
 class GetUniqueNamesTest(absltest.TestCase):
