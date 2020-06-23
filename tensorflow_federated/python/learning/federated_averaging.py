@@ -123,8 +123,12 @@ def build_federated_averaging_process(
     server_optimizer_fn: Callable[
         [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
     client_weight_fn: Callable[[Any], tf.Tensor] = None,
-    stateful_delta_aggregate_fn=None,
-    stateful_model_broadcast_fn=None) -> tff.templates.IterativeProcess:
+    stateful_delta_aggregate_fn: Optional[tff.utils.StatefulAggregateFn] = None,
+    stateful_model_broadcast_fn: Optional[tff.utils.StatefulBroadcastFn] = None,
+    *,
+    broadcast_process: Optional[tff.templates.MeasuredProcess] = None,
+    aggregation_process: Optional[tff.templates.MeasuredProcess] = None,
+) -> tff.templates.IterativeProcess:
   """Builds an iterative process that performs federated averaging.
 
   This function creates a `tff.templates.IterativeProcess` that performs
@@ -179,13 +183,25 @@ def build_federated_averaging_process(
       <state@SERVER, aggregate@SERVER>)`, where the `value` type is
       `tff.learning.framework.ModelWeights.trainable` corresponding to the
       object returned by `model_fn`. By default performs arithmetic mean
-      aggregation, weighted by `client_weight_fn`.
+      aggregation, weighted by `client_weight_fn`.  Must be `None` if
+      `aggregation_process` is not `None`.
     stateful_model_broadcast_fn: A `tff.utils.StatefulBroadcastFn` where the
       `next_fn` performs a federated broadcast and upates state. It must have
       TFF type `(<state@SERVER, value@SERVER> -> <state@SERVER,
       value@CLIENTS>)`, where the `value` type is
       `tff.learning.framework.ModelWeights` corresponding to the object returned
-      by `model_fn`. The default is the identity broadcast.
+      by `model_fn`. The default is the identity broadcast.  Must be `None` if
+      `broadcast_process` is not `None`.
+    broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
+      model weights on the server to the clients. It must support the signature
+      `(input_values@SERVER -> output_values@CLIENT)`.
+      Must be `None` if
+      `stateful_model_broadcast_fn` is not `None`.
+    aggregation_process: a `tff.templates.MeasuredProcess` that aggregates the
+      model updates on the clients back to the server. It must support the
+      signature `({input_values}@CLIENTS-> output_values@SERVER)`.
+      Must be
+      `None` if `stateful_delta_aggregate_fn` is not `None`.
 
   Returns:
     A `tff.templates.IterativeProcess`.
@@ -194,22 +210,11 @@ def build_federated_averaging_process(
   def client_fed_avg(model_fn):
     return ClientFedAvg(model_fn(), client_optimizer_fn(), client_weight_fn)
 
-  if stateful_delta_aggregate_fn is not None:
-    py_typecheck.check_type(stateful_delta_aggregate_fn,
-                            tff.utils.StatefulAggregateFn)
-  if stateful_model_broadcast_fn is not None:
-    py_typecheck.check_type(stateful_model_broadcast_fn,
-                            tff.utils.StatefulBroadcastFn)
-  process = optimizer_utils.build_model_delta_optimizer_process(
-      model_fn, client_fed_avg, server_optimizer_fn,
-      stateful_delta_aggregate_fn, stateful_model_broadcast_fn)
-
-  # TODO(b/159134668): Remove this wrapper that retains historical behavior.
-  @tff.federated_computation(process.next.type_signature.parameter)
-  def _wrapped_next(*args):
-    """Wrapper that only returns the `train` metrics to retain previous behavior."""
-    result = process.next(*args)
-    return result[0], result[1].train
-
-  return tff.templates.IterativeProcess(
-      initialize_fn=process.initialize, next_fn=_wrapped_next)
+  return optimizer_utils.build_model_delta_optimizer_process(
+      model_fn,
+      model_to_client_delta_fn=client_fed_avg,
+      server_optimizer_fn=server_optimizer_fn,
+      stateful_delta_aggregate_fn=stateful_delta_aggregate_fn,
+      stateful_model_broadcast_fn=stateful_model_broadcast_fn,
+      broadcast_process=broadcast_process,
+      aggregation_process=aggregation_process)

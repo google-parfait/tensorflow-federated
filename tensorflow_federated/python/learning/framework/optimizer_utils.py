@@ -702,7 +702,7 @@ def build_model_delta_optimizer_process(
         stateful_delta_aggregate_fn, aggregation_process,
         model_weights_type.trainable)
   except DisjointArgumentError as e:
-    raise ValueError(
+    raise DisjointArgumentError(
         'Specifying both `stateful_delta_aggregate_fn` and '
         '`aggregation_process` is an error. Only one may be used') from e
 
@@ -710,7 +710,7 @@ def build_model_delta_optimizer_process(
     broadcast_process = validate_disjoint_optional_arguments(
         stateful_model_broadcast_fn, broadcast_process, model_weights_type)
   except DisjointArgumentError as e:
-    raise ValueError(
+    raise DisjointArgumentError(
         'Specifying both `stateful_model_broadcast_fn` and '
         '`broadcast_process` is an error. Only one may be used') from e
 
@@ -721,7 +721,7 @@ def build_model_delta_optimizer_process(
     raise ProcessTypeError(
         'broadcast_process type signature does not conform to expected '
         'signature (<state@S, input@S> -> <state@S, result@C, measurements@S>).'
-        ' Got: {t}'.format(t=broadcast_process.type_signature))
+        ' Got: {t}'.format(t=broadcast_process.next.type_signature))
 
   if aggregation_process is None:
     aggregation_process = build_stateless_mean(
@@ -730,7 +730,7 @@ def build_model_delta_optimizer_process(
     raise ProcessTypeError(
         'aggregation_process type signature does not conform to expected '
         'signature (<state@S, input@C> -> <state@S, result@S, measurements@S>).'
-        ' Got: {t}'.format(t=aggregation_process.type_signature))
+        ' Got: {t}'.format(t=aggregation_process.next.type_signature))
 
   initialize_computation = _build_initialize_computation(
       model_fn=model_fn,

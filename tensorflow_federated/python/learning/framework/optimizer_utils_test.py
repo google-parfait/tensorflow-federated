@@ -337,6 +337,40 @@ class ModelDeltaOptimizerTest(test.TestCase):
         tff.FederatedType(next_type.result[0].member.model_broadcast_state,
                           tff.SERVER), expected_broadcast_state_type)
 
+  def test_fails_stateful_broadcast_and_process(self):
+    with tf.Graph().as_default():
+      model_weights_type = tff.framework.type_from_tensors(
+          model_utils.ModelWeights.from_model(
+              model_examples.LinearRegression()))
+    with self.assertRaises(optimizer_utils.DisjointArgumentError):
+      optimizer_utils.build_model_delta_optimizer_process(
+          model_fn=model_examples.LinearRegression,
+          model_to_client_delta_fn=DummyClientDeltaFn,
+          server_optimizer_fn=tf.keras.optimizers.SGD,
+          stateful_model_broadcast_fn=tff.utils.StatefulBroadcastFn(
+              initialize_fn=lambda: (),
+              next_fn=lambda state, weights:  # pylint: disable=g-long-lambda
+              (state, tff.federated_broadcast(weights))),
+          broadcast_process=optimizer_utils.build_stateless_broadcaster(
+              model_weights_type=model_weights_type))
+
+  def test_fails_stateful_aggregate_and_process(self):
+    with tf.Graph().as_default():
+      model_weights_type = tff.framework.type_from_tensors(
+          model_utils.ModelWeights.from_model(
+              model_examples.LinearRegression()))
+    with self.assertRaises(optimizer_utils.DisjointArgumentError):
+      optimizer_utils.build_model_delta_optimizer_process(
+          model_fn=model_examples.LinearRegression,
+          model_to_client_delta_fn=DummyClientDeltaFn,
+          server_optimizer_fn=tf.keras.optimizers.SGD,
+          stateful_delta_aggregate_fn=tff.utils.StatefulAggregateFn(
+              initialize_fn=lambda: (),
+              next_fn=lambda state, value, weight=None:  # pylint: disable=g-long-lambda
+              (state, tff.federated_mean(value, weight))),
+          aggregation_process=optimizer_utils.build_stateless_mean(
+              model_delta_type=model_weights_type.trainable))
+
   def test_orchestration_execute_stateful_fn(self):
     learning_rate = 1.0
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(

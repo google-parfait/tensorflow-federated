@@ -21,10 +21,13 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
+from typing import Any, Callable, Optional
+
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -120,12 +123,20 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
         }))
 
 
+DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
+
+
 def build_federated_sgd_process(
-    model_fn,
-    server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
-    client_weight_fn=None,
-    stateful_delta_aggregate_fn=None,
-    stateful_model_broadcast_fn=None):
+    model_fn: Callable[[], model_lib.Model],
+    server_optimizer_fn: Callable[
+        [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
+    client_weight_fn: Callable[[Any], tf.Tensor] = None,
+    stateful_delta_aggregate_fn: Optional[tff.utils.StatefulAggregateFn] = None,
+    stateful_model_broadcast_fn: Optional[tff.utils.StatefulBroadcastFn] = None,
+    *,
+    broadcast_process: Optional[tff.templates.MeasuredProcess] = None,
+    aggregation_process: Optional[tff.templates.MeasuredProcess] = None,
+) -> tff.templates.IterativeProcess:
   """Builds the TFF computations for optimization using federated SGD.
 
   This function creates a `tff.templates.IterativeProcess` that performs
@@ -152,12 +163,12 @@ def build_federated_sgd_process(
   `tf.keras.optimizers.Optimizer.apply_gradients` method of the server
   optimizer.
 
+  This implements the original FedSGD algorithm in [McMahan et al.,
+  2017](https://arxiv.org/abs/1602.05629).
+
   Note: the default server optimizer function is `tf.keras.optimizers.SGD`
-  with a learning rate of 1.0, which corresponds to adding the aggregate of the
-  gradients to the current server model. This recovers the original FedSGD
-  algorithm in [McMahan et al., 2017](https://arxiv.org/abs/1602.05629). More
-  sophisticated federated SGD procedures may use different learning rates
-  or server optimizers.
+  with a learning rate of 0.1. More sophisticated federated SGD procedures may
+  use different learning rates or server optimizers.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`. This method
@@ -177,13 +188,23 @@ def build_federated_sgd_process(
       <state@SERVER, aggregate@SERVER>)`, where the `value` type is
       `tff.learning.framework.ModelWeights.trainable` corresponding to the
       object returned by `model_fn`. By default performs arithmetic mean
-      aggregation, weighted by `client_weight_fn`.
+      aggregation, weighted by `client_weight_fn`. Must be `None` if
+      `aggregation_process` is not `None`.
     stateful_model_broadcast_fn: A `tff.utils.StatefulBroadcastFn` where the
       `next_fn` performs a federated broadcast and upates state. It must have
       TFF type `(<state@SERVER, value@SERVER> -> <state@SERVER,
       value@CLIENTS>)`, where the `value` type is
       `tff.learning.framework.ModelWeights` corresponding to the object returned
-      by `model_fn`. The default is the identity broadcast.
+      by `model_fn`. The default is the identity broadcast. Must be `None` if
+      `broadcast_process` is not `None`.
+    broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
+      model weights on the server to the clients. It must support the signature
+      `(input_values@SERVER -> output_values@CLIENT)`. Must be `None` if
+      `stateful_model_broadcast_fn` is not `None`.
+    aggregation_process: a `tff.templates.MeasuredProcess` that aggregates the
+      model updates on the clients back to the server. It must support the
+      signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
+      `None` if `stateful_delta_aggregate_fn` is not `None`.
 
   Returns:
     A `tff.templates.IterativeProcess`.
@@ -192,22 +213,11 @@ def build_federated_sgd_process(
   def client_sgd_avg(model_fn):
     return ClientSgd(model_fn(), client_weight_fn)
 
-  if stateful_delta_aggregate_fn is not None:
-    py_typecheck.check_type(stateful_delta_aggregate_fn,
-                            tff.utils.StatefulAggregateFn)
-  if stateful_model_broadcast_fn is not None:
-    py_typecheck.check_type(stateful_model_broadcast_fn,
-                            tff.utils.StatefulBroadcastFn)
-  process = optimizer_utils.build_model_delta_optimizer_process(
-      model_fn, client_sgd_avg, server_optimizer_fn,
-      stateful_delta_aggregate_fn, stateful_model_broadcast_fn)
-
-  # TODO(b/159134668): Remove this wrapper that retains historical behavior.
-  @tff.federated_computation(process.next.type_signature.parameter)
-  def _wrapped_next(*args):
-    """Wrapper that only returns the `train` metrics to retain previous behavior."""
-    result = process.next(*args)
-    return result[0], result[1].train
-
-  return tff.templates.IterativeProcess(
-      initialize_fn=process.initialize, next_fn=_wrapped_next)
+  return optimizer_utils.build_model_delta_optimizer_process(
+      model_fn,
+      model_to_client_delta_fn=client_sgd_avg,
+      server_optimizer_fn=server_optimizer_fn,
+      stateful_delta_aggregate_fn=stateful_delta_aggregate_fn,
+      stateful_model_broadcast_fn=stateful_model_broadcast_fn,
+      broadcast_process=broadcast_process,
+      aggregation_process=aggregation_process)
