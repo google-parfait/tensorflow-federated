@@ -69,7 +69,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -294,29 +293,7 @@ def parse_tff_to_tf(comp):
     of this function, but rather its callers, to check that the result of this
     parse is as expected.
   """
-  parser_callable = tree_to_cc_transformations.TFParser()
-  comp, _ = transformations.remove_lambdas_and_blocks(comp)
-  # Parsing all the way up from the leaves can be expensive, so we check whether
-  # inserting called identities at the leaves is necessary first.
-  preprocessed, _ = transformations.preprocess_for_tf_parse(comp)
-  new_comp, _ = transformation_utils.transform_postorder(
-      preprocessed, parser_callable)
-  if (new_comp.is_compiled_computation() or
-      (new_comp.is_call() and new_comp.function.is_compiled_computation())):
-    tf_parsed = new_comp
-  elif new_comp.is_lambda():
-    leaves_decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
-        new_comp)
-    tf_parsed, _ = transformation_utils.transform_postorder(
-        leaves_decorated, parser_callable)
-  elif new_comp.is_call():
-    leaves_decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
-        new_comp)
-    tf_parsed, _ = transformation_utils.transform_postorder(
-        leaves_decorated, parser_callable)
-  else:
-    tf_parsed, _ = transformation_utils.transform_postorder(
-        new_comp, parser_callable)
+  tf_parsed, _ = transformations.compile_local_computation_to_tensorflow(comp)
 
   # TODO(b/154352798): We copy TF's RewriterConfig toggle enum values as it
   # is not exposed. There is ongoing discussion with TF API owners on exposing

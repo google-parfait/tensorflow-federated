@@ -905,5 +905,163 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         '{<int32>}@CLIENTS')
 
 
+class TensorFlowGeneratorTest(test.TestCase):
+
+  def test_passes_on_tf(self):
+    tf_comp = building_block_factory.create_compiled_identity(
+        computation_types.TensorType(tf.int32))
+
+    transformed, modified = transformations.compile_local_computation_to_tensorflow(
+        tf_comp)
+
+    self.assertFalse(modified)
+    self.assertEqual(tf_comp, transformed)
+
+  def test_generates_tf_with_lambda(self):
+    ref_to_x = building_blocks.Reference('x', [tf.int32, tf.float32])
+    identity_lambda = building_blocks.Lambda(ref_to_x.name,
+                                             ref_to_x.type_signature, ref_to_x)
+
+    transformed, modified = transformations.compile_local_computation_to_tensorflow(
+        identity_lambda)
+
+    self.assertTrue(modified)
+    self.assertIsInstance(transformed, building_blocks.CompiledComputation)
+    self.assertEqual(transformed.type_signature, identity_lambda.type_signature)
+
+  def test_generates_tf_with_block(self):
+    ref_to_x = building_blocks.Reference('x', [tf.int32, tf.float32])
+    identity_lambda = building_blocks.Lambda(ref_to_x.name,
+                                             ref_to_x.type_signature, ref_to_x)
+    tf_zero = building_block_factory.create_tensorflow_constant(
+        computation_types.NamedTupleType([tf.int32, tf.float32]), 0)
+    ref_to_z = building_blocks.Reference('z', [tf.int32, tf.float32])
+    called_lambda_on_z = building_blocks.Call(identity_lambda, ref_to_z)
+    blk = building_blocks.Block([('z', tf_zero)], called_lambda_on_z)
+
+    transformed, modified = transformations.compile_local_computation_to_tensorflow(
+        blk)
+
+    self.assertTrue(modified)
+    self.assertIsInstance(transformed, building_blocks.Call)
+    self.assertIsInstance(transformed.function,
+                          building_blocks.CompiledComputation)
+    self.assertIsNone(transformed.argument)
+    self.assertEqual(transformed.type_signature, blk.type_signature)
+
+  def test_generates_tf_with_sequence_type(self):
+    ref_to_x = building_blocks.Reference(
+        'x', computation_types.SequenceType([tf.int32, tf.float32]))
+    identity_lambda = building_blocks.Lambda(ref_to_x.name,
+                                             ref_to_x.type_signature, ref_to_x)
+
+    transformed, modified = transformations.compile_local_computation_to_tensorflow(
+        identity_lambda)
+
+    self.assertTrue(modified)
+    self.assertIsInstance(transformed, building_blocks.CompiledComputation)
+    self.assertEqual(transformed.type_signature, identity_lambda.type_signature)
+
+  def test_leaves_federated_comp_alone(self):
+    ref_to_federated_x = building_blocks.Reference(
+        'x', computation_types.FederatedType(tf.int32,
+                                             placement_literals.SERVER))
+    identity_lambda = building_blocks.Lambda(ref_to_federated_x.name,
+                                             ref_to_federated_x.type_signature,
+                                             ref_to_federated_x)
+
+    transformed, modified = transformations.compile_local_computation_to_tensorflow(
+        identity_lambda)
+
+    self.assertFalse(modified)
+    self.assertEqual(transformed, identity_lambda)
+
+  def test_compiles_lambda_under_federated_comp_to_tf(self):
+    ref_to_x = building_blocks.Reference('x', [tf.int32, tf.float32])
+    identity_lambda = building_blocks.Lambda(ref_to_x.name,
+                                             ref_to_x.type_signature, ref_to_x)
+    federated_data = building_blocks.Data(
+        'a',
+        computation_types.FederatedType([tf.int32, tf.float32],
+                                        placement_literals.SERVER))
+    applied = building_block_factory.create_federated_apply(
+        identity_lambda, federated_data)
+
+    transformed, modified = transformations.compile_local_computation_to_tensorflow(
+        applied)
+
+    self.assertTrue(modified)
+    self.assertIsInstance(transformed, building_blocks.Call)
+    self.assertIsInstance(transformed.function, building_blocks.Intrinsic)
+    self.assertIsInstance(transformed.argument[0],
+                          building_blocks.CompiledComputation)
+    self.assertEqual(transformed.argument[1], federated_data)
+    self.assertEqual(transformed.argument[0].type_signature,
+                     identity_lambda.type_signature)
+
+  def test_leaves_local_comp_with_unbound_reference_alone(self):
+    ref_to_x = building_blocks.Reference('x', [tf.int32, tf.float32])
+    ref_to_z = building_blocks.Reference('z', [tf.int32, tf.float32])
+    lambda_with_unbound_ref = building_blocks.Lambda(ref_to_x.name,
+                                                     ref_to_x.type_signature,
+                                                     ref_to_z)
+    transformed, modified = transformations.compile_local_computation_to_tensorflow(
+        lambda_with_unbound_ref)
+
+    self.assertFalse(modified)
+    self.assertEqual(transformed, lambda_with_unbound_ref)
+
+  def test_deduplicates_tensorflow_by_counting_ops(self):
+
+    def _construct_inlined_tuple(k):
+      constant_tuple_type = computation_types.TensorType(tf.int32)
+      concrete_int = building_block_factory.create_tensorflow_constant(
+          constant_tuple_type, 1)
+      first_tf_fn = building_block_factory.create_tensorflow_binary_operator(
+          concrete_int.type_signature, tf.add)
+      call = building_blocks.Call(
+          first_tf_fn, building_blocks.Tuple([concrete_int, concrete_int]))
+      for _ in range(k):
+        # Simulating large TF computation
+        call = building_blocks.Call(first_tf_fn,
+                                    building_blocks.Tuple([call, call]))
+      return building_blocks.Tuple([call, call])
+
+    def _count_ops_parameterized_by_layers(k):
+      inlined_tuple_with_k_layers = _construct_inlined_tuple(k)
+      tf_representing_block_with_k_layers, _ = transformations.compile_local_computation_to_tensorflow(
+          inlined_tuple_with_k_layers)
+      block_ops_with_k_layers = tree_analysis.count_tensorflow_ops_under(
+          tf_representing_block_with_k_layers)
+      parser_callable = tree_to_cc_transformations.TFParser()
+      naively_generated_tf_with_k_layers, _ = transformation_utils.transform_postorder(
+          inlined_tuple_with_k_layers, parser_callable)
+      naive_ops_with_k_layers = tree_analysis.count_tensorflow_ops_under(
+          naively_generated_tf_with_k_layers)
+      return block_ops_with_k_layers, naive_ops_with_k_layers
+
+    block_ops_with_0_layers, tuple_ops_with_0_layers = _count_ops_parameterized_by_layers(
+        0)
+    block_ops_with_1_layers, tuple_ops_with_1_layers = _count_ops_parameterized_by_layers(
+        1)
+    block_ops_with_2_layers, tuple_ops_with_2_layers = _count_ops_parameterized_by_layers(
+        2)
+    block_ops_with_3_layers, tuple_ops_with_3_layers = _count_ops_parameterized_by_layers(
+        3)
+
+    # asserting that block ops are linear in k.
+    self.assertEqual(block_ops_with_1_layers - block_ops_with_0_layers,
+                     block_ops_with_2_layers - block_ops_with_1_layers)
+    self.assertEqual(block_ops_with_3_layers - block_ops_with_2_layers,
+                     block_ops_with_2_layers - block_ops_with_1_layers)
+
+    # asserting that tuple ops are exponential in k.
+    first_factor = (tuple_ops_with_2_layers - tuple_ops_with_1_layers) / (
+        tuple_ops_with_1_layers - tuple_ops_with_0_layers)
+    second_factor = (tuple_ops_with_3_layers - tuple_ops_with_2_layers) / (
+        tuple_ops_with_2_layers - tuple_ops_with_1_layers)
+    self.assertEqual(first_factor, second_factor)
+
+
 if __name__ == '__main__':
   test.main()

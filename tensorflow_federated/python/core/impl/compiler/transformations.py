@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.impl.compiler import compiled_computation_
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def prepare_for_rebinding(comp):
@@ -416,24 +417,6 @@ def create_tensorflow_representing_block(block):
   return comp_called, True
 
 
-class IntermediateParser(tree_to_cc_transformations.TFParser):
-
-  def __init__(self):
-    """Populates the parser library with first-pass transforms."""
-    super().__init__()
-    self._parse_library = [
-        compiled_computation_transforms.TupleCalledGraphs(only_equal_args=True),
-        compiled_computation_transforms.NestedTupleOfSelectionsAndGraphs(),
-    ]
-
-
-def preprocess_for_tf_parse(comp):
-  """Deduplicates called graphs in the AST nested in Selections and Tuples."""
-  preprocessor = IntermediateParser()
-  comp, _ = transformation_utils.transform_preorder(comp, preprocessor)
-  return remove_duplicate_called_graphs(comp)
-
-
 def remove_duplicate_called_graphs(comp):
   """Deduplicates called graphs for a subset of TFF AST constructs.
 
@@ -617,3 +600,73 @@ def optimize_tensorflow_graphs(comp, grappler_config_proto):
   tf_optimizer = compiled_computation_transforms.TensorFlowOptimizer(
       grappler_config_proto)
   return transformation_utils.transform_postorder(comp, tf_optimizer.transform)
+
+
+class TensorFlowGenerator(transformation_utils.TransformSpec):
+  """TransformSpec which generates TensorFlow to represent local computation.
+
+  Any TFF computation which declares as its parameters and return values only
+  instances of `computation_types.SequenceType`,
+  `computation_types.NamedTupleType`, and `computation_types.TensorType`s, and
+  not capturing any references from an outer scope or containing any intrinsics,
+  can be represented by a TensorFlow computation. This TransformSpec identifies
+  computations such computations and generates a semantically equivalent
+  TensorFlow computation.
+  """
+
+  def __init__(self):
+    self._naive_tf_parser = tree_to_cc_transformations.TFParser()
+
+  def transform(self, local_function):
+    if not self.should_transform(local_function):
+      return local_function, False
+    refs_removed, _ = remove_lambdas_and_blocks(local_function)
+    parsed_to_tf, _ = remove_duplicate_called_graphs(refs_removed)
+    if parsed_to_tf.is_compiled_computation() or (
+        parsed_to_tf.is_call() and
+        parsed_to_tf.function.is_compiled_computation()):
+      return parsed_to_tf, True
+    # TODO(b/146430051): We should only end up in this case if
+    # `remove_lambdas_and_blocks` above is in its failure mode, IE, failing to
+    # resolve references due to too-deep indirection; we should remove
+    # this extra case and simply raise if we fail here when we fix the attached
+    # bug.
+    called_graphs_inserted, _ = tree_transformations.insert_called_tf_identity_at_leaves(
+        parsed_to_tf)
+    compiled_comp, _ = transformation_utils.transform_postorder(
+        called_graphs_inserted, self._naive_tf_parser)
+    return compiled_comp, True
+
+  def should_transform(self, comp):
+    if not (type_analysis.is_tensorflow_compatible_type(comp.type_signature) or
+            (comp.type_signature.is_function() and
+             type_analysis.is_tensorflow_compatible_type(
+                 comp.type_signature.parameter) and
+             type_analysis.is_tensorflow_compatible_type(
+                 comp.type_signature.result))):
+      return False
+    elif comp.is_compiled_computation() or (
+        comp.is_call() and comp.function.is_compiled_computation()):
+      # These represent the final result of TF generation; no need to transform.
+      return False
+    unbound_refs = transformation_utils.get_map_of_unbound_references(
+        comp)[comp]
+    if unbound_refs:
+      # We cannot represent these captures without further information.
+      return False
+    if tree_analysis.contains_types(comp, building_blocks.Intrinsic):
+      return False
+    return True
+
+
+def compile_local_computation_to_tensorflow(comp):
+  """Compiles any fully specified local function to a TensorFlow computation."""
+  if comp.is_compiled_computation() or (
+      comp.is_call() and comp.function.is_compiled_computation()):
+    # These represent the final result of TF generation; no need to transform,
+    # so we short-circuit here.
+    return comp, False
+  local_tf_generator = TensorFlowGenerator()
+  transformed, modified = transformation_utils.transform_preorder(
+      comp, local_tf_generator.transform)
+  return transformed, modified
