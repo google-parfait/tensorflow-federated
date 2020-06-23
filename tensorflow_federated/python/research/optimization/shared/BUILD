@@ -99,22 +99,6 @@ py_test(
 )
 
 py_library(
-    name = "resnet_models",
-    srcs = ["resnet_models.py"],
-    srcs_version = "PY3",
-)
-
-py_test(
-    name = "resnet_models_test",
-    size = "small",
-    timeout = "moderate",
-    srcs = ["resnet_models_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":resnet_models"],
-)
-
-py_library(
     name = "schedule_utils",
     srcs = ["schedule_utils.py"],
     srcs_version = "PY3",

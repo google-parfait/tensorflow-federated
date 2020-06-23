@@ -2,20 +2,6 @@ package(default_visibility = ["//tensorflow_federated/python/research"])
 
 licenses(["notice"])
 
-py_library(
-    name = "models",
-    srcs = ["models.py"],
-    srcs_version = "PY3",
-)
-
-py_test(
-    name = "models_test",
-    srcs = ["models_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":models"],
-)
-
 py_binary(
     name = "run_federated",
     srcs = ["run_federated.py"],
