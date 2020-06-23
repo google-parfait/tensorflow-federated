@@ -25,9 +25,9 @@ import tensorflow as tf
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
-from tensorflow_federated.python.research.optimization.stackoverflow import models
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import stackoverflow_dataset
+from tensorflow_federated.python.research.utils.models import stackoverflow_models
 
 with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_string(
@@ -75,7 +75,7 @@ def run_experiment():
       FLAGS.vocab_size, FLAGS.batch_size, FLAGS.sequence_length,
       FLAGS.shuffle_buffer_size)
 
-  model = models.create_recurrent_model(
+  model = stackoverflow_models.create_recurrent_model(
       vocab_size=FLAGS.vocab_size,
       name='stackoverflow-lstm',
       embedding_size=FLAGS.embedding_size,

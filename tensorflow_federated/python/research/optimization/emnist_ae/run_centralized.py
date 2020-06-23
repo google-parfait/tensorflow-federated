@@ -22,11 +22,11 @@ from absl import logging
 import pandas as pd
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.emnist_ae import models
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import emnist_ae_dataset
+from tensorflow_federated.python.research.utils.models import emnist_ae_models
 
 with utils_impl.record_new_flags() as hparam_flags:
   optimizer_utils.define_optimizer_flags('centralized')
@@ -82,7 +82,7 @@ def main(_):
 
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
 
-  model = models.create_autoencoder_model()
+  model = emnist_ae_models.create_autoencoder_model()
   model.compile(
       loss=tf.keras.losses.MeanSquaredError(),
       optimizer=optimizer,

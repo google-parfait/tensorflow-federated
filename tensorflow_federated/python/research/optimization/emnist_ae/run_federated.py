@@ -20,13 +20,13 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.emnist_ae import models
 from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import emnist_ae_dataset
+from tensorflow_federated.python.research.utils.models import emnist_ae_models
 
 with utils_impl.record_hparam_flags():
   # Experiment hyperparameters
@@ -54,7 +54,7 @@ def main(_):
   input_spec = emnist_train.create_tf_dataset_for_client(
       emnist_train.client_ids[0]).element_spec
 
-  model_builder = models.create_autoencoder_model
+  model_builder = emnist_ae_models.create_autoencoder_model
 
   loss_builder = functools.partial(
       tf.keras.losses.MeanSquaredError, reduction=tf.keras.losses.Reduction.SUM)

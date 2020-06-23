@@ -24,10 +24,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
-from tensorflow_federated.python.research.optimization.stackoverflow_lr import models
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import stackoverflow_lr_dataset
-
+from tensorflow_federated.python.research.utils.models import stackoverflow_lr_models
 
 with utils_impl.record_new_flags() as hparam_flags:
   optimizer_utils.define_optimizer_flags('centralized')
@@ -84,7 +83,7 @@ def main(argv):
 
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
 
-  model = models.create_logistic_model(
+  model = stackoverflow_lr_models.create_logistic_model(
       vocab_tokens_size=FLAGS.vocab_tokens_size,
       vocab_tags_size=FLAGS.vocab_tags_size)
 

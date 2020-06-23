@@ -22,11 +22,11 @@ from absl import logging
 import pandas as pd
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.emnist import models
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import emnist_dataset
+from tensorflow_federated.python.research.utils.models import emnist_models
 
 with utils_impl.record_new_flags() as hparam_flags:
   optimizer_utils.define_optimizer_flags('centralized')
@@ -85,9 +85,9 @@ def main(argv):
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
 
   if FLAGS.model == 'cnn':
-    model = models.create_conv_dropout_model(only_digits=False)
+    model = emnist_models.create_conv_dropout_model(only_digits=False)
   elif FLAGS.model == '2nn':
-    model = models.create_two_hidden_layer_model(only_digits=False)
+    model = emnist_models.create_two_hidden_layer_model(only_digits=False)
   else:
     raise ValueError('Cannot handle model flag [{!s}].'.format(FLAGS.model))
 

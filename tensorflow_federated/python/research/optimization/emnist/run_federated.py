@@ -20,13 +20,13 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.emnist import models
 from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
 from tensorflow_federated.python.research.optimization.shared import iterative_process_builder
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import emnist_dataset
+from tensorflow_federated.python.research.utils.models import emnist_models
 
 with utils_impl.record_hparam_flags():
   # Experiment hyperparameters
@@ -62,10 +62,10 @@ def main(argv):
 
   if FLAGS.model == 'cnn':
     model_builder = functools.partial(
-        models.create_conv_dropout_model, only_digits=False)
+        emnist_models.create_conv_dropout_model, only_digits=False)
   elif FLAGS.model == '2nn':
     model_builder = functools.partial(
-        models.create_two_hidden_layer_model, only_digits=False)
+        emnist_models.create_two_hidden_layer_model, only_digits=False)
   else:
     raise ValueError('Cannot handle model flag [{!s}].'.format(FLAGS.model))
 

@@ -24,9 +24,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
-from tensorflow_federated.python.research.optimization.shared import resnet_models
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import cifar100_dataset
+from tensorflow_federated.python.research.utils.models import resnet_models
 
 with utils_impl.record_new_flags() as hparam_flags:
   optimizer_utils.define_optimizer_flags('centralized')

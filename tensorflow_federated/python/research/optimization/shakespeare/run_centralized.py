@@ -23,12 +23,12 @@ import pandas as pd
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.optimization.shakespeare import models
 from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import shakespeare_dataset
+from tensorflow_federated.python.research.utils.models import shakespeare_models
 
 FLAGS = flags.FLAGS
 
@@ -96,7 +96,7 @@ def main(argv):
 
   # Vocabulary with one OOV ID and zero for the mask.
   vocab_size = len(shakespeare_dataset.CHAR_VOCAB) + 2
-  model = models.create_recurrent_model(
+  model = shakespeare_models.create_recurrent_model(
       vocab_size=vocab_size, batch_size=FLAGS.batch_size)
   model.compile(
       optimizer=optimizer,
