@@ -27,11 +27,14 @@ pip install tensorflow
 
 ## General description
 
-This example contains two main libraries, `adaptive_fed_avg.py` and
-`callbacks.py`. The latter implements learning rate callbacks that adaptively
-decay learning rates based on moving averages of metrics. This is relevant in
-the federated setting, as we may wish to decay learning rates based on the
-average training loss across rounds.
+This example contains two main libraries,
+[adaptive_fed_avg.py](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/adaptive_lr_decay/adaptive_fed_avg.py)
+and
+[callbacks.py](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/adaptive_lr_decay/callbacks.py).
+The latter implements learning rate callbacks that adaptively decay learning
+rates based on moving averages of metrics. This is relevant in the federated
+setting, as we may wish to decay learning rates based on the average training
+loss across rounds.
 
 These callbacks are used in `adaptive_fed_avg.py` to perform federated averaging
 with adaptive learning rate decay. Notably, `adaptive_fed_avg.py` decouples
@@ -63,9 +66,11 @@ of `client_lr_callback.decay_factor`.
 These callbacks are incorporated into `adaptive_fed_avg` so that the learning
 rate (client and/or server) will be decayed automatically as learning
 progresses. For example, suppose we do not want the server LR to decay. Then we
-can construct `server_lr_callback = callbacks.create_reduce_lr_on_plateau(
-learning_rate=1.0, decay_factor=1.0)` and then using these callbacks with some
-`model_fn`, we can call
+can construct `server_lr_callback =
+callbacks.create_reduce_lr_on_plateau(learning_rate=1.0, decay_factor=1.0)`, and
+then, using these callbacks with a `model_fn` that returns an uncompiled
+[tf.keras.Model](https://www.tensorflow.org/api_docs/python/tf/keras/Model), we
+can call
 
 <!-- mdformat off(This code snippet is sensitive to automatic formatting changes) -->
 ```
@@ -91,7 +96,8 @@ performance. For example, you can set a `cooldown` period (preventing the
 learning rate from decaying for a number of rounds after it has decayed), or
 configure how many consecutive rounds of plateauing loss must be observed before
 decaying the learning rate (via the `patience` argument). For more details, see
-the documentation for `callbacks.py`.
+the documentation for
+[callbacks.py](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/adaptive_lr_decay/callbacks.py).
 
 ## Benchmarking experiments
 
@@ -101,16 +107,16 @@ CIFAR-100, FEMNIST, Shakespeare, and Stack Overflow. For Stack Overflow, we
 perform two distinct tasks, tag prediction, and next word prediction. A summary
 of the datasets, models, and tasks are given below.
 
-Dataset        | Model                             | Task Summary
--------------- | --------------------------------- | -------------------------
-CIFAR-100      | ResNet-18 (with GroupNorm layers) | Image classification
-FEMNIST        | Convolutional Neural Network      | Digit recognition
-Shakespeare    | RNN with 2 LSTM layers            | Next character prediction
-Stack Overflow | RNN with 1 LSTM layer             | Next word prediction
-Stack Overflow | Logistic regression classifier    | Tag prediction
+Dataset        | Model                             | Task Summary              | Binary
+-------------- | --------------------------------- | ------------------------- | ------
+CIFAR-100      | ResNet-18 (with GroupNorm layers) | Image classification      | [run_federated_cifar100.py](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/adaptive_lr_decay/run_federated_cifar100.py)
+FEMNIST        | Convolutional Neural Network      | Digit recognition         | [run_federated_emnist.py](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/adaptive_lr_decay/run_federated_emnist.py)
+Shakespeare    | RNN with 2 LSTM layers            | Next character prediction | [run_federated_shakespeare.py](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/adaptive_lr_decay/run_federated_shakespeare.py)
+Stack Overflow | RNN with 1 LSTM layer             | Next word prediction      | [run_federated_stackoverflow.py](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/adaptive_lr_decay/run_federated_stackoverflow.py)
+Stack Overflow | Logistic regression classifier    | Tag prediction            | [run_federated_stackoverflow_lr.py](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/adaptive_lr_decay/run_federated_stackoverflow_lr.py)
 
-To run this code, we require [Bazel](https://www.bazel.build/). Instructions for
-installing Bazel can be found
+To run the corresponding binaries, we require [Bazel](https://www.bazel.build/).
+Instructions for installing Bazel can be found
 [here](https://docs.bazel.build/versions/master/install.html).
 
 To run a baseline classifier on CIFAR-100, for example, one would run (inside
@@ -138,4 +144,4 @@ further, one could alter the server learning rate decay factor, the window size
 used to estimate the global loss, the minimum learning rate, and other
 configurations. These are configured via abseil flags. For a list of flags
 configuring the adaptive learning rate decay, see
-`decay_iterative_process_builder.py`.
+[decay_iterative_process_builder.py](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/adaptive_lr_decay/decay_iterative_process_builder.py).
