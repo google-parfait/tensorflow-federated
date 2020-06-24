@@ -33,7 +33,7 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
-from tensorflow_federated.python.tensorflow_libs import variable_utils
+from tensorflow_federated.python.tensorflow_libs import graph_keys
 
 
 class SerializationError(Exception):
@@ -270,11 +270,27 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
       parameter_binding = None
     context = tf_computation_context.TensorFlowComputationContext(graph)
     with context_stack.install(context):
-      with variable_utils.record_variable_creation_scope() as all_variables:
-        if parameter_value is not None:
-          result = target(parameter_value)
-        else:
-          result = target()
+      if parameter_value is not None:
+        result = target(parameter_value)
+      else:
+        result = target()
+
+      # TODO(b/122081673): This needs to change for TF 2.0. We may also
+      # want to allow the person creating a tff.tf_computation to specify
+      # a different initializer; e.g., if it is known that certain
+      # variables will be assigned immediately to arguments of the function,
+      # then it is wasteful to initialize them before this.
+      #
+      # The following is a bit of a work around: the collections below may
+      # contain variables more than once, hence we throw into a set. TFF needs
+      # to ensure all variables are initialized, but not all variables are
+      # always in the collections we expect. tff.learning._KerasModel tries to
+      # pull Keras variables (that may or may not be in GLOBAL_VARIABLES) into
+      # VARS_FOR_TFF_TO_INITIALIZE for now.
+      all_variables = set(tf.compat.v1.global_variables() +
+                          tf.compat.v1.local_variables() +
+                          tf.compat.v1.get_collection(
+                              graph_keys.GraphKeys.VARS_FOR_TFF_TO_INITIALIZE))
       if all_variables:
         # Use a readable but not-too-long name for the init_op.
         name = 'init_op_for_' + '_'.join(

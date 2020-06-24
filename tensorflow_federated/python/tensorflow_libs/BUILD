@@ -27,6 +27,12 @@ py_test(
 )
 
 py_library(
+    name = "graph_keys",
+    srcs = ["graph_keys.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
     name = "graph_merge",
     srcs = ["graph_merge.py"],
     srcs_version = "PY3",
@@ -96,24 +102,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":tensor_utils",
-        "//tensorflow_federated/python/common_libs:test",
-    ],
-)
-
-py_library(
-    name = "variable_utils",
-    srcs = ["variable_utils.py"],
-    srcs_version = "PY3",
-)
-
-py_test(
-    name = "variable_utils_test",
-    size = "small",
-    srcs = ["variable_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":variable_utils",
         "//tensorflow_federated/python/common_libs:test",
     ],
 )
