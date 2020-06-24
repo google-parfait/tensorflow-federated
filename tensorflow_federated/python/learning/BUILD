@@ -125,7 +125,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core",
-        "//tensorflow_federated/python/tensorflow_libs:graph_keys",
     ],
 )
 
