@@ -212,11 +212,11 @@ def serialize_value(value, type_spec=None):
   elif type_spec.is_tensor():
     return serialize_tensor_value(value, type_spec)
   elif type_spec.is_tuple():
-    type_elements = anonymous_tuple.to_elements(type_spec)
-    val_elements = anonymous_tuple.to_elements(
+    type_elem_iter = anonymous_tuple.iter_elements(type_spec)
+    val_elem_iter = anonymous_tuple.iter_elements(
         anonymous_tuple.from_container(value))
     tup_elems = []
-    for (e_name, e_type), (_, e_val) in zip(type_elements, val_elements):
+    for (e_name, e_type), (_, e_val) in zip(type_elem_iter, val_elem_iter):
       e_proto, _ = serialize_value(e_val, e_type)
       tup_elems.append(
           executor_pb2.Value.Tuple.Element(
