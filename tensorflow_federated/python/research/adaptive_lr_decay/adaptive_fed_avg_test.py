@@ -114,7 +114,7 @@ class AdaptiveFedAvgTest(tf.test.TestCase):
 
     for i in range(5):
       self.assertAllClose(train_outputs[i]['during_training']['loss'],
-                          reference_train_outputs[i]['loss'], 1e-4)
+                          reference_train_outputs[i].train['loss'], 1e-4)
 
   def test_fed_avg_without_decay_decreases_loss(self):
     client_lr_callback = callbacks.create_reduce_lr_on_plateau(
