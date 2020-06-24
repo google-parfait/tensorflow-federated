@@ -53,8 +53,8 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.compiler import computation_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
@@ -273,7 +273,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
     py_typecheck.check_len(val, len(self._target_executors))
-    identity_report = computation_factory.create_lambda_identity(zero_type)
+    identity_report = tensorflow_computation_factory.create_identity(zero_type)
     identity_report_type = type_factory.unary_op(zero_type)
     aggr_type = computation_types.FunctionType(
         computation_types.NamedTupleType([
@@ -497,7 +497,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
                                                 arg.type_signature.member,
                                                 tf.add),
         self._executor.create_value(
-            computation_factory.create_lambda_identity(
+            tensorflow_computation_factory.create_identity(
                 arg.type_signature.member),
             type_factory.unary_op(arg.type_signature.member)))
     aggregate_args = await self._executor.create_tuple(
