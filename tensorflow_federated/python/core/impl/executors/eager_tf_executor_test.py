@@ -587,7 +587,6 @@ class EagerTFExecutorTest(tf.test.TestCase):
 
     result_binding = pb.TensorFlow.Binding(
         tensor=pb.TensorFlow.TensorBinding(tensor_name='Invalid'))
-    print(result_binding, type(result_binding))
     comp = pb.Computation(
         tensorflow=pb.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
