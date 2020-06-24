@@ -14,10 +14,12 @@
 """Utility methods for working with TensorFlow Federated Model objects."""
 
 import collections
+from typing import Callable, Union
 
 import attr
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff_core
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
@@ -78,6 +80,28 @@ class ModelWeights(object):
                             model.trainable_variables, self.trainable)
       tf.nest.map_structure(lambda var, t: var.assign(t),
                             model.non_trainable_variables, self.non_trainable)
+
+
+def weights_type_from_model(
+    model: Union[model_lib.Model, Callable[[], model_lib.Model]]
+) -> tff_core.NamedTupleType:
+  """Creates a `tff.Type` from a `tff.learning.Model` or callable that constructs a model.
+
+  Args:
+    model: a `tff.learning.Model` instance, or a no-arg callable that returns a
+      model.
+
+  Returns:
+    A `tff.NamedTupleType` representing the TFF type of the `ModelWeights`
+    structure for `model`.
+  """
+  if callable(model):
+    # Wrap model construction in a graph to avoid polluting the global context
+    # with variables created for this model.
+    with tf.Graph().as_default():
+      model = model()
+  py_typecheck.check_type(model, model_lib.Model)
+  return tff_core.framework.type_from_tensors(ModelWeights.from_model(model))
 
 
 def enhance(model):

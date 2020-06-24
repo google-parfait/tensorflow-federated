@@ -40,8 +40,8 @@ def build_federated_evaluation(model_fn):
   # TODO(b/124477628): Ideally replace the need for stamping throwaway models
   # with some other mechanism.
   with tf.Graph().as_default():
-    model = model_utils.enhance(model_fn())
-    model_weights_type = tff.framework.type_from_tensors(model.weights)
+    model = model_fn()
+    model_weights_type = model_utils.weights_type_from_model(model)
     batch_type = tff.to_type(model.input_spec)
 
   @tff.tf_computation(model_weights_type, tff.SequenceType(batch_type))

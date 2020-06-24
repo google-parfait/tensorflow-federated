@@ -328,8 +328,8 @@ def _build_one_round_computation(
   # still need this.
   with tf.Graph().as_default():
     dummy_model_for_metadata = model_fn()
-    model_weights_type = tff.framework.type_from_tensors(
-        model_utils.ModelWeights.from_model(dummy_model_for_metadata))
+    model_weights_type = model_utils.weights_type_from_model(
+        dummy_model_for_metadata)
 
     dummy_optimizer = server_optimizer_fn()
     # We must force variable creation for momentum and adaptive optimizers.
@@ -652,10 +652,7 @@ def build_model_delta_optimizer_process(
   py_typecheck.check_callable(model_to_client_delta_fn)
   py_typecheck.check_callable(server_optimizer_fn)
 
-  with tf.Graph().as_default():
-    dummy_model_for_metadata = model_fn()
-    model_weights_type = tff.framework.type_from_tensors(
-        model_utils.ModelWeights.from_model(dummy_model_for_metadata))
+  model_weights_type = model_utils.weights_type_from_model(model_fn)
 
   # TODO(b/159138779): remove the StatefulFn arguments and these validation
   # functions once all callers are migrated.

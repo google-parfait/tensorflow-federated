@@ -104,8 +104,8 @@ def build_personalization_eval(model_fn,
   # TODO(b/124477628): Replace it with other ways of handling metadata.
   with tf.Graph().as_default():
     py_typecheck.check_callable(model_fn)
-    model = model_utils.enhance(model_fn())
-    model_weights_type = tff.framework.type_from_tensors(model.weights)
+    model = model_fn()
+    model_weights_type = model_utils.weights_type_from_model(model)
     batch_type = model.input_spec
 
   # Define the `tff.Type` of each client's input. Since batching (as well as

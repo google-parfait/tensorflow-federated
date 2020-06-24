@@ -262,10 +262,8 @@ class ModelDeltaOptimizerTest(test.TestCase):
                      expected_aggregate_state_type)
 
   def test_construction_with_aggregation_process(self):
-    with tf.Graph().as_default():
-      model_update_type = tff.framework.type_from_tensors(
-          model_utils.ModelWeights.from_model(
-              model_examples.LinearRegression()).trainable)
+    model_update_type = model_utils.weights_type_from_model(
+        model_examples.LinearRegression).trainable
     aggregation_process = _build_test_measured_mean(model_update_type)
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
@@ -312,10 +310,8 @@ class ModelDeltaOptimizerTest(test.TestCase):
                      expected_broadcast_state_type)
 
   def test_construction_with_broadcast_process(self):
-    with tf.Graph().as_default():
-      model_weights_type = tff.framework.type_from_tensors(
-          model_utils.ModelWeights.from_model(
-              model_examples.LinearRegression()))
+    model_weights_type = model_utils.weights_type_from_model(
+        model_examples.LinearRegression)
     broadcast_process = _build_test_measured_broadcast(model_weights_type)
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
@@ -338,10 +334,8 @@ class ModelDeltaOptimizerTest(test.TestCase):
                           tff.SERVER), expected_broadcast_state_type)
 
   def test_fails_stateful_broadcast_and_process(self):
-    with tf.Graph().as_default():
-      model_weights_type = tff.framework.type_from_tensors(
-          model_utils.ModelWeights.from_model(
-              model_examples.LinearRegression()))
+    model_weights_type = model_utils.weights_type_from_model(
+        model_examples.LinearRegression)
     with self.assertRaises(optimizer_utils.DisjointArgumentError):
       optimizer_utils.build_model_delta_optimizer_process(
           model_fn=model_examples.LinearRegression,
@@ -355,10 +349,8 @@ class ModelDeltaOptimizerTest(test.TestCase):
               model_weights_type=model_weights_type))
 
   def test_fails_stateful_aggregate_and_process(self):
-    with tf.Graph().as_default():
-      model_weights_type = tff.framework.type_from_tensors(
-          model_utils.ModelWeights.from_model(
-              model_examples.LinearRegression()))
+    model_weights_type = model_utils.weights_type_from_model(
+        model_examples.LinearRegression)
     with self.assertRaises(optimizer_utils.DisjointArgumentError):
       optimizer_utils.build_model_delta_optimizer_process(
           model_fn=model_examples.LinearRegression,
@@ -422,10 +414,8 @@ class ModelDeltaOptimizerTest(test.TestCase):
     self.assertEqual(expected_outputs, outputs)
 
   def test_orchestration_execute_measured_process(self):
-    with tf.Graph().as_default():
-      model_weights_type = tff.framework.type_from_tensors(
-          model_utils.ModelWeights.from_model(
-              model_examples.LinearRegression()))
+    model_weights_type = model_utils.weights_type_from_model(
+        model_examples.LinearRegression)
     learning_rate = 1.0
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,

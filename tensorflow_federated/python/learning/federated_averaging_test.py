@@ -132,10 +132,8 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
       prev_loss = train_metrics.loss
 
   def test_fails_stateful_broadcast_and_process(self):
-    with tf.Graph().as_default():
-      model_weights_type = tff.framework.type_from_tensors(
-          model_utils.ModelWeights.from_model(
-              model_examples.LinearRegression()))
+    model_weights_type = model_utils.weights_type_from_model(
+        model_examples.LinearRegression)
     with self.assertRaises(optimizer_utils.DisjointArgumentError):
       federated_averaging.build_federated_averaging_process(
           model_fn=model_examples.LinearRegression,
@@ -148,10 +146,8 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
               model_weights_type=model_weights_type))
 
   def test_fails_stateful_aggregate_and_process(self):
-    with tf.Graph().as_default():
-      model_weights_type = tff.framework.type_from_tensors(
-          model_utils.ModelWeights.from_model(
-              model_examples.LinearRegression()))
+    model_weights_type = model_utils.weights_type_from_model(
+        model_examples.LinearRegression)
     with self.assertRaises(optimizer_utils.DisjointArgumentError):
       federated_averaging.build_federated_averaging_process(
           model_fn=model_examples.LinearRegression,

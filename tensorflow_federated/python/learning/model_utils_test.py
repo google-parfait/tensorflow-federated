@@ -18,7 +18,9 @@ These tests also serve as examples for users who are familiar with Keras.
 
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff_core
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
@@ -68,6 +70,75 @@ class ModelUtilsTest(test.TestCase):
                            lambda: bad_model.local_variables)
     self.assertRaisesRegex(TypeError, 'BatchOutput',
                            lambda: bad_model.forward_pass(1))
+
+
+class TestModel(model_lib.Model):
+  """A very simple test model for testing type signatures."""
+
+  def __init__(self):
+    self.w = tf.Variable([0.0, 0.0, 0.0], name='w')
+    self.b = tf.Variable([0.0], name='b')
+    self.c = tf.Variable(0, name='c')
+    self.num_examples = tf.Variable(0, name='num_examples', trainable=False)
+
+  @property
+  def trainable_variables(self):
+    return [self.w, self.b]
+
+  @property
+  def non_trainable_variables(self):
+    return [self.c]
+
+  @property
+  def local_variables(self):
+    return [self.num_examples]
+
+  @property
+  def input_spec(self):
+    return tff_core.NamedTupleType((
+        tff_core.TensorSpec(tf.float32, [3]),
+        tff_core.TensorSpec(tf.float32, [1]),
+    ))
+
+  def forward_pass(self, batch_input, training=True):
+    return 1.0
+
+  def report_local_outputs(self):
+    return [self.num_examples.read_value()]
+
+  @property
+  def federated_output_computation(self):
+    return tff_core.federated_computation(lambda x: x)
+
+
+class WeightsTypeFromModelTest(test.TestCase):
+
+  def test_fails_not_callable_or_model(self):
+    with self.assertRaises(TypeError):
+      model_utils.weights_type_from_model(0)
+    with self.assertRaises(TypeError):
+      model_utils.weights_type_from_model(lambda: 0)
+
+  def test_returns_model_weights_for_model(self):
+    model = TestModel()
+    weights_type = model_utils.weights_type_from_model(model)
+    self.assertEqual(
+        tff_core.NamedTupleType([('trainable', [
+            tff_core.TensorType(tf.float32, [3]),
+            tff_core.TensorType(tf.float32, [1]),
+        ]), ('non_trainable', [
+            tff_core.TensorType(tf.int32),
+        ])]), weights_type)
+
+  def test_returns_model_weights_for_model_callable(self):
+    weights_type = model_utils.weights_type_from_model(TestModel)
+    self.assertEqual(
+        tff_core.NamedTupleType([('trainable', [
+            tff_core.TensorType(tf.float32, [3]),
+            tff_core.TensorType(tf.float32, [1]),
+        ]), ('non_trainable', [
+            tff_core.TensorType(tf.int32),
+        ])]), weights_type)
 
 
 if __name__ == '__main__':

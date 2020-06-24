@@ -181,6 +181,7 @@ py_library(
         ":model",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core",
     ],
 )
 
@@ -201,9 +202,11 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":model",
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core",
     ],
 )
 
