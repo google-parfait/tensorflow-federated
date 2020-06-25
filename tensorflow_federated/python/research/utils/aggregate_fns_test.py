@@ -1,5 +1,4 @@
-# Copyright 2019, The TensorFlow Federated Authors.
-#
+# Copyright 2019, The TensorFlow Federated Authors.  #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -72,6 +71,50 @@ class ClipNormAggregateFnTest(tf.test.TestCase):
     self.assertEqual(state.clip_norm, tf.constant(20.0, tf.float32))
     self.assertEqual(state.max_norm, tf.constant(53.99074, tf.float32))
     tf.nest.map_structure(self.assertAllEqual, expected_mean, mean)
+
+
+class FixedClipNormProcessTest(tf.test.TestCase):
+
+  def test_clip_by_global_norm(self):
+    clip_norm = 20.0
+    test_deltas = [create_weights_delta(), create_weights_delta(constant=10)]
+    update_type = tff.framework.type_from_tensors(test_deltas[0])
+    aggregate_fn = aggregate_fns.build_fixed_clip_norm_mean_process(
+        clip_norm=clip_norm, model_update_type=update_type)
+
+    self.assertEqual(
+        aggregate_fn.next.type_signature,
+        tff.FunctionType(
+            parameter=(
+                tff.FederatedType((), tff.SERVER),
+                tff.FederatedType(update_type, tff.CLIENTS),
+                tff.FederatedType(tf.float32, tff.CLIENTS),
+            ),
+            result=collections.OrderedDict(
+                state=tff.FederatedType((), tff.SERVER),
+                result=tff.FederatedType(update_type, tff.SERVER),
+                measurements=tff.FederatedType(
+                    aggregate_fns.NormClippedAggregationMetrics(
+                        max_global_norm=tf.float32, num_clipped=tf.int32),
+                    tff.SERVER)),
+        ))
+
+    state = aggregate_fn.initialize()
+    weights = [1., 1.]
+    output = aggregate_fn.next(state, test_deltas, weights)
+
+    expected_clipped = []
+    for delta in test_deltas:
+      clipped, _ = tf.clip_by_global_norm(tf.nest.flatten(delta), clip_norm)
+      expected_clipped.append(tf.nest.pack_sequence_as(delta, clipped))
+    expected_mean = tf.nest.map_structure(lambda a, b: (a + b) / 2,
+                                          *expected_clipped)
+    self.assertAllClose(expected_mean, output['result']._asdict())
+
+    # Global l2 norms [17.74824, 53.99074].
+    metrics = output['measurements']
+    self.assertAlmostEqual(metrics.max_global_norm, 53.99074, places=5)
+    self.assertEqual(metrics.num_clipped, 1)
 
 
 if __name__ == '__main__':
