@@ -186,41 +186,65 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('add_int_same_shape', tf.math.add,
-       [computation_types.TensorType(tf.int32),
-        computation_types.TensorType(tf.int32)],
+       computation_types.NamedTupleType([
+           computation_types.TensorType(tf.int32),
+           computation_types.TensorType(tf.int32),
+       ]),
        [1, 2], 3),
       ('add_int_different_shape', tf.math.add,
-       [computation_types.TensorType(tf.int32, shape=[1]),
-        computation_types.TensorType(tf.int32)],
+       computation_types.NamedTupleType([
+           computation_types.TensorType(tf.int32, shape=[1]),
+           computation_types.TensorType(tf.int32),
+       ]),
        [tf.constant(1, shape=[1]), 2], 3),
       ('add_int_different_types', tf.math.add,
-       [[computation_types.TensorType(tf.int32, shape=[1])],
-        computation_types.TensorType(tf.int32)],
-       [[tf.constant(1, shape=[1])], 2], anonymous_tuple.AnonymousTuple([(None, 3)])),
+       computation_types.NamedTupleType([
+           computation_types.NamedTupleType([
+               computation_types.TensorType(tf.int32, shape=[1])]),
+           computation_types.TensorType(tf.int32),
+       ]),
+       [[tf.constant(1, shape=[1])], 2],
+       anonymous_tuple.AnonymousTuple([(None, 3)])),
       ('multiply_int_same_shape', tf.math.multiply,
-       [computation_types.TensorType(tf.int32),
-        computation_types.TensorType(tf.int32)],
+       computation_types.NamedTupleType([
+           computation_types.TensorType(tf.int32),
+           computation_types.TensorType(tf.int32),
+       ]),
        [1, 2], 2),
       ('multiply_int_different_shape', tf.math.multiply,
-       [computation_types.TensorType(tf.int32, shape=[1]),
-        computation_types.TensorType(tf.int32)],
+       computation_types.NamedTupleType([
+           computation_types.TensorType(tf.int32, shape=[1]),
+           computation_types.TensorType(tf.int32),
+       ]),
        [tf.constant(1, shape=[1]), 2], 2),
       ('multiply_int_different_types', tf.math.multiply,
-       [[computation_types.TensorType(tf.int32, shape=[1])],
-        computation_types.TensorType(tf.int32)],
-       [[tf.constant(1, shape=[1])], 2], anonymous_tuple.AnonymousTuple([(None, 2)])),
+       computation_types.NamedTupleType([
+           computation_types.NamedTupleType([
+               computation_types.TensorType(tf.int32, shape=[1])]),
+           computation_types.TensorType(tf.int32)
+       ]),
+       [[tf.constant(1, shape=[1])], 2],
+       anonymous_tuple.AnonymousTuple([(None, 2)])),
       ('divide_int_same_shape', tf.math.divide,
-       [computation_types.TensorType(tf.int32),
-        computation_types.TensorType(tf.int32)],
+       computation_types.NamedTupleType([
+           computation_types.TensorType(tf.int32),
+           computation_types.TensorType(tf.int32),
+       ]),
        [1, 2], 0.5),
       ('divide_int_different_shape', tf.math.divide,
-       [computation_types.TensorType(tf.int32, shape=[1]),
-        computation_types.TensorType(tf.int32)],
+       computation_types.NamedTupleType([
+           computation_types.TensorType(tf.int32, shape=[1]),
+           computation_types.TensorType(tf.int32),
+       ]),
        [tf.constant(1, shape=[1]), 2], 0.5),
       ('divide_int_different_types', tf.math.divide,
-       [[computation_types.TensorType(tf.int32, shape=[1])],
-        computation_types.TensorType(tf.int32)],
-       [[tf.constant(1, shape=[1])], 2], anonymous_tuple.AnonymousTuple([(None, 0.5)])),
+       computation_types.NamedTupleType([
+           computation_types.NamedTupleType([
+               computation_types.TensorType(tf.int32, shape=[1])]),
+           computation_types.TensorType(tf.int32),
+       ]),
+       [[tf.constant(1, shape=[1])], 2],
+       anonymous_tuple.AnonymousTuple([(None, 0.5)])),
   )
   # pyformat: enable
   def test_returns_computation(self, operator, type_signature, operands,

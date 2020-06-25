@@ -55,7 +55,7 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
       compiled_computation_transforms.select_graph_output(foo)
 
   def test_select_graph_output_with_wrong_return_type_raises_type_error(self):
-    computation_arg_type = computation_types.to_type(tf.int32)
+    computation_arg_type = computation_types.TensorType(tf.int32)
 
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
@@ -123,12 +123,12 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, name='a')
     self.assertEqual(first_element_selected.type_signature.result,
-                     computation_types.to_type(tf.int32))
+                     computation_types.TensorType(tf.int32))
 
     second_element_selected = compiled_computation_transforms.select_graph_output(
         foo, name='b')
     self.assertEqual(second_element_selected.type_signature.result,
-                     computation_types.to_type(tf.float32))
+                     computation_types.TensorType(tf.float32))
 
     self.assertProtoEquals(
         serialization_utils.unpack_graph_def(
@@ -416,13 +416,13 @@ class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
       compiled_computation_transforms.bind_graph_parameter_as_tuple(None)
 
   def test_bind_graph_parameter_as_tuple_raises_on_non_string_name(self):
-    computation_arg_type = computation_types.to_type([tf.int32])
+    computation_arg_type = computation_types.NamedTupleType([tf.int32])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
     with self.assertRaises(TypeError):
       compiled_computation_transforms.bind_graph_parameter_as_tuple(foo, name=1)
 
   def test_bind_graph_parameter_as_tuple_wraps_tuple(self):
-    computation_arg_type = computation_types.to_type([tf.int32])
+    computation_arg_type = computation_types.NamedTupleType([tf.int32])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
@@ -463,7 +463,7 @@ class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
     self.assertSequenceEqual(actual_result, expected_result)
 
   def test_bind_graph_parameter_as_tuple_wraps_tensor(self):
-    computation_arg_type = computation_types.to_type(tf.int32)
+    computation_arg_type = computation_types.TensorType(tf.int32)
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
@@ -477,7 +477,7 @@ class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
   def test_bind_graph_parameter_as_tuple_adds_name(self):
-    computation_arg_type = computation_types.to_type(tf.int32)
+    computation_arg_type = computation_types.TensorType(tf.int32)
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
@@ -498,13 +498,13 @@ class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
       compiled_computation_transforms.bind_graph_result_as_tuple(None)
 
   def test_bind_graph_result_as_tuple_raises_on_non_string_name(self):
-    computation_arg_type = computation_types.to_type([tf.int32])
+    computation_arg_type = computation_types.NamedTupleType([tf.int32])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
     with self.assertRaises(TypeError):
       compiled_computation_transforms.bind_graph_result_as_tuple(foo, name=1)
 
   def test_bind_graph_result_as_tuple_wraps_tuple(self):
-    computation_arg_type = computation_types.to_type([tf.int32])
+    computation_arg_type = computation_types.NamedTupleType([tf.int32])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
@@ -532,7 +532,7 @@ class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
     self.assertSequenceEqual(actual_result[0], expected_result)
 
   def test_bind_graph_result_as_tuple_wraps_tensor(self):
-    computation_arg_type = computation_types.to_type(tf.int32)
+    computation_arg_type = computation_types.TensorType(tf.int32)
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
@@ -546,7 +546,7 @@ class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_result[0], expected_result)
 
   def test_bind_graph_result_as_tuple_adds_name(self):
-    computation_arg_type = computation_types.to_type(tf.int32)
+    computation_arg_type = computation_types.TensorType(tf.int32)
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     wrapped_output = compiled_computation_transforms.bind_graph_result_as_tuple(
@@ -565,12 +565,12 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
   def test_pad_graph_inputs_to_match_type_raises_on_none(self):
     with self.assertRaisesRegex(TypeError, r'Expected.*CompiledComputation'):
       compiled_computation_transforms.pad_graph_inputs_to_match_type(
-          None, computation_types.to_type([tf.int32]))
+          None, computation_types.NamedTupleType([tf.int32]))
 
   def test_pad_graph_inputs_to_match_type_raises_on_wrong_requested_type(self):
     comp = building_block_factory.create_compiled_identity(
-        computation_types.to_type([tf.int32]))
-    tensor_type = computation_types.to_type(tf.int32)
+        computation_types.NamedTupleType([tf.int32]))
+    tensor_type = computation_types.TensorType(tf.int32)
     with self.assertRaisesRegex(TypeError, r'Expected.*NamedTupleType'):
       compiled_computation_transforms.pad_graph_inputs_to_match_type(
           comp, tensor_type)
@@ -578,32 +578,32 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
   def test_pad_graph_inputs_to_match_type_raises_on_wrong_graph_parameter_type(
       self):
     comp = building_block_factory.create_compiled_identity(
-        computation_types.to_type(tf.int32))
+        computation_types.TensorType(tf.int32))
     with self.assertRaisesRegex(
         TypeError,
         r'Can only pad inputs of a CompiledComputation with parameter type tuple'
     ):
       compiled_computation_transforms.pad_graph_inputs_to_match_type(
-          comp, computation_types.to_type([tf.int32]))
+          comp, computation_types.NamedTupleType([tf.int32]))
 
   def test_pad_graph_inputs_to_match_type_raises_on_requested_type_too_short(
       self):
     comp = building_block_factory.create_compiled_identity(
-        computation_types.to_type([tf.int32] * 3))
+        computation_types.NamedTupleType([tf.int32] * 3))
     with self.assertRaisesRegex(ValueError, r'must have more elements'):
       compiled_computation_transforms.pad_graph_inputs_to_match_type(
-          comp, computation_types.to_type([tf.int32] * 2))
+          comp, computation_types.NamedTupleType([tf.int32] * 2))
 
   def test_pad_graph_inputs_to_match_type_raises_on_mismatched_graph_type_and_requested_type(
       self):
     comp = building_block_factory.create_compiled_identity(
-        computation_types.to_type([tf.float32]))
+        computation_types.NamedTupleType([tf.float32]))
     with self.assertRaisesRegex(TypeError, r'must match the beginning'):
       compiled_computation_transforms.pad_graph_inputs_to_match_type(
-          comp, computation_types.to_type([tf.int32] * 2))
+          comp, computation_types.NamedTupleType([tf.int32] * 2))
 
   def test_pad_graph_inputs_to_match_type_preserves_named_type_signature(self):
-    computation_arg_type = computation_types.to_type([('a', tf.int32)])
+    computation_arg_type = computation_types.NamedTupleType([('a', tf.int32)])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
@@ -615,7 +615,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(padded_inputs.type_signature, expetected_type_signature)
 
   def test_pad_graph_inputs_to_match_type_adds_names_to_unnamed_tuple(self):
-    computation_arg_type = computation_types.to_type([tf.int32])
+    computation_arg_type = computation_types.NamedTupleType([tf.int32])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
@@ -628,7 +628,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
 
   def test_pad_graph_inputs_to_match_type_preserves_unnamed_type_signature(
       self):
-    computation_arg_type = computation_types.to_type([tf.int32])
+    computation_arg_type = computation_types.NamedTupleType([tf.int32])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
@@ -640,7 +640,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
 
   def test_pad_graph_inputs_to_match_type_add_single_int_executes_correctly(
       self):
-    computation_arg_type = computation_types.to_type([tf.int32])
+    computation_arg_type = computation_types.NamedTupleType([tf.int32])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
@@ -654,7 +654,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
 
   def test_pad_graph_inputs_to_match_type_adds_names_to_unnamed_tuple_and_executes(
       self):
-    computation_arg_type = computation_types.to_type([tf.int32])
+    computation_arg_type = computation_types.NamedTupleType([tf.int32])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(

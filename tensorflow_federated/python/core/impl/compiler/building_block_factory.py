@@ -77,8 +77,7 @@ def create_compiled_identity(
   """Creates CompiledComputation representing identity function.
 
   Args:
-    type_signature: Argument convertible to instance of `computation_types.Type`
-      via `computation_types.to_type`.
+    type_signature: A `computation_types.Type`.
     name: An optional string name to use as the name of the computation.
 
   Returns:
@@ -140,7 +139,7 @@ def _extract_selections(parameter_value, output_spec):
 
 
 def construct_tensorflow_selecting_and_packing_outputs(
-    arg_type: computation_types.Type,
+    parameter_type: computation_types.NamedTupleType,
     output_structure: anonymous_tuple.AnonymousTuple
 ) -> building_blocks.CompiledComputation:
   """Constructs TensorFlow selecting and packing elements from its input.
@@ -162,9 +161,8 @@ def construct_tensorflow_selecting_and_packing_outputs(
   `output_structure`) will be selections from the argument.
 
   Args:
-    arg_type: `computation_types.Type` of the argument on which the constructed
-      function will be called. Should be an instance of
-      `computation_types.NamedTupleType`.
+    parameter_type: A `computation_types.NamedTupleType` of the argument on
+      which the constructed function will be called.
     output_structure: `anonymous_tuple.AnonymousTuple` with `SelectionSpec` or
       `anonymous_tupl.AnonymousTuple` elements, mapping from elements of the
       nested argument tuple to the desired result of the generated computation.
@@ -182,6 +180,7 @@ def construct_tensorflow_selecting_and_packing_outputs(
       `computation_types.SequenceType`, `computation_types.NamedTupleType` or
       `computation_types.TensorType`.
   """
+  py_typecheck.check_type(parameter_type, computation_types.NamedTupleType)
   py_typecheck.check_type(output_structure, anonymous_tuple.AnonymousTuple)
 
   def _check_output_structure(elem):
@@ -195,19 +194,17 @@ def construct_tensorflow_selecting_and_packing_outputs(
 
   _check_output_structure(output_structure)
   output_spec = anonymous_tuple.flatten(output_structure)
-  type_spec = computation_types.to_type(arg_type)
-  py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
-  type_analysis.check_tensorflow_compatible_type(type_spec)
+  type_analysis.check_tensorflow_compatible_type(parameter_type)
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', type_spec, graph)
+        'x', parameter_type, graph)
   results = _extract_selections(parameter_value, output_spec)
 
   repacked_result = anonymous_tuple.pack_sequence_as(output_structure, results)
   result_type, result_binding = tensorflow_utils.capture_result_from_graph(
       repacked_result, graph)
 
-  function_type = computation_types.FunctionType(type_spec, result_type)
+  function_type = computation_types.FunctionType(parameter_type, result_type)
   serialized_function_type = type_serialization.serialize_type(function_type)
   proto = pb.Computation(
       type=serialized_function_type,
@@ -228,8 +225,7 @@ def create_tensorflow_constant(type_spec: computation_types.Type,
   only named tuples and tensor types, but these can be arbitrarily nested.
 
   Args:
-    type_spec: Value convertible to `computation_types.Type` via
-      `computation_types.to_type`, and whose resulting type tree can only
+    type_spec: A `computation_types.Type` whose resulting type tree can only
       contain named tuples and tensors.
     scalar_value: Scalar value to place in all the tensor leaves of `type_spec`.
     name: An optional string name to use as the name of the computation.
@@ -255,9 +251,8 @@ def create_compiled_input_replication(
   """Creates a compiled computation which replicates its argument.
 
   Args:
-    type_signature: Value convertible to `computation_types.Type` via
-      `computation_types.to_type`. The type of the parameter of the constructed
-      computation.
+    type_signature: A `computation_types.Type`, the type of the parameter of the
+      constructed computation.
     n_replicas: Integer, the number of times the argument is intended to be
       replicated.
 
@@ -1401,16 +1396,14 @@ def create_federated_zip(
 
 
 def create_generic_constant(
-    type_spec: computation_types.Type,
+    type_spec: Optional[computation_types.Type],
     scalar_value: Union[int,
                         float]) -> building_blocks.ComputationBuildingBlock:
   """Creates constant for a combination of federated, tuple and tensor types.
 
   Args:
-    type_spec: Instance of `computation_types.Type` containing only federated,
-      tuple or tensor types for which we wish to construct a generic constant.
-      May also be something convertible to a `computation_types.Type` via
-      `computation_types.to_type`.
+    type_spec: A `computation_types.Type` containing only federated, tuple or
+      tensor types, or `None` to use to construct a generic constant.
     scalar_value: The scalar value we wish this constant to have.
 
   Returns:
@@ -1422,9 +1415,9 @@ def create_generic_constant(
       Notice validation of consistency of `type_spec` with `scalar_value` is not
       the rsponsibility of this function.
   """
-  type_spec = computation_types.to_type(type_spec)
   if type_spec is None:
     return create_tensorflow_constant(type_spec, scalar_value)
+  py_typecheck.check_type(type_spec, computation_types.Type)
   inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
   if (not inferred_scalar_value_type.is_tensor() or
       inferred_scalar_value_type.shape != tf.TensorShape(())):
@@ -1845,7 +1838,6 @@ def create_tensorflow_binary_operator_with_upcast(
     operator.
   """
   py_typecheck.check_callable(operator)
-  type_signature = computation_types.to_type(type_signature)
   _check_generic_operator_type(type_signature)
   type_analysis.check_tensorflow_compatible_type(type_signature)
   tf_proto = tensorflow_computation_factory.create_binary_operator_with_upcast(

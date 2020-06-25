@@ -216,15 +216,15 @@ def create_binary_operator(
 
 
 def create_binary_operator_with_upcast(
-    type_signature: computation_types.Type,
+    type_signature: computation_types.NamedTupleType,
     operator: Callable[[Any, Any], Any]) -> pb.Computation:
   """Creates TF computation upcasting its argument and applying `operator`.
 
   Args:
-    type_signature: Value convertible to `computation_types.NamedTupleType`,
-      with two elements, both of the same type or the second able to be upcast
-      to the first, as explained in `apply_binary_operator_with_upcast`, and
-      both containing only tuples and tensors in their type tree.
+    type_signature: A `computation_types.NamedTupleType` with two elements, both
+      of the same type or the second able to be upcast to the first, as
+      explained in `apply_binary_operator_with_upcast`, and both containing only
+      tuples and tensors in their type tree.
     operator: Callable defining the operator.
 
   Returns:
@@ -232,9 +232,8 @@ def create_binary_operator_with_upcast(
     upcasts the second element of its argument and applies the binary
     operator.
   """
-
+  py_typecheck.check_type(type_signature, computation_types.NamedTupleType)
   py_typecheck.check_callable(operator)
-  type_signature = computation_types.to_type(type_signature)
   type_analysis.check_tensorflow_compatible_type(type_signature)
   if not type_signature.is_tuple() or len(type_signature) != 2:
     raise TypeError('To apply a binary operator, we must by definition have an '
