@@ -621,8 +621,6 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
 
   # pyformat: disable
   @parameterized.named_parameters([
-      ('placement_literal',
-       *executor_test_utils.create_dummy_placement_literal()),
       ('federated_type_at_clients',
        *executor_test_utils.create_dummy_value_at_clients()),
       ('federated_type_at_clients_all_equal',
@@ -644,8 +642,22 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
                      type_signature.compact_representation())
-    # TODO(b/153578410): Some `FederatingStrategyValue` that can can be
-    # constructed, can not be computed.
+    actual_result = self.run_sync(result.compute())
+    expected_result = [self.run_sync(element.compute())] * 3
+    self.assertCountEqual(actual_result, expected_result)
+
+  def test_returns_value_with_elements_value_placement_literal(self):
+    executor = create_test_executor()
+    value, type_signature = executor_test_utils.create_dummy_placement_literal()
+
+    element = self.run_sync(executor.create_value(value, type_signature))
+    elements = [element] * 3
+    type_signature = computation_types.NamedTupleType([type_signature] * 3)
+    result = self.run_sync(executor.create_tuple(elements))
+
+    self.assertIsInstance(result, executor_value_base.ExecutorValue)
+    self.assertEqual(result.type_signature.compact_representation(),
+                     type_signature.compact_representation())
 
   # pyformat: disable
   @parameterized.named_parameters([
