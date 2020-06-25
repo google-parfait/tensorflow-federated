@@ -16,20 +16,19 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
-def _create_compiled_computation(py_fn, arg_type):
-  proto, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-      py_fn, arg_type, context_stack_impl.context_stack)
+def _create_compiled_computation(py_fn, parameter_type):
+  proto = tensorflow_computation_factory.create_computation_for_py_fn(
+      py_fn, parameter_type)
   return building_blocks.CompiledComputation(proto)
 
 
@@ -291,11 +290,13 @@ class ParseTFFToTFTest(test.TestCase):
 
   def test_replaces_lambda_to_called_composition_of_tf_blocks_with_tf_of_same_type_named_param(
       self):
-    selection_tf_block = _create_compiled_computation(lambda x: x[0],
-                                                      [('a', tf.int32),
+    selection_type = computation_types.NamedTupleType([('a', tf.int32),
                                                        ('b', tf.float32)])
+    selection_tf_block = _create_compiled_computation(lambda x: x[0],
+                                                      selection_type)
+    add_one_int_type = computation_types.TensorType(tf.int32)
     add_one_int_tf_block = _create_compiled_computation(lambda x: x + 1,
-                                                        tf.int32)
+                                                        add_one_int_type)
     int_ref = building_blocks.Reference('x', [('a', tf.int32),
                                               ('b', tf.float32)])
     called_selection = building_blocks.Call(selection_tf_block, int_ref)
@@ -323,8 +324,10 @@ class ParseTFFToTFTest(test.TestCase):
 
   def test_replaces_lambda_to_called_tf_block_with_replicated_lambda_arg_with_tf_block_of_same_type(
       self):
+    sum_and_add_one_type = computation_types.NamedTupleType(
+        [tf.int32, tf.int32])
     sum_and_add_one = _create_compiled_computation(lambda x: x[0] + x[1] + 1,
-                                                   [tf.int32, tf.int32])
+                                                   sum_and_add_one_type)
     int_ref = building_blocks.Reference('x', tf.int32)
     tuple_of_ints = building_blocks.Tuple((int_ref, int_ref))
     summed = building_blocks.Call(sum_and_add_one, tuple_of_ints)
