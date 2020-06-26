@@ -109,7 +109,7 @@ def executors(*args):
     """Construct a custom `parameterized.named_parameter` decorator for `fn`."""
     if not named_executors:
       named_executors = [
-          ('reference', reference_executor.ReferenceExecutor(compiler=None)),
+          ('reference', reference_executor.ReferenceExecutor()),
           ('local', executor_stacks.local_executor_factory()),
       ]
     named_parameters_decorator = parameterized.named_parameters(

@@ -51,7 +51,7 @@ class ExecutorsTest(parameterized.TestCase):
     self.assertEqual(result, 6)
 
   @executor_test_utils.executors(
-      ('reference', reference_executor.ReferenceExecutor(compiler=None)),)
+      ('reference', reference_executor.ReferenceExecutor()),)
   def test_with_one_argument(self):
 
     @computations.tf_computation(tf.int32)
@@ -63,7 +63,7 @@ class ExecutorsTest(parameterized.TestCase):
     self.assertEqual(result, 6)
 
   @executor_test_utils.executors(
-      ('reference', reference_executor.ReferenceExecutor(compiler=None)),
+      ('reference', reference_executor.ReferenceExecutor()),
       ('local', executor_stacks.local_executor_factory()),
   )
   def test_with_two_argument(self):

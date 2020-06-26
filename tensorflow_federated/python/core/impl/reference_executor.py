@@ -34,10 +34,12 @@ from tensorflow_federated.python.core.impl import compiler_pipeline
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -577,19 +579,25 @@ class ReferenceExecutor(context_base.Context):
   computaitons using the  secure sum intrinsic.
   """
 
-  def __init__(self, compiler=None):
-    """Creates a reference executor.
-
-    Args:
-      compiler: The compiler pipeline to be used by this executor, or `None` if
-        the executor is to run without one.
-    """
+  def __init__(self):
+    """Creates a reference executor."""
     # TODO(b/113116813): Add a way to declare environmental bindings here,
     # e.g., a way to specify how data URIs are mapped to physical resources.
 
-    if compiler is not None:
-      py_typecheck.check_type(compiler, compiler_pipeline.CompilerPipeline)
-    self._compiler = compiler
+    def _compilation_fn(
+        comp: computation_base.Computation) -> computation_base.Computation:
+      proto = computation_impl.ComputationImpl.get_proto(comp)
+      bb_to_transform = building_blocks.ComputationBuildingBlock.from_proto(
+          proto)
+      intrinsic_bodies_replaced, _ = value_transformations.replace_intrinsics_with_bodies(
+          bb_to_transform, context_stack_impl.context_stack)
+      dupes_removed, _ = tree_transformations.remove_duplicate_building_blocks(
+          intrinsic_bodies_replaced)
+      comp_to_return = computation_impl.ComputationImpl(
+          dupes_removed.proto, context_stack_impl.context_stack)
+      return comp_to_return
+
+    self._compiler = compiler_pipeline.CompilerPipeline(_compilation_fn)
     self._intrinsic_method_dict = {
         intrinsic_defs.FEDERATED_AGGREGATE.uri:
             self._federated_aggregate,

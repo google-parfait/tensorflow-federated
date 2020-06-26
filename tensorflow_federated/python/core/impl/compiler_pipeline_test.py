@@ -19,17 +19,12 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import compiler_pipeline
-from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class CompilerPipelineTest(absltest.TestCase):
 
-  def test_compile_computation(self):
+  def test_compile_computation_with_idnetity(self):
 
     @computations.federated_computation([
         computation_types.FederatedType(tf.float32, placement_literals.CLIENTS),
@@ -45,20 +40,11 @@ class CompilerPipelineTest(absltest.TestCase):
               [temperatures,
                intrinsics.federated_broadcast(threshold)]))
 
-    pipeline = compiler_pipeline.CompilerPipeline(
-        context_stack_impl.context_stack)
+    pipeline = compiler_pipeline.CompilerPipeline(lambda x: x)
 
     compiled_foo = pipeline.compile(foo)
 
-    def _not_federated_sum(x):
-      if isinstance(x, building_blocks.Intrinsic):
-        self.assertNotEqual(x.uri, intrinsic_defs.FEDERATED_SUM.uri)
-      return x, False
-
-    transformation_utils.transform_postorder(
-        building_blocks.ComputationBuildingBlock.from_proto(
-            computation_impl.ComputationImpl.get_proto(compiled_foo)),
-        _not_federated_sum)
+    self.assertEqual(hash(foo), hash(compiled_foo))
 
     # TODO(b/113123410): Expand the test with more structural invariants.
 
