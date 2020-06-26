@@ -92,9 +92,14 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":computation_utils",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:measured_process",
     ],
 )
 
@@ -111,6 +116,8 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/executors:default_executor",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/templates:measured_process",
     ],
 )
 

@@ -20,6 +20,7 @@ and `CLIENTS`.
 """
 
 from typing import Callable
+import warnings
 
 import tensorflow as tf
 
@@ -46,7 +47,7 @@ def _weights_from_model_fn(
   return model_utils.ModelWeights.from_model(model)
 
 
-# TODO(b/138081552): Move to tff.learning when ready.
+# TODO(b/159836417): Depracate this function as part of the migration.
 def build_encoded_broadcast_from_model(
     model_fn: _ModelConstructor,
     encoder_fn: _EncoderConstructor) -> tff.utils.StatefulBroadcastFn:
@@ -70,6 +71,13 @@ def build_encoded_broadcast_from_model(
   Raises:
     TypeError: If `model_fn` or `encoder_fn` are not callable objects.
   """
+  warnings.warn(
+      'Deprecation warning: '
+      'tff.learning.framework.build_encoded_broadcast_from_model() is '
+      'deprecated, use '
+      'tff.learning.framework.build_encoded_broadcast_process_from_model() '
+      'instead.', DeprecationWarning)
+
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
   weights = _weights_from_model_fn(model_fn)
@@ -78,6 +86,38 @@ def build_encoded_broadcast_from_model(
 
 
 # TODO(b/138081552): Move to tff.learning when ready.
+def build_encoded_broadcast_process_from_model(
+    model_fn: _ModelConstructor,
+    encoder_fn: _EncoderConstructor) -> tff.templates.MeasuredProcess:
+  """Builds `MeasuredProcess` for weights of model returned by `model_fn`.
+
+  This method creates a `SimpleEncoder` for every weight of model created by
+  `model_fn`, as returned by `encoder_fn`.
+
+  Args:
+    model_fn: A Python callable with no arguments function that returns a
+      `tff.learning.Model`.
+    encoder_fn: A Python callable with a single argument, which is expected to
+      be a `tf.Tensor` of shape and dtype to be encoded. The function must
+      return a `tensor_encoding.core.SimpleEncoder`, which expects a `tf.Tensor`
+      with compatible type as the input to its `encode` method.
+
+  Returns:
+    A `MeasuredProcess` for encoding and broadcasting the weights of model
+    created by `model_fn`.
+
+  Raises:
+    TypeError: If `model_fn` or `encoder_fn` are not callable objects.
+  """
+  py_typecheck.check_callable(model_fn)
+  py_typecheck.check_callable(encoder_fn)
+  weights = _weights_from_model_fn(model_fn)
+  encoders = tf.nest.map_structure(encoder_fn, weights)
+  weight_type = tff.framework.type_from_tensors(weights)
+  return tff.utils.build_encoded_broadcast_process(weight_type, encoders)
+
+
+# TODO(b/159836417): Depracate this function as part of the migration.
 def build_encoded_sum_from_model(
     model_fn: _ModelConstructor,
     encoder_fn: _EncoderConstructor) -> tff.utils.StatefulAggregateFn:
@@ -101,6 +141,12 @@ def build_encoded_sum_from_model(
   Raises:
     TypeError: If `model_fn` or `encoder_fn` are not callable objects.
   """
+  warnings.warn(
+      'Deprecation warning: '
+      'tff.learning.framework.build_encoded_sum_from_model() is deprecated, '
+      'use tff.learning.framework.build_encoded_sum_process_from_model() '
+      'instead.', DeprecationWarning)
+
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
   trainable_weights = _weights_from_model_fn(model_fn).trainable
@@ -109,6 +155,38 @@ def build_encoded_sum_from_model(
 
 
 # TODO(b/138081552): Move to tff.learning when ready.
+def build_encoded_sum_process_from_model(
+    model_fn: _ModelConstructor,
+    encoder_fn: _EncoderConstructor) -> tff.utils.StatefulAggregateFn:
+  """Builds `MeasuredProcess` for weights of model returned by `model_fn`.
+
+  This method creates a `GatherEncoder` for every trainable weight of model
+  created by `model_fn`, as returned by `encoder_fn`.
+
+  Args:
+    model_fn: A Python callable with no arguments function that returns a
+      `tff.learning.Model`.
+    encoder_fn: A Python callable with a single argument, which is expected to
+      be a `tf.Tensor` of shape and dtype to be encoded. The function must
+      return a `tensor_encoding.core.SimpleEncoder`, which expects a `tf.Tensor`
+      with compatible type as the input to its `encode` method.
+
+  Returns:
+    A `MeasuredProcess` for encoding and summing the weights of model created by
+    `model_fn`.
+
+  Raises:
+    TypeError: If `model_fn` or `encoder_fn` are not callable objects.
+  """
+  py_typecheck.check_callable(model_fn)
+  py_typecheck.check_callable(encoder_fn)
+  trainable_weights = _weights_from_model_fn(model_fn).trainable
+  encoders = tf.nest.map_structure(encoder_fn, trainable_weights)
+  weight_type = tff.framework.type_from_tensors(trainable_weights)
+  return tff.utils.build_encoded_sum_process(weight_type, encoders)
+
+
+# TODO(b/159836417): Depracate this function as part of the migration.
 def build_encoded_mean_from_model(
     model_fn: _ModelConstructor,
     encoder_fn: _EncoderConstructor) -> tff.utils.StatefulAggregateFn:
@@ -132,8 +210,46 @@ def build_encoded_mean_from_model(
   Raises:
     TypeError: If `model_fn` or `encoder_fn` are not callable objects.
   """
+  warnings.warn(
+      'Deprecation warning: '
+      'tff.learning.framework.build_encoded_mean_from_model() is deprecated, '
+      'use tff.learning.framework.build_encoded_mean_process_from_model() '
+      'instead.', DeprecationWarning)
+
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
   trainable_weights = _weights_from_model_fn(model_fn).trainable
   encoders = tf.nest.map_structure(encoder_fn, trainable_weights)
   return tff.utils.build_encoded_mean(trainable_weights, encoders)
+
+
+# TODO(b/138081552): Move to tff.learning when ready.
+def build_encoded_mean_process_from_model(
+    model_fn: _ModelConstructor,
+    encoder_fn: _EncoderConstructor) -> tff.utils.StatefulAggregateFn:
+  """Builds `MeasuredProcess` for weights of model returned by `model_fn`.
+
+  This method creates a `GatherEncoder` for every trainable weight of model
+  created by `model_fn`, as returned by `encoder_fn`.
+
+  Args:
+    model_fn: A Python callable with no arguments function that returns a
+      `tff.learning.Model`.
+    encoder_fn: A Python callable with a single argument, which is expected to
+      be a `tf.Tensor` of shape and dtype to be encoded. The function must
+      return a `tensor_encoding.core.SimpleEncoder`, which expects a `tf.Tensor`
+      with compatible type as the input to its `encode` method.
+
+  Returns:
+    A `MeasuredProcess` for encoding and averaging the weights of model created
+    by `model_fn`.
+
+  Raises:
+    TypeError: If `model_fn` or `encoder_fn` are not callable objects.
+  """
+  py_typecheck.check_callable(model_fn)
+  py_typecheck.check_callable(encoder_fn)
+  trainable_weights = _weights_from_model_fn(model_fn).trainable
+  encoders = tf.nest.map_structure(encoder_fn, trainable_weights)
+  weight_type = tff.framework.type_from_tensors(trainable_weights)
+  return tff.utils.build_encoded_mean_process(weight_type, encoders)

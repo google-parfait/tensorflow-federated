@@ -20,16 +20,27 @@ to realize encoding (compression) of values being communicated between
 """
 
 import collections
+import warnings
 
 import attr
 import tensorflow as tf
 import tree
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding
+
+
+_ALLOWED_ENCODERS = (tensor_encoding.core.SimpleEncoder,
+                     tensor_encoding.core.GatherEncoder,
+                     tensor_encoding.core.EncoderComposer)
 
 
 @attr.s(eq=False, frozen=True)
@@ -45,6 +56,7 @@ class _NestGatherEncoder(object):
   report_fn = attr.ib()
 
 
+# TODO(b/159836417): Depracate this function as part of the migration.
 def build_encoded_broadcast(values, encoders):
   """Builds `StatefulBroadcastFn` for `values`, to be encoded by `encoders`.
 
@@ -64,6 +76,10 @@ def build_encoded_broadcast(values, encoders):
     TypeError: If `encoders` are not instances of `SimpleEncoder`, or if
       `values` are not compatible with the expected input of the `encoders`.
   """
+  warnings.warn(
+      'Deprecation warning: tff.utils.build_encoded_broadcast() is deprecated, '
+      'use tff.utils.build_encoded_broadcast_process() instead.',
+      DeprecationWarning)
 
   tf.nest.assert_same_structure(values, encoders)
   tf.nest.map_structure(
@@ -87,6 +103,66 @@ def build_encoded_broadcast(values, encoders):
 
   return computation_utils.StatefulBroadcastFn(
       initialize_fn=initial_state_fn, next_fn=encoded_broadcast_fn)
+
+
+def build_encoded_broadcast_process(value_type, encoders):
+  """Builds `MeasuredProcess` for `value_type`, to be encoded by `encoders`.
+
+  The returned `MeasuredProcess` has a next function with the TFF type
+  signature:
+
+  ```
+  (<state_type@SERVER, {value_type}@CLIENTS> ->
+   <state=state_type@SERVER, result=value_type@SERVER, measurements=()@SERVER>)
+  ```
+
+  Args:
+    value_type: The type of values to be broadcasted by the `MeasuredProcess`.
+      Either a `tff.TensorType` or a `tff.NamedTupleType`.
+    encoders: A collection of `SimpleEncoder` objects to be used for encoding
+      `values`. Must have the same structure as `values`.
+
+  Returns:
+    A `MeasuredProcess` of which `next_fn` encodes the input at `tff.SERVER`,
+    broadcasts the encoded representation and decodes the encoded representation
+    at `tff.CLIENTS`.
+
+  Raises:
+    ValueError: If `value_type` and `encoders` do not have the same structure.
+    TypeError: If `encoders` are not instances of `SimpleEncoder`, or if
+      `value_type` are not compatible with the expected input of the `encoders`.
+  """
+  py_typecheck.check_type(
+      value_type,
+      (computation_types.TensorType, computation_types.NamedTupleType))
+
+  _validate_value_type_and_encoders(value_type, encoders,
+                                    tensor_encoding.core.SimpleEncoder)
+
+  initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
+
+  @computations.federated_computation()
+  def initial_state_comp():
+    return intrinsics.federated_eval(initial_state_fn, placements.SERVER)
+
+  encode_fn, decode_fn = _build_encode_decode_tf_computations_for_broadcast(
+      state_type, value_type, encoders)
+
+  @computations.federated_computation(initial_state_comp.type_signature.result,
+                                      computation_types.FederatedType(
+                                          value_type, placements.SERVER))
+  def encoded_broadcast_comp(state, value):
+    """Encoded broadcast federated_computation."""
+    empty_metrics = intrinsics.federated_value((), placements.SERVER)
+    new_state, encoded_value = intrinsics.federated_map(encode_fn,
+                                                        (state, value))
+    client_encoded_value = intrinsics.federated_broadcast(encoded_value)
+    client_value = intrinsics.federated_map(decode_fn, client_encoded_value)
+    return collections.OrderedDict(
+        state=new_state, result=client_value, measurements=empty_metrics)
+
+  return measured_process.MeasuredProcess(
+      initialize_fn=initial_state_comp, next_fn=encoded_broadcast_comp)
 
 
 def _build_encoded_sum_fn(nest_encoder):
@@ -121,6 +197,7 @@ def _build_encoded_sum_fn(nest_encoder):
   return encoded_sum_fn
 
 
+# TODO(b/159836417): Depracate this function as part of the migration.
 def build_encoded_sum(values, encoders):
   """Builds `StatefulAggregateFn` for `values`, to be encoded by `encoders`.
 
@@ -140,6 +217,9 @@ def build_encoded_sum(values, encoders):
     TypeError: If `encoders` are not instances of `GatherEncoder`, or if
       `values` are not compatible with the expected input of the `encoders`.
   """
+  warnings.warn(
+      'Deprecation warning: tff.utils.build_encoded_sum() is deprecated, use '
+      'tff.utils.build_encoded_sum() instead.', DeprecationWarning)
 
   tf.nest.assert_same_structure(values, encoders)
   tf.nest.map_structure(
@@ -158,6 +238,65 @@ def build_encoded_sum(values, encoders):
       initialize_fn=initial_state_fn, next_fn=encoded_sum_fn)
 
 
+def build_encoded_sum_process(value_type, encoders):
+  """Builds `MeasuredProcess` for `value_type`, to be encoded by `encoders`.
+
+  The returned `MeasuredProcess` has a next function with the TFF type
+  signature:
+
+  ```
+  (<state_type@SERVER, {value_type}@CLIENTS> ->
+   <state=state_type@SERVER, result=value_type@SERVER, measurements=()@SERVER>)
+  ```
+
+  Args:
+    value_type: The type of values to be encoded by the `MeasuredProcess`.
+      Either a `tff.TensorType` or a `tff.NamedTupleType`.
+    encoders: A collection of `GatherEncoder` objects to be used for encoding
+      `values`. Must have the same structure as `values`.
+
+  Returns:
+    A `MeasuredProcess` of which `next_fn` encodes the input at `tff.CLIENTS`,
+    and computes their sum at `tff.SERVER`, automatically splitting the decoding
+    part based on its commutativity with sum.
+
+  Raises:
+    ValueError: If `value_type` and `encoders` do not have the same structure.
+    TypeError: If `encoders` are not instances of `GatherEncoder`, or if
+      `value_type` are not compatible with the expected input of the `encoders`.
+  """
+  py_typecheck.check_type(
+      value_type,
+      (computation_types.TensorType, computation_types.NamedTupleType))
+
+  _validate_value_type_and_encoders(value_type, encoders,
+                                    tensor_encoding.core.GatherEncoder)
+
+  initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
+
+  @computations.federated_computation()
+  def initial_state_comp():
+    return intrinsics.federated_eval(initial_state_fn, placements.SERVER)
+
+  nest_encoder = _build_tf_computations_for_gather(state_type, value_type,
+                                                   encoders)
+  encoded_sum_fn = _build_encoded_sum_fn(nest_encoder)
+
+  @computations.federated_computation(initial_state_comp.type_signature.result,
+                                      computation_types.FederatedType(
+                                          value_type, placements.CLIENTS))
+  def encoded_sum_comp(state, values):
+    """Encoded sum federated_computation."""
+    empty_metrics = intrinsics.federated_value((), placements.SERVER)
+    state, result = encoded_sum_fn(state, values)
+    return collections.OrderedDict(
+        state=state, result=result, measurements=empty_metrics)
+
+  return measured_process.MeasuredProcess(
+      initialize_fn=initial_state_comp, next_fn=encoded_sum_comp)
+
+
+# TODO(b/159836417): Depracate this function as part of the migration.
 def build_encoded_mean(values, encoders):
   """Builds `StatefulAggregateFn` for `values`, to be encoded by `encoders`.
 
@@ -177,6 +316,9 @@ def build_encoded_mean(values, encoders):
     TypeError: If `encoders` are not instances of `GatherEncoder`, or if
       `values` are not compatible with the expected input of the `encoders`.
   """
+  warnings.warn(
+      'Deprecation warning: tff.utils.build_encoded_mean() is deprecated, use '
+      'tff.utils.build_encoded_mean() instead.', DeprecationWarning)
 
   tf.nest.assert_same_structure(values, encoders)
   tf.nest.map_structure(
@@ -211,6 +353,79 @@ def build_encoded_mean(values, encoders):
 
   return computation_utils.StatefulAggregateFn(
       initialize_fn=initial_state_fn, next_fn=encoded_mean_fn)
+
+
+def build_encoded_mean_process(value_type, encoders):
+  """Builds `MeasuredProcess` for `value_type`, to be encoded by `encoders`.
+
+  The returned `MeasuredProcess` has a next function with the TFF type
+  signature:
+
+  ```
+  (<state_type@SERVER, {value_type}@CLIENTS> ->
+   <state=state_type@SERVER, result=value_type@SERVER, measurements=()@SERVER>)
+  ```
+
+  Args:
+    value_type: The type of values to be encoded by the `MeasuredProcess`.
+      Either a `tff.TensorType` or a `tff.NamedTupleType`.
+    encoders: A collection of `GatherEncoder` objects to be used for encoding
+      `values`. Must have the same structure as `values`.
+
+  Returns:
+    A `MeasuredProcess` of which `next_fn` encodes the input at `tff.CLIENTS`,
+    and computes their mean at `tff.SERVER`, automatically splitting the
+    decoding part based on its commutativity with sum.
+
+  Raises:
+    ValueError: If `value_type` and `encoders` do not have the same structure.
+    TypeError: If `encoders` are not instances of `GatherEncoder`, or if
+      `value_type` are not compatible with the expected input of the `encoders`.
+  """
+  py_typecheck.check_type(
+      value_type,
+      (computation_types.TensorType, computation_types.NamedTupleType))
+
+  _validate_value_type_and_encoders(value_type, encoders,
+                                    tensor_encoding.core.GatherEncoder)
+
+  initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
+
+  @computations.federated_computation()
+  def initial_state_comp():
+    return intrinsics.federated_eval(initial_state_fn, placements.SERVER)
+
+  nest_encoder = _build_tf_computations_for_gather(state_type, value_type,
+                                                   encoders)
+  encoded_sum_fn = _build_encoded_sum_fn(nest_encoder)
+
+  @computations.tf_computation(value_type, tf.float32)
+  def multiply_fn(value, weight):
+    return tf.nest.map_structure(lambda v: v * tf.cast(weight, v.dtype), value)
+
+  @computations.tf_computation(value_type, tf.float32)
+  def divide_fn(value, denominator):
+    return tf.nest.map_structure(lambda v: v / tf.cast(denominator, v.dtype),
+                                 value)
+
+  @computations.federated_computation(
+      initial_state_comp.type_signature.result,
+      computation_types.FederatedType(value_type, placements.CLIENTS),
+      computation_types.FederatedType(tf.float32, placements.CLIENTS))
+  def encoded_mean_comp(state, values, weight):
+    """Encoded mean federated_computation."""
+    empty_metrics = intrinsics.federated_value((), placements.SERVER)
+    weighted_values = intrinsics.federated_map(multiply_fn, (values, weight))
+    updated_state, summed_decoded_values = encoded_sum_fn(
+        state, weighted_values)
+    summed_weights = intrinsics.federated_sum(weight)
+    decoded_values = intrinsics.federated_map(
+        divide_fn, (summed_decoded_values, summed_weights))
+    return collections.OrderedDict(
+        state=updated_state, result=decoded_values, measurements=empty_metrics)
+
+  return measured_process.MeasuredProcess(
+      initialize_fn=initial_state_comp, next_fn=encoded_mean_comp)
 
 
 def _build_initial_state_tf_computation(encoders):
@@ -411,6 +626,27 @@ def _validate_encoder(encoder, value, encoder_type):
   if not encoder.input_tensorspec.is_compatible_with(
       tf.TensorSpec(value.shape, value.dtype)):
     raise TypeError('Provided encoder and value are not compatible.')
+
+
+def _validate_value_type_and_encoders(value_type, encoders, encoder_type):
+  """Validates if `value_type` and `encoders` are compatible."""
+  if isinstance(encoders, _ALLOWED_ENCODERS):
+    # If `encoders` is not a container, then `value_type` should be an instance
+    # of `tff.TensorType.`
+    if not isinstance(value_type, computation_types.TensorType):
+      raise ValueError(
+          '`value_type` and `encoders` do not have the same structure.')
+
+    _validate_encoder(encoders, value_type, encoder_type)
+  else:
+    # If `encoders` is a container, then `value_type` should be an instance of
+    # `tff.NamedTupleType.`
+    if not isinstance(value_type, computation_types.NamedTupleType):
+      raise TypeError('`value_type` is not compatible with the expected input '
+                      'of the `encoders`.')
+    anonymous_tuple.map_structure(
+        lambda e, v: _validate_encoder(e, v, encoder_type),
+        anonymous_tuple.from_container(encoders, recursive=True), value_type)
 
 
 def _accmulate_state_update_tensor(a, b, mode):

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import warnings
 
 from absl.testing import parameterized
 import numpy as np
@@ -29,27 +30,75 @@ from tensorflow_model_optimization.python.core.internal import tensor_encoding a
 class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
   """Tests for utilities for building StatefulFns."""
 
-  def test_mean_from_model(self):
+  def test_mean_from_model_raise_warning(self):
     model_fn = model_examples.LinearRegression
-    gather_fn = encoding_utils.build_encoded_mean_from_model(
-        model_fn, _test_encoder_fn('gather'))
+
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      gather_fn = encoding_utils.build_encoded_mean_from_model(
+          model_fn, _test_encoder_fn('gather'))
+      self.assertLen(w, 2)
+
     self.assertIsInstance(gather_fn, tff.utils.StatefulAggregateFn)
+
+  def test_mean_process_from_model(self):
+    model_fn = model_examples.LinearRegression
+    gather_process = encoding_utils.build_encoded_mean_process_from_model(
+        model_fn, _test_encoder_fn('gather'))
+    self.assertIsInstance(gather_process, tff.templates.MeasuredProcess)
 
   def test_sum_from_model(self):
     model_fn = model_examples.LinearRegression
-    gather_fn = encoding_utils.build_encoded_sum_from_model(
-        model_fn, _test_encoder_fn('gather'))
+
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      gather_fn = encoding_utils.build_encoded_sum_from_model(
+          model_fn, _test_encoder_fn('gather'))
+      self.assertLen(w, 2)
+
     self.assertIsInstance(gather_fn, tff.utils.StatefulAggregateFn)
+
+  def test_sum_process_from_model(self):
+    model_fn = model_examples.LinearRegression
+    gather_process = encoding_utils.build_encoded_sum_process_from_model(
+        model_fn, _test_encoder_fn('gather'))
+    self.assertIsInstance(gather_process, tff.templates.MeasuredProcess)
 
   def test_broadcast_from_model(self):
     model_fn = model_examples.LinearRegression
-    broadcast_fn = encoding_utils.build_encoded_broadcast_from_model(
-        model_fn, _test_encoder_fn('simple'))
+
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      broadcast_fn = encoding_utils.build_encoded_broadcast_from_model(
+          model_fn, _test_encoder_fn('simple'))
+      self.assertLen(w, 2)
+
     self.assertIsInstance(broadcast_fn, tff.utils.StatefulBroadcastFn)
+
+  def test_broadcast_process_from_model(self):
+    model_fn = model_examples.LinearRegression
+    broadcast_process = (
+        encoding_utils.build_encoded_broadcast_process_from_model(
+            model_fn, _test_encoder_fn('simple')))
+    self.assertIsInstance(broadcast_process, tff.templates.MeasuredProcess)
 
 
 class IterativeProcessTest(test.TestCase, parameterized.TestCase):
   """End-to-end tests using `tff.templates.IterativeProcess`."""
+
+  def _verify_iterative_process(self, iterative_process):
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[1.0, 2.0], [3.0, 4.0]]),
+            ('y', [[5.0], [6.0]]),
+        ])).batch(2)
+    federated_ds = [ds] * 3
+
+    state = iterative_process.initialize()
+    self.assertEqual(state.model_broadcast_state.trainable[0][0], 1)
+
+    state, _ = iterative_process.next(state, federated_ds)
+    self.assertEqual(state.model_broadcast_state.trainable[0][0], 2)
 
   def test_iterative_process_with_encoding(self):
     model_fn = model_examples.LinearRegression
@@ -63,19 +112,22 @@ class IterativeProcessTest(test.TestCase, parameterized.TestCase):
         server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
         stateful_delta_aggregate_fn=gather_fn,
         stateful_model_broadcast_fn=broadcast_fn)
+    self._verify_iterative_process(iterative_process)
 
-    ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0], [3.0, 4.0]]),
-            ('y', [[5.0], [6.0]]),
-        ])).batch(2)
-    federated_ds = [ds] * 3
-
-    state = iterative_process.initialize()
-    self.assertEqual(state.model_broadcast_state.trainable[0][0], 1)
-
-    state, _ = iterative_process.next(state, federated_ds)
-    self.assertEqual(state.model_broadcast_state.trainable[0][0], 2)
+  def test_iterative_process_with_encoding_process(self):
+    model_fn = model_examples.LinearRegression
+    gather_process = encoding_utils.build_encoded_mean_process_from_model(
+        model_fn, _test_encoder_fn('gather'))
+    broadcast_process = (
+        encoding_utils.build_encoded_broadcast_process_from_model(
+            model_fn, _test_encoder_fn('simple')))
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_fn,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
+        aggregation_process=gather_process,
+        broadcast_process=broadcast_process)
+    self._verify_iterative_process(iterative_process)
 
 
 class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):

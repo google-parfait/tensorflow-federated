@@ -186,25 +186,27 @@ def run_experiment():
         metrics=metrics_builder())
 
   if FLAGS.use_compression:
-    # We create a `StatefulBroadcastFn` and `StatefulAggregateFn` by providing
-    # the `_broadcast_encoder_fn` and `_mean_encoder_fn` to corresponding
-    # utilities. The fns are called once for each of the model weights created
-    # by tff_model_fn, and return instances of appropriate encoders.
-    encoded_broadcast_fn = (
-        tff.learning.framework.build_encoded_broadcast_from_model(
+    # We create a `MeasuredProcess` for broadcast process and a
+    # `MeasuredProcess` for aggregate process by providing the
+    # `_broadcast_encoder_fn` and `_mean_encoder_fn` to corresponding utilities.
+    # The fns are called once for each of the model weights created by
+    # tff_model_fn, and return instances of appropriate encoders.
+    encoded_broadcast_process = (
+        tff.learning.framework.build_encoded_broadcast_process_from_model(
             tff_model_fn, _broadcast_encoder_fn))
-    encoded_mean_fn = tff.learning.framework.build_encoded_mean_from_model(
-        tff_model_fn, _mean_encoder_fn)
+    encoded_mean_process = (
+        tff.learning.framework.build_encoded_mean_process_from_model(
+            tff_model_fn, _mean_encoder_fn))
   else:
-    encoded_broadcast_fn = None
-    encoded_mean_fn = None
+    encoded_broadcast_process = None
+    encoded_mean_process = None
 
   iterative_process = tff.learning.build_federated_averaging_process(
       model_fn=tff_model_fn,
       client_optimizer_fn=client_optimizer_fn,
       server_optimizer_fn=server_optimizer_fn,
-      stateful_delta_aggregate_fn=encoded_mean_fn,
-      stateful_model_broadcast_fn=encoded_broadcast_fn)
+      aggregation_process=encoded_mean_process,
+      broadcast_process=encoded_broadcast_process)
   iterative_process = compression_process_adapter.CompressionProcessAdapter(
       iterative_process)
 
