@@ -76,7 +76,8 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
       tree_analysis.extract_nodes_consuming(None, lambda x: True)
 
   def test_raises_on_none_predicate(self):
-    data = building_blocks.Data('dummy', [])
+    data_type = computation_types.NamedTupleType([])
+    data = building_blocks.Data('dummy', data_type)
     with self.assertRaises(TypeError):
       tree_analysis.extract_nodes_consuming(data, None)
 
@@ -94,14 +95,18 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertEmpty(all_nodes)
 
   def test_propogates_dependence_up_through_lambda(self):
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', tf.int32)
+    type_signature = computation_types.TensorType(tf.int32)
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
+                                                type_signature)
     lam = building_blocks.Lambda('x', tf.int32, dummy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         lam, dummy_intrinsic_predicate)
     self.assertIn(lam, dependent_nodes)
 
   def test_propogates_dependence_up_through_block_result(self):
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', tf.int32)
+    type_signature = computation_types.TensorType(tf.int32)
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
+                                                type_signature)
     integer_reference = building_blocks.Reference('int', tf.int32)
     block = building_blocks.Block([('x', integer_reference)], dummy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
@@ -109,7 +114,9 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertIn(block, dependent_nodes)
 
   def test_propogates_dependence_up_through_block_locals(self):
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', tf.int32)
+    type_signature = computation_types.TensorType(tf.int32)
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
+                                                type_signature)
     integer_reference = building_blocks.Reference('int', tf.int32)
     block = building_blocks.Block([('x', dummy_intrinsic)], integer_reference)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
@@ -117,7 +124,9 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertIn(block, dependent_nodes)
 
   def test_propogates_dependence_up_through_tuple(self):
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', tf.int32)
+    type_signature = computation_types.TensorType(tf.int32)
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
+                                                type_signature)
     integer_reference = building_blocks.Reference('int', tf.int32)
     tup = building_blocks.Tuple([integer_reference, dummy_intrinsic])
     dependent_nodes = tree_analysis.extract_nodes_consuming(
@@ -125,14 +134,18 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertIn(tup, dependent_nodes)
 
   def test_propogates_dependence_up_through_selection(self):
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', [tf.int32])
+    type_signature = computation_types.NamedTupleType([tf.int32])
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
+                                                type_signature)
     selection = building_blocks.Selection(dummy_intrinsic, index=0)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         selection, dummy_intrinsic_predicate)
     self.assertIn(selection, dependent_nodes)
 
   def test_propogates_dependence_up_through_call(self):
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic', tf.int32)
+    type_signature = computation_types.TensorType(tf.int32)
+    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
+                                                type_signature)
     ref_to_x = building_blocks.Reference('x', tf.int32)
     identity_lambda = building_blocks.Lambda('x', tf.int32, ref_to_x)
     called_lambda = building_blocks.Call(identity_lambda, dummy_intrinsic)
@@ -526,18 +539,24 @@ class ComputationsEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(data_1, data_2))
 
   def test_returns_false_for_intrinsics_with_different_types(self):
-    intrinsic_1 = building_blocks.Intrinsic('intrinsic', tf.int32)
-    intrinsic_2 = building_blocks.Intrinsic('intrinsic', tf.float32)
+    type_signature_1 = computation_types.TensorType(tf.int32)
+    intrinsic_1 = building_blocks.Intrinsic('intrinsic', type_signature_1)
+    type_signature_2 = computation_types.TensorType(tf.float32)
+    intrinsic_2 = building_blocks.Intrinsic('intrinsic', type_signature_2)
     self.assertFalse(tree_analysis.trees_equal(intrinsic_1, intrinsic_2))
 
   def test_returns_false_for_intrinsics_with_different_names(self):
-    intrinsic_1 = building_blocks.Intrinsic('a', tf.int32)
-    intrinsic_2 = building_blocks.Intrinsic('b', tf.int32)
+    type_signature_1 = computation_types.TensorType(tf.int32)
+    intrinsic_1 = building_blocks.Intrinsic('a', type_signature_1)
+    type_signature_2 = computation_types.TensorType(tf.int32)
+    intrinsic_2 = building_blocks.Intrinsic('b', type_signature_2)
     self.assertFalse(tree_analysis.trees_equal(intrinsic_1, intrinsic_2))
 
   def test_returns_true_for_intrinsics(self):
-    intrinsic_1 = building_blocks.Intrinsic('intrinsic', tf.int32)
-    intrinsic_2 = building_blocks.Intrinsic('intrinsic', tf.int32)
+    type_signature_1 = computation_types.TensorType(tf.int32)
+    intrinsic_1 = building_blocks.Intrinsic('intrinsic', type_signature_1)
+    type_signature_2 = computation_types.TensorType(tf.int32)
+    intrinsic_2 = building_blocks.Intrinsic('intrinsic', type_signature_2)
     self.assertTrue(tree_analysis.trees_equal(intrinsic_1, intrinsic_2))
 
   def test_returns_true_for_lambdas_representing_identical_functions(self):

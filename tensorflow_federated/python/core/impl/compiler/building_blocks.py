@@ -823,33 +823,28 @@ class Intrinsic(ComputationBuildingBlock):
     return cls(computation_proto.intrinsic.uri,
                type_serialization.deserialize_type(computation_proto.type))
 
-  def __init__(self, uri: str, type_spec: Any):
+  def __init__(self, uri: str, type_signature: computation_types.Type):
     """Creates an intrinsic.
 
     Args:
       uri: The URI of the intrinsic.
-      type_spec: Either the types.Type that represents the type of this
-        intrinsic, or something convertible to it by types.to_type().
+      type_signature: A `tff.Type`, the type of the intrinsic.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
     py_typecheck.check_type(uri, str)
-    if type_spec is None:
-      raise TypeError(
-          'Intrinsic {} cannot be created without a TFF type.'.format(uri))
-    type_spec = computation_types.to_type(type_spec)
+    py_typecheck.check_type(type_signature, computation_types.Type)
     intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(uri)
-    if intrinsic_def:
+    if intrinsic_def is not None:
       # Note: this is really expensive.
-      typecheck = type_analysis.is_concrete_instance_of(
-          type_spec, intrinsic_def.type_signature)
-      if not typecheck:
+      if not type_analysis.is_concrete_instance_of(
+          type_signature, intrinsic_def.type_signature):
         raise TypeError('Tried to construct an Intrinsic with bad type '
                         'signature; Intrinsic {} expects type signature {}, '
                         'and you tried to construct one of type {}.'.format(
-                            uri, intrinsic_def.type_signature, type_spec))
-    super().__init__(type_spec)
+                            uri, intrinsic_def.type_signature, type_signature))
+    super().__init__(type_signature)
     self._uri = uri
 
   @property

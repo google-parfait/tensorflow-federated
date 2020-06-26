@@ -45,7 +45,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     x = building_blocks.Reference('foo', [('bar', tf.int32), ('baz', tf.bool)])
     y = building_blocks.Selection(x, name='bar')
     self.assertEqual(y.name, 'bar')
-    self.assertEqual(y.index, None)
+    self.assertIsNone(y.index)
     self.assertEqual(str(y.type_signature), 'int32')
     self.assertEqual(
         repr(y), 'Selection(Reference(\'foo\', NamedTupleType(['
@@ -58,7 +58,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     with self.assertRaises(ValueError):
       _ = building_blocks.Selection(x, name='bak')
     x0 = building_blocks.Selection(x, index=0)
-    self.assertEqual(x0.name, None)
+    self.assertIsNone(x0.name)
     self.assertEqual(x0.index, 0)
     self.assertEqual(str(x0.type_signature), 'int32')
     self.assertEqual(
@@ -404,7 +404,8 @@ class RepresentationTest(absltest.TestCase):
     self.assertEqual(comp.structural_representation(), 'data')
 
   def test_returns_string_for_intrinsic(self):
-    comp = building_blocks.Intrinsic('intrinsic', tf.int32)
+    comp_type = computation_types.TensorType(tf.int32)
+    comp = building_blocks.Intrinsic('intrinsic', comp_type)
 
     self.assertEqual(comp.compact_representation(), 'intrinsic')
     self.assertEqual(comp.formatted_representation(), 'intrinsic')

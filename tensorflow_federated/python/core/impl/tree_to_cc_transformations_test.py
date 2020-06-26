@@ -50,7 +50,8 @@ class ParseTFFToTFTest(test.TestCase):
       parse_tff_to_tf(None)
 
   def test_does_not_transform_standalone_intrinsic(self):
-    standalone_intrinsic = building_blocks.Intrinsic('dummy', tf.int32)
+    type_signature = computation_types.TensorType(tf.int32)
+    standalone_intrinsic = building_blocks.Intrinsic('dummy', type_signature)
     non_transformed, _ = parse_tff_to_tf(standalone_intrinsic)
     self.assertEqual(standalone_intrinsic.compact_representation(),
                      non_transformed.compact_representation())
