@@ -34,3 +34,17 @@ class Computation(typed_object.TypedObject, metaclass=abc.ABCMeta):
       on the context.
     """
     raise NotImplementedError
+
+  @abc.abstractmethod
+  def __hash__(self) -> int:
+    """Hashes the computation.
+
+    TFF backends reserve the right to compile instances of `tff.Computation`,
+    as they may need different representations or data structures altogether.
+    As these backends need to be able to cache the result of compilation, we
+    require that `tff.Computation` subclasses be hashable.
+
+    Returns:
+      Integer representing the hash value of the `tff.Computation`.
+    """
+    raise NotImplementedError

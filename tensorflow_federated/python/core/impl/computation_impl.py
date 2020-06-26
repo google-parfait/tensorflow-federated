@@ -73,3 +73,6 @@ class ComputationImpl(function_utils.ConcreteFunction):
 
     super().__init__(type_spec, context_stack)
     self._computation_proto = computation_proto
+
+  def __hash__(self) -> int:
+    return hash(self._computation_proto.SerializeToString(deterministic=True))

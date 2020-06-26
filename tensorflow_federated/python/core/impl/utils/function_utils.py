@@ -563,6 +563,10 @@ class ConcreteFunction(computation_base.Computation):
     arg = pack_args(self._type_signature.parameter, args, kwargs, context)
     return context.invoke(self, arg)
 
+  def __hash__(self):
+    raise NotImplementedError(
+        'Hash must be implemented by the subclasses of `ConcreteFunction`.')
+
 
 class PolymorphicFunction(object):
   """A generic polymorphic function that accepts arguments of diverse types."""
