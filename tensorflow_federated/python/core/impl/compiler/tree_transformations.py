@@ -480,13 +480,18 @@ def inline_selections_from_tuple(comp):
 class MergeChainedBlocks(transformation_utils.TransformSpec):
   r"""Merges chained blocks into one block.
 
-  Looks for occurrences of the following pattern:
+  Looks for occurrences of the following patterns:
 
         Block
        /     \
   [...]       Block
              /     \
         [...]       Comp(x)
+  or
+
+       Block------------
+      /                  \
+  [..., a=Block, ...]     Comp(x)
 
   And merges them to
 
@@ -494,29 +499,46 @@ class MergeChainedBlocks(transformation_utils.TransformSpec):
        /     \
   [...]       Comp(x)
 
-  Preserving the relative ordering of any locals declarations, which preserves
-  scoping rules.
+  Preserving the relative ordering of any locals declarations.
+
+  Since pulling up the bindings from a block bound to a local may interfere
+  with existing scopes, this transformation requires that the computations it
+  operates on have unique binding names.
 
   Notice that because TFF Block constructs bind their variables in sequence, it
   is completely safe to add the locals lists together in this implementation.
   """
 
+  def __init__(self, comp):
+    tree_analysis.check_has_unique_names(comp)
+
   def should_transform(self, comp):
     """Returns `True` if `comp` is a block and its result is a block."""
-    return comp.is_block() and comp.result.is_block()
+    return comp.is_block() and (comp.result.is_block() or
+                                any(x[1].is_block() for x in comp.locals))
 
   def transform(self, comp):
     """Returns a new transformed computation or `comp`."""
     if not self.should_transform(comp):
       return comp, False
-    comp = building_blocks.Block(comp.locals + comp.result.locals,
-                                 comp.result.result)
-    return comp, True
+    if comp.result.is_block():
+      comp = building_blocks.Block(comp.locals + comp.result.locals,
+                                   comp.result.result)
+    new_locals = []
+    for name, local_comp in comp.locals:
+      if not local_comp.is_block():
+        new_locals.append((name, local_comp))
+      else:
+        new_locals.extend(local_comp.locals)
+        new_locals.append((name, local_comp.result))
+
+    constructed_comp = building_blocks.Block(new_locals, comp.result)
+    return constructed_comp, True
 
 
 def merge_chained_blocks(comp):
   """Merges chained blocks into one block."""
-  return _apply_transforms(comp, MergeChainedBlocks())
+  return _apply_transforms(comp, MergeChainedBlocks(comp))
 
 
 class MergeChainedFederatedMapsOrApplys(transformation_utils.TransformSpec):

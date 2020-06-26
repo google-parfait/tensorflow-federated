@@ -1465,6 +1465,14 @@ class MergeChainedBlocksTest(test.TestCase):
     with self.assertRaises(TypeError):
       tree_transformations.merge_chained_blocks(None)
 
+  def test_raises_non_unique_names(self):
+    data = building_blocks.Data('a', tf.int32)
+    x_ref = building_blocks.Reference('x', tf.int32)
+    block1 = building_blocks.Block([('x', data)], x_ref)
+    block2 = building_blocks.Block([('x', data)], block1)
+    with self.assertRaises(ValueError):
+      _ = tree_transformations.merge_chained_blocks(block2)
+
   def test_single_level_of_nesting(self):
     input1 = building_blocks.Reference('input1', tf.int32)
     result = building_blocks.Reference('result', tf.int32)
@@ -1527,6 +1535,41 @@ class MergeChainedBlocksTest(test.TestCase):
     self.assertEqual(
         merged_blocks.compact_representation(),
         '(let input2=input3,input1=input2,result=input1 in result)')
+    self.assertTrue(modified)
+
+  def test_with_block_bound_to_local(self):
+    input1 = building_blocks.Data('input1', tf.int32)
+    result = building_blocks.Reference('result', tf.int32)
+    block1 = building_blocks.Block([('result', input1)], result)
+    input2 = building_blocks.Reference('input2', tf.int32)
+    block2 = building_blocks.Block([('input2', block1)], input2)
+
+    merged_blocks, modified = tree_transformations.merge_chained_blocks(block2)
+
+    self.assertEqual(block2.compact_representation(),
+                     '(let input2=(let result=input1 in result) in input2)')
+    self.assertEqual(merged_blocks.compact_representation(),
+                     '(let result=input1,input2=result in input2)')
+    self.assertTrue(modified)
+
+  def test_with_block_bound_to_local_in_result(self):
+    input1 = building_blocks.Data('input1', tf.int32)
+    result = building_blocks.Reference('result', tf.int32)
+    block1 = building_blocks.Block([('result', input1)], result)
+    input2 = building_blocks.Reference('input2', tf.int32)
+    block2 = building_blocks.Block([('input2', block1)], input2)
+    input3 = building_blocks.Data('input3', tf.int32)
+    block3 = building_blocks.Block([('input3', input3)], block2)
+
+    merged_blocks, modified = tree_transformations.merge_chained_blocks(block3)
+
+    self.assertEqual(
+        block3.compact_representation(),
+        '(let input3=input3 in (let input2=(let result=input1 in result) in input2))'
+    )
+    self.assertEqual(
+        merged_blocks.compact_representation(),
+        '(let input3=input3,result=input1,input2=result in input2)')
     self.assertTrue(modified)
 
 
