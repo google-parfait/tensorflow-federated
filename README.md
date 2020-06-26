@@ -91,24 +91,24 @@ released. It is possible that a newer version of the TensorFlow Federated
 package will not work with an older version of the TensorFlow package and vice
 versa.
 
-TensorFlow Federated                                                  | TensorFlow
---------------------------------------------------------------------- | ----------
-[0.14.0](https://github.com/tensorflow/federated/tree/v0.14.0)        | [tensorflow 2.2.0](https://pypi.org/project/tensorflow/2.2.0/)
-[0.13.1](https://github.com/tensorflow/federated/tree/v0.13.1)        | [tensorflow 2.1.0](https://pypi.org/project/tensorflow/2.1.0/)
-[0.13.0](https://github.com/tensorflow/federated/tree/v0.13.0)        | [tensorflow 2.1.0](https://pypi.org/project/tensorflow/2.1.0/)
-[0.12.0](https://github.com/tensorflow/federated/tree/v0.12.0)        | [tensorflow 2.1.0](https://pypi.org/project/tensorflow/2.1.0/)
-[0.11.0](https://github.com/tensorflow/federated/tree/v0.11.0)        | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)
-[0.10.1](https://github.com/tensorflow/federated/tree/v0.10.1)        | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)
-[0.10.0](https://github.com/tensorflow/federated/tree/v0.10.0)        | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)
-[0.9.0](https://github.com/tensorflow/federated/tree/v0.9.0)          | [tf-nightly 2.1.0.dev20191005](https://pypi.org/project/tf-nightly/2.1.0.dev20191005/)
-~~[0.8.0](https://github.com/tensorflow/federated/tree/v0.8.0)~~ <sup>[1](#footnote1)</sup> | [tf-nightly 1.15.0.dev20190805](https://pypi.org/project/tf-nightly/1.15.0.dev20190805/)
-[0.7.0](https://github.com/tensorflow/federated/tree/v0.7.0)          | [tf-nightly 1.15.0.dev20190711](https://pypi.org/project/tf-nightly/1.15.0.dev20190711/)
-[0.6.0](https://github.com/tensorflow/federated/tree/v0.6.0)          | [tf-nightly 1.15.0.dev20190626](https://pypi.org/project/tf-nightly/1.15.0.dev20190626/)
-[0.5.0](https://github.com/tensorflow/federated/tree/v0.5.0)          | [tf-nightly 1.14.1.dev20190528](https://pypi.org/project/tf-nightly/1.14.1.dev20190528/)
-[0.4.0](https://github.com/tensorflow/federated/tree/v0.4.0)          | [tensorflow 1.13.1](https://pypi.org/project/tensorflow/1.13.1)
-[0.3.0](https://github.com/tensorflow/federated/tree/v0.3.0)          | [tensorflow 1.13.1](https://pypi.org/project/tensorflow/1.13.1)
-[0.2.0](https://github.com/tensorflow/federated/tree/v0.2.0)          | [tensorflow 1.13.1](https://pypi.org/project/tensorflow/1.13.1)
-[0.1.0](https://github.com/tensorflow/federated/tree/v0.1.0)          | [tensorflow 1.13.0rc2](https://pypi.org/project/tensorflow/1.13.0rc0/)
+TensorFlow Federated                                                  | TensorFlow | Python
+--------------------------------------------------------------------- | ---------- | ----------
+[0.14.0](https://github.com/tensorflow/federated/tree/v0.14.0)        | [tensorflow 2.2.0](https://pypi.org/project/tensorflow/2.2.0/)                          | 3.6, 3.7
+[0.13.1](https://github.com/tensorflow/federated/tree/v0.13.1)        | [tensorflow 2.1.0](https://pypi.org/project/tensorflow/2.1.0/)                          | 2.7, 3.4, 3.5, 3.6
+[0.13.0](https://github.com/tensorflow/federated/tree/v0.13.0)        | [tensorflow 2.1.0](https://pypi.org/project/tensorflow/2.1.0/)                          | 2.7, 3.4, 3.5, 3.6
+[0.12.0](https://github.com/tensorflow/federated/tree/v0.12.0)        | [tensorflow 2.1.0](https://pypi.org/project/tensorflow/2.1.0/)                          | 2.7, 3.4, 3.5, 3.6
+[0.11.0](https://github.com/tensorflow/federated/tree/v0.11.0)        | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)                          | 2.7, 3.4, 3.5, 3.6
+[0.10.1](https://github.com/tensorflow/federated/tree/v0.10.1)        | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)                          | 2.7, 3.4, 3.5, 3.6
+[0.10.0](https://github.com/tensorflow/federated/tree/v0.10.0)        | [tensorflow 2.0.0](https://pypi.org/project/tensorflow/2.0.0/)                          | 2.7, 3.4, 3.5, 3.6
+[0.9.0](https://github.com/tensorflow/federated/tree/v0.9.0)          | [tf-nightly 2.1.0.dev20191005](https://pypi.org/project/tf-nightly/2.1.0.dev20191005/)  | 2.7, 3.4, 3.5, 3.6
+~~[0.8.0](https://github.com/tensorflow/federated/tree/v0.8.0)~~ <sup>[1](#footnote1)</sup> | [tf-nightly 1.15.0.dev20190805](https://pypi.org/project/tf-nightly/1.15.0.dev20190805/)                          | 2.7, 3.4, 3.5, 3.6
+[0.7.0](https://github.com/tensorflow/federated/tree/v0.7.0)          | [tf-nightly 1.15.0.dev20190711](https://pypi.org/project/tf-nightly/1.15.0.dev20190711/)                          | 2.7, 3.4, 3.5, 3.6
+[0.6.0](https://github.com/tensorflow/federated/tree/v0.6.0)          | [tf-nightly 1.15.0.dev20190626](https://pypi.org/project/tf-nightly/1.15.0.dev20190626/)                          | 2.7, 3.4, 3.5, 3.6
+[0.5.0](https://github.com/tensorflow/federated/tree/v0.5.0)          | [tf-nightly 1.14.1.dev20190528](https://pypi.org/project/tf-nightly/1.14.1.dev20190528/)                          | 2.7, 3.4, 3.5, 3.6
+[0.4.0](https://github.com/tensorflow/federated/tree/v0.4.0)          | [tensorflow 1.13.1](https://pypi.org/project/tensorflow/1.13.1)                          | 2.7, 3.4, 3.5, 3.6
+[0.3.0](https://github.com/tensorflow/federated/tree/v0.3.0)          | [tensorflow 1.13.1](https://pypi.org/project/tensorflow/1.13.1)                          | 2.7, 3.4, 3.5, 3.6
+[0.2.0](https://github.com/tensorflow/federated/tree/v0.2.0)          | [tensorflow 1.13.1](https://pypi.org/project/tensorflow/1.13.1)                          | 2.7, 3.4, 3.5, 3.6
+[0.1.0](https://github.com/tensorflow/federated/tree/v0.1.0)          | [tensorflow 1.13.0rc2](https://pypi.org/project/tensorflow/1.13.0rc0/)                          | 2.7, 3.4, 3.5, 3.6
 
 ### Python
 
