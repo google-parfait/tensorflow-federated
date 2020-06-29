@@ -15,10 +15,12 @@
 
 import collections
 import functools
+from typing import Any, Callable, Optional, Sequence, Union
 
 from absl import logging
 import numpy as np
 import tensorflow as tf
+import tensorflow_federated as tff
 
 
 #  Settings for a multiplicative linear congruential generator (aka Lehmer
@@ -119,28 +121,31 @@ def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
   return evaluate_fn
 
 
-def build_client_datasets_fn(train_dataset,
-                             train_clients_per_round,
-                             random_seed=None):
-  """Builds the function for generating client datasets at each round.
-
-  The function samples a number of clients and returns their datasets.
+def build_sample_fn(
+    a: Union[Sequence[Any], int],
+    size: int,
+    replace: bool = False,
+    random_seed: Optional[int] = None) -> Callable[[int], np.ndarray]:
+  """Builds the function for sampling from the input iterator at each round.
 
   Args:
-    train_dataset: A `tff.simulation.ClientData` object.
-    train_clients_per_round: The number of client participants in each round.
-    random_seed: If random_seed is set as an integer, then we use it as a
-      random seed for which clients are sampled at each round. In this case,
-      we set a random seed before sampling clients according
-      to a multiplicative linear congruential generator (aka Lehmer generator,
-      see 'The Art of Computer Programming, Vol. 3' by Donald Knuth for
-      reference). This does not affect model initialization,
-      shuffling, or other such aspects of the federated training process.
+    a: A 1-D array-like sequence or int that satisfies np.random.choice.
+    size: The number of samples to return each round.
+    replace: A boolean indicating whether the sampling is done with replacement
+      (True) or without replacement (False).
+    random_seed: If random_seed is set as an integer, then we use it as a random
+      seed for which clients are sampled at each round. In this case, we set a
+      random seed before sampling clients according to a multiplicative linear
+      congruential generator (aka Lehmer generator, see 'The Art of Computer
+      Programming, Vol. 3' by Donald Knuth for reference). This does not affect
+      model initialization, shuffling, or other such aspects of the federated
+      training process. Note that this will alter the global numpy random seed.
 
   Returns:
-    A function which returns a list of `tff.simulation.ClientData` objects at a
+    A function which returns a list of elements from the input iterator at a
     given round round_num.
   """
+
   if isinstance(random_seed, int):
     np.random.seed(random_seed)
     mlcg_start = np.random.randint(1, MLCG_MODULUS - 1)
@@ -149,14 +154,48 @@ def build_client_datasets_fn(train_dataset,
       return pow(MLCG_MULTIPLIER, round_num,
                  MLCG_MODULUS) * mlcg_start % MLCG_MODULUS
 
-  def client_datasets(round_num, random_seed):
+  def sample(round_num, random_seed):
     if isinstance(random_seed, int):
       np.random.seed(get_pseudo_random_int(round_num))
-    sampled_clients = np.random.choice(
-        train_dataset.client_ids, size=train_clients_per_round, replace=False)
+    return np.random.choice(a, size=size, replace=replace)
+
+  return functools.partial(sample, random_seed=random_seed)
+
+
+def build_client_datasets_fn(train_dataset: tff.simulation.ClientData,
+                             train_clients_per_round: int,
+                             random_seed: Optional[int] = None):
+  """Builds the function for generating client datasets at each round.
+
+  The function samples a number of clients (without replacement within a given
+  round, but with replacement across rounds) and returns their datasets.
+
+  Args:
+    train_dataset: A `tff.simulation.ClientData` object.
+    train_clients_per_round: The number of client participants in each round.
+    random_seed: If random_seed is set as an integer, then we use it as a random
+      seed for which clients are sampled at each round. In this case, we set a
+      random seed before sampling clients according to a multiplicative linear
+      congruential generator (aka Lehmer generator, see 'The Art of Computer
+      Programming, Vol. 3' by Donald Knuth for reference). This does not affect
+      model initialization, shuffling, or other such aspects of the federated
+      training process. Note that this will alter the global numpy random seed.
+
+  Returns:
+    A function which returns a list of `tff.simulation.ClientData` objects at a
+    given round round_num.
+  """
+  sample_clients_fn = build_sample_fn(
+      train_dataset.client_ids,
+      size=train_clients_per_round,
+      replace=False,
+      random_seed=random_seed)
+
+  def client_datasets(round_num):
+    sampled_clients = sample_clients_fn(round_num)
     return [
         train_dataset.create_tf_dataset_for_client(client)
         for client in sampled_clients
     ]
 
-  return functools.partial(client_datasets, random_seed=random_seed)
+  return client_datasets

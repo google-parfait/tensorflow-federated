@@ -15,6 +15,7 @@
 
 import collections
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -50,7 +51,70 @@ def create_tf_dataset_for_client(client_id, batch_data=True):
   return dataset
 
 
-class TrainingUtilsTest(tf.test.TestCase):
+class TrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': '_int_no_replace',
+          'a': 100,
+          'replace': False
+      }, {
+          'testcase_name': '_int_replace',
+          'a': 5,
+          'replace': True
+      }, {
+          'testcase_name': '_sequence_no_replace',
+          'a': [str(i) for i in range(100)],
+          'replace': False
+      }, {
+          'testcase_name': '_sequence_replace',
+          'a': [str(i) for i in range(5)],
+          'replace': True
+      })
+  def test_build_sample_fn_with_random_seed(self, a, replace):
+    size = 10
+    random_seed = 1
+    round_num = 5
+
+    sample_fn_1 = training_utils.build_sample_fn(
+        a, size, replace=replace, random_seed=random_seed)
+    sample_1 = sample_fn_1(round_num)
+
+    sample_fn_2 = training_utils.build_sample_fn(
+        a, size, replace=replace, random_seed=random_seed)
+    sample_2 = sample_fn_2(round_num)
+
+    self.assertAllEqual(sample_1, sample_2)
+
+  @parameterized.named_parameters(
+      {
+          'testcase_name': '_int_no_replace',
+          'a': 100,
+          'replace': False
+      }, {
+          'testcase_name': '_int_replace',
+          'a': 5,
+          'replace': True
+      }, {
+          'testcase_name': '_sequence_no_replace',
+          'a': [str(i) for i in range(100)],
+          'replace': False
+      }, {
+          'testcase_name': '_sequence_replace',
+          'a': [str(i) for i in range(5)],
+          'replace': True
+      })
+  def test_build_sample_fn_without_random_seed(self, a, replace):
+    size = 10
+    round_num = 5
+
+    sample_fn_1 = training_utils.build_sample_fn(a, size, replace=replace)
+    sample_1 = sample_fn_1(round_num)
+
+    sample_fn_2 = training_utils.build_sample_fn(a, size, replace=replace)
+    sample_2 = sample_fn_2(round_num)
+
+    self.assertNotAllEqual(sample_1, sample_2)
 
   def test_build_client_datasets_fn(self):
     tff_dataset = tff.simulation.client_data.ConcreteClientData(

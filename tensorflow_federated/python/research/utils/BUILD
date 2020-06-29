@@ -107,6 +107,7 @@ py_library(
     name = "training_utils",
     srcs = ["training_utils.py"],
     srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
 )
 
 py_test(
