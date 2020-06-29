@@ -33,6 +33,7 @@ import tensorflow_federated as tff
 
 
 ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
+ModelOutputs = collections.namedtuple('ModelOutputs', 'loss')
 
 
 class KerasModelWrapper(object):
@@ -65,7 +66,7 @@ class KerasModelWrapper(object):
     """
     preds = self.keras_model(batch_input['x'], training=training)
     loss = self.loss(batch_input['y'], preds)
-    return loss
+    return ModelOutputs(loss=loss)
 
   @property
   def weights(self):
@@ -209,13 +210,13 @@ def client_update(model, dataset, server_message, client_optimizer):
   loss_sum = tf.constant(0, dtype=tf.float32)
   for batch in dataset:
     with tf.GradientTape() as tape:
-      loss = model.forward_pass(batch)
-    grads = tape.gradient(loss, model_weights.trainable)
+      outputs = model.forward_pass(batch)
+    grads = tape.gradient(outputs.loss, model_weights.trainable)
     grads_and_vars = zip(grads, model_weights.trainable)
     client_optimizer.apply_gradients(grads_and_vars)
     batch_size = tf.shape(batch['x'])[0]
     num_examples += batch_size
-    loss_sum += loss * tf.cast(batch_size, tf.float32)
+    loss_sum += outputs.loss * tf.cast(batch_size, tf.float32)
 
   weights_delta = tf.nest.map_structure(lambda a, b: a - b,
                                         model_weights.trainable,
