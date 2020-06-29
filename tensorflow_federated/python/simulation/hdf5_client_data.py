@@ -59,7 +59,7 @@ class HDF5ClientData(client_data.ClientData):
 
   def _create_dataset(self, client_id):
     return tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict((name, ds.value) for name, ds in sorted(
+        collections.OrderedDict((name, ds[()]) for name, ds in sorted(
             self._h5_file[HDF5ClientData._EXAMPLES_GROUP][client_id].items())))
 
   @property
