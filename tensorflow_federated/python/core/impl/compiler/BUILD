@@ -229,6 +229,31 @@ py_test(
 )
 
 py_library(
+    name = "compiler_pipeline",
+    srcs = ["compiler_pipeline.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
+    ],
+)
+
+py_test(
+    name = "compiler_pipeline_test",
+    size = "small",
+    srcs = ["compiler_pipeline_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":compiler_pipeline",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:placement_literals",
+    ],
+)
+
+py_library(
     name = "tensorflow_computation_factory",
     srcs = ["tensorflow_computation_factory.py"],
     srcs_version = "PY3",

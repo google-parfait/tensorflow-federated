@@ -18,13 +18,13 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.impl import compiler_pipeline
+from tensorflow_federated.python.core.impl.compiler import compiler_pipeline
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class CompilerPipelineTest(absltest.TestCase):
 
-  def test_compile_computation_with_idnetity(self):
+  def test_compile_computation_with_identity(self):
 
     @computations.federated_computation([
         computation_types.FederatedType(tf.float32, placement_literals.CLIENTS),
