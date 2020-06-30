@@ -157,8 +157,8 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
       Used to compute training metrics over the entire training dataset
       throughout the course of the iterative process.
     test_fn: An optional callable accepting the `model` attribute of an
-    `IterationResult.state`) and returning a dict of test metrics. Used to
-    compute test metrics at the end of the training process.
+      `IterationResult.state`) and returning a dict of test metrics. Used to
+      compute test metrics at the end of the training process.
 
   Returns:
     The `state` of the `IterationResult` representing the result of the training
