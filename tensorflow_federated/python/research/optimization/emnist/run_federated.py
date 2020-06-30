@@ -92,14 +92,13 @@ def main(argv):
       metrics_builder=metrics_builder,
       assign_weights_to_keras_model=assign_weights_fn)
 
+  test_fn = evaluate_fn
+
   logging.info('Training model:')
   logging.info(model_builder().summary())
 
   training_loop.run(
-      iterative_process=training_process,
-      client_datasets_fn=client_datasets_fn,
-      evaluate_fn=evaluate_fn,
-  )
+      training_process, client_datasets_fn, evaluate_fn, test_fn=test_fn)
 
 
 if __name__ == '__main__':
