@@ -100,6 +100,35 @@ class ExtractComputationsTest(test.TestCase):
     with self.assertRaises(ValueError):
       tree_transformations.extract_computations(block)
 
+  def test_extracts_from_no_arg_lamda(self):
+    data = building_blocks.Data('data', tf.int32)
+    block = building_blocks.Lambda(
+        parameter_name=None, parameter_type=None, result=data)
+    comp = block
+
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '( -> data)')
+    self.assertEqual(transformed_comp.compact_representation(),
+                     '(let _var1=data,_var2=( -> _var1) in _var2)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_extracts_from_no_arg_lamda_to_block(self):
+    data = building_blocks.Data('data', tf.int32)
+    blk = building_blocks.Block([], data)
+    block = building_blocks.Lambda(
+        parameter_name=None, parameter_type=None, result=blk)
+    comp = block
+
+    transformed_comp, modified = tree_transformations.extract_computations(comp)
+
+    self.assertEqual(comp.compact_representation(), '( -> (let  in data))')
+    self.assertEqual(transformed_comp.compact_representation(),
+                     '(let _var1=data,_var2=_var1,_var3=( -> _var2) in _var3)')
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
   def test_extracts_from_block_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
     block = building_blocks.Block([('a', data)], data)

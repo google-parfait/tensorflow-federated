@@ -130,7 +130,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
 
   def _passes_test_or_block(self, comp):
     """Returns `True` if `comp` matches the `predicate` or is a block."""
-    return self._predicate(comp) or comp.is_block()
+    return comp is not None and (self._predicate(comp) or comp.is_block())
 
   def should_transform(self, comp):
     """Returns `True` if `comp` should be transformed.
@@ -152,13 +152,15 @@ class ExtractComputation(transformation_utils.TransformSpec):
       return (self._passes_test_or_block(comp.function) or
               self._passes_test_or_block(comp.argument))
     elif comp.is_lambda():
+      param_name = comp.parameter_name
+      if param_name is None:
+        param_name = set()
       if self._predicate(comp.result):
         return True
       if comp.result.is_block():
         for index, (_, variable) in enumerate(comp.result.locals):
           names = [n for n, _ in comp.result.locals[:index]]
-          if (not self._contains_unbound_reference(variable,
-                                                   comp.parameter_name) and
+          if (not self._contains_unbound_reference(variable, param_name) and
               not self._contains_unbound_reference(variable, names)):
             return True
     elif comp.is_selection():
@@ -226,14 +228,14 @@ class ExtractComputation(transformation_utils.TransformSpec):
 
   def _extract_from_lambda(self, comp):
     """Returns a new computation with all intrinsics extracted."""
+    if comp.parameter_name is None:
+      captured_names = set()
+    else:
+      captured_names = comp.parameter_name
     if self._predicate(comp.result):
       name = next(self._name_generator)
       variables = [(name, comp.result)]
       result = building_blocks.Reference(name, comp.result.type_signature)
-      if comp.parameter_name is None:
-        captured_names = set()
-      else:
-        captured_names = comp.parameter_name
       if not self._contains_unbound_reference(comp.result, captured_names):
         fn = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
                                     result)
@@ -250,8 +252,8 @@ class ExtractComputation(transformation_utils.TransformSpec):
       retained_variables = []
       for name, variable in block.locals:
         names = [n for n, _ in retained_variables]
-        if (not self._contains_unbound_reference(variable, comp.parameter_name)
-            and not self._contains_unbound_reference(variable, names)):
+        if (not self._contains_unbound_reference(variable, captured_names) and
+            not self._contains_unbound_reference(variable, names)):
           extracted_variables.append((name, variable))
         else:
           retained_variables.append((name, variable))
