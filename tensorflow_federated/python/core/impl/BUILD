@@ -374,7 +374,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-        "//tensorflow_federated/python/tensorflow_libs:graph_keys",
+        "//tensorflow_federated/python/tensorflow_libs:variable_utils",
     ],
 )
 

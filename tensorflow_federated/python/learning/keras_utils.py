@@ -14,7 +14,6 @@
 """Utility methods for working with Keras in TensorFlow Federated."""
 
 import collections
-import itertools
 from typing import Sequence, Union
 
 import tensorflow as tf
@@ -24,7 +23,6 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
-from tensorflow_federated.python.tensorflow_libs import graph_keys
 
 
 def assign_weights_to_keras_model(keras_model, tff_weights):
@@ -315,17 +313,6 @@ class _KerasModel(model_lib.Model):
 
     self._federated_output_computation = tff.federated_computation(
         federated_output, federated_local_outputs_type)
-
-    # Keras creates variables that are not added to any collection, making it
-    # impossible for TFF to extract them and create the appropriate initializer
-    # before call a tff.Computation. Here we store them in a TFF specific
-    # collection so that they can be retrieved later.
-    # TODO(b/122081673): this likely goes away in TF2.0
-    for variable in itertools.chain(self.trainable_variables,
-                                    self.non_trainable_variables,
-                                    self.local_variables):
-      tf.compat.v1.add_to_collection(
-          graph_keys.GraphKeys.VARS_FOR_TFF_TO_INITIALIZE, variable)
 
   @property
   def trainable_variables(self):
