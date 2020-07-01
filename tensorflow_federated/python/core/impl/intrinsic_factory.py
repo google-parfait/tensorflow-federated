@@ -200,9 +200,8 @@ class IntrinsicFactory(object):
       comp = building_block_factory.create_federated_map(fn, arg)
     else:
       raise TypeError(
-          'The argument should be placed at {} or {}, placed at {} instead.'
-          .format(placement_literals.SERVER, placement_literals.CLIENTS,
-                  arg.type_signature.placement))
+          'Expected `arg` to have a type with a supported placement, '
+          'found {}.'.format(arg.type_signature.placement))
 
     comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
@@ -414,14 +413,7 @@ class IntrinsicFactory(object):
                                             intrinsic_type)
       intrinsic_impl = value_impl.ValueImpl(intrinsic, self._context_stack)
       local_fn = value_utils.get_curried(intrinsic_impl)(fn)
-
-      if arg.type_signature.placement in [
-          placement_literals.SERVER, placement_literals.CLIENTS
-      ]:
-        return self.federated_map(local_fn, arg)
-      else:
-        raise TypeError('Unsupported placement {}.'.format(
-            arg.type_signature.placement))
+      return self.federated_map(local_fn, arg)
     else:
       raise TypeError(
           'Cannot apply `tff.sequence_map()` to a value of type {}.'.format(
@@ -467,13 +459,7 @@ class IntrinsicFactory(object):
       call = building_blocks.Call(intrinsic, tup)
       fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
       fn_impl = value_impl.ValueImpl(fn, self._context_stack)
-      if value.type_signature.placement in [
-          placement_literals.SERVER, placement_literals.CLIENTS
-      ]:
-        return self.federated_map(fn_impl, value)
-      else:
-        raise TypeError('Unsupported placement {}.'.format(
-            value.type_signature.placement))
+      return self.federated_map(fn_impl, value)
 
   def sequence_sum(self, value):
     """Implements `sequence_sum` as defined in `api/intrinsics.py`."""
@@ -499,13 +485,7 @@ class IntrinsicFactory(object):
       intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_SUM.uri,
                                             intrinsic_type)
       intrinsic_impl = value_impl.ValueImpl(intrinsic, self._context_stack)
-      if value.type_signature.placement in [
-          placement_literals.SERVER, placement_literals.CLIENTS
-      ]:
-        return self.federated_map(intrinsic_impl, value)
-      else:
-        raise TypeError('Unsupported placement {}.'.format(
-            value.type_signature.placement))
+      return self.federated_map(intrinsic_impl, value)
     else:
       raise TypeError(
           'Cannot apply `tff.sequence_sum()` to a value of type {}.'.format(
