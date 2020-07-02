@@ -185,7 +185,7 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
       ]
       self._sizing_executors.extend(client_stacks)
 
-    federating_strategy_factory = federated_resolving_strategy.FederatedResovlingStrategy.factory(
+    federating_strategy_factory = federated_resolving_strategy.FederatedResolvingStrategy.factory(
         {
             placement_literals.CLIENTS: [
                 client_stacks[k % len(client_stacks)]

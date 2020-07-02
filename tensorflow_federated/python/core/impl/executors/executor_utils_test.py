@@ -34,7 +34,7 @@ def create_test_federated_stack(
     executor = eager_tf_executor.EagerTFExecutor()
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
-  factory = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+  factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
       placement_literals.SERVER:
           create_bottom_stack(),
       placement_literals.CLIENTS: [
@@ -54,7 +54,7 @@ def create_test_aggregated_stack(
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
   def create_worker_stack():
-    factroy = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+    factroy = federated_resolving_strategy.FederatedResolvingStrategy.factory({
         placement_literals.SERVER:
             create_bottom_stack(),
         placement_literals.CLIENTS: [

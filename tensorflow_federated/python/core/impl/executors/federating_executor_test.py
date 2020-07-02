@@ -46,7 +46,7 @@ def create_test_executor(
     executor = eager_tf_executor.EagerTFExecutor()
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
-  factory = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+  factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
       placement_literals.SERVER:
           create_bottom_stack(),
       placement_literals.CLIENTS: [
@@ -98,7 +98,7 @@ def get_named_parameters_for_supported_intrinsics() -> List[Tuple[str, Any]]:
 class FederatingExecutorInitTest(executor_test_utils.AsyncTestCase):
 
   def test_raises_type_error_with_no_target_executor_unplaced(self):
-    factory = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
         placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
         placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
     })
@@ -303,7 +303,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: enable
   def test_raises_value_error_with_no_target_executor_clients(
       self, value, type_signature):
-    factory = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
         placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
     })
     executor = federating_executor.FederatingExecutor(
@@ -340,7 +340,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: enable
   def test_raises_value_error_with_no_target_executor_server(
       self, value, type_signature):
-    factory = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
         placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
     })
     executor = federating_executor.FederatingExecutor(

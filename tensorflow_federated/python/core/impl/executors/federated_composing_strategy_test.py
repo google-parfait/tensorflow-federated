@@ -42,7 +42,7 @@ def _create_bottom_stack():
 
 
 def _create_worker_stack():
-  factory = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+  factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
       placement_literals.SERVER: _create_bottom_stack(),
       placement_literals.CLIENTS: [_create_bottom_stack() for _ in range(2)],
   })
