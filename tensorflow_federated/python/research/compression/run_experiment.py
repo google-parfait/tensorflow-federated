@@ -213,7 +213,7 @@ def run_experiment():
   training_loop.run(
       iterative_process=iterative_process,
       client_datasets_fn=client_datasets_fn,
-      evaluate_fn=evaluate_fn)
+      validation_fn=evaluate_fn)
 
 
 def main(argv):
