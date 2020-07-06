@@ -37,7 +37,7 @@ def _dummy_canonical_form_computations():
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
-    return (True, []), []
+    return True, []
 
   @computations.tf_computation
   def zero():
@@ -103,7 +103,7 @@ class CanonicalFormTest(absltest.TestCase):
     def work(client_data, client_input):
       del client_data  # Unused
       del client_input  # Unused
-      return (True, []), []
+      return True, []
 
     @computations.tf_computation
     def zero():
@@ -194,7 +194,7 @@ class CanonicalFormTest(absltest.TestCase):
     def work(client_data, client_input):
       del client_data  # Unused
       del client_input  # Unused
-      return (True, []), []
+      return True, []
 
     with self.assertRaises(TypeError):
       canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
@@ -209,7 +209,7 @@ class CanonicalFormTest(absltest.TestCase):
     def work(client_data, client_input):
       del client_data  # Unused
       del client_input  # Unused
-      return (tf.constant('abc'), []), []
+      return tf.constant('abc'), []
 
     with self.assertRaises(TypeError):
       canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
@@ -402,7 +402,7 @@ class CanonicalFormTest(absltest.TestCase):
         capture.summary,
         'initialize: ( -> <num_rounds=int32>)\n'
         'prepare   : (<num_rounds=int32> -> <max_temperature=float32>)\n'
-        'work      : (<float32*,<max_temperature=float32>> -> <<<is_over=bool>,<>>,<num_readings=int32>>)\n'
+        'work      : (<float32*,<max_temperature=float32>> -> <<is_over=bool>,<>>)\n'
         'zero      : ( -> <num_total=int32,num_over=int32>)\n'
         'accumulate: (<<num_total=int32,num_over=int32>,<is_over=bool>> -> <num_total=int32,num_over=int32>)\n'
         'merge     : (<<num_total=int32,num_over=int32>,<num_total=int32,num_over=int32>> -> <num_total=int32,num_over=int32>)\n'

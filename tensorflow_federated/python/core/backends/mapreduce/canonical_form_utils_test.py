@@ -58,7 +58,7 @@ def get_iterative_process_for_sum_example():
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
-    return [1, 1], []
+    return 1, 1
 
   @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
   def update(server_state, global_update):
@@ -74,13 +74,13 @@ def get_iterative_process_for_sum_example():
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
-    client_updates, client_output = intrinsics.federated_map(work, c3)
+    client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
     s6 = intrinsics.federated_zip(
         [server_state, [unsecure_update, secure_update]])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
-    return new_server_state, server_output, client_output
+    return new_server_state, server_output
 
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
@@ -101,7 +101,7 @@ def get_iterative_process_for_sum_example_with_no_prepare():
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
-    return [1, 1], []
+    return 1, 1
 
   @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
   def update(server_state, global_update):
@@ -117,13 +117,13 @@ def get_iterative_process_for_sum_example_with_no_prepare():
     # No call to `federated_map` with a `prepare` function.
     client_input = intrinsics.federated_broadcast(server_state)
     c3 = intrinsics.federated_zip([client_data, client_input])
-    client_updates, client_output = intrinsics.federated_map(work, c3)
+    client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
     s6 = intrinsics.federated_zip(
         [server_state, [unsecure_update, secure_update]])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
-    return new_server_state, server_output, client_output
+    return new_server_state, server_output
 
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
@@ -144,7 +144,7 @@ def get_iterative_process_for_sum_example_with_no_broadcast():
   @computations.tf_computation(tf.int32)
   def work(client_data):
     del client_data  # Unused
-    return [1, 1], []
+    return 1, 1
 
   @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
   def update(server_state, global_update):
@@ -159,54 +159,7 @@ def get_iterative_process_for_sum_example_with_no_broadcast():
     """The `next` function for `tff.templates.IterativeProcess`."""
     # No call to `federated_map` with prepare.
     # No call to `federated_broadcast`.
-    client_updates, client_output = intrinsics.federated_map(work, client_data)
-    unsecure_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
-    s6 = intrinsics.federated_zip(
-        [server_state, [unsecure_update, secure_update]])
-    new_server_state, server_output = intrinsics.federated_map(update, s6)
-    return new_server_state, server_output, client_output
-
-  return iterative_process.IterativeProcess(init_fn, next_fn)
-
-
-def get_iterative_process_for_sum_example_with_no_client_output():
-  """Returns an iterative process for a sum example.
-
-  This iterative process does not return client output from the work function.
-  """
-
-  @computations.federated_computation
-  def init_fn():
-    """The `init` function for `tff.templates.IterativeProcess`."""
-    return intrinsics.federated_value([0, 0], placements.SERVER)
-
-  @computations.tf_computation([tf.int32, tf.int32])
-  def prepare(server_state):
-    return server_state
-
-  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
-  def work(client_data, client_input):
-    del client_data  # Unused
-    del client_input  # Unused
-    return [1, 1]
-
-  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
-  def update(server_state, global_update):
-    del server_state  # Unused
-    return global_update, []
-
-  @computations.federated_computation([
-      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS),
-  ])
-  def next_fn(server_state, client_data):
-    """The `next` function for `tff.templates.IterativeProcess`."""
-    s2 = intrinsics.federated_map(prepare, server_state)
-    client_input = intrinsics.federated_broadcast(s2)
-    c3 = intrinsics.federated_zip([client_data, client_input])
-    # No client output.
-    client_updates = intrinsics.federated_map(work, c3)
+    client_updates = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
     s6 = intrinsics.federated_zip(
@@ -236,7 +189,7 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
-    return 1, []
+    return 1
 
   @computations.tf_computation([tf.int32, tf.int32])
   def update(server_state, global_update):
@@ -252,12 +205,12 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
-    client_updates, client_output = intrinsics.federated_map(work, c3)
+    client_updates = intrinsics.federated_map(work, c3)
     # No call to `federated_aggregate`.
     secure_update = intrinsics.federated_secure_sum(client_updates, 8)
     s6 = intrinsics.federated_zip([server_state, secure_update])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
-    return new_server_state, server_output, client_output
+    return new_server_state, server_output
 
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
@@ -281,7 +234,7 @@ def get_iterative_process_for_sum_example_with_no_federated_secure_sum():
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
-    return 1, []
+    return 1
 
   @computations.tf_computation([tf.int32, tf.int32])
   def update(server_state, global_update):
@@ -297,12 +250,12 @@ def get_iterative_process_for_sum_example_with_no_federated_secure_sum():
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
-    client_updates, client_output = intrinsics.federated_map(work, c3)
+    client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates)
     # No call to `federated_secure_sum`.
     s6 = intrinsics.federated_zip([server_state, unsecure_update])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
-    return new_server_state, server_output, client_output
+    return new_server_state, server_output
 
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
@@ -327,7 +280,7 @@ def get_iterative_process_for_sum_example_with_no_update():
   def work(client_data, client_input):
     del client_data  # Unused
     del client_input  # Unused
-    return [1, 1], []
+    return 1, 1
 
   @computations.federated_computation([
       computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
@@ -338,14 +291,14 @@ def get_iterative_process_for_sum_example_with_no_update():
     s2 = intrinsics.federated_map(prepare, server_state)
     client_input = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([client_data, client_input])
-    client_updates, client_output = intrinsics.federated_map(work, c3)
+    client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
     new_server_state = intrinsics.federated_zip(
         [unsecure_update, secure_update])
     # No call to `federated_map` with an `update` function.
     server_output = intrinsics.federated_value([], placements.SERVER)
-    return new_server_state, server_output, client_output
+    return new_server_state, server_output
 
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
@@ -368,7 +321,7 @@ def get_iterative_process_for_sum_example_with_no_server_state():
   @computations.tf_computation(tf.int32)
   def work(client_data):
     del client_data  # Unused
-    return [1, 1], []
+    return 1, 1
 
   @computations.tf_computation([tf.int32, tf.int32])
   def update(global_update):
@@ -383,14 +336,14 @@ def get_iterative_process_for_sum_example_with_no_server_state():
     del server_state  # Unused
     # No call to `federated_map` with prepare.
     # No call to `federated_broadcast`.
-    client_updates, client_output = intrinsics.federated_map(work, client_data)
+    client_updates = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
     secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
     s5 = intrinsics.federated_zip([unsecure_update, secure_update])
     # Empty server state.
     new_server_state = intrinsics.federated_value([], placements.SERVER)
     server_output = intrinsics.federated_map(update, s5)
-    return new_server_state, server_output, client_output
+    return new_server_state, server_output
 
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
@@ -408,16 +361,6 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
     """The `init` function for `tff.templates.IterativeProcess`."""
     return intrinsics.federated_value([0, 0], placements.SERVER)
 
-  @computations.tf_computation([tf.int32, tf.int32])
-  def prepare(server_state):
-    return server_state
-
-  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
-  def work(client_data, client_input):
-    del client_data  # Unused
-    del client_input  # Unused
-    return [1, 1], []
-
   @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
   def update(server_state, global_update):
     del server_state  # Unused
@@ -429,10 +372,7 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
   ])
   def next_fn(server_state, client_data):
     """The `next` function for `tff.templates.IterativeProcess`."""
-    s2 = intrinsics.federated_map(prepare, server_state)
-    client_input = intrinsics.federated_broadcast(s2)
-    c3 = intrinsics.federated_zip([client_data, client_input])
-    _, client_output = intrinsics.federated_map(work, c3)
+    del client_data
     # No call to `federated_aggregate`.
     unsecure_update = intrinsics.federated_value(1, placements.SERVER)
     # No call to `federated_secure_sum`.
@@ -440,7 +380,7 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
     s6 = intrinsics.federated_zip(
         [server_state, [unsecure_update, secure_update]])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
-    return new_server_state, server_output, client_output
+    return new_server_state, server_output
 
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
@@ -461,7 +401,7 @@ def get_iterative_process_for_minimal_sum_example():
   @computations.tf_computation(tf.int32)
   def work(client_data):
     del client_data  # Unused
-    return [1, 1]
+    return 1, 1
 
   @computations.federated_computation([
       computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
@@ -508,7 +448,7 @@ class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
     self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
     self.assertEqual(state[0], 0)
 
-    state, metrics, stats = it.next(state, [[28.0], [30.0, 33.0, 29.0]])
+    state, metrics = it.next(state, [[28.0], [30.0, 33.0, 29.0]])
     self.assertLen(state, 1)
     self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
     self.assertEqual(state[0], 1)
@@ -516,46 +456,10 @@ class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
     self.assertAllEqual(
         anonymous_tuple.name_list(metrics), ['ratio_over_threshold'])
     self.assertEqual(metrics[0], 0.5)
-    self.assertCountEqual([self.evaluate(x.num_readings) for x in stats],
-                          [1, 3])
 
-    state, metrics, stats = it.next(state, [[33.0], [34.0], [35.0], [36.0]])
+    state, metrics = it.next(state, [[33.0], [34.0], [35.0], [36.0]])
     self.assertAllEqual(state, (2,))
     self.assertAllClose(metrics, {'ratio_over_threshold': 0.75})
-    self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
-
-
-class CreateNextWithFakeClientOutputTest(test.TestCase):
-
-  def test_returns_tree(self):
-    ip = get_iterative_process_for_sum_example_with_no_client_output()
-    old_next_tree = building_blocks.ComputationBuildingBlock.from_proto(
-        ip.next._computation_proto)
-    expected_next_tree_result_first_index = building_blocks.Selection(
-        old_next_tree.result, index=0)
-    expected_next_tree_result_second_index = building_blocks.Selection(
-        old_next_tree.result, index=1)
-
-    new_next_tree = canonical_form_utils._create_next_with_fake_client_output(
-        old_next_tree)
-
-    self.assertIsInstance(new_next_tree, building_blocks.Lambda)
-    self.assertIsInstance(new_next_tree.result, building_blocks.Tuple)
-    self.assertIsInstance(old_next_tree.result, building_blocks.Block)
-    self.assertLen(new_next_tree.result, 3)
-    self.assertEqual(
-        new_next_tree.result[0].formatted_representation(),
-        expected_next_tree_result_first_index.formatted_representation())
-    self.assertEqual(
-        new_next_tree.result[1].formatted_representation(),
-        expected_next_tree_result_second_index.formatted_representation())
-
-    # pyformat: disable
-    self.assertEqual(
-        new_next_tree.result[2].formatted_representation(),
-        'federated_value_at_clients(<>)'
-    )
-    # pyformat: enable
 
 
 class CreateBeforeAndAfterBroadcastForNoBroadcastTest(test.TestCase):
@@ -741,12 +645,10 @@ class GetTypeInfoTest(test.TestCase):
         s2_type='<int32,int32>@SERVER',
         c2_type='<int32,int32>@CLIENTS',
         c3_type='{<int32,<int32,int32>>}@CLIENTS',
-        work_type='(<int32,<int32,int32>> -> <<int32,int32>,<>>)',
-        c4_type='{<<int32,int32>,<>>}@CLIENTS',
-        c5_type='{<int32,int32>}@CLIENTS',
+        work_type='(<int32,<int32,int32>> -> <int32,int32>)',
+        c4_type='{<int32,int32>}@CLIENTS',
+        c5_type='{int32}@CLIENTS',
         c6_type='{int32}@CLIENTS',
-        c7_type='{int32}@CLIENTS',
-        c8_type='{<>}@CLIENTS',
         zero_type='( -> int32)',
         accumulate_type='(<int32,int32> -> int32)',
         merge_type='(<int32,int32> -> int32)',
@@ -827,7 +729,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
     self.assertEqual(state[0], 0)
 
-    state, metrics, stats = new_it.next(state, [[28.0], [30.0, 33.0, 29.0]])
+    state, metrics = new_it.next(state, [[28.0], [30.0, 33.0, 29.0]])
     self.assertLen(state, 1)
     self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
     self.assertEqual(state[0], 1)
@@ -835,13 +737,10 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     self.assertAllEqual(
         anonymous_tuple.name_list(metrics), ['ratio_over_threshold'])
     self.assertEqual(metrics[0], 0.5)
-    self.assertCountEqual([self.evaluate(x.num_readings) for x in stats],
-                          [1, 3])
 
-    state, metrics, stats = new_it.next(state, [[33.0], [34.0], [35.0], [36.0]])
+    state, metrics = new_it.next(state, [[33.0], [34.0], [35.0], [36.0]])
     self.assertAllEqual(state, (2,))
     self.assertAllClose(metrics, {'ratio_over_threshold': 0.75})
-    self.assertCountEqual([x.num_readings for x in stats], [1, 1, 1, 1])
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
             test_utils.computation_to_building_block(it.next)),
@@ -886,8 +785,6 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
        get_iterative_process_for_sum_example_with_no_prepare()),
       ('sum_example_with_no_broadcast',
        get_iterative_process_for_sum_example_with_no_broadcast()),
-      ('sum_example_with_no_client_output',
-       get_iterative_process_for_sum_example_with_no_client_output()),
       ('sum_example_with_no_federated_aggregate',
        get_iterative_process_for_sum_example_with_no_federated_aggregate()),
       ('sum_example_with_no_federated_secure_sum',

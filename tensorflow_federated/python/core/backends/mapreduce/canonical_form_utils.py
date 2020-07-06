@@ -70,18 +70,16 @@ def get_iterative_process_for_canonical_form(cf):
     c3 = intrinsics.federated_zip([c1, c2])
     c4 = intrinsics.federated_map(cf.work, c3)
     c5 = c4[0]
-    c6 = c5[0]
-    c7 = c5[1]
-    c8 = c4[1]
-    s3 = intrinsics.federated_aggregate(c6, cf.zero(), cf.accumulate, cf.merge,
+    c6 = c4[1]
+    s3 = intrinsics.federated_aggregate(c5, cf.zero(), cf.accumulate, cf.merge,
                                         cf.report)
-    s4 = intrinsics.federated_secure_sum(c7, cf.bitwidth())
+    s4 = intrinsics.federated_secure_sum(c6, cf.bitwidth())
     s5 = intrinsics.federated_zip([s3, s4])
     s6 = intrinsics.federated_zip([s1, s5])
     s7 = intrinsics.federated_map(cf.update, s6)
     s8 = s7[0]
     s9 = s7[1]
-    return s8, s9, c8
+    return s8, s9
 
   return iterative_process.IterativeProcess(init_computation, next_computation)
 
@@ -176,53 +174,8 @@ def _check_iterative_process_compatible_with_canonical_form(
                           computation_types.NamedTupleType)
   py_typecheck.check_len(next_tree.type_signature.parameter, 2)
   next_result_len = len(next_tree.type_signature.result)
-  if next_result_len != 2 and next_result_len != 3:
-    raise TypeError(
-        'Expected length of 2 or 3, found {}.'.format(next_result_len))
-
-
-def _create_next_with_fake_client_output(tree):
-  r"""Creates a next computation with a fake client output.
-
-  This function returns the AST:
-
-  Lambda
-  |
-  [Comp, Comp, Tuple]
-               |
-               []
-
-  In the AST, `Lambda` and the first two `Comps`s in the result of `Lambda` are
-  `tree` and the empty `Tuple` is the fake client output.
-
-  This function is intended to be used by
-  `get_canonical_form_for_iterative_process` to create a next computation with
-  a fake client output when no client output is returned by `tree` (which
-  represents the `next` function of the `tff.templates.IterativeProcess`). As a
-  result, this function does not assert that there is no client output in `tree`
-  and it does not assert that `tree` has the expected structure, the caller is
-  expected to perform these checks before calling this function.
-
-  Args:
-    tree: An instance of `building_blocks.ComputationBuildingBlock`.
-
-  Returns:
-    A new `building_blocks.ComputationBuildingBlock` representing a next
-    computaiton with a fake client output.
-  """
-  if tree.result.is_tuple():
-    arg_1 = tree.result[0]
-    arg_2 = tree.result[1]
-  else:
-    arg_1 = building_blocks.Selection(tree.result, index=0)
-    arg_2 = building_blocks.Selection(tree.result, index=1)
-
-  empty_tuple = building_blocks.Tuple([])
-  client_output = building_block_factory.create_federated_value(
-      empty_tuple, placements.CLIENTS)
-  output = building_blocks.Tuple([arg_1, arg_2, client_output])
-  return building_blocks.Lambda(tree.parameter_name, tree.parameter_type,
-                                output)
+  if next_result_len != 2:
+    raise TypeError('Expected length of 2, found {}.'.format(next_result_len))
 
 
 def _create_before_and_after_broadcast_for_no_broadcast(tree):
@@ -512,19 +465,16 @@ def _extract_prepare(before_broadcast):
       s1_to_s2_computation)
 
 
-def _extract_work(before_aggregate, after_aggregate):
-  """Extracts `work` from `before_aggregate` and `after_aggregate`.
+def _extract_work(before_aggregate):
+  """Extracts `work` from `before_aggregate`.
 
   This function is intended to be used by
   `get_canonical_form_for_iterative_process` only. As a result, this function
-  does not assert that `before_aggregate` or `after_aggregate` has the expected
-  structure, the caller is expected to perform these checks before calling this
-  function.
+  does not assert that `before_aggregate` has the expected structure, the caller
+  is expected to perform these checks before calling this function.
 
   Args:
     before_aggregate: The first result of splitting `after_broadcast` on
-      aggregate intrinsics.
-    after_aggregate: The second result of splitting `after_broadcast` on
       aggregate intrinsics.
 
   Returns:
@@ -540,19 +490,9 @@ def _extract_work(before_aggregate, after_aggregate):
       transformations.zip_selection_as_argument_to_lower_level_lambda(
           before_aggregate,
           c3_elements_in_before_aggregate_parameter).result.function)
-  c5_index_in_before_aggregate_result = [[0, 0], [1, 0]]
-  c3_to_c5_computation = transformations.select_output_from_lambda(
-      c3_to_before_aggregate_computation, c5_index_in_before_aggregate_result)
-  c8_index_in_after_aggregate_result = 2
-  after_aggregate_to_c8_computation = transformations.select_output_from_lambda(
-      after_aggregate, c8_index_in_after_aggregate_result)
-  c3_elements_in_after_aggregate_parameter = [[0, 0, 1], [0, 1]]
-  c3_to_c8_computation = (
-      transformations.zip_selection_as_argument_to_lower_level_lambda(
-          after_aggregate_to_c8_computation,
-          c3_elements_in_after_aggregate_parameter).result.function)
-  c3_to_unzipped_c4_computation = transformations.concatenate_function_outputs(
-      c3_to_c5_computation, c3_to_c8_computation)
+  c4_index_in_before_aggregate_result = [[0, 0], [1, 0]]
+  c3_to_unzipped_c4_computation = transformations.select_output_from_lambda(
+      c3_to_before_aggregate_computation, c4_index_in_before_aggregate_result)
   c3_to_c4_computation = building_blocks.Lambda(
       c3_to_unzipped_c4_computation.parameter_name,
       c3_to_unzipped_c4_computation.parameter_type,
@@ -724,15 +664,13 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   c3 = intrinsics.federated_zip([c1, c2])
   c4 = intrinsics.federated_map(cf.work, c3)
   c5 = c4[0]
-  c6 = c5[0]
-  c7 = c5[1]
-  c8 = c4[1]
-  s3 = intrinsics.federated_aggregate(c6,
+  c6 = c4[1]
+  s3 = intrinsics.federated_aggregate(c5,
                                       cf.zero(),
                                       cf.accumulate,
                                       cf.merge,
                                       cf.report)
-  s4 = intrinsics.federated_secure_sum(c7, cf.bitwidth())
+  s4 = intrinsics.federated_secure_sum(c6, cf.bitwidth())
   s5 = intrinsics.federated_zip([s3, s4])
   s6 = intrinsics.federated_zip([s1, s5])
   s7 = intrinsics.federated_map(cf.update, s6)
@@ -744,7 +682,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   `tff.templates.IterativeProcess` are:
 
   initalize:  `( -> s1)`
-  next:       `(<s1,c1> -> <s8,s9,c8>)`
+  next:       `(<s1,c1> -> <s8,s9>)`
 
   However, the `next` component of an `tff.templates.IterativeProcess` has been
   split into a before and after broadcast and a before and after aggregate with
@@ -758,9 +696,9 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   component of an `tff.templates.IterativeProcess` are:
 
   before_broadcast:  `(<s1,c1> -> s2)`
-  after_broadcast:   `(<<s1,c1>,c2> -> <s8,s9,c8>)`
-  before_aggregate:  `(<<s1,c1>,c2> -> <<c6,zero,accumulate,merge,report>,c7>)`
-  after_aggregate:   `(<<<s1,c1>,c2>,<s3,s4>> -> <s8,s9,c8>)`
+  after_broadcast:   `(<<s1,c1>,c2> -> <s8,s9>)`
+  before_aggregate:  `(<<s1,c1>,c2> -> <<c5,zero,accumulate,merge,report>,c6>)`
+  after_aggregate:   `(<<<s1,c1>,c2>,<s3,s4>> -> <s8,s9>)`
 
   Args:
     initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
@@ -808,7 +746,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
 
   prepare_type = computation_types.FunctionType(s1_type.member, s2_type.member)
 
-  # The type signature of `after_broadcast` is: `(<<s1,c1>,c2> -> <s8,s9,c8>)'.
+  # The type signature of `after_broadcast` is: `(<<s1,c1>,c2> -> <s8,s9>)'.
   _check_type(after_broadcast.type_signature, computation_types.FunctionType)
   _check_type(after_broadcast.type_signature.parameter,
               computation_types.NamedTupleType)
@@ -823,19 +761,16 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   _check_placement(c2_type, placements.CLIENTS)
   _check_type(after_broadcast.type_signature.result,
               computation_types.NamedTupleType)
-  _check_len(after_broadcast.type_signature.result, 3)
+  _check_len(after_broadcast.type_signature.result, 2)
   s8_type = after_broadcast.type_signature.result[0]
   _check_type(s8_type, computation_types.FederatedType)
   _check_placement(s8_type, placements.SERVER)
   s9_type = after_broadcast.type_signature.result[1]
   _check_type(s9_type, computation_types.FederatedType)
   _check_placement(s9_type, placements.SERVER)
-  c8_type = after_broadcast.type_signature.result[2]
-  _check_type(c8_type, computation_types.FederatedType)
-  _check_placement(c8_type, placements.CLIENTS)
 
   # The type signature of `before_aggregate` is:
-  # `(<<s1,c1>,c2> -> <<c6,zero,accumulate,merge,report>,<c7,bitwidth>>)`.
+  # `(<<s1,c1>,c2> -> <<c5,zero,accumulate,merge,report>,<c6,bitwidth>>)`.
   _check_type(before_aggregate.type_signature, computation_types.FunctionType)
   _check_type(before_aggregate.type_signature.parameter,
               computation_types.NamedTupleType)
@@ -850,9 +785,9 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
               computation_types.NamedTupleType)
   _check_len(before_aggregate.type_signature.result, 2)
   _check_len(before_aggregate.type_signature.result[0], 5)
-  c6_type = before_aggregate.type_signature.result[0][0]
-  _check_type(c6_type, computation_types.FederatedType)
-  _check_placement(c6_type, placements.CLIENTS)
+  c5_type = before_aggregate.type_signature.result[0][0]
+  _check_type(c5_type, computation_types.FederatedType)
+  _check_placement(c5_type, placements.CLIENTS)
   zero_type = computation_types.FunctionType(
       None, before_aggregate.type_signature.result[0][1])
   type_analysis.check_tensorflow_compatible_type(zero_type.result)
@@ -865,22 +800,20 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   _check_type(before_aggregate.type_signature.result[1],
               computation_types.NamedTupleType)
   _check_len(before_aggregate.type_signature.result[1], 2)
-  c7_type = before_aggregate.type_signature.result[1][0]
-  _check_type(c7_type, computation_types.FederatedType)
-  _check_placement(c7_type, placements.CLIENTS)
+  c6_type = before_aggregate.type_signature.result[1][0]
+  _check_type(c6_type, computation_types.FederatedType)
+  _check_placement(c6_type, placements.CLIENTS)
   bitwidth_type = computation_types.FunctionType(
       None, before_aggregate.type_signature.result[1][1])
   type_analysis.check_tensorflow_compatible_type(bitwidth_type.result)
 
   c3_type = computation_types.FederatedType([c1_type.member, c2_type.member],
                                             placements.CLIENTS)
-  c5_type = computation_types.FederatedType([c6_type.member, c7_type.member],
-                                            placements.CLIENTS)
-  c4_type = computation_types.FederatedType([c5_type.member, c8_type.member],
+  c4_type = computation_types.FederatedType([c5_type.member, c6_type.member],
                                             placements.CLIENTS)
 
   # The type signature of `after_aggregate` is:
-  # `(<<<s1,c1>,c2>,<s3,s4>> -> <s8,s9,c8>)'.
+  # `(<<<s1,c1>,c2>,<s3,s4>> -> <s8,s9>)'.
   _check_type(after_aggregate.type_signature, computation_types.FunctionType)
   _check_type(after_aggregate.type_signature.parameter,
               computation_types.NamedTupleType)
@@ -901,9 +834,9 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   s4_type = after_aggregate.type_signature.parameter[1][1]
   _check_type(s4_type, computation_types.FederatedType)
   _check_placement(s4_type, placements.SERVER)
+  _check_len(after_aggregate.type_signature.result, 2)
   _check_type_equal(after_aggregate.type_signature.result[0], s8_type)
   _check_type_equal(after_aggregate.type_signature.result[1], s9_type)
-  _check_type_equal(after_aggregate.type_signature.result[2], c8_type)
 
   work_type = computation_types.FunctionType(c3_type.member, c4_type.member)
 
@@ -927,8 +860,6 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
       c4_type=c4_type,
       c5_type=c5_type,
       c6_type=c6_type,
-      c7_type=c7_type,
-      c8_type=c8_type,
       zero_type=zero_type,
       accumulate_type=accumulate_type,
       merge_type=merge_type,
@@ -990,9 +921,6 @@ def get_canonical_form_for_iterative_process(ip):
   _check_iterative_process_compatible_with_canonical_form(
       initialize_comp, next_comp)
 
-  if len(next_comp.type_signature.result) == 2:
-    next_comp = _create_next_with_fake_client_output(next_comp)
-
   initialize_comp = _replace_intrinsics_with_bodies(initialize_comp)
   next_comp = _replace_intrinsics_with_bodies(next_comp)
   tree_analysis.check_intrinsics_whitelisted_for_reduction(initialize_comp)
@@ -1042,7 +970,7 @@ def get_canonical_form_for_iterative_process(ip):
   prepare = _extract_prepare(before_broadcast)
   _check_type_equal(prepare.type_signature, type_info['prepare_type'])
 
-  work = _extract_work(before_aggregate, after_aggregate)
+  work = _extract_work(before_aggregate)
   _check_type_equal(work.type_signature, type_info['work_type'])
 
   zero, accumulate, merge, report = _extract_federated_aggregate_functions(

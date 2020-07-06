@@ -76,8 +76,7 @@ def get_temperature_sensor_example():
     }, fn)
     client_updates = collections.OrderedDict(
         is_over=reduce_result['max'] > state.max_temperature)
-    client_outputs = collections.OrderedDict(num_readings=reduce_result['num'])
-    return ((client_updates, []), client_outputs)
+    return client_updates, []
 
   # The client update is a singleton tuple with a Boolean-typed `is_over`.
   client_update_type = computation_types.NamedTupleType([('is_over', tf.bool)])
@@ -167,7 +166,6 @@ def get_mnist_training_example():
       model=model_tff_type, learning_rate=tf.float32)
   loop_state_nt = collections.namedtuple('LoopState', 'num_examples total_loss')
   update_nt = collections.namedtuple('Update', 'model num_examples loss')
-  stats_nt = collections.namedtuple('Stats', 'num_examples loss')
 
   # Train the model locally, emit the loclaly-trained model and the number of
   # examples as an update, and the average loss and the number of examples as
@@ -205,9 +203,7 @@ def get_mnist_training_example():
       with tf.control_dependencies([num_examples, total_loss]):
         loss = total_loss / tf.cast(num_examples, tf.float32)
 
-    return ((update_nt(model=model_vars, num_examples=num_examples,
-                       loss=loss), []),
-            stats_nt(num_examples=num_examples, loss=loss))
+    return update_nt(model=model_vars, num_examples=num_examples, loss=loss), []
 
   accumulator_nt = update_nt
 
