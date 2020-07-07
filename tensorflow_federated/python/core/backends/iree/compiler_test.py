@@ -37,7 +37,7 @@ class CompilerTest(tf.test.TestCase):
     module, mlir = self._import_compile_and_return_module_and_mlir(comp)
     self._assert_mlir_contains_pattern(mlir, [
         'func @fn() -> tensor<f32> SOMETHING {',
-        '  %0 = xla_hlo.constant dense<9.900000e+01>',
+        '  %0 = mhlo.constant dense<9.900000e+01>',
         '  return %0',
         '}',
     ])
@@ -54,7 +54,7 @@ class CompilerTest(tf.test.TestCase):
     self._assert_mlir_contains_pattern(mlir, [
         'func @fn() -> tensor<f32> SOMETHING {',
         '  %0 = flow.variable.address',
-        '  %1 = xla_hlo.constant dense<9.900000e+01>',
+        '  %1 = mhlo.constant dense<9.900000e+01>',
         '  flow.variable.store.indirect %1, %0',
         '  %2 = flow.variable.load.indirect %0',
         '  return %2',
@@ -72,8 +72,8 @@ class CompilerTest(tf.test.TestCase):
     module, mlir = self._import_compile_and_return_module_and_mlir(comp)
     self._assert_mlir_contains_pattern(mlir, [
         'func @fn(%arg0: tensor<f32>) -> tensor<f32> SOMETHING {',
-        '  %0 = xla_hlo.constant dense<1.000000e+00>',
-        '  %1 = xla_hlo.add %arg0, %0',
+        '  %0 = mhlo.constant dense<1.000000e+00>',
+        '  %1 = mhlo.add %arg0, %0',
         '  return %1',
         '}',
     ])
@@ -93,10 +93,10 @@ class CompilerTest(tf.test.TestCase):
     self._assert_mlir_contains_pattern(mlir, [
         'func @fn(%arg0: tensor<f32>) -> tensor<f32> SOMETHING {',
         '  %0 = flow.variable.address',
-        '  %1 = xla_hlo.constant dense<1.000000e+00>',
+        '  %1 = mhlo.constant dense<1.000000e+00>',
         '  flow.variable.store.indirect %1, %0',
         '  %2 = flow.variable.load.indirect %0',
-        '  %3 = xla_hlo.add %2, %arg0',
+        '  %3 = mhlo.add %2, %arg0',
         '  return %3',
         '}',
     ])
@@ -121,10 +121,10 @@ class CompilerTest(tf.test.TestCase):
         'flow.variable SOMETHING mutable dense<1.000000e+00> : tensor<f32>',
         'func @fn(%arg0: tensor<f32>) -> tensor<f32> SOMETHING {',
         '  %0 = flow.variable.address',
-        '  %1 = xla_hlo.constant dense<1.000000e+00>',
+        '  %1 = mhlo.constant dense<1.000000e+00>',
         '  flow.variable.store.indirect %1, %0',
         '  %2 = flow.variable.load.indirect %0',
-        '  %3 = xla_hlo.add %2, %arg0',
+        '  %3 = mhlo.add %2, %arg0',
         '  flow.variable.store.indirect %3, %0',
         '  %4 = flow.variable.load.indirect %0',
         '  return %4',
