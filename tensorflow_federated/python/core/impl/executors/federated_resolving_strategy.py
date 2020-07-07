@@ -29,7 +29,7 @@
          | executors |
          +-----------+
 
-  A `FederatedResovlingStrategy`:
+  A `FederatedResolvingStrategy`:
 
   * Implements the logic for resolving federated types and intrinsics, while
     delegating unplaced computations to the target executor(s) associated with
@@ -61,11 +61,11 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_factory
 
 
-class FederatedResovlingStrategyValue(executor_value_base.ExecutorValue):
+class FederatedResolvingStrategyValue(executor_value_base.ExecutorValue):
   """A value embedded in a `FederatedExecutor`."""
 
   def __init__(self, value, type_signature):
-    """Creates a `FederatedResovlingStrategyValue` embedding the given `value`.
+    """Creates a `FederatedResolvingStrategyValue` embedding the given `value`.
 
     Args:
       value: An object to embed in the executor, one of the supported types
@@ -98,7 +98,7 @@ class FederatedResovlingStrategyValue(executor_value_base.ExecutorValue):
       return await self._value.compute()
     elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
       results = await asyncio.gather(*[
-          FederatedResovlingStrategyValue(v, t).compute()
+          FederatedResolvingStrategyValue(v, t).compute()
           for v, t in zip(self._value, self._type_signature)
       ])
       element_types = anonymous_tuple.iter_elements(self._type_signature)
@@ -120,7 +120,7 @@ class FederatedResovlingStrategyValue(executor_value_base.ExecutorValue):
                                   py_typecheck.type_string(type(self._value))))
 
 
-class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
+class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
   """A strategy for resolving federated types and intrinsics.
 
   This strategy implements the `federating_executor.FederatingStrategy`
@@ -143,7 +143,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
 
   def __init__(self, executor: federating_executor.FederatingExecutor,
                target_executors: Dict[str, executor_base.Executor]):
-    """Creates a `FederatedResovlingStrategy`.
+    """Creates a `FederatedResolvingStrategy`.
 
     Args:
       executor: A `federating_executor.FederatingExecutor` to use to handle
@@ -160,7 +160,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
         `executor_base.Executor` or a list of `executor_base.Executor`s.
       ValueError: If `target_executors` contains a
         `placement_literals.PlacementLiteral` key that is not a kind supported
-        by the `FederatedResovlingStrategy`.
+        by the `FederatedResolvingStrategy`.
     """
     super().__init__(executor)
     py_typecheck.check_type(target_executors, dict)
@@ -259,11 +259,11 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
       ):
         self._check_strategy_compatible_with_placement(
             type_signature.result.placement)
-    return FederatedResovlingStrategyValue(value, type_signature)
+    return FederatedResolvingStrategyValue(value, type_signature)
 
   async def compute_federated_value(
       self, value: Any, type_signature: computation_types.Type
-  ) -> FederatedResovlingStrategyValue:
+  ) -> FederatedResolvingStrategyValue:
     self._check_strategy_compatible_with_placement(type_signature.placement)
     children = self._target_executors[type_signature.placement]
     self._check_value_compatible_with_placement(value, type_signature.placement,
@@ -274,7 +274,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
         c.create_value(v, type_signature.member)
         for v, c in zip(value, children)
     ])
-    return FederatedResovlingStrategyValue(result, type_signature)
+    return FederatedResolvingStrategyValue(result, type_signature)
 
   @tracing.trace
   async def _eval(self, arg, placement, all_equal):
@@ -291,7 +291,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
       return await child.create_call(await child.create_value(fn, fn_type))
 
     results = await asyncio.gather(*[call(child) for child in children])
-    return FederatedResovlingStrategyValue(
+    return FederatedResolvingStrategyValue(
         results,
         computation_types.FederatedType(
             fn_type.result, placement, all_equal=all_equal))
@@ -321,7 +321,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
     results = await asyncio.gather(*[
         c.create_call(f, v) for c, (f, v) in zip(children, list(zip(fns, val)))
     ])
-    return FederatedResovlingStrategyValue(
+    return FederatedResolvingStrategyValue(
         results,
         computation_types.FederatedType(
             fn_type.result, val_type.placement, all_equal=all_equal))
@@ -345,7 +345,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
           anonymous_tuple.AnonymousTuple([(k, v[idx]) for k, v in elements]))
     new_vals = await asyncio.gather(
         *[c.create_tuple(x) for c, x in zip(children, new_vals)])
-    return FederatedResovlingStrategyValue(
+    return FederatedResolvingStrategyValue(
         new_vals,
         computation_types.FederatedType(
             computation_types.NamedTupleType((
@@ -357,7 +357,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
   @tracing.trace
   async def compute_federated_aggregate(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     val_type, zero_type, accumulate_type, _, report_type = (
         executor_utils.parse_federated_aggregate_argument_types(
             arg.type_signature))
@@ -377,7 +377,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
     zero = arg.internal_representation[1]
     accumulate = arg.internal_representation[2]
     pre_report = await self.compute_federated_reduce(
-        FederatedResovlingStrategyValue(
+        FederatedResolvingStrategyValue(
             anonymous_tuple.AnonymousTuple([(None, val), (None, zero),
                                             (None, accumulate)]),
             computation_types.NamedTupleType(
@@ -389,7 +389,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
 
     report = arg.internal_representation[4]
     return await self.compute_federated_apply(
-        FederatedResovlingStrategyValue(
+        FederatedResolvingStrategyValue(
             anonymous_tuple.AnonymousTuple([
                 (None, report), (None, pre_report.internal_representation)
             ]),
@@ -399,13 +399,13 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
   @tracing.trace
   async def compute_federated_apply(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await self._map(arg)
 
   @tracing.trace
   async def compute_federated_broadcast(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     py_typecheck.check_type(arg.internal_representation, list)
     if len(arg.internal_representation) != 1:
       raise ValueError(
@@ -417,7 +417,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
   @tracing.trace
   async def compute_federated_collect(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
     type_analysis.check_federated_type(
         arg.type_signature, placement=placement_literals.CLIENTS)
@@ -428,7 +428,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
     collected_items = await child.create_value(
         await asyncio.gather(*[v.compute() for v in val]),
         computation_types.SequenceType(member_type))
-    return FederatedResovlingStrategyValue(
+    return FederatedResolvingStrategyValue(
         [collected_items],
         computation_types.FederatedType(
             computation_types.SequenceType(member_type),
@@ -438,31 +438,31 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
   @tracing.trace
   async def compute_federated_eval_at_clients(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await self._eval(arg, placement_literals.CLIENTS, False)
 
   @tracing.trace
   async def compute_federated_eval_at_server(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await self._eval(arg, placement_literals.SERVER, True)
 
   @tracing.trace
   async def compute_federated_map(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await self._map(arg, all_equal=False)
 
   @tracing.trace
   async def compute_federated_map_all_equal(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await self._map(arg, all_equal=True)
 
   @tracing.trace
   async def compute_federated_mean(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     arg_sum = await self.compute_federated_sum(arg)
     member_type = arg_sum.type_signature.member
     count = float(len(arg.internal_representation))
@@ -479,12 +479,12 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
                                          arg_sum.internal_representation[0]),
                                         (None, factor)]))
     result = await child.create_call(multiply, multiply_arg)
-    return FederatedResovlingStrategyValue([result], arg_sum.type_signature)
+    return FederatedResolvingStrategyValue([result], arg_sum.type_signature)
 
   @tracing.trace
   async def compute_federated_reduce(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     self._check_arg_is_anonymous_tuple(arg)
     if len(arg.internal_representation) != 3:
       raise ValueError(
@@ -517,7 +517,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
       result = await child.create_call(
           op, await child.create_tuple(
               anonymous_tuple.AnonymousTuple([(None, result), (None, item)])))
-    return FederatedResovlingStrategyValue([result],
+    return FederatedResolvingStrategyValue([result],
                                            computation_types.FederatedType(
                                                result.type_signature,
                                                placement_literals.SERVER,
@@ -526,13 +526,13 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
   @tracing.trace
   async def compute_federated_secure_sum(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     raise NotImplementedError('The secure sum intrinsic is not implemented.')
 
   @tracing.trace
   async def compute_federated_sum(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
     zero, plus = await asyncio.gather(
         executor_utils.embed_tf_scalar_constant(self._executor,
@@ -541,7 +541,7 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
                                                 arg.type_signature.member,
                                                 tf.add))
     return await self.compute_federated_reduce(
-        FederatedResovlingStrategyValue(
+        FederatedResolvingStrategyValue(
             anonymous_tuple.AnonymousTuple([
                 (None, arg.internal_representation),
                 (None, zero.internal_representation),
@@ -554,32 +554,32 @@ class FederatedResovlingStrategy(federating_executor.FederatingStrategy):
   @tracing.trace
   async def compute_federated_value_at_clients(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await executor_utils.compute_intrinsic_federated_value(
         self._executor, arg, placement_literals.CLIENTS)
 
   @tracing.trace
   async def compute_federated_value_at_server(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await executor_utils.compute_intrinsic_federated_value(
         self._executor, arg, placement_literals.SERVER)
 
   @tracing.trace
   async def compute_federated_weighted_mean(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await executor_utils.compute_intrinsic_federated_weighted_mean(
         self._executor, arg)
 
   @tracing.trace
   async def compute_federated_zip_at_clients(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await self._zip(arg, placement_literals.CLIENTS, all_equal=False)
 
   @tracing.trace
   async def compute_federated_zip_at_server(
       self,
-      arg: FederatedResovlingStrategyValue) -> FederatedResovlingStrategyValue:
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await self._zip(arg, placement_literals.SERVER, all_equal=True)

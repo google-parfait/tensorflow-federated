@@ -82,7 +82,7 @@ def make_remote_executor(inferred_cardinalities):
     worker_stack = create_worker_stack(remote_ex)
     client_ex.append(worker_stack)
 
-  federating_strategy_factory = tff.framework.FederatedResovlingStrategy.factory(
+  federating_strategy_factory = tff.framework.FederatedResolvingStrategy.factory(
       {
           tff.SERVER: create_worker_stack(tff.framework.EagerTFExecutor()),
           tff.CLIENTS: client_ex,

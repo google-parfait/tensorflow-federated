@@ -64,7 +64,7 @@ from tensorflow_federated.python.core.impl.executors.executor_stacks import sizi
 from tensorflow_federated.python.core.impl.executors.executor_stacks import worker_pool_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.executors.federated_composing_strategy import FederatedComposingStrategy
-from tensorflow_federated.python.core.impl.executors.federated_resolving_strategy import FederatedResovlingStrategy
+from tensorflow_federated.python.core.impl.executors.federated_resolving_strategy import FederatedResolvingStrategy
 from tensorflow_federated.python.core.impl.executors.federating_executor import FederatingExecutor
 from tensorflow_federated.python.core.impl.executors.federating_executor import FederatingStrategy
 from tensorflow_federated.python.core.impl.executors.reference_resolving_executor import ReferenceResolvingExecutor

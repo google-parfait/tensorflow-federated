@@ -247,7 +247,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
   def test_with_federated_map(self):
     eager_ex = eager_tf_executor.EagerTFExecutor()
-    factory = federated_resolving_strategy.FederatedResovlingStrategy.factory(
+    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory(
         {placement_literals.SERVER: eager_ex})
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
@@ -270,7 +270,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
   def test_with_federated_map_and_broadcast(self):
     eager_ex = eager_tf_executor.EagerTFExecutor()
-    factory = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
         placement_literals.SERVER: eager_ex,
         placement_literals.CLIENTS: [eager_ex for _ in range(3)]
     })
@@ -296,7 +296,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
   def test_raises_with_closure(self):
     eager_ex = eager_tf_executor.EagerTFExecutor()
-    factory = federated_resolving_strategy.FederatedResovlingStrategy.factory({
+    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
         placement_literals.SERVER: eager_ex,
     })
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
