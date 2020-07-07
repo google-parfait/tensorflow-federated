@@ -89,11 +89,12 @@ def from_keras_model(keras_model,
 
   Args:
     keras_model: A `tf.keras.Model` object that is not compiled.
-    loss: A callable that takes two batched tensor parameters, `y_true` and
-      `y_pred`, and returns the loss. If the model has multiple outputs, you can
-      use a different loss on each output by passing a dictionary or a list of
-      losses. The loss value that will be minimized by the model will then be
-      the sum of all individual losses, each weighted by `loss_weights`.
+    loss: A `tf.keras.losses.Loss` that takes two batched tensor parameters,
+      `y_true` and `y_pred`, and returns the loss. If the model has multiple
+      outputs, you can  use a different loss on each output by passing a
+      dictionary or a list of losses. The loss value that will be minimized
+      by the model will then be the sum of all individual losses, each weighted
+      by `loss_weights`.
     input_spec: A value convertible to `tff.Type` specifying the type
       of arguments the model expects. Notice this must be a compound structure
       of two elements, specifying both the data fed into the model to generate
@@ -130,13 +131,17 @@ def from_keras_model(keras_model,
   if isinstance(loss, collections.Sequence):
     if len(loss) != len(keras_model.outputs):
       raise ValueError('`keras_model` must have equal number of '
-                       'outputs and losses.\nloss: {}\noutputs: {}'.format(
-                           loss, keras_model.outputs))
+                       'outputs and losses.\nloss: {}\nof length: {}.'
+                       '\noutputs: {}\nof length: {}.'.format(
+                           loss, len(loss), keras_model.outputs,
+                           len(keras_model.outputs)))
     if loss_weights is not None and len(loss) != len(loss_weights):
-      raise ValueError(
-          '`keras_model` must have equal number of '
-          'losses and loss_weights.\nloss: {} \nloss_weights:{}'.format(
-              loss, loss_weights))
+      raise ValueError('`keras_model` must have equal number of '
+                       'losses and loss_weights.\nloss: {}\nof length: {}.'
+                       '\nloss_weights: {}\nof length: {}.'.format(
+                           loss, len(loss), loss_weights, len(loss_weights)))
+    for loss_fn in loss:
+      py_typecheck.check_type(loss_fn, tf.keras.losses.Loss)
 
   if keras_model._is_compiled:  # pylint: disable=protected-access
     raise ValueError('`keras_model` must not be compiled')
