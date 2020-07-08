@@ -283,7 +283,7 @@ def build_fed_avg_process(model_fn,
       the total number of examples processed on device.
 
   Returns:
-    A `tff.templates.IterativeProcess`.
+    A `FederatedAveragingProcessAdapter`.
   """
 
   client_lr_schedule = client_lr

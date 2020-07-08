@@ -62,7 +62,7 @@ def from_flags(input_spec,
       to the number of examples processed over all batches.
 
   Returns:
-    A `tff.templates.IterativeProcess` instance.
+    An `IterativeProcessPythonAdapter`.
   """
   # TODO(b/147808007): Assert that model_builder() returns an uncompiled keras
   # model.
