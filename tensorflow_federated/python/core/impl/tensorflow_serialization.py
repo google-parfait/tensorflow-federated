@@ -275,21 +275,26 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
           result = target(parameter_value)
         else:
           result = target()
+      initializer_ops = []
       if all_variables:
         # Use a readable but not-too-long name for the init_op.
         name = 'init_op_for_' + '_'.join(
             [v.name.replace(':0', '') for v in all_variables])
         if len(name) > 50:
           name = 'init_op_for_{}_variables'.format(len(all_variables))
-        with tf.control_dependencies(context.init_ops):
-          # Before running the main new init op, run any initializers for sub-
-          # computations from context.init_ops. Variables from import_graph_def
-          # will not make it into the global collections, and so will not be
-          # initialized without this code path.
+        initializer_ops.append(
+            tf.compat.v1.initializers.variables(all_variables, name=name))
+      initializer_ops.extend(
+          tf.compat.v1.get_collection(
+              tf.compat.v1.GraphKeys.TABLE_INITIALIZERS))
+      if initializer_ops:
+        # Before running the main new init op, run any initializers for sub-
+        # computations from context.init_ops. Variables from import_graph_def
+        # will not make it into the global collections, and so will not be
+        # initialized without this code path.
+        with tf.compat.v1.control_dependencies(context.init_ops):
           init_op_name = tf.group(
-              tf.compat.v1.initializers.variables(all_variables, name=name),
-              *tf.compat.v1.get_collection(
-                  tf.compat.v1.GraphKeys.TABLE_INITIALIZERS)).name
+              *initializer_ops, name='grouped_initializers').name
       elif context.init_ops:
         init_op_name = tf.group(
             *context.init_ops, name='subcomputation_init_ops').name

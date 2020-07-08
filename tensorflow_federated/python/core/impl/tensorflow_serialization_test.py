@@ -41,6 +41,38 @@ class TensorFlowSerializationTest(test.TestCase):
             None, [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [99])
 
+  def test_serialize_tensorflow_with_table_no_variables(self):
+
+    def table_lookup(word):
+      table = tf.lookup.StaticVocabularyTable(
+          tf.lookup.KeyValueTensorInitializer(['a', 'b', 'c'],
+                                              np.arange(3, dtype=np.int64)),
+          num_oov_buckets=1)
+      return table.lookup(word)
+
+    comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+        table_lookup,
+        computation_types.TensorType(dtype=tf.string, shape=(None,)),
+        context_stack_impl.context_stack)
+    self.assertEqual(
+        str(type_serialization.deserialize_type(comp.type)),
+        '(string[?] -> int64[?])')
+    self.assertEqual(str(extra_type_spec), '(string[?] -> int64[?])')
+    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
+
+    with tf.Graph().as_default() as g:
+      tf.import_graph_def(
+          serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
+          name='')
+    with tf.compat.v1.Session(graph=g) as sess:
+      sess.run(fetches=comp.tensorflow.initialize_op)
+      results = sess.run(
+          fetches=comp.tensorflow.result.tensor.tensor_name,
+          feed_dict={
+              comp.tensorflow.parameter.tensor.tensor_name: ['b', 'c', 'a']
+          })
+    self.assertAllEqual(results, [1, 2, 0])
+
   @test.graph_mode_test
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
     comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
