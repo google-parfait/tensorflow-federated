@@ -44,10 +44,11 @@ class EncodedBroadcastTest(test.TestCase, parameterized.TestCase):
     value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
     encoder = te.encoders.as_simple_encoder(te.encoders.identity(), value_spec)
 
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
-      encoding_utils.build_encoded_broadcast(value, encoder)
-      self.assertLen(w, 1)
+    with warnings.catch_warnings(record=True):
+      warnings.simplefilter('error', DeprecationWarning)
+      with self.assertRaisesRegex(DeprecationWarning,
+                                  'tff.utils.build_encoded_broadcast()'):
+        encoding_utils.build_encoded_broadcast(value, encoder)
 
   @parameterized.named_parameters(
       ('tf_constant_identity', tf.constant, te.encoders.identity),
@@ -164,10 +165,11 @@ class EncodedSumTest(test.TestCase, parameterized.TestCase):
     value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
     encoder = te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
 
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
-      encoding_utils.build_encoded_sum(value, encoder)
-      self.assertLen(w, 1)
+    with warnings.catch_warnings(record=True):
+      warnings.simplefilter('error', DeprecationWarning)
+      with self.assertRaisesRegex(DeprecationWarning,
+                                  'tff.utils.build_encoded_sum()'):
+        encoding_utils.build_encoded_sum(value, encoder)
 
   @parameterized.named_parameters(
       ('tf_constant_identity', tf.constant, te.encoders.identity),
@@ -322,10 +324,11 @@ class EncodedMeanTest(test.TestCase, parameterized.TestCase):
     value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
     encoder = te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
 
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
-      encoding_utils.build_encoded_mean(value, encoder)
-      self.assertLen(w, 1)
+    with warnings.catch_warnings(record=True):
+      warnings.simplefilter('error', DeprecationWarning)
+      with self.assertRaisesRegex(DeprecationWarning,
+                                  'tff.utils.build_encoded_mean()'):
+        encoding_utils.build_encoded_mean(value, encoder)
 
   @parameterized.named_parameters(
       ('tf_constant_identity', tf.constant, te.encoders.identity),

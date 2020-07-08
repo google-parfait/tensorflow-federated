@@ -219,7 +219,7 @@ def build_encoded_sum(values, encoders):
   """
   warnings.warn(
       'Deprecation warning: tff.utils.build_encoded_sum() is deprecated, use '
-      'tff.utils.build_encoded_sum() instead.', DeprecationWarning)
+      'tff.utils.build_encoded_sum_process() instead.', DeprecationWarning)
 
   tf.nest.assert_same_structure(values, encoders)
   tf.nest.map_structure(
@@ -318,7 +318,7 @@ def build_encoded_mean(values, encoders):
   """
   warnings.warn(
       'Deprecation warning: tff.utils.build_encoded_mean() is deprecated, use '
-      'tff.utils.build_encoded_mean() instead.', DeprecationWarning)
+      'tff.utils.build_encoded_mean_process() instead.', DeprecationWarning)
 
   tf.nest.assert_same_structure(values, encoders)
   tf.nest.map_structure(
