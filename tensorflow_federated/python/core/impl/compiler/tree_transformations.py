@@ -1267,8 +1267,11 @@ class ReplaceCalledLambdaWithBlock(transformation_utils.TransformSpec):
       return building_blocks.Block(new_locals, comp.result), True
     elif referred is not None and referred.is_lambda():
       referred = typing.cast(building_blocks.Lambda, referred)
-      transformed_comp = building_blocks.Block(
-          [(referred.parameter_name, comp.argument)], referred.result)
+      if referred.parameter_type is not None:
+        transformed_comp = building_blocks.Block(
+            [(referred.parameter_name, comp.argument)], referred.result)
+      else:
+        transformed_comp = referred.result
       symbol_tree.update_payload_with_name(comp.function.name)
     else:
       if comp.function.parameter_type is not None:

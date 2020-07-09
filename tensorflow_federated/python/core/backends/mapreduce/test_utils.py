@@ -374,3 +374,51 @@ def get_iterative_process_for_example_with_unused_tf_computation_arg():
     return server_update, server_output
 
   return iterative_process.IterativeProcess(init_fn, next_fn)
+
+
+def get_iterative_process_for_example_with_lambda_returning_aggregation():
+  """Gets iterative process with indirection to the called intrinsic."""
+  server_state_type = computation_types.NamedTupleType([('num_clients',
+                                                         tf.int32)])
+  client_val_type = computation_types.FederatedType(server_state_type,
+                                                    placements.CLIENTS)
+
+  @computations.federated_computation()
+  def computation_returning_lambda():
+
+    @computations.federated_computation(tf.int32)
+    def computation_returning_sum(x):
+      tuple_containing_intrinsic = [
+          building_blocks.Intrinsic(
+              'federated_sum',
+              computation_types.FunctionType(
+                  client_val_type,
+                  computation_types.FederatedType(client_val_type.member,
+                                                  placements.SERVER))), x
+      ]
+
+      return tuple_containing_intrinsic[0]
+
+    return computation_returning_sum
+
+  @computations.federated_computation
+  def init_fn():
+    return intrinsics.federated_value(
+        collections.OrderedDict(num_clients=0), placements.SERVER)
+
+  @computations.federated_computation([
+      computation_types.FederatedType(server_state_type, placements.SERVER),
+      client_val_type,
+  ])
+  def next_fn(server_state, client_val):
+    """`next` function for `tff.templates.IterativeProcess`."""
+    server_update = intrinsics.federated_sum(client_val)
+    server_output = intrinsics.federated_value((), placements.SERVER)
+    state_at_clients = intrinsics.federated_broadcast(server_state)
+    lambda_returning_sum = computation_returning_lambda()
+    sum_fn = lambda_returning_sum(1)
+    server_output = sum_fn(state_at_clients)
+
+    return server_update, server_output
+
+  return iterative_process.IterativeProcess(init_fn, next_fn)

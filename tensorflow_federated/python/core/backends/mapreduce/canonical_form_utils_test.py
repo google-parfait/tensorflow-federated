@@ -812,6 +812,15 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     with self.assertRaises(ValueError):
       canonical_form_utils.get_canonical_form_for_iterative_process(ip)
 
+  def test_returns_canonical_form_with_indirection_to_intrinsic(self):
+    self.skipTest('b/160865930')
+    ip = test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation(
+    )
+
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
+
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+
 
 if __name__ == '__main__':
   reference_executor = reference_executor.ReferenceExecutor()
