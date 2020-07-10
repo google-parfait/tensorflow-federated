@@ -125,15 +125,21 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     comp(temperatures, threshold)
 
     # Each client receives a tf.float32 and uploads two tf.float32 values.
-    expected_broadcast_bits = num_clients * 32
-    expected_aggregate_bits = expected_broadcast_bits * 2
-    expected = ({
+    expected_broadcast_bits = [num_clients * 32]
+    expected_aggregate_bits = [num_clients * 32 * 2]
+    expected_broadcast_history = {
         (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients
-    }, {
+    }
+    expected_aggregate_history = {
         (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients * 2
-    }, [expected_broadcast_bits], [expected_aggregate_bits])
+    }
 
-    self.assertEqual(expected, factory.get_size_info())
+    size_info = factory.get_size_info()
+
+    self.assertEqual(expected_broadcast_history, size_info.broadcast_history)
+    self.assertEqual(expected_aggregate_history, size_info.aggregate_history)
+    self.assertEqual(expected_broadcast_bits, size_info.broadcast_bits)
+    self.assertEqual(expected_aggregate_bits, size_info.aggregate_bits)
 
   @executor_test_utils.executors
   def test_computation_with_no_args_returns_value(self):

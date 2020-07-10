@@ -16,6 +16,7 @@
 import abc
 from typing import Callable, Mapping, List, Tuple, Any, Dict
 
+import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -24,6 +25,26 @@ from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 CardinalitiesType = Mapping[placement_literals.PlacementLiteral, int]
+
+
+@attr.s(auto_attribs=True, eq=False, order=False, frozen=True)
+class SizeInfo(object):
+  """Structure for size information from SizingExecutorFactoryImpl.
+
+  Fields:
+  -   `broadcast_history`: 2D ragged list of 2-tuples which represents the
+      broadcast history.
+  -   `aggregate_history`: 2D ragged list of 2-tuples which represents the
+      aggregate history.
+  -   `broadcast_bits`: A list of shape [number_of_execs] representing the
+      number of broadcasted bits passed through each executor.
+  -   `aggregate_bits`: A list of shape [number_of_execs] representing the
+      number of aggregated bits passed through each executor.
+  """
+  broadcast_history: Dict[Any, sizing_executor.SizeAndDTypes]
+  aggregate_history: Dict[Any, sizing_executor.SizeAndDTypes]
+  broadcast_bits: List[int]
+  aggregate_bits: List[int]
 
 
 class ExecutorFactory(metaclass=abc.ABCMeta):
@@ -186,23 +207,14 @@ class SizingExecutorFactoryImpl(ExecutorFactoryImpl):
     self._executors[key] = ex
     return ex
 
-  def get_size_info(
-      self
-  ) -> Tuple[Dict[Any, sizing_executor.SizeAndDTypes], Dict[
-      Any, sizing_executor.SizeAndDTypes], List[int], List[int]]:
+  def get_size_info(self) -> SizeInfo:
     """Returns information about the transferred data of each SizingExecutor.
 
     Returns the history of broadcast and aggregation for each executor as well
     as the number of aggregated bits that has been passed through.
 
     Returns:
-      A tuple of
-        2D ragged list of 2-tuples which represents the broadcast history.
-        2D ragged list of 2-tuples which represents the aggregation history.
-        A list of shape [number_of_execs] representing the number of broadcasted
-          bits passed through each executor.
-        A list of shape [number_of_execs] representing the number of aggregated
-          bits passed through each executor.
+      An instance of `SizeInfo`.
     """
     size_ex_dict = self._sizing_executors
 
@@ -226,7 +238,11 @@ class SizingExecutorFactoryImpl(ExecutorFactoryImpl):
     aggregate_bits = [
         self._calculate_bit_size(hist) for hist in aggregate_history.values()
     ]
-    return broadcast_history, aggregate_history, broadcast_bits, aggregate_bits
+    return SizeInfo(
+        broadcast_history=broadcast_history,
+        aggregate_history=aggregate_history,
+        broadcast_bits=broadcast_bits,
+        aggregate_bits=aggregate_bits)
 
   def _bits_per_element(self, dtype: tf.DType) -> int:
     """Returns the number of bits that a tensorflow DType uses per element."""
