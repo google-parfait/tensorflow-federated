@@ -216,6 +216,21 @@ class TransformationUtilsTest(parameterized.TestCase):
     )
     self.assertTrue(modified)
 
+  def test_transform_postorder_with_block_and_data_to_reference(self):
+    ref = building_blocks.Reference('x', tf.int32)
+    data = building_blocks.Data('a', tf.int32)
+    blk = building_blocks.Block([('x', data)], ref)
+
+    def _transformation_fn(comp):
+      if comp.is_block():
+        return building_blocks.Block(comp.locals, data), True
+      return comp, False
+
+    transformed, modified = transformation_utils.transform_preorder(
+        blk, _transformation_fn)
+    self.assertTrue(modified)
+    self.assertEqual(transformed.compact_representation(), '(let x=a in a)')
+
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks() +
       [('complex_tree', test_utils.create_nested_syntax_tree())])

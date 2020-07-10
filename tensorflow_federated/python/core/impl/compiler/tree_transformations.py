@@ -1803,8 +1803,11 @@ def unwrap_placement(comp):
 
     def _remove_lambda_placement(comp):
       """Removes placement from Lambda's parameter."""
-      new_parameter_type, _ = type_transformations.transform_type_postorder(
-          comp.parameter_type, _remove_placement_from_type)
+      if comp.parameter_name is None:
+        new_parameter_type = None
+      else:
+        new_parameter_type, _ = type_transformations.transform_type_postorder(
+            comp.parameter_type, _remove_placement_from_type)
       return building_blocks.Lambda(comp.parameter_name, new_parameter_type,
                                     comp.result)
 

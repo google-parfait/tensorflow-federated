@@ -208,7 +208,7 @@ def transform_preorder(
       transformed_variables.append((key, transformed_value))
       values_modified = values_modified or value_modified
     transformed_result, result_modified = transform_preorder(
-        comp.result, transform)
+        inner_comp.result, transform)
     if not (modified or values_modified or result_modified):
       return inner_comp, False
     return building_blocks.Block(transformed_variables,

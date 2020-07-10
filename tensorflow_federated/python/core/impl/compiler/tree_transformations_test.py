@@ -3918,6 +3918,17 @@ class UnwrapPlacementTest(parameterized.TestCase):
         building_blocks.Reference('y', fed_ref.type_signature))
     tree_transformations.unwrap_placement(block)
 
+  def test_passes_noarg_lambda(self):
+    lam = building_blocks.Lambda(None, None,
+                                 building_blocks.Data('a', tf.int32))
+    fed_int_type = computation_types.FederatedType(tf.int32,
+                                                   placement_literals.SERVER)
+    fed_eval = building_blocks.Intrinsic(
+        intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
+        computation_types.FunctionType(lam.type_signature, fed_int_type))
+    called_eval = building_blocks.Call(fed_eval, lam)
+    tree_transformations.unwrap_placement(called_eval)
+
   def test_removes_federated_types_under_function(self):
     int_ref = building_blocks.Reference('x', tf.int32)
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
