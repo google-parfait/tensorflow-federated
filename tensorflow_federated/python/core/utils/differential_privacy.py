@@ -13,10 +13,8 @@
 # limitations under the License.
 """Utilities for interop with tensorflow_privacy."""
 
-import collections
 import math
 import numbers
-import warnings
 
 import numpy as np
 import tensorflow as tf
@@ -27,9 +25,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.utils import computation_utils
 
 # TODO(b/140236959): Make the nomenclature consistent (b/w 'record' and 'value')
@@ -182,7 +178,7 @@ def _default_from_tff_result_fn(record):
 # better name than value_type_fn?
 def build_dp_aggregate(query,
                        value_type_fn=_default_get_value_type_fn,
-                       from_tff_result_fn=None):
+                       from_tff_result_fn=_default_from_tff_result_fn):
   """Builds a stateful aggregator for tensorflow_privacy DPQueries.
 
   The returned `StatefulAggregateFn` can be called with any nested structure for
@@ -203,8 +199,17 @@ def build_dp_aggregate(query,
       This argument probably gets removed once b/123092620 is addressed (and the
       associated processing step gets replaced with a simple call to
       `value.type_signature.member`).
-    from_tff_result_fn: This argument is not needed and is only included for
-      backwards compatibility.
+    from_tff_result_fn: Python function that takes a client record and converts
+      it to the container type that it was in before passing through TFF. (Right
+      now, TFF computation causes the client record to be changed into an
+      `anonymous_tuple.AnonymousTuple`, and this method corrects for that). If
+      the value being aggregated is an `collections.OrderedDict`, the default
+      for this argument can be used. This argument likely goes away once
+      b/123092620 is addressed. The default behavior assumes that the client
+      record (before being converted to (as it `anonymous_tuple.AnonymousTuple`)
+      was an `collections.OrderedDict` containing a flat structure of Tensors is
+      if using the `tff.learning` APIs like
+      `tff.learning.build_federated_averaging_process`).
 
   Returns:
     A tuple of:
@@ -212,11 +217,6 @@ def build_dp_aggregate(query,
           the query
       - the TFF type of the DP aggregator's global state
   """
-  warnings.warn(
-      'Deprecation warning: tff.utils.build_dp_aggregate() is deprecated, use '
-      'tff.utils.build_dp_aggregate_process() instead.', DeprecationWarning)
-
-  del from_tff_result_fn
 
   @computations.tf_computation
   def initialize_fn():
@@ -245,6 +245,10 @@ def build_dp_aggregate(query,
     @computations.tf_computation(derive_sample_params.type_signature.result,
                                  value.type_signature.member)
     def preprocess_record(params, record):
+      # TODO(b/123092620): Once TFF passes the expected container type (instead
+      # of AnonymousTuple), we shouldn't need this.
+      record = from_tff_result_fn(record)
+
       return query.preprocess_record(params, record)
 
     # TODO(b/123092620): We should have the expected container type here.
@@ -297,110 +301,3 @@ def build_dp_aggregate(query,
   aggregate_fn = computation_utils.StatefulAggregateFn(
       initialize_fn=initialize_fn, next_fn=next_fn)
   return (aggregate_fn, initialize_fn.type_signature.result)
-
-
-def build_dp_aggregate_process(value_type, query):
-  """Builds a `MeasuredProcess` for tensorflow_privacy DPQueries.
-
-  The returned `MeasuredProcess` processes values of type value_type which can
-  be any nested structure of tensors. Note that client weighting is not
-  supported for differential privacy so the `weight` argument to the resulting
-  `MeasuredProcess` will be ignored.
-
-  Args:
-    value_type: The type of values to be aggregated by the `MeasuredProcess`.
-      Can be a `tff.TensorType` or a nested structure of `tff.NamedTupleType`
-      that bottoms out in `tff.TensorType`.
-    query: A DPQuery to aggregate. For compatibility with tensorflow_federated,
-      the global_state and sample_state of the query must be structures
-      supported by tf.nest.
-
-  Returns:
-    A `MeasuredProcess` implementing differentially private aggregation using
-    the supplied DPQuery. Note that client weighting is not
-  supported for differential privacy so the `weight` argument to the resulting
-  `MeasuredProcess` will be ignored.
-  """
-  py_typecheck.check_type(
-      value_type,
-      (computation_types.TensorType, computation_types.NamedTupleType))
-
-  @computations.tf_computation
-  def initial_state_fn():
-    return query.initial_global_state()
-
-  @computations.federated_computation()
-  def initial_state_comp():
-    return intrinsics.federated_eval(initial_state_fn, placements.SERVER)
-
-  #######################################
-  # Define local tf_computations
-
-  global_state_type = initial_state_fn.type_signature.result
-
-  @computations.tf_computation(global_state_type)
-  def derive_sample_params(global_state):
-    return query.derive_sample_params(global_state)
-
-  @computations.tf_computation(derive_sample_params.type_signature.result,
-                               value_type)
-  def preprocess_record(params, record):
-    return query.preprocess_record(params, record)
-
-  tensor_specs = type_conversions.type_to_tf_tensor_specs(value_type)
-
-  @computations.tf_computation
-  def zero():
-    return query.initial_sample_state(tensor_specs)
-
-  sample_state_type = zero.type_signature.result
-
-  @computations.tf_computation(sample_state_type,
-                               preprocess_record.type_signature.result)
-  def accumulate(sample_state, preprocessed_record):
-    return query.accumulate_preprocessed_record(sample_state,
-                                                preprocessed_record)
-
-  @computations.tf_computation(sample_state_type, sample_state_type)
-  def merge(sample_state_1, sample_state_2):
-    return query.merge_sample_states(sample_state_1, sample_state_2)
-
-  @computations.tf_computation(merge.type_signature.result)
-  def report(sample_state):
-    return sample_state
-
-  @computations.tf_computation(sample_state_type, global_state_type)
-  def post_process(sample_state, global_state):
-    result, new_global_state = query.get_noised_result(sample_state,
-                                                       global_state)
-    return new_global_state, result
-
-  @computations.federated_computation(
-      initial_state_comp.type_signature.result,
-      computation_types.FederatedType(value_type, placements.CLIENTS),
-      computation_types.FederatedType(tf.float32, placements.CLIENTS))
-  def next_fn(global_state, value, weight):
-    """Defines next_fn for MeasuredProcess."""
-    # Weighted aggregation is not supported.
-    # TODO(b/140236959): Add an assertion that weight is None here, so the
-    # contract of this method is better established. Will likely cause some
-    # downstream breaks.
-    del weight
-
-    sample_params = intrinsics.federated_map(derive_sample_params, global_state)
-    client_sample_params = intrinsics.federated_broadcast(sample_params)
-    preprocessed_record = intrinsics.federated_map(
-        preprocess_record, (client_sample_params, value))
-    agg_result = intrinsics.federated_aggregate(preprocessed_record, zero(),
-                                                accumulate, merge, report)
-
-    updated_state, result = intrinsics.federated_map(post_process,
-                                                     (agg_result, global_state))
-
-    empty_metrics = intrinsics.federated_value((), placements.SERVER)
-
-    return collections.OrderedDict(
-        state=updated_state, result=result, measurements=empty_metrics)
-
-  return measured_process.MeasuredProcess(
-      initialize_fn=initial_state_comp, next_fn=next_fn)
