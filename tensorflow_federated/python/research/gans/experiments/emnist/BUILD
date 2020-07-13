@@ -12,10 +12,10 @@ py_library(
 py_test(
     name = "emnist_data_utils_test",
     srcs = ["emnist_data_utils_test.py"],
+    local = True,
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
-        "local",
         "manual",
         "notap",
     ],

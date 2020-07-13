@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -96,8 +95,6 @@ def _compute_histogram(accuracy_list, bin_width=1):
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
-
-  tf.compat.v1.enable_v2_behavior()
 
   invert_imagery_likelihood = FLAGS.invert_imagery_likelihood
   print('invert_imagery_likelihood is %s' % invert_imagery_likelihood)

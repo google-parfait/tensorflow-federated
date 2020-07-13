@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,7 +57,7 @@ class FLARSOptimizer(tf.keras.optimizers.Optimizer):
     Raises:
       ValueError: If a hyperparameter is set to a non-sensical value.
     """
-    super(FLARSOptimizer, self).__init__(name, **kwargs)
+    super().__init__(name, **kwargs)
     self._set_hyper("learning_rate", learning_rate)
     self._set_hyper("decay", self._initial_decay)
 
@@ -121,7 +120,7 @@ class FLARSOptimizer(tf.keras.optimizers.Optimizer):
     return update_ops
 
   def get_config(self):
-    config = super(FLARSOptimizer, self).get_config()
+    config = super().get_config()
     config.update({
         "learning_rate": self._serialize_hyperparameter("learning_rate"),
         "decay": self._serialize_hyperparameter("decay"),

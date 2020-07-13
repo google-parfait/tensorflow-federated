@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """TensorFlow Federated Core API."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tensorflow_federated.python.core.api.computation_base import Computation
 from tensorflow_federated.python.core.api.computation_types import FederatedType
 from tensorflow_federated.python.core.api.computation_types import FunctionType
@@ -32,9 +27,11 @@ from tensorflow_federated.python.core.api.intrinsics import federated_aggregate
 from tensorflow_federated.python.core.api.intrinsics import federated_apply
 from tensorflow_federated.python.core.api.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.api.intrinsics import federated_collect
+from tensorflow_federated.python.core.api.intrinsics import federated_eval
 from tensorflow_federated.python.core.api.intrinsics import federated_map
 from tensorflow_federated.python.core.api.intrinsics import federated_mean
 from tensorflow_federated.python.core.api.intrinsics import federated_reduce
+from tensorflow_federated.python.core.api.intrinsics import federated_secure_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_value
 from tensorflow_federated.python.core.api.intrinsics import federated_zip

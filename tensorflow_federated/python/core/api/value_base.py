@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,21 +13,14 @@
 # limitations under the License.
 """Defines the abstract interfaces for representations of various TFF values."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
-
-import six
 
 from tensorflow_federated.python.core.api import typed_object
 
 # TODO(b/113112108): Add derived interfaces and functions to support reflection.
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Value(typed_object.TypedObject):
+class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
   """An abstract base class for all values in the bodies of TFF computations.
 
   This interface is only relevant in the context of non-TensorFlow computations,

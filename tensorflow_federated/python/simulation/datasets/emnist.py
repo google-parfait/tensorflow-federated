@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Libraries for the federated EMNIST dataset for simulation."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import hashlib
@@ -128,8 +123,8 @@ def get_synthetic(num_clients=2):
 
   Each client produced has exactly 10 examples, one of each digit. The images
   are derived from a fixed set of hard-coded images, and transformed using
-  `tff.simulation.datasets.emnist.infinite_emnist` to produce the desired
-  number of clients.
+  `tff.simulation.datasets.emnist.get_infinite` to produce the desired number of
+  clients.
 
   Args:
     num_clients: The number of synthetic clients to generate.

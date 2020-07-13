@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import warnings
 
 from absl.testing import parameterized
 import numpy as np
@@ -30,30 +30,78 @@ from tensorflow_model_optimization.python.core.internal import tensor_encoding a
 class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
   """Tests for utilities for building StatefulFns."""
 
-  def test_mean_from_model(self):
-    model_fn = model_examples.TrainableLinearRegression
-    gather_fn = encoding_utils.build_encoded_mean_from_model(
-        model_fn, _test_encoder_fn('gather'))
+  def test_mean_from_model_raise_warning(self):
+    model_fn = model_examples.LinearRegression
+
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      gather_fn = encoding_utils.build_encoded_mean_from_model(
+          model_fn, _test_encoder_fn('gather'))
+      self.assertLen(w, 2)
+
     self.assertIsInstance(gather_fn, tff.utils.StatefulAggregateFn)
+
+  def test_mean_process_from_model(self):
+    model_fn = model_examples.LinearRegression
+    gather_process = encoding_utils.build_encoded_mean_process_from_model(
+        model_fn, _test_encoder_fn('gather'))
+    self.assertIsInstance(gather_process, tff.templates.MeasuredProcess)
 
   def test_sum_from_model(self):
-    model_fn = model_examples.TrainableLinearRegression
-    gather_fn = encoding_utils.build_encoded_sum_from_model(
-        model_fn, _test_encoder_fn('gather'))
+    model_fn = model_examples.LinearRegression
+
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      gather_fn = encoding_utils.build_encoded_sum_from_model(
+          model_fn, _test_encoder_fn('gather'))
+      self.assertLen(w, 2)
+
     self.assertIsInstance(gather_fn, tff.utils.StatefulAggregateFn)
 
+  def test_sum_process_from_model(self):
+    model_fn = model_examples.LinearRegression
+    gather_process = encoding_utils.build_encoded_sum_process_from_model(
+        model_fn, _test_encoder_fn('gather'))
+    self.assertIsInstance(gather_process, tff.templates.MeasuredProcess)
+
   def test_broadcast_from_model(self):
-    model_fn = model_examples.TrainableLinearRegression
-    broadcast_fn = encoding_utils.build_encoded_broadcast_from_model(
-        model_fn, _test_encoder_fn('simple'))
+    model_fn = model_examples.LinearRegression
+
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      broadcast_fn = encoding_utils.build_encoded_broadcast_from_model(
+          model_fn, _test_encoder_fn('simple'))
+      self.assertLen(w, 2)
+
     self.assertIsInstance(broadcast_fn, tff.utils.StatefulBroadcastFn)
+
+  def test_broadcast_process_from_model(self):
+    model_fn = model_examples.LinearRegression
+    broadcast_process = (
+        encoding_utils.build_encoded_broadcast_process_from_model(
+            model_fn, _test_encoder_fn('simple')))
+    self.assertIsInstance(broadcast_process, tff.templates.MeasuredProcess)
 
 
 class IterativeProcessTest(test.TestCase, parameterized.TestCase):
-  """End-to-end tests using `tff.utils.IterativeProcess`."""
+  """End-to-end tests using `tff.templates.IterativeProcess`."""
+
+  def _verify_iterative_process(self, iterative_process):
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict([
+            ('x', [[1.0, 2.0], [3.0, 4.0]]),
+            ('y', [[5.0], [6.0]]),
+        ])).batch(2)
+    federated_ds = [ds] * 3
+
+    state = iterative_process.initialize()
+    self.assertEqual(state.model_broadcast_state.trainable[0][0], 1)
+
+    state, _ = iterative_process.next(state, federated_ds)
+    self.assertEqual(state.model_broadcast_state.trainable[0][0], 2)
 
   def test_iterative_process_with_encoding(self):
-    model_fn = model_examples.TrainableLinearRegression
+    model_fn = model_examples.LinearRegression
     gather_fn = encoding_utils.build_encoded_mean_from_model(
         model_fn, _test_encoder_fn('gather'))
     broadcast_fn = encoding_utils.build_encoded_broadcast_from_model(
@@ -64,19 +112,22 @@ class IterativeProcessTest(test.TestCase, parameterized.TestCase):
         server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
         stateful_delta_aggregate_fn=gather_fn,
         stateful_model_broadcast_fn=broadcast_fn)
+    self._verify_iterative_process(iterative_process)
 
-    ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0], [3.0, 4.0]]),
-            ('y', [[5.0], [6.0]]),
-        ])).batch(2)
-    federated_ds = [ds] * 3
-
-    state = iterative_process.initialize()
-    self.assertEqual(state.model_broadcast_state.trainable.a[0], 1)
-
-    state, _ = iterative_process.next(state, federated_ds)
-    self.assertEqual(state.model_broadcast_state.trainable.a[0], 2)
+  def test_iterative_process_with_encoding_process(self):
+    model_fn = model_examples.LinearRegression
+    gather_process = encoding_utils.build_encoded_mean_process_from_model(
+        model_fn, _test_encoder_fn('gather'))
+    broadcast_process = (
+        encoding_utils.build_encoded_broadcast_process_from_model(
+            model_fn, _test_encoder_fn('simple')))
+    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=model_fn,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
+        aggregation_process=gather_process,
+        broadcast_process=broadcast_process)
+    self._verify_iterative_process(iterative_process)
 
 
 class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
@@ -90,102 +141,13 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
 
   @tf.function
   def __call__(self, dataset, initial_weights):
-    # Iterate over the dataset to get new metric values.
-    def reduce_fn(dummy, batch):
-      self._model.train_on_batch(batch)
-      return dummy
-
-    dataset.reduce(tf.constant(0.0), reduce_fn)
-
-    # Create some fake weight deltas to send back.
-    trainable_weights_delta = tf.nest.map_structure(lambda x: -tf.ones_like(x),
-                                                    initial_weights.trainable)
+    """Dummy client delta which simply returns 1.0 for all parameters."""
     client_weight = tf.constant(1.0)
     return optimizer_utils.ClientOutput(
-        trainable_weights_delta,
+        tf.nest.map_structure(tf.ones_like, initial_weights.trainable),
         weights_delta_weight=client_weight,
         model_output=self._model.report_local_outputs(),
         optimizer_output={'client_weight': client_weight})
-
-
-# TODO(b/137613901): Remove this in next update of tfmot package, when
-# te.testing is available.
-@te.core.tf_style_adaptive_encoding_stage
-class PlusOneOverNEncodingStage(te.core.AdaptiveEncodingStageInterface):
-  """[Example] adaptive encoding stage, adding 1/N in N-th iteration.
-
-  This is an example implementation of an `AdaptiveEncodingStageInterface` that
-  modifies state, which controls the creation of params. This is also a simple
-  example of how an `EncodingStageInterface` can be wrapped as an
-  `AdaptiveEncodingStageInterface`, without modifying the wrapped encode and
-  decode methods.
-  """
-
-  ENCODED_VALUES_KEY = 'pn_values'
-  ADD_PARAM_KEY = 'pn_add'
-  ITERATION_STATE_KEY = 'pn_iteration'
-
-  @property
-  def name(self):
-    """See base class."""
-    return 'plus_one_over_n'
-
-  @property
-  def compressible_tensors_keys(self):
-    """See base class."""
-    return [self.ENCODED_VALUES_KEY]
-
-  @property
-  def commutes_with_sum(self):
-    """See base class."""
-    return False
-
-  @property
-  def decode_needs_input_shape(self):
-    """See base class."""
-    return False
-
-  @property
-  def state_update_aggregation_modes(self):
-    """See base class."""
-    return {}
-
-  def initial_state(self):
-    """See base class."""
-    return {self.ITERATION_STATE_KEY: tf.constant(1, dtype=tf.int32)}
-
-  def update_state(self, state, state_update_tensors):
-    """See base class."""
-    del state_update_tensors  # Unused.
-    return {
-        self.ITERATION_STATE_KEY:
-            state[self.ITERATION_STATE_KEY] + tf.constant(1, dtype=tf.int32)
-    }
-
-  def get_params(self, state):
-    """See base class."""
-    params = {
-        self.ADD_PARAM_KEY:
-            1 / tf.cast(state[self.ITERATION_STATE_KEY], tf.float32)
-    }
-    return params, params
-
-  def encode(self, x, encode_params):
-    """See base class."""
-    return {self.ENCODED_VALUES_KEY: x + encode_params[self.ADD_PARAM_KEY]}, {}
-
-  def decode(self,
-             encoded_tensors,
-             decode_params,
-             num_summands=None,
-             shape=None):
-    """See base class."""
-    del num_summands  # Unused.
-    del shape  # Unused.
-    decoded_x = (
-        encoded_tensors[self.ENCODED_VALUES_KEY] -
-        decode_params[self.ADD_PARAM_KEY])
-    return decoded_x
 
 
 def _test_encoder_fn(top_level_encoder):
@@ -198,7 +160,8 @@ def _test_encoder_fn(top_level_encoder):
     raise ValueError('Unknown top_level_encoder.')
 
   identity_encoder = te.encoders.identity()
-  test_encoder = te.core.EncoderComposer(PlusOneOverNEncodingStage()).make()
+  test_encoder = te.core.EncoderComposer(
+      te.testing.PlusOneOverNEncodingStage()).make()
 
   def encoder_fn(tensor):
     if np.prod(tensor.shape) > 1:

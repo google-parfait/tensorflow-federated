@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,6 @@
 # limitations under the License.
 """Defines utility functions/classes for constructing TF computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
@@ -49,15 +43,14 @@ def create_variables(name, type_spec, **kwargs):
     TypeError: if `type_spec` is not a type signature composed of tensor and
       named tuple TFF types.
   """
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   type_spec = computation_types.to_type(type_spec)
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if isinstance(type_spec, computation_types.TensorType):
+  if type_spec.is_tensor():
     return tf.Variable(
         initial_value=tf.zeros(dtype=type_spec.dtype, shape=type_spec.shape),
         name=name,
         **kwargs)
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
 
     def _scoped_name(var_name, index):
       if var_name is None:
@@ -67,10 +60,10 @@ def create_variables(name, type_spec, **kwargs):
       else:
         return var_name
 
-    return anonymous_tuple.AnonymousTuple([
+    type_elements_iter = anonymous_tuple.iter_elements(type_spec)
+    return anonymous_tuple.AnonymousTuple(
         (k, create_variables(_scoped_name(k, i), v, **kwargs))
-        for i, (k, v) in enumerate(anonymous_tuple.to_elements(type_spec))
-    ])
+        for i, (k, v) in enumerate(type_elements_iter))
   else:
     raise TypeError(
         'Expected a TFF type signature composed of tensors and named tuples, '

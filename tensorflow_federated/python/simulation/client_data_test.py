@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +16,7 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import client_data as cd
+from tensorflow_federated.python.tensorflow_libs import version_check
 
 
 class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
@@ -36,7 +36,12 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
                      tf.TensorSpec(shape=(), dtype=tf.int64))
 
     def length(ds):
-      return tf.data.experimental.cardinality(ds).numpy()
+      if version_check.is_tensorflow_version_newer('2.3.0', tf):
+        # ds.cardinality() only works for RangeDataset at HEAD,
+        # and is not in a released version of TensorFlow yet.
+        return ds.cardinality().numpy()
+      else:
+        return tf.data.experimental.cardinality(ds).numpy()
 
     for i in client_ids:
       self.assertEqual(length(client_data.create_tf_dataset_for_client(i)), i)
@@ -56,6 +61,101 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
     return cd.ClientData.from_clients_and_fn(
         client_ids=client_ids,
         create_tf_dataset_for_client_fn=create_dataset_fn)
+
+  def test_datasets_lists_all_elements(self):
+    client_ids = [1, 2, 3]
+
+    def create_dataset_fn(client_id):
+      num_examples = client_id
+      return tf.data.Dataset.range(num_examples)
+
+    client_data = cd.ClientData.from_clients_and_fn(
+        client_ids=client_ids,
+        create_tf_dataset_for_client_fn=create_dataset_fn)
+
+    def ds_iterable_to_list_set(datasets):
+      return set(tuple(ds.as_numpy_iterator()) for ds in datasets)
+
+    datasets = ds_iterable_to_list_set(client_data.datasets())
+    expected = ds_iterable_to_list_set(
+        (create_dataset_fn(cid) for cid in client_ids))
+    self.assertEqual(datasets, expected)
+
+  def test_datasets_is_lazy(self):
+    client_ids = [1, 2, 3]
+
+    # Note: this is called once on initialization of ClientData
+    # with client_ids[0] in order to get the element type.
+    # After that, it should be called lazily when `next` is called
+    # on a `.datasets()` iterator.
+    called_count = 0
+
+    def only_call_me_thrice(client_id):
+      nonlocal called_count
+      called_count += 1
+      if called_count == 1:
+        self.assertEqual(client_id, client_ids[0])
+      if called_count > 3:
+        raise Exception('called too many times')
+      num_examples = client_id
+      return tf.data.Dataset.range(num_examples)
+
+    client_data = cd.ClientData.from_clients_and_fn(
+        client_ids=client_ids,
+        create_tf_dataset_for_client_fn=only_call_me_thrice)
+
+    datasets_iter = client_data.datasets()
+    next(datasets_iter)
+    next(datasets_iter)
+    with self.assertRaisesRegex(Exception, 'called too many times'):
+      next(datasets_iter)
+
+  def test_datasets_limit_count(self):
+    client_ids = [1, 2, 3]
+
+    def create_dataset_fn(client_id):
+      num_examples = client_id
+      return tf.data.Dataset.range(num_examples)
+
+    client_data = cd.ClientData.from_clients_and_fn(
+        client_ids=client_ids,
+        create_tf_dataset_for_client_fn=create_dataset_fn)
+
+    ds = list(client_data.datasets(limit_count=1))
+    self.assertLen(ds, 1)
+
+  def test_datasets_doesnt_shuffle_client_ids_list(self):
+    client_ids = [1, 2, 3]
+    client_ids_copy = client_ids.copy()
+
+    def create_dataset_fn(client_id):
+      num_examples = client_id
+      return tf.data.Dataset.range(num_examples)
+
+    client_data = cd.ClientData.from_clients_and_fn(
+        client_ids=client_ids,
+        create_tf_dataset_for_client_fn=create_dataset_fn)
+
+    client_data.datasets()
+    self.assertEqual(client_ids, client_ids_copy)
+    client_data.datasets()
+    self.assertEqual(client_ids, client_ids_copy)
+    client_data.datasets()
+    self.assertEqual(client_ids, client_ids_copy)
+
+  def test_create_tf_dataset_from_all_clients(self):
+    client_ids = [1, 2, 3]
+
+    def create_dataset_fn(client_id):
+      return tf.data.Dataset.from_tensor_slices([client_id])
+
+    client_data = cd.ClientData.from_clients_and_fn(
+        client_ids=client_ids,
+        create_tf_dataset_for_client_fn=create_dataset_fn)
+
+    dataset = client_data.create_tf_dataset_from_all_clients()
+    dataset_list = list(dataset.as_numpy_iterator())
+    self.assertCountEqual(client_ids, dataset_list)
 
   def test_split_train_test_selects_nonempty_test_clients(self):
     # Only even client_ids have data:
@@ -92,5 +192,4 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

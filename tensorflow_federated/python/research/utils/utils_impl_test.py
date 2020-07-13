@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -165,6 +164,15 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
       dataframe4 = pd.read_csv(output_file, index_col=0)
       pd.testing.assert_frame_equal(dataframe3, dataframe4)
 
+  def test_atomic_read(self):
+    for name in ['foo.csv', 'baz.csv.bz2']:
+      dataframe = pd.DataFrame(dict(a=[1, 2], b=[4.0, 5.0]))
+      csv_file = os.path.join(absltest.get_default_test_tmpdir(), name)
+      utils_impl.atomic_write_to_csv(dataframe, csv_file)
+
+      dataframe2 = utils_impl.atomic_read_from_csv(csv_file)
+      pd.testing.assert_frame_equal(dataframe, dataframe2)
+
   def test_iter_grid(self):
     grid = dict(a=[], b=[])
     self.assertCountEqual(list(utils_impl.iter_grid(grid)), [])
@@ -260,5 +268,4 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

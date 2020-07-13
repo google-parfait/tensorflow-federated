@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +21,32 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 
 
 class AnonymousTupleTest(absltest.TestCase):
+
+  def test_construction_from_list(self):
+    v = [('a', 1), ('b', 2), (None, 3)]
+    x = anonymous_tuple.AnonymousTuple(v)
+    self.assertSequenceEqual(anonymous_tuple.to_elements(x), v)
+
+  def test_construction_from_tuple(self):
+    v = (('a', 1), ('b', 2), (None, 3))
+    x = anonymous_tuple.AnonymousTuple(v)
+    self.assertSequenceEqual(anonymous_tuple.to_elements(x), v)
+
+  def test_construction_from_ordereddict(self):
+    v = collections.OrderedDict(a=1, b=2, c=3)
+    x = anonymous_tuple.AnonymousTuple(v.items())
+    self.assertSequenceEqual(anonymous_tuple.to_elements(x), list(v.items()))
+
+  def test_construction_from_generator_expression(self):
+    x = anonymous_tuple.AnonymousTuple(
+        (name, i) for i, name in enumerate(('a', 'b', None)))
+    self.assertSequenceEqual(
+        anonymous_tuple.to_elements(x), [('a', 0), ('b', 1), (None, 2)])
+
+  def test_construction_from_iter_elements(self):
+    x = anonymous_tuple.AnonymousTuple((('a', 1), ('b', 2), (None, 3)))
+    self.assertSequenceEqual(
+        anonymous_tuple.AnonymousTuple(anonymous_tuple.iter_elements(x)), x)
 
   def test_empty(self):
     v = []
@@ -248,6 +273,20 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(x[:-1], tuple(range(0, 40, 10)))
     self.assertEqual(x[1:], tuple(range(10, 50, 10)))
     self.assertEqual(x[-1:], (40,))
+
+  def test_getitem_key(self):
+    v = [('foo', 10), ('bar', 20)]
+    x = anonymous_tuple.AnonymousTuple(v)
+    self.assertEqual(x['foo'], 10)
+    self.assertEqual(x['bar'], 20)
+    with self.assertRaises(AttributeError):
+      _ = x['badkey']
+
+  def test_getitem_key_builtin_attribute_raises(self):
+    v = [('foo', 10), ('bar', 20)]
+    x = anonymous_tuple.AnonymousTuple(v)
+    with self.assertRaises(AttributeError):
+      _ = x['__getattr__']
 
   def test_getitem_bad_bounds(self):
     v = [(None, i) for i in range(0, 50, 10)]

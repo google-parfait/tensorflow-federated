@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -83,7 +82,7 @@ class FederatedEvaluationTest(test.TestCase):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
     self.assertEqual(
         str(evaluate.type_signature),
-        '(<<trainable=<max_temp=float32>,non_trainable=<>>@SERVER,'
+        '(<<trainable=<float32>,non_trainable=<>>@SERVER,'
         '{<temp=float32[?]>*}@CLIENTS> -> <num_over=float32@SERVER>)')
 
     def _temp_dict(temps):
@@ -91,8 +90,8 @@ class FederatedEvaluationTest(test.TestCase):
 
     result = evaluate(
         collections.OrderedDict([
-            ('trainable', collections.OrderedDict([('max_temp', 5.0)])),
-            ('non_trainable', {}),
+            ('trainable', [5.0]),
+            ('non_trainable', []),
         ]), [
             [_temp_dict([1.0, 10.0, 2.0, 7.0]),
              _temp_dict([6.0, 11.0])],
@@ -105,6 +104,7 @@ class FederatedEvaluationTest(test.TestCase):
 
     def model_fn():
       keras_model = tf.keras.Sequential([
+          tf.keras.layers.Input(shape=(1,)),
           tf.keras.layers.Dense(
               1,
               kernel_initializer='ones',
@@ -112,16 +112,14 @@ class FederatedEvaluationTest(test.TestCase):
               activation=None)
       ],
                                         name='my_model')
-      keras_model.compile(
-          loss='mean_squared_error',
-          optimizer='sgd',
-          metrics=[tf.keras.metrics.Accuracy()])
-      return keras_utils.from_compiled_keras_model(
+      return keras_utils.from_keras_model(
           keras_model,
-          dummy_batch=collections.OrderedDict([
-              ('x', np.zeros((1, 1), np.float32)),
-              ('y', np.zeros((1, 1), np.float32)),
-          ]))
+          input_spec=collections.OrderedDict(
+              x=tf.TensorSpec(shape=(None, 1), dtype=tf.float32),
+              y=tf.TensorSpec(shape=(None, 1), dtype=tf.float32),
+          ),
+          loss=tf.keras.losses.MeanSquaredError(),
+          metrics=[tf.keras.metrics.Accuracy()])
 
     evaluate_comp = federated_evaluation.build_federated_evaluation(model_fn)
     initial_weights = tf.nest.map_structure(
@@ -145,5 +143,4 @@ class FederatedEvaluationTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
   test.main()

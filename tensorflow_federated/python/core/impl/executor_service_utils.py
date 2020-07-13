@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,14 +21,17 @@ from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
+@tracing.trace
 def serialize_tensor_value(value, type_spec=None):
   """Serializes a tensor value into `executor_pb2.Value`.
 
@@ -61,8 +63,7 @@ def serialize_tensor_value(value, type_spec=None):
     if isinstance(value, np.ndarray):
       tensor_proto = tf.make_tensor_proto(
           value, dtype=type_spec.dtype, verify_shape=False)
-      type_utils.check_assignable_from(
-          type_spec,
+      type_spec.check_assignable_from(
           computation_types.TensorType(
               dtype=tf.dtypes.as_dtype(tensor_proto.dtype),
               shape=tf.TensorShape(tensor_proto.tensor_shape)))
@@ -82,6 +83,7 @@ def serialize_tensor_value(value, type_spec=None):
   return executor_pb2.Value(tensor=any_pb), type_spec
 
 
+@tracing.trace
 def deserialize_tensor_value(value_proto):
   """Deserializes a tensor value from `executor_pb2.Value`.
 
@@ -117,6 +119,7 @@ def deserialize_tensor_value(value_proto):
   return tensor_value, value_type
 
 
+@tracing.trace
 def serialize_sequence_value(value):
   """Serializes a `tf.data.Dataset` value into `executor_pb2.Value`.
 
@@ -128,19 +131,20 @@ def serialize_sequence_value(value):
     of `executor_pb2.Value` with the serialized content of `value`, and
     `type_spec` is the type of the serialized value.
   """
-  py_typecheck.check_type(value, type_utils.TF_DATASET_REPRESENTATION_TYPES)
+  py_typecheck.check_type(value,
+                          type_conversions.TF_DATASET_REPRESENTATION_TYPES)
   # TFF must store the type spec here because TF will lose the ordering of the
   # names for `tf.data.Dataset` that return elements of `collections.Mapping`
   # type. This allows TFF to preserve and restore the key ordering upon
   # deserialization.
-  element_type = computation_types.to_type(
-      tf.data.experimental.get_structure(value))
+  element_type = computation_types.to_type(value.element_spec)
   return executor_pb2.Value(
       sequence=executor_pb2.Value.Sequence(
           zipped_saved_model=tensorflow_serialization.serialize_dataset(value),
           element_type=type_serialization.serialize_type(element_type)))
 
 
+@tracing.trace
 def deserialize_sequence_value(sequence_value_proto):
   """Deserializes a `tf.data.Dataset`.
 
@@ -178,6 +182,7 @@ def deserialize_sequence_value(sequence_value_proto):
   return ds, computation_types.SequenceType(element=element_type)
 
 
+@tracing.trace
 def serialize_value(value, type_spec=None):
   """Serializes a value into `executor_pb2.Value`.
 
@@ -204,14 +209,14 @@ def serialize_value(value, type_spec=None):
     return serialize_value(
         computation_impl.ComputationImpl.get_proto(value),
         type_utils.reconcile_value_with_type_spec(value, type_spec))
-  elif isinstance(type_spec, computation_types.TensorType):
+  elif type_spec.is_tensor():
     return serialize_tensor_value(value, type_spec)
-  elif isinstance(type_spec, computation_types.NamedTupleType):
-    type_elements = anonymous_tuple.to_elements(type_spec)
-    val_elements = anonymous_tuple.to_elements(
+  elif type_spec.is_tuple():
+    type_elem_iter = anonymous_tuple.iter_elements(type_spec)
+    val_elem_iter = anonymous_tuple.iter_elements(
         anonymous_tuple.from_container(value))
     tup_elems = []
-    for (e_name, e_type), (_, e_val) in zip(type_elements, val_elements):
+    for (e_name, e_type), (_, e_val) in zip(type_elem_iter, val_elem_iter):
       e_proto, _ = serialize_value(e_val, e_type)
       tup_elems.append(
           executor_pb2.Value.Tuple.Element(
@@ -219,23 +224,23 @@ def serialize_value(value, type_spec=None):
     result_proto = (
         executor_pb2.Value(tuple=executor_pb2.Value.Tuple(element=tup_elems)))
     return result_proto, type_spec
-  elif isinstance(type_spec, computation_types.SequenceType):
-    if not isinstance(value, type_utils.TF_DATASET_REPRESENTATION_TYPES):
+  elif type_spec.is_sequence():
+    if not isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
       raise TypeError(
           'Cannot serialize Python type {!s} as TFF type {!s}.'.format(
               py_typecheck.type_string(type(value)),
               type_spec if type_spec is not None else 'unknown'))
 
     value_type = computation_types.SequenceType(
-        computation_types.to_type(tf.data.experimental.get_structure(value)))
-    if not type_utils.is_assignable_from(type_spec, value_type):
+        computation_types.to_type(value.element_spec))
+    if not type_spec.is_assignable_from(value_type):
       raise TypeError(
           'Cannot serialize dataset with elements of type {!s} as TFF type {!s}.'
           .format(value_type,
                   type_spec if type_spec is not None else 'unknown'))
 
     return serialize_sequence_value(value), type_spec
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif type_spec.is_federated():
     if type_spec.all_equal:
       value = [value]
     else:
@@ -243,7 +248,7 @@ def serialize_value(value, type_spec=None):
     items = []
     for v in value:
       it, it_type = serialize_value(v, type_spec.member)
-      type_utils.check_assignable_from(type_spec.member, it_type)
+      type_spec.member.check_assignable_from(it_type)
       items.append(it)
     result_proto = executor_pb2.Value(
         federated=executor_pb2.Value.Federated(
@@ -257,6 +262,7 @@ def serialize_value(value, type_spec=None):
             str(type_spec) if type_spec is not None else 'unknown'))
 
 
+@tracing.trace
 def deserialize_value(value_proto):
   """Deserializes a value (of any type) from `executor_pb2.Value`.
 
@@ -298,7 +304,7 @@ def deserialize_value(value_proto):
     value = []
     for item in value_proto.federated.value:
       item_value, item_type = deserialize_value(item)
-      type_utils.check_assignable_from(type_spec.member, item_type)
+      type_spec.member.check_assignable_from(item_type)
       value.append(item_value)
     if type_spec.all_equal:
       if len(value) == 1:

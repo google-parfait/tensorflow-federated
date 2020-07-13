@@ -1,10 +1,14 @@
 # TensorFlow Federated Research
 
-This directory contains TFF research projects that will be used for research
-papers or as canonical examples of how to use TFF.
+This directory contains research projects using TFF that will be used for
+research papers.
 
 These research projects are intended to have a dependency on TFF but not other
 research projects. Similarly, TFF should not have a dependency on a research
-project. Additionally, these research projects may require depndencies that TFF
+project. Additionally, each research projects may require depndencies that TFF
 does not also require; these dependencies should be documented in the README of
-the research project.
+the individual research project.
+
+See
+[Using TFF for Federated Learning Research](https://github.com/tensorflow/federated/blob/master/docs/tff_for_research.md)
+for more information about Federated Learning research in TFF.

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,11 +14,11 @@
 """Utilities for saving and loading experiments."""
 
 import abc
-import logging
 import os.path
 import re
+from typing import Any, List, Tuple
 
-from typing import Any, List, Text, Tuple
+from absl import logging
 import tensorflow as tf
 
 
@@ -37,6 +36,24 @@ class CheckpointManager(metaclass=abc.ABCMeta):
   total number of checkpoints that are kept.
   """
 
+  def load_latest_checkpoint_or_default(self, default: Any) -> Tuple[Any, int]:
+    """Returns latest checkpoint; returns `default` if no checkpoints exist.
+
+    Saves `default` as the 0th checkpoint if no checkpoints exist.
+
+    Args:
+      default: A nested structure which `tf.convert_to_tensor` supports to use
+        as a template when reconstructing the loaded template. This structure
+        will be saved as the checkpoint for round number 0 and returned if there
+        are no pre-existing saved checkpoints.
+    """
+    state, round_num = self.load_latest_checkpoint(default)
+    if state is None:
+      state = default
+      round_num = 0
+      self.save_checkpoint(state, round_num)
+    return state, round_num
+
   @abc.abstractmethod
   def load_latest_checkpoint(self, structure: Any) -> Tuple[Any, int]:
     """Returns the latest checkpointed state.
@@ -44,6 +61,20 @@ class CheckpointManager(metaclass=abc.ABCMeta):
     Args:
       structure: A nested structure which `tf.convert_to_tensor` supports to use
         as a template when reconstructing the loaded template.
+    """
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def load_checkpoint(self, structure: Any, round_num: int) -> Any:
+    """Returns the checkpointed state at the given `round_num`.
+
+    Args:
+      structure: A nested structure which `tf.convert_to_tensor` supports to use
+        as a template when reconstructing the loaded template.
+      round_num: An integer representing the round to load from.
+
+    Raises:
+      FileNotFoundError: If checkpoint for given `round_num` doesn't exist.
     """
     raise NotImplementedError
 
@@ -66,8 +97,8 @@ class FileCheckpointManager(CheckpointManager):
   """
 
   def __init__(self,
-               root_dir: Text,
-               prefix: Text = 'ckpt_',
+               root_dir: str,
+               prefix: str = 'ckpt_',
                keep_total: int = 5,
                keep_first: bool = True):
     """Returns an initialized `FileCheckpointManager`.
@@ -84,26 +115,56 @@ class FileCheckpointManager(CheckpointManager):
     self._prefix = prefix
     self._keep_total = keep_total
     self._keep_first = keep_first
-    path = os.path.join(root_dir, prefix)
+    path = re.escape(os.path.join(root_dir, prefix))
     self._round_num_expression = re.compile(r'{}([0-9]+)$'.format(path))
 
   def load_latest_checkpoint(self, structure: Any) -> Tuple[Any, int]:
-    """Returns the latest checkpointed state.
+    """Returns the latest checkpointed state and round number.
 
     Args:
       structure: A nested structure which `tf.convert_to_tensor` supports to use
         as a template when reconstructing the loaded template.
     """
-    state = None
-    round_num = 0
     checkpoint_paths = self._get_all_checkpoint_paths()
     if checkpoint_paths:
       checkpoint_path = max(checkpoint_paths, key=self._round_num)
-      model = tf.compat.v2.saved_model.load(checkpoint_path)
-      flat_obj = model.build_obj_fn()
-      state = tf.nest.pack_sequence_as(structure, flat_obj)
-      round_num = self._round_num(checkpoint_path)
-      logging.info('Checkpoint loaded: %s', checkpoint_path)
+      return self._load_checkpoint_from_path(structure, checkpoint_path)
+    return None, 0
+
+  def load_checkpoint(self, structure: Any, round_num: int) -> Any:
+    """Returns the checkpointed state for the given `round_num`.
+
+    Args:
+      structure: A nested structure which `tf.convert_to_tensor` supports to use
+        as a template when reconstructing the loaded template.
+      round_num: An integer representing the round to load from.
+    """
+    basename = '{}{}'.format(self._prefix, round_num)
+    checkpoint_path = os.path.join(self._root_dir, basename)
+    state, _ = self._load_checkpoint_from_path(structure, checkpoint_path)
+    return state
+
+  def _load_checkpoint_from_path(self, structure: Any,
+                                 checkpoint_path: str) -> Tuple[Any, int]:
+    """Returns the state and round number for the given `checkpoint_path`.
+
+    Args:
+      structure: A nested structure which `tf.convert_to_tensor` supports to use
+        as a template when reconstructing the loaded template.
+      checkpoint_path: A path on the filesystem to load.
+
+    Raises:
+      FileNotFoundError: If a checkpoint for given `checkpoint_path` doesn't
+        exist.
+    """
+    if not tf.io.gfile.exists(checkpoint_path):
+      raise FileNotFoundError(
+          'No such file or directory: {}'.format(checkpoint_path))
+    model = tf.saved_model.load(checkpoint_path)
+    flat_obj = model.build_obj_fn()
+    state = tf.nest.pack_sequence_as(structure, flat_obj)
+    round_num = self._round_num(checkpoint_path)
+    logging.info('Checkpoint loaded: %s', checkpoint_path)
     return state, round_num
 
   def save_checkpoint(self, state: Any, round_num: int) -> None:
@@ -147,10 +208,16 @@ class FileCheckpointManager(CheckpointManager):
         tf.io.gfile.rmtree(checkpoint_path)
         logging.info('Checkpoint removed: %s', checkpoint_path)
 
-  def _round_num(self, checkpoint_path: Text) -> int:
-    """Returns the round number for the given `checkpoint_path`."""
+  def _round_num(self, checkpoint_path: str) -> int:
+    """Returns the round number for the given `checkpoint_path`, or `-1`."""
     match = self._round_num_expression.match(checkpoint_path)
-    return int(match.group(1)) if match else -1
+    if match is None:
+      logging.debug(
+          'Could not extract round number from: \'%s\' using the following '
+          'pattern: \'%s\'', checkpoint_path,
+          self._round_num_expression.pattern)
+      return -1
+    return int(match.group(1))
 
   def _get_all_checkpoint_paths(self) -> List[str]:
     """Returns all the checkpoint paths managed by the instance."""

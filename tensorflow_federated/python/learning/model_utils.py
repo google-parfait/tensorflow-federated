@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,20 +13,16 @@
 # limitations under the License.
 """Utility methods for working with TensorFlow Federated Model objects."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
+from typing import Callable, Union
 
-import six
-from six.moves import zip
+import attr
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff_core
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
-from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 def model_initializer(model, name=None):
@@ -39,15 +34,8 @@ def model_initializer(model, name=None):
       name=(name or 'model_initializer'))
 
 
-class ModelWeights(
-    collections.namedtuple(
-        'ModelWeightsBase',
-        [
-            # An OrderedDict of `Model.trainable_variables` keyed by name.
-            'trainable',
-            # An OrderedDict of `Model.non_trainable_variables` keyed by name.
-            'non_trainable'
-        ])):
+@attr.s(eq=False, frozen=True, slots=True)
+class ModelWeights(object):
   """A container for the trainable and non-trainable variables of a `Model`.
 
   Note this does not include the model's local variables.
@@ -55,49 +43,65 @@ class ModelWeights(
   It may also be used to hold other values that are parallel to these variables,
   e.g., tensors corresponding to variable values, or updates to model variables.
   """
-
-  # Necessary to work around for problematic _asdict() returning empty
-  # dictionary between Python 3.4.2 and 3.4.5.
-  #
-  # Addtionally prevents __dict__ from being created, which can improve memory
-  # usage of ModelWeights object.
-  __slots__ = ()
-
-  def __new__(cls, trainable, non_trainable):
-    return super(ModelWeights,
-                 cls).__new__(cls, tensor_utils.to_odict(trainable),
-                              tensor_utils.to_odict(non_trainable))
+  trainable = attr.ib()
+  non_trainable = attr.ib()
 
   @classmethod
   def from_model(cls, model):
     py_typecheck.check_type(model, (model_lib.Model, tf.keras.Model))
-    # N.B. to_var_dict preserves the order of the variables, which
-    # is critical so we can re-use the list of values e.g. when doing
-    # keras_model.set_weights
-    return cls(
-        tensor_utils.to_var_dict(model.trainable_variables),
-        tensor_utils.to_var_dict(model.non_trainable_variables))
+    return cls(model.trainable_variables, model.non_trainable_variables)
 
   @classmethod
-  def from_tff_value(cls, anon_tuple):
+  def from_tff_result(cls, anon_tuple):
     py_typecheck.check_type(anon_tuple, anonymous_tuple.AnonymousTuple)
-    return cls(
-        anonymous_tuple.to_odict(anon_tuple.trainable),
-        anonymous_tuple.to_odict(anon_tuple.non_trainable))
+    return cls([
+        value
+        for _, value in anonymous_tuple.iter_elements(anon_tuple.trainable)
+    ], [
+        value
+        for _, value in anonymous_tuple.iter_elements(anon_tuple.non_trainable)
+    ])
 
-  def assign_weights_to(self, keras_model):
-    """Assign these TFF model weights to the weights of a `tf.keras.Model`.
+  def assign_weights_to(self, model):
+    """Assign these TFF model weights to the weights of a model.
 
     Args:
-      keras_model: the `tf.keras.Model` object to assign weights to.
+      model: a `tf.keras.Model` or `tff.learning.Model` instance to assign the
+        weights to.
     """
+    py_typecheck.check_type(model, (model_lib.Model, tf.keras.Model))
+    if isinstance(model, tf.keras.Model):
+      tf.nest.map_structure(lambda var, t: var.assign(t),
+                            model.trainable_weights, self.trainable)
+      tf.nest.map_structure(lambda var, t: var.assign(t),
+                            model.non_trainable_weights, self.non_trainable)
+    else:
+      tf.nest.map_structure(lambda var, t: var.assign(t),
+                            model.trainable_variables, self.trainable)
+      tf.nest.map_structure(lambda var, t: var.assign(t),
+                            model.non_trainable_variables, self.non_trainable)
 
-    def assign_weights(keras_weights, tff_weights):
-      for k, w in zip(keras_weights, six.itervalues(tff_weights)):
-        k.assign(w)
 
-    assign_weights(keras_model.trainable_weights, self.trainable)
-    assign_weights(keras_model.non_trainable_weights, self.non_trainable)
+def weights_type_from_model(
+    model: Union[model_lib.Model, Callable[[], model_lib.Model]]
+) -> tff_core.NamedTupleType:
+  """Creates a `tff.Type` from a `tff.learning.Model` or callable that constructs a model.
+
+  Args:
+    model: a `tff.learning.Model` instance, or a no-arg callable that returns a
+      model.
+
+  Returns:
+    A `tff.NamedTupleType` representing the TFF type of the `ModelWeights`
+    structure for `model`.
+  """
+  if callable(model):
+    # Wrap model construction in a graph to avoid polluting the global context
+    # with variables created for this model.
+    with tf.Graph().as_default():
+      model = model()
+  py_typecheck.check_type(model, model_lib.Model)
+  return tff_core.framework.type_from_tensors(ModelWeights.from_model(model))
 
 
 def enhance(model):
@@ -107,17 +111,16 @@ def enhance(model):
     model: A `tff.learning.Model`.
 
   Returns:
-    An `EnhancedModel` or `TrainableEnhancedModel`, depending on the type of the
-    input model. If `model` has already been wrapped as such, this is a no-op.
+    An `EnhancedModel`. If `model` has already been wrapped as such, this is a
+    no-op.
   """
   py_typecheck.check_type(model, model_lib.Model)
   if isinstance(model, EnhancedModel):
     return model
-
-  if isinstance(model, model_lib.TrainableModel):
-    return EnhancedTrainableModel(model)
-  else:
+  elif isinstance(model, model_lib.Model):
     return EnhancedModel(model)
+  raise TypeError('Do not know how to wrap object of type [{t}]. Expected a '
+                  'tff.learning.Model'.format(t=type(model_lib.Model)))
 
 
 def _check_iterable_of_variables(variables):
@@ -131,7 +134,7 @@ class EnhancedModel(model_lib.Model):
   """A wrapper around a Model that adds sanity checking and metadata helpers."""
 
   def __init__(self, model):
-    super(EnhancedModel, self).__init__()
+    super().__init__()
     py_typecheck.check_type(model, model_lib.Model)
     if isinstance(model, EnhancedModel):
       raise ValueError(
@@ -177,14 +180,3 @@ class EnhancedModel(model_lib.Model):
   @property
   def federated_output_computation(self):
     return self._model.federated_output_computation
-
-
-class EnhancedTrainableModel(EnhancedModel, model_lib.TrainableModel):
-
-  def __init__(self, model):
-    py_typecheck.check_type(model, model_lib.TrainableModel)
-    super(EnhancedTrainableModel, self).__init__(model)
-
-  def train_on_batch(self, batch_input):
-    return py_typecheck.check_type(
-        self._model.train_on_batch(batch_input), model_lib.BatchOutput)

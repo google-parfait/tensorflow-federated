@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,25 +42,6 @@ class ModelExamplesTest(test.TestCase, parameterized.TestCase):
             'num_batches': 1,
             'loss': 0.25
         })
-
-  def test_trainable_linear_regression(self):
-    dim = 1
-    model = model_examples.TrainableLinearRegression(feature_dim=dim)
-    batch = model.make_batch(
-        x=tf.constant([[0.0], [5.0]]), y=tf.constant([[0.0], [5.0]]))
-
-    prior_loss = float('inf')
-    num_iters = 10
-    for _ in range(num_iters):
-      result = model.train_on_batch(batch)
-      # Loss should be decreasing.
-      self.assertLess(result.loss, prior_loss)
-      prior_loss = result.loss
-
-    metrics = model.report_local_outputs()
-    self.assertEqual(metrics['num_batches'], num_iters)
-    self.assertEqual(metrics['num_examples'], 2 * num_iters)
-    self.assertLess(metrics['loss'], 1.0)
 
   def test_tff(self):
     feature_dim = 2

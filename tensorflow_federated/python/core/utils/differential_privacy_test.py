@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,31 +14,41 @@
 
 import collections
 
+from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_privacy
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
-from tensorflow_federated.python.core import api as tff
-from tensorflow_federated.python.core import framework as tff_framework
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.utils import differential_privacy
 
 
 def wrap_aggregate_fn(dp_aggregate_fn, sample_value):
-  tff_types = tff_framework.type_from_tensors(sample_value)
+  tff_types = type_conversions.type_from_tensors(sample_value)
 
-  @tff.federated_computation
+  @computations.federated_computation
   def run_initialize():
-    return tff.federated_value(dp_aggregate_fn.initialize(), tff.SERVER)
+    return intrinsics.federated_value(dp_aggregate_fn.initialize(),
+                                      placement_literals.SERVER)
 
-  @tff.federated_computation(run_initialize.type_signature.result,
-                             tff.FederatedType(tff_types, tff.CLIENTS))
+  @computations.federated_computation(run_initialize.type_signature.result,
+                                      computation_types.FederatedType(
+                                          tff_types,
+                                          placement_literals.CLIENTS))
   def run_aggregate(global_state, client_values):
     return dp_aggregate_fn(global_state, client_values)
 
   return run_initialize, run_aggregate
 
 
-class DpUtilsTest(test.TestCase):
+class BuildDpQueryTest(test.TestCase):
 
   def test_build_dp_query_basic(self):
     query = differential_privacy.build_dp_query(1.0, 2.0, 3.0)
@@ -62,21 +71,12 @@ class DpUtilsTest(test.TestCase):
         expected_num_clients=10)
     self.assertIsInstance(query,
                           tensorflow_privacy.QuantileAdaptiveClipAverageQuery)
-
-    self.assertEqual(query._numerator._initial_l2_norm_clip, 1.0)
+    self.assertIsInstance(query._numerator,
+                          tensorflow_privacy.QuantileAdaptiveClipSumQuery)
 
     expected_sum_query_noise_multiplier = 2.0 * (1.0 - ccba)**(-0.5)
     self.assertAlmostEqual(query._numerator._noise_multiplier,
                            expected_sum_query_noise_multiplier)
-    self.assertEqual(query._numerator._target_unclipped_quantile, 0.5)
-    self.assertEqual(query._numerator._learning_rate, 0.05)
-    self.assertEqual(
-        query._numerator._clipped_fraction_query._numerator._l2_norm_clip, 0.5)
-    expected_clipped_count_stddev = 0.5 * 2.0 * ccba**(-0.5)
-    self.assertAlmostEqual(
-        query._numerator._clipped_fraction_query._numerator._stddev,
-        expected_clipped_count_stddev)
-    self.assertEqual(query._numerator._clipped_fraction_query._denominator, 10)
     self.assertEqual(query._denominator, 3.0)
 
   def test_build_dp_query_per_vector(self):
@@ -100,7 +100,7 @@ class DpUtilsTest(test.TestCase):
     model = mock_model(mock_weights(vectors))
 
     query = differential_privacy.build_dp_query(
-        1.0, 2.0, 3.0, use_per_vector=True, model=model)
+        1.0, 2.0, 3.0, per_vector_clipping=True, model=model)
 
     self.assertIsInstance(query, tensorflow_privacy.NestedQuery)
 
@@ -118,6 +118,9 @@ class DpUtilsTest(test.TestCase):
     effective_noise_multiplier = sum([x**-2.0 for x in noise_multipliers])**-0.5
     self.assertAlmostEqual(effective_noise_multiplier, 2.0)
 
+
+class BuildDpAggregateTest(test.TestCase):
+
   def test_dp_sum(self):
     query = tensorflow_privacy.GaussianSumQuery(4.0, 0.0)
 
@@ -128,8 +131,8 @@ class DpUtilsTest(test.TestCase):
 
     global_state, result = aggregate(global_state, [1.0, 3.0, 5.0])
 
-    self.assertEqual(getattr(global_state, 'l2_norm_clip'), 4.0)
-    self.assertEqual(getattr(global_state, 'stddev'), 0.0)
+    self.assertEqual(global_state['l2_norm_clip'], 4.0)
+    self.assertEqual(global_state['stddev'], 0.0)
     self.assertEqual(result, 8.0)
 
   def test_dp_sum_structure_odict(self):
@@ -151,26 +154,24 @@ class DpUtilsTest(test.TestCase):
 
     global_state, result = aggregate(global_state, data)
 
-    self.assertEqual(getattr(global_state, 'l2_norm_clip'), 5.0)
-    self.assertEqual(getattr(global_state, 'stddev'), 0.0)
+    self.assertEqual(global_state['l2_norm_clip'], 5.0)
+    self.assertEqual(global_state['stddev'], 0.0)
 
-    self.assertEqual(getattr(result, 'a')[0], 6.0)
-    self.assertEqual(getattr(result, 'b')[0], 9.0)
+    self.assertEqual(result['a'][0], 6.0)
+    self.assertEqual(result['b'][0], 9.0)
 
   def test_dp_sum_structure_list(self):
     query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
 
     def _value_type_fn(value):
       del value
-      return [tff.TensorType(tf.float32), tff.TensorType(tf.float32)]
-
-    def _from_anon_tuple_fn(record):
-      return list(record)
+      return [
+          computation_types.TensorType(tf.float32),
+          computation_types.TensorType(tf.float32),
+      ]
 
     dp_aggregate_fn, _ = differential_privacy.build_dp_aggregate(
-        query,
-        value_type_fn=_value_type_fn,
-        from_anon_tuple_fn=_from_anon_tuple_fn)
+        query, value_type_fn=_value_type_fn)
 
     def datapoint(a, b):
       return [tf.Variable(a, name='a'), tf.Variable(b, name='b')]
@@ -186,8 +187,8 @@ class DpUtilsTest(test.TestCase):
 
     global_state, result = aggregate(global_state, data)
 
-    self.assertEqual(getattr(global_state, 'l2_norm_clip'), 5.0)
-    self.assertEqual(getattr(global_state, 'stddev'), 0.0)
+    self.assertEqual(global_state['l2_norm_clip'], 5.0)
+    self.assertEqual(global_state['stddev'], 0.0)
 
     result = list(result)
     self.assertEqual(result[0], 6.0)
@@ -214,12 +215,11 @@ class DpUtilsTest(test.TestCase):
 
     def run_and_check(global_state, expected_l2_norm_clip, expected_result):
       global_state, result = aggregate(global_state, records)
-      self.assertEqual(
-          getattr(global_state, 'l2_norm_clip'), expected_l2_norm_clip)
+      self.assertEqual(global_state['l2_norm_clip'], expected_l2_norm_clip)
       self.assertEqual(result, expected_result)
       return global_state
 
-    self.assertEqual(getattr(global_state, 'l2_norm_clip'), 4.0)
+    self.assertEqual(global_state['l2_norm_clip'], 4.0)
     global_state = run_and_check(global_state, 3.0, 8.0)
     global_state = run_and_check(global_state, 2.0, 7.0)
     global_state = run_and_check(global_state, 1.0, 5.0)
@@ -234,6 +234,220 @@ class DpUtilsTest(test.TestCase):
     self.assertEqual(dp_global_state_type.__class__.__name__,
                      'NamedTupleTypeWithPyContainerType')
 
+  def test_default_from_tff_result_fn(self):
+
+    def check(elements, expected):
+      record = anonymous_tuple.AnonymousTuple(elements)
+      result = differential_privacy._default_from_tff_result_fn(record)
+      self.assertEqual(result, expected)
+
+    check([('a', 1), ('b', 2)], collections.OrderedDict([('a', 1), ('b', 2)]))
+    check([(None, 1), (None, 2)], [1, 2])
+
+    with self.assertRaisesRegex(ValueError, 'partially named fields'):
+      check([('a', 1), (None, 2)], None)
+
+
+class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('float', 0.0), ('list', [0.0, 0.0]),
+      ('odict', collections.OrderedDict([('a', 0.0), ('b', 0.0)])))
+  def test_process_type_signature(self, value_template):
+    query = tensorflow_privacy.GaussianSumQuery(4.0, 0.0)
+    value_type = type_conversions.type_from_tensors(value_template)
+    dp_aggregate_process = differential_privacy.build_dp_aggregate_process(
+        value_type, query)
+
+    server_state_type = computation_types.FederatedType(
+        computation_types.NamedTupleType([('l2_norm_clip', tf.float32),
+                                          ('stddev', tf.float32)]),
+        placements.SERVER)
+    self.assertEqual(
+        dp_aggregate_process.initialize.type_signature,
+        computation_types.FunctionType(
+            parameter=None, result=server_state_type))
+
+    client_value_type = computation_types.FederatedType(value_type,
+                                                        placements.CLIENTS)
+    client_value_weight_type = computation_types.FederatedType(
+        tf.float32, placements.CLIENTS)
+    server_result_type = computation_types.FederatedType(
+        value_type, placements.SERVER)
+    server_metrics_type = computation_types.FederatedType((), placements.SERVER)
+    self.assertEqual(
+        dp_aggregate_process.next.type_signature,
+        computation_types.FunctionType(
+            parameter=computation_types.NamedTupleType([
+                (None, server_state_type), (None, client_value_type),
+                (None, client_value_weight_type)
+            ]),
+            result=computation_types.NamedTupleType([
+                ('state', server_state_type), ('result', server_result_type),
+                ('measurements', server_metrics_type)
+            ])))
+
+  def test_dp_sum(self):
+    query = tensorflow_privacy.GaussianSumQuery(4.0, 0.0)
+
+    value_type = type_conversions.type_from_tensors(0.0)
+    dp_aggregate_process = differential_privacy.build_dp_aggregate_process(
+        value_type, query)
+
+    global_state = dp_aggregate_process.initialize()
+
+    output = dp_aggregate_process.next(global_state, [1.0, 3.0, 5.0],
+                                       [1.0, 1.0, 1.0])
+
+    self.assertEqual(output['state']['l2_norm_clip'], 4.0)
+    self.assertEqual(output['state']['stddev'], 0.0)
+    self.assertEqual(output['result'], 8.0)
+
+  def test_dp_sum_structure_odict(self):
+    query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
+
+    def datapoint(a, b):
+      return collections.OrderedDict([('a', (a,)), ('b', [b])])
+
+    data = [
+        datapoint(1.0, 2.0),
+        datapoint(2.0, 3.0),
+        datapoint(6.0, 8.0),  # Clipped to 3.0, 4.0
+    ]
+
+    value_type = type_conversions.type_from_tensors(data[0])
+    dp_aggregate_process = differential_privacy.build_dp_aggregate_process(
+        value_type, query)
+
+    global_state = dp_aggregate_process.initialize()
+
+    output = dp_aggregate_process.next(global_state, data, [1.0, 1.0, 1.0])
+
+    self.assertEqual(output['state']['l2_norm_clip'], 5.0)
+    self.assertEqual(output['state']['stddev'], 0.0)
+
+    self.assertEqual(output['result']['a'][0], 6.0)
+    self.assertEqual(output['result']['b'][0], 9.0)
+
+  def test_dp_sum_structure_nested_odict(self):
+    query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
+
+    def datapoint(a, b, c):
+      return collections.OrderedDict([('a', (a,)),
+                                      ('bc',
+                                       collections.OrderedDict([('b', [b]),
+                                                                ('c', (c,))]))])
+
+    data = [
+        datapoint(1.0, 2.0, 1.0),
+        datapoint(2.0, 3.0, 1.0),
+        datapoint(6.0, 8.0, 0.0),  # Clipped to 3.0, 4.0, 0.0
+    ]
+
+    value_type = type_conversions.type_from_tensors(data[0])
+    dp_aggregate_process = differential_privacy.build_dp_aggregate_process(
+        value_type, query)
+
+    global_state = dp_aggregate_process.initialize()
+
+    output = dp_aggregate_process.next(global_state, data, [1.0, 1.0, 1.0])
+
+    self.assertEqual(output['state']['l2_norm_clip'], 5.0)
+    self.assertEqual(output['state']['stddev'], 0.0)
+
+    self.assertEqual(output['result']['a'][0], 6.0)
+    self.assertEqual(output['result']['bc']['b'][0], 9.0)
+    self.assertEqual(output['result']['bc']['c'][0], 2.0)
+
+  def test_dp_sum_structure_complex(self):
+    query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
+
+    def datapoint(a, b, c):
+      return collections.OrderedDict([('a', (a,)), ('bc', ([b], (c,)))])
+
+    data = [
+        datapoint(1.0, 2.0, 1.0),
+        datapoint(2.0, 3.0, 1.0),
+        datapoint(6.0, 8.0, 0.0),  # Clipped to 3.0, 4.0, 0.0
+    ]
+
+    value_type = type_conversions.type_from_tensors(data[0])
+    dp_aggregate_process = differential_privacy.build_dp_aggregate_process(
+        value_type, query)
+
+    global_state = dp_aggregate_process.initialize()
+
+    output = dp_aggregate_process.next(global_state, data, [1.0, 1.0, 1.0])
+
+    self.assertEqual(output['state']['l2_norm_clip'], 5.0)
+    self.assertEqual(output['state']['stddev'], 0.0)
+
+    self.assertEqual(output['result']['a'][0], 6.0)
+    self.assertEqual(output['result']['bc'][0][0], 9.0)
+    self.assertEqual(output['result']['bc'][1][0], 2.0)
+
+  def test_dp_sum_structure_list(self):
+    query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
+
+    def datapoint(a, b):
+      return [tf.Variable(a, name='a'), tf.Variable(b, name='b')]
+
+    data = [
+        datapoint(1.0, 2.0),
+        datapoint(2.0, 3.0),
+        datapoint(6.0, 8.0),  # Clipped to 3.0, 4.0
+    ]
+
+    value_type = type_conversions.type_from_tensors(data[0])
+
+    dp_aggregate_process = differential_privacy.build_dp_aggregate_process(
+        value_type, query)
+
+    global_state = dp_aggregate_process.initialize()
+
+    output = dp_aggregate_process.next(global_state, data, [1.0, 1.0, 1.0])
+
+    self.assertEqual(output['state']['l2_norm_clip'], 5.0)
+    self.assertEqual(output['state']['stddev'], 0.0)
+
+    result = list(output['result'])
+    self.assertEqual(result[0], 6.0)
+    self.assertEqual(result[1], 9.0)
+
+  def test_dp_stateful_mean(self):
+
+    class ShrinkingSumQuery(tensorflow_privacy.GaussianSumQuery):
+
+      def get_noised_result(self, sample_state, global_state):
+        global_state = self._GlobalState(
+            tf.maximum(global_state.l2_norm_clip - 1, 0.0), global_state.stddev)
+
+        return sample_state, global_state
+
+    query = ShrinkingSumQuery(4.0, 0.0)
+
+    value_type = type_conversions.type_from_tensors(0.0)
+    dp_aggregate_process = differential_privacy.build_dp_aggregate_process(
+        value_type, query)
+
+    global_state = dp_aggregate_process.initialize()
+
+    records = [1.0, 3.0, 5.0]
+
+    def run_and_check(global_state, expected_l2_norm_clip, expected_result):
+      output = dp_aggregate_process.next(global_state, records, [1.0, 1.0, 1.0])
+      self.assertEqual(output['state']['l2_norm_clip'], expected_l2_norm_clip)
+      self.assertEqual(output['result'], expected_result)
+      return output['state']
+
+    self.assertEqual(global_state['l2_norm_clip'], 4.0)
+    global_state = run_and_check(global_state, 3.0, 8.0)
+    global_state = run_and_check(global_state, 2.0, 7.0)
+    global_state = run_and_check(global_state, 1.0, 5.0)
+    global_state = run_and_check(global_state, 0.0, 3.0)
+    global_state = run_and_check(global_state, 0.0, 0.0)
+
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   test.main()

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +13,15 @@
 # limitations under the License.
 """Defines utility functions for constructing TFF computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 
 import attr
-import six
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core import api as tff
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.api import values
 
 
 def update_state(state, **kwargs):
@@ -49,7 +46,7 @@ def update_state(state, **kwargs):
   elif py_typecheck.is_attrs(state):
     d = attr.asdict(state, dict_factory=collections.OrderedDict)
   else:
-    for key in six.iterkeys(kwargs):
+    for key in kwargs:
       if key not in state:
         raise KeyError(
             'state does not contain a field named "{!s}"'.format(key))
@@ -97,7 +94,7 @@ class StatefulFn(object):
            of call.
          * ...: The result of the aggregation.
     """
-    return self._next_fn(tff.to_value(state), *args, **kwargs)
+    return self._next_fn(values.to_value(state), *args, **kwargs)
 
 
 class StatefulAggregateFn(StatefulFn):
@@ -140,23 +137,27 @@ class StatefulAggregateFn(StatefulFn):
          * `aggregate`: The result of the aggregation of `value` weighted by
          `weight`.
     """
-    py_typecheck.check_type(state, tff.Value)
-    py_typecheck.check_type(state.type_signature, tff.FederatedType)
-    if state.type_signature.placement is not tff.SERVER:
+    py_typecheck.check_type(state, value_base.Value)
+    py_typecheck.check_type(state.type_signature,
+                            computation_types.FederatedType)
+    if state.type_signature.placement is not placements.SERVER:
       raise TypeError('`state` argument must be a tff.Value placed at SERVER. '
                       'Got: {!s}'.format(state.type_signature))
 
-    py_typecheck.check_type(value, tff.Value)
-    py_typecheck.check_type(value.type_signature, tff.FederatedType)
-    if value.type_signature.placement is not tff.CLIENTS:
+    py_typecheck.check_type(value, value_base.Value)
+    py_typecheck.check_type(value.type_signature,
+                            computation_types.FederatedType)
+    if value.type_signature.placement is not placements.CLIENTS:
       raise TypeError('`value` argument must be a tff.Value placed at CLIENTS. '
                       'Got: {!s}'.format(value.type_signature))
 
     if weight is not None:
-      py_typecheck.check_type(weight, tff.Value)
-      py_typecheck.check_type(weight.type_signature, tff.FederatedType)
-      py_typecheck.check_type(weight.type_signature, tff.FederatedType)
-      if weight.type_signature.placement is not tff.CLIENTS:
+      py_typecheck.check_type(weight, value_base.Value)
+      py_typecheck.check_type(weight.type_signature,
+                              computation_types.FederatedType)
+      py_typecheck.check_type(weight.type_signature,
+                              computation_types.FederatedType)
+      if weight.type_signature.placement is not placements.CLIENTS:
         raise TypeError('If not None, `weight` argument must be a tff.Value '
                         'placed at CLIENTS. Got: {!s}'.format(
                             weight.type_signature))
@@ -197,117 +198,18 @@ class StatefulBroadcastFn(StatefulFn):
          * `value`: The input `value` now placed (communicated) to the
          `tff.CLIENTS`.
     """
-    py_typecheck.check_type(state, tff.Value)
-    py_typecheck.check_type(state.type_signature, tff.FederatedType)
-    if state.type_signature.placement is not tff.SERVER:
+    py_typecheck.check_type(state, value_base.Value)
+    py_typecheck.check_type(state.type_signature,
+                            computation_types.FederatedType)
+    if state.type_signature.placement is not placements.SERVER:
       raise TypeError('`state` argument must be a tff.Value placed at SERVER. '
                       'Got: {!s}'.format(state.type_signature))
 
-    py_typecheck.check_type(value, tff.Value)
-    py_typecheck.check_type(value.type_signature, tff.FederatedType)
-    if value.type_signature.placement is not tff.SERVER:
+    py_typecheck.check_type(value, value_base.Value)
+    py_typecheck.check_type(value.type_signature,
+                            computation_types.FederatedType)
+    if value.type_signature.placement is not placements.SERVER:
       raise TypeError('`value` argument must be a tff.Value placed at CLIENTS. '
                       'Got: {!s}'.format(value.type_signature))
 
     return self._next_fn(state, value)
-
-
-class IterativeProcess(object):
-  """A process that includes an initialization and iterated computation.
-
-  An iterated process will usually be driven by a control loop like:
-
-  ```python
-  def initialize():
-    ...
-
-  def next(state):
-    ...
-
-  iterative_process = IterativeProcess(initialize, next)
-  state = iterative_process.initialize()
-  for round in range(num_rounds):
-    state = iterative_process.next(state)
-  ```
-
-  The iteration step can accept arguments in addition to `state` (which must be
-  the first argument), and return additional arguments:
-
-  ```python
-  def next(state, item):
-    ...
-
-  iterative_process = ...
-  state = iterative_process.initialize()
-  for round in range(num_rounds):
-    state, output = iterative_process.next(state, round)
-  ```
-  """
-
-  def __init__(self, initialize_fn, next_fn):
-    """Creates a `tff.IterativeProcess`.
-
-    Args:
-      initialize_fn: a no-arg `tff.Computation` that creates the initial state
-        of the chained computation.
-      next_fn: a `tff.Computation` that defines an iterated function. If
-        `initialize_fn` returns a type _T_, then `next_fn` must also return type
-        _T_  or multiple values where the first is of type _T_, and accept
-        either a single argument of type _T_ or multiple arguments where the
-        first argument must be of type _T_.
-
-    Raises:
-      TypeError: `initialize_fn` and `next_fn` are not compatible function
-        types.
-    """
-    py_typecheck.check_type(initialize_fn, tff.Computation)
-    if initialize_fn.type_signature.parameter is not None:
-      raise TypeError(
-          'initialize_fn must be a no-arg tff.Computation, but found parameter '
-          '{}'.format(initialize_fn.type_signature))
-    initialize_result_type = initialize_fn.type_signature.result
-
-    py_typecheck.check_type(next_fn, tff.Computation)
-    if isinstance(next_fn.type_signature.parameter, tff.NamedTupleType):
-      next_first_param_type = next_fn.type_signature.parameter[0]
-    else:
-      next_first_param_type = next_fn.type_signature.parameter
-    if initialize_result_type != next_first_param_type:
-      raise TypeError('The return type of initialize_fn should match the '
-                      'first parameter of next_fn, but found\n'
-                      'initialize_fn.type_signature.result=\n{}\n'
-                      'next_fn.type_signature.parameter[0]=\n{}'.format(
-                          initialize_result_type, next_first_param_type))
-
-    next_result_type = next_fn.type_signature.result
-    if next_first_param_type != next_result_type:
-      # This might be multiple output next_fn, check if the first argument might
-      # be the state. If still not the right type, raise an error.
-      if isinstance(next_result_type, tff.NamedTupleType):
-        next_result_type = next_result_type[0]
-      if next_first_param_type != next_result_type:
-        raise TypeError('The return type of next_fn should match the '
-                        'first parameter, but found\n'
-                        'next_fn.type_signature.parameter[0]=\n{}\n'
-                        'actual next_result_type=\n{}'.format(
-                            next_first_param_type, next_result_type))
-    self._initialize_fn = initialize_fn
-    self._next_fn = next_fn
-
-  @property
-  def initialize(self):
-    """A no-arg `tff.Computation` that returns the initial state."""
-    return self._initialize_fn
-
-  @property
-  def next(self):
-    """A `tff.Computation` that produces the next state.
-
-    The first argument of should always be the current state (originally
-    produced by `tff.IterativeProcess.initialize`), and the first (or only)
-    returned value is the updated state.
-
-    Returns:
-      A `tff.Computation`.
-    """
-    return self._next_fn

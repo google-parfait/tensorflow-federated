@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,10 @@
 # limitations under the License.
 """General utilities specific to the manipulation of tensors and operators."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import functools
 import operator
 
-import six
-from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -90,8 +83,8 @@ def to_odict(d):
     return d
   py_typecheck.check_type(d, dict)
   items = []
-  for k, v in six.iteritems(d):
-    py_typecheck.check_type(k, six.string_types)
+  for k, v in d.items():
+    py_typecheck.check_type(k, str)
     items.append((k, v))
   return collections.OrderedDict(sorted(items))
 

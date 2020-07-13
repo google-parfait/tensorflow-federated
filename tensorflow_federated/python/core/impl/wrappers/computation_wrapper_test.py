@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +16,8 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import context_base
-from tensorflow_federated.python.core.impl import context_stack_impl
+from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 
@@ -35,7 +34,7 @@ class WrappedForTest(function_utils.ConcreteFunction):
     del name
     self._fn = function_utils.wrap_as_zero_or_one_arg_callable(
         fn, parameter_type, unpack)
-    super(WrappedForTest, self).__init__(
+    super().__init__(
         computation_types.FunctionType(parameter_type, tf.string),
         context_stack_impl.context_stack)
 
@@ -60,7 +59,7 @@ test_wrap = computation_wrapper.ComputationWrapper(WrappedForTest)
 
 class ComputationWrapperTest(test.TestCase):
 
-  # NOTE: Many tests below silence certain linter warnings. These warnings are
+  # Note: Many tests below silence certain linter warnings. These warnings are
   # not applicable, since it's the wrapper code, not not the dummy functions
   # that are being tested, so whether the specific function declarations used
   # here follow good practices is not really relevant. The purpose of the test
@@ -130,20 +129,25 @@ class ComputationWrapperTest(test.TestCase):
     with self.assertRaises(TypeError):
 
       @test_wrap(tf.int32)
-      def my_fn(x, y):  # pylint: disable=unused-variable,unused-argument
+      def my_fn(x, y):  # pylint: disable=unused-variable
+        del x, y  # Unused.
         pass
 
   def test_as_wrapper_with_non_tuple_argument_on_two_parameter_lambda(self):
     with self.assertRaises(TypeError):
-      test_wrap(
-          lambda x, y: None,  # pylint: disable=unused-variable,unused-argument
-          tf.int32)
+
+      def my_fn(x, y):
+        del x, y  # Unused.
+        pass
+
+      test_wrap(my_fn, tf.int32)
 
   def test_as_decorator_with_two_tuple_argument_on_three_param_py_fn(self):
     with self.assertRaises(TypeError):
 
       @test_wrap((tf.int32, tf.int32))
-      def my_fn(x, y, z):  # pylint: disable=unused-variable,unused-argument
+      def my_fn(x, y, z):  # pylint: disable=unused-variable
+        del x, y, z  # Unused.
         pass
 
   def test_as_wrapper_with_two_tuple_argument_on_three_param_lambda(self):
@@ -154,7 +158,8 @@ class ComputationWrapperTest(test.TestCase):
     with self.assertRaises(TypeError):
 
       @test_wrap([('x', tf.int32), ('y', tf.int32)])
-      def my_fn(x, z):  # pylint: disable=unused-variable,unused-argument
+      def my_fn(x, z):  # pylint: disable=unused-variable
+        del x, z  # Unused.
         pass
 
   def test_as_wrapper_with_arg_name_mismatching_element_name_in_lambda(self):
@@ -346,6 +351,57 @@ class ComputationWrapperTest(test.TestCase):
   def test_as_wrapper_with_unbundled_arguments(self):
     foo = test_wrap(lambda unused_x, unused_y: 99, tf.int32, tf.int32)
     self.assertEqual(foo(10, 20), '<10,20> : <int32,int32> -> 99')
+
+  def test_as_wrapper_with_one_argument_instance_method(self):
+
+    class IntWrapper:
+
+      def __init__(self, x):
+        self._x = x
+
+      def multiply_by(self, y):
+        return self._x * y
+
+    five = IntWrapper(5)
+    wrapped = test_wrap(five.multiply_by, tf.int32)
+    self.assertEqual(wrapped(2), '2 : int32 -> 10')
+
+  def test_as_wrapper_with_no_argument_instance_method(self):
+
+    class C:
+
+      def __init__(self, x):
+        self._x = x
+
+      def my_method(self):
+        return self._x
+
+    c = C(99)
+    wrapped = test_wrap(c.my_method)
+    self.assertEqual(wrapped(), 'None : None -> 99')
+
+  def test_as_wrapper_with_class_property(self):
+
+    class C:
+
+      @property
+      def x(self):
+        return 99
+
+    c = C()
+    with self.assertRaises(TypeError):
+      test_wrap(c.x)
+
+  def test_as_wrapper_with_classmethod(self):
+
+    class C:
+
+      @classmethod
+      def prefix(cls, msg):
+        return f'{cls.__name__}_{msg}'
+
+    wrapped = test_wrap(C.prefix)
+    self.assertEqual(wrapped('foo'), '<foo> : <string> -> C_foo')
 
 
 if __name__ == '__main__':

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """TensorFlow Federated Library."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import sys
-import warnings
 
 from tensorflow_federated.version import __version__  # pylint: disable=g-bad-import-order
 
@@ -37,9 +31,11 @@ from tensorflow_federated.python.core.api.intrinsics import federated_aggregate
 from tensorflow_federated.python.core.api.intrinsics import federated_apply
 from tensorflow_federated.python.core.api.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.api.intrinsics import federated_collect
+from tensorflow_federated.python.core.api.intrinsics import federated_eval
 from tensorflow_federated.python.core.api.intrinsics import federated_map
 from tensorflow_federated.python.core.api.intrinsics import federated_mean
 from tensorflow_federated.python.core.api.intrinsics import federated_reduce
+from tensorflow_federated.python.core.api.intrinsics import federated_secure_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_value
 from tensorflow_federated.python.core.api.intrinsics import federated_zip
@@ -52,66 +48,20 @@ from tensorflow_federated.python.core.api.typed_object import TypedObject
 from tensorflow_federated.python.core.api.value_base import Value
 from tensorflow_federated.python.core.api.values import to_value
 
-# NOTE: These imports must happen after the API imports.
+# Note: These imports must happen after the API imports.
 # pylint: disable=g-bad-import-order
-from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import backends
+from tensorflow_federated.python.core import framework
+from tensorflow_federated.python.core import templates
+from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core import utils
 # pylint: enable=g-bad-import-order
 
-# NOTE: These imports must happen after the Core imports.
+# Note: These imports must happen after the Core imports.
 # pylint: disable=g-bad-import-order
 from tensorflow_federated.python import learning
 from tensorflow_federated.python import simulation
-# pylint: enable=g-bad-import-order,wildcard-import
+# pylint: enable=g-bad-import-order
 
-
-# pylint: disable=g-bad-exception-name
-class Python2DeprecationWarning(Warning):
-  pass
-
-
-# pylint: enable=g-bad-exception-name
-
-if sys.version_info[0] < 3:
-  warnings.warn(
-      "Using TensorFlow Federated with Python 2 is deprecated and will be removed in January 2020.\n"
-      "See https://python3statement.org/ for more information.",
-      Python2DeprecationWarning)
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "backends",
-    "CLIENTS",
-    "Computation",
-    "FederatedType",
-    "FunctionType",
-    "NamedTupleType",
-    "SERVER",
-    "SequenceType",
-    "TensorType",
-    "Type",
-    "TypedObject",
-    "Value",
-    "federated_aggregate",
-    "federated_apply",
-    "federated_broadcast",
-    "federated_collect",
-    "federated_computation",
-    "federated_map",
-    "federated_mean",
-    "federated_reduce",
-    "federated_sum",
-    "federated_value",
-    "federated_zip",
-    "framework",
-    "learning",
-    "sequence_map",
-    "sequence_reduce",
-    "sequence_sum",
-    "simulation",
-    "tf_computation",
-    "to_type",
-    "to_value",
-    "utils",
-]
+if sys.version_info[0] < 3 or sys.version_info[1] < 6:
+  raise Exception('TFF only supports Python versions 3.6 or later.')

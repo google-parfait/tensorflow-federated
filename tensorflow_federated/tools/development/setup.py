@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,21 +68,20 @@ with open('tensorflow_federated/version.py') as fp:
   VERSION = globals_dict['__version__']
 
 REQUIRED_PACKAGES = [
-    'absl-py~=0.7',
-    'attrs~=18.2',
+    'absl-py~=0.9.0',
+    'attrs~=19.3.0',
     'cachetools~=3.1.1',
     'dm-tree~=0.1.1',
-    'enum34~=1.1',
-    'grpcio~=1.24.3',
-    'h5py~=2.6',
-    'numpy~=1.14',
+    'grpcio~=1.29.0',
+    'h5py~=2.10.0',
+    'numpy~=1.18.4',
     'portpicker~=1.3.1',
     'retrying~=1.3.3',
-    'six~=1.10',
-    'tensorflow-addons~=0.6.0',
-    'tensorflow-model-optimization~=0.1.3',
-    'tensorflow-privacy~=0.2.0',
-    'tensorflow~=2.0.0',
+    'semantic-version~=2.8.5',
+    'tensorflow-addons~=0.9.1',
+    'tensorflow-model-optimization~=0.3.0',
+    'tensorflow-privacy~=0.3.0',
+    'tensorflow~=2.2.0',
 ]
 
 setuptools.setup(
@@ -105,12 +103,9 @@ setuptools.setup(
         'Intended Audience :: Education',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Mathematics',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',

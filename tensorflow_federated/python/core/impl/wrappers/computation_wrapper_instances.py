@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,27 +13,35 @@
 # limitations under the License.
 """Definitions of specific computation wrapper instances."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import federated_computation_utils
 from tensorflow_federated.python.core.impl import tensorflow_serialization
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 
+# The documentation of the arguments and return values from the wrapper_fns
+# is quite detailed and can be found in `computation_wrapper.py` along with
+# the definitions of `_wrap` and `ComputationWrapper`. In order to avoid having
+# to repeat those descriptions (and make any relevant changes in four separate
+# places) the documentation here simply forwards readers over.
+#
+# pylint:disable=g-doc-args,g-doc-return-or-yield
+
 
 def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
-  """Wrapper function to plug Tensorflow logic in to TFF framework."""
+  """Wrapper function to plug Tensorflow logic into the TFF framework.
+
+  This function is passed through `computation_wrapper.ComputationWrapper`.
+  Documentation its arguments can be found inside the definition of that class.
+  """
   del name  # Unused.
   target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
       target_fn, parameter_type, unpack)
-  if not type_utils.is_tensorflow_compatible_type(parameter_type):
+  if not type_analysis.is_tensorflow_compatible_type(parameter_type):
     raise TypeError('`tf_computation`s can accept only parameter types with '
                     'constituents `SequenceType`, `NamedTupleType` '
                     'and `TensorType`; you have attempted to create one '
@@ -49,6 +56,11 @@ tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
 
 
 def _tf2_wrapper_fn(target_fn, parameter_type, unpack, name=None):
+  """Wrapper function to plug Tensorflow 2.0 logic into the TFF framework.
+
+  This function is passed through `computation_wrapper.ComputationWrapper`.
+  Documentation its arguments can be found inside the definition of that class.
+  """
   del name  # Unused.
   comp_pb, extra_type_spec = (
       tensorflow_serialization.serialize_tf2_as_tf_computation(
@@ -65,22 +77,29 @@ def _federated_computation_wrapper_fn(target_fn,
                                       parameter_type,
                                       unpack,
                                       name=None):
-  """Wrapper function to plug orchestration logic in to TFF framework."""
+  """Wrapper function to plug orchestration logic into the TFF framework.
+
+  This function is passed through `computation_wrapper.ComputationWrapper`.
+  Documentation its arguments can be found inside the definition of that class.
+  """
   target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
       target_fn, parameter_type, unpack)
   ctx_stack = context_stack_impl.context_stack
-  target_lambda = (
+  target_lambda, extra_type_spec = (
       federated_computation_utils.zero_or_one_arg_fn_to_building_block(
           target_fn,
           'arg' if parameter_type else None,
           parameter_type,
           ctx_stack,
           suggested_name=name))
-  return computation_impl.ComputationImpl(target_lambda.proto, ctx_stack)
+  return computation_impl.ComputationImpl(target_lambda.proto, ctx_stack,
+                                          extra_type_spec)
 
 
 federated_computation_wrapper = computation_wrapper.ComputationWrapper(
     _federated_computation_wrapper_fn)
+
+# pylint:enable=g-doc-args,g-doc-return-or-yield
 
 
 def building_block_to_computation(building_block):

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,10 @@
 # limitations under the License.
 """Save or load a nested structure."""
 
-import logging
 import os.path
 import re
 
+from absl import logging
 import tensorflow as tf
 
 
@@ -63,7 +62,7 @@ def latest_checkpoint(root_output_dir, prefix='ckpt_'):
 def save(obj, export_dir, prefix=None):
   r"""Save a nested structure to `export_dir`.
 
-  NOTE: to be compatible with `latest_checkpoint`, the basename of `export_dir`
+  Note: to be compatible with `latest_checkpoint`, the basename of `export_dir`
   must follow the regular expression pattern `<prefix>\d+`, where the final
   digit matcher  determines the ordering of the checkpoints.
 
@@ -114,7 +113,7 @@ def load(export_dir, obj_template):
     FileNotFoundError: No such file or directory.
   """
   if tf.io.gfile.exists(export_dir):
-    loaded = tf.compat.v2.saved_model.load(export_dir)
+    loaded = tf.saved_model.load(export_dir)
 
     flat_obj = loaded.build_obj_fn()
     obj = tf.nest.pack_sequence_as(obj_template, flat_obj)

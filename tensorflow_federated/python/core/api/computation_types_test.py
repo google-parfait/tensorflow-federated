@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +21,16 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
+
+
+class TestCheckEquivalentTypesTest(absltest.TestCase):
+
+  def test_raises_type_error(self):
+    int_type = computation_types.TensorType(tf.int32)
+    bool_type = computation_types.TensorType(tf.bool)
+    int_type.check_equivalent_to(int_type)
+    with self.assertRaises(TypeError):
+      int_type.check_equivalent_to(bool_type)
 
 
 class TensorTypeTest(absltest.TestCase):
@@ -62,6 +71,33 @@ class TensorTypeTest(absltest.TestCase):
     self.assertEqual(t1, t2)
     self.assertEqual(t3, t4)
     self.assertNotEqual(t1, t3)
+
+  def test_is_assignable_from(self):
+    t = computation_types.TensorType(tf.int32, [10])
+    self.assertFalse(
+        t.is_assignable_from(computation_types.TensorType(tf.int32)))
+    self.assertFalse(
+        t.is_assignable_from(computation_types.TensorType(tf.int32, [5])))
+    self.assertFalse(
+        t.is_assignable_from(computation_types.TensorType(tf.int32, [10, 10])))
+    self.assertTrue(
+        t.is_assignable_from(computation_types.TensorType(tf.int32, 10)))
+
+  def test_is_assignable_from_unknown_dims(self):
+    t1 = computation_types.TensorType(tf.int32, [None])
+    t2 = computation_types.TensorType(tf.int32, [10])
+    self.assertTrue(t1.is_assignable_from(t2))
+    self.assertFalse(t2.is_assignable_from(t1))
+
+  def test_is_equivalent_to(self):
+    t1 = computation_types.TensorType(tf.int32, [None])
+    t2 = computation_types.TensorType(tf.int32, [10])
+    t3 = computation_types.TensorType(tf.int32, [10])
+    self.assertTrue(t1.is_equivalent_to(t1))
+    self.assertTrue(t2.is_equivalent_to(t3))
+    self.assertTrue(t3.is_equivalent_to(t2))
+    self.assertFalse(t1.is_equivalent_to(t2))
+    self.assertFalse(t2.is_equivalent_to(t1))
 
 
 class NamedTupleTypeTest(absltest.TestCase):
@@ -122,6 +158,20 @@ class NamedTupleTypeTest(absltest.TestCase):
     self.assertNotEqual(t4, t5)
     self.assertNotEqual(t4, t6)
 
+  def test_is_assignable_from(self):
+    t1 = computation_types.NamedTupleType([tf.int32, ('a', tf.bool)])
+    t2 = computation_types.NamedTupleType([tf.int32, ('a', tf.bool)])
+    t3 = computation_types.NamedTupleType([tf.int32, ('b', tf.bool)])
+    t4 = computation_types.NamedTupleType([tf.int32, ('a', tf.string)])
+    t5 = computation_types.NamedTupleType([tf.int32])
+    t6 = computation_types.NamedTupleType([tf.int32, tf.bool])
+    self.assertTrue(t1.is_assignable_from(t2))
+    self.assertFalse(t1.is_assignable_from(t3))
+    self.assertFalse(t1.is_assignable_from(t4))
+    self.assertFalse(t1.is_assignable_from(t5))
+    self.assertTrue(t1.is_assignable_from(t6))
+    self.assertFalse(t6.is_assignable_from(t1))
+
 
 class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
 
@@ -162,14 +212,14 @@ class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
 
     @attr.s
     class TestFoo(object):
-      A = attr.ib()
+      a = attr.ib()
 
-    t = computation_types.NamedTupleTypeWithPyContainerType([('A', tf.int32)],
+    t = computation_types.NamedTupleTypeWithPyContainerType([('a', tf.int32)],
                                                             TestFoo)
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), TestFoo)
-    self.assertEqual(repr(t), 'NamedTupleType([(\'A\', TensorType(tf.int32))])')
+    self.assertEqual(repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))])')
 
 
 class SequenceTypeTest(absltest.TestCase):
@@ -199,6 +249,14 @@ class SequenceTypeTest(absltest.TestCase):
     t3 = computation_types.SequenceType(tf.bool)
     self.assertEqual(t1, t2)
     self.assertNotEqual(t1, t3)
+
+  def test_is_assignable_from(self):
+    self.assertTrue(
+        computation_types.SequenceType(tf.int32).is_assignable_from(
+            computation_types.SequenceType(tf.int32)))
+    self.assertFalse(
+        computation_types.SequenceType(tf.int32).is_assignable_from(
+            computation_types.SequenceType(tf.bool)))
 
 
 class FunctionTypeTest(absltest.TestCase):
@@ -232,6 +290,16 @@ class FunctionTypeTest(absltest.TestCase):
     self.assertNotEqual(t1, t3)
     self.assertNotEqual(t1, t4)
 
+  def test_is_assignable_from(self):
+    t1 = computation_types.FunctionType(tf.int32, tf.bool)
+    t2 = computation_types.FunctionType(tf.int32, tf.bool)
+    t3 = computation_types.FunctionType(tf.int32, tf.int32)
+    t4 = computation_types.TensorType(tf.int32)
+    self.assertTrue(t1.is_assignable_from(t1))
+    self.assertTrue(t1.is_assignable_from(t2))
+    self.assertFalse(t1.is_assignable_from(t3))
+    self.assertFalse(t1.is_assignable_from(t4))
+
 
 class AbstractTypeTest(absltest.TestCase):
 
@@ -249,6 +317,12 @@ class AbstractTypeTest(absltest.TestCase):
     self.assertEqual(t1, t2)
     self.assertNotEqual(t1, t3)
 
+  def test_is_assignable_from(self):
+    t1 = computation_types.AbstractType('T1')
+    t2 = computation_types.AbstractType('T2')
+    with self.assertRaises(TypeError):
+      t1.is_assignable_from(t2)
+
 
 class PlacementTypeTest(absltest.TestCase):
 
@@ -261,6 +335,12 @@ class PlacementTypeTest(absltest.TestCase):
     t1 = computation_types.PlacementType()
     t2 = computation_types.PlacementType()
     self.assertEqual(t1, t2)
+
+  def test_is_assignable_from(self):
+    t1 = computation_types.PlacementType()
+    t2 = computation_types.PlacementType()
+    self.assertTrue(t1.is_assignable_from(t1))
+    self.assertTrue(t1.is_assignable_from(t2))
 
 
 class FederatedTypeTest(absltest.TestCase):
@@ -288,6 +368,33 @@ class FederatedTypeTest(absltest.TestCase):
     self.assertNotEqual(t1, t3)
     self.assertNotEqual(t1, t4)
     self.assertNotEqual(t1, t5)
+
+  def test_with_federated_type(self):
+    t1 = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    self.assertTrue(t1.is_assignable_from(t1))
+    t2 = computation_types.FederatedType(
+        tf.int32, placements.CLIENTS, all_equal=True)
+    self.assertTrue(t1.is_assignable_from(t2))
+    self.assertTrue(t2.is_assignable_from(t2))
+    self.assertFalse(t2.is_assignable_from(t1))
+    t3 = computation_types.FederatedType(
+        computation_types.TensorType(tf.int32, [10]), placements.CLIENTS)
+    t4 = computation_types.FederatedType(
+        computation_types.TensorType(tf.int32, [None]), placements.CLIENTS)
+    self.assertTrue(t4.is_assignable_from(t3))
+    self.assertFalse(t3.is_assignable_from(t4))
+    t5 = computation_types.FederatedType(
+        computation_types.TensorType(tf.int32, [10]), placements.SERVER)
+    self.assertFalse(t3.is_assignable_from(t5))
+    self.assertFalse(t5.is_assignable_from(t3))
+    t6 = computation_types.FederatedType(
+        computation_types.TensorType(tf.int32, [10]),
+        placements.CLIENTS,
+        all_equal=True)
+    self.assertTrue(t3.is_assignable_from(t6))
+    self.assertTrue(t4.is_assignable_from(t6))
+    self.assertFalse(t6.is_assignable_from(t3))
+    self.assertFalse(t6.is_assignable_from(t4))
 
 
 class ToTypeTest(absltest.TestCase):
@@ -443,8 +550,8 @@ class ToTypeTest(absltest.TestCase):
 
     @attr.s
     class TestFoo(object):
-      A = attr.ib(type=tf.int32)
-      B = attr.ib(type=(tf.float32, [2]))
+      a = attr.ib(type=tf.int32)
+      b = attr.ib(type=(tf.float32, [2]))
 
     t = computation_types.to_type(TestFoo)
     self.assertIsInstance(t,
@@ -452,19 +559,19 @@ class ToTypeTest(absltest.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), TestFoo)
-    self.assertEqual(str(t), '<A=int32,B=float32[2]>')
+    self.assertEqual(str(t), '<a=int32,b=float32[2]>')
 
   def test_attrs_class_missing_type_fails(self):
 
     @attr.s
     class TestFoo(object):
-      A = attr.ib(type=tf.int32)
-      B = attr.ib()  # no type parameter
-      C = attr.ib()  # no type parameter
+      a = attr.ib(type=tf.int32)
+      b = attr.ib()  # no type parameter
+      c = attr.ib()  # no type parameter
 
     expected_msg = (
         "Cannot infer tff.Type for attr.s class 'TestFoo' because some "
-        "attributes were missing type specifications: ['B', 'C']")
+        "attributes were missing type specifications: ['b', 'c']")
     with self.assertRaisesWithLiteralMatch(TypeError, expected_msg):
       computation_types.to_type(TestFoo)
 
@@ -472,87 +579,83 @@ class ToTypeTest(absltest.TestCase):
 
     @attr.s
     class TestFoo(object):
-      A = attr.ib()
-      B = attr.ib()
+      a = attr.ib()
+      b = attr.ib()
 
-    t = computation_types.to_type(TestFoo(A=tf.int32, B=(tf.float32, [2])))
+    t = computation_types.to_type(TestFoo(a=tf.int32, b=(tf.float32, [2])))
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), TestFoo)
-    self.assertEqual(str(t), '<A=int32,B=float32[2]>')
+    self.assertEqual(str(t), '<a=int32,b=float32[2]>')
 
   def test_nested_attrs_class(self):
 
     @attr.s
     class TestFoo(object):
-      A = attr.ib()
-      B = attr.ib()
+      a = attr.ib()
+      b = attr.ib()
 
     @attr.s
     class TestFoo2(object):
-      C = attr.ib(type=(tf.float32, [2]))
+      c = attr.ib(type=(tf.float32, [2]))
 
-    t = computation_types.to_type(TestFoo(A=[tf.int32, tf.bool], B=TestFoo2))
+    t = computation_types.to_type(TestFoo(a=[tf.int32, tf.bool], b=TestFoo2))
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), TestFoo)
-    self.assertIsInstance(t.A,
+    self.assertIsInstance(t.a,
                           computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t.A), list)
-    self.assertIsInstance(t.B,
+            t.a), list)
+    self.assertIsInstance(t.b,
                           computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t.B), TestFoo2)
-    self.assertEqual(str(t), '<A=<int32,bool>,B=<C=float32[2]>>')
+            t.b), TestFoo2)
+    self.assertEqual(str(t), '<a=<int32,bool>,b=<c=float32[2]>>')
 
 
 class RepresentationTest(absltest.TestCase):
 
   def test_returns_string_for_abstract_type(self):
     type_spec = computation_types.AbstractType('T')
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, 'T')
-    formatted_string = type_spec.formatted_representation()
-    self.assertEqual(formatted_string, 'T')
+
+    self.assertEqual(type_spec.compact_representation(), 'T')
+    self.assertEqual(type_spec.formatted_representation(), 'T')
 
   def test_returns_string_for_federated_type_clients(self):
     type_spec = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, '{int32}@CLIENTS')
-    formatted_string = type_spec.formatted_representation()
-    self.assertEqual(formatted_string, '{int32}@CLIENTS')
+
+    self.assertEqual(type_spec.compact_representation(), '{int32}@CLIENTS')
+    self.assertEqual(type_spec.formatted_representation(), '{int32}@CLIENTS')
 
   def test_returns_string_for_federated_type_server(self):
     type_spec = computation_types.FederatedType(tf.int32, placements.SERVER)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, 'int32@SERVER')
-    formatted_string = type_spec.formatted_representation()
-    self.assertEqual(formatted_string, 'int32@SERVER')
+
+    self.assertEqual(type_spec.compact_representation(), 'int32@SERVER')
+    self.assertEqual(type_spec.formatted_representation(), 'int32@SERVER')
 
   def test_returns_string_for_function_type(self):
     type_spec = computation_types.FunctionType(tf.int32, tf.float32)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, '(int32 -> float32)')
-    formatted_string = type_spec.formatted_representation()
-    self.assertEqual(formatted_string, '(int32 -> float32)')
+
+    self.assertEqual(type_spec.compact_representation(), '(int32 -> float32)')
+    self.assertEqual(type_spec.formatted_representation(), '(int32 -> float32)')
 
   def test_returns_string_for_function_type_with_named_tuple_type_parameter(
       self):
     parameter = computation_types.NamedTupleType((tf.int32, tf.float32))
     type_spec = computation_types.FunctionType(parameter, tf.bool)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, '(<int32,float32> -> bool)')
-    formatted_string = type_spec.formatted_representation()
+
+    self.assertEqual(type_spec.compact_representation(),
+                     '(<int32,float32> -> bool)')
     # pyformat: disable
     self.assertEqual(
-        formatted_string,
+        type_spec.formatted_representation(),
         '(<\n'
         '  int32,\n'
         '  float32\n'
@@ -563,12 +666,12 @@ class RepresentationTest(absltest.TestCase):
   def test_returns_string_for_function_type_with_named_tuple_type_result(self):
     result = computation_types.NamedTupleType((tf.int32, tf.float32))
     type_spec = computation_types.FunctionType(tf.bool, result)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, '(bool -> <int32,float32>)')
-    formatted_string = type_spec.formatted_representation()
+
+    self.assertEqual(type_spec.compact_representation(),
+                     '(bool -> <int32,float32>)')
     # pyformat: disable
     self.assertEqual(
-        formatted_string,
+        type_spec.formatted_representation(),
         '(bool -> <\n'
         '  int32,\n'
         '  float32\n'
@@ -581,12 +684,12 @@ class RepresentationTest(absltest.TestCase):
     parameter = computation_types.NamedTupleType((tf.int32, tf.float32))
     result = computation_types.NamedTupleType((tf.bool, tf.string))
     type_spec = computation_types.FunctionType(parameter, result)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, '(<int32,float32> -> <bool,string>)')
-    formatted_string = type_spec.formatted_representation()
+
+    self.assertEqual(type_spec.compact_representation(),
+                     '(<int32,float32> -> <bool,string>)')
     # pyformat: disable
     self.assertEqual(
-        formatted_string,
+        type_spec.formatted_representation(),
         '(<\n'
         '  int32,\n'
         '  float32\n'
@@ -599,12 +702,11 @@ class RepresentationTest(absltest.TestCase):
 
   def test_returns_string_for_named_tuple_type_unnamed(self):
     type_spec = computation_types.NamedTupleType((tf.int32, tf.float32))
-    # compact_string = type_spec.compact_representation()
-    # self.assertEqual(compact_string, '<int32,float32>')
-    formatted_string = type_spec.formatted_representation()
+
+    self.assertEqual(type_spec.compact_representation(), '<int32,float32>')
     # pyformat: disable
     self.assertEqual(
-        formatted_string,
+        type_spec.formatted_representation(),
         '<\n'
         '  int32,\n'
         '  float32\n'
@@ -615,12 +717,11 @@ class RepresentationTest(absltest.TestCase):
   def test_returns_string_for_named_tuple_type_named(self):
     type_spec = computation_types.NamedTupleType(
         (('a', tf.int32), ('b', tf.float32)))
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, '<a=int32,b=float32>')
-    formatted_string = type_spec.formatted_representation()
+
+    self.assertEqual(type_spec.compact_representation(), '<a=int32,b=float32>')
     # pyformat: disable
     self.assertEqual(
-        formatted_string,
+        type_spec.formatted_representation(),
         '<\n'
         '  a=int32,\n'
         '  b=float32\n'
@@ -632,12 +733,13 @@ class RepresentationTest(absltest.TestCase):
     type_spec_1 = computation_types.NamedTupleType((tf.int32, tf.float32))
     type_spec_2 = computation_types.NamedTupleType((type_spec_1, tf.bool))
     type_spec_3 = computation_types.NamedTupleType((type_spec_2, tf.string))
-    compact_string = type_spec_3.compact_representation()
-    self.assertEqual(compact_string, '<<<int32,float32>,bool>,string>')
-    formatted_string = type_spec_3.formatted_representation()
+    type_spec = type_spec_3
+
+    self.assertEqual(type_spec.compact_representation(),
+                     '<<<int32,float32>,bool>,string>')
     # pyformat: disable
     self.assertEqual(
-        formatted_string,
+        type_spec.formatted_representation(),
         '<\n'
         '  <\n'
         '    <\n'
@@ -651,50 +753,51 @@ class RepresentationTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_string_for_named_tuple_type_one_element(self):
+  def test_returns_string_for_named_tuple_type_with_one_element(self):
     type_spec = computation_types.NamedTupleType((tf.int32,))
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, '<int32>')
-    formatted_string = type_spec.formatted_representation()
+
+    self.assertEqual(type_spec.compact_representation(), '<int32>')
     # pyformat: disable
     self.assertEqual(
-        formatted_string,
+        type_spec.formatted_representation(),
         '<\n'
         '  int32\n'
         '>'
     )
     # pyformat: enable
 
+  def test_returns_string_for_named_tuple_type_with_no_element(self):
+    type_spec = computation_types.NamedTupleType([])
+
+    self.assertEqual(type_spec.compact_representation(), '<>')
+    self.assertEqual(type_spec.formatted_representation(), '<>')
+
   def test_returns_string_for_placement_type(self):
     type_spec = computation_types.PlacementType()
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, 'placement')
-    formatted_string = type_spec.formatted_representation()
-    self.assertEqual(formatted_string, 'placement')
+
+    self.assertEqual(type_spec.compact_representation(), 'placement')
+    self.assertEqual(type_spec.formatted_representation(), 'placement')
 
   def test_returns_string_for_sequence_type_int(self):
     type_spec = computation_types.SequenceType(tf.int32)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, 'int32*')
-    formatted_string = type_spec.formatted_representation()
-    self.assertEqual(formatted_string, 'int32*')
+
+    self.assertEqual(type_spec.compact_representation(), 'int32*')
+    self.assertEqual(type_spec.formatted_representation(), 'int32*')
 
   def test_returns_string_for_sequence_type_float(self):
     type_spec = computation_types.SequenceType(tf.float32)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, 'float32*')
-    formatted_string = type_spec.formatted_representation()
-    self.assertEqual(formatted_string, 'float32*')
+
+    self.assertEqual(type_spec.compact_representation(), 'float32*')
+    self.assertEqual(type_spec.formatted_representation(), 'float32*')
 
   def test_returns_string_for_sequence_type_named_tuple_type(self):
     element = computation_types.NamedTupleType((tf.int32, tf.float32))
     type_spec = computation_types.SequenceType(element)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, '<int32,float32>*')
-    formatted_string = type_spec.formatted_representation()
+
+    self.assertEqual(type_spec.compact_representation(), '<int32,float32>*')
     # pyformat: disable
     self.assertEqual(
-        formatted_string,
+        type_spec.formatted_representation(),
         '<\n'
         '  int32,\n'
         '  float32\n'
@@ -704,17 +807,15 @@ class RepresentationTest(absltest.TestCase):
 
   def test_returns_string_for_tensor_type_int(self):
     type_spec = computation_types.TensorType(tf.int32)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, 'int32')
-    formatted_string = type_spec.formatted_representation()
-    self.assertEqual(formatted_string, 'int32')
+
+    self.assertEqual(type_spec.compact_representation(), 'int32')
+    self.assertEqual(type_spec.formatted_representation(), 'int32')
 
   def test_returns_string_for_tensor_type_float(self):
     type_spec = computation_types.TensorType(tf.float32)
-    compact_string = type_spec.compact_representation()
-    self.assertEqual(compact_string, 'float32')
-    formatted_string = type_spec.formatted_representation()
-    self.assertEqual(formatted_string, 'float32')
+
+    self.assertEqual(type_spec.compact_representation(), 'float32')
+    self.assertEqual(type_spec.formatted_representation(), 'float32')
 
 
 if __name__ == '__main__':

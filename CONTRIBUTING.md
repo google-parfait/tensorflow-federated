@@ -19,7 +19,7 @@ Follow either of the two links above to access the appropriate CLA and
 instructions for how to sign and return it. Once we receive it, we'll be able to
 accept your pull requests.
 
-NOTE: Only original source code from you and other people that have signed the
+Note: Only original source code from you and other people that have signed the
 CLA can be accepted into the main repository.
 
 ## Community Guidelines
@@ -41,14 +41,35 @@ information on using pull requests.
 *   Python code should adhere to the
     [Google Python Style Guide](http://google.github.io/styleguide/pyguide.html).
 
-*   Python code must support Python2 and Python3 usage.
+*   Fromat your changes.
+
+    *   Install [yapf](https://pypi.org/project/yapf/).
+
+    *   Format unstaged changes, to Python files, in place.
+
+    ```shell
+    git diff --name-only \
+      | sed '/.*\.py/!d' \
+      | xargs yapf --in-place
+    ```
+
+*   Lint your changes.
+
+    *   Install [pylint](https://pypi.org/project/pylint/).
+
+    *   Lint unstaged changes to Python files.
+
+    ```shell
+    git diff --name-only \
+      | sed '/.*\.py/!d' \
+      | xargs pylint
+    ```
+
+*   Python code must support Python 3 usage.
 
 *   Include a license at the top of new files.
 
     *   [Python license example](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/__init__.py#L1)
-
-*   Generally, function names should be verbs, e.g. `to_var_dict` rather than
-    `var_dict`.
 
 ### TensorFlow-specific Guidelines.
 

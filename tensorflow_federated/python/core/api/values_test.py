@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +20,7 @@ from tensorflow_federated.python.core.api import values
 
 class ValuesTest(absltest.TestCase):
 
-  # NOTE: No need to test all supported types, as those are already tested in
+  # Note: No need to test all supported types, as those are already tested in
   # the test of the underlying implementation (`value_impl_test.py`).
   def test_to_value_with_int_constant(self):
     val = values.to_value(10)

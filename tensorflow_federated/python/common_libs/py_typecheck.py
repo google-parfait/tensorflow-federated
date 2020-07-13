@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,16 +13,10 @@
 # limitations under the License.
 """Utility functions for checking Python types."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+import builtins
 import collections
-import inspect
 
 import attr
-import six
-from six.moves import builtins
 
 
 def check_type(target, type_spec, label=None):
@@ -42,7 +35,6 @@ def check_type(target, type_spec, label=None):
   Raises:
     TypeError: when the target is not of one of the types in `type_spec`.
   """
-  _check_is_type_spec(type_spec)
   if not isinstance(target, type_spec):
     raise TypeError('Expected {}{}, found {}.'.format(
         '{} to be of type '.format(label) if label is not None else '',
@@ -96,8 +88,6 @@ def check_subclass(target_class, parent_class):
   Raises:
     TypeError if the `target_class` doesn't subclass a class in `parent_class`.
   """
-  _check_is_class(target_class)
-  _check_is_class(parent_class)
   if not issubclass(target_class, parent_class):
     raise TypeError('Expected {} to subclass {}, but it does not.'.format(
         target_class, parent_class))
@@ -126,7 +116,6 @@ def type_string(type_spec):
   Raises:
     TypeError: if the `type_spec` is not of the right type.
   """
-  _check_is_type_spec(type_spec)
   if isinstance(type_spec, type):
     if type_spec.__module__ == builtins.__name__:
       return type_spec.__name__
@@ -141,43 +130,6 @@ def type_string(type_spec):
       return '{} or {}'.format(*type_names)
     else:
       return ', '.join(type_names[0:-1] + ['or {}'.format(type_names[-1])])
-
-
-def _check_is_type_spec(type_spec):
-  """Determines if `type_spec` is a valid type specification.
-
-  Args:
-    type_spec: Either a Python type, or a tuple of Python types; the same as
-      what's accepted by isinstance.
-
-  Raises:
-    TypeError: if `type_spec` is not as defined above.
-  """
-  if isinstance(type_spec, type):
-    return
-  if (isinstance(type_spec, (tuple, list)) and type_spec and
-      all(isinstance(x, type) for x in type_spec)):
-    return
-  raise TypeError(
-      'Expected a type, or a tuple or list of types, found {}.'.format(
-          type_string(type(type_spec))))
-
-
-def _check_is_class(cls):
-  """Detemines if `cls` is an object representing a Python class.
-
-  Args:
-    cls: Either a Python class, or a tuple of Python classes.
-
-  Raises:
-    TypeError: if `cls` is not as defined above.
-  """
-  if inspect.isclass(cls):
-    return
-  if (isinstance(cls, tuple) and cls and all(inspect.isclass(x) for x in cls)):
-    return
-  raise TypeError('Expected a class, or a tuple or list of classes,'
-                  'found {}.'.format(cls))
 
 
 def is_attrs(value):
@@ -225,7 +177,7 @@ def is_name_value_pair(element, name_required=True, value_type=None):
   if not isinstance(element, collections.Sequence) or len(element) != 2:
     return False
   if ((name_required or element[0] is not None) and
-      not isinstance(element[0], six.string_types)):
+      not isinstance(element[0], str)):
     return False
   if value_type is not None and not isinstance(element[1], value_type):
     return False

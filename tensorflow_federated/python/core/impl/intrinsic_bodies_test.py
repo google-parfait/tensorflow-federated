@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,26 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
-class IntrinsicBodiesTest(test.TestCase):
+@executor_test_utils.executors
+class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):
 
   def test_federated_sum(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_SUM.uri](x)
 
@@ -48,7 +50,7 @@ class IntrinsicBodiesTest(test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_SUM.uri](x)
 
@@ -71,7 +73,7 @@ class IntrinsicBodiesTest(test.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri]([x, x])
 
@@ -88,7 +90,7 @@ class IntrinsicBodiesTest(test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType([[('a', tf.float32),
                                           ('b', tf.float32)], tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri](x)
 
@@ -109,7 +111,7 @@ class IntrinsicBodiesTest(test.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_MEAN.uri](x)
 
@@ -125,7 +127,7 @@ class IntrinsicBodiesTest(test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.float32), ('b', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.FEDERATED_MEAN.uri](x)
 
@@ -140,7 +142,8 @@ class IntrinsicBodiesTest(test.TestCase):
         anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 2.)]))
 
 
-class GenericDivideTest(test.TestCase):
+@executor_test_utils.executors
+class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
 
   def test_generic_divide_unplaced_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -149,7 +152,7 @@ class GenericDivideTest(test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType([[('a', tf.float32),
                                           ('b', tf.float32)], tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_DIVIDE.uri]([x[0], x[1]])
 
@@ -220,7 +223,8 @@ class GenericDivideTest(test.TestCase):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
 
-    fed_int = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    fed_int = computation_types.FederatedType(tf.int32,
+                                              placement_literals.CLIENTS)
 
     @computations.federated_computation([('a', fed_int), ('b', fed_int)])
     def foo(x):
@@ -241,7 +245,7 @@ class GenericDivideTest(test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_DIVIDE.uri]([x, x])
 
@@ -261,7 +265,7 @@ class GenericDivideTest(test.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_DIVIDE.uri]([x, x])
 
@@ -277,7 +281,7 @@ class GenericDivideTest(test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([tf.int32, tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_DIVIDE.uri]([x, x])
 
@@ -293,7 +297,8 @@ class GenericDivideTest(test.TestCase):
         [anonymous_tuple.AnonymousTuple([(None, 1.), (None, 1.)])] * 3)
 
 
-class GenericMultiplyTest(test.TestCase):
+@executor_test_utils.executors
+class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
 
   def test_generic_multiply_federated_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -302,7 +307,7 @@ class GenericMultiplyTest(test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType([[('a', tf.float32),
                                           ('b', tf.float32)], tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri]([x[0], x[1]])
 
@@ -340,7 +345,7 @@ class GenericMultiplyTest(test.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri]([x, x])
 
@@ -374,7 +379,7 @@ class GenericMultiplyTest(test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([tf.int32, tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri]([x, x])
 
@@ -384,7 +389,7 @@ class GenericMultiplyTest(test.TestCase):
 
     self.assertEqual(
         foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([(None, 1.), (None, 1.)])])
+        [anonymous_tuple.AnonymousTuple([(None, 1), (None, 1.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
             anonymous_tuple.AnonymousTuple([(None, 1), (None, 1.)]),
@@ -398,7 +403,7 @@ class GenericMultiplyTest(test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri]([x, x])
 
@@ -407,8 +412,7 @@ class GenericMultiplyTest(test.TestCase):
         '({<a=int32,b=float32>}@CLIENTS -> {<a=int32,b=float32>}@CLIENTS)')
 
     self.assertEqual(
-        foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)])])
+        foo([[1, 1.]]), [anonymous_tuple.AnonymousTuple([('a', 1), ('b', 1.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
             anonymous_tuple.AnonymousTuple([('a', 1), ('b', 1.)]),
@@ -420,7 +424,8 @@ class GenericMultiplyTest(test.TestCase):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
 
-    fed_int = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    fed_int = computation_types.FederatedType(tf.int32,
+                                              placement_literals.CLIENTS)
 
     @computations.federated_computation([('a', fed_int), ('b', fed_int)])
     def foo(x):
@@ -432,8 +437,8 @@ class GenericMultiplyTest(test.TestCase):
     )
 
     self.assertEqual(
-        foo([[1], [1]]),
-        anonymous_tuple.AnonymousTuple([('a', [1.]), ('b', [1.])]))
+        foo([[1], [1]]), anonymous_tuple.AnonymousTuple([('a', [1]),
+                                                         ('b', [1])]))
 
   def test_generic_multiply_with_unplaced_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -453,14 +458,15 @@ class GenericMultiplyTest(test.TestCase):
         foo([1., 1.]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
 
 
-class GenericAddTest(test.TestCase):
+@executor_test_utils.executors
+class GenericAddTest(common_test.TestCase, parameterized.TestCase):
 
   def test_federated_generic_add_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
+        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, x])
 
@@ -476,7 +482,7 @@ class GenericAddTest(test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([tf.int32, tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, x])
 
@@ -486,7 +492,7 @@ class GenericAddTest(test.TestCase):
 
     self.assertEqual(
         foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([(None, 2.), (None, 2.)])])
+        [anonymous_tuple.AnonymousTuple([(None, 2), (None, 2.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
             anonymous_tuple.AnonymousTuple([(None, 2), (None, 2.)]),
@@ -500,7 +506,7 @@ class GenericAddTest(test.TestCase):
 
     @computations.federated_computation(
         computation_types.FederatedType([('a', tf.int32), ('b', tf.float32)],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, x])
 
@@ -509,8 +515,7 @@ class GenericAddTest(test.TestCase):
         '({<a=int32,b=float32>}@CLIENTS -> {<a=int32,b=float32>}@CLIENTS)')
 
     self.assertEqual(
-        foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)])])
+        foo([[1, 1.]]), [anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
             anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)]),
@@ -522,7 +527,8 @@ class GenericAddTest(test.TestCase):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
         context_stack_impl.context_stack)
 
-    fed_int = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    fed_int = computation_types.FederatedType(tf.int32,
+                                              placement_literals.CLIENTS)
 
     @computations.federated_computation([('a', fed_int), ('b', fed_int)])
     def foo(x):
@@ -535,7 +541,8 @@ class GenericAddTest(test.TestCase):
 
     self.assertEqual(
         foo([[1], [1]]),
-        anonymous_tuple.AnonymousTuple([('a', [2.]), ('b', [2.])]))
+        anonymous_tuple.AnonymousTuple([('a', tf.constant([2.])),
+                                        ('b', tf.constant([2.]))]))
 
   def test_generic_add_with_unplaced_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -577,7 +584,7 @@ class GenericAddTest(test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType([[('a', tf.float32),
                                           ('b', tf.float32)], tf.float32],
-                                        placements.CLIENTS))
+                                        placement_literals.CLIENTS))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x[0], x[1]])
 
@@ -598,4 +605,4 @@ class GenericAddTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  common_test.main()

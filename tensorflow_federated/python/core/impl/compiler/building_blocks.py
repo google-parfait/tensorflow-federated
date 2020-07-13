@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,40 +11,46 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Classes representing various kinds of computations in a deserialized form."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""A library of classes representing computations in a deserialized form."""
 
 import abc
-import enum  # pylint: disable=g-bad-import-order
+import enum
+from typing import Any, Iterable, List, Optional, Tuple as TypingTuple, Type
 import zlib
-
-import six
-from six.moves import zip
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import placement_literals
-from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-def _check_computation_oneof(computation_proto, expected_computation_oneof):
-  py_typecheck.check_type(computation_proto, pb.Computation)
+def _check_computation_oneof(
+    computation_proto: pb.Computation,
+    expected_computation_oneof: Optional[str],
+):
+  """Checks that `computation_proto` is a oneof of the expected variant."""
   computation_oneof = computation_proto.WhichOneof('computation')
   if computation_oneof != expected_computation_oneof:
     raise TypeError('Expected a {} computation, found {}.'.format(
         expected_computation_oneof, computation_oneof))
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ComputationBuildingBlock(typed_object.TypedObject):
+class UnexpectedBlockError(TypeError):
+
+  def __init__(self, expected: Type['ComputationBuildingBlock'],
+               actual: 'ComputationBuildingBlock'):
+    message = f'Expected block of kind {expected}, found block {actual}'
+    super().__init__(message)
+    self.actual = actual
+    self.expected = expected
+
+
+class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   """The abstract base class for abstractions in the TFF's internal language.
 
   Instances of this class correspond roughly one-to-one to the abstractions
@@ -60,7 +65,10 @@ class ComputationBuildingBlock(typed_object.TypedObject):
   _deserializer_dict = None  # Defined at the end of this file.
 
   @classmethod
-  def from_proto(cls, computation_proto):
+  def from_proto(
+      cls: Type['ComputationBuildingBlock'],
+      computation_proto: pb.Computation,
+  ) -> 'ComputationBuildingBlock':
     """Returns an instance of a derived class based on 'computation_proto'.
 
     Args:
@@ -81,8 +89,7 @@ class ComputationBuildingBlock(typed_object.TypedObject):
     if deserializer is not None:
       deserialized = deserializer(computation_proto)
       type_spec = type_serialization.deserialize_type(computation_proto.type)
-      if not type_utils.are_equivalent_types(deserialized.type_signature,
-                                             type_spec):
+      if not deserialized.type_signature.is_equivalent_to(type_spec):
         raise ValueError(
             'The type {} derived from the computation structure does not '
             'match the type {} declared in its signature'.format(
@@ -92,6 +99,7 @@ class ComputationBuildingBlock(typed_object.TypedObject):
       raise NotImplementedError(
           'Deserialization for computations of type {} has not been '
           'implemented yet.'.format(computation_oneof))
+    return deserializer(computation_proto)
 
   def __init__(self, type_spec):
     """Constructs a computation building block with the given TFF type.
@@ -101,11 +109,10 @@ class ComputationBuildingBlock(typed_object.TypedObject):
         types.to_type().
     """
     type_signature = computation_types.to_type(type_spec)
-    type_utils.check_well_formed(type_signature)
     self._type_signature = type_signature
 
   @property
-  def type_signature(self):
+  def type_signature(self) -> computation_types.Type:
     return self._type_signature
 
   def compact_representation(self):
@@ -119,6 +126,96 @@ class ComputationBuildingBlock(typed_object.TypedObject):
   def structural_representation(self):
     """Returns the structural string representation of this building block."""
     return _structural_representation(self)
+
+  def check_reference(self):
+    """Check that this is a 'Reference'."""
+    if not self.is_reference():
+      UnexpectedBlockError(Reference, self)
+
+  def is_reference(self):
+    """Returns whether or not this block is a `Reference`."""
+    return False
+
+  def check_selection(self):
+    """Check that this is a 'Selection'."""
+    if not self.is_selection():
+      UnexpectedBlockError(Selection, self)
+
+  def is_selection(self):
+    """Returns whether or not this block is a `Selection`."""
+    return False
+
+  def check_tuple(self):
+    """Check that this is a 'Tuple'."""
+    if not self.is_tuple():
+      UnexpectedBlockError(Tuple, self)
+
+  def is_tuple(self):
+    """Returns whether or not this block is a `Tuple`."""
+    return False
+
+  def check_call(self):
+    """Check that this is a 'Call'."""
+    if not self.is_call():
+      UnexpectedBlockError(Call, self)
+
+  def is_call(self):
+    """Returns whether or not this block is a `Call`."""
+    return False
+
+  def check_lambda(self):
+    """Check that this is a 'Lambda'."""
+    if not self.is_lambda():
+      UnexpectedBlockError(Lambda, self)
+
+  def is_lambda(self):
+    """Returns whether or not this block is a `Lambda`."""
+    return False
+
+  def check_block(self):
+    """Check that this is a 'Block'."""
+    if not self.is_block():
+      UnexpectedBlockError(Block, self)
+
+  def is_block(self):
+    """Returns whether or not this block is a `Block`."""
+    return False
+
+  def check_intrinsic(self):
+    """Check that this is an 'Intrinsic'."""
+    if not self.is_intrinsic():
+      UnexpectedBlockError(Intrinsic, self)
+
+  def is_intrinsic(self):
+    """Returns whether or not this block is an `Intrinsic`."""
+    return False
+
+  def check_data(self):
+    """Check that this is a 'Data'."""
+    if not self.is_data():
+      UnexpectedBlockError(Data, self)
+
+  def is_data(self):
+    """Returns whether or not this block is a `Data`."""
+    return False
+
+  def check_compiled_computation(self):
+    """Check that this is a 'CompiledComputation'."""
+    if not self.is_compiled_computation():
+      UnexpectedBlockError(CompiledComputation, self)
+
+  def is_compiled_computation(self):
+    """Returns whether or not this block is a `CompiledComputation`."""
+    return False
+
+  def check_placement(self):
+    """Check that this is a 'Placement'."""
+    if not self.is_placement():
+      UnexpectedBlockError(Placement, self)
+
+  def is_placement(self):
+    """Returns whether or not this block is a `Placement`."""
+    return False
 
   @abc.abstractproperty
   def proto(self):
@@ -154,7 +251,10 @@ class Reference(ComputationBuildingBlock):
   """
 
   @classmethod
-  def from_proto(cls, computation_proto):
+  def from_proto(
+      cls: Type['Reference'],
+      computation_proto: pb.Computation,
+  ) -> 'Reference':
     _check_computation_oneof(computation_proto, 'reference')
     return cls(
         str(computation_proto.reference.name),
@@ -174,8 +274,8 @@ class Reference(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(name, six.string_types)
-    super(Reference, self).__init__(type_spec)
+    py_typecheck.check_type(name, str)
+    super().__init__(type_spec)
     self._name = name
     self._context = context
 
@@ -184,6 +284,9 @@ class Reference(ComputationBuildingBlock):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         reference=pb.Reference(name=self._name))
+
+  def is_reference(self):
+    return True
 
   @property
   def name(self):
@@ -208,7 +311,10 @@ class Selection(ComputationBuildingBlock):
   """
 
   @classmethod
-  def from_proto(cls, computation_proto):
+  def from_proto(
+      cls: Type['Selection'],
+      computation_proto: pb.Computation,
+  ) -> 'Selection':
     _check_computation_oneof(computation_proto, 'selection')
     selection = ComputationBuildingBlock.from_proto(
         computation_proto.selection.source)
@@ -238,44 +344,42 @@ class Selection(ComputationBuildingBlock):
         is not compatible with the type signature of the source, or neither or
         both are defined (not None).
     """
+    py_typecheck.check_type(source, ComputationBuildingBlock)
     if name is None and index is None:
       raise ValueError(
           'Must define either a name or index, and neither was specified.')
     if name is not None and index is not None:
       raise ValueError(
           'Cannot simultaneously specify a name and an index, choose one.')
-    py_typecheck.check_type(source, ComputationBuildingBlock)
-    self._source = source
-    source_type = self._source.type_signature
-    if not isinstance(source_type, computation_types.NamedTupleType):
+    source_type = source.type_signature
+    if not source_type.is_tuple():
       raise TypeError(
           'Expected the source of selection to be a TFF named tuple, '
           'instead found it to be of type {}.'.format(source_type))
     if name is not None:
-      py_typecheck.check_type(name, six.string_types)
+      py_typecheck.check_type(name, str)
       if not name:
         raise ValueError('The name of the selected element cannot be empty.')
-      else:
-        # Normalize, in case we are dealing with a Unicode type or some such.
-        name = str(name)
-        super(Selection, self).__init__(
-            type_utils.get_named_tuple_element_type(source_type, name))
-        self._name = name
-        self._index = None
-    else:
-      # Index must have been specified, since name is None.
-      py_typecheck.check_type(index, int)
-      elements = anonymous_tuple.to_elements(source_type)
-      if index >= 0 and index < len(elements):
-        super(Selection, self).__init__(elements[index][1])
-        self._name = None
-        self._index = index
-      else:
+      # Normalize, in case we are dealing with a Unicode type or some such.
+      name = str(name)
+      if not anonymous_tuple.has_field(source_type, name):
         raise ValueError(
-            'The index of the selected element {} does not fit into the '
-            'valid range 0..{} determined by the source type '
-            'signature.'.format(index,
-                                len(elements) - 1))
+            'The name \'{}\' does not correspond to any of the names in the '
+            'named tuple type: {}.'.format(
+                name, anonymous_tuple.name_list(source_type)))
+      type_signature = source_type[name]
+    else:
+      py_typecheck.check_type(index, int)
+      length = len(source_type)
+      if index < 0 or index >= length:
+        raise ValueError(
+            'The index \'{}\' does not fit into the valid range in the named '
+            'tuple type: 0..{}.'.format(name, length))
+      type_signature = source_type[index]
+    super().__init__(type_signature)
+    self._source = source
+    self._name = name
+    self._index = index
 
   @property
   def proto(self):
@@ -286,6 +390,9 @@ class Selection(ComputationBuildingBlock):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         selection=selection)
+
+  def is_selection(self):
+    return True
 
   @property
   def source(self):
@@ -320,7 +427,10 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
   """
 
   @classmethod
-  def from_proto(cls, computation_proto):
+  def from_proto(
+      cls: Type['Tuple'],
+      computation_proto: pb.Computation,
+  ) -> 'Tuple':
     _check_computation_oneof(computation_proto, 'tuple')
     return cls([(str(e.name) if e.name else None,
                  ComputationBuildingBlock.from_proto(e.value))
@@ -332,7 +442,8 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
     Args:
       elements: The elements of the tuple, supplied as a list of (name, value)
         pairs, where 'name' can be None in case the corresponding element is not
-        named and only accessible via an index (see also AnonymousTuple).
+        named and only accessible via an index (see also
+        `anonymous_tuple.AnonymousTuple`).
 
     Raises:
       TypeError: if arguments are of the wrong types.
@@ -376,6 +487,9 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
         type=type_serialization.serialize_type(self.type_signature),
         tuple=pb.Tuple(element=elements))
 
+  def is_tuple(self):
+    return True
+
   def __repr__(self):
 
     def _element_repr(element):
@@ -400,7 +514,10 @@ class Call(ComputationBuildingBlock):
   """
 
   @classmethod
-  def from_proto(cls, computation_proto):
+  def from_proto(
+      cls: Type['Call'],
+      computation_proto: pb.Computation,
+  ) -> 'Call':
     _check_computation_oneof(computation_proto, 'call')
     fn = ComputationBuildingBlock.from_proto(computation_proto.call.function)
     arg_proto = computation_proto.call.argument
@@ -424,7 +541,7 @@ class Call(ComputationBuildingBlock):
     py_typecheck.check_type(fn, ComputationBuildingBlock)
     if arg is not None:
       py_typecheck.check_type(arg, ComputationBuildingBlock)
-    if not isinstance(fn.type_signature, computation_types.FunctionType):
+    if not fn.type_signature.is_function():
       raise TypeError('Expected fn to be of a functional type, '
                       'but found that its type is {}.'.format(
                           fn.type_signature))
@@ -433,8 +550,7 @@ class Call(ComputationBuildingBlock):
         raise TypeError('The invoked function expects an argument of type {}, '
                         'but got None instead.'.format(
                             fn.type_signature.parameter))
-      if not type_utils.is_assignable_from(fn.type_signature.parameter,
-                                           arg.type_signature):
+      if not fn.type_signature.parameter.is_assignable_from(arg.type_signature):
         raise TypeError(
             'The parameter of the invoked function is expected to be of '
             'type {}, but the supplied argument is of an incompatible '
@@ -443,7 +559,7 @@ class Call(ComputationBuildingBlock):
       raise TypeError(
           'The invoked function does not expect any parameters, but got '
           'an argument of type {}.'.format(py_typecheck.type_string(type(arg))))
-    super(Call, self).__init__(fn.type_signature.result)
+    super().__init__(fn.type_signature.result)
     # By now, this condition should hold, so we only double-check in debug mode.
     assert (arg is not None) == (fn.type_signature.parameter is not None)
     self._function = fn
@@ -458,6 +574,9 @@ class Call(ComputationBuildingBlock):
       call = pb.Call(function=self._function.proto)
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature), call=call)
+
+  def is_call(self):
+    return True
 
   @property
   def function(self):
@@ -484,7 +603,10 @@ class Lambda(ComputationBuildingBlock):
   """
 
   @classmethod
-  def from_proto(cls, computation_proto):
+  def from_proto(
+      cls: Type['Lambda'],
+      computation_proto: pb.Computation,
+  ) -> 'Lambda':
     _check_computation_oneof(computation_proto, 'lambda')
     the_lambda = getattr(computation_proto, 'lambda')
     return cls(
@@ -493,13 +615,19 @@ class Lambda(ComputationBuildingBlock):
             computation_proto.type.function.parameter),
         ComputationBuildingBlock.from_proto(the_lambda.result))
 
-  def __init__(self, parameter_name, parameter_type, result):
+  def __init__(
+      self,
+      parameter_name: Optional[str],
+      parameter_type: Optional[Any],
+      result: ComputationBuildingBlock,
+  ):
     """Creates a lambda expression.
 
     Args:
       parameter_name: The (string) name of the parameter accepted by the lambda.
         This name can be used by Reference() instances in the body of the lambda
-        to refer to the parameter.
+        to refer to the parameter. Note that an empty parameter name shall be
+        treated as equivalent to no parameter.
       parameter_type: The type of the parameter, an instance of types.Type or
         something convertible to it by types.to_type().
       result: The resulting value produced by the expression that forms the body
@@ -508,20 +636,26 @@ class Lambda(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(parameter_name, six.string_types)
-    if parameter_type is None:
-      raise TypeError('A lambda expression must have a valid parameter type.')
-    parameter_type = computation_types.to_type(parameter_type)
-    assert isinstance(parameter_type, computation_types.Type)
+    if parameter_name == '':  # pylint: disable=g-explicit-bool-comparison
+      parameter_name = None
+    if (parameter_name is None) != (parameter_type is None):
+      raise TypeError(
+          'A lambda expression must have either a valid parameter name and type '
+          'or both parameter name and type must be `None`. '
+          '`parameter_name` was {} but `parameter_type` was {}.'.format(
+              parameter_name, parameter_type))
+    if parameter_name is not None:
+      py_typecheck.check_type(parameter_name, str)
+      parameter_type = computation_types.to_type(parameter_type)
     py_typecheck.check_type(result, ComputationBuildingBlock)
-    super(Lambda, self).__init__(
+    super().__init__(
         computation_types.FunctionType(parameter_type, result.type_signature))
     self._parameter_name = parameter_name
     self._parameter_type = parameter_type
     self._result = result
 
   @property
-  def proto(self):
+  def proto(self) -> pb.Computation:
     type_signature = type_serialization.serialize_type(self.type_signature)
     fn = pb.Lambda(
         parameter_name=self._parameter_name, result=self._result.proto)
@@ -531,19 +665,22 @@ class Lambda(ComputationBuildingBlock):
     # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
     return pb.Computation(type=type_signature, **{'lambda': fn})  # pytype: disable=wrong-keyword-args
 
+  def is_lambda(self):
+    return True
+
   @property
-  def parameter_name(self):
+  def parameter_name(self) -> Optional[str]:
     return self._parameter_name
 
   @property
-  def parameter_type(self):
+  def parameter_type(self) -> Optional[computation_types.Type]:
     return self._parameter_type
 
   @property
-  def result(self):
+  def result(self) -> ComputationBuildingBlock:
     return self._result
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return 'Lambda(\'{}\', {!r}, {!r})'.format(self._parameter_name,
                                                self._parameter_type,
                                                self._result)
@@ -591,14 +728,21 @@ class Block(ComputationBuildingBlock):
   """
 
   @classmethod
-  def from_proto(cls, computation_proto):
+  def from_proto(
+      cls: Type['Block'],
+      computation_proto: pb.Computation,
+  ) -> 'Block':
     _check_computation_oneof(computation_proto, 'block')
     return cls([(str(loc.name), ComputationBuildingBlock.from_proto(loc.value))
                 for loc in computation_proto.block.local],
                ComputationBuildingBlock.from_proto(
                    computation_proto.block.result))
 
-  def __init__(self, local_symbols, result):
+  def __init__(
+      self,
+      local_symbols: Iterable[TypingTuple[str, ComputationBuildingBlock]],
+      result: ComputationBuildingBlock,
+  ):
     """Creates a block of TFF code.
 
     Args:
@@ -615,7 +759,7 @@ class Block(ComputationBuildingBlock):
     updated_locals = []
     for index, element in enumerate(local_symbols):
       if (not isinstance(element, tuple) or (len(element) != 2) or
-          not isinstance(element[0], six.string_types)):
+          not isinstance(element[0], str)):
         raise TypeError(
             'Expected the locals to be a list of 2-element tuples with string '
             'name as their first element, but this is not the case for the '
@@ -625,12 +769,12 @@ class Block(ComputationBuildingBlock):
       py_typecheck.check_type(value, ComputationBuildingBlock)
       updated_locals.append((name, value))
     py_typecheck.check_type(result, ComputationBuildingBlock)
-    super(Block, self).__init__(result.type_signature)
+    super().__init__(result.type_signature)
     self._locals = updated_locals
     self._result = result
 
   @property
-  def proto(self):
+  def proto(self) -> pb.Computation:
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         block=pb.Block(
@@ -642,15 +786,18 @@ class Block(ComputationBuildingBlock):
                 'result': self._result.proto
             }))
 
+  def is_block(self):
+    return True
+
   @property
-  def locals(self):
+  def locals(self) -> List[TypingTuple[str, ComputationBuildingBlock]]:
     return list(self._locals)
 
   @property
-  def result(self):
+  def result(self) -> ComputationBuildingBlock:
     return self._result
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return 'Block([{}], {!r})'.format(
         ', '.join('(\'{}\', {!r})'.format(k, v) for k, v in self._locals),
         self._result)
@@ -668,50 +815,52 @@ class Intrinsic(ComputationBuildingBlock):
   """
 
   @classmethod
-  def from_proto(cls, computation_proto):
+  def from_proto(
+      cls: Type['Intrinsic'],
+      computation_proto: pb.Computation,
+  ) -> 'Intrinsic':
     _check_computation_oneof(computation_proto, 'intrinsic')
     return cls(computation_proto.intrinsic.uri,
                type_serialization.deserialize_type(computation_proto.type))
 
-  def __init__(self, uri, type_spec):
+  def __init__(self, uri: str, type_signature: computation_types.Type):
     """Creates an intrinsic.
 
     Args:
       uri: The URI of the intrinsic.
-      type_spec: Either the types.Type that represents the type of this
-        intrinsic, or something convertible to it by types.to_type().
+      type_signature: A `tff.Type`, the type of the intrinsic.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(uri, six.string_types)
-    if type_spec is None:
-      raise TypeError(
-          'Intrinsic {} cannot be created without a TFF type.'.format(uri))
-    type_spec = computation_types.to_type(type_spec)
+    py_typecheck.check_type(uri, str)
+    py_typecheck.check_type(type_signature, computation_types.Type)
     intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(uri)
-    if intrinsic_def:
-      typecheck = type_utils.is_concrete_instance_of(
-          type_spec, intrinsic_def.type_signature)
-      if not typecheck:
+    if intrinsic_def is not None:
+      # Note: this is really expensive.
+      if not type_analysis.is_concrete_instance_of(
+          type_signature, intrinsic_def.type_signature):
         raise TypeError('Tried to construct an Intrinsic with bad type '
                         'signature; Intrinsic {} expects type signature {}, '
                         'and you tried to construct one of type {}.'.format(
-                            uri, intrinsic_def.type_signature, type_spec))
-    super(Intrinsic, self).__init__(type_spec)
+                            uri, intrinsic_def.type_signature, type_signature))
+    super().__init__(type_signature)
     self._uri = uri
 
   @property
-  def proto(self):
+  def proto(self) -> pb.Computation:
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         intrinsic=pb.Intrinsic(uri=self._uri))
 
+  def is_intrinsic(self):
+    return True
+
   @property
-  def uri(self):
+  def uri(self) -> str:
     return self._uri
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return 'Intrinsic(\'{}\', {!r})'.format(self._uri, self.type_signature)
 
 
@@ -724,12 +873,15 @@ class Data(ComputationBuildingBlock):
   """
 
   @classmethod
-  def from_proto(cls, computation_proto):
+  def from_proto(
+      cls: Type['Data'],
+      computation_proto: pb.Computation,
+  ) -> 'Data':
     _check_computation_oneof(computation_proto, 'data')
     return cls(computation_proto.data.uri,
                type_serialization.deserialize_type(computation_proto.type))
 
-  def __init__(self, uri, type_spec):
+  def __init__(self, uri: str, type_spec: Any):
     """Creates a representation of data.
 
     Args:
@@ -741,27 +893,30 @@ class Data(ComputationBuildingBlock):
       TypeError: if the arguments are of the wrong types.
       ValueError: if the user tries to specify an empty URI.
     """
-    py_typecheck.check_type(uri, six.string_types)
+    py_typecheck.check_type(uri, str)
     if not uri:
       raise ValueError('Empty string cannot be passed as URI to Data.')
     if type_spec is None:
       raise TypeError(
           'Intrinsic {} cannot be created without a TFF type.'.format(uri))
     type_spec = computation_types.to_type(type_spec)
-    super(Data, self).__init__(type_spec)
+    super().__init__(type_spec)
     self._uri = uri
 
   @property
-  def proto(self):
+  def proto(self) -> pb.Computation:
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         data=pb.Data(uri=self._uri))
 
+  def is_data(self):
+    return True
+
   @property
-  def uri(self):
+  def uri(self) -> str:
     return self._uri
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return 'Data(\'{}\', {!r})'.format(self._uri, self.type_signature)
 
 
@@ -775,7 +930,7 @@ class CompiledComputation(ComputationBuildingBlock):
   which otherwise there isn't any dedicated structure.
   """
 
-  def __init__(self, proto, name=None):
+  def __init__(self, proto: pb.Computation, name: Optional[str] = None):
     """Creates a representation of a fully constructed computation.
 
     Args:
@@ -789,25 +944,26 @@ class CompiledComputation(ComputationBuildingBlock):
     """
     py_typecheck.check_type(proto, pb.Computation)
     if name is not None:
-      py_typecheck.check_type(name, six.string_types)
-    super(CompiledComputation,
-          self).__init__(type_serialization.deserialize_type(proto.type))
+      py_typecheck.check_type(name, str)
+    super().__init__(type_serialization.deserialize_type(proto.type))
     self._proto = proto
     if name is not None:
       self._name = name
     else:
-      self._name = '{:x}'.format(
-          zlib.adler32(six.b(repr(self._proto))) & 0xFFFFFFFF)
+      self._name = '{:x}'.format(zlib.adler32(self._proto.SerializeToString()))
 
   @property
-  def proto(self):
+  def proto(self) -> pb.Computation:
     return self._proto
 
+  def is_compiled_computation(self):
+    return True
+
   @property
-  def name(self):
+  def name(self) -> str:
     return self._name
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return 'CompiledComputation(\'{}\', {!r})'.format(self._name,
                                                       self.type_signature)
 
@@ -819,16 +975,16 @@ class Placement(ComputationBuildingBlock):
   """
 
   @classmethod
-  def from_proto(cls, computation_proto):
+  def from_proto(
+      cls: Type['Placement'],
+      computation_proto: pb.Computation,
+  ) -> 'Placement':
     _check_computation_oneof(computation_proto, 'placement')
-    py_typecheck.check_type(
-        type_serialization.deserialize_type(computation_proto.type),
-        computation_types.PlacementType)
     return cls(
         placement_literals.uri_to_placement_literal(
             str(computation_proto.placement.uri)))
 
-  def __init__(self, literal):
+  def __init__(self, literal: placement_literals.PlacementLiteral):
     """Constructs a new placement instance for the given placement literal.
 
     Args:
@@ -838,24 +994,30 @@ class Placement(ComputationBuildingBlock):
       TypeError: if the arguments are of the wrong types.
     """
     py_typecheck.check_type(literal, placement_literals.PlacementLiteral)
-    super(Placement, self).__init__(computation_types.PlacementType())
+    super().__init__(computation_types.PlacementType())
     self._literal = literal
 
   @property
-  def proto(self):
+  def proto(self) -> pb.Computation:
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         placement=pb.Placement(uri=self._literal.uri))
 
+  def is_placement(self):
+    return True
+
   @property
-  def uri(self):
+  def uri(self) -> str:
     return self._literal.uri
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return 'Placement(\'{}\')'.format(self.uri)
 
 
-def _string_representation(comp, formatted):
+def _string_representation(
+    comp: ComputationBuildingBlock,
+    formatted: bool,
+) -> str:
   """Returns the string representation of a `ComputationBuildingBlock`.
 
   This functions creates a `list` of strings representing the given `comp`;
@@ -871,7 +1033,7 @@ def _string_representation(comp, formatted):
   """
   py_typecheck.check_type(comp, ComputationBuildingBlock)
 
-  def _join(components):
+  def _join(components: Iterable[List[str]]) -> List[str]:
     """Returns a `list` of strings by combining each component in `components`.
 
     >>> _join([['a'], ['b'], ['c']])
@@ -930,7 +1092,7 @@ def _string_representation(comp, formatted):
       formatted: A boolean indicating if the returned string should be
         formatted.
     """
-    if isinstance(comp, Block):
+    if comp.is_block():
       lines = []
       variables_lines = _lines_for_named_comps(comp.locals, formatted)
       if formatted:
@@ -942,37 +1104,43 @@ def _string_representation(comp, formatted):
       lines.append(result_lines)
       lines.append([')'])
       return _join(lines)
-    elif isinstance(comp, Reference):
+    elif comp.is_reference():
       if comp.context is not None:
         return ['{}@{}'.format(comp.name, comp.context)]
       else:
         return [comp.name]
-    elif isinstance(comp, Selection):
+    elif comp.is_selection():
       source_lines = _lines_for_comp(comp.source, formatted)
       if comp.name is not None:
         return _join([source_lines, ['.{}'.format(comp.name)]])
       else:
         return _join([source_lines, ['[{}]'.format(comp.index)]])
-    elif isinstance(comp, Call):
+    elif comp.is_call():
       function_lines = _lines_for_comp(comp.function, formatted)
       if comp.argument is not None:
         argument_lines = _lines_for_comp(comp.argument, formatted)
         return _join([function_lines, ['('], argument_lines, [')']])
       else:
         return _join([function_lines, ['()']])
-    elif isinstance(comp, CompiledComputation):
+    elif comp.is_compiled_computation():
       return ['comp#{}'.format(comp.name)]
-    elif isinstance(comp, Data):
+    elif comp.is_data():
       return [comp.uri]
-    elif isinstance(comp, Intrinsic):
+    elif comp.is_intrinsic():
       return [comp.uri]
-    elif isinstance(comp, Lambda):
+    elif comp.is_lambda():
       result_lines = _lines_for_comp(comp.result, formatted)
-      lines = [['({} -> '.format(comp.parameter_name)], result_lines, [')']]
+      if comp.parameter_type is None:
+        param_name = ''
+      else:
+        param_name = comp.parameter_name
+      lines = [['({} -> '.format(param_name)], result_lines, [')']]
       return _join(lines)
-    elif isinstance(comp, Placement):
+    elif comp.is_placement():
       return [comp._literal.name]  # pylint: disable=protected-access
-    elif isinstance(comp, Tuple):
+    elif comp.is_tuple():
+      if len(comp) == 0:  # pylint: disable=g-explicit-length-test
+        return ['<>']
       elements = anonymous_tuple.to_elements(comp)
       elements_lines = _lines_for_named_comps(elements, formatted)
       if formatted:
@@ -1099,7 +1267,7 @@ def _structural_representation(comp):
                                     minimum_content_padding):
     """Calculates the inset for the given padding.
 
-    NOTE: This function is intended to only be called from `_fit_with_padding`.
+    Note: This function is intended to only be called from `_fit_with_padding`.
 
     Args:
       left: A `list` of strings.
@@ -1128,7 +1296,7 @@ def _structural_representation(comp):
   def _fit_with_inset(left, right, inset):
     r"""Concatenates the lines of two `list`s of strings.
 
-    NOTE: This function is intended to only be called from `_fit_with_padding`.
+    Note: This function is intended to only be called from `_fit_with_padding`.
 
     Args:
       left: A `list` of strings.
@@ -1209,26 +1377,26 @@ def _structural_representation(comp):
 
   def _get_node_label(comp):
     """Returns a string for node in the structure of the given `comp`."""
-    if isinstance(comp, Block):
+    if comp.is_block():
       return 'Block'
-    elif isinstance(comp, Call):
+    elif comp.is_call():
       return 'Call'
-    elif isinstance(comp, CompiledComputation):
+    elif comp.is_compiled_computation():
       return 'Compiled({})'.format(comp.name)
-    elif isinstance(comp, Data):
+    elif comp.is_data():
       return comp.uri
-    elif isinstance(comp, Intrinsic):
+    elif comp.is_intrinsic():
       return comp.uri
-    elif isinstance(comp, Lambda):
+    elif comp.is_lambda():
       return 'Lambda({})'.format(comp.parameter_name)
-    elif isinstance(comp, Reference):
+    elif comp.is_reference():
       return 'Ref({})'.format(comp.name)
-    elif isinstance(comp, Placement):
+    elif comp.is_placement():
       return 'Placement'
-    elif isinstance(comp, Selection):
+    elif comp.is_selection():
       key = comp.name if comp.name is not None else comp.index
       return 'Sel({})'.format(key)
-    elif isinstance(comp, Tuple):
+    elif comp.is_tuple():
       return 'Tuple'
     else:
       raise TypeError('Unexpected type found: {}.'.format(type(comp)))
@@ -1262,15 +1430,10 @@ def _structural_representation(comp):
     """
     node_label = _get_node_label(comp)
 
-    if isinstance(comp, (
-        CompiledComputation,
-        Data,
-        Intrinsic,
-        Placement,
-        Reference,
-    )):
+    if (comp.is_compiled_computation() or comp.is_data() or
+        comp.is_intrinsic() or comp.is_placement() or comp.is_reference()):
       return [node_label]
-    elif isinstance(comp, Block):
+    elif comp.is_block():
       variables_lines = _lines_for_named_comps(comp.locals)
       variables_width = len(variables_lines[0])
       variables_trailing_padding = _get_trailing_padding(variables_lines[0])
@@ -1292,7 +1455,7 @@ def _structural_representation(comp):
       leading_padding = _get_leading_padding(lines[0]) + 1
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       return _concatenate([node_line], lines, Alignment.LEFT)
-    elif isinstance(comp, Call):
+    elif comp.is_call():
       function_lines = _lines_for_comp(comp.function)
       function_width = len(function_lines[0])
       function_trailing_padding = _get_trailing_padding(function_lines[0])
@@ -1317,19 +1480,19 @@ def _structural_representation(comp):
       leading_padding = _get_leading_padding(lines[0]) + 1
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       return _concatenate([node_line], lines, Alignment.LEFT)
-    elif isinstance(comp, Lambda):
+    elif comp.is_lambda():
       result_lines = _lines_for_comp(comp.result)
       leading_padding = _get_leading_padding(result_lines[0])
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       edge_line = '{}|'.format(padding_char * leading_padding)
       return _concatenate([node_line, edge_line], result_lines, Alignment.LEFT)
-    elif isinstance(comp, Selection):
+    elif comp.is_selection():
       source_lines = _lines_for_comp(comp.source)
       leading_padding = _get_leading_padding(source_lines[0])
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       edge_line = '{}|'.format(padding_char * leading_padding)
       return _concatenate([node_line, edge_line], source_lines, Alignment.LEFT)
-    elif isinstance(comp, Tuple):
+    elif comp.is_tuple():
       elements = anonymous_tuple.to_elements(comp)
       elements_lines = _lines_for_named_comps(elements)
       leading_padding = _get_leading_padding(elements_lines[0])

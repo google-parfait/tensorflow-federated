@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,184 +13,52 @@
 # limitations under the License.
 """Utilities for Python functions, defuns, and other types of callables."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import inspect
 import types
+import typing
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
-import attr
-import six
-from six.moves import range
-
-from tensorflow.python.framework import function
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import context_base
-from tensorflow_federated.python.core.impl import context_stack_base
-from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.context_stack import context_base
+from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.tensorflow_libs import function
 
 
-def is_defun(fn):
-  """Determines whether `fn` is one of the known types of TF defuns.
-
-  Args:
-    fn: The object to test for being a supported type of a TensorFlow defun.
-
-  Returns:
-    True iff `fn` is a supported type of a TF defun.
-  """
-  return isinstance(
-      fn,
-      (
-          # TODO(b/113112885): Add support for tfe Function and
-          # PolymorphicFunction,
-          # currently omitted due to issues with visibility.
-
-          # While these classes can be private to TF users, we need to peek into
-          # the private interfaces of these classes in order to obtain the
-          # function signatures and type information that are otherwise
-          # unavailable via regular public APIs. In order to do so safelty, we
-          # need to narrow the scope down to a few concrete classes, internal
-          # structure we create a dependency on.
-          # TODO(b/113112885): Work towards avoiding this, posisbly by
-          # upstreaming some helper library or extending the public interface.
-          function._DefinedFunction,  # pylint: disable=protected-access
-          function._OverloadedFunction  # pylint: disable=protected-access
-      )) or (
-          # TODO(b/113112885): Add (cleaner) support for tf.Function and
-          'def_function.Function' in py_typecheck.type_string(type(fn)))
-
-
-@attr.s(slots=True, frozen=True)
-class SimpleArgSpec(object):
-  """A simple container class that mimics the deprecated `inspect.ArgSpec`."""
-  args = attr.ib()
-  varargs = attr.ib()
-  keywords = attr.ib()
-  defaults = attr.ib()
-
-  def __str__(self):
-    parts = []
-    if self.args:
-      parts.append('args={}'.format(self.args))
-    if self.varargs:
-      parts.append('varargs={}'.format(self.varargs))
-    if self.keywords:
-      parts.append('kwargs={}'.format(self.keywords))
-    if self.defaults:
-      parts.append('defaults={}'.format(self.defaults))
-    return '({})'.format(', '.join(parts))
-
-
-def get_argspec(fn):
-  """Returns the `SimpleArgSpec` structure for the given function.
+def get_signature(
+    fn: Union[types.FunctionType, types.MethodType]) -> inspect.Signature:
+  """Returns the `inspect.Signature` structure for the given function or method.
 
   Args:
     fn: The Python function or Tensorflow function to analyze.
 
   Returns:
-    A `SimpleArgSpec`.
+    An `inspect.Signature`.
 
   Raises:
     TypeError: if the argument is not of a supported type.
   """
-
-  def _getargspec(fn):
-    """Get the argspec depending on the version of Python being used."""
-    if six.PY2:
-      argspec = inspect.getargspec(fn)  # pylint: disable=deprecated-method
-      return SimpleArgSpec(*argspec)
-    else:
-      signature = inspect.signature(fn)
-      args = []
-      varargs = None
-      keywords = None
-      defaults = None
-      for param in signature.parameters.values():
-        if param.kind == inspect.Parameter.VAR_KEYWORD:
-          keywords = param.name
-        elif param.kind == inspect.Parameter.VAR_POSITIONAL:
-          varargs = param.name
-        else:
-          args.append(param.name)
-        if param.default != inspect.Parameter.empty:
-          if defaults is None:
-            defaults = [param.default]
-          else:
-            defaults.append(param.default)
-      return SimpleArgSpec(args, varargs, keywords,
-                           tuple(defaults) if defaults else None)
-
-  if isinstance(fn, types.FunctionType):
-    return _getargspec(fn)
-  elif is_defun(fn):
-    return _getargspec(fn.python_function)
+  if isinstance(fn, (types.FunctionType, types.MethodType)):
+    return inspect.signature(fn)
+  elif function.is_tf_function(fn):
+    return inspect.signature(fn.python_function)
   else:
     raise TypeError('Expected a Python function or a defun, found {}.'.format(
         py_typecheck.type_string(type(fn))))
 
 
-def get_callargs_for_argspec(argspec, *args, **kwargs):
-  """Similar to `inspect.getcallargs()`, but accepts SimpleArgSpec instead.
-
-  This function allows `getcallargs()` capability to be used with defuns and
-  other types of callables that aren't Python functions.
+def is_signature_compatible_with_types(signature: inspect.Signature, *args,
+                                       **kwargs) -> bool:
+  """Determines if functions matching signature accept `args` and `kwargs`.
 
   Args:
-    argspec: An instance of SimpleArgSpec to assign arguments to.
-    *args: Positional arguments.
-    **kwargs: Keyword-based arguments.
-
-  Returns:
-    The same type of result as what `inspect.getcallargs()` returns.
-
-  Raises:
-    TypeError: if the arguments are of the wrong types, or if the 'args' and
-      'kwargs' combo is not compatible with 'argspec'.
-  """
-  py_typecheck.check_type(argspec, SimpleArgSpec)
-  result = {}
-  num_specargs = len(argspec.args) if argspec.args else 0
-  num_defaults = len(argspec.defaults) if argspec.defaults else 0
-  num_specargs_without_defaults = num_specargs - num_defaults
-  if len(args) > num_specargs and not argspec.varargs:
-    raise TypeError(
-        'Too many positional arguments for the call: expected at most {}, '
-        'found {}.'.format(num_specargs, len(args)))
-  for idx, specarg in enumerate(argspec.args):
-    if idx < len(args):
-      if specarg in kwargs:
-        raise TypeError('Argument {} specified twice.'.format(specarg))
-      result[specarg] = args[idx]
-    elif specarg in kwargs:
-      result[specarg] = kwargs[specarg]
-    elif idx >= num_specargs_without_defaults:
-      result[specarg] = argspec.defaults[idx - num_specargs_without_defaults]
-    else:
-      raise TypeError(
-          'Argument {} was not specified and does not have a default.'.format(
-              specarg))
-  unused_kwargs = {k: v for k, v in six.iteritems(kwargs) if k not in result}
-  if argspec.varargs:
-    result[argspec.varargs] = args[num_specargs:]
-  if argspec.keywords:
-    result[argspec.keywords] = unused_kwargs
-  elif unused_kwargs:
-    raise TypeError(
-        'Unexpected keyword arguments in the call: {}'.format(unused_kwargs))
-  return result
-
-
-def is_argspec_compatible_with_types(argspec, *args, **kwargs):
-  """Determines if functions matching 'argspec' accept given 'args'/'kwargs'.
-
-  Args:
-    argspec: An instance of `SimpleArgSpec` to verify agains the arguments.
+    signature: An instance of `inspect.Signature` to verify agains the
+      arguments.
     *args: Zero or more positional arguments, all of which must be instances of
       computation_types.Type or something convertible to it by
       computation_types.to_type().
@@ -200,36 +67,39 @@ def is_argspec_compatible_with_types(argspec, *args, **kwargs):
       computation_types.to_type().
 
   Returns:
-    True or false, depending on the outcome of the test.
+    `True` or `False`, depending on the outcome of the test.
 
   Raises:
     TypeError: if the arguments are of the wrong computation_types.
   """
   try:
-    callargs = get_callargs_for_argspec(argspec, *args, **kwargs)
-    if not argspec.defaults:
-      return True
+    bound_args = signature.bind(*args, **kwargs)
   except TypeError:
     return False
 
-  # As long as we have been able to construct 'callargs', and there are no
-  # default values to verify against the given types, there is nothing more
-  # to do here, otherwise we have to verify the types of defaults against
-  # the types we've been given as parameters to this function.
-  num_specargs_without_defaults = len(argspec.args) - len(argspec.defaults)
-  for idx, default_value in enumerate(argspec.defaults):
-    if default_value is not None:
-      arg_name = argspec.args[num_specargs_without_defaults + idx]
-      call_arg = callargs[arg_name]
-      if call_arg is not default_value:
-        arg_type = computation_types.to_type(call_arg)
-        default_type = type_utils.infer_type(default_value)
-        if not type_utils.is_assignable_from(arg_type, default_type):
-          return False
+  # If we have no defaults then `bind` will have raised `TypeError` if the
+  # signature was not compatible with *args and **kwargs.
+  if all(p.default is inspect.Parameter.empty
+         for p in signature.parameters.values()):
+    return True
+
+  # Otherwise we need to check the defaults against the types that were given to
+  # ensure they are compatible.
+  for p in signature.parameters.values():
+    if p.default is inspect.Parameter.empty or p.default is None:
+      # No default value or optional.
+      continue
+    arg_value = bound_args.arguments.get(p.name, p.default)
+    if arg_value is p.default:
+      continue
+    arg_type = computation_types.to_type(arg_value)
+    default_type = type_conversions.infer_type(p.default)
+    if not arg_type.is_assignable_from(default_type):
+      return False
   return True
 
 
-def is_argument_tuple(arg):
+def is_argument_tuple(arg) -> bool:
   """Determines if 'arg' is interpretable as an argument tuple.
 
   Args:
@@ -241,7 +111,8 @@ def is_argument_tuple(arg):
     that can be converted into the latter by computation_types.to_type().
 
   Raises:
-    TypeError: if the argument is neither an AnonymousTuple, nor a type spec.
+    TypeError: If the argument is neither an `anonymous_tuple.AnonymousTuple`,
+      nor a type spec.
   """
   if isinstance(arg, anonymous_tuple.AnonymousTuple):
     elements = anonymous_tuple.to_elements(arg)
@@ -249,7 +120,7 @@ def is_argument_tuple(arg):
     return is_argument_tuple(arg.type_signature)
   else:
     arg = computation_types.to_type(arg)
-    if isinstance(arg, computation_types.NamedTupleType):
+    if arg.is_tuple():
       elements = anonymous_tuple.to_elements(arg)
     else:
       return False
@@ -263,12 +134,13 @@ def is_argument_tuple(arg):
   return max_unnamed < min_named
 
 
-def unpack_args_from_tuple(tuple_with_args):
+def unpack_args_from_tuple(
+    tuple_with_args) -> Tuple[List[Any], Dict[str, Any]]:
   """Extracts argument types from a named tuple type.
 
   Args:
-    tuple_with_args: An instance of either an AnonymousTuple or
-      computation_types.NamedTupleType (or something convertible to it by
+    tuple_with_args: An instance of either an `anonymous_tuple.AnonymousTuple`
+      or computation_types.NamedTupleType (or something convertible to it by
       computation_types.to_type()), on which is_argument_tuple() is True.
 
   Returns:
@@ -295,15 +167,20 @@ def unpack_args_from_tuple(tuple_with_args):
     elements = anonymous_tuple.to_elements(tuple_with_args)
   args = []
   kwargs = {}
-  for e in elements:
-    if e[0]:
-      kwargs[e[0]] = e[1]
+  for name, value in elements:
+    if name is not None:
+      kwargs[name] = value
     else:
-      args.append(e[1])
-  return (args, kwargs)
+      args.append(value)
+  return args, kwargs
 
 
-def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None, context=None):
+def pack_args_into_anonymous_tuple(
+    args: Sequence[Any],
+    kwargs: Mapping[str, Any],
+    type_spec=None,
+    context: Optional[context_base.Context] = None
+) -> anonymous_tuple.AnonymousTuple:
   """Packs positional and keyword arguments into an anonymous tuple.
 
   If 'type_spec' is not None, it must be a tuple type or something that's
@@ -335,11 +212,11 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None, context=None):
   type_spec = computation_types.to_type(type_spec)
   if not type_spec:
     return anonymous_tuple.AnonymousTuple([(None, arg) for arg in args] +
-                                          list(six.iteritems(kwargs)))
+                                          list(kwargs.items()))
   else:
     py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
     py_typecheck.check_type(context, context_base.Context)
-    context = context  # type: context_base.Context
+    context = typing.cast(context_base.Context, context)
     if not is_argument_tuple(type_spec):  # pylint: disable=attribute-error
       raise TypeError(
           'Parameter type {} does not have a structure of an argument tuple, '
@@ -377,7 +254,8 @@ def pack_args_into_anonymous_tuple(args, kwargs, type_spec=None, context=None):
       return anonymous_tuple.AnonymousTuple(result_elements)
 
 
-def pack_args(parameter_type, args, kwargs, context):
+def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any],
+              context: context_base.Context):
   """Pack arguments into a single one that matches the given parameter type.
 
   The arguments may or may not be packed into a tuple, depending on the type of
@@ -414,7 +292,7 @@ def pack_args(parameter_type, args, kwargs, context):
               parameter_type))
     else:
       single_positional_arg = (len(args) == 1) and not kwargs
-      if not isinstance(parameter_type, computation_types.NamedTupleType):
+      if not parameter_type.is_tuple():
         # If not a named tuple type, a single positional argument is the only
         # supported call style.
         if not single_positional_arg:
@@ -438,7 +316,9 @@ def pack_args(parameter_type, args, kwargs, context):
       return context.ingest(arg, parameter_type)
 
 
-def infer_unpack_needed(fn, parameter_type, should_unpack=None):
+def infer_unpack_needed(fn: types.FunctionType,
+                        parameter_type: computation_types.Type,
+                        should_unpack: Optional[bool] = None) -> bool:
   """Returns whether parameter_type must be unpacked when calling fn.
 
   Args:
@@ -456,43 +336,44 @@ def infer_unpack_needed(fn, parameter_type, should_unpack=None):
     raise TypeError('The unpack argument has an unexpected value {!r}.'.format(
         should_unpack))
   unpack = should_unpack  # Default return value.
-  argspec = get_argspec(fn)
+  signature = get_signature(fn)
 
   if parameter_type is None:
-    if is_argspec_compatible_with_types(argspec):
+    if is_signature_compatible_with_types(signature):
       if should_unpack:
         raise ValueError('Requested unpacking of a no-arg function.')
       return False
     else:
       raise TypeError(
-          'The argspec {} of the supplied function cannot be interpreted as a '
-          'body of a no-parameter computation.'.format(argspec))
+          'The signature {} of the supplied function cannot be interpreted as '
+          'a body of a no-parameter computation.'.format(signature))
 
-  unpack_required = not is_argspec_compatible_with_types(
-      argspec, parameter_type)
+  unpack_required = not is_signature_compatible_with_types(
+      signature, parameter_type)
   # Boolean identity comparison becaue unpack can have a non-boolean value.
   if unpack_required and should_unpack is False:  # pylint: disable=g-bool-id-comparison
     raise TypeError(
-        'The supplied function "{}" with argspec {} cannot accept a value of type '
-        '{} as a single argument.'.format(fn.__name__, argspec, parameter_type))
+        'The supplied function \'{}\' with signature {} cannot accept a '
+        'value of type \'{}\' as a single argument.'.format(
+            fn.__name__, signature, parameter_type))
   if is_argument_tuple(parameter_type):
     arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
-    unpack_possible = is_argspec_compatible_with_types(argspec, *arg_types,
-                                                       **kwarg_types)
+    unpack_possible = is_signature_compatible_with_types(
+        signature, *arg_types, **kwarg_types)
   else:
     unpack_possible = False
   # Boolean identity comparison becaue unpack can have a non-boolean value.
   if not unpack_possible and should_unpack is True:  # pylint: disable=g-bool-id-comparison
     raise TypeError(
-        'The supplied function with argspec {} cannot accept a value of type '
+        'The supplied function with signature {} cannot accept a value of type '
         '{} as multiple positional and/or keyword arguments. That is, the '
         'argument cannot be unpacked, but unpacking was requested.'.format(
-            argspec, parameter_type))
+            signature, parameter_type))
   if unpack_required and not unpack_possible:
     raise TypeError(
-        'The supplied function "{}" with argspec {} cannot accept a value of type '
-        '{} as either a single argument or multiple positional and/or keyword '
-        'arguments.'.format(fn.__name__, argspec, parameter_type))
+        'The supplied function "{}" with signature {} cannot accept a value of '
+        'type {} as either a single argument or multiple positional and/or '
+        'keyword arguments.'.format(fn.__name__, signature, parameter_type))
   if not unpack_required and unpack_possible and should_unpack is None:
     # The supplied function could accept a value as either a single argument,
     # or as multiple positional and/or keyword arguments, and the caller did
@@ -511,7 +392,10 @@ def infer_unpack_needed(fn, parameter_type, should_unpack=None):
   return unpack
 
 
-def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
+def wrap_as_zero_or_one_arg_callable(
+    fn: types.FunctionType,
+    parameter_type: Optional[computation_types.Type] = None,
+    unpack: Optional[bool] = None):
   """Wraps around `fn` so it accepts up to one positional TFF-typed argument.
 
   This function helps to simplify dealing with functions and defuns that might
@@ -562,17 +446,17 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
   if unpack not in [True, False, None]:
     raise TypeError(
         'The unpack argument has an unexpected value {!r}.'.format(unpack))
-  argspec = get_argspec(fn)
+  signature = get_signature(fn)
   parameter_type = computation_types.to_type(parameter_type)
   if parameter_type is None:
-    if is_argspec_compatible_with_types(argspec):
+    if is_signature_compatible_with_types(signature):
       # Deliberate wrapping to isolate the caller from `fn`, e.g., to prevent
       # the caller from mistakenly specifying args that match fn's defaults.
       return lambda: fn()  # pylint: disable=unnecessary-lambda
     else:
       raise TypeError(
-          'The argspec {} of the supplied function cannot be interpreted as a '
-          'body of a no-parameter computation.'.format(argspec))
+          'The signature {} of the supplied function cannot be interpreted as '
+          'a body of a no-parameter computation.'.format(signature))
   else:
     if infer_unpack_needed(fn, parameter_type, unpack):
       arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
@@ -602,26 +486,26 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
         args = []
         for idx, expected_type in enumerate(arg_types):
           element_value = arg[idx]
-          actual_type = type_utils.infer_type(element_value)
-          if not type_utils.is_assignable_from(expected_type, actual_type):
+          actual_type = type_conversions.infer_type(element_value)
+          if not expected_type.is_assignable_from(actual_type):
             raise TypeError(
                 'Expected element at position {} to be of type {}, found {}.'
                 .format(idx, expected_type, actual_type))
           if isinstance(element_value, anonymous_tuple.AnonymousTuple):
-            element_value = type_utils.convert_to_py_container(
+            element_value = type_conversions.type_to_py_container(
                 element_value, expected_type)
           args.append(element_value)
         kwargs = {}
-        for name, expected_type in six.iteritems(kwarg_types):
+        for name, expected_type in kwarg_types.items():
           element_value = getattr(arg, name)
-          actual_type = type_utils.infer_type(element_value)
-          if not type_utils.is_assignable_from(expected_type, actual_type):
+          actual_type = type_conversions.infer_type(element_value)
+          if not expected_type.is_assignable_from(actual_type):
             raise TypeError(
                 'Expected element named {} to be of type {}, found {}.'.format(
                     name, expected_type, actual_type))
-          if type_utils.is_anon_tuple_with_py_container(element_value,
-                                                        expected_type):
-            element_value = type_utils.convert_to_py_container(
+          if type_analysis.is_anon_tuple_with_py_container(
+              element_value, expected_type):
+            element_value = type_conversions.type_to_py_container(
                 element_value, expected_type)
           kwargs[name] = element_value
         return fn(*args, **kwargs)
@@ -636,12 +520,12 @@ def wrap_as_zero_or_one_arg_callable(fn, parameter_type=None, unpack=None):
       # An interceptor function that verifies the actual parameter before it
       # forwards the call as a last-minute check.
       def _call(fn, parameter_type, arg):
-        arg_type = type_utils.infer_type(arg)
-        if not type_utils.is_assignable_from(parameter_type, arg_type):
+        arg_type = type_conversions.infer_type(arg)
+        if not parameter_type.is_assignable_from(arg_type):
           raise TypeError('Expected an argument of type {}, found {}.'.format(
               parameter_type, arg_type))
-        if type_utils.is_anon_tuple_with_py_container(arg, parameter_type):
-          arg = type_utils.convert_to_py_container(arg, parameter_type)
+        if type_analysis.is_anon_tuple_with_py_container(arg, parameter_type):
+          arg = type_conversions.type_to_py_container(arg, parameter_type)
         return fn(arg)
 
       # TODO(b/132888123): Consider other options to avoid possible bugs here.
@@ -679,21 +563,63 @@ class ConcreteFunction(computation_base.Computation):
     arg = pack_args(self._type_signature.parameter, args, kwargs, context)
     return context.invoke(self, arg)
 
+  def __hash__(self):
+    raise NotImplementedError(
+        'Hash must be implemented by the subclasses of `ConcreteFunction`.')
+
 
 class PolymorphicFunction(object):
   """A generic polymorphic function that accepts arguments of diverse types."""
 
-  def __init__(self, concrete_function_factory):
+  def __init__(self, concrete_function_factory: Callable[
+      [computation_types.Type, Optional[bool]], ConcreteFunction]):
     """Crates a polymorphic function with a given function factory.
 
     Args:
       concrete_function_factory: A callable that accepts a (non-None) TFF type
-        as an argument, and returns a ConcreteFunction instance that's been
+        as an argument, as well as an optional boolean `unpack` argument which
+        should be treated as documented in `wrap_as_zero_or_one_arg_callable`
+        above. The callable must return a ConcreteFunction instance that's been
         created to accept a single positional argument of this TFF type (to be
         reused for future calls with parameters of a matching type).
     """
     self._concrete_function_factory = concrete_function_factory
     self._concrete_function_cache = {}
+
+  def fn_for_argument_type(self,
+                           arg_type: computation_types.Type,
+                           unpack: Optional[bool] = None) -> ConcreteFunction:
+    """Concretizes this function with the provided `arg_type`.
+
+    The first time this function is called with a particular type on a
+    given `PolymorphicFunction` (or this `PolymorphicFunction` is called
+    with an argument of the given type), the underlying function will be
+    traced using the provided argument type as input. Later calls will
+    return the cached computed concrete function.
+
+    Args:
+      arg_type: The argument type to use when concretizing this function.
+      unpack: Whether to force unpacking the arguments (`True`), never unpack
+        the arguments (`False`), or infer whether or not to unpack the arguments
+        (`None`).
+
+    Returns:
+      The `ConcreteFunction` that results from tracing this
+      `PolymorphicFunction` with `arg_type.
+    """
+    key = repr(arg_type) + str(unpack)
+    concrete_fn = self._concrete_function_cache.get(key)
+    if not concrete_fn:
+      concrete_fn = (self._concrete_function_factory)(arg_type, unpack)
+      py_typecheck.check_type(concrete_fn, ConcreteFunction,
+                              'concrete function')
+      if concrete_fn.type_signature.parameter != arg_type:
+        raise TypeError(
+            'Expected a concrete function that takes parameter {}, got one '
+            'that takes {}.'.format(arg_type,
+                                    concrete_fn.type_signature.parameter))
+      self._concrete_function_cache[key] = concrete_fn
+    return concrete_fn
 
   def __call__(self, *args, **kwargs):
     """Invokes this polymorphic function with a given set of arguments.
@@ -715,17 +641,7 @@ class PolymorphicFunction(object):
     # unordered dictionary), possibly by converting dict-like and tuple-like
     # containters into anonymous tuples.
     packed_arg = pack_args_into_anonymous_tuple(args, kwargs)
-    arg_type = type_utils.infer_type(packed_arg)
-    key = repr(arg_type)
-    concrete_fn = self._concrete_function_cache.get(key)
-    if not concrete_fn:
-      concrete_fn = self._concrete_function_factory(arg_type)
-      py_typecheck.check_type(concrete_fn, ConcreteFunction,
-                              'concrete function')
-      if concrete_fn.type_signature.parameter != arg_type:
-        raise TypeError(
-            'Expected a concrete function that takes parameter {}, got one '
-            'that takes {}.'.format(arg_type,
-                                    concrete_fn.type_signature.parameter))
-      self._concrete_function_cache[key] = concrete_fn
+    arg_type = type_conversions.infer_type(packed_arg)
+    # We know the argument types have been packed, so force unpacking.
+    concrete_fn = self.fn_for_argument_type(arg_type, unpack=True)
     return concrete_fn(packed_arg)

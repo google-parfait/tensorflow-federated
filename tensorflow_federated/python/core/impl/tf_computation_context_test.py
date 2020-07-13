@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +18,9 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import tf_computation_context
+from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class TensorFlowComputationContextTest(test.TestCase):
@@ -28,7 +28,8 @@ class TensorFlowComputationContextTest(test.TestCase):
   def test_invoke_federated_computation_fails(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.SERVER, True))
+        computation_types.FederatedType(tf.int32, placement_literals.SERVER,
+                                        True))
     def foo(x):
       return intrinsics.federated_broadcast(x)
 
@@ -66,4 +67,5 @@ class TensorFlowComputationContextTest(test.TestCase):
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   test.main()

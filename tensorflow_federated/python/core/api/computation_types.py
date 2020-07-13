@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,26 +13,32 @@
 # limitations under the License.
 """Defines functions and classes for building and manipulating TFF types."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import collections
+import typing
+from typing import Any, Type as TypingType, TypeVar
 
-from typing import Any
 import attr
-import six
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
+C = TypeVar('C')
 
-@six.add_metaclass(abc.ABCMeta)
-class Type(object):
+
+class UnexpectedTypeError(TypeError):
+
+  def __init__(self, expected: TypingType['Type'], actual: 'Type'):
+    message = f'Expected type of kind {expected}, found type {actual}'
+    super().__init__(message)
+    self.actual = actual
+    self.expected = expected
+
+
+class Type(object, metaclass=abc.ABCMeta):
   """An abstract interface for all classes that represent TFF types."""
 
   def compact_representation(self):
@@ -43,6 +48,83 @@ class Type(object):
   def formatted_representation(self):
     """Returns the formatted string representation of this type."""
     return _string_representation(self, formatted=True)
+
+  @abc.abstractmethod
+  def children(self):
+    """Returns a generator yielding immediate child types."""
+    raise NotImplementedError
+
+  def check_abstract(self):
+    """Check that this is a `tff.AbstractType`."""
+    if not self.is_abstract():
+      raise UnexpectedTypeError(AbstractType, self)
+
+  def is_abstract(self) -> bool:
+    """Returns whether or not this type is a `tff.AbstractType`."""
+    return False
+
+  def check_federated(self):
+    """Check that this is a `tff.FederatedType`."""
+    if not self.is_federated():
+      raise UnexpectedTypeError(FederatedType, self)
+
+  def is_federated(self) -> bool:
+    """Returns whether or not this type is a `tff.FederatedType`."""
+    return False
+
+  def check_function(self):
+    """Check that this is a `tff.FunctionType`."""
+    if not self.is_function():
+      raise UnexpectedTypeError(FunctionType, self)
+
+  def is_function(self) -> bool:
+    """Returns whether or not this type is a `tff.FunctionType`."""
+    return False
+
+  def check_placement(self):
+    """Check that this is a `tff.PlacementType`."""
+    if not self.is_placement():
+      raise UnexpectedTypeError(PlacementType, self)
+
+  def is_placement(self) -> bool:
+    """Returns whether or not this type is a `tff.PlacementType`."""
+    return False
+
+  def check_sequence(self):
+    """Check that this is a `tff.SequenceType`."""
+    if not self.is_sequence():
+      raise UnexpectedTypeError(SequenceType, self)
+
+  def is_sequence(self) -> bool:
+    """Returns whether or not this type is a `tff.SequenceType`."""
+    return False
+
+  def check_tensor(self):
+    """Check that this is a `tff.TensorType`."""
+    if not self.is_tensor():
+      UnexpectedTypeError(TensorType, self)
+
+  def is_tensor(self) -> bool:
+    """Returns whether or not this type is a `tff.TensorType`."""
+    return False
+
+  def check_tuple(self):
+    """Check that this is a `tff.NamedTupleType`."""
+    if not self.is_tuple():
+      raise UnexpectedTypeError(NamedTupleType, self)
+
+  def is_tuple(self) -> bool:
+    """Returns whether or not this type is a `tff.NamedTupleType`."""
+    return False
+
+  def check_tuple_with_py_container(self):
+    """Check that this is a `tff.NamedTupleTypeWithPyContainerType`."""
+    if not self.is_tuple_with_py_container():
+      raise UnexpectedTypeError(NamedTupleTypeWithPyContainerType, self)
+
+  def is_tuple_with_py_container(self) -> bool:
+    """Returns whether this is a `tff.NamedTupleTypeWithPyContainerType`."""
+    return False
 
   @abc.abstractmethod
   def __repr__(self):
@@ -76,6 +158,26 @@ class Type(object):
   def __ne__(self, other):
     return not self == other
 
+  def check_assignable_from(self, source_type: 'Type'):
+    """Raises if values of `source_type` cannot be cast to this type."""
+    if not self.is_assignable_from(source_type):
+      raise TypeError('Values of type {} cannot be cast to type {}.'.format(
+          source_type, self))
+
+  @abc.abstractmethod
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    """Returns whether values of `source_type` can be cast to this type."""
+    raise NotImplementedError
+
+  def check_equivalent_to(self, other: 'Type'):
+    """Raises if values of 'other' cannot be cast to and from this type."""
+    if not self.is_equivalent_to(other):
+      raise TypeError('Types {} and {} are not equivalent.'.format(self, other))
+
+  def is_equivalent_to(self, other: 'Type') -> bool:
+    """Returns whether values of `other` can be cast to and from this type."""
+    return self.is_assignable_from(other) and other.is_assignable_from(self)
+
 
 class TensorType(Type):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
@@ -100,7 +202,7 @@ class TensorType(Type):
     # assumptions of `TensorType` (see the special casing in `repr` and `str`
     # below. This is related to compatibility checking,
     # and there are a few options. For now, simply adding a case in
-    # `impl/type_utils.is_assignable_from` to catch. We could alternatively
+    # `is_assignable_from` to catch. We could alternatively
     # treat this case the same as if we have been passed a shape of `None` in
     # this constructor.
     if shape is None:
@@ -109,6 +211,12 @@ class TensorType(Type):
       self._shape = shape
     else:
       self._shape = tf.TensorShape(shape)
+
+  def children(self):
+    return iter(())
+
+  def is_tensor(self):
+    return True
 
   @property
   def dtype(self):
@@ -128,8 +236,33 @@ class TensorType(Type):
       return 'TensorType({!r})'.format(self._dtype)
 
   def __eq__(self, other):
-    return (isinstance(other, TensorType) and self._dtype == other.dtype and
-            tensor_utils.same_shape(self._shape, other.shape))
+    return ((self is other) or
+            (isinstance(other, TensorType) and self._dtype == other.dtype and
+             tensor_utils.same_shape(self._shape, other.shape)))
+
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    if (not isinstance(source_type, TensorType) or
+        self.dtype != source_type.dtype):
+      return False
+    target_shape = self.shape
+    source_shape = source_type.shape
+    # TODO(b/123764922): See if we can pass to TensorShape's
+    # `is_compatible_with`.
+    if target_shape.ndims is None:
+      return True
+    if target_shape.ndims != source_shape.ndims:
+      return False
+    if target_shape.dims is None:
+      return True
+
+    def _dimension_is_assignable_from(target_dim, source_dim):
+      return ((target_dim.value is None) or
+              (target_dim.value == source_dim.value))
+
+    return all(
+        _dimension_is_assignable_from(target_shape.dims[k],
+                                      source_shape.dims[k])
+        for k in range(target_shape.ndims))
 
 
 class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
@@ -139,42 +272,51 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
   index, `foo[index]`.
   """
 
-  def __init__(self, elements):
+  def __init__(self, elements, convert=True):
     """Constructs a new instance from the given element types.
 
     Args:
-      elements: Element specifications, in the format of a `list`, `tuple`, or
-        `collections.OrderedDict`. Each element specification is either a type
-        spec (an instance of `tff.Type` or something convertible to it via
-        `tff.to_type`) for the element, or a (name, spec) for elements that have
-        defined names. Alternatively, one can supply here an instance of
-        `collections.OrderedDict` mapping element names to their types (or
-        things that are convertible to types).
+      elements: An iterable of element specifications. Each element
+        specification is either a type spec (an instance of `tff.Type` or
+        something convertible to it via `tff.to_type`) for the element, or a
+        (name, spec) for elements that have defined names. Alternatively, one
+        can supply here an instance of `collections.OrderedDict` mapping element
+        names to their types (or things that are convertible to types).
+      convert: Whether to attempt to convert the elements of this iterator.
+        Defaults to `True`. If `False`, all members of `elements` must be of
+        type `Tuple[Optional[str], tff.Type]`.
     """
-    py_typecheck.check_type(elements, (list, tuple, collections.OrderedDict))
-    if py_typecheck.is_named_tuple(elements):
-      elements = elements  # type: Any
-      elements = elements._asdict()
-    if isinstance(elements, collections.OrderedDict):
-      elements = list(elements.items())
+    py_typecheck.check_type(elements, collections.Iterable)
+    if convert:
+      if py_typecheck.is_named_tuple(elements):
+        elements = typing.cast(Any, elements)
+        elements = elements._asdict()
+      if isinstance(elements, collections.OrderedDict):
+        elements = elements.items()
 
-    def _is_full_element_spec(e):
-      return py_typecheck.is_name_value_pair(e, name_required=False)
+      def _is_full_element_spec(e):
+        return py_typecheck.is_name_value_pair(e, name_required=False)
 
-    def _map_element(e):
-      if isinstance(e, Type):
-        return (None, e)
-      elif _is_full_element_spec(e):
-        return (e[0], to_type(e[1]))
+      def _map_element(e):
+        if isinstance(e, Type):
+          return (None, e)
+        elif _is_full_element_spec(e):
+          return (e[0], to_type(e[1]))
+        else:
+          return (None, to_type(e))
+
+      if _is_full_element_spec(elements):
+        elements = [(elements[0], to_type(elements[1]))]
       else:
-        return (None, to_type(e))
-
-    if _is_full_element_spec(elements):
-      elements = [(elements[0], to_type(elements[1]))]
-    else:
-      elements = [_map_element(e) for e in elements]
+        elements = (_map_element(e) for e in elements)
 
     anonymous_tuple.AnonymousTuple.__init__(self, elements)
+
+  def children(self):
+    return (element for _, element in anonymous_tuple.iter_elements(self))
+
+  def is_tuple(self):
+    return True
 
   def __repr__(self):
 
@@ -188,8 +330,18 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
         _element_repr(e) for e in anonymous_tuple.iter_elements(self)))
 
   def __eq__(self, other):
-    return (isinstance(other, NamedTupleType) and
-            super(NamedTupleType, self).__eq__(other))
+    return ((self is other) or
+            (isinstance(other, NamedTupleType) and super().__eq__(other)))
+
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    if not isinstance(source_type, NamedTupleType):
+      return False
+    target_elements = anonymous_tuple.to_elements(self)
+    source_elements = anonymous_tuple.to_elements(source_type)
+    return ((len(target_elements) == len(source_elements)) and all(
+        ((source_elements[k][0] in [target_elements[k][0], None]) and
+         target_elements[k][1].is_assignable_from(source_elements[k][1]))
+        for k in range(len(target_elements))))
 
 
 # While this lives in the `api` diretory, `NamedTupleTypeWithPyContainerType` is
@@ -200,7 +352,10 @@ class NamedTupleTypeWithPyContainerType(NamedTupleType):
   def __init__(self, elements, container_type):
     py_typecheck.check_type(container_type, type)
     self._container_type = container_type
-    super(NamedTupleTypeWithPyContainerType, self).__init__(elements)
+    super().__init__(elements)
+
+  def is_tuple_with_py_container(self):
+    return True
 
   @classmethod
   def get_container_type(cls, value):
@@ -219,15 +374,26 @@ class SequenceType(Type):
     """
     self._element = to_type(element)
 
+  def children(self):
+    yield self._element
+
+  def is_sequence(self):
+    return True
+
   @property
-  def element(self):
+  def element(self) -> Type:
     return self._element
 
   def __repr__(self):
     return 'SequenceType({!r})'.format(self._element)
 
   def __eq__(self, other):
-    return isinstance(other, SequenceType) and self._element == other.element
+    return ((self is other) or (isinstance(other, SequenceType) and
+                                self._element == other.element))
+
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    return ((isinstance(source_type, SequenceType) and
+             self.element.is_assignable_from(source_type.element)))
 
 
 class FunctionType(Type):
@@ -246,6 +412,14 @@ class FunctionType(Type):
     self._parameter = to_type(parameter)
     self._result = to_type(result)
 
+  def children(self):
+    if self._parameter is not None:
+      yield self._parameter
+    yield self._result
+
+  def is_function(self):
+    return True
+
   @property
   def parameter(self):
     return self._parameter
@@ -258,8 +432,19 @@ class FunctionType(Type):
     return 'FunctionType({!r}, {!r})'.format(self._parameter, self._result)
 
   def __eq__(self, other):
-    return (isinstance(other, FunctionType) and
-            self._parameter == other.parameter and self._result == other.result)
+    return ((self is other) or (isinstance(other, FunctionType) and
+                                self._parameter == other.parameter and
+                                self._result == other.result))
+
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    if not isinstance(source_type, FunctionType):
+      return False
+    if (self.parameter is None) != (source_type.parameter is None):
+      return False
+    if (self.parameter is not None and
+        not self.parameter.is_assignable_from(source_type.parameter)):
+      return False
+    return self.result.is_assignable_from(source_type.result)
 
 
 class AbstractType(Type):
@@ -272,8 +457,14 @@ class AbstractType(Type):
       label: A string label of an abstract type. All occurences of the label
         within a computation's type signature refer to the same concrete type.
     """
-    py_typecheck.check_type(label, six.string_types)
+    py_typecheck.check_type(label, str)
     self._label = str(label)
+
+  def children(self):
+    return iter(())
+
+  def is_abstract(self):
+    return True
 
   @property
   def label(self):
@@ -283,7 +474,13 @@ class AbstractType(Type):
     return 'AbstractType(\'{}\')'.format(self._label)
 
   def __eq__(self, other):
-    return isinstance(other, AbstractType) and self._label == other.label
+    return (self is other) or (isinstance(other, AbstractType) and
+                               self._label == other.label)
+
+  def is_assignable_from(self, _source_type: 'Type') -> bool:
+    # TODO(b/113112108): Revise this to extend the relation of assignability to
+    # abstract types.
+    raise TypeError('Abstract types are not comparable.')
 
 
 class PlacementType(Type):
@@ -294,11 +491,20 @@ class PlacementType(Type):
   built-in TFF placement type.
   """
 
+  def children(self):
+    return iter(())
+
+  def is_placement(self):
+    return True
+
   def __repr__(self):
     return 'PlacementType()'
 
   def __eq__(self, other):
-    return isinstance(other, PlacementType)
+    return (self is other) or isinstance(other, PlacementType)
+
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    return isinstance(source_type, PlacementType)
 
 
 class FederatedType(Type):
@@ -322,9 +528,7 @@ class FederatedType(Type):
         If `all_equal` is `None`, the value is selected as the default for the
         placement, e.g., `True` for `tff.SERVER` and `False` for `tff.CLIENTS`.
     """
-    if not isinstance(placement, placement_literals.PlacementLiteral):
-      raise NotImplementedError(
-          'At the moment, only specifying placement literals is implemented.')
+    py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
     self._member = to_type(member)
     self._placement = placement
     if all_equal is None:
@@ -337,6 +541,12 @@ class FederatedType(Type):
   # by abstract placement labels, such as those used in generic types of
   # federated operators.
 
+  def children(self):
+    yield self._member
+
+  def is_federated(self):
+    return True
+
   @property
   def member(self):
     return self._member
@@ -346,7 +556,7 @@ class FederatedType(Type):
     return self._placement
 
   @property
-  def all_equal(self):
+  def all_equal(self) -> bool:
     return self._all_equal
 
   def __repr__(self):
@@ -355,13 +565,19 @@ class FederatedType(Type):
                                                     self._all_equal)
 
   def __eq__(self, other):
-    return (isinstance(other, FederatedType) and
-            self._member == other.member and
-            self._placement == other.placement and
-            self._all_equal == other.all_equal)
+    return ((self is other) or (isinstance(other, FederatedType) and
+                                self._member == other.member and
+                                self._placement == other.placement and
+                                self._all_equal == other.all_equal))
+
+  def is_assignable_from(self, source_type: 'Type') -> bool:
+    return (isinstance(source_type, FederatedType) and
+            self.member.is_assignable_from(source_type.member) and
+            (not self.all_equal or source_type.all_equal) and
+            self.placement is source_type.placement)
 
 
-def to_type(spec):
+def to_type(spec) -> Type:
   """Converts the argument into an instance of `tff.Type`.
 
   Examples of arguments convertible to tensor types:
@@ -399,7 +615,7 @@ def to_type(spec):
   """
   # TODO(b/113112108): Add multiple examples of valid type specs here in the
   # comments, in addition to the unit test.
-  if isinstance(spec, Type) or spec is None:
+  if spec is None or isinstance(spec, Type):
     return spec
   elif isinstance(spec, tf.DType):
     return TensorType(spec)
@@ -439,7 +655,7 @@ def to_type(spec):
             py_typecheck.type_string(type(spec))))
 
 
-def _to_type_from_attrs(spec):
+def _to_type_from_attrs(spec) -> Type:
   """Converts an `attr.s` class or instance to a `tff.Type`."""
   if isinstance(spec, type):
     # attrs class type, introspect the attributes for their type annotations.
@@ -461,7 +677,7 @@ def _to_type_from_attrs(spec):
   return NamedTupleTypeWithPyContainerType(elements, the_type)
 
 
-def _string_representation(type_spec, formatted):
+def _string_representation(type_spec, formatted: bool) -> str:
   """Returns the string representation of a TFF `Type`.
 
   This function creates a `list` of strings representing the given `type_spec`;
@@ -546,23 +762,25 @@ def _string_representation(type_spec, formatted):
       formatted: A boolean indicating if the returned string should be
         formatted.
     """
-    if isinstance(type_spec, AbstractType):
+    if type_spec.is_abstract():
       return [type_spec.label]
-    elif isinstance(type_spec, FederatedType):
+    elif type_spec.is_federated():
       member_lines = _lines_for_type(type_spec.member, formatted)
       placement_line = '@{}'.format(type_spec.placement)
       if type_spec.all_equal:
         return _combine([member_lines, [placement_line]])
       else:
         return _combine([['{'], member_lines, ['}'], [placement_line]])
-    elif isinstance(type_spec, FunctionType):
+    elif type_spec.is_function():
       if type_spec.parameter is not None:
         parameter_lines = _lines_for_type(type_spec.parameter, formatted)
       else:
         parameter_lines = ['']
       result_lines = _lines_for_type(type_spec.result, formatted)
       return _combine([['('], parameter_lines, [' -> '], result_lines, [')']])
-    elif isinstance(type_spec, NamedTupleType):
+    elif type_spec.is_tuple():
+      if len(type_spec) == 0:  # pylint: disable=g-explicit-length-test
+        return ['<>']
       elements = anonymous_tuple.to_elements(type_spec)
       elements_lines = _lines_for_named_types(elements, formatted)
       if formatted:
@@ -571,12 +789,12 @@ def _string_representation(type_spec, formatted):
       else:
         lines = [['<'], elements_lines, ['>']]
       return _combine(lines)
-    elif isinstance(type_spec, PlacementType):
+    elif type_spec.is_placement():
       return ['placement']
-    elif isinstance(type_spec, SequenceType):
+    elif type_spec.is_sequence():
       element_lines = _lines_for_type(type_spec.element, formatted)
       return _combine([element_lines, ['*']])
-    elif isinstance(type_spec, TensorType):
+    elif type_spec.is_tensor():
       if type_spec.shape.ndims is None:
         return ['{!r}[{}]'.format(type_spec.dtype, None)]
       elif type_spec.shape.ndims > 0:

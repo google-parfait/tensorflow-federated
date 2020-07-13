@@ -1,6 +1,7 @@
 book_path: /federated/_book.yaml
 project_path: /federated/_project.yaml
-description: <!--no description-->
+description: An open-source framework for machine learning and other computations on decentralized
+ data. TFF has been developed to facilitate open research and experimentation.
 landing_page:
   custom_css_path: /site-assets/css/style.css
   rows:
@@ -53,17 +54,14 @@ landing_page:
       code_block: |
         <pre class = "prettyprint">
         import tensorflow as tf
-        tf.compat.v1.enable_v2_behavior()
         import tensorflow_federated as tff
 
         # Load simulation data.
         source, _ = tff.simulation.datasets.emnist.load_data()
         def client_data(n):
           return source.create_tf_dataset_for_client(source.client_ids[n]).map(
-              lambda e: {
-                  'x': tf.reshape(e['pixels'], [-1]),
-                  'y': e['label'],
-          }).repeat(10).batch(20)
+              lambda e: (tf.reshape(e['pixels'], [-1]), e['label'])
+          ).repeat(10).batch(20)
 
         # Pick a subset of client devices to participate in training.
         train_data = [client_data(n) for n in range(3)]
@@ -78,14 +76,16 @@ landing_page:
               tf.keras.layers.Dense(10, tf.nn.softmax, input_shape=(784,),
                                     kernel_initializer='zeros')
           ])
-          model.compile(
+          return tff.learning.from_keras_model(
+              model,
+              dummy_batch=sample_batch,
               loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-              optimizer=tf.keras.optimizers.SGD(0.1),
               metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-          return tff.learning.from_compiled_keras_model(model, sample_batch)
 
         # Simulate a few rounds of training with the selected client devices.
-        trainer = tff.learning.build_federated_averaging_process(model_fn)
+        trainer = tff.learning.build_federated_averaging_process(
+          model_fn,
+          client_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1))
         state = trainer.initialize()
         for _ in range(5):
           state, metrics = trainer.next(state, train_data)
@@ -101,10 +101,10 @@ landing_page:
         path: https://www.youtube.com/watch?v=1YbPmkChcbo
     - heading: "Introducing TensorFlow Federated"
       image_path: /resources/images/tf-logo-card-16x9.png
-      path: https://medium.com/tensorflow/introducing-tensorflow-federated-a4147aa20041
+      path: https://blog.tensorflow.org/2019/03/introducing-tensorflow-federated.html
       buttons:
       - label: "Read on TensorFlow blog"
-        path: https://medium.com/tensorflow/introducing-tensorflow-federated-a4147aa20041
+        path: https://blog.tensorflow.org/2019/03/introducing-tensorflow-federated.html
     - heading: "Federated Learning: Collaborative Machine Learning without Centralized Training Data"
       image_path: /resources/images/google-research-card-16x9.png
       path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html

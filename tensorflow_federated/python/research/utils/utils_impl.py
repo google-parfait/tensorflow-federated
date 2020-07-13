@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +23,7 @@ import os.path
 import shutil
 import subprocess
 import tempfile
-from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Text, Union
+from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Union
 
 from absl import flags
 from absl import logging
@@ -34,8 +33,8 @@ import tensorflow as tf
 
 
 def iter_grid(
-    grid_dict: Mapping[Text, Sequence[Union[int, float, Text]]]
-) -> Iterator[Dict[Text, Union[int, float, Text]]]:
+    grid_dict: Mapping[str, Sequence[Union[int, float, str]]]
+) -> Iterator[Dict[str, Union[int, float, str]]]:
   """Iterates over all combinations of values in the provied dict-of-lists.
 
   >>> list(iter_grid({'a': [1, 2], 'b': [4.0, 5.0, 6.0]))
@@ -60,9 +59,9 @@ def iter_grid(
 
 
 def atomic_write_to_csv(dataframe: pd.DataFrame,
-                        output_file: Text,
+                        output_file: str,
                         overwrite: bool = True) -> None:
-  """Writes `source` to `output_file` as a (possibly zipped) CSV file.
+  """Writes `dataframe` to `output_file` as a (possibly zipped) CSV file.
 
   Args:
     dataframe: A `pandas.Dataframe`.
@@ -102,6 +101,37 @@ def atomic_write_to_csv(dataframe: pd.DataFrame,
   shutil.rmtree(tmp_dir)
 
 
+def atomic_read_from_csv(csv_file):
+  """Reads a `pandas.DataFrame` from the (possibly zipped) `csv_file`.
+
+  Format note: The CSV is expected to have an index column.
+
+  Args:
+    csv_file: A (possibly zipped) CSV file.
+
+  Returns:
+    A `pandas.Dataframe`.
+  """
+
+  # When reading from a zip, pandas.from_csv() is not happy taking a gfile,
+  # so we need a temp file on the local filesystem.
+  tmp_dir = tempfile.mkdtemp(prefix='atomic_read_from_csv_tmp')
+  # We put the output_file name last so we preserve the extension to allow
+  # inference of the compression format. Note that files with .zip extension
+  # (but not .bz2, .gzip, or .xv) have unexpected internal filenames due to
+  # https://github.com/pandas-dev/pandas/issues/26023, not because of something
+  # we are doing here.
+  tmp_name = os.path.join(tmp_dir, os.path.basename(csv_file))
+  assert not tf.io.gfile.exists(tmp_name), 'file [{!s}] exists'.format(tmp_name)
+  tf.io.gfile.copy(src=csv_file, dst=tmp_name, overwrite=True)
+  # Do the read from the temp file.
+  dataframe = pd.read_csv(tmp_name, index_col=0)
+  # Finally, clean up:
+  shutil.rmtree(tmp_dir)
+
+  return dataframe
+
+
 def _optimizer_canonical_name(optimizer_cls):
   """Return a short, canonical name for an optimizer for us in flags."""
   return optimizer_cls.__name__.lower()
@@ -116,7 +146,7 @@ _SUPPORTED_OPTIMIZERS = {
 }
 
 
-def define_optimizer_flags(prefix: Text) -> None:
+def define_optimizer_flags(prefix: str) -> None:
   """Defines flags with `prefix` to configure an optimizer.
 
   This method is inteded to be paired with `create_optimizer_from_flags` using
@@ -150,7 +180,7 @@ def define_optimizer_flags(prefix: Text) -> None:
   must be called before `absl.app.run(main)`, and is recommened to be called
   next to other flag definitions at the top of a py_binary.
 
-  NOTE: This method does not create a flag for `kwargs` of the Optimizer
+  Note: This method does not create a flag for `kwargs` of the Optimizer
   constructor. However, `kwargs` can be set using the `overrides` parameter of
   `create_optimizer_from_flags` below.
 
@@ -209,8 +239,8 @@ def define_optimizer_flags(prefix: Text) -> None:
 
 
 def create_optimizer_from_flags(
-    prefix: Text,
-    overrides: Optional[Mapping[Text, Union[Text, float, int, bool]]] = None
+    prefix: str,
+    overrides: Optional[Mapping[str, Union[str, float, int, bool]]] = None
 ) -> tf.keras.optimizers.Optimizer:
   """Returns an optimizer based on prefixed flags.
 
@@ -232,7 +262,7 @@ def create_optimizer_from_flags(
   If the optimizer flag is `'sgd'`, then a `tf.keras.optimizer.SGD` optimizer is
   constructed using the values in the flags prefixed with  `--client_sgd_`.
 
-  NOTE: `kwargs` can be set using the `overrides` parameter.
+  Note: `kwargs` can be set using the `overrides` parameter.
 
   Args:
     prefix: The same string prefix passed to `define_optimizer_flags`.
@@ -421,7 +451,7 @@ def get_hparam_flags():
 
 
 @contextlib.contextmanager
-def record_new_flags() -> Iterator[List[Text]]:
+def record_new_flags() -> Iterator[List[str]]:
   """A context manager that returns all flags created in it's scope.
 
   This is useful to define all of the flags which should be considered
@@ -445,8 +475,8 @@ def record_new_flags() -> Iterator[List[Text]]:
 
 
 def hparams_to_str(wid: int,
-                   param_dict: Mapping[Text, Text],
-                   short_names: Optional[Mapping[Text, Text]] = None) -> Text:
+                   param_dict: Mapping[str, str],
+                   short_names: Optional[Mapping[str, str]] = None) -> str:
   """Convenience method which flattens the hparams to a string.
 
   Used as mapping function for the WorkUnitCustomiser.
@@ -492,11 +522,10 @@ def hparams_to_str(wid: int,
   return hparams_str
 
 
-def launch_experiment(executable: Text,
-                      grid_iter: Iterable[Mapping[Text, Union[int, float,
-                                                              Text]]],
-                      root_output_dir: Text = '/tmp/exp',
-                      short_names: Optional[Mapping[Text, Text]] = None,
+def launch_experiment(executable: str,
+                      grid_iter: Iterable[Mapping[str, Union[int, float, str]]],
+                      root_output_dir: str = '/tmp/exp',
+                      short_names: Optional[Mapping[str, str]] = None,
                       max_workers: int = 1):
   """Launch experiments of grid search in parallel or sequentially.
 

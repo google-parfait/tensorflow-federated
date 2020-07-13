@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +39,7 @@ def assert_no_anon_tuples(x):
 
 
 # Set cmp=False to get a default hash function for tf.function.
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class FromServer(object):
   """Container for data that is broadcast from the server to clients.
 
@@ -54,7 +53,7 @@ class FromServer(object):
   discriminator_weights = attr.ib()
 
   @classmethod
-  def from_anon_tuple(cls, anon_tuple):
+  def from_tff_result(cls, anon_tuple):
     # TODO(b/123092620): These conversions should not be needed.
     return assert_no_anon_tuples(
         cls(generator_weights=list(anon_tuple.generator_weights),
@@ -62,7 +61,7 @@ class FromServer(object):
 
 
 # Set cmp=False to get a default hash function for tf.function.
-@attr.s(cmp=False, frozen=False)
+@attr.s(eq=False, frozen=False)
 class ServerState(object):
   """Container for all server state that must pass from round to round.
 
@@ -80,7 +79,7 @@ class ServerState(object):
   dp_averaging_state = attr.ib(default=None)
 
   @classmethod
-  def from_anon_tuple(cls, anon_tuple):
+  def from_tff_result(cls, anon_tuple):
     # TODO(b/123092620): These conversions should not be needed.
     return assert_no_anon_tuples(
         cls(
@@ -100,7 +99,7 @@ class ServerState(object):
 
 
 # Set cmp=False to get a default hash function for tf.function.
-@attr.s(cmp=False, frozen=True)
+@attr.s(eq=False, frozen=True)
 class ClientOutput(object):
   """Container for data that is sent from clients back to the server..
 
@@ -115,7 +114,7 @@ class ClientOutput(object):
   counters = attr.ib()
 
   @classmethod
-  def from_anon_tuple(cls, anon_tuple):
+  def from_tff_result(cls, anon_tuple):
     # TODO(b/123092620): These conversions should not be needed.
     return assert_no_anon_tuples(
         cls(discriminator_weights_delta=list(

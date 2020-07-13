@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,41 +19,20 @@ the latter is set to private and should remain such. The code in utils must not
 depend on implementation classes. It should be written against the Core API.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from tensorflow_federated.python.core.utils.computation_utils import IterativeProcess
 from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregateFn
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
 from tensorflow_federated.python.core.utils.computation_utils import update_state
 from tensorflow_federated.python.core.utils.differential_privacy import build_dp_aggregate
 from tensorflow_federated.python.core.utils.differential_privacy import build_dp_query
 from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_broadcast
+from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_broadcast_process
 from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_mean
+from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_mean_process
 from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_sum
+from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_sum_process
 from tensorflow_federated.python.core.utils.federated_aggregations import federated_max
 from tensorflow_federated.python.core.utils.federated_aggregations import federated_min
 from tensorflow_federated.python.core.utils.federated_aggregations import federated_sample
 from tensorflow_federated.python.core.utils.tf_computation_utils import assign
 from tensorflow_federated.python.core.utils.tf_computation_utils import create_variables
 from tensorflow_federated.python.core.utils.tf_computation_utils import identity
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "StatefulAggregateFn",
-    "StatefulBroadcastFn",
-    "IterativeProcess",
-    "assign",
-    "build_dp_aggregate",
-    "build_dp_query",
-    "build_encoded_broadcast",
-    "build_encoded_mean",
-    "build_encoded_sum",
-    "federated_max",
-    "federated_min",
-    "federated_sample",
-    "create_variables",
-    "identity",
-    "update_state",
-]

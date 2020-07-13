@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +13,7 @@
 # limitations under the License.
 
 import collections
+from typing import List, Set
 
 import numpy as np
 import tensorflow as tf
@@ -21,9 +21,9 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
-from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 class TensorFlowSerializationTest(test.TestCase):
@@ -40,6 +40,38 @@ class TensorFlowSerializationTest(test.TestCase):
             serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
             None, [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [99])
+
+  def test_serialize_tensorflow_with_table_no_variables(self):
+
+    def table_lookup(word):
+      table = tf.lookup.StaticVocabularyTable(
+          tf.lookup.KeyValueTensorInitializer(['a', 'b', 'c'],
+                                              np.arange(3, dtype=np.int64)),
+          num_oov_buckets=1)
+      return table.lookup(word)
+
+    comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+        table_lookup,
+        computation_types.TensorType(dtype=tf.string, shape=(None,)),
+        context_stack_impl.context_stack)
+    self.assertEqual(
+        str(type_serialization.deserialize_type(comp.type)),
+        '(string[?] -> int64[?])')
+    self.assertEqual(str(extra_type_spec), '(string[?] -> int64[?])')
+    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
+
+    with tf.Graph().as_default() as g:
+      tf.import_graph_def(
+          serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
+          name='')
+    with tf.compat.v1.Session(graph=g) as sess:
+      sess.run(fetches=comp.tensorflow.initialize_op)
+      results = sess.run(
+          fetches=comp.tensorflow.result.tensor.tensor_name,
+          feed_dict={
+              comp.tensorflow.parameter.tensor.tensor_name: ['b', 'c', 'a']
+          })
+    self.assertAllEqual(results, [1, 2, 0])
 
   @test.graph_mode_test
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
@@ -107,6 +139,51 @@ class TensorFlowSerializationTest(test.TestCase):
             }, [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [10])
 
+  def assertNodeDefListDoesNotContainOps(self,
+                                         nodedefs: List[tf.compat.v1.NodeDef],
+                                         forbidden_ops: Set[str]):
+    for node in nodedefs:
+      if node.op in forbidden_ops:
+        self.fail('[{n}] node was found but not allowed.'.format(n=node.op))
+
+  def assertGraphDoesNotContainOps(self, graphdef: tf.compat.v1.GraphDef,
+                                   forbidden_ops: Set[str]):
+    self.assertNodeDefListDoesNotContainOps(graphdef.node, forbidden_ops)
+    for function in graphdef.library.function:
+      self.assertNodeDefListDoesNotContainOps(function.node_def, forbidden_ops)
+
+  @test.graph_mode_test
+  def test_serialize_tensorflow_with_dataset_not_optimized(self):
+
+    @tf.function
+    def test_foo(ds):
+      return ds.reduce(np.int64(0), lambda x, y: x + y)
+
+    def legacy_dataset_reducer_example(ds):
+      return test_foo(ds)
+
+    comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+        legacy_dataset_reducer_example,
+        computation_types.SequenceType(tf.int64),
+        context_stack_impl.context_stack)
+    self.assertEqual(
+        str(type_serialization.deserialize_type(comp.type)),
+        '(int64* -> int64)')
+    self.assertEqual(str(extra_type_spec), '(int64* -> int64)')
+    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
+    parameter = tf.data.Dataset.range(5)
+
+    graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
+    self.assertGraphDoesNotContainOps(graph_def,
+                                      ['OptimizeDataset', 'ModelDataste'])
+    results = tf.compat.v1.Session().run(
+        tf.import_graph_def(
+            graph_def, {
+                comp.tensorflow.parameter.sequence.variant_tensor_name:
+                    tf.data.experimental.to_variant(parameter)
+            }, [comp.tensorflow.result.tensor.tensor_name]))
+    self.assertEqual(results, [10])
+
 
 class DatasetSerializationTest(test.TestCase):
 
@@ -125,9 +202,7 @@ class DatasetSerializationTest(test.TestCase):
     serialized_bytes = tensorflow_serialization.serialize_dataset(x)
     y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
 
-    self.assertEqual(
-        tf.data.experimental.get_structure(x),
-        tf.data.experimental.get_structure(y))
+    self.assertEqual(x.element_spec, y.element_spec)
     self.assertAllEqual([y_val for y_val in y], [x * 2 for x in range(5)])
 
   def test_roundtrip_sequence_of_tuples(self):
@@ -136,9 +211,7 @@ class DatasetSerializationTest(test.TestCase):
     serialized_bytes = tensorflow_serialization.serialize_dataset(x)
     y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
 
-    self.assertEqual(
-        tf.data.experimental.get_structure(x),
-        tf.data.experimental.get_structure(y))
+    self.assertEqual(x.element_spec, y.element_spec)
     self.assertAllEqual(
         self.evaluate([y_val for y_val in y]),
         [(x * 2, x, x - 1.) for x in range(5)])
@@ -148,9 +221,7 @@ class DatasetSerializationTest(test.TestCase):
     serialized_bytes = tensorflow_serialization.serialize_dataset(x)
     y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
 
-    self.assertEqual(
-        tf.data.experimental.get_structure(x),
-        tf.data.experimental.get_structure(y))
+    self.assertEqual(x.element_spec, y.element_spec)
     expected_values = [(x,) for x in range(5)]
     actual_values = self.evaluate([y_val for y_val in y])
     self.assertAllEqual(expected_values, actual_values)
@@ -166,9 +237,7 @@ class DatasetSerializationTest(test.TestCase):
     serialized_bytes = tensorflow_serialization.serialize_dataset(x)
     y = tensorflow_serialization.deserialize_dataset(serialized_bytes)
 
-    self.assertEqual(
-        tf.data.experimental.get_structure(x),
-        tf.data.experimental.get_structure(y))
+    self.assertEqual(x.element_spec, y.element_spec)
     self.assertAllEqual(
         self.evaluate([y_val for y_val in y]),
         [test_tuple_type(a=x * 2, b=x, c=x - 1.) for x in range(5)])
@@ -191,10 +260,10 @@ class DatasetSerializationTest(test.TestCase):
     serialzied_bytes = tensorflow_serialization.serialize_dataset(x)
     y = tensorflow_serialization.deserialize_dataset(serialzied_bytes)
 
-    # NOTE: TF loses the `OrderedDict` during serialization, so the expectation
+    # Note: TF loses the `OrderedDict` during serialization, so the expectation
     # here is for a `dict` in the result.
     self.assertEqual(
-        tf.data.experimental.get_structure(y), {
+        y.element_spec, {
             'b':
                 tf.TensorSpec([], tf.int32),
             'a':

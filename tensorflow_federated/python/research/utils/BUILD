@@ -3,6 +3,33 @@ package(default_visibility = ["//tensorflow_federated/python/research"])
 licenses(["notice"])
 
 py_library(
+    name = "adapters",
+    srcs = ["adapters.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
+    name = "aggregate_fns",
+    srcs = ["aggregate_fns.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated",
+        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+    ],
+)
+
+py_test(
+    name = "aggregate_fns_test",
+    srcs = ["aggregate_fns_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":aggregate_fns",
+        "//tensorflow_federated",
+    ],
+)
+
+py_library(
     name = "checkpoint_manager",
     srcs = ["checkpoint_manager.py"],
     srcs_version = "PY3",
@@ -32,20 +59,65 @@ py_test(
 )
 
 py_library(
-    name = "training_loops",
-    srcs = ["training_loops.py"],
+    name = "metrics_manager",
+    srcs = ["metrics_manager.py"],
+    srcs_version = "PY3",
+    deps = [":utils_impl"],
+)
+
+py_test(
+    name = "metrics_manager_test",
+    srcs = ["metrics_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":metrics_manager",
+        ":utils_impl",
+    ],
+)
+
+py_library(
+    name = "training_loop",
+    srcs = ["training_loop.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":adapters",
+        ":checkpoint_manager",
+        ":metrics_manager",
+        ":utils_impl",
+    ],
+)
+
+py_test(
+    name = "training_loop_test",
+    size = "large",
+    srcs = ["training_loop_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":adapters",
+        ":checkpoint_manager",
+        ":metrics_manager",
+        ":training_loop",
+        "//tensorflow_federated",
+    ],
+)
+
+py_library(
+    name = "training_utils",
+    srcs = ["training_utils.py"],
     srcs_version = "PY3",
     deps = ["//tensorflow_federated"],
 )
 
 py_test(
-    name = "training_loops_test",
+    name = "training_utils_test",
     size = "large",
-    srcs = ["training_loops_test.py"],
+    srcs = ["training_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":training_loops",
+        ":training_utils",
         "//tensorflow_federated",
     ],
 )

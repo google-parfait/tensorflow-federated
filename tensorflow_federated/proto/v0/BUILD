@@ -14,7 +14,7 @@ py_proto_library(
     srcs = ["computation.proto"],
     default_runtime = "@com_google_protobuf//:protobuf_python",
     protoc = "@com_google_protobuf//:protoc",
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = ["@com_google_protobuf//:protobuf_python"],
 )
 
@@ -23,7 +23,7 @@ py_proto_library(
     srcs = ["executor.proto"],
     default_runtime = "@com_google_protobuf//:protobuf_python",
     protoc = "@com_google_protobuf//:protoc",
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     use_grpc_plugin = True,
     deps = [
         "@com_google_protobuf//:protobuf_python",

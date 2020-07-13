@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """A simple ClientData based on in-memory tensor slices."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -30,7 +25,7 @@ class FromTensorSlicesClientData(client_data.ClientData):
   def __init__(self, tensor_slices_dict):
     """Constructs the object from a dictionary of client data.
 
-    NOTE: All clients are required to have non-empty data.
+    Note: All clients are required to have non-empty data.
 
     Args:
       tensor_slices_dict: A dictionary keyed by client_id, where values are
@@ -42,8 +37,7 @@ class FromTensorSlicesClientData(client_data.ClientData):
     py_typecheck.check_type(tensor_slices_dict, dict)
     self._tensor_slices_dict = tensor_slices_dict
     example_dataset = self.create_tf_dataset_for_client(self.client_ids[0])
-    self._element_type_structure = tf.data.experimental.get_structure(
-        example_dataset)
+    self._element_type_structure = example_dataset.element_spec
 
   @property
   def client_ids(self):

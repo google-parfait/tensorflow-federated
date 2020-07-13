@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,9 +27,27 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test as common_test
-from tensorflow_federated.python.core import api as tff
-from tensorflow_federated.python.core.impl import executor_stacks
-from tensorflow_federated.python.core.utils import test as core_test
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.impl import test as core_test
+from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.types import type_factory
+
+
+@computations.tf_computation(
+    computation_types.SequenceType(tf.float32), tf.float32)
+def count_over(ds, t):
+  return ds.reduce(
+      np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32))
+
+
+@computations.tf_computation(computation_types.SequenceType(tf.float32))
+def count_total(ds):
+  return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
 
 class TensorFlowComputationsV1OnlyTest(common_test.TestCase):
@@ -81,29 +98,75 @@ class TensorFlowComputationsV2OnlyTest(common_test.TestCase):
 
 class TensorFlowComputationsTest(parameterized.TestCase):
 
-  @core_test.executors
+  @parameterized.named_parameters(
+      ('one_client', 1),
+      ('two_clients', 2),
+      ('four_clients', 4),
+      ('ten_clients', 10),
+  )
+  def test_get_size_info(self, num_clients):
+
+    @computations.federated_computation(
+        type_factory.at_clients(computation_types.SequenceType(tf.float32)),
+        type_factory.at_server(tf.float32))
+    def comp(temperatures, threshold):
+      client_data = [temperatures, intrinsics.federated_broadcast(threshold)]
+      result_map = intrinsics.federated_map(
+          count_over, intrinsics.federated_zip(client_data))
+      count_map = intrinsics.federated_map(count_total, temperatures)
+      return intrinsics.federated_mean(result_map, count_map)
+
+    factory = executor_stacks.sizing_executor_factory(num_clients=num_clients)
+    default_executor.set_default_executor(factory)
+
+    to_float = lambda x: tf.cast(x, tf.float32)
+    temperatures = [tf.data.Dataset.range(10).map(to_float)] * num_clients
+    threshold = 15.0
+    comp(temperatures, threshold)
+
+    # Each client receives a tf.float32 and uploads two tf.float32 values.
+    expected_broadcast_bits = [num_clients * 32]
+    expected_aggregate_bits = [num_clients * 32 * 2]
+    expected_broadcast_history = {
+        (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients
+    }
+    expected_aggregate_history = {
+        (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients * 2
+    }
+
+    size_info = factory.get_size_info()
+
+    self.assertEqual(expected_broadcast_history, size_info.broadcast_history)
+    self.assertEqual(expected_aggregate_history, size_info.aggregate_history)
+    self.assertEqual(expected_broadcast_bits, size_info.broadcast_bits)
+    self.assertEqual(expected_aggregate_bits, size_info.aggregate_bits)
+
+  @executor_test_utils.executors
   def test_computation_with_no_args_returns_value(self):
 
-    @tff.tf_computation
+    @computations.tf_computation
     def foo():
       return 10
 
     self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
     self.assertEqual(foo(), 10)
 
-  @core_test.tf1_and_tf2
+  # TODO(b/147258413): change this back to tf1_and_tf2 after figuring out how to
+  # get savedmodel to work here.
+  @core_test.tf1
   def test_tf_fn_with_empty_tuple_type_trivial_logic(self, tf_computation):
+    empty_tuple = ()
+    pass_through = tf_computation(lambda x: x, empty_tuple)
+    self.assertEqual(pass_through(empty_tuple), empty_tuple)
 
-    pass_through = tf_computation(lambda x: x, [])
-
-    self.assertEqual(pass_through([]), [])
-
-  @core_test.tf1_and_tf2
+  # TODO(b/147258413): change this back to tf1_and_tf2 after figuring out how to
+  # get savedmodel to work here.
+  @core_test.tf1
   def test_tf_fn_with_empty_tuple_type_nontrivial_logic(self, tf_computation):
-
-    nontrivial_manipulation = tf_computation(lambda x: [x, x], [])
-
-    self.assertEqual(nontrivial_manipulation([]), [[], []])
+    empty_tuple = ()
+    nontrivial_manipulation = tf_computation(lambda x: (x, x), empty_tuple)
+    self.assertEqual(
+        nontrivial_manipulation(empty_tuple), (empty_tuple, empty_tuple))
 
   @core_test.tf1_and_tf2
   def test_tf_comp_first_mode_of_usage_as_non_polymorphic_wrapper(
@@ -333,11 +396,13 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
     args = [
         MyType(1, dict(y=2, z=3)),
-        collections.OrderedDict([('o', 0)]), (0,)
+        collections.OrderedDict([('o', 0)]),
+        (0,),
     ]
     arg_type = [
         MyType(tf.int32, collections.OrderedDict(y=tf.int32, z=tf.int32)),
-        collections.OrderedDict([('o', tf.int32)]), (tf.int32,)
+        collections.OrderedDict([('o', tf.int32)]),
+        (tf.int32,),
     ]
 
     # Explicit type
@@ -348,7 +413,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     tf_comp = tf_computation(foo)
     self.assertEqual(tf_comp(*args), 6)
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_complex_param_tf_computation(self):
     # The eager executor (inside the local executor stack) has issue with
     # tf2_computation and the v1 version of SavedModel, hence the test above is
@@ -374,26 +439,29 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     ]
 
     # Explicit type
-    tf_comp = tff.tf_computation(foo, arg_type)
+    tf_comp = computations.tf_computation(foo, arg_type)
     self.assertEqual(tf_comp(*args), 6)
 
     # Polymorphic
-    tf_comp = tff.tf_computation(foo)
+    tf_comp = computations.tf_computation(foo)
     self.assertEqual(tf_comp(*args), 6)
 
 
 class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
-  # TODO(b/122081673): Support tf.Dataset serialization in tf2_computation.
 
+  # TODO(b/122081673): Support tf.Dataset serialization in tf2_computation.
+  @executor_test_utils.executors
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @common_test.skip_test_for_gpu
   def test_with_tf_datasets(self):
 
-    @tff.tf_computation(tff.SequenceType(tf.int64))
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
     def consume(ds):
       return ds.reduce(np.int64(0), lambda x, y: x + y)
 
     self.assertEqual(str(consume.type_signature), '(int64* -> int64)')
 
-    @tff.tf_computation
+    @computations.tf_computation
     def produce():
       return tf.data.Dataset.range(10)
 
@@ -403,11 +471,11 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
   # TODO(b/131363314): The reference executor should support generating and
   # returning infinite datasets
-  @core_test.executors(
-      ('local', executor_stacks.create_local_executor(1)),)
+  @executor_test_utils.executors(
+      ('local', executor_stacks.local_executor_factory(1)),)
   def test_consume_infinite_tf_dataset(self):
 
-    @tff.tf_computation(tff.SequenceType(tf.int64))
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
     def consume(ds):
       # Consume the first 10 elements of the dataset.
       return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
@@ -416,156 +484,150 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
   # TODO(b/131363314): The reference executor should support generating and
   # returning infinite datasets
-  @core_test.executors(
-      ('local', executor_stacks.create_local_executor(1)),)
+  @executor_test_utils.executors(
+      ('local', executor_stacks.local_executor_factory(1)),)
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @common_test.skip_test_for_gpu
   def test_produce_and_consume_infinite_tf_dataset(self):
 
-    @tff.tf_computation(tff.SequenceType(tf.int64))
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
     def consume(ds):
       # Consume the first 10 elements of the dataset.
       return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
 
-    @tff.tf_computation
+    @computations.tf_computation
     def produce():
       # Produce an infinite dataset.
       return tf.data.Dataset.range(10).repeat()
 
     self.assertEqual(consume(produce()), 45)
 
+  @executor_test_utils.executors
   def test_with_sequence_of_pairs(self):
     pairs = tf.data.Dataset.from_tensor_slices(
         (list(range(5)), list(range(5, 10))))
 
-    @tff.tf_computation
+    @computations.tf_computation
     def process_pairs(ds):
       return ds.reduce(0, lambda state, pair: state + pair[0] + pair[1])
 
     self.assertEqual(process_pairs(pairs), 45)
 
+  @executor_test_utils.executors
   def test_tf_comp_with_sequence_inputs_and_outputs_does_not_fail(self):
 
-    @tff.tf_computation(tff.SequenceType(tf.int32))
+    @computations.tf_computation(computation_types.SequenceType(tf.int32))
     def _(x):
       return x
 
+  @executor_test_utils.executors
   def test_with_four_element_dataset_pipeline(self):
 
-    @tff.tf_computation
+    @computations.tf_computation
     def comp1():
       return tf.data.Dataset.range(5)
 
-    @tff.tf_computation(tff.SequenceType(tf.int64))
+    @computations.tf_computation(computation_types.SequenceType(tf.int64))
     def comp2(ds):
       return ds.map(lambda x: tf.cast(x + 1, tf.float32))
 
-    @tff.tf_computation(tff.SequenceType(tf.float32))
+    @computations.tf_computation(computation_types.SequenceType(tf.float32))
     def comp3(ds):
       return ds.repeat(5)
 
-    @tff.tf_computation(tff.SequenceType(tf.float32))
+    @computations.tf_computation(computation_types.SequenceType(tf.float32))
     def comp4(ds):
       return ds.reduce(0.0, lambda x, y: x + y)
 
-    @tff.tf_computation
+    @computations.tf_computation
     def comp5():
       return comp4(comp3(comp2(comp1())))
 
     self.assertEqual(comp5(), 75.0)
 
 
-class FederatedComputationsTest(parameterized.TestCase):
+class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
 
+  @executor_test_utils.executors
   def test_raises_value_error_none_result(self):
     with self.assertRaisesRegex(ValueError, 'must return some non-`None`'):
 
-      @tff.federated_computation(None)
+      @computations.federated_computation(None)
       def _():
         return None
 
-  @core_test.executors
+  @executor_test_utils.executors
   def test_computation_with_no_args_returns_value(self):
 
-    @tff.federated_computation
+    @computations.federated_computation
     def foo():
       return 10
 
     self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
     self.assertEqual(foo(), 10)
 
-  @core_test.executors
+  # TODO(b/131363314): The reference executor should support generating and
+  # returning infinite datasets
+  @executor_test_utils.executors(
+      ('local', executor_stacks.local_executor_factory(num_clients=1)),)
   def test_computation_called_once_is_invoked_once(self):
-    count = 0
 
-    @tff.federated_computation
-    def foo():
-      nonlocal count
-      count += 1
-      return 10
+    @computations.tf_computation
+    def get_random():
+      return tf.random.normal([])
 
-    @tff.federated_computation
-    def bar():
-      value = foo()
+    @computations.federated_computation
+    def same_random_number_twice():
+      value = get_random()
       return value, value
 
-    bar()
-    self.assertEqual(count, 1)
+    num1, num2 = same_random_number_twice()
+    self.assertEqual(num1, num2)
 
-  @core_test.executors
-  def test_computation_called_once_and_selected_from_is_invoked_once(self):
-    count = 0
-
-    @tff.federated_computation
-    def foo():
-      nonlocal count
-      count += 1
-      return [10, 10]
-
-    @tff.federated_computation
-    def bar():
-      value = foo()
-      return value[0], value[1]
-
-    bar()
-    self.assertEqual(count, 1)
-
+  @executor_test_utils.executors
   def test_computation_typical_usage_as_decorator_with_unlabeled_type(self):
 
-    @tff.federated_computation((tff.FunctionType(tf.int32, tf.int32), tf.int32))
+    @computations.federated_computation(
+        computation_types.FunctionType(tf.int32, tf.int32),
+        tf.int32,
+    )
     def foo(f, x):
-      assert isinstance(f, tff.Value)
-      assert isinstance(x, tff.Value)
+      assert isinstance(f, value_base.Value)
+      assert isinstance(x, value_base.Value)
       assert str(f.type_signature) == '(int32 -> int32)'
       assert str(x.type_signature) == 'int32'
       result_value = f(f(x))
-      assert isinstance(result_value, tff.Value)
+      assert isinstance(result_value, value_base.Value)
       assert str(result_value.type_signature) == 'int32'
       return result_value
 
     self.assertEqual(
         str(foo.type_signature), '(<(int32 -> int32),int32> -> int32)')
 
-    @tff.tf_computation(tf.int32)
+    @computations.tf_computation(tf.int32)
     def third_power(x):
       return x**3
 
     self.assertEqual(foo(third_power, 10), int(1e9))
     self.assertEqual(foo(third_power, 1), 1)
 
+  @executor_test_utils.executors
   def test_computation_typical_usage_as_decorator_with_labeled_type(self):
 
-    @tff.federated_computation((
-        ('f', tff.FunctionType(tf.int32, tf.int32)),
+    @computations.federated_computation(
+        ('f', computation_types.FunctionType(tf.int32, tf.int32)),
         ('x', tf.int32),
-    ))
+    )
     def foo(f, x):
       return f(f(x))
 
-    @tff.tf_computation(tf.int32)
+    @computations.tf_computation(tf.int32)
     def square(x):
       return x**2
 
-    @tff.tf_computation(tf.int32, tf.int32)
-    def square_drop_y(x, y):  # pylint: disable=unused-argument
+    @computations.tf_computation(tf.int32, tf.int32)
+    def square_drop_y(x, y):
+      del y  # Unused.
       return x * x
 
     self.assertEqual(
@@ -574,50 +636,34 @@ class FederatedComputationsTest(parameterized.TestCase):
     self.assertEqual(foo(square, 10), int(1e4))
     self.assertEqual(square_drop_y(square_drop_y(10, 5), 100), int(1e4))
     self.assertEqual(square_drop_y(square_drop_y(10, 100), 5), int(1e4))
-    with self.assertRaisesRegex(TypeError,
-                                'is not assignable from source type'):
+    with self.assertRaisesRegex(
+        TypeError,
+        r'(Values of type .* cannot be cast to type .*)|'  # Reference executor
+        '(Expected a value of type .*, found .*)'  # Local executor
+    ):
       foo(square_drop_y, 10)
 
 
 class ComputationsTest(parameterized.TestCase):
 
-  @core_test.executors
-  def test_deterministic_computation_called_twice_is_invoked_once(self):
-    count = 0
-
-    @tff.tf_computation
-    def foo():
-      nonlocal count
-      count += 1
-      return 10
-
-    @tff.federated_computation
-    def bar():
-      return foo(), foo()
-
-    bar()
-    self.assertEqual(count, 1)
-
-  @core_test.executors
-  def test_nondeterministic_computation_called_twice_is_invoked_twice(self):
+  @executor_test_utils.executors
+  def test_tf_computation_called_twice_is_invoked_twice(self):
     self.skipTest(
         'b/139135080: Recognize distinct instantiations of the same TF code as '
         '(potentially) distinct at construction time.')
-    count = 0
 
-    @tff.tf_computation
-    def foo():
-      nonlocal count
-      count += 1
+    @computations.tf_computation
+    def get_random():
       return tf.random.normal([])
 
-    @tff.federated_computation
-    def bar():
-      return foo(), foo()
+    @computations.federated_computation
+    def get_two_random():
+      return get_random(), get_random()
 
-    bar()
-    self.assertEqual(count, 2)
+    first_random, second_random = get_two_random()
+    self.assertNotEqual(first_random, second_random)
 
 
 if __name__ == '__main__':
+  default_executor.initialize_default_executor()
   common_test.main()

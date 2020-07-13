@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,10 +70,6 @@ class PyTypeCheckTest(absltest.TestCase):
     with self.assertRaisesRegex(TypeError, 'Expected .* to subclass '):
       py_typecheck.check_subclass(int, float)
       py_typecheck.check_subclass(int, (float, float))
-    with self.assertRaisesRegex(TypeError, 'Expected a class,'):
-      py_typecheck.check_subclass(0, int)
-      py_typecheck.check_subclass(int, 0)
-      py_typecheck.check_subclass(int, (int, 0))
 
   def test_check_callable(self):
     try:

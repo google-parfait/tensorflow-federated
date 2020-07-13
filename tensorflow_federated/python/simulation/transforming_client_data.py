@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,8 @@
 # limitations under the License.
 """Expands ClientData by performing transformations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import bisect
 import re
-
-from six.moves import range
 
 import tensorflow as tf
 

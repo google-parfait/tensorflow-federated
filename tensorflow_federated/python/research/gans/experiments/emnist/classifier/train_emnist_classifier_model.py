@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,8 +105,6 @@ def _save(model, path_to_save_model_checkpoint):
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
-
-  tf.compat.v1.enable_v2_behavior()
 
   # Datasets.
   preprocessed_train_dataset, preprocessed_test_dataset = (

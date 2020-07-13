@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,8 @@
 # limitations under the License.
 """Defines functions and classes for building and manipulating TFF values."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import value_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 # TODO(b/113116813): Pick accepted representations for sequence and federated
 # type constants and update this as well as value_impl.ValueImpl accordingly.
@@ -42,8 +37,8 @@ def to_value(val, type_spec=None):
   * Numpy arrays (`np.ndarray` objects), also mapped to TFF tensors.
 
   * Dictionaries (`collections.OrderedDict` and unordered `dict`), `list`s,
-    `tuple`s, `namedtuple`s, and `tff.AnonymousTuple`s, all of which are mapped
-    to TFF tuple type.
+    `tuple`s, `namedtuple`s, and `AnonymousTuple`s, all of which are mapped to
+    TFF tuple type.
 
   * Computations (constructed with either the `tff.tf_computation` or with the
     `tff.federated_computation` decorator), typically mapped to TFF functions.

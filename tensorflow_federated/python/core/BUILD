@@ -6,7 +6,7 @@ licenses(["notice"])
 py_library(
     name = "core",
     srcs = ["__init__.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -18,6 +18,9 @@ py_library(
         "//tensorflow_federated/python/core/api:values",
         "//tensorflow_federated/python/core/backends",
         "//tensorflow_federated/python/core/framework",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
+        "//tensorflow_federated/python/core/templates",
+        "//tensorflow_federated/python/core/test",
         "//tensorflow_federated/python/core/utils",
     ],
 )

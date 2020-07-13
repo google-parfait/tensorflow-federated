@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """TensorFlow Federated Core Library."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from tensorflow_federated.python.core.api.computation_base import Computation
 from tensorflow_federated.python.core.api.computation_types import FederatedType
 from tensorflow_federated.python.core.api.computation_types import FunctionType
@@ -32,9 +27,11 @@ from tensorflow_federated.python.core.api.intrinsics import federated_aggregate
 from tensorflow_federated.python.core.api.intrinsics import federated_apply
 from tensorflow_federated.python.core.api.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.api.intrinsics import federated_collect
+from tensorflow_federated.python.core.api.intrinsics import federated_eval
 from tensorflow_federated.python.core.api.intrinsics import federated_map
 from tensorflow_federated.python.core.api.intrinsics import federated_mean
 from tensorflow_federated.python.core.api.intrinsics import federated_reduce
+from tensorflow_federated.python.core.api.intrinsics import federated_secure_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_value
 from tensorflow_federated.python.core.api.intrinsics import federated_zip
@@ -47,9 +44,17 @@ from tensorflow_federated.python.core.api.typed_object import TypedObject
 from tensorflow_federated.python.core.api.value_base import Value
 from tensorflow_federated.python.core.api.values import to_value
 
-# NOTE: These imports must happen after the API imports.
+# Note: These imports must happen after the API imports.
 # pylint: disable=g-bad-import-order
-from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import backends
+from tensorflow_federated.python.core import framework
+from tensorflow_federated.python.core import templates
+from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core import utils
 # pylint: enable=g-bad-import-order
+
+from tensorflow_federated.python.core.impl.executors import default_executor
+
+# Initialize a default executor; which is implicitly executed once the first
+# time a module in the `core` package is imported.
+default_executor.initialize_default_executor()

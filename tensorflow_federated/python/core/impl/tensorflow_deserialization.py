@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,25 +13,18 @@
 # limitations under the License.
 """Utilities for deserializing TensorFlow computations.
 
-NOTE: This is separate from `tensorflow_serialization.py` to avoid a circular
+Note: This is separate from `tensorflow_serialization.py` to avoid a circular
 dependency through `tf_computation_context.py`. The context code depends on
 the deserialization code (to implement invocation), whereas the serialization
 code depends on the context code (to invoke the Python function in context).
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import six
-from six.moves import zip
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
-from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -90,16 +82,16 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
     else:
       arg_type, arg_binding = tensorflow_utils.capture_result_from_graph(
           arg, graph)
-      if not type_utils.is_assignable_from(type_spec.parameter, arg_type):
+      if not type_spec.parameter.is_assignable_from(arg_type):
         raise TypeError(
             'The computation declared a parameter of type {}, but the argument '
             'is of a mismatching type {}.'.format(type_spec.parameter,
                                                   arg_type))
       else:
         input_map = {
-            k: graph.get_tensor_by_name(v) for k, v in six.iteritems(
-                tensorflow_utils.compute_map_from_bindings(
-                    computation_proto.tensorflow.parameter, arg_binding))
+            k: graph.get_tensor_by_name(v)
+            for k, v in tensorflow_utils.compute_map_from_bindings(
+                computation_proto.tensorflow.parameter, arg_binding).items()
         }
     return_elements = tensorflow_utils.extract_tensor_names_from_binding(
         computation_proto.tensorflow.result)

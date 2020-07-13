@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,30 +20,28 @@ of a client ID is only available at the preprocessing stage when preparing input
 data for the simulation and is not part of the TensorFlow Federated core APIs.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
-import logging
+import collections
+from typing import Callable, Iterable, List, Optional, Tuple
+
+from absl import logging
 import numpy as np
-
-import six
 import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.tensorflow_libs import version_check
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ClientData(object):
+class ClientData(object, metaclass=abc.ABCMeta):
   """Object to hold a dataset and a mapping of clients to examples."""
 
   @abc.abstractproperty
-  def client_ids(self):
-    """The list of string identifiers for clients in this dataset."""
+  def client_ids(self) -> List[str]:
+    """A list of string identifiers for clients in this dataset."""
     pass
 
   @abc.abstractmethod
-  def create_tf_dataset_for_client(self, client_id):
+  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
     """Creates a new `tf.data.Dataset` containing the client training examples.
 
     Args:
@@ -65,11 +62,40 @@ class ClientData(object):
     """
     pass
 
-  def create_tf_dataset_from_all_clients(self, seed=None):
+  def datasets(self,
+               limit_count: Optional[int] = None,
+               seed: Optional[int] = None) -> Iterable[tf.data.Dataset]:
+    """Yields the `tf.data.Dataset` for each client in random order.
+
+    This function is intended for use building a static array of client data
+    to be provided to the top-level federated computation.
+
+    Args:
+      limit_count: Optional, a maximum number of datasets to return.
+      seed: Optional, a seed to determine the order in which clients are
+        processed in the joined dataset. The seed can be any 32-bit unsigned
+        integer or an array of such integers.
+    """
+    # Create a copy to prevent the original list being reordered
+    client_ids = self.client_ids.copy()
+    np.random.RandomState(seed=seed).shuffle(client_ids)
+    count = 0
+    for client_id in client_ids:
+      if limit_count is not None and count >= limit_count:
+        return
+      count += 1
+      dataset = self.create_tf_dataset_for_client(client_id)
+      py_typecheck.check_type(dataset, tf.data.Dataset)
+      yield dataset
+
+  def create_tf_dataset_from_all_clients(self,
+                                         seed: Optional[int] = None
+                                        ) -> tf.data.Dataset:
     """Creates a new `tf.data.Dataset` containing _all_ client examples.
 
-    NOTE: the returned `tf.data.Dataset` is not serializable and runnable on
-    other devices, as it uses `tf.py_func` internally.
+    This function is intended for use training centralized, non-distributed
+    models (num_clients=1). This can be useful as a point of comparison
+    against federated models.
 
     Currently, the implementation produces a dataset that contains
     all examples from a single client in order, and so generally additional
@@ -77,40 +103,57 @@ class ClientData(object):
 
     Args:
       seed: Optional, a seed to determine the order in which clients are
-        processed in the joined dataset.
+        processed in the joined dataset. The seed can be any 32-bit unsigned
+        integer or an array of such integers.
 
     Returns:
       A `tf.data.Dataset` object.
     """
-
-    # NOTE: simply calling Dataset.concatenate() will result in too deep
+    # Note: simply calling Dataset.concatenate() will result in too deep
     # recursion depth.
-    # NOTE: Tests are via the simple concrete from_tensor_slices_client_data.
-    def _generator():
-      client_ids = list(self.client_ids)
-      np.random.RandomState(seed=seed).shuffle(client_ids)
-      for client_id in client_ids:
-        for example in self.create_tf_dataset_for_client(client_id):
-          yield example
+    # Note: Tests are via the simple concrete from_tensor_slices_client_data.
 
-    types = tf.nest.map_structure(lambda t: t.dtype,
-                                  self.element_type_structure)
-    shapes = tf.nest.map_structure(lambda t: t.shape,
-                                   self.element_type_structure)
+    # TODO(b/154763092): remove this check and only use the newer path.
+    if version_check.is_tensorflow_version_newer('2.3.0', tf):
+      logging.info('Using newer tf.data.Dataset construction behavior.')
+      # This works in tf-nightly, but isn't in a released tensorflow
+      # version yet.
+      client_datasets = [d for d in self.datasets(seed=seed)]
+      nested_dataset = tf.data.Dataset.from_tensor_slices(client_datasets)
+      example_dataset = nested_dataset.flat_map(lambda x: x)
+    else:
+      logging.info('Old TensorFlow version detected; defaulting to slower '
+                   'tf.data.Dataset construction.')
 
-    return tf.data.Dataset.from_generator(_generator, types, shapes)
+      def _generator():
+        for dataset in self.datasets(seed=seed):
+          for example in dataset:
+            yield example
 
-  def preprocess(self, preprocess_fn):
+      types = tf.nest.map_structure(lambda t: t.dtype,
+                                    self.element_type_structure)
+      shapes = tf.nest.map_structure(lambda t: t.shape,
+                                     self.element_type_structure)
+      example_dataset = tf.data.Dataset.from_generator(_generator, types,
+                                                       shapes)
+    return example_dataset
+
+  def preprocess(
+      self, preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]
+  ) -> 'ConcreteClientData':
     """Applies `preprocess_fn` to each client's data."""
     py_typecheck.check_callable(preprocess_fn)
 
-    def get_dataset(client_id):
+    def get_dataset(client_id: str) -> tf.data.Dataset:
       return preprocess_fn(self.create_tf_dataset_for_client(client_id))
 
     return ConcreteClientData(self.client_ids, get_dataset)
 
   @classmethod
-  def from_clients_and_fn(cls, client_ids, create_tf_dataset_for_client_fn):
+  def from_clients_and_fn(
+      cls, client_ids: Iterable[str],
+      create_tf_dataset_for_client_fn: Callable[[str], tf.data.Dataset]
+  ) -> 'ConcreteClientData':
     """Constructs a `ClientData` based on the given function.
 
     Args:
@@ -125,7 +168,9 @@ class ClientData(object):
     return ConcreteClientData(client_ids, create_tf_dataset_for_client_fn)
 
   @classmethod
-  def train_test_client_split(cls, client_data, num_test_clients):
+  def train_test_client_split(
+      cls, client_data: 'ClientData',
+      num_test_clients: int) -> Tuple['ClientData', 'ClientData']:
     """Returns a pair of (train, test) `ClientData`.
 
     This method partitions the clients of `client_data` into two `ClientData`
@@ -176,7 +221,7 @@ class ClientData(object):
       client_id = train_client_ids.pop()
       dataset = client_data.create_tf_dataset_for_client(client_id)
       try:
-        _ = next(iter(dataset))
+        _ = next(dataset.__iter__())
       except StopIteration:
         logging.warning('Client %s had no data, skipping.', client_id)
         clients_with_insufficient_batches.append(client_id)
@@ -187,7 +232,7 @@ class ClientData(object):
     # Invariant for successful exit of the above loop:
     assert len(test_client_ids) == num_test_clients
 
-    def from_ids(client_ids):
+    def from_ids(client_ids: Iterable[str]) -> 'ConcreteClientData':
       return cls.from_clients_and_fn(client_ids,
                                      client_data.create_tf_dataset_for_client)
 
@@ -205,7 +250,9 @@ class ConcreteClientData(ClientData):
   used to wrap another `ClientData` with an additional preprocessing function.
   """
 
-  def __init__(self, client_ids, create_tf_dataset_for_client_fn):
+  def __init__(self, client_ids: Iterable[str],
+               create_tf_dataset_for_client_fn: Callable[[str],
+                                                         tf.data.Dataset]):
     """Arguments correspond to the corresponding members of `ClientData`.
 
     Args:
@@ -213,23 +260,22 @@ class ConcreteClientData(ClientData):
       create_tf_dataset_for_client_fn: A function that takes a client_id from
         the above list, and returns a `tf.data.Dataset`.
     """
-    py_typecheck.check_type(client_ids, list)
+    py_typecheck.check_type(client_ids, collections.Iterable)
     py_typecheck.check_callable(create_tf_dataset_for_client_fn)
     if not client_ids:
       raise ValueError('At least one client_id is required.')
 
-    self._client_ids = client_ids
+    self._client_ids = list(client_ids)
     self._create_tf_dataset_for_client_fn = create_tf_dataset_for_client_fn
 
-    example_dataset = create_tf_dataset_for_client_fn(client_ids[0])
-    self._element_type_structure = tf.data.experimental.get_structure(
-        example_dataset)
+    example_dataset = create_tf_dataset_for_client_fn(next(iter(client_ids)))
+    self._element_type_structure = example_dataset.element_spec
 
   @property
-  def client_ids(self):
+  def client_ids(self) -> List[str]:
     return self._client_ids
 
-  def create_tf_dataset_for_client(self, client_id):
+  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
     return self._create_tf_dataset_for_client_fn(client_id)
 
   @property

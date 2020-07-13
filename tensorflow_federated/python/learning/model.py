@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,8 @@
 # limitations under the License.
 """Abstractions for models used in federated learning."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import collections
-
-import six
 
 
 class BatchOutput(
@@ -29,7 +22,7 @@ class BatchOutput(
                            ['loss', 'predictions', 'num_examples'])):
   """A structure that holds the output of a `tff.learning.Model`.
 
-  NOTE: All fields are optional (may be None).
+  Note: All fields are optional (may be None).
 
   -   `loss`: The scalar mean loss on the examples in the batch. If the model
       has multiple losses, it is the sum of all the individual losses.
@@ -40,14 +33,13 @@ class BatchOutput(
   __slots__ = ()
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Model(object):
+class Model(object, metaclass=abc.ABCMeta):
   """Represents a model for use in TensorFlow Federated.
 
   Each `Model` will work on a set of `tf.Variables`, and each method should be
-  a computation that can be implemented as a `tf.defun`; this implies the class
-  should essentially be stateless from a Python perspective, as each method
-  will generally only be traced once (per set of arguments) to create the
+  a computation that can be implemented as a `tf.function`; this implies the
+  class should essentially be stateless from a Python perspective, as each
+  method will generally only be traced once (per set of arguments) to create the
   corresponding TensorFlow graph functions. Thus, `Model` instances should
   behave as expected in both eager and graph (TF 1.0) usage.
 
@@ -108,12 +100,12 @@ class Model(object):
   def forward_pass(self, batch_input, training=True):
     """Runs the forward pass and returns results.
 
-    This method should not modify any variables that are part of the model, that
-    is, variables that influence the predictions; for that, see
-    `TrainableModel.train_on_batch`.
+    This method should not modify any variables that are part of the model
+    parameters, that is, variables that influence the predictions. Rather, this
+    is done by the training loop.
 
     However, this method may update aggregated metrics computed across calls to
-    forward_pass; the final values of such metrics can be accessed via
+    `forward_pass`; the final values of such metrics can be accessed via
     `aggregated_outputs`.
 
     Uses in TFF:
@@ -123,7 +115,7 @@ class Model(object):
         non-Federated-Averaging algorithms, where we want the model to run the
         forward pass and update metrics, but there is no optimizer
         (we might only compute gradients on the returned loss).
-      * To implement Federated Averaging, when augmented as a `TrainableModel`.
+      * To implement Federated Averaging.
 
     Args:
       batch_input: a nested structure that matches the structure of
@@ -189,36 +181,13 @@ class Model(object):
     Returns:
       Either a `tff.Computation`, or None if no federated aggregation is needed.
 
-
       The `tff.Computation` should take as its single input a
       `tff.CLIENTS`-placed `tff.Value` corresponding to the return value of
-      `Model.report_local_outputs`, and return a dictionary or other structure
-      of `tff.SERVER`-placed values; consumers of this method should generally
-      provide these server-placed values as outputs of the overall computation
-      consuming the model.
-    """
-    pass
-
-
-@six.add_metaclass(abc.ABCMeta)
-class TrainableModel(Model):
-  """A Model with an additional method for (local) training.
-
-  This class is primarily intended to be used in the implementation of
-  Federated Averaging.
-  """
-
-  @abc.abstractmethod
-  def train_on_batch(self, batch_input):
-    """Like `forward_pass`, but updates the model variables.
-
-    Typically this will invoke `forward_pass`, with any corresponding
-    side-effects such as updating metrics.
-
-    Args:
-      batch_input: The current batch, as for `forward_pass`.
-
-    Returns:
-      The same `BatchOutput` as `forward_pass`.
+      `Model.report_local_outputs`, and return an `OrderedDict` (possibly
+      nested) of `tff.SERVER`-placed values. The consumer of this
+      method should generally provide these server-placed values as outputs of
+      the overall computation consuming the model. Using an `OrderedDict`
+      allows the value returned by TFF executor to be converted back to an
+      `OrderedDict` via the `._asdict(recursive=True)` member function.
     """
     pass

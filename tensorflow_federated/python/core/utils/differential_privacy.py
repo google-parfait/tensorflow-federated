@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,24 +13,31 @@
 # limitations under the License.
 """Utilities for interop with tensorflow_privacy."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+import collections
 import math
 import numbers
+import warnings
 
 import numpy as np
 import tensorflow as tf
 import tensorflow_privacy
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core import api as tff
-from tensorflow_federated.python.core import framework as tff_framework
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.utils import computation_utils
 
 # TODO(b/140236959): Make the nomenclature consistent (b/w 'record' and 'value')
 # in this library.
+
+# Note if the functions here change, the documentation at
+# https://github.com/tensorflow/federated/blob/master/docs/tff_for_research.md
+# should be updated.
 
 
 def build_dp_query(clip,
@@ -41,7 +47,8 @@ def build_dp_query(clip,
                    target_unclipped_quantile=None,
                    clipped_count_budget_allocation=None,
                    expected_num_clients=None,
-                   use_per_vector=False,
+                   per_vector_clipping=False,
+                   geometric_clip_update=True,
                    model=None):
   """Makes a `DPQuery` to estimate vector averages with differential privacy.
 
@@ -56,21 +63,22 @@ def build_dp_query(clip,
     expected_total_weight: The expected total weight of all clients, used as the
       denominator for the average computation.
     adaptive_clip_learning_rate: Learning rate for quantile-based adaptive
-      clipping. If 0, fixed clipping is used. If per-vector clipping is enabled,
-      the learning rate of each vector is proportional to that vector's initial
-      clip, such that the sum of all per-vector learning rates equals this.
+      clipping. If 0, fixed clipping is used. If `per_vector_clipping=True` and
+      `geometric_clip_update=False`, the learning rate of each vector is
+      proportional to that vector's initial clip.
     target_unclipped_quantile: Target unclipped quantile for adaptive clipping.
     clipped_count_budget_allocation: The fraction of privacy budget to use for
       estimating clipped counts.
     expected_num_clients: The expected number of clients for estimating clipped
       fractions.
-    use_per_vector: If True, clip each weight tensor independently. Otherwise,
-      global clipping is used. The clipping norm for each vector (or the initial
-      clipping norm, in the case of adaptive clipping) is proportional to the
-      sqrt of the vector dimensionality while the total bound still equals
-      `clip`.
+    per_vector_clipping: If True, clip each weight tensor independently.
+      Otherwise, global clipping is used. The clipping norm for each vector (or
+      the initial clipping norm, in the case of adaptive clipping) is
+      proportional to the sqrt of the vector dimensionality such that the root
+      sum squared of the individual clips equals `clip`.
+    geometric_clip_update: If True, use geometric updating of the clip.
     model: A `tff.learning.Model` to determine the structure of model weights.
-      Required only if use_per_vector is True.
+      Required only if per_vector_clipping is True.
 
   Returns:
     A `DPQuery` suitable for use in a call to `build_dp_aggregate` to perform
@@ -81,9 +89,9 @@ def build_dp_query(clip,
   py_typecheck.check_type(expected_total_weight, numbers.Number,
                           'expected_total_weight')
 
-  if use_per_vector:
+  if per_vector_clipping:
     # Note we need to keep the structure of vectors (not just the num_vectors)
-    # to create the subqueries below, when use_per_vector is True.
+    # to create the subqueries below, when per_vector_clipping is True.
     vectors = model.weights.trainable
     num_vectors = len(tf.nest.flatten(vectors))
   else:
@@ -110,16 +118,27 @@ def build_dp_query(clip,
           sum_stddev=vector_clip * noise_multiplier * num_vectors**0.5,
           denominator=expected_total_weight)
     else:
+      # Without geometric updating, the update is c = c - lr * loss, so for
+      # multiple vectors we set the learning rate to be on the same scale as the
+      # initial clip. That way big vectors get big updates, small vectors
+      # small updates. With geometric updating, the update is
+      # c = c * exp(-lr * loss) so the learning rate should be independent of
+      # the initial clip.
+      if geometric_clip_update:
+        learning_rate = adaptive_clip_learning_rate
+      else:
+        learning_rate = adaptive_clip_learning_rate * vector_clip / clip
       return tensorflow_privacy.QuantileAdaptiveClipAverageQuery(
           initial_l2_norm_clip=vector_clip,
           noise_multiplier=noise_multiplier,
           target_unclipped_quantile=target_unclipped_quantile,
-          learning_rate=adaptive_clip_learning_rate * vector_clip / clip,
+          learning_rate=learning_rate,
           clipped_count_stddev=clipped_count_stddev,
           expected_num_records=expected_num_clients,
+          geometric_update=geometric_clip_update,
           denominator=expected_total_weight)
 
-  if use_per_vector:
+  if per_vector_clipping:
 
     def dim(v):
       return math.exp(sum([math.log(d.value) for d in v.shape.dims]))
@@ -136,16 +155,24 @@ def build_dp_query(clip,
 
 # TODO(b/123092620): When fixed, should no longer need this method.
 def _default_get_value_type_fn(value):
-  value_type = value.type_signature.member
-  if hasattr(value_type, '_asdict'):
-    return value_type._asdict()
-  return value_type
+  return _default_from_tff_result_fn(value.type_signature.member)
 
 
 # TODO(b/123092620): When fixed, should no longer need this method.
-def _default_from_anon_tuple_fn(record):
-  if hasattr(record, '_asdict'):
-    return record._asdict()
+def _default_from_tff_result_fn(record):
+  """Converts `anonymous_tuple.AnonymousTuple` to dict or list if possible."""
+  if isinstance(record, anonymous_tuple.AnonymousTuple):
+    try:
+      record = record._asdict()
+    except ValueError:
+      # At least some of the fields in `record` were not named. If all of the
+      # fields were not named, we can return a `list`. Otherwise `record`
+      # is partially named, which is not supported.
+      if anonymous_tuple.name_list(record):
+        raise ValueError(
+            'Cannot construct a default from a TFF result that '
+            'has partially named fields. TFF result: {!s}'.format(record))
+      record = [elt for _, elt in anonymous_tuple.iter_elements(record)]
   return record
 
 
@@ -155,15 +182,15 @@ def _default_from_anon_tuple_fn(record):
 # better name than value_type_fn?
 def build_dp_aggregate(query,
                        value_type_fn=_default_get_value_type_fn,
-                       from_anon_tuple_fn=_default_from_anon_tuple_fn):
+                       from_tff_result_fn=_default_from_tff_result_fn):
   """Builds a stateful aggregator for tensorflow_privacy DPQueries.
 
-  The returned StatefulAggregateFn can be called with any nested structure for
+  The returned `StatefulAggregateFn` can be called with any nested structure for
   the values being statefully aggregated. However, it's necessary to provide two
-  functions as arguments which indicate the properties (the tff.Type and the
-  AnonymousTuple conversion) of the nested structure that will be used. If using
-  an OrderedDict as the value's nested structure, the defaults for the arguments
-  suffice.
+  functions as arguments which indicate the properties (the `tff.Type` and the
+  `anonymous_tuple.AnonymousTuple` conversion) of the nested structure that will
+  be used. If using a `collections.OrderedDict` as the value's nested structure,
+  the defaults for the arguments suffice.
 
   Args:
     query: A DPQuery to aggregate. For compatibility with tensorflow_federated,
@@ -172,20 +199,21 @@ def build_dp_aggregate(query,
     value_type_fn: Python function that takes the value argument of next_fn and
       returns the value type. This will be used in determining the TensorSpecs
       that establish the initial sample state. If the value being aggregated is
-      an OrderedDict, the default for this argument can be used. This argument
-      probably gets removed once b/123092620 is addressed (and the associated
-      processing step gets replaced with a simple call to
-      value.type_signature.member).
-    from_anon_tuple_fn: Python function that takes a client record and converts
+      an `collections.OrderedDict`, the default for this argument can be used.
+      This argument probably gets removed once b/123092620 is addressed (and the
+      associated processing step gets replaced with a simple call to
+      `value.type_signature.member`).
+    from_tff_result_fn: Python function that takes a client record and converts
       it to the container type that it was in before passing through TFF. (Right
       now, TFF computation causes the client record to be changed into an
-      AnonymousTuple, and this method corrects for that). If the value being
-      aggregated is an OrderedDict, the default for this argument can be used.
-      This argument likely goes away once b/123092620 is addressed. The default
-      behavior assumes that the client record (before being converted to
-      AnonymousTuple) was an OrderedDict containing a flat structure of Tensors
-      (as it is if using the tff.learning APIs like
-      tff.learning.build_federated_averaging_process).
+      `anonymous_tuple.AnonymousTuple`, and this method corrects for that). If
+      the value being aggregated is an `collections.OrderedDict`, the default
+      for this argument can be used. This argument likely goes away once
+      b/123092620 is addressed. The default behavior assumes that the client
+      record (before being converted to (as it `anonymous_tuple.AnonymousTuple`)
+      was an `collections.OrderedDict` containing a flat structure of Tensors is
+      if using the `tff.learning` APIs like
+      `tff.learning.build_federated_averaging_process`).
 
   Returns:
     A tuple of:
@@ -193,8 +221,11 @@ def build_dp_aggregate(query,
           the query
       - the TFF type of the DP aggregator's global state
   """
+  warnings.warn(
+      'Deprecation warning: tff.utils.build_dp_aggregate() is deprecated, use '
+      'tff.utils.build_dp_aggregate_process() instead.', DeprecationWarning)
 
-  @tff.tf_computation
+  @computations.tf_computation
   def initialize_fn():
     return query.initial_global_state()
 
@@ -214,45 +245,46 @@ def build_dp_aggregate(query,
 
     global_state_type = initialize_fn.type_signature.result
 
-    @tff.tf_computation(global_state_type)
+    @computations.tf_computation(global_state_type)
     def derive_sample_params(global_state):
       return query.derive_sample_params(global_state)
 
-    @tff.tf_computation(derive_sample_params.type_signature.result,
-                        value.type_signature.member)
+    @computations.tf_computation(derive_sample_params.type_signature.result,
+                                 value.type_signature.member)
     def preprocess_record(params, record):
       # TODO(b/123092620): Once TFF passes the expected container type (instead
       # of AnonymousTuple), we shouldn't need this.
-      record = from_anon_tuple_fn(record)
+      record = from_tff_result_fn(record)
 
       return query.preprocess_record(params, record)
 
     # TODO(b/123092620): We should have the expected container type here.
     value_type = value_type_fn(value)
+    value_type = computation_types.to_type(value_type)
 
-    tensor_specs = tff_framework.type_to_tf_tensor_specs(value_type)
+    tensor_specs = type_conversions.type_to_tf_tensor_specs(value_type)
 
-    @tff.tf_computation
+    @computations.tf_computation
     def zero():
       return query.initial_sample_state(tensor_specs)
 
     sample_state_type = zero.type_signature.result
 
-    @tff.tf_computation(sample_state_type,
-                        preprocess_record.type_signature.result)
+    @computations.tf_computation(sample_state_type,
+                                 preprocess_record.type_signature.result)
     def accumulate(sample_state, preprocessed_record):
       return query.accumulate_preprocessed_record(sample_state,
                                                   preprocessed_record)
 
-    @tff.tf_computation(sample_state_type, sample_state_type)
+    @computations.tf_computation(sample_state_type, sample_state_type)
     def merge(sample_state_1, sample_state_2):
       return query.merge_sample_states(sample_state_1, sample_state_2)
 
-    @tff.tf_computation(merge.type_signature.result)
+    @computations.tf_computation(merge.type_signature.result)
     def report(sample_state):
       return sample_state
 
-    @tff.tf_computation(sample_state_type, global_state_type)
+    @computations.tf_computation(sample_state_type, global_state_type)
     def post_process(sample_state, global_state):
       result, new_global_state = query.get_noised_result(
           sample_state, global_state)
@@ -261,14 +293,14 @@ def build_dp_aggregate(query,
     #######################################
     # Orchestration logic
 
-    sample_params = tff.federated_map(derive_sample_params, global_state)
-    client_sample_params = tff.federated_broadcast(sample_params)
-    preprocessed_record = tff.federated_map(preprocess_record,
-                                            (client_sample_params, value))
-    agg_result = tff.federated_aggregate(preprocessed_record, zero(),
-                                         accumulate, merge, report)
+    sample_params = intrinsics.federated_map(derive_sample_params, global_state)
+    client_sample_params = intrinsics.federated_broadcast(sample_params)
+    preprocessed_record = intrinsics.federated_map(
+        preprocess_record, (client_sample_params, value))
+    agg_result = intrinsics.federated_aggregate(preprocessed_record, zero(),
+                                                accumulate, merge, report)
 
-    return tff.federated_map(post_process, (agg_result, global_state))
+    return intrinsics.federated_map(post_process, (agg_result, global_state))
 
   # TODO(b/140236959): Find a way to have this method return only one thing. The
   # best approach is probably to add (to StatefulAggregateFn) a property that
@@ -276,3 +308,110 @@ def build_dp_aggregate(query,
   aggregate_fn = computation_utils.StatefulAggregateFn(
       initialize_fn=initialize_fn, next_fn=next_fn)
   return (aggregate_fn, initialize_fn.type_signature.result)
+
+
+def build_dp_aggregate_process(value_type, query):
+  """Builds a `MeasuredProcess` for tensorflow_privacy DPQueries.
+
+  The returned `MeasuredProcess` processes values of type value_type which can
+  be any nested structure of tensors. Note that client weighting is not
+  supported for differential privacy so the `weight` argument to the resulting
+  `MeasuredProcess` will be ignored.
+
+  Args:
+    value_type: The type of values to be aggregated by the `MeasuredProcess`.
+      Can be a `tff.TensorType` or a nested structure of `tff.NamedTupleType`
+      that bottoms out in `tff.TensorType`.
+    query: A DPQuery to aggregate. For compatibility with tensorflow_federated,
+      the global_state and sample_state of the query must be structures
+      supported by tf.nest.
+
+  Returns:
+    A `MeasuredProcess` implementing differentially private aggregation using
+    the supplied DPQuery. Note that client weighting is not
+  supported for differential privacy so the `weight` argument to the resulting
+  `MeasuredProcess` will be ignored.
+  """
+  py_typecheck.check_type(
+      value_type,
+      (computation_types.TensorType, computation_types.NamedTupleType))
+
+  @computations.tf_computation
+  def initial_state_fn():
+    return query.initial_global_state()
+
+  @computations.federated_computation()
+  def initial_state_comp():
+    return intrinsics.federated_eval(initial_state_fn, placements.SERVER)
+
+  #######################################
+  # Define local tf_computations
+
+  global_state_type = initial_state_fn.type_signature.result
+
+  @computations.tf_computation(global_state_type)
+  def derive_sample_params(global_state):
+    return query.derive_sample_params(global_state)
+
+  @computations.tf_computation(derive_sample_params.type_signature.result,
+                               value_type)
+  def preprocess_record(params, record):
+    return query.preprocess_record(params, record)
+
+  tensor_specs = type_conversions.type_to_tf_tensor_specs(value_type)
+
+  @computations.tf_computation
+  def zero():
+    return query.initial_sample_state(tensor_specs)
+
+  sample_state_type = zero.type_signature.result
+
+  @computations.tf_computation(sample_state_type,
+                               preprocess_record.type_signature.result)
+  def accumulate(sample_state, preprocessed_record):
+    return query.accumulate_preprocessed_record(sample_state,
+                                                preprocessed_record)
+
+  @computations.tf_computation(sample_state_type, sample_state_type)
+  def merge(sample_state_1, sample_state_2):
+    return query.merge_sample_states(sample_state_1, sample_state_2)
+
+  @computations.tf_computation(merge.type_signature.result)
+  def report(sample_state):
+    return sample_state
+
+  @computations.tf_computation(sample_state_type, global_state_type)
+  def post_process(sample_state, global_state):
+    result, new_global_state = query.get_noised_result(sample_state,
+                                                       global_state)
+    return new_global_state, result
+
+  @computations.federated_computation(
+      initial_state_comp.type_signature.result,
+      computation_types.FederatedType(value_type, placements.CLIENTS),
+      computation_types.FederatedType(tf.float32, placements.CLIENTS))
+  def next_fn(global_state, value, weight):
+    """Defines next_fn for MeasuredProcess."""
+    # Weighted aggregation is not supported.
+    # TODO(b/140236959): Add an assertion that weight is None here, so the
+    # contract of this method is better established. Will likely cause some
+    # downstream breaks.
+    del weight
+
+    sample_params = intrinsics.federated_map(derive_sample_params, global_state)
+    client_sample_params = intrinsics.federated_broadcast(sample_params)
+    preprocessed_record = intrinsics.federated_map(
+        preprocess_record, (client_sample_params, value))
+    agg_result = intrinsics.federated_aggregate(preprocessed_record, zero(),
+                                                accumulate, merge, report)
+
+    updated_state, result = intrinsics.federated_map(post_process,
+                                                     (agg_result, global_state))
+
+    empty_metrics = intrinsics.federated_value((), placements.SERVER)
+
+    return collections.OrderedDict(
+        state=updated_state, result=result, measurements=empty_metrics)
+
+  return measured_process.MeasuredProcess(
+      initialize_fn=initial_state_comp, next_fn=next_fn)

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +18,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_sgd
 from tensorflow_federated.python.learning import keras_utils
@@ -45,11 +45,11 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
 
   def initial_weights(self):
     return model_utils.ModelWeights(
-        trainable=collections.OrderedDict([
-            ('a', tf.constant([[0.0], [0.0]])),
-            ('b', tf.constant(0.0)),
-        ]),
-        non_trainable=collections.OrderedDict([('c', 0.0)]))
+        trainable=[
+            tf.constant([[0.0], [0.0]]),
+            tf.constant(0.0),
+        ],
+        non_trainable=[0.0])
 
   def test_client_tf(self):
     model = self.model()
@@ -57,12 +57,9 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
     client_tf = federated_sgd.ClientSgd(model)
     client_outputs = self.evaluate(client_tf(dataset, self.initial_weights()))
 
-    # Both trainable parameters should have gradients,
-    # and we don't return the non-trainable 'c'.
-    self.assertCountEqual(['a', 'b'], client_outputs.weights_delta.keys())
-    # Model deltas for squared error.
-    self.assertAllClose(client_outputs.weights_delta['a'], [[1.0], [0.0]])
-    self.assertAllClose(client_outputs.weights_delta['b'], 1.0)
+    # Both trainable parameters should have gradients, and we don't return the
+    # non-trainable 'c'. Model deltas for squared error:
+    self.assertAllClose(client_outputs.weights_delta, [[[1.0], [0.0]], 1.0])
     self.assertAllClose(client_outputs.weights_delta_weight, 8.0)
 
     self.assertEqual(
@@ -92,13 +89,11 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
     dataset = self.dataset()
     client_tf = federated_sgd.ClientSgd(model)
     init_weights = self.initial_weights()
-    init_weights.trainable['b'] = bad_value
+    init_weights.trainable[1] = bad_value
     client_outputs = client_tf(dataset, init_weights)
     self.assertEqual(self.evaluate(client_outputs.weights_delta_weight), 0.0)
     self.assertAllClose(
-        self.evaluate(client_outputs.weights_delta['a']),
-        np.array([[0.0], [0.0]]))
-    self.assertAllClose(self.evaluate(client_outputs.weights_delta['b']), 0.0)
+        self.evaluate(client_outputs.weights_delta), [[[0.0], [0.0]], 0.0])
     self.assertEqual(
         self.evaluate(client_outputs.optimizer_output['has_non_finite_delta']),
         1)
@@ -113,15 +108,15 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
     # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
     # kernel = [1, 2], bias = [3].
     ds1 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[0.0, 0.0], [0.0, 1.0]]),
-            ('y', [[3.0], [5.0]]),
-        ])).batch(2)
+        collections.OrderedDict(
+            x=[[0.0, 0.0], [0.0, 1.0]],
+            y=[[3.0], [5.0]],
+        )).batch(2)
     ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0], [3.0, 4.0], [1.0, 0.0], [-1.0, -1.0]]),
-            ('y', [[8.0], [14.0], [4.00], [0.0]]),
-        ])).batch(2)
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0], [1.0, 0.0], [-1.0, -1.0]],
+            y=[[8.0], [14.0], [4.00], [0.0]],
+        )).batch(2)
     federated_ds = [ds1, ds2]
 
     server_state = iterative_process.initialize()
@@ -131,54 +126,49 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
     for _ in range(num_iterations):
       server_state, metric_outputs = iterative_process.next(
           server_state, federated_ds)
-      self.assertEqual(metric_outputs.num_examples,
+      self.assertEqual(metric_outputs.train.num_examples,
                        num_iterations * len(federated_ds))
-      self.assertLess(metric_outputs.loss, prev_loss)
-      prev_loss = metric_outputs.loss
+      self.assertLess(metric_outputs.train.loss, prev_loss)
+      prev_loss = metric_outputs.train.loss
 
   @parameterized.named_parameters([
       ('functional_model',
        model_examples.build_linear_regression_keras_functional_model),
       ('sequential_model',
        model_examples.build_linear_regression_keras_sequential_model),
-      ('subclass_model',
-       model_examples.build_linear_regression_keras_subclass_model),
   ])
   def test_orchestration_execute_from_keras(self, build_keras_model_fn):
-    dummy_batch = collections.OrderedDict([
-        ('x', np.zeros([1, 2], np.float32)),
-        ('y', np.zeros([1, 1], np.float32)),
-    ])
+    # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
+    # kernel = [1, 2], bias = [3].
+    ds1 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[0.0, 0.0], [0.0, 1.0]],
+            y=[[3.0], [5.0]],
+        )).batch(2)
+    ds2 = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0], [1.0, 0.0], [-1.0, -1.0]],
+            y=[[8.0], [14.0], [4.00], [0.0]],
+        )).batch(2)
+    federated_ds = [ds1, ds2]
 
     def model_fn():
       # Note: we don't compile with an optimizer here; FedSGD does not use it.
       keras_model = build_keras_model_fn(feature_dims=2)
       return keras_utils.from_keras_model(
-          keras_model, dummy_batch, loss=tf.keras.losses.MeanSquaredError())
+          keras_model,
+          input_spec=ds1.element_spec,
+          loss=tf.keras.losses.MeanSquaredError())
 
     iterative_process = federated_sgd.build_federated_sgd_process(
         model_fn=model_fn)
-
-    # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
-    # kernel = [1, 2], bias = [3].
-    ds1 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[0.0, 0.0], [0.0, 1.0]]),
-            ('y', [[3.0], [5.0]]),
-        ])).batch(2)
-    ds2 = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0], [3.0, 4.0], [1.0, 0.0], [-1.0, -1.0]]),
-            ('y', [[8.0], [14.0], [4.00], [0.0]]),
-        ])).batch(2)
-    federated_ds = [ds1, ds2]
 
     server_state = iterative_process.initialize()
     prev_loss = np.inf
     for _ in range(0):
       server_state, metrics = iterative_process.next(server_state, federated_ds)
-      self.assertLess(metrics.loss, prev_loss)
-      prev_loss = metrics.loss
+      self.assertLess(metrics.train.loss, prev_loss)
+      prev_loss = metrics.train.loss
 
   def test_execute_empty_data(self):
     iterative_process = federated_sgd.build_federated_sgd_process(
@@ -186,21 +176,22 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
 
     # Results in empty dataset with correct types and shapes.
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0]]),
-            ('y', [[5.0]]),
-        ])).batch(
+        collections.OrderedDict(x=[[1.0, 2.0]], y=[[5.0]])).batch(
             5, drop_remainder=True)  # No batches of size 5 can be created.
     federated_ds = [ds] * 2
 
     server_state = iterative_process.initialize()
     first_state, metric_outputs = iterative_process.next(
         server_state, federated_ds)
+    self.assertAllClose(
+        list(first_state.model.trainable), [[[0.0], [0.0]], 0.0])
     self.assertEqual(
-        self.evaluate(tf.reduce_sum(first_state.model.trainable.a)) +
-        self.evaluate(tf.reduce_sum(first_state.model.trainable.b)), 0)
-    self.assertEqual(metric_outputs.num_examples, 0)
-    self.assertTrue(tf.math.is_nan(metric_outputs.loss))
+        anonymous_tuple.name_list(metric_outputs),
+        ['broadcast', 'aggregation', 'train'])
+    self.assertEmpty(metric_outputs.broadcast)
+    self.assertEmpty(metric_outputs.aggregation)
+    self.assertEqual(metric_outputs.train.num_examples, 0)
+    self.assertTrue(tf.math.is_nan(metric_outputs.train.loss))
 
 
 if __name__ == '__main__':

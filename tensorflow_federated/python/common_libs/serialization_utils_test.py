@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +36,7 @@ class SerializationUtilsTest(absltest.TestCase):
 
   def test_pack_graph_seed_set_raises(self):
     with tf.Graph().as_default() as g:
-      tf.compat.v2.random.set_seed(1234)
+      tf.random.set_seed(1234)
       tf.random.normal([1])
     input_value = g.as_graph_def()
     with self.assertRaisesRegex(ValueError, 'graph-level random seed'):

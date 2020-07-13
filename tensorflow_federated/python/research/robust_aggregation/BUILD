@@ -5,7 +5,7 @@ licenses(["notice"])
 py_library(
     name = "robust_federated_aggregation",
     srcs = ["robust_federated_aggregation.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated",
         "//tensorflow_federated/python/common_libs:py_typecheck",

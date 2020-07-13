@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,10 +16,8 @@
 from absl import app
 from absl import flags
 import grpc
-import tensorflow as tf
 import tensorflow_federated as tff
 
-tf.compat.v1.enable_v2_behavior()
 
 FLAGS = flags.FLAGS
 
@@ -36,8 +33,9 @@ def main(argv):
   channel = grpc.insecure_channel('{}:{}'.format(FLAGS.host, FLAGS.port))
   remote_executor = tff.framework.RemoteExecutor(channel)
   caching_executor = tff.framework.CachingExecutor(remote_executor)
-  lambda_executor = tff.framework.LambdaExecutor(caching_executor)
-  tff.framework.set_default_executor(lambda_executor)
+  reference_resolving_executor = tff.framework.ReferenceResolvingExecutor(
+      caching_executor)
+  tff.framework.set_default_executor(reference_resolving_executor)
   print(tff.federated_computation(lambda: 'Hello World')())
 
 

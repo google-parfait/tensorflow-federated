@@ -1,4 +1,3 @@
-## Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,13 +18,13 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 def _count_intrinsics(comp, uri):
@@ -157,7 +156,7 @@ class ReplaceIntrinsicsWithBodiesTest(absltest.TestCase):
     context_stack = context_stack_impl.context_stack
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
     def foo(x):
       return intrinsics.federated_mean(x, x)
 
@@ -176,7 +175,7 @@ class ReplaceIntrinsicsWithBodiesTest(absltest.TestCase):
     context_stack = context_stack_impl.context_stack
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
     def foo(x):
       return intrinsics.federated_sum(x)
 

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,18 +62,22 @@ simpler than the problem of reducing the entire input computation, hence the
 divide-and-conquer.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+import collections
 
-import sys
-
-import six
-from six.moves import range
+from absl import logging
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core import api as tff
-from tensorflow_federated.python.core import framework as tff_framework
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.compiler import building_block_analysis
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import transformations
+from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class CanonicalFormCompilationError(Exception):
@@ -84,25 +87,25 @@ class CanonicalFormCompilationError(Exception):
 def check_extraction_result(before_extraction, extracted):
   """Checks parsing TFF to TF has constructed an object of correct type."""
   py_typecheck.check_type(before_extraction,
-                          tff_framework.ComputationBuildingBlock)
-  py_typecheck.check_type(extracted, tff_framework.ComputationBuildingBlock)
-  if isinstance(before_extraction.type_signature, tff.FunctionType):
-    if not isinstance(extracted, tff_framework.CompiledComputation):
+                          building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(extracted, building_blocks.ComputationBuildingBlock)
+  if before_extraction.type_signature.is_function():
+    if not extracted.is_compiled_computation():
       raise CanonicalFormCompilationError(
-          'We expect to parse down to a `tff_framework.CompiledComputation`, '
+          'We expect to parse down to a `tff.framework.CompiledComputation`, '
           'since we have the functional type {} after unwrapping placement. '
           'Instead we have the computation {} of type {}'.format(
               before_extraction.type_signature, extracted,
               extracted.type_signature))
   else:
-    if not isinstance(extracted, tff_framework.Call):
+    if not extracted.is_call():
       raise CanonicalFormCompilationError(
-          'We expect to parse down to a `tff_framework.Call`, since we have '
+          'We expect to parse down to a `tff.framework.Call`, since we have '
           'the non-functional type {} after unwrapping placement. Instead we '
           'have the computation {} of type {}'.format(
               before_extraction.type_signature, extracted,
               extracted.type_signature))
-    if not isinstance(extracted.function, tff_framework.CompiledComputation):
+    if not extracted.function.is_compiled_computation():
       raise CanonicalFormCompilationError(
           'We expect to parse a computation of the non-functional type {} down '
           'to a called TensorFlow block. Instead we hav a call to the '
@@ -110,8 +113,8 @@ def check_extraction_result(before_extraction, extracted):
           'computation {} represents a case the Tff-to-TF parser is missing.'
           .format(before_extraction.type_signature, extracted.function,
                   extracted.function.type_signature, before_extraction))
-  if not tff_framework.are_equivalent_types(before_extraction.type_signature,
-                                            extracted.type_signature):
+  if not before_extraction.type_signature.is_equivalent_to(
+      extracted.type_signature):
     raise CanonicalFormCompilationError(
         'We have extracted a TensorFlow block of the correct Python type, but '
         'incorrect TFF type signature. Before extraction, we had a TFF '
@@ -156,8 +159,8 @@ def consolidate_and_extract_local_processing(comp):
      this helper method.
 
   4. If `comp` is of a functional type, it is either an instance of
-     `tff_framework.CompiledComputation`, in which case there is nothing for us
-     to do here, or a `tff_framework.Lambda`.
+     `tff.framework.CompiledComputation`, in which case there is nothing for us
+     to do here, or a `tff.framework.Lambda`.
 
   5. There is at most one unbound reference under `comp`, and this is only
      allowed in the case that `comp` is not of a functional type.
@@ -207,41 +210,42 @@ def consolidate_and_extract_local_processing(comp):
   `(T -> U)`, where `p` is again a specific placement.
 
   Args:
-    comp: An instance of `tff_framework.ComputationBuildingBlock` that serves as
+    comp: An instance of `tff.framework.ComputationBuildingBlock` that serves as
       the input to this transformation, as described above.
 
   Returns:
     An instance of `tff.CompiledComputation` that holds the TensorFlow section
     produced by this extraction step, as described above.
   """
-  py_typecheck.check_type(comp, tff_framework.ComputationBuildingBlock)
-  comp, _ = tff_framework.remove_lambdas_and_blocks(comp)
-  if isinstance(comp.type_signature, tff.FunctionType):
-    if isinstance(comp, tff_framework.CompiledComputation):
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  comp, _ = transformations.remove_lambdas_and_blocks(comp)
+  if comp.type_signature.is_function():
+    if comp.is_compiled_computation():
       return comp
-    elif not isinstance(comp, tff_framework.Lambda):
-      raise ValueError('Any `tff_framework.ComputationBuildingBlock` of '
+    elif not comp.is_lambda():
+      raise ValueError('Any `building_blocks.ComputationBuildingBlock` of '
                        'functional type passed to '
                        '`consolidate_and_extract_local_processing`  should be '
-                       'either a `tff_framework.CompiledComputation` or a '
-                       '`tff_framework.Lambda`; you have passed a {} of type '
+                       'either a `building_blocks.CompiledComputation` or a '
+                       '`building_blocks.Lambda`; you have passed a {} of type '
                        '{}.'.format(type(comp), comp.type_signature))
-    if isinstance(comp.result.type_signature, tff.FederatedType):
-      unwrapped, _ = tff_framework.unwrap_placement(comp.result)
+    if comp.result.type_signature.is_federated():
+      comp, _ = tree_transformations.merge_chained_federated_maps_or_applys(
+          comp)
+      unwrapped, _ = tree_transformations.unwrap_placement(comp.result)
       # Unwrapped can be a call to `federated_value_at_P`, or
       # `federated_apply/map`.
-      if unwrapped.function.uri in (tff_framework.FEDERATED_APPLY.uri,
-                                    tff_framework.FEDERATED_MAP.uri):
+      if unwrapped.function.uri in (intrinsic_defs.FEDERATED_APPLY.uri,
+                                    intrinsic_defs.FEDERATED_MAP.uri):
         extracted = parse_tff_to_tf(unwrapped.argument[0])
         check_extraction_result(unwrapped.argument[0], extracted)
         return extracted
       else:
-        decorated_func, _ = tff_framework.insert_called_tf_identity_at_leaves(
-            unwrapped.argument.function)
-        decorated = tff_framework.Call(decorated_func,
-                                       unwrapped.argument.argument)
-        rebound = tff_framework.Lambda(comp.parameter_name,
-                                       comp.parameter_type.member, decorated)
+        decorated_result, _ = tree_transformations.insert_called_tf_identity_at_leaves(
+            unwrapped.argument)
+        member_type = None if comp.parameter_type is None else comp.parameter_type.member
+        rebound = building_blocks.Lambda(comp.parameter_name, member_type,
+                                         decorated_result)
         extracted = parse_tff_to_tf(rebound)
         check_extraction_result(rebound, extracted)
         return extracted
@@ -249,20 +253,19 @@ def consolidate_and_extract_local_processing(comp):
       extracted = parse_tff_to_tf(comp)
       check_extraction_result(comp, extracted)
       return extracted
-  elif isinstance(comp.type_signature, tff.FederatedType):
-    unwrapped, _ = tff_framework.unwrap_placement(comp)
+  elif comp.type_signature.is_federated():
+    comp, _ = tree_transformations.merge_chained_federated_maps_or_applys(comp)
+    unwrapped, _ = tree_transformations.unwrap_placement(comp)
     # Unwrapped can be a call to `federated_value_at_P`, or
     # `federated_apply/map`.
-    if unwrapped.function.uri in (tff_framework.FEDERATED_APPLY.uri,
-                                  tff_framework.FEDERATED_MAP.uri):
+    if unwrapped.function.uri in (intrinsic_defs.FEDERATED_APPLY.uri,
+                                  intrinsic_defs.FEDERATED_MAP.uri):
       extracted = parse_tff_to_tf(unwrapped.argument[0])
       check_extraction_result(unwrapped.argument[0], extracted)
       return extracted
     else:
-      decorated_func, _ = tff_framework.insert_called_tf_identity_at_leaves(
-          unwrapped.argument.function)
-      decorated = tff_framework.Call(decorated_func,
-                                     unwrapped.argument.argument)
+      decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
+          unwrapped.argument)
       extracted = parse_tff_to_tf(decorated)
       check_extraction_result(decorated, extracted)
       return extracted.function
@@ -276,50 +279,47 @@ def parse_tff_to_tf(comp):
   """Parses TFF construct `comp` into TensorFlow construct.
 
   Does not change the type signature of `comp`. Therefore may return either
-  a `tff.fframework.CompiledComputation` or a `tff_framework.Call` with no
-  argument and function `tff_framework.CompiledComputation`.
+  a `tff.fframework.CompiledComputation` or a `tff.framework.Call` with no
+  argument and function `tff.framework.CompiledComputation`.
 
   Args:
-    comp: Instance of `tff_framework.ComputationBuildingBlock` to parse down to
+    comp: Instance of `tff.framework.ComputationBuildingBlock` to parse down to
       a single TF block.
 
   Returns:
     The result of parsing TFF to TF. If successful, this is either a single
-    `tff_framework.CompiledComputation`, or a call to one. If unseccesful, there
-    may be more TFF constructs still remaining. Notice it is not the job of this
-    function, but rather its callers, to check that the result of this parse is
-    as expected.
+    `tff.framework.CompiledComputation`, or a call to one. If unsuccessful,
+    there may be more TFF constructs still remaining. Notice it is not the job
+    of this function, but rather its callers, to check that the result of this
+    parse is as expected.
   """
-  parser_callable = tff_framework.TFParser()
-  comp, _ = tff_framework.remove_lambdas_and_blocks(comp)
-  # Parsing all the way up from the leaves can be expensive, so we check whether
-  # inserting called identities at the leaves is necessary first.
-  new_comp, _ = tff_framework.transform_postorder(comp, parser_callable)
-  if isinstance(new_comp, tff_framework.CompiledComputation) or isinstance(
-      new_comp, tff_framework.Call) and isinstance(
-          new_comp.function, tff_framework.CompiledComputation):
-    return new_comp
-  if isinstance(new_comp, tff_framework.Lambda):
-    leaves_decorated, _ = tff_framework.insert_called_tf_identity_at_leaves(
-        new_comp)
-    comp, _ = tff_framework.remove_lambdas_and_blocks(leaves_decorated)
-    parsed_comp, _ = tff_framework.transform_postorder(leaves_decorated,
-                                                       parser_callable)
-    return parsed_comp
-  elif isinstance(new_comp, tff_framework.Call):
-    leaves_decorated, _ = tff_framework.insert_called_tf_identity_at_leaves(
-        new_comp.function)
-    comp, _ = tff_framework.remove_lambdas_and_blocks(leaves_decorated)
-    parsed_comp, _ = tff_framework.transform_postorder(leaves_decorated,
-                                                       parser_callable)
-    return tff_framework.Call(parsed_comp, None)
-  else:
-    parsed_comp, _ = tff_framework.transform_postorder(new_comp,
-                                                       parser_callable)
-    return parsed_comp
+  tf_parsed, _ = transformations.compile_local_computation_to_tensorflow(comp)
+
+  # TODO(b/154352798): We copy TF's RewriterConfig toggle enum values as it
+  # is not exposed. There is ongoing discussion with TF API owners on exposing
+  # the ability to call into Grappler offline; follow up here when we land on
+  # something.
+  logging.info('Using Grappler on `CanonicalForm` TensorFlow graphs.')
+  off = 2
+  aggressive = 3
+
+  grappler_config_proto = tf.compat.v1.ConfigProto()
+
+  # TODO(b/155127458): Enable function optimization when possible.
+  grappler_config_proto.graph_options.rewrite_options.function_optimization = off
+
+  grappler_config_proto.graph_options.rewrite_options.memory_optimization = aggressive
+  grappler_config_proto.graph_options.rewrite_options.constant_folding = aggressive
+  grappler_config_proto.graph_options.rewrite_options.arithmetic_optimization = aggressive
+  grappler_config_proto.graph_options.rewrite_options.loop_optimization = aggressive
+
+  optimized_tf, _ = transformations.optimize_tensorflow_graphs(
+      tf_parsed, grappler_config_proto)
+
+  return optimized_tf
 
 
-def force_align_and_split_by_intrinsic(comp, uri):
+def force_align_and_split_by_intrinsics(comp, uri):
   """Splits the logic of `comp` into before-and-after of calls to an intrinsic.
 
   The input computation `comp` must have the following properties:
@@ -342,7 +342,12 @@ def force_align_and_split_by_intrinsic(comp, uri):
   the following expression:
 
   ```
-  (arg -> after(<arg, intrinsic(before(arg))>))
+  (arg -> (let
+    x=before(arg),
+    y=intrinsic1(x[0]),
+    z=intrinsic2(x[1]),
+    ...
+   in after(<arg, <y,z,...>>)))
   ```
 
   In this expression, there is only a single call to `intrinsic` that results
@@ -354,8 +359,8 @@ def force_align_and_split_by_intrinsic(comp, uri):
   been encapsulated into `after`.
 
   Additionally, if the `intrinsic` takes a tuple of arguments, then`before`
-  should also be a `tff_framework.Tuple`. Otherwise, both `before` and `after`
-  are instances of `tff_framework.ComputationBuildingBlock`.
+  should also be a `tff.framework.Tuple`. Otherwise, both `before` and `after`
+  are instances of `tff.framework.ComputationBuildingBlock`.
 
   If the original computation `comp` had type `(T -> U)`, then `before` and
   `after` would be `(T -> X)` and `(<T,Y> -> U)`, respectively, where `X` is
@@ -368,55 +373,101 @@ def force_align_and_split_by_intrinsic(comp, uri):
   interest: `federated_broadcast` and `federated_aggregate`.
 
   Args:
-    comp: The instance of `tff_framework.Lambda` that serves as the input to
+    comp: The instance of `tff.framework.Lambda` that serves as the input to
       this transformation, as described above.
-    uri: The URI of an intrinsic to force align and split.
+    uri: A Python `list` of URI of intrinsics to force align and split.
 
   Returns:
     A pair of the form `(before, after)`, where each of `before` and `after`
-    is a `tff_framework.ComputationBuildingBlock` instance that represents a
+    is a `tff.framework.ComputationBuildingBlock` instance that represents a
     part of the result as specified above.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  py_typecheck.check_type(uri, six.string_types)
-  comp = _force_align_intrinsic(comp, uri)
-  return _split_by_intrinsic(comp, uri)
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(uri, list)
+  for x in uri:
+    py_typecheck.check_type(x, str)
+  _check_contains_called_intrinsics(comp, uri)
+
+  comp = _force_align_intrinsics_to_top_level_lambda(comp, uri)
+  return _split_by_intrinsics_in_top_level_lambda(comp)
 
 
-def _force_align_intrinsic(comp, uri):
-  """Forcefully aligns `comp` by the intrinsics for the given `uri`.
-
-  This function transforms `comp` by extracting and potentially merging all the
-  intrinsics for the given `uri`. The result of this transformation should
-  contain exactly one instance of the intrinsic for the given `uri` that is
-  bound only by the `paramater_name` of `comp`.
-
-  NOTE: This function is generally safe to call on computations that do not fit
-  into canonical form. It is left to the caller to determine if the resulting
-  computation is expected.
+def _check_contains_called_intrinsics(comp, uri):
+  """Checks if `comp` contains called intrinsics for the given `uri`.
 
   Args:
-    comp: The `tff_framework.Lambda` to align.
-    uri: A URI of an intrinsic.
+    comp: The `tff.framework.ComputationBuildingBlock` to test.
+    uri: A Python `list` of URI of intrinsics.
+
+  Returns:
+    `True` if `comp` contains called intrinsics for the given `uri`, otherwise
+    `False`.
+  """
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(uri, list)
+  for x in uri:
+    py_typecheck.check_type(x, str)
+
+  def get_uri_for_all_called_intrinsics(comp):
+    existing_uri = set()
+
+    def _update(comp):
+      if building_block_analysis.is_called_intrinsic(comp, uri):
+        existing_uri.add(comp.function.uri)
+      return comp, False
+
+    transformation_utils.transform_postorder(comp, _update)
+    return existing_uri
+
+  actual_uri = get_uri_for_all_called_intrinsics(comp)
+  for expected_uri in uri:
+    if expected_uri not in actual_uri:
+      raise ValueError(
+          'Expected an AST containing an intrinsic with the uri: {}, found '
+          'none.'.format(expected_uri))
+
+
+def _force_align_intrinsics_to_top_level_lambda(comp, uri):
+  """Forcefully aligns `comp` by the intrinsics for the given `uri`.
+
+  This function transforms `comp` by extracting, grouping, and potentially
+  merging all the intrinsics for the given `uri`. The result of this
+  transformation should contain exactly one instance of the intrinsic for the
+  given `uri` that is bound only by the `parameter_name` of `comp`.
+
+  Args:
+    comp: The `tff.framework.Lambda` to align.
+    uri: A Python `list` of URI of intrinsics.
 
   Returns:
     A new computation with the transformation applied or the original `comp`.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  py_typecheck.check_type(uri, six.string_types)
-  comp, _ = tff_framework.uniquify_reference_names(comp)
-  if not _can_extract_intrinsic_to_top_level_lambda(comp, uri):
-    comp, _ = tff_framework.replace_called_lambda_with_block(comp)
-  comp = _inline_block_variables_required_to_align_intrinsic(comp, uri)
-  comp, modified = _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(
-      comp, uri)
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(uri, list)
+  for x in uri:
+    py_typecheck.check_type(x, str)
+
+  comp, _ = tree_transformations.uniquify_reference_names(comp)
+  if not _can_extract_intrinsics_to_top_level_lambda(comp, uri):
+    comp, _ = tree_transformations.replace_called_lambda_with_block(comp)
+  comp = _inline_block_variables_required_to_align_intrinsics(comp, uri)
+  comp, modified = _extract_intrinsics_to_top_level_lambda(comp, uri)
   if modified:
-    comp, modified = tff_framework.merge_tuple_intrinsics(comp, uri)
+    if len(uri) > 1:
+      comp, _ = _group_by_intrinsics_in_top_level_lambda(comp)
+    modified = False
+    for intrinsic_uri in uri:
+      comp, transform_modified = transformations.dedupe_and_merge_tuple_intrinsics(
+          comp, intrinsic_uri)
+      if transform_modified:
+        # Required because merging called intrinsics invokes building block
+        # factories that do not name references uniquely.
+        comp, _ = tree_transformations.uniquify_reference_names(comp)
+      modified = modified or transform_modified
     if modified:
-      # Required because merge_tuple_intrinsics calls into computation factories
-      # that do not name references uniquely.
-      comp, _ = tff_framework.uniquify_reference_names(comp)
-  comp, _ = _extract_intrinsic_as_reference_to_top_level_lambda(comp, uri)
+      # Required because merging called intrinsics will nest the called
+      # intrinsics such that they can no longer be split.
+      comp, _ = _extract_intrinsics_to_top_level_lambda(comp, uri)
   return comp
 
 
@@ -424,65 +475,57 @@ def _get_called_intrinsics(comp, uri):
   """Returns a Python `list` of called intrinsics in `comp` for the given `uri`.
 
   Args:
-    comp: The `tff_framework.ComputationBuildingBlock` to search.
-    uri: A URI of an intrinsic.
+    comp: The `tff.framework.ComputationBuildingBlock` to search.
+    uri: A Python `list` of URI of intrinsics.
   """
-  py_typecheck.check_type(comp, tff_framework.ComputationBuildingBlock)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(uri, list)
+  for x in uri:
+    py_typecheck.check_type(x, str)
+
   intrinsics = []
 
   def _update(comp):
-    if tff_framework.is_called_intrinsic(comp, uri):
+    if building_block_analysis.is_called_intrinsic(comp, uri):
       intrinsics.append(comp)
     return comp, False
 
-  tff_framework.transform_postorder(comp, _update)
+  transformation_utils.transform_postorder(comp, _update)
   return intrinsics
 
 
-def _are_comps_bound_exclusively_by_top_level_lambda(comp, comps):
-  """Tests if all computations in `comps` are bound exclusively by `comp`.
-
-  Args:
-    comp: The `tff_framework.Lambda` to test. The names of lambda parameters and
-      block variables in `comp` must be unique.
-    comps: A Python `list` of computations to test.
-
-  Returns:
-    `True` if the unbound references in each computation in `comps` are bound by
-    exclusively the parameter of `comp`, otherwise `False`.
-  """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  tff_framework.check_has_unique_names(comp)
-  py_typecheck.check_type(comps, (list, tuple, set))
-  unbound_references = tff_framework.get_map_of_unbound_references(comp)
-  names = set((comp.parameter_name,))
-  return all(names == unbound_references[e] for e in comps)
-
-
-def _can_extract_intrinsic_to_top_level_lambda(comp, uri):
+def _can_extract_intrinsics_to_top_level_lambda(comp, uri):
   """Tests if the intrinsic for the given `uri` can be extracted.
 
+  This currently maps identically to: the called intrinsics we intend to hoist
+  don't close over any intermediate variables. That is, any variables other than
+  potentiall the top-level parameter the computation itself declares.
+
   Args:
-    comp: The `tff_framework.Lambda` to test. The names of lambda parameters and
+    comp: The `tff.framework.Lambda` to test. The names of lambda parameters and
       block variables in `comp` must be unique.
-    uri: A URI of an intrinsic.
+    uri: A Python `list` of URI of intrinsics.
 
   Returns:
     `True` if the intrinsic can be extracted, otherwise `False`.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  tff_framework.check_has_unique_names(comp)
-  py_typecheck.check_type(uri, six.string_types)
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(uri, list)
+  for x in uri:
+    py_typecheck.check_type(x, str)
+  tree_analysis.check_has_unique_names(comp)
+
   intrinsics = _get_called_intrinsics(comp, uri)
-  return _are_comps_bound_exclusively_by_top_level_lambda(comp, intrinsics)
+  return all(
+      tree_analysis.contains_no_unbound_references(x, comp.parameter_name)
+      for x in intrinsics)
 
 
-def _inline_block_variables_required_to_align_intrinsic(comp, uri):
+def _inline_block_variables_required_to_align_intrinsics(comp, uri):
   """Inlines the variables required to align the intrinsic for the given `uri`.
 
   This function inlines only the block variables required to align an intrinsic,
-  which is necessary because may transformations insert block variables that do
+  which is necessary because many transformations insert block variables that do
   not impact alignment and should not be inlined.
 
   Additionally, this function iteratively attempts to inline block variables a
@@ -490,8 +533,8 @@ def _inline_block_variables_required_to_align_intrinsic(comp, uri):
   that unbound references in variables that are inlined, will also be inlined.
 
   Args:
-    comp: The `tff_framework.Lambda` to transform.
-    uri: A URI of an intrinsic.
+    comp: The `tff.framework.Lambda` to transform.
+    uri: A Python `list` of URI of intrinsics.
 
   Returns:
     A new computation with the transformation applied or the original `comp`.
@@ -500,28 +543,68 @@ def _inline_block_variables_required_to_align_intrinsic(comp, uri):
     ValueError: If an there are unbound references, other than block variables,
       preventing an intrinsic with the given `uri` from being aligned.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  py_typecheck.check_type(uri, six.string_types)
-  while not _can_extract_intrinsic_to_top_level_lambda(comp, uri):
-    unbound_references = tff_framework.get_map_of_unbound_references(comp)
-    names = set()
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(uri, list)
+  for x in uri:
+    py_typecheck.check_type(x, str)
+
+  while not _can_extract_intrinsics_to_top_level_lambda(comp, uri):
+    unbound_references = transformation_utils.get_map_of_unbound_references(
+        comp)
+    variable_names = set()
     intrinsics = _get_called_intrinsics(comp, uri)
     for intrinsic in intrinsics:
-      names.update(unbound_references[intrinsic])
-    comp, modified = tff_framework.inline_block_locals(
-        comp, variable_names=names)
+      names = unbound_references[intrinsic]
+      names.discard(comp.parameter_name)
+      variable_names.update(names)
+    if not variable_names:
+      raise tree_transformations.TransformationError(
+          'Inlining `Block` variables has failed. Expected to find unbound '
+          'references for called `Intrisic`s matching the URI: \'{}\', but '
+          'none were found in the AST: \n{}'.format(
+              uri, comp.formatted_representation()))
+    comp, modified = tree_transformations.inline_block_locals(
+        comp, variable_names=variable_names)
     if modified:
-      comp, _ = tff_framework.uniquify_reference_names(comp)
+      comp, _ = tree_transformations.uniquify_reference_names(comp)
     else:
-      raise ValueError('b/141617218')
+      raise tree_transformations.TransformationError(
+          'Inlining `Block` variables has failed, this will result in an '
+          'infinite loop. Expected to modify the AST by inlining the variable '
+          'names: \'{}\', but no transformations to the AST: \n{}'.format(
+              variable_names, comp.formatted_representation()))
+  comp, modified = tree_transformations.inline_selections_from_tuple(comp)
+  if modified:
+    comp, _ = tree_transformations.uniquify_reference_names(comp)
   return comp
 
 
-def _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(comp, uri):
-  """Extracts multiple intrinsics from `comp` as a tuple for the given `uri`.
+def _extract_intrinsics_to_top_level_lambda(comp, uri):
+  r"""Extracts intrinsics in `comp` for the given `uri`.
+
+  This transformation creates an AST such that all the called intrinsics for the
+  given `uri` in body of the `tff.framework.Block` returned by the top level
+  lambda have been extracted to the top level lambda and replaced by selections
+  from a reference to the constructed variable.
+
+                       Lambda
+                       |
+                       Block
+                      /     \
+        [x=Tuple, ...]       Comp
+           |
+           [Call,                  Call                   Call]
+           /    \                 /    \                 /    \
+  Intrinsic      Comp    Intrinsic      Comp    Intrinsic      Comp
+
+  The order of the extracted called intrinsics matches the order of `uri`.
+
+  Note: if this function is passed an AST which contains nested called
+  intrinsics, it will fail, as it will mutate the subcomputation containing
+  the lower-level called intrinsics on the way back up the tree.
 
   Args:
-    comp: The `tff_framework.Lambda` to transform. The names of lambda
+    comp: The `tff.framework.Lambda` to transform. The names of lambda
       parameters and block variables in `comp` must be unique.
     uri: A URI of an intrinsic.
 
@@ -532,83 +615,53 @@ def _extract_multiple_intrinsic_as_tuple_to_top_level_lambda(comp, uri):
     ValueError: If all the intrinsics for the given `uri` in `comp` are not
       exclusively bound by `comp`.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  tff_framework.check_has_unique_names(comp)
-  py_typecheck.check_type(uri, six.string_types)
+  # TODO(b/159060924): This function currently relies on not having structures
+  # of nested called intrinsics to extract intrinsics to the top level lambda.
+  # This is unnecessary, and should be removed.
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(uri, list)
+  for x in uri:
+    py_typecheck.check_type(x, str)
+  tree_analysis.check_has_unique_names(comp)
+
+  name_generator = building_block_factory.unique_name_generator(comp)
+
   intrinsics = _get_called_intrinsics(comp, uri)
-  if len(intrinsics) < 2:
-    return comp, False
-  if not _are_comps_bound_exclusively_by_top_level_lambda(comp, intrinsics):
-    raise ValueError(
-        'Expected a computation which binds all the references in all the '
-        'intrinsic with the uri: {}.'.format(uri))
-  name_generator = tff_framework.unique_name_generator(comp)
-  extracted_intrinsics = tff_framework.Tuple(intrinsics)
-  ref_name = six.next(name_generator)
-  ref_type = tff.to_type(extracted_intrinsics.type_signature)
-  ref = tff_framework.Reference(ref_name, ref_type)
+  for intrinsic in intrinsics:
+    if not tree_analysis.contains_no_unbound_references(intrinsic,
+                                                        comp.parameter_name):
+      raise ValueError(
+          'Expected a computation which binds all the references in all the '
+          'intrinsic with the uri: {}.'.format(uri))
+  if len(intrinsics) > 1:
+    order = {}
+    for index, element in enumerate(uri):
+      if element not in order:
+        order[element] = index
+    intrinsics = sorted(intrinsics, key=lambda x: order[x.function.uri])
+    extracted_comp = building_blocks.Tuple(intrinsics)
+  else:
+    extracted_comp = intrinsics[0]
+  ref_name = next(name_generator)
+  ref_type = computation_types.to_type(extracted_comp.type_signature)
+  ref = building_blocks.Reference(ref_name, ref_type)
 
   def _should_transform(comp):
-    return tff_framework.is_called_intrinsic(comp, uri)
+    return building_block_analysis.is_called_intrinsic(comp, uri)
 
   def _transform(comp):
     if not _should_transform(comp):
       return comp, False
-    index = intrinsics.index(comp)
-    comp = tff_framework.Selection(ref, index=index)
-    return comp, True
+    if len(intrinsics) > 1:
+      index = intrinsics.index(comp)
+      comp = building_blocks.Selection(ref, index=index)
+      return comp, True
+    else:
+      return ref, True
 
-  comp, _ = tff_framework.transform_postorder(comp, _transform)
+  comp, _ = transformation_utils.transform_postorder(comp, _transform)
   comp = _insert_comp_in_top_level_lambda(
-      comp, name=ref.name, comp_to_insert=extracted_intrinsics)
-  return comp, True
-
-
-def _extract_intrinsic_as_reference_to_top_level_lambda(comp, uri):
-  """Extracts an intrinsic from `comp` as a reference for the given `uri`.
-
-  Args:
-    comp: The `tff_framework.Lambda` to transform. The names of lambda
-      parameters and block variables in `comp` must be unique.
-    uri: A URI of an intrinsic.
-
-  Returns:
-    A new computation with the transformation applied or the original `comp`.
-
-  Raises:
-    ValueError: If there is more than one intrinsic for the give `uri` or if the
-      intrinsic is not exclusively bound by `comp`.
-  """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  tff_framework.check_has_unique_names(comp)
-  py_typecheck.check_type(uri, six.string_types)
-  intrinsics = _get_called_intrinsics(comp, uri)
-  length = len(intrinsics)
-  if length != 1:
-    raise ValueError(
-        'Expected a computation with exactly one intrinsic with the uri: {}, '
-        'found: {}.'.format(uri, length))
-  if not _are_comps_bound_exclusively_by_top_level_lambda(comp, intrinsics):
-    raise ValueError(
-        'Expected a computation which binds all the references in the '
-        'intrinsic with the uri: {}.'.format(uri))
-  name_generator = tff_framework.unique_name_generator(comp)
-  extracted_intrinsic = intrinsics[0]
-  ref_name = six.next(name_generator)
-  ref_type = tff.to_type(extracted_intrinsic.type_signature)
-  ref = tff_framework.Reference(ref_name, ref_type)
-
-  def _should_transform(comp):
-    return tff_framework.is_called_intrinsic(comp, uri)
-
-  def _transform(comp):
-    if not _should_transform(comp):
-      return comp, False
-    return ref, True
-
-  comp, _ = tff_framework.transform_postorder(comp, _transform)
-  comp = _insert_comp_in_top_level_lambda(
-      comp, name=ref.name, comp_to_insert=extracted_intrinsic)
+      comp, name=ref.name, comp_to_insert=extracted_comp)
   return comp, True
 
 
@@ -616,90 +669,192 @@ def _insert_comp_in_top_level_lambda(comp, name, comp_to_insert):
   """Inserts a computation into `comp` with the given `name`.
 
   Args:
-    comp: The `tff_framework.Lambda` to transform. The names of lambda
+    comp: The `tff.framework.Lambda` to transform. The names of lambda
       parameters and block variables in `comp` must be unique.
     name: The name to use.
-    comp_to_insert: The `tff_framework.ComputationBuildingBlock` to insert.
+    comp_to_insert: The `tff.framework.ComputationBuildingBlock` to insert.
 
   Returns:
     A new computation with the transformation applied or the original `comp`.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  tff_framework.check_has_unique_names(comp)
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(name, str)
   py_typecheck.check_type(comp_to_insert,
-                          tff_framework.ComputationBuildingBlock)
+                          building_blocks.ComputationBuildingBlock)
+  tree_analysis.check_has_unique_names(comp)
+
   result = comp.result
-  if isinstance(result, tff_framework.Block):
+  if result.is_block():
     variables = result.locals
     result = result.result
   else:
     variables = []
   variables.insert(0, (name, comp_to_insert))
-  block = tff_framework.Block(variables, result)
-  return tff_framework.Lambda(comp.parameter_name, comp.parameter_type, block)
+  block = building_blocks.Block(variables, result)
+  return building_blocks.Lambda(comp.parameter_name, comp.parameter_type, block)
 
 
-def _split_by_intrinsic(comp, uri):
-  """Splits `comp` into `before` and `after` the intrinsic for the given `uri`.
+def _group_by_intrinsics_in_top_level_lambda(comp):
+  """Groups the intrinsics in the frist block local in the result of `comp`.
 
-  This function finds the intrinsic for the given `uri` in `comp`; splits `comp`
-  into two computations `before` and `after` the intrinsic; and returns a Python
-  tuple representing the pair of `before` and `after` computations.
+  This transformation creates an AST by replacing the tuple of called intrinsics
+  found as the first local in the `tff.framework.Block` returned by the top
+  level lambda with two new computations. The first computation is a tuple of
+  tuples of called intrinsics, representing the original tuple of called
+  intrinscis grouped by URI. The second computation is a tuple of selection from
+  the first computations, representing original tuple of called intrinsics.
 
-  NOTE: This function is generally safe to call on computations that do not fit
-  into canonical form. It is left to the caller to determine if the resulting
-  computations are expected.
+  It is necessary to group intrinsics before it is possible to merge them.
 
   Args:
-    comp: The `tff_framework.Lambda` to transform.
-    uri: A URI of an intrinsic.
+    comp: The `tff.framework.Lambda` to transform.
 
   Returns:
-    A pair of `tff_framework.ComputationBuildingBlock`s representing the
-    computations `before` and `after` the intrinsic.
+    A `tff.framework.Lamda` that returns a `tff.framework.Block`, the first
+    local variables of the retunred `tff.framework.Block` will be a tuple of
+    tuples of called intrinsics representing the original tuple of called
+    intrinscis grouped by URI.
 
   Raises:
-    ValueError: If `comp` is not a `tff_framework.Lambda` referencing a
-      `tff_framework.Block` referencing a collections of variables containing an
-      intrinsic with the given `uri` or if there is more than one intrinsic with
-      the given `uri` in `comp`.
+    ValueError: If the first local in the `tff.framework.Block` referenced by
+      the top level lambda is not a `tff.framework.Tuple` of called intrinsics.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  py_typecheck.check_type(uri, six.string_types)
-  py_typecheck.check_type(comp.result, tff_framework.Block)
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(comp.result, building_blocks.Block)
+  tree_analysis.check_has_unique_names(comp)
 
-  def _get_called_intrinsic_from_block_variables(variables, uri):
-    for index, (name, variable) in enumerate(variables):
-      if tff_framework.is_called_intrinsic(variable, uri):
-        return index, name, variable
-    raise ValueError(
-        'Expected a lambda referencing a block referencing a collection of '
-        'variables containing an intrinsic with the uri: {}, found None.'
-        .format(uri))
+  name_generator = building_block_factory.unique_name_generator(comp)
 
-  index, name, variable = _get_called_intrinsic_from_block_variables(
-      comp.result.locals, uri)
-  intrinsics = _get_called_intrinsics(comp, uri)
-  length = len(intrinsics)
-  if length != 1:
-    raise ValueError(
-        'Expected a computation with exactly one intrinsic with the uri: {}, '
-        'found: {}.'.format(uri, length))
-  name_generator = tff_framework.unique_name_generator(comp)
-  before = tff_framework.Lambda(comp.parameter_name, comp.parameter_type,
-                                variable.argument)
-  parameter_type = tff.NamedTupleType(
-      (comp.parameter_type, variable.type_signature))
-  ref_name = six.next(name_generator)
-  ref = tff_framework.Reference(ref_name, parameter_type)
-  sel_0 = tff_framework.Selection(ref, index=0)
-  sel_1 = tff_framework.Selection(ref, index=1)
+  name, first_local = comp.result.locals[0]
+  py_typecheck.check_type(first_local, building_blocks.Tuple)
+  for element in first_local:
+    if not building_block_analysis.is_called_intrinsic(element):
+      raise ValueError(
+          'Expected all the elements of the `building_blocks.Tuple` to be '
+          'called intrinsics, but found: \n{}'.format(element))
+
+  # Create collections of data describing how to pack and unpack the intrinsics
+  # into groups by their URI.
+  #
+  # packed_keys is a list of unique URI ordered by occurrence in the original
+  #   tuple of called intrinsics.
+  # packed_groups is a `collections.OrderedDict` where each key is a URI to
+  #   group by and each value is a list of intrinsics with that URI.
+  # packed_indexes is a list of tuples where each tuple contains two indexes:
+  #   the first index in the tuple is the index of the group that the intrinsic
+  #   was packed into; the second index in the tuple is the index of the
+  #   intrinsic in that group that the intrinsic was packed into; the index of
+  #   the tuple in packed_indexes corresponds to the index of the intrinsic in
+  #   the list of intrinsics that are beging grouped. Therefore, packed_indexes
+  #   represents an implicit mapping of packed indexes, keyed by unpacked index.
+  packed_keys = []
+  for called_intrinsic in first_local:
+    uri = called_intrinsic.function.uri
+    if uri not in packed_keys:
+      packed_keys.append(uri)
+  # If there are no duplicates, return early.
+  if len(packed_keys) == len(first_local):
+    return comp, False
+  packed_groups = collections.OrderedDict([(x, []) for x in packed_keys])
+  packed_indexes = []
+  for called_intrinsic in first_local:
+    packed_group = packed_groups[called_intrinsic.function.uri]
+    packed_group.append(called_intrinsic)
+    packed_indexes.append((
+        packed_keys.index(called_intrinsic.function.uri),
+        len(packed_group) - 1,
+    ))
+
+  packed_elements = []
+  for called_intrinsics in packed_groups.values():
+    if len(called_intrinsics) > 1:
+      element = building_blocks.Tuple(called_intrinsics)
+    else:
+      element = called_intrinsics[0]
+    packed_elements.append(element)
+  packed_comp = building_blocks.Tuple(packed_elements)
+
+  packed_ref_name = next(name_generator)
+  packed_ref_type = computation_types.to_type(packed_comp.type_signature)
+  packed_ref = building_blocks.Reference(packed_ref_name, packed_ref_type)
+
+  unpacked_elements = []
+  for indexes in packed_indexes:
+    group_index = indexes[0]
+    sel = building_blocks.Selection(packed_ref, index=group_index)
+    uri = packed_keys[group_index]
+    called_intrinsics = packed_groups[uri]
+    if len(called_intrinsics) > 1:
+      intrinsic_index = indexes[1]
+      sel = building_blocks.Selection(sel, index=intrinsic_index)
+    unpacked_elements.append(sel)
+  unpacked_comp = building_blocks.Tuple(unpacked_elements)
+
   variables = comp.result.locals
-  variables[index] = (name, sel_1)
-  variables.insert(0, (comp.parameter_name, sel_0))
-  block = tff_framework.Block(variables, comp.result.result)
-  after = tff_framework.Lambda(ref.name, ref.type_signature, block)
+  variables[0] = (name, unpacked_comp)
+  variables.insert(0, (packed_ref_name, packed_comp))
+  block = building_blocks.Block(variables, comp.result.result)
+  fn = building_blocks.Lambda(comp.parameter_name, comp.parameter_type, block)
+  return fn, True
+
+
+def _split_by_intrinsics_in_top_level_lambda(comp):
+  """Splits by the intrinsics in the frist block local in the result of `comp`.
+
+  This function splits `comp` into two computations `before` and `after` the
+  called intrinsic or tuple of called intrinsics found as the first local in the
+  `tff.framework.Block` returned by the top level lambda; and returns a Python
+  tuple representing the pair of `before` and `after` computations.
+
+  Args:
+    comp: The `tff.framework.Lambda` to split.
+
+  Returns:
+    A pair of `tff.framework.ComputationBuildingBlock`s.
+
+  Raises:
+    ValueError: If the first local in the `tff.framework.Block` referenced by
+      the top level lambda is not a called intrincs or a `tff.framework.Tuple`
+      of called intrinsics.
+  """
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(comp.result, building_blocks.Block)
+  tree_analysis.check_has_unique_names(comp)
+
+  name_generator = building_block_factory.unique_name_generator(comp)
+
+  name, first_local = comp.result.locals[0]
+  if building_block_analysis.is_called_intrinsic(first_local):
+    result = first_local.argument
+  elif first_local.is_tuple():
+    elements = []
+    for element in first_local:
+      if not building_block_analysis.is_called_intrinsic(element):
+        raise ValueError(
+            'Expected all the elements of the `building_blocks.Tuple` to be '
+            'called intrinsics, but found: \n{}'.format(element))
+      elements.append(element.argument)
+    result = building_blocks.Tuple(elements)
+  else:
+    raise ValueError(
+        'Expected either a called intrinsic or a `building_blocks.Tuple` of '
+        'called intrinsics, but found: \n{}'.format(first_local))
+
+  before = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                  result)
+
+  ref_name = next(name_generator)
+  ref_type = computation_types.NamedTupleType(
+      (comp.parameter_type, first_local.type_signature))
+  ref = building_blocks.Reference(ref_name, ref_type)
+  sel_after_arg_1 = building_blocks.Selection(ref, index=0)
+  sel_after_arg_2 = building_blocks.Selection(ref, index=1)
+
+  variables = comp.result.locals
+  variables[0] = (name, sel_after_arg_2)
+  variables.insert(0, (comp.parameter_name, sel_after_arg_1))
+  block = building_blocks.Block(variables, comp.result.result)
+  after = building_blocks.Lambda(ref.name, ref.type_signature, block)
   return before, after
 
 
@@ -708,43 +863,43 @@ def _construct_selection_from_federated_tuple(federated_tuple, selected_index,
   """Selects the index `selected_index` from `federated_tuple`.
 
   Args:
-    federated_tuple: Instance of `tff_framework.ComputationBuildingBlock` of
+    federated_tuple: Instance of `tff.framework.ComputationBuildingBlock` of
       federated named tuple type from which we wish to select one of the tuple's
       elements.
     selected_index: Integer index we wish to select from `federated_tuple`.
     name_generator: `generator` to generate unique names in the construction.
 
   Returns:
-    An instance of `tff_framework.ComputationBuildingBlock` representing index
+    An instance of `tff.framework.ComputationBuildingBlock` representing index
     `selected_index` from `federated_tuple`, still federated at the same
     placement.
   """
   py_typecheck.check_type(federated_tuple,
-                          tff_framework.ComputationBuildingBlock)
+                          building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(selected_index, int)
-  py_typecheck.check_type(federated_tuple.type_signature, tff.FederatedType)
+  py_typecheck.check_type(federated_tuple.type_signature,
+                          computation_types.FederatedType)
   py_typecheck.check_type(federated_tuple.type_signature.member,
-                          tff.NamedTupleType)
-  unique_reference_name = six.next(name_generator)
-  selection_function_ref = tff_framework.Reference(
+                          computation_types.NamedTupleType)
+  unique_reference_name = next(name_generator)
+  selection_function_ref = building_blocks.Reference(
       unique_reference_name, federated_tuple.type_signature.member)
-  selected_building_block = tff_framework.Selection(
+  selected_building_block = building_blocks.Selection(
       selection_function_ref, index=selected_index)
-  constructed_selection_function = tff_framework.Lambda(
+  constructed_selection_function = building_blocks.Lambda(
       unique_reference_name, federated_tuple.type_signature.member,
       selected_building_block)
-  return tff_framework.create_federated_map_or_apply(
+  return building_block_factory.create_federated_map_or_apply(
       constructed_selection_function, federated_tuple)
 
 
 def _prepare_for_rebinding(comp):
   """Replaces `comp` with semantically equivalent version for rebinding."""
   all_equal_normalized = normalize_all_equal_bit(comp)
-  identities_removed, _ = tff_framework.remove_mapped_or_applied_identity(
+  identities_removed, _ = tree_transformations.remove_mapped_or_applied_identity(
       all_equal_normalized)
-  lambdas_and_blocks_removed, _ = tff_framework.remove_lambdas_and_blocks(
-      identities_removed)
-  return lambdas_and_blocks_removed
+  for_rebind, _ = transformations.prepare_for_rebinding(identities_removed)
+  return for_rebind
 
 
 def _check_for_missed_binding(comp, newly_bound_lambda):
@@ -752,9 +907,9 @@ def _check_for_missed_binding(comp, newly_bound_lambda):
   # TODO(b/135608876): Consider whether this pattern is sufficiently pervasive
   # to warrant symbol other than `get_map_of_unbound_references`, even if it
   # has the same underlying implementation.
-  unbound_references_in_comp = tff_framework.get_map_of_unbound_references(
+  unbound_references_in_comp = transformation_utils.get_map_of_unbound_references(
       comp)[comp]
-  new_lambda_unbound = tff_framework.get_map_of_unbound_references(
+  new_lambda_unbound = transformation_utils.get_map_of_unbound_references(
       newly_bound_lambda)[newly_bound_lambda]
   newly_unbound_references = new_lambda_unbound.difference(
       unbound_references_in_comp)
@@ -781,43 +936,43 @@ def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):
 
   WARNING: Currently, this function must be called before we insert called
   graphs over references (see
-  `tff_framework.insert_called_tf_identity_at_leaves`), due to the reliance on
+  `tff.framework.insert_called_tf_identity_at_leaves`), due to the reliance on
   pattern-matching of selections from references below.
 
   Args:
-    comp: Instance of `tff_framework.Lambda`, whose parameters we wish to rebind
+    comp: Instance of `tff.framework.Lambda`, whose parameters we wish to rebind
       to a different lambda. This lambda must have unique names.
     index: `int` representing the index to bind as an argument to the
       lower-level lambda.
 
   Returns:
-    An instance of `tff_framework.Lambda`, equivalent to `comp`, satisfying the
+    An instance of `tff.framework.Lambda`, equivalent to `comp`, satisfying the
     pattern above.
 
   Raises:
     ValueError: If a called graph with reference argument is detected in
       `comp`.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
+  py_typecheck.check_type(comp, building_blocks.Lambda)
   py_typecheck.check_type(index, int)
-  tff_framework.check_has_unique_names(comp)
+  tree_analysis.check_has_unique_names(comp)
   comp = _prepare_for_rebinding(comp)
-  name_generator = tff_framework.unique_name_generator(comp)
+  name_generator = building_block_factory.unique_name_generator(comp)
   parameter_name = comp.parameter_name
-  new_name = six.next(name_generator)
-  new_ref = tff_framework.Reference(new_name,
-                                    comp.type_signature.parameter[index])
+  new_name = next(name_generator)
+  new_ref = building_blocks.Reference(new_name,
+                                      comp.type_signature.parameter[index])
 
   def _remove_selection_from_ref(inner_comp):
     """Pattern-matches selection from references."""
-    if isinstance(inner_comp, tff_framework.Selection) and isinstance(
-        inner_comp.source, tff_framework.Reference
-    ) and inner_comp.index == index and inner_comp.source.name == parameter_name:
+    if (inner_comp.is_selection() and inner_comp.source.is_reference() and
+        inner_comp.index == index and inner_comp.source.name == parameter_name):
       return new_ref, True
-    elif isinstance(inner_comp, tff_framework.Call) and isinstance(
-        inner_comp.function, tff_framework.CompiledComputation) and isinstance(
-            inner_comp.argument, tff_framework.Reference) and (
-                inner_comp.argument.name == parameter_name):
+    elif (inner_comp.is_call() and
+          inner_comp.function.is_compiled_computation() and
+          inner_comp.argument is not None and
+          inner_comp.argument.is_reference() and
+          inner_comp.argument.name == parameter_name):
       raise ValueError('Encountered called graph on reference pattern in TFF '
                        'AST; this means relying on pattern-matching when '
                        'rebinding arguments may be insufficient. Ensure that '
@@ -825,24 +980,24 @@ def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):
                        'with called identity graphs.')
     return inner_comp, False
 
-  references_rebound_in_result, _ = tff_framework.transform_postorder(
+  references_rebound_in_result, _ = transformation_utils.transform_postorder(
       comp.result, _remove_selection_from_ref)
-  newly_bound_lambda = tff_framework.Lambda(new_ref.name,
-                                            new_ref.type_signature,
-                                            references_rebound_in_result)
+  newly_bound_lambda = building_blocks.Lambda(new_ref.name,
+                                              new_ref.type_signature,
+                                              references_rebound_in_result)
   _check_for_missed_binding(comp, newly_bound_lambda)
-  original_ref = tff_framework.Reference(comp.parameter_name,
-                                         comp.parameter_type)
-  selection = tff_framework.Selection(original_ref, index=index)
-  called_rebound = tff_framework.Call(newly_bound_lambda, selection)
-  return tff_framework.Lambda(comp.parameter_name, comp.parameter_type,
-                              called_rebound)
+  original_ref = building_blocks.Reference(comp.parameter_name,
+                                           comp.parameter_type)
+  selection = building_blocks.Selection(original_ref, index=index)
+  called_rebound = building_blocks.Call(newly_bound_lambda, selection)
+  return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                called_rebound)
 
 
 def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
   r"""Binds selections from the param of `comp` as params to lower-level lambda.
 
-  Notice that `comp` must be a `tff_framework.Lambda`.
+  Notice that `comp` must be a `tff.framework.Lambda`.
 
   The returned pattern is quite important here; given an input lambda `Comp`,
   we will return an equivalent structure of the form:
@@ -861,33 +1016,33 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
   happens on the clients, but the server-processing still declares some
   parameters placed at the clients.
 
-  `selected_index_lists` must be a list of lists. Each list represents
-  a sequence of selections to the parameter of `comp`. For example, if `var`
-  is the parameter of `comp`, the list `[0, 1, 0]` would represent the
-  selection `x[0][1][0]`. The elements of these inner lists must be integers;
-  that is, the selections must be positional. Notice we do not allow for tuples
-  due to automatic unwrapping.
+  `selected_index_lists` must be a list of lists. Each list represents a
+  sequence of selections to the parameter of `comp`. For example, if `x` is the
+  parameter of `comp`, the list `[0, 1, 0]` would represent the selection
+  `x[0][1][0]`. The elements of these inner lists must be integers; that is, the
+  selections must be positional. Notice we do not allow for tuples due to
+  automatic unwrapping.
 
   WARNING: Currently, this function must be called before we insert called
   graphs over references (see
-  `tff_framework.insert_called_tf_identity_at_leaves`), due to the reliance on
+  `tff.framework.insert_called_tf_identity_at_leaves`), due to the reliance on
   pattern-matching of selections from references below.
 
   Args:
-    comp: Instance of `tff_framework.Lambda`, whose parameters we wish to rebind
+    comp: Instance of `tff.framework.Lambda`, whose parameters we wish to rebind
       to a different lambda.
     selected_index_lists: 2-d list of `int`s, specifying the parameters of
       `comp` which we wish to rebind as the parameter to a lower-level lambda.
 
   Returns:
-    An instance of `tff_framework.Lambda`, equivalent to `comp`, satisfying the
+    An instance of `tff.framework.Lambda`, equivalent to `comp`, satisfying the
     pattern above.
 
   Raises:
     ValueError: If a called graph with reference argument is detected in
       `comp`.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
+  py_typecheck.check_type(comp, building_blocks.Lambda)
   py_typecheck.check_type(selected_index_lists, list)
   for selection_list in selected_index_lists:
     py_typecheck.check_type(selection_list, list)
@@ -897,9 +1052,9 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
   comp = _prepare_for_rebinding(comp)
 
   top_level_parameter_type = comp.type_signature.parameter
-  name_generator = tff_framework.unique_name_generator(comp)
+  name_generator = building_block_factory.unique_name_generator(comp)
   top_level_parameter_name = comp.parameter_name
-  top_level_parameter_reference = tff_framework.Reference(
+  top_level_parameter_reference = building_blocks.Reference(
       top_level_parameter_name, comp.parameter_type)
 
   type_list = []
@@ -909,17 +1064,14 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
       for selection in selection_list:
         selected_type = selected_type[selection]
       type_list.append(selected_type)
-    except TypeError:
-      six.reraise(
-          TypeError,
-          TypeError(
-              'You have tried to bind a variable to a nonexistent index in your '
-              'lambda parameter type; the selection defined by {} is '
-              'inadmissible for the lambda parameter type {}, in the comp {}.'
-              .format(selection_list, top_level_parameter_type, original_comp)),
-          sys.exc_info()[2])
+    except TypeError as e:
+      raise TypeError(
+          'You have tried to bind a variable to a nonexistent index in your '
+          'lambda parameter type; the selection defined by {} is inadmissible '
+          'for the lambda parameter type {}, in the comp {}.'.format(
+              selection_list, top_level_parameter_type, original_comp)) from e
 
-  if not all(isinstance(x, tff.FederatedType) for x in type_list):
+  if not all(x.is_federated() for x in type_list):
     raise TypeError(
         'All selected arguments should be of federated type; your selections '
         'have resulted in the list of types {}'.format(type_list))
@@ -934,14 +1086,14 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
   for selection_tuple in selected_index_lists:
     selected_comp = top_level_parameter_reference
     for selection in selection_tuple:
-      selected_comp = tff_framework.Selection(selected_comp, index=selection)
+      selected_comp = building_blocks.Selection(selected_comp, index=selection)
     arg_to_lower_level_lambda_list.append(selected_comp)
-  zip_arg = tff_framework.create_federated_zip(
-      tff_framework.Tuple(arg_to_lower_level_lambda_list))
+  zip_arg = building_block_factory.create_federated_zip(
+      building_blocks.Tuple(arg_to_lower_level_lambda_list))
 
-  zip_type = tff.FederatedType([x.member for x in type_list],
-                               placement=placement)
-  ref_to_zip = tff_framework.Reference(six.next(name_generator), zip_type)
+  zip_type = computation_types.FederatedType([x.member for x in type_list],
+                                             placement=placement)
+  ref_to_zip = building_blocks.Reference(next(name_generator), zip_type)
 
   selections_from_zip = [
       _construct_selection_from_federated_tuple(ref_to_zip, x, name_generator)
@@ -957,7 +1109,7 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
     binding.
 
     Args:
-      inner_comp: Instance of `tff_framework.ComputationBuildingBlock` in which
+      inner_comp: Instance of `tff.frmaework.ComputationBuildingBlock` in which
         we wish to replace the selections specified by `selected_index_lists`
         with the parallel new bindings from `selections_from_zip`.
 
@@ -971,21 +1123,20 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
       selection = inner_comp  # Empty selection
       tuple_pattern_matched = True
       for selected_index in tup[::-1]:
-        if isinstance(
-            selection,
-            tff_framework.Selection) and selection.index == selected_index:
+        if selection.is_selection() and selection.index == selected_index:
           selection = selection.source
         else:
           tuple_pattern_matched = False
           break
       if tuple_pattern_matched:
-        if isinstance(selection, tff_framework.Reference
-                     ) and selection.name == top_level_parameter_name:
+        if (selection.is_reference() and
+            selection.name == top_level_parameter_name):
           return selections_from_zip[idx], True
-    if isinstance(inner_comp, tff_framework.Call) and isinstance(
-        inner_comp.function, tff_framework.CompiledComputation) and isinstance(
-            inner_comp.argument, tff_framework.Reference) and (
-                inner_comp.argument.name == top_level_parameter_name):
+    if (inner_comp.is_call() and
+        inner_comp.function.is_compiled_computation() and
+        inner_comp.argument is not None and
+        inner_comp.argument.is_reference() and
+        inner_comp.argument.name == top_level_parameter_name):
       raise ValueError('Encountered called graph on reference pattern in TFF '
                        'AST; this means relying on pattern-matching when '
                        'rebinding arguments may be insufficient. Ensure that '
@@ -994,18 +1145,17 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
 
     return inner_comp, False
 
-  variables_rebound_in_result, _ = tff_framework.transform_postorder(
+  variables_rebound_in_result, _ = transformation_utils.transform_postorder(
       comp.result, _replace_selections_with_new_bindings)
-  lambda_with_zipped_param = tff_framework.Lambda(ref_to_zip.name,
-                                                  ref_to_zip.type_signature,
-                                                  variables_rebound_in_result)
+  lambda_with_zipped_param = building_blocks.Lambda(
+      ref_to_zip.name, ref_to_zip.type_signature, variables_rebound_in_result)
   _check_for_missed_binding(comp, lambda_with_zipped_param)
 
-  zipped_lambda_called = tff_framework.Call(lambda_with_zipped_param, zip_arg)
-  constructed_lambda = tff_framework.Lambda(comp.parameter_name,
-                                            comp.parameter_type,
-                                            zipped_lambda_called)
-  names_uniquified, _ = tff_framework.uniquify_reference_names(
+  zipped_lambda_called = building_blocks.Call(lambda_with_zipped_param, zip_arg)
+  constructed_lambda = building_blocks.Lambda(comp.parameter_name,
+                                              comp.parameter_type,
+                                              zipped_lambda_called)
+  names_uniquified, _ = tree_transformations.uniquify_reference_names(
       constructed_lambda)
   return names_uniquified
 
@@ -1014,7 +1164,7 @@ def select_output_from_lambda(comp, indices):
   """Constructs a new function with result of selecting `indices` from `comp`.
 
   Args:
-    comp: Instance of `tff_framework.Lambda` of result type `tff.NamedTupleType`
+    comp: Instance of `tff.framework.Lambda` of result type `tff.NamedTupleType`
       from which we wish to select `indices`. Notice that this named tuple type
       must have elements of federated type.
     indices: Instance of `int`, `list`, or `tuple`, specifying the indices we
@@ -1028,28 +1178,39 @@ def select_output_from_lambda(comp, indices):
     A transformed version of `comp` with result value the selection from the
     result of `comp` specified by `indices`.
   """
-  py_typecheck.check_type(comp, tff_framework.Lambda)
-  py_typecheck.check_type(comp.type_signature.result, tff.NamedTupleType)
+  py_typecheck.check_type(comp, building_blocks.Lambda)
+  py_typecheck.check_type(comp.type_signature.result,
+                          computation_types.NamedTupleType)
   py_typecheck.check_type(indices, (int, tuple, list))
+
+  def _create_selected_output(comp, index, is_tuple_opt):
+    if is_tuple_opt:
+      return comp[index]
+    else:
+      return building_blocks.Selection(comp, index=index)
+
   result_tuple = comp.result
-  name_generator = tff_framework.unique_name_generator(comp)
-  new_name = six.next(name_generator)
-  ref_to_result_tuple = tff_framework.Reference(new_name,
-                                                result_tuple.type_signature)
+  tuple_opt = result_tuple.is_tuple()
+  elements = []
   if isinstance(indices, (tuple, list)):
-    if not all(isinstance(x, int) for x in indices):
-      raise TypeError('Must select by index in `select_output_from_lambda`.')
-    selected_output = [
-        tff_framework.Selection(ref_to_result_tuple, index=x) for x in indices
-    ]
-    tuple_of_selected_output = tff_framework.Tuple(selected_output)
-    result = tff_framework.Block([(new_name, result_tuple)],
-                                 tuple_of_selected_output)
+    for x in indices:
+      if isinstance(x, (tuple, list)):
+        selected_output = result_tuple
+        for y in x:
+          tuple_opt = selected_output.is_tuple()
+          selected_output = _create_selected_output(selected_output, y,
+                                                    tuple_opt)
+      else:
+        selected_output = _create_selected_output(result_tuple, x, tuple_opt)
+      elements.append(selected_output)
+    result = building_blocks.Tuple(elements)
   else:
-    selected_output = tff_framework.Selection(
-        ref_to_result_tuple, index=indices)
-    result = tff_framework.Block([(new_name, result_tuple)], selected_output)
-  return tff_framework.Lambda(comp.parameter_name, comp.parameter_type, result)
+    if tuple_opt:
+      result = result_tuple[indices]
+    else:
+      result = building_blocks.Selection(result_tuple, index=indices)
+  return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                result)
 
 
 def concatenate_function_outputs(first_function, second_function):
@@ -1062,24 +1223,24 @@ def concatenate_function_outputs(first_function, second_function):
   these functions in parallel and concatenating the outputs in a tuple.
 
   Args:
-    first_function: Instance of `tff_framework.Lambda` whose result we wish to
+    first_function: Instance of `tff.framework.Lambda` whose result we wish to
       concatenate with the result of `second_function`.
-    second_function: Instance of `tff_framework.Lambda` whose result we wish to
+    second_function: Instance of `tff.framework.Lambda` whose result we wish to
       concatenate with the result of `first_function`.
 
   Returns:
-    A new instance of `tff_framework.Lambda` with unique names representing the
+    A new instance of `tff.framework.Lambda` with unique names representing the
     computation described above.
 
   Raises:
-    TypeError: If the arguments are not instances of `tff_framework.Lambda`,
+    TypeError: If the arguments are not instances of `tff.framework.Lambda`,
     or declare parameters of different types.
   """
 
-  py_typecheck.check_type(first_function, tff_framework.Lambda)
-  py_typecheck.check_type(second_function, tff_framework.Lambda)
-  tff_framework.check_has_unique_names(first_function)
-  tff_framework.check_has_unique_names(second_function)
+  py_typecheck.check_type(first_function, building_blocks.Lambda)
+  py_typecheck.check_type(second_function, building_blocks.Lambda)
+  tree_analysis.check_has_unique_names(first_function)
+  tree_analysis.check_has_unique_names(second_function)
 
   if first_function.parameter_type != second_function.parameter_type:
     raise TypeError('Must pass two functions which declare the same parameter '
@@ -1090,24 +1251,23 @@ def concatenate_function_outputs(first_function, second_function):
                         second_function.type_signature))
 
   def _rename_first_function_arg(comp):
-    if isinstance(
-        comp,
-        tff_framework.Reference) and comp.name == first_function.parameter_name:
+    if comp.is_reference() and comp.name == first_function.parameter_name:
       if comp.type_signature != second_function.parameter_type:
         raise AssertionError('{}, {}'.format(comp.type_signature,
                                              second_function.parameter_type))
-      return tff_framework.Reference(second_function.parameter_name,
-                                     comp.type_signature), True
+      return building_blocks.Reference(second_function.parameter_name,
+                                       comp.type_signature), True
     return comp, False
 
-  first_function, _ = tff_framework.transform_postorder(
+  first_function, _ = transformation_utils.transform_postorder(
       first_function, _rename_first_function_arg)
 
-  concatenated_function = tff_framework.Lambda(
+  concatenated_function = building_blocks.Lambda(
       second_function.parameter_name, second_function.parameter_type,
-      tff_framework.Tuple([first_function.result, second_function.result]))
+      building_blocks.Tuple([first_function.result, second_function.result]))
 
-  renamed, _ = tff_framework.uniquify_reference_names(concatenated_function)
+  renamed, _ = tree_transformations.uniquify_reference_names(
+      concatenated_function)
 
   return renamed
 
@@ -1130,7 +1290,7 @@ def normalize_all_equal_bit(comp):
   ask it to create a new `tff.FederatedType` for us.
 
   Args:
-    comp: Instance of `tff_framework.ComputationBuildingBlock` whose placed
+    comp: Instance of `tff.framework.ComputationBuildingBlock` whose placed
       values will have their `all_equal` bits normalized.
 
   Returns:
@@ -1138,46 +1298,49 @@ def normalize_all_equal_bit(comp):
     `all_equal False`, and all `tff.SERVER`-placed values having
     `all_equal True`.
   """
-  py_typecheck.check_type(comp, tff_framework.ComputationBuildingBlock)
+  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
 
   def _normalize_reference_bit(comp):
-    if not isinstance(comp.type_signature, tff.FederatedType):
+    if not comp.type_signature.is_federated():
       return comp, False
-    return tff_framework.Reference(
+    return building_blocks.Reference(
         comp.name,
-        tff.FederatedType(comp.type_signature.member,
-                          comp.type_signature.placement)), True
+        computation_types.FederatedType(comp.type_signature.member,
+                                        comp.type_signature.placement)), True
 
   def _normalize_lambda_bit(comp):
-    if not isinstance(comp.parameter_type, tff.FederatedType):
+    if not comp.parameter_type.is_federated():
       return comp, False
-    return tff_framework.Lambda(
+    return building_blocks.Lambda(
         comp.parameter_name,
-        tff.FederatedType(comp.parameter_type.member,
-                          comp.parameter_type.placement), comp.result), True
+        computation_types.FederatedType(comp.parameter_type.member,
+                                        comp.parameter_type.placement),
+        comp.result), True
 
   def _normalize_intrinsic_bit(comp):
     """Replaces federated map all equal with federated map."""
-    if comp.uri != tff_framework.FEDERATED_MAP_ALL_EQUAL.uri:
+    if comp.uri != intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri:
       return comp, False
     parameter_type = [
         comp.type_signature.parameter[0],
-        tff.FederatedType(comp.type_signature.parameter[1].member, tff.CLIENTS)
+        computation_types.FederatedType(comp.type_signature.parameter[1].member,
+                                        placement_literals.CLIENTS)
     ]
-    intrinsic_type = tff.FunctionType(
+    intrinsic_type = computation_types.FunctionType(
         parameter_type,
-        tff.FederatedType(comp.type_signature.result.member, tff.CLIENTS))
-    new_intrinsic = tff_framework.Intrinsic(tff_framework.FEDERATED_MAP.uri,
-                                            intrinsic_type)
+        computation_types.FederatedType(comp.type_signature.result.member,
+                                        placement_literals.CLIENTS))
+    new_intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_MAP.uri,
+                                              intrinsic_type)
     return new_intrinsic, True
 
   def _transform_switch(comp):
-    if isinstance(comp, tff_framework.Reference):
+    if comp.is_reference():
       return _normalize_reference_bit(comp)
-    elif isinstance(comp, tff_framework.Lambda):
+    elif comp.is_lambda():
       return _normalize_lambda_bit(comp)
-    elif isinstance(comp, tff_framework.Intrinsic):
+    elif comp.is_intrinsic():
       return _normalize_intrinsic_bit(comp)
     return comp, False
 
-  return tff_framework.transform_postorder(comp, _transform_switch)[0]
+  return transformation_utils.transform_postorder(comp, _transform_switch)[0]

@@ -2,8 +2,9 @@ package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])
 
-filegroup(
+py_binary(
     name = "build_docs",
     srcs = ["build_docs.py"],
-    tags = ["ignore_srcs"],
+    python_version = "PY3",
+    srcs_version = "PY3",
 )

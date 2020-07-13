@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,80 +13,12 @@
 # limitations under the License.
 """Library of TensorFlow graph-merging functions and associated helpers."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import uuid
 
-import six
-from six.moves import range
-from six.moves import zip
 import tensorflow as tf
 
-
-class GraphSpec(object):
-  """Container class for validating input to graph merging functions.
-
-  Mirrors the serialization format of TFF, the main difference being that
-  `GraphSpec` takes an already flattened list of names as `in_names` and
-  `out_names`, as opposed to the single binding taken by TFF serialization.
-
-  Attributes:
-    graph_def: Instance of `tf.compat.v1.GraphDef`.
-    init_op: Either a string name of the init op in the graph represented by
-      `graph_def`, or `None` if there is no such init op.
-    in_names: A Python `list` or `tuple of string names corresponding to the
-      input objects in `graph_def`. Must be empty if there are no such inputs.
-    out_names: An iterable of string names of the output tensors in `graph_def`,
-      subject to the same restrictions as `in_names`.
-  """
-
-  def __init__(self, graph_def, init_op, in_names, out_names):
-    """Performs typechecking and stashes attributes on constructed instance.
-
-    This constructor performs no additional validation; if, for example, the
-    caller passes in a name of a nonexistent op for the `init_op` argument,
-    this will not be validated in this class.
-
-    Args:
-      graph_def: As defined in the class doc.
-      init_op: As defined in the class doc.
-      in_names: As defined in the class doc.
-      out_names: As defined in the class doc.
-
-    Raises:
-      TypeError: If the types of the arguments don't match the type
-      specifications in the class doc.
-    """
-    if not isinstance(graph_def, tf.compat.v1.GraphDef):
-      raise TypeError(
-          'graph_def must be of type `tf.compat.v1.GraphDef`; you have '
-          'passed a value of type {}'.format(type(graph_def)))
-    if not isinstance(init_op, (six.string_types, type(None))):
-      raise TypeError('init_op must be string type or `NoneType`; you '
-                      'have passed a value of type {}'.format(type(init_op)))
-    if not isinstance(in_names, (list, tuple)):
-      raise TypeError('`in_names` must be a list or tuple; you have passed '
-                      'a value of type {}'.format(type(in_names)))
-    for name in in_names:
-      if not isinstance(name, six.string_types):
-        raise TypeError(
-            'Each entry in the `in_names` list must be of string type; you have '
-            'passed an in_names list of {}'.format(in_names))
-    if not isinstance(out_names, (list, tuple)):
-      raise TypeError('`out_names` must be a list or tuple; you have '
-                      'passed a value of type {}'.format(out_names))
-    for name in out_names:
-      if not isinstance(name, six.string_types):
-        raise TypeError(
-            'Each entry in the `out_names` list must be of string type; '
-            'you have passed an in_names list of {}'.format(out_names))
-    self.graph_def = graph_def
-    self.init_op = init_op
-    self.in_names = in_names
-    self.out_names = out_names
+from tensorflow_federated.python.tensorflow_libs import graph_spec
 
 
 def uniquify_shared_names(graph_def):
@@ -140,8 +71,8 @@ def concatenate_inputs_and_outputs(arg_list):
   `tf.Graph`.
 
   Args:
-    arg_list: Python iterable of `GraphSpec` instances, containing the
-      computations we wish to concatenate side-by-side.
+    arg_list: Python iterable of `graph_spec.GraphSpec` instances, containing
+      the computations we wish to concatenate side-by-side.
 
   Returns:
     A 4-tuple:
@@ -150,10 +81,11 @@ def concatenate_inputs_and_outputs(arg_list):
       init_op_name: A string representing the op in `merged_graph` that runs
         any initializers passed in with `arg_list`.
       in_name_maps: A Python `list` of `dict`s, representing how names from
-        `arg_list` map to names in `merged_graph`. That is, for the `GraphSpec`
-        `x` in index `i` of `arg_list`, the `i`th element of `in_name_maps` is
-        a dict containing keys the elements of `x.in_names`, and values the
-        new names of these elements in `merged_graph`.
+        `arg_list` map to names in `merged_graph`. That is, for the
+        `graph_spec.GraphSpec` `x` in index `i` of `arg_list`, the `i`th
+        element of `in_name_maps` is a dict containing keys the elements of
+        `x.in_names`, and values the new names of these elements in
+        `merged_graph`.
       out_name_maps: Similar to `in_name_maps`.
 
   """
@@ -197,9 +129,9 @@ def _get_merged_init_op_name(merged_graph, graph_names_list,
 
 
 def _parse_graph_spec_list(arg_list):
-  """Flattens list of `GraphSpec` instances."""
-  if not all(isinstance(x, GraphSpec) for x in arg_list):
-    raise TypeError('Please pass an iterable of `GraphSpec`s.')
+  """Flattens list of `graph_spec.GraphSpec` instances."""
+  if not all(isinstance(x, graph_spec.GraphSpec) for x in arg_list):
+    raise TypeError('Please pass an iterable of `graph_spec.GraphSpec`s.')
   graph_defs = [x.graph_def for x in arg_list]
   init_op_names = [x.init_op for x in arg_list]
   in_names = [x.in_names for x in arg_list]
@@ -210,7 +142,7 @@ def _parse_graph_spec_list(arg_list):
 
 
 def compose_graph_specs(graph_spec_list):
-  """Composes `GraphSpec` list in order, wiring output of k to input of k+1.
+  """Composes `graph_spec.GraphSpec` list in order, wiring output of k to input of k+1.
 
   Notice that due to the semantics of composition (e.g., compose(f1, f2)
   represents first calling f2 on the argument of x, then calling f1 on the
@@ -224,9 +156,9 @@ def compose_graph_specs(graph_spec_list):
   resulting composed graph.
 
   Args:
-    graph_spec_list: Python list or tuple of instances of `GraphSpec`. Notice
-      not all iterables can work here, since composition is inherently a
-      noncommutative operation.
+    graph_spec_list: Python list or tuple of instances of
+      `graph_spec.GraphSpec`. Notice not all iterables can work here, since
+      composition is inherently a noncommutative operation.
 
   Returns:
     A four-tuple:
@@ -241,8 +173,9 @@ def compose_graph_specs(graph_spec_list):
         `graph_spec_list` to their new names in `composed_graph`.
 
   Raises:
-    TypeError: If we are not passed a list or tuple of `GraphSpec`s.
-    ValueError: If the `GraphSpec`s passed in do not respect the requirement
+    TypeError: If we are not passed a list or tuple of `graph_spec.GraphSpec`s.
+    ValueError: If the `graph_spec.GraphSpec`s passed in do not respect the
+    requirement
       that number of outputs of element k must match the number of inputs to
       element k+1.
   """

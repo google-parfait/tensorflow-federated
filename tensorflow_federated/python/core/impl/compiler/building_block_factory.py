@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Library implementing reusable `computation_building_blocks` structures."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""A library of contruction functions for building block structures."""
 
 import random
 import string
+from typing import Any, Callable, Iterator, List, Sequence, Optional, Tuple, Union
 
-import six
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -30,16 +24,19 @@ from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import placement_literals
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
-def unique_name_generator(comp, prefix='_var'):
+def unique_name_generator(comp: building_blocks.ComputationBuildingBlock,
+                          prefix: str = '_var') -> Iterator[str]:
   """Yields a new unique name that does not exist in `comp`.
 
   Args:
@@ -61,7 +58,7 @@ def unique_name_generator(comp, prefix='_var'):
     index += 1
 
 
-def create_compiled_empty_tuple():
+def create_compiled_empty_tuple() -> building_blocks.Call:
   """Returns called graph representing the empty tuple.
 
   Returns:
@@ -69,29 +66,18 @@ def create_compiled_empty_tuple():
     which returns an empty tuple. This function is an instance of
     `building_blocks.CompiledComputation`.
   """
-  with tf.Graph().as_default() as graph:
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        [], graph)
-
-  function_type = computation_types.FunctionType(None, result_type)
-  serialized_function_type = type_serialization.serialize_type(function_type)
-
-  proto = pb.Computation(
-      type=serialized_function_type,
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=None,
-          result=result_binding))
-
-  return building_blocks.Call(building_blocks.CompiledComputation(proto), None)
+  proto = tensorflow_computation_factory.create_empty_tuple()
+  compiled = building_blocks.CompiledComputation(proto)
+  return building_blocks.Call(compiled, None)
 
 
-def create_compiled_identity(type_signature, name=None):
+def create_compiled_identity(
+    type_signature: computation_types.Type,
+    name: Optional[str] = None) -> building_blocks.CompiledComputation:
   """Creates CompiledComputation representing identity function.
 
   Args:
-    type_signature: Argument convertible to instance of `computation_types.Type`
-      via `computation_types.to_type`.
+    type_signature: A `computation_types.Type`.
     name: An optional string name to use as the name of the computation.
 
   Returns:
@@ -103,19 +89,122 @@ def create_compiled_identity(type_signature, name=None):
     TypeError: If `type_signature` contains any types which cannot appear in
       TensorFlow bindings.
   """
-  type_spec = computation_types.to_type(type_signature)
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if not type_utils.is_tensorflow_compatible_type(type_spec):
-    raise TypeError(
-        'Can only construct a TF block with types which only contain tensor, '
-        'sequence or tuple types; you have tried to construct a TF block with '
-        'parameter of type {}'.format(type_spec))
+  proto = tensorflow_computation_factory.create_identity(type_signature)
+  return building_blocks.CompiledComputation(proto, name)
+
+
+class SelectionSpec(object):
+  """Data class representing map from input tuple to selection of result.
+
+  Attributes:
+    tuple_index: The index of the source of the selection sequence in the
+      desired result of the generated TensorFlow. If this `SelectionSpec`
+      appears at index i of a list of `SelectionSpec`s, index j is the source
+      for the result of the generated function at index i.
+    selection_sequence: A list or tuple representing the selections to make from
+      `tuple_index`, so that the list `[0]` for example would represent the
+      output is the 0th element of `tuple_index`, while `[0, 0]` would represent
+      that the output is the 0th element of the 0th element of `tuple_index`.
+  """
+
+  def __init__(self, tuple_index: int, selection_sequence: Sequence[int]):
+    self._tuple_index = tuple_index
+    self._selection_sequence = selection_sequence
+
+  @property
+  def tuple_index(self):
+    return self._tuple_index
+
+  @property
+  def selection_sequence(self):
+    return self._selection_sequence
+
+  def __str__(self):
+    return 'SelectionSequence(tuple_index={},selection_sequence={}'.format(
+        self._tuple_index, self._selection_sequence)
+
+  def __repr__(self):
+    return str(self)
+
+
+def _extract_selections(parameter_value, output_spec):
+  results = []
+  for selection_spec in output_spec:
+    result_element = parameter_value[selection_spec.tuple_index]
+    for selection in selection_spec.selection_sequence:
+      py_typecheck.check_type(selection, int)
+      result_element = result_element[selection]
+    results.append(result_element)
+  return results
+
+
+def construct_tensorflow_selecting_and_packing_outputs(
+    parameter_type: computation_types.NamedTupleType,
+    output_structure: anonymous_tuple.AnonymousTuple
+) -> building_blocks.CompiledComputation:
+  """Constructs TensorFlow selecting and packing elements from its input.
+
+  The result of this function can be called on a deduplicated
+  `building_blocks.Tuple` containing called graphs, thus preventing us from
+  embedding the same TensorFlow computation in the generated graphs, and
+  reducing the amount of work duplicated in the process of generating
+  TensorFlow.
+
+  The TensorFlow which results here will be a function which takes an argument
+  of type `arg_type`, returning a result specified by `output_structure`. Each
+  `SelectionSpec` nested inside of `output_structure` will represent a selection
+  from one of the arguments of the tuple `arg_type`, with the empty selection
+  being a possibility. The nested structure of `output_structure` will determine
+  how these selections are packed back into a result, IE, the result of the
+  function will be a nested tuple with the same structure as `output_structure`,
+  where the leaves of this structure (the `SelectionSpecs` of
+  `output_structure`) will be selections from the argument.
+
+  Args:
+    parameter_type: A `computation_types.NamedTupleType` of the argument on
+      which the constructed function will be called.
+    output_structure: `anonymous_tuple.AnonymousTuple` with `SelectionSpec` or
+      `anonymous_tupl.AnonymousTuple` elements, mapping from elements of the
+      nested argument tuple to the desired result of the generated computation.
+      `output_structure` must contain all the names desired on the output of the
+      computation.
+
+  Returns:
+    A `building_blocks.CompiledComputation` representing the specification
+    above.
+
+  Raises:
+    TypeError: If `arg_type` is not a `computation_types.NamedTupleType`, or
+      represents a type which cannot act as an input or output to a TensorFlow
+      computation in TFF, IE does not contain exclusively
+      `computation_types.SequenceType`, `computation_types.NamedTupleType` or
+      `computation_types.TensorType`.
+  """
+  py_typecheck.check_type(parameter_type, computation_types.NamedTupleType)
+  py_typecheck.check_type(output_structure, anonymous_tuple.AnonymousTuple)
+
+  def _check_output_structure(elem):
+    if isinstance(elem, anonymous_tuple.AnonymousTuple):
+      for x in elem:
+        _check_output_structure(x)
+    elif not isinstance(elem, SelectionSpec):
+      raise TypeError('output_structure can only contain nested anonymous '
+                      'tuples and `SelectionSpecs`; encountered the value {} '
+                      'of type {}.'.format(elem, type(elem)))
+
+  _check_output_structure(output_structure)
+  output_spec = anonymous_tuple.flatten(output_structure)
+  type_analysis.check_tensorflow_compatible_type(parameter_type)
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', type_spec, graph)
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        parameter_value, graph)
-  function_type = computation_types.FunctionType(type_spec, result_type)
+        'x', parameter_type, graph)
+  results = _extract_selections(parameter_value, output_spec)
+
+  repacked_result = anonymous_tuple.pack_sequence_as(output_structure, results)
+  result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+      repacked_result, graph)
+
+  function_type = computation_types.FunctionType(parameter_type, result_type)
   serialized_function_type = type_serialization.serialize_type(function_type)
   proto = pb.Computation(
       type=serialized_function_type,
@@ -123,10 +212,12 @@ def create_compiled_identity(type_signature, name=None):
           graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
           parameter=parameter_binding,
           result=result_binding))
-  return building_blocks.CompiledComputation(proto, name)
+  return building_blocks.CompiledComputation(proto)
 
 
-def create_tensorflow_constant(type_spec, scalar_value):
+def create_tensorflow_constant(type_spec: computation_types.Type,
+                               scalar_value: Union[int, float, str],
+                               name=None) -> building_blocks.Call:
   """Creates called graph returning constant `scalar_value` of type `type_spec`.
 
   `scalar_value` must be a scalar, and cannot be a float if any of the tensor
@@ -134,10 +225,10 @@ def create_tensorflow_constant(type_spec, scalar_value):
   only named tuples and tensor types, but these can be arbitrarily nested.
 
   Args:
-    type_spec: Value convertible to `computation_types.Type` via
-      `computation_types.to_type`, and whose resulting type tree can only
+    type_spec: A `computation_types.Type` whose resulting type tree can only
       contain named tuples and tensors.
     scalar_value: Scalar value to place in all the tensor leaves of `type_spec`.
+    name: An optional string name to use as the name of the computation.
 
   Returns:
     An instance of `building_blocks.Call`, whose argument is `None`
@@ -148,74 +239,20 @@ def create_tensorflow_constant(type_spec, scalar_value):
   Raises:
     TypeError: If the type assumptions above are violated.
   """
-  type_spec = computation_types.to_type(type_spec)
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if not type_utils.is_generic_op_compatible_type(type_spec):
-    raise TypeError('Type spec {} cannot be constructed as a TensorFlow '
-                    'constant in TFF; only nested tuples and tensors are '
-                    'permitted.'.format(type_spec))
-  inferred_scalar_value_type = type_utils.infer_type(scalar_value)
-  if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
-      or inferred_scalar_value_type.shape != tf.TensorShape(())):
-    raise TypeError('Must pass a scalar value to '
-                    '`create_tensorflow_constant`; encountered a value '
-                    '{}'.format(scalar_value))
-  tensor_dtypes_in_type_spec = []
-
-  def _pack_dtypes(type_signature):
-    """Appends dtype of `type_signature` to nonlocal variable."""
-    if isinstance(type_signature, computation_types.TensorType):
-      tensor_dtypes_in_type_spec.append(type_signature.dtype)
-    return type_signature, False
-
-  type_utils.transform_type_postorder(type_spec, _pack_dtypes)
-
-  if (any(x.is_integer for x in tensor_dtypes_in_type_spec) and
-      not inferred_scalar_value_type.dtype.is_integer):
-    raise TypeError('Only integers can be used as scalar values if our desired '
-                    'constant type spec contains any integer tensors; passed '
-                    'scalar {} of dtype {} for type spec {}.'.format(
-                        scalar_value, inferred_scalar_value_type.dtype,
-                        type_spec))
-
-  def _create_result_tensor(type_spec, scalar_value):
-    """Packs `scalar_value` into `type_spec` recursively."""
-    if isinstance(type_spec, computation_types.TensorType):
-      type_spec.shape.assert_is_fully_defined()
-      result = tf.constant(
-          scalar_value, dtype=type_spec.dtype, shape=type_spec.shape)
-    else:
-      elements = []
-      for _, type_element in anonymous_tuple.iter_elements(type_spec):
-        elements.append(_create_result_tensor(type_element, scalar_value))
-      result = elements
-    return result
-
-  with tf.Graph().as_default() as graph:
-    result = _create_result_tensor(type_spec, scalar_value)
-  _, result_binding = tensorflow_utils.capture_result_from_graph(result, graph)
-
-  function_type = computation_types.FunctionType(None, type_spec)
-  serialized_function_type = type_serialization.serialize_type(function_type)
-
-  proto = pb.Computation(
-      type=serialized_function_type,
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=None,
-          result=result_binding))
-
-  noarg_constant_fn = building_blocks.CompiledComputation(proto)
-  return building_blocks.Call(noarg_constant_fn, None)
+  proto = tensorflow_computation_factory.create_constant(
+      scalar_value, type_spec)
+  compiled = building_blocks.CompiledComputation(proto, name)
+  return building_blocks.Call(compiled, None)
 
 
-def create_compiled_input_replication(type_signature, n_replicas):
+def create_compiled_input_replication(
+    type_signature: computation_types.Type,
+    n_replicas: int) -> building_blocks.CompiledComputation:
   """Creates a compiled computation which replicates its argument.
 
   Args:
-    type_signature: Value convertible to `computation_types.Type` via
-      `computation_types.to_type`. The type of the parameter of the constructed
-      computation.
+    type_signature: A `computation_types.Type`, the type of the parameter of the
+      constructed computation.
     n_replicas: Integer, the number of times the argument is intended to be
       replicated.
 
@@ -228,35 +265,14 @@ def create_compiled_input_replication(type_signature, n_replicas):
     TypeError: If `type_signature` contains any types which cannot appear in
       TensorFlow bindings, or if `n_replicas` is not an integer.
   """
-  type_spec = computation_types.to_type(type_signature)
-  py_typecheck.check_type(type_spec, computation_types.Type)
-  if not type_utils.is_tensorflow_compatible_type(type_spec):
-    raise TypeError(
-        'Can only construct a TF block with types which only contain tensor, '
-        'sequence or tuple types; you have tried to construct a TF block with '
-        'parameter of type {}'.format(type_spec))
-  py_typecheck.check_type(n_replicas, int)
-  with tf.Graph().as_default() as graph:
-    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', type_spec, graph)
-    result = [parameter_value] * n_replicas
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result, graph)
-
-  function_type = computation_types.FunctionType(type_spec, result_type)
-  serialized_function_type = type_serialization.serialize_type(function_type)
-
-  proto = pb.Computation(
-      type=serialized_function_type,
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=parameter_binding,
-          result=result_binding))
-
+  proto = tensorflow_computation_factory.create_replicate_input(
+      type_signature, n_replicas)
   return building_blocks.CompiledComputation(proto)
 
 
-def create_tensorflow_to_broadcast_scalar(scalar_type, new_shape):
+def create_tensorflow_to_broadcast_scalar(
+    scalar_type: tf.dtypes.DType,
+    new_shape: tf.TensorShape) -> building_blocks.CompiledComputation:
   """Creates TF function broadcasting scalar to shape `new_shape`.
 
   Args:
@@ -276,41 +292,14 @@ def create_tensorflow_to_broadcast_scalar(scalar_type, new_shape):
     types.
     ValueError: If `new_shape` is not fully defined.
   """
-  # TODO(b/136119348): There are enough of these little TF helper functions,
-  # and they are suffificiently conceptually similar, to potentially warrant
-  # factoring out into their own file. At the same time, a possible clearer
-  # pattern than immediately dropping into the graph context manager would be
-  # to declare parameter ad result bindings outside of the context manager
-  # (after constructing the graph of course) and only dropping in for the body.
-  # If these functions get moved, perhaps that would be a natural time to
-  # revisit the pattern.
-  py_typecheck.check_type(scalar_type, tf.DType)
-  py_typecheck.check_type(new_shape, tf.TensorShape)
-  new_shape.assert_is_fully_defined()
-  tensor_spec = computation_types.TensorType(scalar_type, shape=())
-
-  with tf.Graph().as_default() as graph:
-    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', tensor_spec, graph)
-    result = tf.broadcast_to(parameter_value, new_shape)
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result, graph)
-
-  function_type = computation_types.FunctionType(
-      computation_types.TensorType(dtype=scalar_type, shape=()), result_type)
-  serialized_function_type = type_serialization.serialize_type(function_type)
-
-  proto = pb.Computation(
-      type=serialized_function_type,
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=parameter_binding,
-          result=result_binding))
-
+  proto = tensorflow_computation_factory.create_broadcast_scalar_to_shape(
+      scalar_type, new_shape)
   return building_blocks.CompiledComputation(proto)
 
 
-def create_tensorflow_binary_operator(operand_type, operator):
+def create_tensorflow_binary_operator(
+    operand_type: computation_types.Type,
+    operator: Callable[[Any, Any], Any]) -> building_blocks.CompiledComputation:
   """Creates a TensorFlow computation for the binary `operator`.
 
   For `T` the `operand_type`, the type signature of the constructed operator
@@ -320,7 +309,7 @@ def create_tensorflow_binary_operator(operand_type, operator):
   Notice that we have quite serious restrictions on `operand_type` here; not
   only must it be compatible with stamping into a TensorFlow graph, but
   additionally cannot contain a `computation_types.SequenceType`, as checked by
-  `type_utils.is_generic_op_compatible_type`.
+  `type_analysis.is_generic_op_compatible_type`.
 
   Notice also that if `operand_type` is a `computation_types.NamedTupleType`,
   `operator` will be applied pointwise. This places the burden on callers of
@@ -342,55 +331,17 @@ def create_tensorflow_binary_operator(operand_type, operator):
   Raises:
     TypeError: If the type tree of `operand_type` contains any type which is
     incompatible with the TFF generic operators, as checked by
-    `type_utils.is_generic_op_compatible_type`, or `operator` is not callable.
+    `type_analysis.is_generic_op_compatible_type`, or `operator` is not
+    callable.
   """
-  operand_type = computation_types.to_type(operand_type)
-  py_typecheck.check_type(operand_type, computation_types.Type)
-  py_typecheck.check_callable(operator)
-  if not type_utils.is_generic_op_compatible_type(operand_type):
-    raise TypeError('The type {} contains a type other than '
-                    '`computation_types.TensorType` and '
-                    '`computation_types.NamedTupleType`; this is disallowed '
-                    'in the generic operators.'.format(operand_type))
-  with tf.Graph().as_default() as graph:
-    operand_1_value, operand_1_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', operand_type, graph)
-    operand_2_value, operand_2_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'y', operand_type, graph)
-
-    if isinstance(operand_type, computation_types.TensorType):
-      result_value = operator(operand_1_value, operand_2_value)
-    elif isinstance(operand_type, computation_types.NamedTupleType):
-      result_value = anonymous_tuple.map_structure(operator, operand_1_value,
-                                                   operand_2_value)
-    else:
-      raise TypeError('Operand type {} cannot be used in generic operations. '
-                      'The whitelist in '
-                      '`type_utils.is_generic_op_compatible_type` has allowed '
-                      'it to pass, and should be updated.'.format(operand_type))
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result_value, graph)
-
-  function_type = computation_types.FunctionType(
-      computation_types.NamedTupleType([operand_type, operand_type]),
-      result_type)
-  serialized_function_type = type_serialization.serialize_type(function_type)
-
-  parameter_binding = pb.TensorFlow.Binding(
-      tuple=pb.TensorFlow.NamedTupleBinding(
-          element=[operand_1_binding, operand_2_binding]))
-
-  proto = pb.Computation(
-      type=serialized_function_type,
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=parameter_binding,
-          result=result_binding))
-
+  proto = tensorflow_computation_factory.create_binary_operator(
+      operator, operand_type)
   return building_blocks.CompiledComputation(proto)
 
 
-def create_federated_getitem_call(arg, idx):
+def create_federated_getitem_call(
+    arg: building_blocks.ComputationBuildingBlock,
+    idx: Union[int, slice]) -> building_blocks.Call:
   """Creates computation building block passing getitem to federated value.
 
   Args:
@@ -416,7 +367,8 @@ def create_federated_getitem_call(arg, idx):
   return create_federated_map_or_apply(getitem_comp, arg)
 
 
-def create_federated_getattr_call(arg, name):
+def create_federated_getattr_call(arg: building_blocks.ComputationBuildingBlock,
+                                  name: str) -> building_blocks.Call:
   """Creates computation building block passing getattr to federated value.
 
   Args:
@@ -434,7 +386,7 @@ def create_federated_getattr_call(arg, name):
     as defined by `name`.
   """
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(arg.type_signature.member,
                           computation_types.NamedTupleType)
@@ -442,7 +394,10 @@ def create_federated_getattr_call(arg, name):
   return create_federated_map_or_apply(getattr_comp, arg)
 
 
-def create_federated_setattr_call(federated_comp, name, value_comp):
+def create_federated_setattr_call(
+    federated_comp: building_blocks.ComputationBuildingBlock, name: str,
+    value_comp: building_blocks.ComputationBuildingBlock
+) -> building_blocks.Call:
   """Returns building block for `setattr(name, value_comp)` on `federated_comp`.
 
   Creates an appropriate communication intrinsic (either `federated_map` or
@@ -470,7 +425,7 @@ def create_federated_setattr_call(federated_comp, name, value_comp):
   """
   py_typecheck.check_type(federated_comp,
                           building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   py_typecheck.check_type(value_comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(federated_comp.type_signature,
                           computation_types.FederatedType)
@@ -482,7 +437,10 @@ def create_federated_setattr_call(federated_comp, name, value_comp):
   return create_federated_map_or_apply(setattr_lambda, federated_comp)
 
 
-def create_named_tuple_setattr_lambda(named_tuple_signature, name, value_comp):
+def create_named_tuple_setattr_lambda(
+    named_tuple_signature: computation_types.NamedTupleType, name: str,
+    value_comp: building_blocks.ComputationBuildingBlock
+) -> building_blocks.Lambda:
   """Creates a building block for replacing one attribute in a named tuple.
 
   Returns an instance of `building_blocks.Lambda` which takes an
@@ -514,23 +472,22 @@ def create_named_tuple_setattr_lambda(named_tuple_signature, name, value_comp):
   """
   py_typecheck.check_type(named_tuple_signature,
                           computation_types.NamedTupleType)
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   py_typecheck.check_type(value_comp, building_blocks.ComputationBuildingBlock)
   value_comp_placeholder = building_blocks.Reference('value_comp_placeholder',
                                                      value_comp.type_signature)
   lambda_arg = building_blocks.Reference('lambda_arg', named_tuple_signature)
   if name not in dir(named_tuple_signature):
     raise AttributeError(
-        'There is no such attribute as \'{}\' in this federated tuple. '
+        'There is no such attribute as \'{name}\' in this federated tuple. '
         'TFF does not allow for assigning to a nonexistent attribute. '
-        'If you want to assign to \'{}\', you must create a new named tuple '
-        'containing this attribute.'.format(name, name))
+        'If you want to assign to \'{name}\', you must create a new named '
+        'tuple containing this attribute.'.format(name=name))
   elements = []
   for idx, (key, element_type) in enumerate(
       anonymous_tuple.to_elements(named_tuple_signature)):
     if key == name:
-      if not type_utils.is_assignable_from(element_type,
-                                           value_comp.type_signature):
+      if not element_type.is_assignable_from(value_comp.type_signature):
         raise TypeError(
             '`setattr` has attempted to set element {} of type {} with incompatible type {}'
             .format(key, element_type, value_comp.type_signature))
@@ -544,7 +501,9 @@ def create_named_tuple_setattr_lambda(named_tuple_signature, name, value_comp):
   return building_blocks.Block(symbols, lambda_to_return)
 
 
-def create_federated_getattr_comp(comp, name):
+def create_federated_getattr_comp(
+    comp: building_blocks.ComputationBuildingBlock,
+    name: str) -> building_blocks.Lambda:
   """Function to construct computation for `federated_apply` of `__getattr__`.
 
   Creates a `building_blocks.ComputationBuildingBlock`
@@ -565,7 +524,7 @@ def create_federated_getattr_comp(comp, name):
   py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(comp.type_signature.member,
                           computation_types.NamedTupleType)
-  py_typecheck.check_type(name, six.string_types)
+  py_typecheck.check_type(name, str)
   element_names = [
       x for x, _ in anonymous_tuple.iter_elements(comp.type_signature.member)
   ]
@@ -580,7 +539,9 @@ def create_federated_getattr_comp(comp, name):
   return apply_lambda
 
 
-def create_federated_getitem_comp(comp, key):
+def create_federated_getitem_comp(
+    comp: building_blocks.ComputationBuildingBlock,
+    key: Union[int, slice]) -> building_blocks.Lambda:
   """Function to construct computation for `federated_apply` of `__getitem__`.
 
   Creates a `building_blocks.ComputationBuildingBlock`
@@ -620,7 +581,9 @@ def create_federated_getitem_comp(comp, key):
   return apply_lambda
 
 
-def create_computation_appending(comp1, comp2):
+def create_computation_appending(
+    comp1: building_blocks.ComputationBuildingBlock,
+    comp2: building_blocks.ComputationBuildingBlock):
   r"""Returns a block appending `comp2` to `comp1`.
 
                 Block
@@ -671,7 +634,12 @@ def create_computation_appending(comp1, comp2):
   return building_blocks.Block(symbols, result)
 
 
-def create_federated_aggregate(value, zero, accumulate, merge, report):
+def create_federated_aggregate(
+    value: building_blocks.ComputationBuildingBlock,
+    zero: building_blocks.ComputationBuildingBlock,
+    accumulate: building_blocks.ComputationBuildingBlock,
+    merge: building_blocks.ComputationBuildingBlock,
+    report: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated aggregate.
 
             Call
@@ -706,12 +674,12 @@ def create_federated_aggregate(value, zero, accumulate, merge, report):
   # without being the exact type. This occurs when accumulate has a type like
   # (<int32[?], int32> -> int32[?]) but zero is int32[0].
   zero_arg_type = accumulate.type_signature.parameter[0]
-  type_utils.check_assignable_from(zero_arg_type, zero.type_signature)
+  zero_arg_type.check_assignable_from(zero.type_signature)
   result_type = computation_types.FederatedType(report.type_signature.result,
                                                 placement_literals.SERVER)
 
   intrinsic_type = computation_types.FunctionType((
-      type_utils.to_non_all_equal(value.type_signature),
+      type_conversions.type_to_non_all_equal(value.type_signature),
       zero_arg_type,
       accumulate.type_signature,
       merge.type_signature,
@@ -723,7 +691,9 @@ def create_federated_aggregate(value, zero, accumulate, merge, report):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_apply(fn, arg):
+def create_federated_apply(
+    fn: building_blocks.ComputationBuildingBlock,
+    arg: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated apply.
 
             Call
@@ -754,7 +724,8 @@ def create_federated_apply(fn, arg):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_broadcast(value):
+def create_federated_broadcast(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated broadcast.
 
             Call
@@ -780,7 +751,8 @@ def create_federated_broadcast(value):
   return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_collect(value):
+def create_federated_collect(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated collect.
 
             Call
@@ -801,13 +773,53 @@ def create_federated_collect(value):
   result_type = computation_types.FederatedType(type_signature,
                                                 placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType(
-      type_utils.to_non_all_equal(value.type_signature), result_type)
+      type_conversions.type_to_non_all_equal(value.type_signature), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_COLLECT.uri,
                                         intrinsic_type)
   return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_map(fn, arg):
+def create_federated_eval(
+    fn: building_blocks.ComputationBuildingBlock,
+    placement: placement_literals.PlacementLiteral,
+) -> building_blocks.Call:
+  r"""Creates a called federated eval.
+
+            Call
+           /    \
+  Intrinsic      Comp
+
+  Args:
+    fn: A `building_blocks.ComputationBuildingBlock` to use as the function.
+    placement: A `placement_literals.PlacementLiteral` to use as the placement.
+
+  Returns:
+    A `building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
+  if placement is placement_literals.CLIENTS:
+    uri = intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri
+    all_equal = False
+  elif placement is placement_literals.SERVER:
+    uri = intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri
+    all_equal = True
+  else:
+    raise TypeError('Unsupported placement {}.'.format(placement))
+  result_type = computation_types.FederatedType(
+      fn.type_signature.result, placement, all_equal=all_equal)
+  intrinsic_type = computation_types.FunctionType(fn.type_signature,
+                                                  result_type)
+  intrinsic = building_blocks.Intrinsic(uri, intrinsic_type)
+  return building_blocks.Call(intrinsic, fn)
+
+
+def create_federated_map(
+    fn: building_blocks.ComputationBuildingBlock,
+    arg: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated map.
 
             Call
@@ -840,7 +852,9 @@ def create_federated_map(fn, arg):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_map_all_equal(fn, arg):
+def create_federated_map_all_equal(
+    fn: building_blocks.ComputationBuildingBlock,
+    arg: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated map of equal values.
 
             Call
@@ -849,7 +863,7 @@ def create_federated_map_all_equal(fn, arg):
                  |
                  [Comp, Comp]
 
-  NOTE: The `fn` is required to be deterministic and therefore should contain no
+  Note: The `fn` is required to be deterministic and therefore should contain no
   `building_blocks.CompiledComputations`.
 
   Args:
@@ -876,7 +890,9 @@ def create_federated_map_all_equal(fn, arg):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_map_or_apply(fn, arg):
+def create_federated_map_or_apply(
+    fn: building_blocks.ComputationBuildingBlock,
+    arg: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated map or apply depending on `arg`s placement.
 
             Call
@@ -909,7 +925,9 @@ def create_federated_map_or_apply(fn, arg):
         arg.type_signature.placement))
 
 
-def create_federated_mean(value, weight):
+def create_federated_mean(
+    value: building_blocks.ComputationBuildingBlock,
+    weight: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated mean.
 
             Call
@@ -936,21 +954,26 @@ def create_federated_mean(value, weight):
                                                 placement_literals.SERVER)
   if weight is not None:
     intrinsic_type = computation_types.FunctionType(
-        (type_utils.to_non_all_equal(value.type_signature),
-         type_utils.to_non_all_equal(weight.type_signature)), result_type)
+        (type_conversions.type_to_non_all_equal(value.type_signature),
+         type_conversions.type_to_non_all_equal(weight.type_signature)),
+        result_type)
     intrinsic = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri, intrinsic_type)
     values = building_blocks.Tuple((value, weight))
     return building_blocks.Call(intrinsic, values)
   else:
     intrinsic_type = computation_types.FunctionType(
-        type_utils.to_non_all_equal(value.type_signature), result_type)
+        type_conversions.type_to_non_all_equal(value.type_signature),
+        result_type)
     intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_MEAN.uri,
                                           intrinsic_type)
     return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_reduce(value, zero, op):
+def create_federated_reduce(
+    value: building_blocks.ComputationBuildingBlock,
+    zero: building_blocks.ComputationBuildingBlock,
+    op: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated reduce.
 
             Call
@@ -977,7 +1000,7 @@ def create_federated_reduce(value, zero, op):
   result_type = computation_types.FederatedType(op.type_signature.result,
                                                 placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType((
-      type_utils.to_non_all_equal(value.type_signature),
+      type_conversions.type_to_non_all_equal(value.type_signature),
       zero.type_signature,
       op.type_signature,
   ), result_type)
@@ -987,7 +1010,42 @@ def create_federated_reduce(value, zero, op):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_federated_sum(value):
+def create_federated_secure_sum(
+    value: building_blocks.ComputationBuildingBlock,
+    bitwidth: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
+  r"""Creates a called secure sum.
+
+            Call
+           /    \
+  Intrinsic      [Comp, Comp]
+
+  Args:
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
+    bitwidth: A `building_blocks.ComputationBuildingBlock` to use as the
+      bitwidth value.
+
+  Returns:
+    A `building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(bitwidth, building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placement_literals.SERVER)
+  intrinsic_type = computation_types.FunctionType([
+      type_conversions.type_to_non_all_equal(value.type_signature),
+      bitwidth.type_signature,
+  ], result_type)
+  intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+                                        intrinsic_type)
+  values = building_blocks.Tuple([value, bitwidth])
+  return building_blocks.Call(intrinsic, values)
+
+
+def create_federated_sum(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated sum.
 
             Call
@@ -1007,13 +1065,14 @@ def create_federated_sum(value):
   result_type = computation_types.FederatedType(value.type_signature.member,
                                                 placement_literals.SERVER)
   intrinsic_type = computation_types.FunctionType(
-      type_utils.to_non_all_equal(value.type_signature), result_type)
+      type_conversions.type_to_non_all_equal(value.type_signature), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_SUM.uri,
                                         intrinsic_type)
   return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_unzip(value):
+def create_federated_unzip(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Block:
   r"""Creates a tuple of called federated maps or applies.
 
                 Block
@@ -1064,7 +1123,9 @@ def create_federated_unzip(value):
   return building_blocks.Block(symbols, result)
 
 
-def create_federated_value(value, placement):
+def create_federated_value(
+    value: building_blocks.ComputationBuildingBlock,
+    placement: placement_literals.PlacementLiteral) -> building_blocks.Call:
   r"""Creates a called federated value.
 
             Call
@@ -1096,8 +1157,8 @@ def create_federated_value(value, placement):
   return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_zip(value):
-  r"""Creates a called federated zip.
+def _create_flat_federated_zip(value):
+  r"""Private function to create a called federated zip for a non-nested type.
 
             Call
            /    \
@@ -1140,21 +1201,209 @@ def create_federated_zip(value):
     fn = building_blocks.Lambda(ref.name, ref.type_signature, values)
     sel = building_blocks.Selection(value, index=0)
     return map_fn(fn, sel)
+  elif length == 2:
+    # No point building and tearing down a tree if we can just federated_zip
+    # Note: this branch is purely an optimization and is not necessary.
+    if any((name is not None for name in names_to_add)):
+      # Remove names if necessary
+      named_ref = building_blocks.Reference('named', value.type_signature)
+      value = building_blocks.Block(
+          [(named_ref.name, value)],
+          building_blocks.Tuple((
+              building_blocks.Selection(named_ref, index=0),
+              building_blocks.Selection(named_ref, index=1),
+          )))
+    unnamed_zip = create_zip_two_values(value)
   else:
-    zipped_args = _create_chain_zipped_values(value)
-    append_fn = _create_fn_to_append_chain_zipped_values(value)
-    unnamed_zip = map_fn(append_fn, zipped_args)
-    return create_named_federated_tuple(unnamed_zip, names_to_add)
+    # Build a binary tree of federated zips
+    args = building_blocks.Reference('value', value.type_signature)
+    zipped, paths = _build_tree_of_zips_and_paths_to_elements(
+        args, 0,
+        len(value.type_signature) - 1)
+    zipped_block = building_blocks.Block([(args.name, value)], zipped)
+    # Select the values out of the tree back into a flat tuple
+    zipped_tree_ref = building_blocks.Reference('zipped_tree',
+                                                zipped.type_signature.member)
+    flattened_tree = building_blocks.Tuple(
+        [_selection_from_path(zipped_tree_ref, path) for path in paths])
+    flatten_fn = building_blocks.Lambda(zipped_tree_ref.name,
+                                        zipped_tree_ref.type_signature,
+                                        flattened_tree)
+    unnamed_zip = map_fn(flatten_fn, zipped_block)
+  return create_named_federated_tuple(unnamed_zip, names_to_add)
 
 
-def create_generic_constant(type_spec, scalar_value):
+def _prepend_to_paths(paths: List[List[int]], element: int):
+  for path in paths:
+    path.insert(0, element)
+
+
+def _build_tree_of_zips_and_paths_to_elements(
+    args: building_blocks.Reference,
+    start_index: int,
+    end_index: int,
+) -> Tuple[building_blocks.ComputationBuildingBlock, List[List[int]]]:
+  """Builds a binary tree of federated_zips and a list of paths to each element.
+
+  Args:
+    args: A reference to the values to be zipped.
+    start_index: The index of the first element of `args` to zip.
+    end_index: The index of the last element of `args` to zip.
+
+  Returns:
+    A tuple containing the tree of zips as well as a list of paths to the
+    element at each index. A single path is a list of indices that can be used
+    with `_selection_from_path` to select an element out of the result.
+  """
+  py_typecheck.check_type(args, building_blocks.Reference)
+  py_typecheck.check_type(args.type_signature, computation_types.NamedTupleType)
+  if start_index == end_index:
+    # Base case for one element
+    tree = building_blocks.Selection(args, index=start_index)
+    paths = [[]]
+  elif start_index + 1 == end_index:
+    # Base case for two elements
+    first = building_blocks.Selection(args, index=start_index)
+    second = building_blocks.Selection(args, index=end_index)
+    values = building_blocks.Tuple((first, second))
+    tree = create_zip_two_values(values)
+    paths = [[0], [1]]
+  else:
+    # Recursive case for three or more elements
+    split_point = int((start_index + end_index) / 2)
+    left_tree, left_paths = _build_tree_of_zips_and_paths_to_elements(
+        args, start_index, split_point)
+    right_tree, right_paths = _build_tree_of_zips_and_paths_to_elements(
+        args, split_point + 1, end_index)
+    values = building_blocks.Tuple((left_tree, right_tree))
+    tree = create_zip_two_values(values)
+    _prepend_to_paths(left_paths, 0)
+    _prepend_to_paths(right_paths, 1)
+    paths = left_paths + right_paths
+  py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
+  assert len(paths) == (end_index - start_index + 1)
+  return (tree, paths)
+
+
+def _selection_from_path(
+    selected: building_blocks.ComputationBuildingBlock,
+    path: List[int],
+) -> building_blocks.ComputationBuildingBlock:
+  for path_element in path:
+    selected = building_blocks.Selection(selected, index=path_element)
+  return selected
+
+
+def create_federated_zip(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
+  r"""Creates a called federated zip.
+
+  This function accepts a value whose type signature is a (potentially) nested
+  tuple structure of federated values all with the same placement, and uses
+  one of the federated_zip intrinsics (at client or at server) to promote the
+  placement to the highest level. E.g., A value of type '<A@S, <<B@S>, C@S>>'
+  would be mapped to a value of type '<A, <<B>, C>>@S'.
+
+  Args:
+    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
+      of type `computation_types.NamedTupleType` that may contain other nested
+      `computation_types.NamedTupleTypes` bottoming out in at least one element
+      of type `computation_Types.FederatedType`. These federated types must be
+      at the same placement.
+
+  Returns:
+    A `building_blocks.Call` whose type signature is now a federated
+      `computation_types.NamedTupleType`, placed at the same placement as the
+      leaves of `value`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+    ValueError: If `value` does not contain any elements.
+  """
+  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(value.type_signature,
+                          computation_types.NamedTupleType)
+
+  # If the type signature is flat, just call _create_flat_federated_zip.
+  elements = anonymous_tuple.to_elements(value.type_signature)
+  if all(type_sig.is_federated() for (_, type_sig) in elements):
+    return _create_flat_federated_zip(value)
+
+  all_placements = set()
+  nested_selections = []
+
+  def _make_nested_selections(nested):
+    """Generates list of selections from nested representation."""
+    if nested.type_signature.is_federated():
+      all_placements.add(nested.type_signature.placement)
+      nested_selections.append(nested)
+    elif nested.type_signature.is_tuple():
+      for i in range(len(nested.type_signature)):
+        inner_selection = building_blocks.Selection(nested, index=i)
+        _make_nested_selections(inner_selection)
+    else:
+      raise TypeError(
+          'Expected type signatures consisting of structures of NamedTupleType '
+          'bottoming out in FederatedType, found: \n{}'.format(
+              nested.type_signature))
+
+  _make_nested_selections(value)
+
+  if not all_placements:
+    raise TypeError('federated_zip is only supported on nested tuples '
+                    'containing at least one FederatedType.')
+  elif len(all_placements) > 1:
+    raise TypeError('federated_zip requires all nested FederatedTypes to '
+                    'have the same placement')
+
+  placement = all_placements.pop()
+
+  flat = building_blocks.Tuple(nested_selections)
+  flat_zipped = _create_flat_federated_zip(flat)
+
+  # Every building block under the lambda is being constructed below, so it is
+  # safe to have a fixed static name for the reference-- we don't need to worry
+  # about namespace issues as usual.
+  ref = building_blocks.Reference('x', flat_zipped.type_signature.member)
+
+  def _make_flat_selections(type_signature, index):
+    """Generates nested struct of selections from flattened representation."""
+    if type_signature.is_federated():
+      return building_blocks.Selection(ref, index=index), index + 1
+    elif type_signature.is_tuple():
+      elements = anonymous_tuple.to_elements(type_signature)
+      return_tuple = []
+      for name, element in elements:
+        selection, index = _make_flat_selections(element, index)
+        return_tuple.append((name, selection))
+      return building_blocks.Tuple(return_tuple), index
+    else:
+      # This shouldn't be possible since the structure was already traversed
+      # above.
+      raise TypeError('Only type signatures consisting of structures of '
+                      'NamedTupleType bottoming out in FederatedType can be '
+                      'used in federated_zip.')
+
+  repacked, _ = _make_flat_selections(value.type_signature, 0)
+  lam = building_blocks.Lambda('x', ref.type_signature, repacked)
+
+  if placement == placement_literals.CLIENTS:
+    return create_federated_map(lam, flat_zipped)
+  elif placement == placement_literals.SERVER:
+    return create_federated_apply(lam, flat_zipped)
+  else:
+    raise TypeError('Unsupported placement {}.'.format(placement))
+
+
+def create_generic_constant(
+    type_spec: Optional[computation_types.Type],
+    scalar_value: Union[int,
+                        float]) -> building_blocks.ComputationBuildingBlock:
   """Creates constant for a combination of federated, tuple and tensor types.
 
   Args:
-    type_spec: Instance of `computation_types.Type` containing only federated,
-      tuple or tensor types for which we wish to construct a generic constant.
-      May also be something convertible to a `computation_types.Type` via
-      `computation_types.to_type`.
+    type_spec: A `computation_types.Type` containing only federated, tuple or
+      tensor types, or `None` to use to construct a generic constant.
     scalar_value: The scalar value we wish this constant to have.
 
   Returns:
@@ -1166,26 +1415,22 @@ def create_generic_constant(type_spec, scalar_value):
       Notice validation of consistency of `type_spec` with `scalar_value` is not
       the rsponsibility of this function.
   """
-  type_spec = computation_types.to_type(type_spec)
+  if type_spec is None:
+    return create_tensorflow_constant(type_spec, scalar_value)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  inferred_scalar_value_type = type_utils.infer_type(scalar_value)
-  if (not isinstance(inferred_scalar_value_type, computation_types.TensorType)
-      or inferred_scalar_value_type.shape != tf.TensorShape(())):
+  inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
+  if (not inferred_scalar_value_type.is_tensor() or
+      inferred_scalar_value_type.shape != tf.TensorShape(())):
     raise TypeError(
         'Must pass a scalar value to `create_generic_constant`; encountered a '
         'value {}'.format(scalar_value))
-  if not type_utils.type_tree_contains_only(type_spec, (
-      computation_types.FederatedType,
-      computation_types.NamedTupleType,
-      computation_types.TensorType,
-  )):
+  if not type_analysis.contains_only(
+      type_spec, lambda t: t.is_federated() or t.is_tuple() or t.is_tensor()):
     raise TypeError
-  if type_utils.type_tree_contains_only(type_spec, (
-      computation_types.NamedTupleType,
-      computation_types.TensorType,
-  )):
+  if type_analysis.contains_only(type_spec,
+                                 lambda t: t.is_tuple() or t.is_tensor()):
     return create_tensorflow_constant(type_spec, scalar_value)
-  elif isinstance(type_spec, computation_types.FederatedType):
+  elif type_spec.is_federated():
     unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)
     if type_spec.placement == placement_literals.CLIENTS:
       placement_federated_type = computation_types.FederatedType(
@@ -1202,7 +1447,7 @@ def create_generic_constant(type_spec, scalar_value):
       placement_function = building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri, placement_fn_type)
     return building_blocks.Call(placement_function, unplaced_zero)
-  elif isinstance(type_spec, computation_types.NamedTupleType):
+  elif type_spec.is_tuple():
     elements = []
     for k in range(len(type_spec)):
       elements.append(create_generic_constant(type_spec[k], scalar_value))
@@ -1216,65 +1461,8 @@ def create_generic_constant(type_spec, scalar_value):
         'generic constant cases, and failed to raise.'.format(type_spec))
 
 
-def _create_chain_zipped_values(value):
-  r"""Creates a chain of called federated zip with two values.
-
-                Block--------
-               /             \
-  [value=Tuple]               Call
-         |                   /    \
-         [Comp1,    Intrinsic      Tuple
-          Comp2,                   |
-          ...]                     [Call,  Sel(n)]
-                                   /    \        \
-                          Intrinsic      Tuple    Ref(value)
-                                         |
-                                         [Sel(0),       Sel(1)]
-                                                \             \
-                                                 Ref(value)    Ref(value)
-
-  NOTE: This function is intended to be used in conjunction with
-  `_create_fn_to_append_chain_zipped_values` and will drop the tuple names. The
-  names will be added back to the resulting computation when the zipped values
-  are mapped to a function that flattens the chain. This nested zip -> flatten
-  structure must be used since length of a named tuple type in the TFF type
-  system is an element of the type proper. That is, a named tuple type of
-  length 2 is a different type than a named tuple type of length 3, they are
-  not simply items with the same type and different values, as would be the
-  case if you were thinking of these as Python `list`s. It may be better to
-  think of named tuple types in TFF as more like `struct`s.
-
-  Args:
-    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
-      of type `computation_types.NamedTupleType` containing at least two
-      elements.
-
-  Returns:
-    A `building_blocks.Call`.
-
-  Raises:
-    TypeError: If any of the types do not match.
-    ValueError: If `value` does not contain at least two elements.
-  """
-  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
-  length = len(named_type_signatures)
-  if length < 2:
-    raise ValueError(
-        'Expected a value with at least two elements, received {} elements.'
-        .format(named_type_signatures))
-  ref = building_blocks.Reference('value', value.type_signature)
-  symbols = ((ref.name, value),)
-  sel_0 = building_blocks.Selection(ref, index=0)
-  result = sel_0
-  for i in range(1, length):
-    sel = building_blocks.Selection(ref, index=i)
-    values = building_blocks.Tuple((result, sel))
-    result = create_zip_two_values(values)
-  return building_blocks.Block(symbols, result)
-
-
-def create_zip_two_values(value):
+def create_zip_two_values(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated zip with two values.
 
             Call
@@ -1310,7 +1498,7 @@ def create_zip_two_values(value):
     raise ValueError(
         'Expected a value with exactly two elements, received {} elements.'
         .format(named_type_signatures))
-  placement = value[0].type_signature.placement
+  placement = value.type_signature[0].placement
   if placement is placement_literals.CLIENTS:
     uri = intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri
     all_equal = False
@@ -1333,70 +1521,9 @@ def create_zip_two_values(value):
   return building_blocks.Call(intrinsic, value)
 
 
-def _create_fn_to_append_chain_zipped_values(value):
-  r"""Creates a function to append a chain of zipped values.
-
-  Lambda(arg3)
-            \
-             append([Call,    Sel(1)])
-                    /    \            \
-        Lambda(arg2)      Sel(0)       Ref(arg3)
-                  \             \
-                   \             Ref(arg3)
-                    \
-                     append([Call,    Sel(1)])
-                            /    \            \
-                Lambda(arg1)      Sel(0)       Ref(arg2)
-                            \           \
-                             \           Ref(arg2)
-                              \
-                               Ref(arg1)
-
-  Note that this function will not respect any names it is passed; names
-  for tuples will be cached at a higher level than this function and added back
-  in a single call to federated map or federated apply.
-
-  Args:
-    value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
-      of type `computation_types.NamedTupleType` containing at least two
-      elements.
-
-  Returns:
-    A `building_blocks.Call`.
-
-  Raises:
-    TypeError: If any of the types do not match.
-  """
-  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
-  length = len(named_type_signatures)
-  if length < 2:
-    raise ValueError(
-        'Expected a value with at least two elements, received {} elements.'
-        .format(named_type_signatures))
-  _, first_type_signature = named_type_signatures[0]
-  _, second_type_signature = named_type_signatures[1]
-  ref_type = computation_types.NamedTupleType((
-      first_type_signature.member,
-      second_type_signature.member,
-  ))
-  ref = building_blocks.Reference('arg', ref_type)
-  fn = building_blocks.Lambda(ref.name, ref.type_signature, ref)
-  for _, type_signature in named_type_signatures[2:]:
-    ref_type = computation_types.NamedTupleType((
-        fn.type_signature.parameter,
-        type_signature.member,
-    ))
-    ref = building_blocks.Reference('arg', ref_type)
-    sel_0 = building_blocks.Selection(ref, index=0)
-    call = building_blocks.Call(fn, sel_0)
-    sel_1 = building_blocks.Selection(ref, index=1)
-    result = create_computation_appending(call, sel_1)
-    fn = building_blocks.Lambda(ref.name, ref.type_signature, result)
-  return fn
-
-
-def create_sequence_map(fn, arg):
+def create_sequence_map(
+    fn: building_blocks.ComputationBuildingBlock,
+    arg: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called sequence map.
 
             Call
@@ -1426,7 +1553,10 @@ def create_sequence_map(fn, arg):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_sequence_reduce(value, zero, op):
+def create_sequence_reduce(
+    value: building_blocks.ComputationBuildingBlock,
+    zero: building_blocks.ComputationBuildingBlock,
+    op: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called sequence reduce.
 
             Call
@@ -1461,7 +1591,8 @@ def create_sequence_reduce(value, zero, op):
   return building_blocks.Call(intrinsic, values)
 
 
-def create_sequence_sum(value):
+def create_sequence_sum(
+    value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called sequence sum.
 
             Call
@@ -1522,7 +1653,9 @@ def _create_naming_function(tuple_type_to_name, names_to_add):
                                 named_result)
 
 
-def create_named_federated_tuple(tuple_to_name, names_to_add):
+def create_named_federated_tuple(
+    tuple_to_name: building_blocks.ComputationBuildingBlock,
+    names_to_add: Sequence[str]) -> building_blocks.ComputationBuildingBlock:
   """Name tuple elements with names in `names_to_add`.
 
   Certain intrinsics, e.g. `federated_zip`, only accept unnamed tuples as
@@ -1551,21 +1684,28 @@ def create_named_federated_tuple(tuple_to_name, names_to_add):
     TypeError: If the types do not match the description above.
   """
   py_typecheck.check_type(names_to_add, (list, tuple))
-  element_types_to_accept = six.string_types + (type(None),)
-  if not all(isinstance(x, element_types_to_accept) for x in names_to_add):
+  if not all((x is None or isinstance(x, str)) for x in names_to_add):
     raise TypeError('`names_to_add` must contain only instances of `str` or '
                     'NoneType; you have passed in {}'.format(names_to_add))
   py_typecheck.check_type(tuple_to_name,
                           building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(tuple_to_name.type_signature,
                           computation_types.FederatedType)
+  existing_names = (name for name, _ in anonymous_tuple.to_elements(
+      tuple_to_name.type_signature.member))
+  if all((existing_name == name_to_add
+          for existing_name, name_to_add in zip(existing_names, names_to_add))):
+    # The names are already correct, so no work is necessary
+    return tuple_to_name
 
   naming_fn = _create_naming_function(tuple_to_name.type_signature.member,
                                       names_to_add)
   return create_federated_map_or_apply(naming_fn, tuple_to_name)
 
 
-def create_named_tuple(comp, names):
+def create_named_tuple(
+    comp: building_blocks.ComputationBuildingBlock,
+    names: Sequence[str]) -> building_blocks.ComputationBuildingBlock:
   """Creates a computation that applies `names` to `comp`.
 
   Args:
@@ -1583,7 +1723,7 @@ def create_named_tuple(comp, names):
     TypeError: If the types do not match.
   """
   py_typecheck.check_type(names, (list, tuple))
-  if not all(isinstance(x, (six.string_types, type(None))) for x in names):
+  if not all(isinstance(x, (str, type(None))) for x in names):
     raise TypeError('Expected `names` containing only instances of `str` or '
                     '`None`, found {}'.format(names))
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
@@ -1592,7 +1732,8 @@ def create_named_tuple(comp, names):
   return building_blocks.Call(fn, comp)
 
 
-def create_zip(comp):
+def create_zip(
+    comp: building_blocks.ComputationBuildingBlock) -> building_blocks.Block:
   r"""Returns a computation which zips `comp`.
 
   Returns the following computation where `x` is `comp` unless `comp` is a
@@ -1631,9 +1772,9 @@ def create_zip(comp):
       raise TypeError(
           'Expected a NamedTupleType containing NamedTupleTypes with the same '
           'length, found: {}'.format(comp.type_signature))
-  if not isinstance(comp, building_blocks.Reference):
+  if not comp.is_reference():
     name_generator = unique_name_generator(comp)
-    name = six.next(name_generator)
+    name = next(name_generator)
     ref = building_blocks.Reference(name, comp.type_signature)
   else:
     ref = comp
@@ -1647,7 +1788,7 @@ def create_zip(comp):
     tup = building_blocks.Tuple(columns)
     rows.append(tup)
   tup = building_blocks.Tuple(rows)
-  if not isinstance(comp, building_blocks.Reference):
+  if not comp.is_reference():
     return building_blocks.Block(((ref.name, comp),), tup)
   else:
     return tup
@@ -1655,42 +1796,34 @@ def create_zip(comp):
 
 def _check_generic_operator_type(type_spec):
   """Checks that `type_spec` can be the signature of args to a generic op."""
-  if not type_utils.type_tree_contains_only(type_spec, (
-      computation_types.FederatedType,
-      computation_types.NamedTupleType,
-      computation_types.TensorType,
-  )):
+  if not type_analysis.contains_only(
+      type_spec, lambda t: t.is_federated() or t.is_tuple() or t.is_tensor()):
     raise TypeError(
         'Generic operators are only implemented for arguments both containing '
         'only federated, tuple and tensor types; you have passed an argument '
         'of type {} '.format(type_spec))
-  if not (isinstance(type_spec, computation_types.NamedTupleType) and
-          len(type_spec) == 2):
+  if not (type_spec.is_tuple() and len(type_spec) == 2):
     raise TypeError(
         'We are trying to construct a generic operator declaring argument that '
         'is not a two-tuple, the type {}.'.format(type_spec))
-  if not type_utils.is_binary_op_with_upcast_compatible_pair(
+  if not type_analysis.is_binary_op_with_upcast_compatible_pair(
       type_spec[0], type_spec[1]):
     raise TypeError(
         'The two-tuple you have passed in is incompatible with upcasted '
         'binary operators. You have passed the tuple type {}, which fails the '
         'check that the two members of the tuple are either the same type, or '
         'the second is a scalar with the same dtype as the leaves of the '
-        'first. See `type_utils.is_binary_op_with_upcast_compatible_pair` for '
+        'first. See `type_analysis.is_binary_op_with_upcast_compatible_pair` for '
         'more details.'.format(type_spec))
 
 
-def create_binary_operator_with_upcast(type_signature, operator):
-  """Creates lambda upcasting its argument and applying `operator`.
+def create_tensorflow_binary_operator_with_upcast(
+    type_signature: computation_types.Type,
+    operator: Callable[[Any, Any], Any]) -> building_blocks.CompiledComputation:
+  """Creates TF computation upcasting its argument and applying `operator`.
 
   The concept of upcasting is explained further in the docstring for
   `apply_binary_operator_with_upcast`.
-
-  Notice that since we are constructing a function here, e.g. for the body
-  of an intrinsic, the function we are constructing must be reducible to
-  TensorFlow. Therefore `type_signature` can only have named tuple or tensor
-  type elements; that is, we cannot handle federated types here in a generic
-  way.
 
   Args:
     type_signature: Value convertible to `computation_types.NamedTupleType`,
@@ -1700,46 +1833,22 @@ def create_binary_operator_with_upcast(type_signature, operator):
     operator: Callable defining the operator.
 
   Returns:
-    A `building_blocks.Lambda` encapsulating a function which
+    A `building_blocks.CompiledComputation` encapsulating a function which
     upcasts the second element of its argument and applies the binary
     operator.
   """
   py_typecheck.check_callable(operator)
-  type_signature = computation_types.to_type(type_signature)
   _check_generic_operator_type(type_signature)
-  ref_to_arg = building_blocks.Reference('binary_operator_arg', type_signature)
-
-  def _pack_into_type(to_pack, type_spec):
-    """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
-    if isinstance(type_spec, computation_types.NamedTupleType):
-      elems = anonymous_tuple.to_elements(type_spec)
-      packed_elems = [(elem_name, _pack_into_type(to_pack, elem_type))
-                      for elem_name, elem_type in elems]
-      return building_blocks.Tuple(packed_elems)
-    elif isinstance(type_spec, computation_types.TensorType):
-      expand_fn = create_tensorflow_to_broadcast_scalar(
-          to_pack.type_signature.dtype, type_spec.shape)
-      return building_blocks.Call(expand_fn, to_pack)
-
-  y_ref = building_blocks.Selection(ref_to_arg, index=1)
-  first_arg = building_blocks.Selection(ref_to_arg, index=0)
-
-  if type_utils.are_equivalent_types(first_arg.type_signature,
-                                     y_ref.type_signature):
-    second_arg = y_ref
-  else:
-    second_arg = _pack_into_type(y_ref, first_arg.type_signature)
-
-  fn = create_tensorflow_binary_operator(first_arg.type_signature, operator)
-  packed = building_blocks.Tuple([first_arg, second_arg])
-  operated = building_blocks.Call(fn, packed)
-  lambda_encapsulating_op = building_blocks.Lambda(ref_to_arg.name,
-                                                   ref_to_arg.type_signature,
-                                                   operated)
-  return lambda_encapsulating_op
+  type_analysis.check_tensorflow_compatible_type(type_signature)
+  tf_proto = tensorflow_computation_factory.create_binary_operator_with_upcast(
+      type_signature, operator)
+  compiled = building_blocks.CompiledComputation(tf_proto)
+  return compiled
 
 
-def apply_binary_operator_with_upcast(arg, operator):
+def apply_binary_operator_with_upcast(
+    arg: building_blocks.ComputationBuildingBlock,
+    operator: Callable[[Any, Any], Any]) -> building_blocks.Call:
   """Constructs result of applying `operator` to `arg` upcasting if appropriate.
 
   Notice `arg` here must be of federated type, with a named tuple member of
@@ -1763,7 +1872,7 @@ def apply_binary_operator_with_upcast(arg, operator):
       represented by the federated `arg`.
 
   Returns:
-    Instance of `building_blocks.ComputationBuildingBlock`
+    Instance of `building_blocks.Call`
     encapsulating the result of formally applying `operator` to
     `arg[0], `arg[1]`, upcasting `arg[1]` in the condition described above.
 
@@ -1772,23 +1881,22 @@ def apply_binary_operator_with_upcast(arg, operator):
   """
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_callable(operator)
-  if isinstance(arg.type_signature, computation_types.FederatedType):
-    py_typecheck.check_type(arg.type_signature.member,
-                            computation_types.NamedTupleType)
+  if arg.type_signature.is_federated():
     tuple_type = arg.type_signature.member
-  elif isinstance(arg.type_signature, computation_types.NamedTupleType):
+    assert tuple_type.is_tuple()
+  elif arg.type_signature.is_tuple():
     tuple_type = arg.type_signature
   else:
     raise TypeError(
         'Generic binary operators are only implemented for federated tuple and '
         'unplaced tuples; you have passed {}.'.format(arg.type_signature))
 
-  lambda_encapsulating_op = create_binary_operator_with_upcast(
+  tf_representing_op = create_tensorflow_binary_operator_with_upcast(
       tuple_type, operator)
 
-  if isinstance(arg.type_signature, computation_types.FederatedType):
-    called = create_federated_map_or_apply(lambda_encapsulating_op, arg)
+  if arg.type_signature.is_federated():
+    called = create_federated_map_or_apply(tf_representing_op, arg)
   else:
-    called = building_blocks.Call(lambda_encapsulating_op, arg)
+    called = building_blocks.Call(tf_representing_op, arg)
 
   return called

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """A simple implementation of federated evaluation."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 
 import tensorflow as tf
@@ -30,7 +25,10 @@ def build_federated_evaluation(model_fn):
   """Builds the TFF computation for federated evaluation of the given model.
 
   Args:
-    model_fn: A no-argument function that returns a `tff.learning.Model`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`. This method
+      must *not* capture TensorFlow tensors or variables and use them. The model
+      must be constructed entirely from scratch on each invocation, returning
+      the same pre-constructed model each call will result in an error.
 
   Returns:
     A federated computation (an instance of `tff.Computation`) that accepts
@@ -42,8 +40,8 @@ def build_federated_evaluation(model_fn):
   # TODO(b/124477628): Ideally replace the need for stamping throwaway models
   # with some other mechanism.
   with tf.Graph().as_default():
-    model = model_utils.enhance(model_fn())
-    model_weights_type = tff.framework.type_from_tensors(model.weights)
+    model = model_fn()
+    model_weights_type = model_utils.weights_type_from_model(model)
     batch_type = tff.to_type(model.input_spec)
 
   @tff.tf_computation(model_weights_type, tff.SequenceType(batch_type))

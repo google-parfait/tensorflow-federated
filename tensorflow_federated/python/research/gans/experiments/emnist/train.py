@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -252,8 +251,7 @@ def _get_emnist_eval_hook_fn(exp_name, output_dir, hparams_dict, gan_loss_fns,
   summary_logdir = os.path.join(output_dir, 'logdir/{}'.format(exp_name))
   tf.io.gfile.makedirs(summary_logdir)
 
-  summary_writer = tf.compat.v2.summary.create_file_writer(
-      summary_logdir, name=exp_name)
+  summary_writer = tf.summary.create_file_writer(summary_logdir, name=exp_name)
 
   # Record the hyperparameter flag settings.
   with summary_writer.as_default():
@@ -291,7 +289,7 @@ def _get_emnist_eval_hook_fn(exp_name, output_dir, hparams_dict, gan_loss_fns,
     flat_metrics = collections.OrderedDict(flat_metrics)
     with summary_writer.as_default():
       for name, value in flat_metrics.items():
-        tf.compat.v2.summary.scalar(name, value, step=round_num)
+        tf.summary.scalar(name, value, step=round_num)
 
     # Print out the counters, and log how long it took to compute/write metrics.
     for k, v in server_state.counters.items():
@@ -387,7 +385,6 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  tf.compat.v1.enable_v2_behavior()
   logging.set_verbosity(logging.INFO)
 
   # Flags.
@@ -401,7 +398,7 @@ def main(argv):
     print('{} : {} '.format(k, v))
 
   tff.framework.set_default_executor(
-      tff.framework.create_local_executor(
+      tff.framework.local_executor_factory(
           num_clients=FLAGS.num_clients_per_round))
 
   # Trained classifier model.

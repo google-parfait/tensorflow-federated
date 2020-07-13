@@ -1,3 +1,144 @@
+# Release 0.14.0
+
+## Major Features and Improvements
+
+*   Multiple TFF execution speedups.
+*   New `tff.templates.MeasuredProcess` specialization of `IterativeProcess`.
+*   Increased optimization of the `tff.templates.IterativeProcess` ->
+    `tff.backends.mapreduce.CanonicalForm` compiler.
+
+## Breaking Changes
+
+*   Moved `tff.utils.IterativeProcess` to `tff.templates.IterativeProcess`.
+*   Removed `tff.learning.TrainableModel`, client optimizers are now arguments
+    on the `tff.learning.build_federated_averaging_process`.
+*   Bump required version of pip packages for tensorflow (2.2), numpy (1.18),
+    pandas (0.24), grpcio (1.29).
+
+## Bug Fixes
+
+*   Issue with GPUs in multimachine simulations not being utilized, and bug on
+    deserializing datasets with GPU-backed runtime.
+*   TensorFlow lookup table initialization failures.
+
+## Known Bugs
+
+*   In some situations, TF will attempt to push Datasets inside of tf.functions
+    over GPU device boundaries, which fails by default. This can be hit by
+    certain usages of TFF,
+    [e.g. as tracked here](https://github.com/tensorflow/federated/issues/832).
+
+## Thanks to our Contributors
+
+This release contains contributions from many people at Google, as well as:
+
+jvmcns@
+
+# Release 0.13.1
+
+## Bug Fixes
+
+*   Fixed issues in tutorial notebooks.
+
+# Release 0.13.0
+
+## Major Features and Improvements
+
+*   Updated `absl-py` package dependency to `0.9.0`.
+*   Updated `h5py` package dependency to `2.8.0`.
+*   Updated `numpy` package dependency to `1.17.5`.
+*   Updated `tensorflow-privacy` package dependency to `0.2.2`.
+
+## Breaking Changes
+
+*   Deprecated `dummy_batch` parameter of the `tff.learning.from_keras_model`
+    function.
+
+## Bug Fixes
+
+*   Fixed issues with executor service using old executor API.
+*   Fixed issues with remote executor test using old executor API.
+*   Fixed issues in tutorial notebooks.
+
+# Release 0.12.0
+
+## Major Features and Improvements
+
+*   Upgraded tensorflow dependency from `2.0.0` to `2.1.0`.
+*   Upgraded tensorflow-addons dependency from `0.6.0` to `0.7.0`.
+*   Upgraded attr dependency from `18.2` to `19.3`.
+*   Upgraded tfmot dependency from `0.1.3` to `0.2.1`.
+*   Added a federated partition of the CIFAR-100 dataset to
+    `tff.simulation.datasets.cifar100`.
+*   Made the high performance, parallel executor the default (replacing the
+    reference executor).
+*   Added a new `tff.learning.build_personalization_eval` for evaluating model
+    personalization strategies.
+*   Added new federated intrinsic `tff.federated_secure_sum`.
+*   `tff.learning.build_federated_averaing_process()` now takes a
+    `client_optimizer_fn` and a `tff.learning.Model`.
+    `tff.learning.TrainableModel` is now deprecated.
+*   Improved performance in the high performance executor stack.
+*   Implemented and exposed `tff.framework.ExecutorFactory`; all
+    `tff.framework...executor_factory` calls now return an instance of this
+    class.
+*   Added `remote_executor_example` binary which demonstrates using the
+    RemoteExecutor across multi-machine deployments.
+*   Added `close()` method to the Executor, allowing subclasses to proactively
+    release resources.
+*   Updated documentation and scripts for creating Docker images of the TFF
+    runtime.
+*   Automatically call `tff.federated_zip` on inputs to other federated
+    intrinsics.
+
+## Breaking Changes
+
+*   Dropped support for Python2.
+*   Renamed `tff.framework.create_local_executor` (and similar methods) to
+    `tff.framework.local_executor_factory`.
+*   Deprecated `federated_apply()`, instead use `federated_map()` for all
+    placements.
+
+## Bug Fixes
+
+*   Fixed problem with different instances of the same model having different
+    named types. `tff.learning.ModelWeights` no longer names the tuple fields
+    returned for model weights, instead relying on an ordered list.
+*   `tff.sequence_*` on unplaced types now correctly returns a `tff.Value`.
+
+## Known Bugs
+
+*   `tff.sequence_*`.. operations are not implemented yet on the new
+    high-performance executor stack.
+*   A subset of previously-allowed lambda captures are no longer supported on
+    the new execution stack.
+
+# Release 0.11.0
+
+## Major Features and Improvements
+
+*   Python 2 support is now deprecated and will be removed in a future release.
+*   `federated_map` now works with both `tff.SERVER` and `tff.CLIENT`
+    placements.
+*   `federated_zip` received significant performance improvements and now works
+    recursively.
+*   Added retry logic to gRPC calls in the execution stack.
+
+## Breaking Changes
+
+*   `collections.OrderedDict` is now required in many places rather than
+    standard Python dictionaries.
+
+## Bug Fixes
+
+*   Fixed computation of the number of examples when Keras is using multiple
+    inputs.
+*   Fixed an assumption that `tff.framework.Tuple` is returned from
+    `IterativeProcess.next`.
+*   Fixed argument packing in polymorphic invocations on the new executor API.
+*   Fixed support for `dir()` in `ValueImpl`.
+*   Fixed a number of issues in the Colab / Jupyter notebook tutorials.
+
 # Release 0.10.1
 
 ## Bug Fixes

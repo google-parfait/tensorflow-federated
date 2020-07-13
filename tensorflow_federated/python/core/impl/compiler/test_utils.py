@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,22 +13,17 @@
 # limitations under the License.
 """Test utils for TFF computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -57,7 +51,7 @@ def create_chained_calls(functions, arg):
     A `building_blocks.Call`.
   """
   for fn in functions:
-    if not type_utils.is_assignable_from(fn.parameter_type, arg.type_signature):
+    if not fn.parameter_type.is_assignable_from(arg.type_signature):
       raise TypeError(
           'The parameter of the function is of type {}, and the argument is of '
           'an incompatible type {}.'.format(
@@ -103,7 +97,8 @@ def create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
 
 def create_dummy_called_federated_aggregate(accumulate_parameter_name,
                                             merge_parameter_name,
-                                            report_parameter_name):
+                                            report_parameter_name,
+                                            value_type=tf.int32):
   r"""Returns a dummy called federated aggregate.
 
                       Call
@@ -118,11 +113,14 @@ def create_dummy_called_federated_aggregate(accumulate_parameter_name,
     accumulate_parameter_name: The name of the accumulate parameter.
     merge_parameter_name: The name of the merge parameter.
     report_parameter_name: The name of the report parameter.
+    value_type: The TFF type of the value to be aggregated, placed at
+      CLIENTS.
   """
-  value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-  value = building_blocks.Data('data', value_type)
+  federated_value_type = computation_types.FederatedType(
+      value_type, placement_literals.CLIENTS)
+  value = building_blocks.Data('data', federated_value_type)
   zero = building_blocks.Data('data', tf.float32)
-  accumulate_type = computation_types.NamedTupleType((tf.float32, tf.int32))
+  accumulate_type = computation_types.NamedTupleType((tf.float32, value_type))
   accumulate_result = building_blocks.Data('data', tf.float32)
   accumulate = building_blocks.Lambda(accumulate_parameter_name,
                                       accumulate_type, accumulate_result)
@@ -153,7 +151,8 @@ def create_dummy_called_federated_apply(parameter_name,
     parameter_type: The type of the parameter.
   """
   fn = create_identity_function(parameter_name, parameter_type)
-  arg_type = computation_types.FederatedType(parameter_type, placements.SERVER)
+  arg_type = computation_types.FederatedType(parameter_type,
+                                             placement_literals.SERVER)
   arg = building_blocks.Data('data', arg_type)
   return building_block_factory.create_federated_apply(fn, arg)
 
@@ -161,15 +160,15 @@ def create_dummy_called_federated_apply(parameter_name,
 def create_dummy_called_federated_broadcast(value_type=tf.int32):
   r"""Returns a dummy called federated broadcast.
 
-                Call
-               /    \
-  federated_map      data
+                      Call
+                     /    \
+  federated_broadcast      data
 
   Args:
     value_type: The type of the value.
   """
   federated_type = computation_types.FederatedType(value_type,
-                                                   placements.SERVER)
+                                                   placement_literals.SERVER)
   value = building_blocks.Data('data', federated_type)
   return building_block_factory.create_federated_broadcast(value)
 
@@ -190,7 +189,8 @@ def create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
     parameter_type: The type of the parameter.
   """
   fn = create_identity_function(parameter_name, parameter_type)
-  arg_type = computation_types.FederatedType(parameter_type, placements.CLIENTS)
+  arg_type = computation_types.FederatedType(parameter_type,
+                                             placement_literals.CLIENTS)
   arg = building_blocks.Data('data', arg_type)
   return building_block_factory.create_federated_map(fn, arg)
 
@@ -213,9 +213,42 @@ def create_dummy_called_federated_map_all_equal(parameter_name,
   """
   fn = create_identity_function(parameter_name, parameter_type)
   arg_type = computation_types.FederatedType(
-      parameter_type, placements.CLIENTS, all_equal=True)
+      parameter_type, placement_literals.CLIENTS, all_equal=True)
   arg = building_blocks.Data('data', arg_type)
   return building_block_factory.create_federated_map_all_equal(fn, arg)
+
+
+def create_dummy_called_federated_secure_sum(value_type=tf.int32):
+  r"""Returns a dummy called secure sum.
+
+                       Call
+                      /    \
+  federated_secure_sum      [data, data]
+
+  Args:
+    value_type: The type of the value.
+  """
+  federated_type = computation_types.FederatedType(value_type,
+                                                   placement_literals.CLIENTS)
+  value = building_blocks.Data('data', federated_type)
+  bitwidth = building_blocks.Data('data', value_type)
+  return building_block_factory.create_federated_secure_sum(value, bitwidth)
+
+
+def create_dummy_called_federated_sum(value_type=tf.int32):
+  r"""Returns a dummy called federated sum.
+
+                Call
+               /    \
+  federated_sum      data
+
+  Args:
+    value_type: The type of the value.
+  """
+  federated_type = computation_types.FederatedType(value_type,
+                                                   placement_literals.CLIENTS)
+  value = building_blocks.Data('data', federated_type)
+  return building_block_factory.create_federated_sum(value)
 
 
 def create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
@@ -337,6 +370,7 @@ def create_nested_syntax_tree():
     ['t'=Data('c')]    Data('d') ['u'=Data('e')]  Data('f')
 
 
+  Postorder traversals:
   If we are reading Data URIs, results of a postorder traversal should be:
   [a, b, c, d, e, f, g, h, i, j, k]
 
@@ -347,6 +381,18 @@ def create_nested_syntax_tree():
   And if we are reading both in an interleaved fashion, results of a postorder
   traversal should be:
   [a, b, c, d, t, e, f, u, g, v, h, i, j, w, x, y, z, k]
+
+  Preorder traversals:
+  If we are reading Data URIs, results of a preorder traversal should be:
+  [a, b, c, d, e, f, g, h, i, j, k]
+
+  If we are reading locals declarations, results of a preorder traversal should
+  be:
+  [y, z, v, t, u, x, w]
+
+  And if we are reading both in an interleaved fashion, results of a preorder
+  traversal should be:
+  [y, z, a, b, v, t, c, d, u, e, f, g, x, h, w, i, j, k]
 
   Since we are also exposing the ability to hook into variable declarations,
   it is worthwhile considering the order in which variables are assigned in
@@ -407,18 +453,18 @@ def _stamp_value_into_graph(value, type_signature, graph):
   py_typecheck.check_type(graph, tf.Graph)
   if value is None:
     return None
-  if isinstance(type_signature, computation_types.TensorType):
+  if type_signature.is_tensor():
     if isinstance(value, np.ndarray):
       value_type = computation_types.TensorType(
           tf.dtypes.as_dtype(value.dtype), tf.TensorShape(value.shape))
-      type_utils.check_assignable_from(type_signature, value_type)
+      type_signature.is_assignable_from(value_type)
       with graph.as_default():
         return tf.constant(value)
     else:
       with graph.as_default():
         return tf.constant(
             value, dtype=type_signature.dtype, shape=type_signature.shape)
-  elif isinstance(type_signature, computation_types.NamedTupleType):
+  elif type_signature.is_tuple():
     if isinstance(value, (list, dict)):
       value = anonymous_tuple.from_container(value)
     stamped_elements = []
@@ -427,7 +473,7 @@ def _stamp_value_into_graph(value, type_signature, graph):
       stamped_element = _stamp_value_into_graph(element, type_signature, graph)
       stamped_elements.append((name, stamped_element))
     return anonymous_tuple.AnonymousTuple(stamped_elements)
-  elif isinstance(type_signature, computation_types.SequenceType):
+  elif type_signature.is_sequence():
     return tensorflow_utils.make_data_set_from_elements(graph, value,
                                                         type_signature.element)
   else:

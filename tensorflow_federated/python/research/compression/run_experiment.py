@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,35 +24,35 @@ Example command line flags to use to run an experiment:
 --use_sparsity_in_aggregation=True
 """
 
-import collections
+import functools
 
 from absl import app
 from absl import flags
-import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.compression import metrics_hook
+from tensorflow_federated.python.research.compression import compression_process_adapter
 from tensorflow_federated.python.research.compression import sparsity
-from tensorflow_federated.python.research.utils import training_loops
+from tensorflow_federated.python.research.utils import training_loop
+from tensorflow_federated.python.research.utils import training_utils
 from tensorflow_federated.python.research.utils import utils_impl
+from tensorflow_federated.python.research.utils.datasets import emnist_dataset
+from tensorflow_federated.python.research.utils.models import emnist_models
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 
 with utils_impl.record_new_flags() as hparam_flags:
-  # Metadata
-  flags.DEFINE_string(
-      'exp_name', 'emnist', 'Unique name for the experiment, suitable for use '
-      'in filenames.')
-
   # Training hyperparameters
-  flags.DEFINE_integer('total_rounds', 200, 'Number of total training rounds.')
-  flags.DEFINE_integer('rounds_per_eval', 1, 'How often to evaluate')
-  flags.DEFINE_integer('train_clients_per_round', 2,
+  flags.DEFINE_integer('clients_per_round', 2,
                        'How many clients to sample per round.')
   flags.DEFINE_integer('client_epochs_per_round', 1,
                        'Number of epochs in the client to take per round.')
-  flags.DEFINE_integer('batch_size', 20, 'Batch size used on the client.')
+  flags.DEFINE_integer('client_batch_size', 20,
+                       'Batch size used on the client.')
+  flags.DEFINE_boolean(
+      'only_digits', True, 'Whether to use the digit-only '
+      'EMNIST dataset (10 characters) or the extended EMNIST '
+      'dataset (62 characters).')
 
   # Optimizer configuration (this defines one or more flags per optimizer).
   utils_impl.define_optimizer_flags('server')
@@ -64,11 +63,11 @@ with utils_impl.record_new_flags() as hparam_flags:
                        'Whether to use compression code path.')
   flags.DEFINE_integer(
       'broadcast_quantization_bits', 8,
-      'Number of quatnization bits for server to client '
+      'Number of quantization bits for server to client '
       'compression.')
   flags.DEFINE_integer(
       'aggregation_quantization_bits', 8,
-      'Number of quatnization bits for client to server '
+      'Number of quantization bits for client to server '
       'compression.')
   flags.DEFINE_boolean('use_sparsity_in_aggregation', True,
                        'Whether to add sparsity to the aggregation. This will '
@@ -76,43 +75,21 @@ with utils_impl.record_new_flags() as hparam_flags:
 
 # End of hyperparameter flags.
 
-# Root output directories.
-flags.DEFINE_string('root_output_dir', '/tmp/emnist_fedavg/',
-                    'Root directory for writing experiment output.')
-
 FLAGS = flags.FLAGS
 
 
-def create_compiled_keras_model(only_digits=True):
-  """Create compiled keras model based on the original FedAvg CNN."""
-  data_format = 'channels_last'
-  input_shape = [28, 28, 1]
+def model_builder():
+  """Create a keras model based on the original FedAvg CNN."""
+  return emnist_models.create_original_fedavg_cnn_model(
+      only_digits=FLAGS.only_digits)
 
-  model = tf.keras.models.Sequential([
-      tf.keras.layers.Reshape(input_shape=(28 * 28,), target_shape=input_shape),
-      tf.keras.layers.Conv2D(
-          32,
-          kernel_size=(3, 3),
-          activation='relu',
-          input_shape=input_shape,
-          data_format=data_format),
-      tf.keras.layers.Conv2D(
-          64, kernel_size=(3, 3), activation='relu', data_format=data_format),
-      tf.keras.layers.MaxPool2D(pool_size=(2, 2), data_format=data_format),
-      tf.keras.layers.Dropout(0.25),
-      tf.keras.layers.Flatten(),
-      tf.keras.layers.Dense(128, activation='relu'),
-      tf.keras.layers.Dropout(0.5),
-      tf.keras.layers.Dense(
-          10 if only_digits else 62, activation=tf.nn.softmax),
-  ])
 
-  model.compile(
-      loss=tf.keras.losses.sparse_categorical_crossentropy,
-      optimizer=utils_impl.create_optimizer_from_flags('client'),
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+def loss_builder():
+  return tf.keras.losses.SparseCategoricalCrossentropy()
 
-  return model
+
+def metrics_builder():
+  return [tf.keras.metrics.SparseCategoricalAccuracy()]
 
 
 def _broadcast_encoder_fn(value):
@@ -174,85 +151,69 @@ def _mean_encoder_fn(value):
 
 def run_experiment():
   """Data preprocessing and experiment execution."""
-  emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data()
-
-  example_tuple = collections.namedtuple('Example', ['x', 'y'])
-
-  def element_fn(element):
-    return example_tuple(
-        x=tf.reshape(element['pixels'], [-1]),
-        y=tf.reshape(element['label'], [1]))
-
-  def preprocess_train_dataset(dataset):
-    """Preprocess training dataset."""
-    return dataset.map(element_fn).apply(
-        tf.data.experimental.shuffle_and_repeat(
-            buffer_size=10000,
-            count=FLAGS.client_epochs_per_round)).batch(FLAGS.batch_size)
-
-  def preprocess_test_dataset(dataset):
-    """Preprocess testing dataset."""
-    return dataset.map(element_fn).batch(100, drop_remainder=False)
-
-  emnist_train = emnist_train.preprocess(preprocess_train_dataset)
-  emnist_test = preprocess_test_dataset(
-      emnist_test.create_tf_dataset_from_all_clients())
+  emnist_train, emnist_test = emnist_dataset.get_emnist_datasets(
+      FLAGS.client_batch_size,
+      FLAGS.client_epochs_per_round,
+      only_digits=FLAGS.only_digits)
 
   example_dataset = emnist_train.create_tf_dataset_for_client(
       emnist_train.client_ids[0])
-  sample_batch = tf.nest.map_structure(lambda x: x.numpy(),
-                                       next(iter(example_dataset)))
+  input_spec = example_dataset.element_spec
 
-  def model_fn():
-    keras_model = create_compiled_keras_model()
-    return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+  client_datasets_fn = training_utils.build_client_datasets_fn(
+      emnist_train, FLAGS.clients_per_round)
 
-  def client_datasets_fn(round_num):
-    """Returns a list of client datasets."""
-    del round_num  # Unused.
-    sampled_clients = np.random.choice(
-        emnist_train.client_ids,
-        size=FLAGS.train_clients_per_round,
-        replace=False)
-    return [
-        emnist_train.create_tf_dataset_for_client(client)
-        for client in sampled_clients
-    ]
+  assign_weights_fn = compression_process_adapter.CompressionServerState.assign_weights_to_keras_model
 
-  tf.io.gfile.makedirs(FLAGS.root_output_dir)
-  hparam_dict = collections.OrderedDict([
-      (name, FLAGS[name].value) for name in hparam_flags
-  ])
+  evaluate_fn = training_utils.build_evaluate_fn(
+      eval_dataset=emnist_test,
+      model_builder=model_builder,
+      loss_builder=loss_builder,
+      metrics_builder=metrics_builder,
+      assign_weights_to_keras_model=assign_weights_fn)
 
-  the_metrics_hook = metrics_hook.MetricsHook.build(
-      FLAGS.exp_name, FLAGS.root_output_dir, emnist_test, hparam_dict,
-      create_compiled_keras_model())
+  client_optimizer_fn = functools.partial(
+      utils_impl.create_optimizer_from_flags, 'client')
+  server_optimizer_fn = functools.partial(
+      utils_impl.create_optimizer_from_flags, 'server')
 
-  optimizer_fn = lambda: utils_impl.create_optimizer_from_flags('server')
+  def tff_model_fn():
+    keras_model = model_builder()
+    return tff.learning.from_keras_model(
+        keras_model,
+        input_spec=input_spec,
+        loss=loss_builder(),
+        metrics=metrics_builder())
 
   if FLAGS.use_compression:
-    # We create a `StatefulBroadcastFn` and `StatefulAggregateFn` by providing
-    # the `_broadcast_encoder_fn` and `_mean_encoder_fn` to corresponding
-    # utilities. The fns are called once for each of the model weights created
-    # by model_fn, and return instances of appropriate encoders.
-    encoded_broadcast_fn = (
-        tff.learning.framework.build_encoded_broadcast_from_model(
-            model_fn, _broadcast_encoder_fn))
-    encoded_mean_fn = tff.learning.framework.build_encoded_mean_from_model(
-        model_fn, _mean_encoder_fn)
+    # We create a `MeasuredProcess` for broadcast process and a
+    # `MeasuredProcess` for aggregate process by providing the
+    # `_broadcast_encoder_fn` and `_mean_encoder_fn` to corresponding utilities.
+    # The fns are called once for each of the model weights created by
+    # tff_model_fn, and return instances of appropriate encoders.
+    encoded_broadcast_process = (
+        tff.learning.framework.build_encoded_broadcast_process_from_model(
+            tff_model_fn, _broadcast_encoder_fn))
+    encoded_mean_process = (
+        tff.learning.framework.build_encoded_mean_process_from_model(
+            tff_model_fn, _mean_encoder_fn))
   else:
-    encoded_broadcast_fn = None
-    encoded_mean_fn = None
+    encoded_broadcast_process = None
+    encoded_mean_process = None
 
-  training_loops.federated_averaging_training_loop(
-      model_fn,
-      optimizer_fn,
-      client_datasets_fn,
-      total_rounds=FLAGS.total_rounds,
-      rounds_per_eval=FLAGS.rounds_per_eval,
-      metrics_hook=the_metrics_hook,
-      stateful_model_broadcast_fn=encoded_broadcast_fn,
-      stateful_delta_aggregate_fn=encoded_mean_fn)
+  iterative_process = tff.learning.build_federated_averaging_process(
+      model_fn=tff_model_fn,
+      client_optimizer_fn=client_optimizer_fn,
+      server_optimizer_fn=server_optimizer_fn,
+      aggregation_process=encoded_mean_process,
+      broadcast_process=encoded_broadcast_process)
+  iterative_process = compression_process_adapter.CompressionProcessAdapter(
+      iterative_process)
+
+  training_loop.run(
+      iterative_process=iterative_process,
+      client_datasets_fn=client_datasets_fn,
+      validation_fn=evaluate_fn)
 
 
 def main(argv):
@@ -260,9 +221,8 @@ def main(argv):
     raise app.UsageError('Expected no command-line arguments, '
                          'got: {}'.format(argv))
 
-  tf.compat.v1.enable_v2_behavior()
   tff.framework.set_default_executor(
-      tff.framework.create_local_executor(max_fanout=25))
+      tff.framework.local_executor_factory(max_fanout=25))
 
   run_experiment()
 

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +13,6 @@
 # limitations under the License.
 """An example of an MNIST model function for use with TensorFlow Federated."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 
 import tensorflow as tf
@@ -27,11 +22,10 @@ class _NumExamplesCounter(tf.keras.metrics.Sum):
   """A `tf.keras.metrics.Metric` that counts the number of examples seen."""
 
   def __init__(self, name='num_examples', dtype=tf.int64):  # pylint: disable=useless-super-delegation
-    super(_NumExamplesCounter, self).__init__(name, dtype)
+    super().__init__(name, dtype)
 
   def update_state(self, y_true, y_pred, sample_weight=None):
-    return super(_NumExamplesCounter,
-                 self).update_state(tf.shape(y_pred)[0], sample_weight)
+    return super().update_state(tf.shape(y_pred)[0], sample_weight)
 
 
 def create_simple_keras_model(learning_rate=0.1):

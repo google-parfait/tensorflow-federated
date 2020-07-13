@@ -11,22 +11,21 @@ py_library(
         ":file_per_user_client_data",
         ":from_tensor_slices_client_data",
         ":hdf5_client_data",
+        ":server_utils",
         ":transforming_client_data",
         "//tensorflow_federated/python/simulation/datasets",
         "//tensorflow_federated/python/simulation/models",
-    ] + select({
-        "//tensorflow_federated:py2_mode": [],
-        "//tensorflow_federated:py3_mode": [
-            ":server_utils",
-        ],
-    }),
+    ],
 )
 
 py_library(
     name = "client_data",
     srcs = ["client_data.py"],
-    srcs_version = "PY2AND3",
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/tensorflow_libs:version_check",
+    ],
 )
 
 py_test(
@@ -35,13 +34,16 @@ py_test(
     srcs = ["client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":client_data"],
+    deps = [
+        ":client_data",
+        "//tensorflow_federated/python/tensorflow_libs:version_check",
+    ],
 )
 
 py_library(
     name = "file_per_user_client_data",
     srcs = ["file_per_user_client_data.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -61,7 +63,7 @@ py_test(
 py_library(
     name = "from_tensor_slices_client_data",
     srcs = ["from_tensor_slices_client_data.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -80,7 +82,7 @@ py_test(
 py_library(
     name = "hdf5_client_data",
     srcs = ["hdf5_client_data.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -103,14 +105,27 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/framework",
+        "//tensorflow_federated/python/core",
+    ],
+)
+
+py_test(
+    name = "server_utils_test",
+    size = "small",
+    srcs = ["server_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":server_utils",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core",
     ],
 )
 
 py_library(
     name = "transforming_client_data",
     srcs = ["transforming_client_data.py"],
-    srcs_version = "PY2AND3",
+    srcs_version = "PY3",
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -126,16 +141,5 @@ py_test(
     deps = [
         ":hdf5_client_data",
         ":transforming_client_data",
-    ],
-)
-
-py_binary(
-    name = "worker",
-    srcs = ["worker.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":server_utils",
-        "//tensorflow_federated/python/core/framework",
     ],
 )

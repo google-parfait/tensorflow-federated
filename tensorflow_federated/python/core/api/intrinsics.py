@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +13,10 @@
 # limitations under the License.
 """Defines intrinsics for use in composing federated computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import warnings
 
-from tensorflow_federated.python.core.impl import context_stack_impl
 from tensorflow_federated.python.core.impl import intrinsic_factory
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 
 def federated_aggregate(value, zero, accumulate, merge, report):
@@ -171,6 +166,24 @@ def federated_collect(value):
   return factory.federated_collect(value)
 
 
+def federated_eval(fn, placement):
+  """Evaluates a federated computation at `placement`, returning the result.
+
+  Args:
+    fn: A no-arg TFF computation.
+    placement: The desired result placement (either `tff.SERVER` or
+      `tff.CLIENTS`).
+
+  Returns:
+    A federated value with the given placement `placement`.
+
+  Raises:
+    TypeError: If the arguments are not of the appropriate types.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.federated_eval(fn, placement)
+
+
 def federated_map(mapping_fn, value):
   """Maps a federated value pointwise using a mapping function.
 
@@ -233,8 +246,63 @@ def federated_reduce(value, zero, op):
   return factory.federated_reduce(value, zero, op)
 
 
+def federated_secure_sum(value, bitwidth):
+  """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
+
+  This function computes a sum such that it should not be possible for the
+  server to learn any clients individual value. The specific algorithm and
+  mechanism used to compute the secure sum may vary depending on the target
+  runtime environment the computation is compiled for or executed on. See
+  https://research.google/pubs/pub47246/ for more information.
+
+  Not all executors support `tff.federated_secure_sum()`; consult the
+  documentation for the specific executor or executor stack you plan on using
+  for the specific of how it's handled by that executor.
+
+  The `bitwidth` argument represents the bitwidth of the aggregand, that is the
+  bitwidth of the input `value`. The federated secure sum bitwidth (i.e., the
+  bitwidth of the *sum* of the input `value`s over all clients) will be a
+  function of this bitwidth and the number of participating clients.
+
+  Example:
+
+  ```python
+  value = tff.federated_value(1, tff.CLIENTS)
+  result = tff.federated_secure_sum(value, 2)
+
+  value = tff.federated_value([1, 1], tff.CLIENTS)
+  result = tff.federated_secure_sum(value, [2, 4])
+
+  value = tff.federated_value([1, [1, 1]], tff.CLIENTS)
+  result = tff.federated_secure_sum(value, [2, [4, 8]])
+  ```
+
+  Note: To sum non-integer values or to sum integers with fewer constraints and
+  weaker privacy properties, consider using `federated_sum`.
+
+  Args:
+    value: An integer value of a TFF federated type placed at the `tff.CLIENTS`,
+      in the range [0, 2^bitwidth - 1].
+    bitwidth: An integer or nested structure of integers. For each tensor in
+      `value`, `bitwidth` must contain exactly one corresponding integer.
+
+  Returns:
+    A representation of the sum of the member constituents of `value` placed
+    on the `tff.SERVER`.
+
+  Raises:
+    TypeError: if the argument is not a federated TFF value placed at
+      `tff.CLIENTS`.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.federated_secure_sum(value, bitwidth)
+
+
 def federated_sum(value):
   """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
+
+  To sum integer values with stronger privacy properties, consider using
+  `tff.federated_secure_sum`.
 
   Args:
     value: A value of a TFF federated type placed at the `tff.CLIENTS`.
@@ -251,6 +319,7 @@ def federated_sum(value):
   return factory.federated_sum(value)
 
 
+# Deprecated, use tff.federated_eval instead.
 def federated_value(value, placement):
   """Returns a federated value at `placement`, with `value` as the constituent.
 

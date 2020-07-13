@@ -17,6 +17,11 @@
 #
 # Usage:
 #   bazel run //tensorflow_federated/tools/runtime/gcp:deploy_endpoint
+#
+# Arguments:
+#   artifacts_dir: A directory to use when generating intermediate artifacts,
+#       which can be useful during debugging. If no directory is specified, a
+#       temproary directory will be used and cleaned up when this command exits.
 set -e
 
 main() {

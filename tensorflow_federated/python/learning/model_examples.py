@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Simple examples implementing the Model interface."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import functools
@@ -40,19 +35,14 @@ class LinearRegression(model.Model):
     # TODO(b/124070381): Support for integers in num_examples, etc., is handled
     # here in learning, by adding an explicit cast to a float where necessary in
     # order to pass typechecking in the reference executor.
-    self._num_examples = tf.Variable(0, name='num_examples', trainable=False)
-    self._num_batches = tf.Variable(0, name='num_batches', trainable=False)
-    self._loss_sum = tf.Variable(0.0, name='loss_sum', trainable=False)
-    self._a = tf.Variable(
-        # N.B. The lambda is needed for use in defuns, see ValueError
-        # raised from resource_variable_ops.py.
-        lambda: tf.zeros(shape=(feature_dim, 1)),
-        name='a',
-        trainable=True)
-    self._b = tf.Variable(0.0, name='b', trainable=True)
-    # Define a non-trainable model variable (another bias term)
-    # for code coverage in testing.
-    self._c = tf.Variable(0.0, name='c', trainable=False)
+    self._num_examples = tf.Variable(0, trainable=False)
+    self._num_batches = tf.Variable(0, trainable=False)
+    self._loss_sum = tf.Variable(0.0, trainable=False)
+    self._a = tf.Variable([[0.0]] * feature_dim, trainable=True)
+    self._b = tf.Variable(0.0, trainable=True)
+    # Define a non-trainable model variable (another bias term) for code
+    # coverage in testing.
+    self._c = tf.Variable(0.0, trainable=False)
     self._input_spec = LinearRegression.make_batch(
         x=tf.TensorSpec([None, self._feature_dim], tf.float32),
         y=tf.TensorSpec([None, 1], tf.float32))
@@ -80,7 +70,7 @@ class LinearRegression(model.Model):
 
   @tf.function
   def forward_pass(self, batch, training=True):
-    del training  # Unused
+    del training  # Unused.
     if isinstance(batch, dict):
       batch = self.make_batch(**batch)
     if not self._input_spec.y.is_compatible_with(batch.y):
@@ -133,18 +123,6 @@ class LinearRegression(model.Model):
     return cls.Batch(x, y)
 
 
-class TrainableLinearRegression(LinearRegression, model.TrainableModel):
-  """A LinearRegression with trivial SGD training."""
-
-  @tf.function
-  def train_on_batch(self, batch):
-    # Most users won't implement this, and let us provide the optimizer.
-    fp = self.forward_pass(batch)
-    optimizer = tf.compat.v1.train.GradientDescentOptimizer(0.1)
-    optimizer.minimize(fp.loss, var_list=self.trainable_variables)
-    return fp
-
-
 def _dense_all_zeros_layer(input_dims=None, output_dim=1):
   """Create a layer that can be used in isolation for linear regression.
 
@@ -182,19 +160,19 @@ def build_linear_regression_keras_sequential_model(feature_dims=2):
 
 def build_linear_regression_keras_functional_model(feature_dims=2):
   """Build a linear regression `tf.keras.Model` using the functional API."""
-  a = tf.keras.layers.Input(shape=(feature_dims,))
+  a = tf.keras.layers.Input(shape=(feature_dims,), dtype=tf.float32)
   b = _dense_all_zeros_layer()(a)
   return tf.keras.Model(inputs=a, outputs=b)
 
 
 def build_linear_regression_keras_subclass_model(feature_dims=2):
   """Build a linear regression model by sub-classing `tf.keras.Model`."""
-  del feature_dims  # unused.
+  del feature_dims  # Unused.
 
   class _KerasLinearRegression(tf.keras.Model):
 
     def __init__(self):
-      super(_KerasLinearRegression, self).__init__()
+      super().__init__()
       self._weights = _dense_all_zeros_layer()
 
     def call(self, inputs, training=True):

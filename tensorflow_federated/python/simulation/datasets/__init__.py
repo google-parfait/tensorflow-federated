@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,23 +13,10 @@
 # limitations under the License.
 """Datasets for running Federated Learning experiments in simulation."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+from tensorflow_federated.python.simulation.datasets import cifar100
 from tensorflow_federated.python.simulation.datasets import emnist
 from tensorflow_federated.python.simulation.datasets import shakespeare
 from tensorflow_federated.python.simulation.datasets import stackoverflow
 from tensorflow_federated.python.simulation.datasets.dataset_utils import build_dataset_mixture
 from tensorflow_federated.python.simulation.datasets.dataset_utils import build_single_label_dataset
 from tensorflow_federated.python.simulation.datasets.dataset_utils import build_synthethic_iid_datasets
-
-# Used by doc generation script.
-_allowed_symbols = [
-    "build_dataset_mixture",
-    "build_single_label_dataset",
-    "build_synthethic_iid_datasets",
-    "emnist",
-    "shakespeare",
-    "stackoverflow",
-]

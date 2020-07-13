@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,6 @@
 # limitations under the License.
 """Implementations of the ClientData abstract base class."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import os
 import os.path
 
 import tensorflow as tf
@@ -52,8 +46,7 @@ class FilePerUserClientData(client_data.ClientData):
     g = tf.Graph()
     with g.as_default():
       tf_dataset = self._create_tf_dataset_fn(self._client_ids[0])
-      self._element_type_structure = tf.data.experimental.get_structure(
-          tf_dataset)
+      self._element_type_structure = tf_dataset.element_spec
 
   @property
   def client_ids(self):
@@ -61,9 +54,8 @@ class FilePerUserClientData(client_data.ClientData):
 
   def create_tf_dataset_for_client(self, client_id):
     tf_dataset = self._create_tf_dataset_fn(client_id)
-    tensor_utils.check_nested_equal(
-        tf.data.experimental.get_structure(tf_dataset),
-        self._element_type_structure)
+    tensor_utils.check_nested_equal(tf_dataset.element_spec,
+                                    self._element_type_structure)
     return tf_dataset
 
   @property
@@ -86,7 +78,8 @@ class FilePerUserClientData(client_data.ClientData):
       A `tff.simulation.FilePerUserClientData` object.
     """
     client_ids_to_paths_dict = {
-        filename: os.path.join(path, filename) for filename in os.listdir(path)
+        filename: os.path.join(path, filename)
+        for filename in tf.io.gfile.listdir(path)
     }
 
     def create_dataset_for_filename_fn(client_id):

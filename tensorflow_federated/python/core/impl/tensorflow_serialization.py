@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,32 +13,27 @@
 # limitations under the License.
 """Utilities for serializing TensorFlow computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import os.path
 import shutil
-import sys
 import tempfile
 import types
+from typing import Dict, Optional, Set, MutableSequence
 import zipfile
 
-import six
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import tf_computation_context
-from tensorflow_federated.python.core.impl import type_utils
-from tensorflow_federated.python.core.impl.compiler import type_serialization
+from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
-from tensorflow_federated.python.tensorflow_libs import graph_keys
+from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 
 class SerializationError(Exception):
@@ -104,11 +98,11 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
   """
   py_typecheck.check_callable(target)
   parameter_type = computation_types.to_type(parameter_type)
-  argspec = function_utils.get_argspec(target)
-  if argspec.args and parameter_type is None:
+  signature = function_utils.get_signature(target)
+  if signature.parameters and parameter_type is None:
     raise ValueError(
         'Expected the target to declare no parameters, found {!r}.'.format(
-            argspec.args))
+            signature.parameters))
 
   # In the codepath for TF V1 based serialization (tff.tf_computation),
   # we get the "wrapped" function to serialize. Here, target is the
@@ -119,7 +113,9 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
   unpack = function_utils.infer_unpack_needed(target, parameter_type, unpack)
   arg_typespecs, kwarg_typespecs, parameter_binding = (
       tensorflow_utils.get_tf_typespec_and_binding(
-          parameter_type, arg_names=argspec.args, unpack=unpack))
+          parameter_type,
+          arg_names=list(signature.parameters.keys()),
+          unpack=unpack))
 
   # Pseudo-global to be appended to once when target_poly below is traced.
   type_and_binding_slot = []
@@ -254,58 +250,51 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
   py_typecheck.check_type(target, types.FunctionType)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   parameter_type = computation_types.to_type(parameter_type)
-  argspec = function_utils.get_argspec(target)
+  signature = function_utils.get_signature(target)
 
   with tf.Graph().as_default() as graph:
-    args = []
     if parameter_type is not None:
-      if len(argspec.args) != 1:
+      if len(signature.parameters) != 1:
         raise ValueError(
             'Expected the target to declare exactly one parameter, found {!r}.'
-            .format(argspec.args))
-      parameter_name = argspec.args[0]
+            .format(signature.parameters))
+      parameter_name = next(iter(signature.parameters))
       parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
           parameter_name, parameter_type, graph)
-      args.append(parameter_value)
     else:
-      if argspec.args:
+      if signature.parameters:
         raise ValueError(
             'Expected the target to declare no parameters, found {!r}.'.format(
-                argspec.args))
+                signature.parameters))
+      parameter_value = None
       parameter_binding = None
     context = tf_computation_context.TensorFlowComputationContext(graph)
     with context_stack.install(context):
-      result = target(*args)
-
-      # TODO(b/122081673): This needs to change for TF 2.0. We may also
-      # want to allow the person creating a tff.tf_computation to specify
-      # a different initializer; e.g., if it is known that certain
-      # variables will be assigned immediately to arguments of the function,
-      # then it is wasteful to initialize them before this.
-      #
-      # The following is a bit of a work around: the collections below may
-      # contain variables more than once, hence we throw into a set. TFF needs
-      # to ensure all variables are initialized, but not all variables are
-      # always in the collections we expect. tff.learning._KerasModel tries to
-      # pull Keras variables (that may or may not be in GLOBAL_VARIABLES) into
-      # VARS_FOR_TFF_TO_INITIALIZE for now.
-      all_variables = set(tf.compat.v1.global_variables() +
-                          tf.compat.v1.local_variables() +
-                          tf.compat.v1.get_collection(
-                              graph_keys.GraphKeys.VARS_FOR_TFF_TO_INITIALIZE))
+      with variable_utils.record_variable_creation_scope() as all_variables:
+        if parameter_value is not None:
+          result = target(parameter_value)
+        else:
+          result = target()
+      initializer_ops = []
       if all_variables:
         # Use a readable but not-too-long name for the init_op.
         name = 'init_op_for_' + '_'.join(
             [v.name.replace(':0', '') for v in all_variables])
         if len(name) > 50:
           name = 'init_op_for_{}_variables'.format(len(all_variables))
-        with tf.control_dependencies(context.init_ops):
-          # Before running the main new init op, run any initializers for sub-
-          # computations from context.init_ops. Variables from import_graph_def
-          # will not make it into the global collections, and so will not be
-          # initialized without this code path.
-          init_op_name = tf.compat.v1.initializers.variables(
-              all_variables, name=name).name
+        initializer_ops.append(
+            tf.compat.v1.initializers.variables(all_variables, name=name))
+      initializer_ops.extend(
+          tf.compat.v1.get_collection(
+              tf.compat.v1.GraphKeys.TABLE_INITIALIZERS))
+      if initializer_ops:
+        # Before running the main new init op, run any initializers for sub-
+        # computations from context.init_ops. Variables from import_graph_def
+        # will not make it into the global collections, and so will not be
+        # initialized without this code path.
+        with tf.compat.v1.control_dependencies(context.init_ops):
+          init_op_name = tf.group(
+              *initializer_ops, name='grouped_initializers').name
       elif context.init_ops:
         init_op_name = tf.group(
             *context.init_ops, name='subcomputation_init_ops').name
@@ -315,18 +304,145 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 
-  annotated_type = computation_types.FunctionType(parameter_type, result_type)
+  type_signature = computation_types.FunctionType(parameter_type, result_type)
 
+  # WARNING: we do not really want to be modifying the graph here if we can
+  # avoid it. This is purely to work around performance issues uncovered with
+  # the non-standard usage of Tensorflow and have been discussed with the
+  # Tensorflow core team before being added.
+  clean_graph_def = _clean_graph_def(graph.as_graph_def())
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(clean_graph_def),
+      parameter=parameter_binding,
+      result=result_binding,
+      initialize_op=init_op_name)
   return pb.Computation(
-      type=pb.Type(
-          function=pb.FunctionType(
-              parameter=type_serialization.serialize_type(parameter_type),
-              result=type_serialization.serialize_type(result_type))),
-      tensorflow=pb.TensorFlow(
-          graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-          parameter=parameter_binding,
-          result=result_binding,
-          initialize_op=init_op_name)), annotated_type
+      type=type_serialization.serialize_type(type_signature),
+      tensorflow=tensorflow), type_signature
+
+
+def _clean_graph_def(graph_def: tf.compat.v1.GraphDef) -> tf.compat.v1.GraphDef:
+  """Edit the GraphDef proto to make it more performant for TFF.
+
+  WARNING: This method must _NOT_ make any semantic changes (those that would
+  change the results of the computation). TFF does not really want to be
+  modifying the graph here if we can avoid it. This is purely to work around
+  performance issues uncovered with the non-standard usage of Tensorflow and
+  have been discussed with the Tensorflow core team before being added.
+
+  Args:
+    graph_def: the proto message to modify.
+
+  Returns:
+    A GraphDef that has been altered for performance, with no semantic
+    modifications.
+  """
+  # TODO(b/153565654): remove this workaround once there is a way to prevent
+  # the OptimizeDataset ops from being added when serializing FunctionDef that
+  # received a tf.data.Dataset argument.
+  _remove_optimize_dataset_ops(graph_def)
+  return graph_def
+
+
+# TODO(b/153565654): cleanup this workaround method when no longer needed.
+def _remove_optimize_dataset_ops(graph_def: tf.compat.v1.GraphDef):
+  """Removes `OptimizeDataset` and `ModelDataset` ops from the graph.
+
+  TensorFlow Federated creates and tears down datasets frequently (one for each
+  user); which is contrary to the TF expected usage of a Dataset where it is
+  setup once and used throughout a long training process.
+
+  In the TFF execution stack this leads to performance degradation where a lot
+  of time is spent optimizing a dataset that will soon be thrown away. The time
+  spent optimizing can even be as long as it takes to train on the dataset. For
+  that reason TFF turns off this optimization.
+
+  Luckily, it appears that generally `ModelDataset` and `OptimizeDataset` have a
+  fairly straightforward pattern in graphs (though a fragile assumption); they
+  have so far always appeared as:
+
+    dataset -> OptimizeDataset -> ModelDataset -> (DatasetReduce ...)
+
+  Each node is the first input to the next node. The following function simply
+  cuts out the middle nodes and connect the first input into OptimizeDataset
+  as the input to replace ModelDataset into the last op in the chain.
+
+  Args:
+    graph_def: the proto message to mutate in place.
+  """
+  ops_to_remove = ['OptimizeDataset', 'ModelDataset']
+
+  def is_control_dep(tensor_name: str) -> bool:
+    return tensor_name.startswith('^')
+
+  def normalized_tensor_name(tensor_name: str) -> str:
+    if is_control_dep(tensor_name):
+      return tensor_name[1:]
+    return tensor_name.split(':', maxsplit=2)[0]
+
+  def clean_input_tensor(
+      tensor_name: str,
+      names_to_nodes: Dict[str, tf.compat.v1.NodeDef],
+      input_args: Set[str],
+  ) -> Optional[str]:
+    """Rewire an input tensor that is output by a removed node."""
+    node_name = normalized_tensor_name(tensor_name)
+    if is_control_dep(tensor_name):
+      # Simply delete control deps on removed nodes, otherwise pass through.
+      input_node = names_to_nodes[node_name]
+      if input_node.op in ops_to_remove:
+        return None
+      return tensor_name
+    node = names_to_nodes.get(node_name)
+    if node is None:
+      if tensor_name in input_args:
+        return node_name
+      else:
+        raise ValueError('cannot handle input {n} ({nn})'.format(
+            n=tensor_name, nn=node_name))
+    if node.op not in ops_to_remove:
+      return tensor_name
+    if node.op == 'OptimizeDataset':
+      # The dataset is the first input to OptimizeDataset, so return to replace
+      # the dependency on OptimizeDataset.
+      return node.input[0]
+    elif node.op == 'ModelDataset':
+      # ModelDataset's first input is expected to be OptimizeDataset, we can
+      # walk up input chain and find the input to the OptimizeDataset and return
+      # that instead.
+      input_node_name = normalized_tensor_name(node.input[0])
+      input_node = names_to_nodes.get(input_node_name)
+      if input_node is None or input_node.op != 'OptimizeDataset':
+        raise ValueError('Input to ModelDataset node was not OptimizeDataset, '
+                         'unknown graph structure, aborting.')
+      return input_node.input[0]
+    else:
+      raise ValueError('Encoutered node [{n}] which is an op to remove, but '
+                       'is not handled properly.'.format(n=node))
+
+  def filter_nodes(node_defs: MutableSequence[tf.compat.v1.NodeDef], args):
+    nodes_to_keep = []
+    names_to_nodes = {}
+    for node in node_defs:
+      names_to_nodes[node.name] = node
+      if node.op not in ops_to_remove:
+        nodes_to_keep.append(node)
+    func_arg_names = {arg.name for arg in args}
+    for node in nodes_to_keep:
+      clean_inputs = []
+      for input_name in node.input:
+        clean_input = clean_input_tensor(input_name, names_to_nodes,
+                                         func_arg_names)
+        if clean_input is not None:
+          clean_inputs.append(clean_input)
+      del node.input[:]
+      node.input.extend(clean_inputs)
+    del node_defs[:]
+    node_defs.extend(nodes_to_keep)
+
+  filter_nodes(graph_def.node, args=[])
+  for function in graph_def.library.function:
+    filter_nodes(function.node_def, args=function.signature.input_arg)
 
 
 # The maximum size allowed for serialized sequence values. Sequence that
@@ -360,7 +476,8 @@ def serialize_dataset(
     SerializationError: if there was an error in TensorFlow during
       serialization.
   """
-  py_typecheck.check_type(dataset, type_utils.TF_DATASET_REPRESENTATION_TYPES)
+  py_typecheck.check_type(dataset,
+                          type_conversions.TF_DATASET_REPRESENTATION_TYPES)
   module = tf.Module()
   module.dataset = dataset
   module.dataset_fn = tf.function(lambda: module.dataset, input_signature=())
@@ -379,11 +496,9 @@ def serialize_dataset(
     with open(temp_zip, 'rb') as z:
       zip_bytes = z.read()
   except Exception as e:  # pylint: disable=broad-except
-    six.reraise(
-        SerializationError,
-        SerializationError('Error serializing tff.Sequence value. '
-                           'Inner error: {!s}'.format(e)),
-        sys.exc_info()[2])
+    raise SerializationError(
+        'Error serializing tff.Sequence value. Inner error: {!s}'.format(
+            e)) from e
   finally:
     tf.io.gfile.rmtree(temp_dir)
     tf.io.gfile.remove(temp_zip)
@@ -418,14 +533,16 @@ def deserialize_dataset(serialized_bytes):
       f.write(serialized_bytes)
     with zipfile.ZipFile(temp_zip, 'r') as z:
       z.extractall(path=temp_dir)
-    loaded = tf.compat.v2.saved_model.load(temp_dir)
-    ds = loaded.dataset_fn()
+    loaded = tf.saved_model.load(temp_dir)
+    # TODO(b/156302055): Follow up here when bug is resolved, either remove
+    # if this function call stops failing by default, or leave if this is
+    # working as intended.
+    with tf.device('cpu'):
+      ds = loaded.dataset_fn()
   except Exception as e:  # pylint: disable=broad-except
-    six.reraise(
-        SerializationError,
-        SerializationError('Error deserializing tff.Sequence value. '
-                           'Inner error: {!s}'.format(e)),
-        sys.exc_info()[2])
+    raise SerializationError(
+        'Error deserializing tff.Sequence value. Inner error: {!s}'.format(
+            e)) from e
   finally:
     tf.io.gfile.rmtree(temp_dir)
     tf.io.gfile.remove(temp_zip)

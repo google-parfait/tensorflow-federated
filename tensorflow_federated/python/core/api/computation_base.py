@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,19 +13,12 @@
 # limitations under the License.
 """Defines the abstract interface for classes that represent computations."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
-
-import six
 
 from tensorflow_federated.python.core.api import typed_object
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Computation(typed_object.TypedObject):
+class Computation(typed_object.TypedObject, metaclass=abc.ABCMeta):
   """An abstract interface for all classes that represent computations."""
 
   @abc.abstractmethod
@@ -40,5 +32,19 @@ class Computation(typed_object.TypedObject):
     Returns:
       The result of invoking the computation, the exact form of which depends
       on the context.
+    """
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def __hash__(self) -> int:
+    """Hashes the computation.
+
+    TFF backends reserve the right to compile instances of `tff.Computation`,
+    as they may need different representations or data structures altogether.
+    As these backends need to be able to cache the result of compilation, we
+    require that `tff.Computation` subclasses be hashable.
+
+    Returns:
+      Integer representing the hash value of the `tff.Computation`.
     """
     raise NotImplementedError

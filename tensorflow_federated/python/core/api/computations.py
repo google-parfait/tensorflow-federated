@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Defines functions and classes for constructing TFF computations."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
@@ -163,7 +158,7 @@ def tf2_computation(*args):
   have already been created; with `tff.tf_computation` all graph mutation
   (including variable creation) must happen inside the function being wrapped.
 
-  NOTE: This decorator is still experimental, and does not support all features,
+  Note: This decorator is still experimental, and does not support all features,
   most noteably `tf.Variable` initialization and `tf.data.Dataset`s (and their
   conversion to TFF sequences).
 

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,25 +13,20 @@
 # limitations under the License.
 """Bodies of intrinsics to be added as replacements by the compiler pipleine."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 
-from six.moves import range
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import context_stack_base
 from tensorflow_federated.python.core.impl import intrinsic_factory
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.types import type_analysis
 
 
 def get_intrinsic_bodies(context_stack):
@@ -76,9 +70,8 @@ def get_intrinsic_bodies(context_stack):
     """Packs arguments to binary operator into a single arg."""
 
     def _only_tuple_or_tensor(value):
-      return type_utils.type_tree_contains_only(
-          value.type_signature,
-          (computation_types.NamedTupleType, computation_types.TensorType))
+      return type_analysis.contains_only(
+          value.type_signature, lambda t: t.is_tuple() or t.is_tensor())
 
     if _only_tuple_or_tensor(x) and _only_tuple_or_tensor(y):
       arg = value_impl.ValueImpl(
@@ -86,14 +79,14 @@ def get_intrinsic_bodies(context_stack):
               value_impl.ValueImpl.get_comp(x),
               value_impl.ValueImpl.get_comp(y)
           ]), context_stack)
-    elif (isinstance(x.type_signature, computation_types.FederatedType) and
-          isinstance(y.type_signature, computation_types.FederatedType) and
+    elif (x.type_signature.is_federated() and
+          y.type_signature.is_federated() and
           x.type_signature.placement == y.type_signature.placement):
-      if not type_utils.is_binary_op_with_upcast_compatible_pair(
+      if not type_analysis.is_binary_op_with_upcast_compatible_pair(
           x.type_signature.member, y.type_signature.member):
         raise TypeError(
             'The members of the federated types {} and {} are not division '
-            'compatible; see `type_utils.is_binary_op_with_upcast_compatible_pair` '
+            'compatible; see `type_analysis.is_binary_op_with_upcast_compatible_pair` '
             'for more details.'.format(x.type_signature, y.type_signature))
       packed_arg = value_impl.ValueImpl(
           building_blocks.Tuple([
@@ -107,14 +100,13 @@ def get_intrinsic_bodies(context_stack):
 
   def _check_top_level_compatibility_with_generic_operators(x, y, op_name):
     """Performs non-recursive check on the types of `x` and `y`."""
-    x_compatible = type_utils.type_tree_contains_only(
-        x.type_signature,
-        (computation_types.NamedTupleType, computation_types.TensorType,
-         computation_types.FederatedType))
-    y_compatible = type_utils.type_tree_contains_only(
-        y.type_signature,
-        (computation_types.NamedTupleType, computation_types.TensorType,
-         computation_types.FederatedType))
+
+    def _is_compatible(t: computation_types.Type) -> bool:
+      return type_analysis.contains_only(
+          t, lambda t: t.is_tuple() or t.is_tensor() or t.is_federated())
+
+    x_compatible = _is_compatible(x.type_signature)
+    y_compatible = _is_compatible(y.type_signature)
 
     def _make_bad_type_tree_string(index, type_spec):
       return ('{} is only implemented for pairs of '
@@ -140,19 +132,18 @@ def get_intrinsic_bodies(context_stack):
         '{} does not accept arguments of type {} and '
         '{}, as they are mismatched at the top level.'.format(
             op_name, x.type_signature, y.type_signature))
-    if isinstance(x.type_signature, computation_types.FederatedType):
-      if (not isinstance(y.type_signature, computation_types.FederatedType) or
+    if x.type_signature.is_federated():
+      if (not y.type_signature.is_federated() or
           x.type_signature.placement != y.type_signature.placement or
-          not type_utils.is_binary_op_with_upcast_compatible_pair(
+          not type_analysis.is_binary_op_with_upcast_compatible_pair(
               x.type_signature.member, y.type_signature.member)):
         raise TypeError(top_level_mismatch_string)
-    if isinstance(x.type_signature, computation_types.NamedTupleType):
-      if type_utils.is_binary_op_with_upcast_compatible_pair(
+    if x.type_signature.is_tuple():
+      if type_analysis.is_binary_op_with_upcast_compatible_pair(
           x.type_signature, y.type_signature):
         return None
-      elif not isinstance(y.type_signature,
-                          computation_types.NamedTupleType) or dir(
-                              x.type_signature) != dir(y.type_signature):
+      elif not y.type_signature.is_tuple() or dir(x.type_signature) != dir(
+          y.type_signature):
         raise TypeError(top_level_mismatch_string)
 
   def federated_weighted_mean(arg):
@@ -173,7 +164,7 @@ def get_intrinsic_bodies(context_stack):
         building_block_factory.create_generic_constant(x.type_signature.member,
                                                        0), context_stack)
     plus_op = value_impl.ValueImpl(
-        building_block_factory.create_binary_operator_with_upcast(
+        building_block_factory.create_tensorflow_binary_operator_with_upcast(
             computation_types.NamedTupleType(
                 [x.type_signature.member, x.type_signature.member]), tf.add),
         context_stack)
@@ -188,9 +179,8 @@ def get_intrinsic_bodies(context_stack):
     return intrinsics.federated_aggregate(x, zero, op, op, identity)
 
   def _generic_op_can_be_applied(x, y):
-    return type_utils.is_binary_op_with_upcast_compatible_pair(
-        x.type_signature, y.type_signature) or isinstance(
-            x.type_signature, computation_types.FederatedType)
+    return type_analysis.is_binary_op_with_upcast_compatible_pair(
+        x.type_signature, y.type_signature) or x.type_signature.is_federated()
 
   def _apply_generic_op(op, x, y):
     arg = _pack_binary_operator_args(x, y)
@@ -207,7 +197,7 @@ def get_intrinsic_bodies(context_stack):
         x, y, 'Generic divide')
     if _generic_op_can_be_applied(x, y):
       return _apply_generic_op(tf.divide, x, y)
-    elif isinstance(x.type_signature, computation_types.NamedTupleType):
+    elif x.type_signature.is_tuple():
       # This case is needed if federated types are nested deeply.
       names = [t[0] for t in anonymous_tuple.iter_elements(x.type_signature)]
       divided = [
@@ -230,7 +220,7 @@ def get_intrinsic_bodies(context_stack):
         x, y, 'Generic multiply')
     if _generic_op_can_be_applied(x, y):
       return _apply_generic_op(tf.multiply, x, y)
-    elif isinstance(x.type_signature, computation_types.NamedTupleType):
+    elif x.type_signature.is_tuple():
       # This case is needed if federated types are nested deeply.
       names = [t[0] for t in anonymous_tuple.iter_elements(x.type_signature)]
       multiplied = [
@@ -253,7 +243,7 @@ def get_intrinsic_bodies(context_stack):
     if _generic_op_can_be_applied(x, y):
       return _apply_generic_op(tf.add, x, y)
     # TODO(b/136587334): Push this logic down a level
-    elif isinstance(x.type_signature, computation_types.NamedTupleType):
+    elif x.type_signature.is_tuple():
       # This case is needed if federated types are nested deeply.
       names = [t[0] for t in anonymous_tuple.iter_elements(x.type_signature)]
       added = [
@@ -276,7 +266,7 @@ def get_intrinsic_bodies(context_stack):
   #     GENERIC_MAP(GENERIC_DIVIDE, GENERIC_SUM(
   #       GENERIC_MAP(GENERIC_MULTIPLY, GENERIC_ZIP(x, w)), p))
   #
-  #     NOTE: The above formula does not account for type casting issues that
+  #     Note: The above formula does not account for type casting issues that
   #     arise due to the interplay betwen the types of values and weights and
   #     how they relate to types of products and ratios, and either the formula
   #     or the type signatures may need to be tweaked.

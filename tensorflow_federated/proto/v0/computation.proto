@@ -155,7 +155,7 @@ message Computation {
     // tuple element being selected (known statically, as the name or index is
     // known statically, rather than computed).
     //
-    // NOTE: In higher layers of the API, we will offer convenience mechanisms
+    // Note: In higher layers of the API, we will offer convenience mechanisms
     // such as selection from a federated type. For example, if "x" is of a
     // federated type "{<foo=int, bar=string>}@clients", we will allow notation
     // such as "x.foo" as a convenient shortcut for a pointwise selection that
@@ -522,7 +522,7 @@ message TensorFlow {
   // The compomnents of the result will then all be simultaneously evaluated in
   // what corresponds to a single Session.run() in non-eager mode.
 
-  // NOTE: Currently, there is no way to represent any higher-level scripting
+  // Note: Currently, there is no way to represent any higher-level scripting
   // over the graph. We require that all control flow logic be expressed using
   // control dependencies and other TensorFlow constructs and triggered by the
   // evaluation of outputs within a single Session.run(), as postulated above.
@@ -535,7 +535,7 @@ message TensorFlow {
   // A serialized representation of a TensorFlow graph to execute.
   //
   // Stores a tensorflow.GraphDef message.
-  // NOTE: This representation may evolve, e.g., get replaced with a MetaGraph,
+  // Note: This representation may evolve, e.g., get replaced with a MetaGraph,
   // SavedModel, or a similar structure. Dependencies on the exact form of the
   // graph encoding used here should be kept to minimum, and proxied by wrapper
   // libraries for composing computations in python/core/impl/.
@@ -597,7 +597,7 @@ message TensorFlow {
       // single tensor component in the type signature.
       string tensor_name = 1;
 
-      // NOTE: This structure may eventually be extended with non-dense tensor
+      // Note: This structure may eventually be extended with non-dense tensor
       // encodings, such as .tensorflow.TensorInfo.CooSparse.
     }
   }
@@ -613,7 +613,7 @@ message TensorFlow {
       // using `tf.data.experimental.from_variant`.
       string variant_tensor_name = 2;
 
-      // NOTE: This structure will likely evolve and get extended with other
+      // Note: This structure will likely evolve and get extended with other
       // means of encoding data sets in the serialized graph representation.
     }
   }

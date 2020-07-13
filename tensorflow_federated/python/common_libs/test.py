@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2018, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,12 +13,7 @@
 # limitations under the License.
 """General purpose test utils for TFF."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from absl.testing import absltest
-from six.moves import zip
 import tensorflow as tf
 
 
@@ -27,7 +21,7 @@ class TestCase(tf.test.TestCase, absltest.TestCase):
   """Base class for TensroFlow Federated tests."""
 
   def setUp(self):
-    super(TestCase, self).setUp()
+    super().setUp()
     tf.keras.backend.clear_session()
 
 
@@ -36,7 +30,6 @@ def main():
 
   This function should only be used if TensorFlow code is being tested.
   """
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()
 
 
@@ -83,3 +76,22 @@ def assert_nested_struct_eq(x, y):
     if xe != ye:
       raise ValueError('Mismatching elements {} and {}.'.format(
           str(xe), str(ye)))
+
+
+def skip_test_for_gpu(test_fn):
+  """Decorator for a test to be skipped in GPU tests.
+
+  Args:
+    test_fn: A test function to be decorated.
+
+  Returns:
+    The decorated test_fn.
+  """
+
+  def wrapped_test_fn(self):
+    gpu_devices = tf.config.list_logical_devices('GPU')
+    if gpu_devices:
+      self.skipTest('skip GPU test')
+    test_fn(self)
+
+  return wrapped_test_fn

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2019, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,24 +13,18 @@
 # limitations under the License.
 """Utils that support unit tests in this component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 
 import numpy as np
-from six.moves import zip
 import tensorflow as tf
 
-from tensorflow_federated.python import learning
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.utils import computation_utils
+from tensorflow_federated.python.core.templates import iterative_process
 
 
 def get_temperature_sensor_example():
@@ -50,8 +43,9 @@ def get_temperature_sensor_example():
 
   # The state of the server is a singleton tuple containing just the integer
   # counter `num_rounds`.
-  server_state_type = computation_types.NamedTupleType([('num_rounds', tf.int32)
-                                                       ])
+  server_state_type = computation_types.NamedTupleType([
+      ('num_rounds', tf.int32),
+  ])
 
   @computations.tf_computation(server_state_type)
   def prepare(state):
@@ -59,8 +53,9 @@ def get_temperature_sensor_example():
 
   # The initial state of the client is a singleton tuple containing a single
   # float `max_temperature`, which is the threshold received from the server.
-  client_state_type = computation_types.NamedTupleType([('max_temperature',
-                                                         tf.float32)])
+  client_state_type = computation_types.NamedTupleType([
+      ('max_temperature', tf.float32),
+  ])
 
   # The client data is a sequence of floats.
   client_data_type = computation_types.SequenceType(tf.float32)
@@ -79,11 +74,9 @@ def get_temperature_sensor_example():
         'num': np.int32(0),
         'max': np.float32(-459.67)
     }, fn)
-    return ({
-        'is_over': reduce_result['max'] > state.max_temperature
-    }, {
-        'num_readings': reduce_result['num']
-    })
+    client_updates = collections.OrderedDict(
+        is_over=reduce_result['max'] > state.max_temperature)
+    return client_updates, []
 
   # The client update is a singleton tuple with a Boolean-typed `is_over`.
   client_update_type = computation_types.NamedTupleType([('is_over', tf.bool)])
@@ -96,42 +89,43 @@ def get_temperature_sensor_example():
 
   @computations.tf_computation
   def zero():
-    return collections.OrderedDict([('num_total', tf.constant(0)),
-                                    ('num_over', tf.constant(0))])
+    return collections.OrderedDict(
+        num_total=tf.constant(0), num_over=tf.constant(0))
 
   @computations.tf_computation(accumulator_type, client_update_type)
   def accumulate(accumulator, update):
-    return collections.OrderedDict([
-        ('num_total', accumulator.num_total + 1),
-        ('num_over', accumulator.num_over + tf.cast(update.is_over, tf.int32))
-    ])
+    return collections.OrderedDict(
+        num_total=accumulator.num_total + 1,
+        num_over=accumulator.num_over + tf.cast(update.is_over, tf.int32))
 
   @computations.tf_computation(accumulator_type, accumulator_type)
   def merge(accumulator1, accumulator2):
-    return collections.OrderedDict([
-        ('num_total', accumulator1.num_total + accumulator2.num_total),
-        ('num_over', accumulator1.num_over + accumulator2.num_over)
-    ])
+    return collections.OrderedDict(
+        num_total=accumulator1.num_total + accumulator2.num_total,
+        num_over=accumulator1.num_over + accumulator2.num_over)
 
   @computations.tf_computation(merge.type_signature.result)
   def report(accumulator):
-    return {
-        'ratio_over_threshold': (tf.cast(accumulator['num_over'], tf.float32) /
-                                 tf.cast(accumulator['num_total'], tf.float32))
-    }
+    return collections.OrderedDict(
+        ratio_over_threshold=(tf.cast(accumulator['num_over'], tf.float32) /
+                              tf.cast(accumulator['num_total'], tf.float32)))
 
-  # The type of the combined update is a singleton tuple containing a float
-  # named `ratio_over_threshold`.
-  combined_update_type = computation_types.NamedTupleType([
-      ('ratio_over_threshold', tf.float32)
+  @computations.tf_computation
+  def bitwidth():
+    return []
+
+  update_type = computation_types.NamedTupleType([
+      computation_types.NamedTupleType([('ratio_over_threshold', tf.float32)]),
+      computation_types.NamedTupleType([]),
   ])
 
-  @computations.tf_computation(server_state_type, combined_update_type)
+  @computations.tf_computation(server_state_type, update_type)
   def update(state, update):
-    return ({'num_rounds': state.num_rounds + 1}, update)
+    return ({'num_rounds': state.num_rounds + 1}, update[0])
 
   return canonical_form.CanonicalForm(initialize, prepare, work, zero,
-                                      accumulate, merge, report, update)
+                                      accumulate, merge, report, bitwidth,
+                                      update)
 
 
 def get_mnist_training_example():
@@ -172,7 +166,6 @@ def get_mnist_training_example():
       model=model_tff_type, learning_rate=tf.float32)
   loop_state_nt = collections.namedtuple('LoopState', 'num_examples total_loss')
   update_nt = collections.namedtuple('Update', 'model num_examples loss')
-  stats_nt = collections.namedtuple('Stats', 'num_examples loss')
 
   # Train the model locally, emit the loclaly-trained model and the number of
   # examples as an update, and the average loss and the number of examples as
@@ -210,8 +203,7 @@ def get_mnist_training_example():
       with tf.control_dependencies([num_examples, total_loss]):
         loss = total_loss / tf.cast(num_examples, tf.float32)
 
-    return (update_nt(model=model_vars, num_examples=num_examples, loss=loss),
-            stats_nt(num_examples=num_examples, loss=loss))
+    return update_nt(model=model_vars, num_examples=num_examples, loss=loss), []
 
   accumulator_nt = update_nt
 
@@ -263,13 +255,18 @@ def get_mnist_training_example():
         num_examples=accumulator.num_examples,
         loss=accumulator.loss * scaling_factor)
 
-  report_tff_type = accumulator_tff_type
+  @computations.tf_computation
+  def bitwidth():
+    return []
+
+  update_type = computation_types.NamedTupleType([accumulator_tff_type, []])
   metrics_nt = collections.namedtuple('Metrics', 'num_rounds num_examples loss')
 
   # Pass the newly averaged model along with an incremented round counter over
   # to the next round, and output the counters and loss as server metrics.
-  @computations.tf_computation(server_state_tff_type, report_tff_type)
-  def update(state, report):
+  @computations.tf_computation(server_state_tff_type, update_type)
+  def update(state, update):
+    report = update[0]
     num_rounds = state.num_rounds + 1
     return (server_state_nt(model=report.model, num_rounds=num_rounds),
             metrics_nt(
@@ -278,40 +275,8 @@ def get_mnist_training_example():
                 loss=report.loss))
 
   return canonical_form.CanonicalForm(initialize, prepare, work, zero,
-                                      accumulate, merge, report, update)
-
-
-def construct_example_training_comp():
-  """Constructs a `computation_utils.IterativeProcess` via the FL API."""
-  np.random.seed(0)
-
-  sample_batch = collections.OrderedDict([('x',
-                                           np.array([[1., 1.]],
-                                                    dtype=np.float32)),
-                                          ('y', np.array([[0]],
-                                                         dtype=np.int32))])
-
-  def model_fn():
-    """Constructs keras model."""
-    keras_model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(
-            1,
-            activation=tf.nn.softmax,
-            kernel_initializer='zeros',
-            input_shape=(2,))
-    ])
-
-    def loss_fn(y_true, y_pred):
-      return tf.reduce_mean(
-          tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred))
-
-    keras_model.compile(
-        loss=loss_fn,
-        optimizer=tf.keras.optimizers.SGD(learning_rate=0.01),
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-    return learning.from_compiled_keras_model(keras_model, sample_batch)
-
-  return learning.build_federated_averaging_process(model_fn)
+                                      accumulate, merge, report, bitwidth,
+                                      update)
 
 
 def computation_to_building_block(comp):
@@ -319,41 +284,7 @@ def computation_to_building_block(comp):
       comp._computation_proto)  # pylint: disable=protected-access
 
 
-def get_iterative_process_for_canonical_form_example():
-  """Construct a simple `IterativeProcess` compatible with `CanonicalForm`.
-
-  The computation itself is non-sensical; but demonstrates the required type
-  signatures for `CanonicalForm```.
-
-  Returns:
-    An `IterativeProcess` compatible with `CanonicalForm`.
-  """
-
-  @computations.tf_computation(tf.int32, tf.float32)
-  def add_two(x_int, y_float):
-    return tf.cast(x_int, tf.float32) + y_float
-
-  @computations.federated_computation
-  def init_fn():
-    return intrinsics.federated_value(1.234, placements.SERVER)
-
-  @computations.federated_computation([
-      computation_types.FederatedType(tf.float32, placements.SERVER),
-      computation_types.FederatedType(tf.int32, placements.CLIENTS)
-  ])
-  def next_fn(server_val, client_val):
-    """Defines a series of federated computations compatible with CanonicalForm."""
-    broadcast_val = intrinsics.federated_broadcast(server_val)
-    values_on_clients = intrinsics.federated_zip((client_val, broadcast_val))
-    result_on_clients = intrinsics.federated_map(add_two, values_on_clients)
-    aggregated_result = intrinsics.federated_mean(result_on_clients)
-    side_output = intrinsics.federated_value([1, 2, 3, 4, 5], placements.SERVER)
-    return aggregated_result, side_output
-
-  return computation_utils.IterativeProcess(init_fn, next_fn)
-
-
-def get_unused_lambda_arg_iterative_process():
+def get_iterative_process_for_example_with_unused_lambda_arg():
   """Returns an iterative process having a Lambda not referencing its arg."""
   server_state_type = computation_types.NamedTupleType([('num_clients',
                                                          tf.int32)])
@@ -375,7 +306,7 @@ def get_unused_lambda_arg_iterative_process():
   @computations.federated_computation
   def init_fn():
     return intrinsics.federated_value(
-        collections.OrderedDict([('num_clients', 0)]), placements.SERVER)
+        collections.OrderedDict(num_clients=0), placements.SERVER)
 
   @computations.federated_computation([
       computation_types.FederatedType(server_state_type, placements.SERVER),
@@ -383,10 +314,10 @@ def get_unused_lambda_arg_iterative_process():
           computation_types.SequenceType(tf.string), placements.CLIENTS)
   ])
   def next_fn(server_state, client_val):
-    """`next` function for `computation_utils.IterativeProcess`."""
+    """`next` function for `tff.templates.IterativeProcess`."""
     server_update = intrinsics.federated_zip(
-        collections.OrderedDict([('num_clients',
-                                  count_clients_federated(client_val))]))
+        collections.OrderedDict(
+            num_clients=count_clients_federated(client_val)))
 
     server_output = intrinsics.federated_value((), placements.SERVER)
     server_output = _bind_federated_value(
@@ -395,10 +326,10 @@ def get_unused_lambda_arg_iterative_process():
 
     return server_update, server_output
 
-  return computation_utils.IterativeProcess(init_fn, next_fn)
+  return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
-def get_unused_tf_computation_arg_iterative_process():
+def get_iterative_process_for_example_with_unused_tf_computation_arg():
   """Returns an iterative process with a @tf.function with an unused arg."""
   server_state_type = computation_types.NamedTupleType([('num_clients',
                                                          tf.int32)])
@@ -422,7 +353,7 @@ def get_unused_tf_computation_arg_iterative_process():
   @computations.federated_computation
   def init_fn():
     return intrinsics.federated_value(
-        collections.OrderedDict([('num_clients', 0)]), placements.SERVER)
+        collections.OrderedDict(num_clients=0), placements.SERVER)
 
   @computations.federated_computation([
       computation_types.FederatedType(server_state_type, placements.SERVER),
@@ -430,10 +361,10 @@ def get_unused_tf_computation_arg_iterative_process():
           computation_types.SequenceType(tf.string), placements.CLIENTS)
   ])
   def next_fn(server_state, client_val):
-    """`next` function for `computation_utils.IterativeProcess`."""
+    """`next` function for `tff.templates.IterativeProcess`."""
     server_update = intrinsics.federated_zip(
-        collections.OrderedDict([('num_clients',
-                                  count_clients_federated(client_val))]))
+        collections.OrderedDict(
+            num_clients=count_clients_federated(client_val)))
 
     server_output = intrinsics.federated_value((), placements.SERVER)
     server_output = intrinsics.federated_sum(
@@ -442,4 +373,52 @@ def get_unused_tf_computation_arg_iterative_process():
 
     return server_update, server_output
 
-  return computation_utils.IterativeProcess(init_fn, next_fn)
+  return iterative_process.IterativeProcess(init_fn, next_fn)
+
+
+def get_iterative_process_for_example_with_lambda_returning_aggregation():
+  """Gets iterative process with indirection to the called intrinsic."""
+  server_state_type = computation_types.NamedTupleType([('num_clients',
+                                                         tf.int32)])
+  client_val_type = computation_types.FederatedType(server_state_type,
+                                                    placements.CLIENTS)
+
+  @computations.federated_computation()
+  def computation_returning_lambda():
+
+    @computations.federated_computation(tf.int32)
+    def computation_returning_sum(x):
+      tuple_containing_intrinsic = [
+          building_blocks.Intrinsic(
+              'federated_sum',
+              computation_types.FunctionType(
+                  client_val_type,
+                  computation_types.FederatedType(client_val_type.member,
+                                                  placements.SERVER))), x
+      ]
+
+      return tuple_containing_intrinsic[0]
+
+    return computation_returning_sum
+
+  @computations.federated_computation
+  def init_fn():
+    return intrinsics.federated_value(
+        collections.OrderedDict(num_clients=0), placements.SERVER)
+
+  @computations.federated_computation([
+      computation_types.FederatedType(server_state_type, placements.SERVER),
+      client_val_type,
+  ])
+  def next_fn(server_state, client_val):
+    """`next` function for `tff.templates.IterativeProcess`."""
+    server_update = intrinsics.federated_sum(client_val)
+    server_output = intrinsics.federated_value((), placements.SERVER)
+    state_at_clients = intrinsics.federated_broadcast(server_state)
+    lambda_returning_sum = computation_returning_lambda()
+    sum_fn = lambda_returning_sum(1)
+    server_output = sum_fn(state_at_clients)
+
+    return server_update, server_output
+
+  return iterative_process.IterativeProcess(init_fn, next_fn)
