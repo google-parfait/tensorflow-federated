@@ -1063,5 +1063,141 @@ class TensorFlowGeneratorTest(test.TestCase):
     self.assertEqual(first_factor, second_factor)
 
 
+class TestTransformToCallDominantForm(test.TestCase):
+
+  def test_raises_called_lambda_returning_function(self):
+    lower_level_lambda = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    higher_level_lambda = building_blocks.Lambda('y', tf.int32,
+                                                 lower_level_lambda)
+    with self.assertRaises(ValueError):
+      transformations.transform_to_call_dominant(higher_level_lambda)
+
+  def test_raises_block_returning_function(self):
+    lower_level_lambda = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    blk = building_blocks.Block([], lower_level_lambda)
+    with self.assertRaises(ValueError):
+      transformations.transform_to_call_dominant(blk)
+
+  def test_merges_nested_blocks(self):
+    data = building_blocks.Data('a', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    blk1 = building_blocks.Block([('x', data)], ref_to_x)
+    blk2 = building_blocks.Block([('x', blk1)], ref_to_x)
+
+    call_dominant_rep, modified = transformations.transform_to_call_dominant(
+        blk2)
+
+    self.assertTrue(modified)
+    self.assertEqual(call_dominant_rep.compact_representation(),
+                     '(let _var1=a in _var1)')
+
+  def test_extracts_called_intrinsics_to_block(self):
+    called_aggregate = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    tuple_holding_aggregate = building_blocks.Tuple([called_aggregate])
+    sel_from_tuple = building_blocks.Selection(
+        source=tuple_holding_aggregate, index=0)
+    lambda_to_sel = building_blocks.Lambda('x', tf.int32, sel_from_tuple)
+
+    call_dominant_rep, modified = transformations.transform_to_call_dominant(
+        lambda_to_sel)
+
+    self.assertTrue(modified)
+    self.assertIsInstance(call_dominant_rep, building_blocks.Block)
+    self.assertLen(call_dominant_rep.locals, 1)
+    self.assertTrue(
+        building_block_analysis.is_called_intrinsic(
+            call_dominant_rep.locals[0][1],
+            intrinsic_defs.FEDERATED_AGGREGATE.uri))
+
+  def test_deduplicates_called_intrinsics(self):
+    called_aggregate1 = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    called_aggregate2 = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c')
+    tuple_holding_aggregates = building_blocks.Tuple(
+        [called_aggregate1, called_aggregate2])
+    lambda_to_tup = building_blocks.Lambda('x', tf.int32,
+                                           tuple_holding_aggregates)
+
+    call_dominant_rep, modified = transformations.transform_to_call_dominant(
+        lambda_to_tup)
+
+    self.assertTrue(modified)
+    self.assertIsInstance(call_dominant_rep, building_blocks.Block)
+    self.assertLen(call_dominant_rep.locals, 1)
+    self.assertTrue(
+        building_block_analysis.is_called_intrinsic(
+            call_dominant_rep.locals[0][1],
+            intrinsic_defs.FEDERATED_AGGREGATE.uri))
+
+  def test_hoists_aggregations_packed_in_tuple(self):
+    called_aggregate1 = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c',
+        value_type=tf.int32)
+    called_aggregate2 = test_utils.create_dummy_called_federated_aggregate(
+        accumulate_parameter_name='a',
+        merge_parameter_name='b',
+        report_parameter_name='c',
+        value_type=tf.float32)
+    tuple_holding_aggregates = building_blocks.Tuple(
+        [called_aggregate1, called_aggregate2])
+    lambda_to_tuple = building_blocks.Lambda('x', tf.int32,
+                                             tuple_holding_aggregates)
+
+    call_dominant_rep, modified = transformations.transform_to_call_dominant(
+        lambda_to_tuple)
+
+    self.assertTrue(modified)
+    self.assertIsInstance(call_dominant_rep, building_blocks.Block)
+    self.assertLen(call_dominant_rep.locals, 2)
+    self.assertTrue(
+        building_block_analysis.is_called_intrinsic(
+            call_dominant_rep.locals[0][1],
+            intrinsic_defs.FEDERATED_AGGREGATE.uri))
+    self.assertTrue(
+        building_block_analysis.is_called_intrinsic(
+            call_dominant_rep.locals[1][1],
+            intrinsic_defs.FEDERATED_AGGREGATE.uri))
+
+  def test_handles_lambda_with_lambda_parameter(self):
+    int_identity_lambda = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    ref_to_fn_and_int = building_blocks.Reference(
+        'y',
+        computation_types.NamedTupleType([
+            int_identity_lambda.type_signature,
+            computation_types.TensorType(tf.int32)
+        ]))
+    fn = building_blocks.Selection(ref_to_fn_and_int, index=0)
+    arg = building_blocks.Selection(ref_to_fn_and_int, index=1)
+    called_fn = building_blocks.Call(fn, arg)
+    lambda_accepting_fn = building_blocks.Lambda(
+        ref_to_fn_and_int.name, ref_to_fn_and_int.type_signature, called_fn)
+    ref_to_int = building_blocks.Reference('z', tf.int32)
+    arg_tuple = building_blocks.Tuple([int_identity_lambda, ref_to_int])
+    called_lambda_with_fn = building_blocks.Call(lambda_accepting_fn, arg_tuple)
+    lambda_accepting_int = building_blocks.Lambda(ref_to_int.name,
+                                                  ref_to_int.type_signature,
+                                                  called_lambda_with_fn)
+
+    call_dominant_rep, modified = transformations.transform_to_call_dominant(
+        lambda_accepting_int)
+
+    self.assertTrue(modified)
+    self.assertEqual(call_dominant_rep.compact_representation(),
+                     '(_var1 -> (let _var3=(_var2 -> _var2)(_var1) in _var3))')
+
+
 if __name__ == '__main__':
   test.main()

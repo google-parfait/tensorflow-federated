@@ -17,7 +17,7 @@ A composite transformation is one that applies multiple atomic transformation to
 an AST either pointwise or serially.
 """
 
-from typing import Mapping
+from typing import Mapping, Tuple
 
 from absl import logging
 
@@ -670,3 +670,170 @@ def compile_local_computation_to_tensorflow(comp):
   transformed, modified = transformation_utils.transform_preorder(
       comp, local_tf_generator.transform)
   return transformed, modified
+
+
+def transform_to_call_dominant(
+    comp: building_blocks.ComputationBuildingBlock
+) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+  """Normalizes computations into Call-Dominant Form.
+
+  A computation is in call-dominant form if the following conditions are true:
+
+  1. Every intrinsic which will be invoked to execute the computation appears
+     as a top-level let binding (modulo an encapsulating global lambda).
+  2. Each of these intrinsics is depended upon by the output. This implies in
+     particular that any intrinsic which is not depended upon by the output is
+     removed.
+  3. All reference bindings have unique names.
+
+  This transform checks that its argument `comp` contains no lambdas returning
+  functions, and no blocks whose results are functions. Raises a `ValueError`
+  if these conditions are violated.
+
+  In an intermediate step, this function also transforms `comp` so that there
+  are no calls to references or selections, with a single set of exceptional.
+  circumstances.
+
+  Given that `comp` cannot contain functions or blocks which return other
+  functions, this means that the function member of every `building_blocks.Call`
+  must be either: a `building_blocks.CompiledComputation`; a
+  `building_blocks.Intrinsic`; a `building_blocks.Lambda` with non-functional
+  return type; or a reference to a function bound as parameter to an uncalled
+  `building_blocks.Lambda` (taking some liberties here to elide the distinction
+  between a functional parameter and a tuple parameter containing a function).
+
+  Note that if no lambda takes a functional parameter, the final case in
+  the enumeration above is additionally disallowed.
+
+  Args:
+    comp: Instance of `building_blocks.ComputationBuildingBlock` to transform.
+
+  Returns:
+    A two-tuple, whose first element is a building block representing the same
+    logic as `comp`, and whose second is a boolean indicating whether or not
+    any transformations were in fact run.
+  """
+
+  # TODO(b/146904968): Remove these two conditions on the args and checks when
+  # full handling of higher-order functions and block-call resolution is
+  # implemented.
+  def _check_no_lambdas_with_functional_return_types(comp_to_check):
+    if not comp_to_check.is_lambda():
+      return comp_to_check, False
+    if type_analysis.contains(comp_to_check.result.type_signature,
+                              lambda x: x.is_function()):
+      raise ValueError('In transforming to CDF, we currently disallow the '
+                       'presence of lambdas returning functional types; '
+                       'encountered {c} of type {t}.'.format(
+                           c=comp_to_check, t=comp_to_check.type_signature))
+    return comp_to_check, False
+
+  transformation_utils.transform_postorder(
+      comp, _check_no_lambdas_with_functional_return_types)
+
+  def _check_no_blocks_holding_functions(comp_to_check):
+    if not comp_to_check.is_block():
+      return comp_to_check, False
+    if type_analysis.contains(comp_to_check.result.type_signature,
+                              lambda x: x.is_function()):
+      raise ValueError('In transforming to CDF, we currently disallow the '
+                       'presence of blocks whose results are functions; '
+                       'encountered {c} of type {t}.'.format(
+                           c=comp_to_check, t=comp_to_check.type_signature))
+    return comp_to_check, False
+
+  transformation_utils.transform_postorder(comp,
+                                           _check_no_blocks_holding_functions)
+
+  def _check_no_functional_symbol_bindings(comp):
+    """Encodes condition for completeness of direct extraction of calls.
+
+    After checking this condition, all functions which are semantically called
+    (IE, functions which will be invoked eventually by running the computation)
+    are called directly, and we can simply extract them by pattern-matching on
+    `building_blocks.Call`.
+
+    Args:
+      comp: Instance of `building_blocks.ComputationBuildingBlock` to check for
+        lack of functional symbol bindings.
+
+    Raises:
+      ValueError: If `comp` has symbols bound to computations with type trees
+      containing functional types.
+    """
+    py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
+
+    def _check_for_bindings(comp_to_check):
+      if comp_to_check.is_block():
+        for name, local in comp_to_check.locals:
+          if type_analysis.contains(local.type_signature,
+                                    lambda x: x.is_function()):
+            raise ValueError(
+                'We make the assumption when reducing to '
+                'call-dominant form that there are no symbols bound '
+                'to computations with functional type; encountered '
+                'the computation {c} of type {t} bound to symbol '
+                '{s}. Failure here indicates an internal error in '
+                'the construction of call-dominant form.'.format(
+                    c=local, t=local.type_signature, s=name))
+      return comp, False
+
+    transformation_utils.transform_postorder(comp, _check_for_bindings)
+
+  def _inline_functions(comp):
+    function_type_reference_names = []
+
+    def _populate_function_type_ref_names(comp):
+      if comp.is_reference() and comp.type_signature.is_function():
+        function_type_reference_names.append(comp.name)
+      return comp, False
+
+    transformation_utils.transform_postorder(comp,
+                                             _populate_function_type_ref_names)
+
+    return tree_transformations.inline_block_locals(
+        comp, variable_names=set(function_type_reference_names))
+
+  def _extract_calls_and_blocks(comp):
+
+    def _predicate(comp):
+      return comp.is_call()
+
+    block_extracter = tree_transformations.ExtractComputation(comp, _predicate)
+    return transformation_utils.transform_postorder(comp,
+                                                    block_extracter.transform)
+
+  def _remove_functional_symbol_bindings(comp):
+    """Removes symbol bindings which contain functional types."""
+
+    comp, refs_renamed = tree_transformations.uniquify_reference_names(comp)
+    comp, lambdas_replaced = tree_transformations.replace_called_lambda_with_block(
+        comp)
+    comp, selections_inlined = tree_transformations.inline_selections_from_tuple(
+        comp)
+    if selections_inlined:
+      comp, _ = tree_transformations.uniquify_reference_names(comp)
+    comp, functions_inlined = _inline_functions(comp)
+    comp, locals_removed = tree_transformations.remove_unused_block_locals(comp)
+
+    modified = (
+        refs_renamed or lambdas_replaced or selections_inlined or
+        functions_inlined or locals_removed)
+    return comp, modified
+
+  comp, modified = _remove_functional_symbol_bindings(comp)
+  _check_no_functional_symbol_bindings(comp)
+
+  for transform in [
+      _extract_calls_and_blocks,
+      # Extraction can leave some tuples packing references to clean up. Leaving
+      # would not violate CDF, but we prefer to do this for cleanliness.
+      tree_transformations.inline_selections_from_tuple,
+      tree_transformations.merge_chained_blocks,
+      tree_transformations.remove_duplicate_block_locals,
+      tree_transformations.remove_unused_block_locals,
+      tree_transformations.uniquify_reference_names,
+  ]:
+    comp, transformed = transform(comp)
+    modified = modified or transformed
+  return comp, modified
