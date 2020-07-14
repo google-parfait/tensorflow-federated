@@ -46,7 +46,8 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:values",
-        "//tensorflow_federated/python/core/impl/executors:default_executor",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )
@@ -74,7 +75,8 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:values",
-        "//tensorflow_federated/python/core/impl/executors:default_executor",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )

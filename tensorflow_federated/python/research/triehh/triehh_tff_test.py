@@ -71,7 +71,7 @@ class TriehhTffTest(tf.test.TestCase):
     for round_num in range(max_rounds * num_sub_rounds):
       # TODO(b/152051528): Remove this once lookup table state is cleared in
       # eager executer.
-      tff.framework.set_default_executor(tff.framework.local_executor_factory())
+      tff.backends.native.set_local_execution_context()
       sampled_clients = list(range(clients))
       sampled_datasets = [
           client_data.create_tf_dataset_for_client(client_id)

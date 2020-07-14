@@ -106,8 +106,8 @@ py_library(
     srcs = ["type_factory.py"],
     srcs_version = "PY3",
     deps = [
+        ":placement_literals",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )
 

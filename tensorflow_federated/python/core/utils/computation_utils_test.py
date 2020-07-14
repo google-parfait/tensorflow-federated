@@ -22,7 +22,8 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.utils import computation_utils
 
@@ -187,6 +188,7 @@ if __name__ == '__main__':
   # Note: num_clients must be explicit here to correctly test the broadcast
   # behavior. Otherwise TFF will infer there are zero clients, which is an
   # error.
-  executor = executor_stacks.local_executor_factory(num_clients=3)
-  default_executor.set_default_executor(executor)
+  factory = executor_stacks.local_executor_factory(num_clients=3)
+  context = execution_context.ExecutionContext(factory)
+  context_stack_impl.context_stack.set_default_context(context)
   test.main()

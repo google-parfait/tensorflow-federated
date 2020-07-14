@@ -14,8 +14,8 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":emnist_classifier_model",
         "//tensorflow_federated/python/research/gans/experiments/emnist:emnist_data_utils",
-        "//tensorflow_federated/python/research/gans/experiments/emnist/classifier:emnist_classifier_model",
     ],
 )
 

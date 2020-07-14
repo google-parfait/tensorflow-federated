@@ -32,15 +32,14 @@ class CompilerPipeline(object):
   backend that supports only a map-reduce execution model may accept instances
   of `tff.backends.mapreduce.CanonicalForm`. The TFF representation of such a
   backend takes the form of an instance of `tff.framework.Context`, which would
-  be initialized with a `CompilerPipeline` whose `compilation_function` accepts
+  be initialized with a `CompilerPipeline` whose `compilation_fn` accepts
   `tff.Computations` and returns CanonicalForms.
   """
 
-  def __init__(self,
-               compilation_function: Callable[[computation_base.Computation],
+  def __init__(self, compilation_fn: Callable[[computation_base.Computation],
                                               Any]):
-    py_typecheck.check_callable(compilation_function)
-    self._compilation_fn = compilation_function
+    py_typecheck.check_callable(compilation_fn)
+    self._compilation_fn = compilation_fn
     self._compiled_computations = {}
 
   @functools.lru_cache()

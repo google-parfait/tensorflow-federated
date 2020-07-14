@@ -19,7 +19,8 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import values
-from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -204,6 +205,7 @@ class MeasuredProcessTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  executor = executor_stacks.local_executor_factory(num_clients=3)
-  default_executor.set_default_executor(executor)
+  factory = executor_stacks.local_executor_factory(num_clients=3)
+  context = execution_context.ExecutionContext(factory)
+  context_stack_impl.context_stack.set_default_context(context)
   test.main()

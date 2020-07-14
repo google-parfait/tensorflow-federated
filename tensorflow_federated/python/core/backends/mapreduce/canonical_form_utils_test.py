@@ -33,7 +33,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
 
@@ -824,5 +824,5 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
 
 if __name__ == '__main__':
   reference_executor = reference_executor.ReferenceExecutor()
-  default_executor.set_default_executor(reference_executor)
+  set_default_context.set_default_context(reference_executor)
   test.main()

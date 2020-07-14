@@ -15,6 +15,7 @@
 
 import asyncio
 import contextlib
+from typing import Any, Callable, Optional
 
 import retrying
 import tensorflow as tf
@@ -22,8 +23,10 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import tracing
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
+from tensorflow_federated.python.core.impl.compiler import compiler_pipeline
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
@@ -143,14 +146,23 @@ def _unwrap_execution_context_value(val):
 class ExecutionContext(context_base.Context):
   """Represents an execution context backed by an `executor_base.Executor`."""
 
-  def __init__(self, executor_fn: executor_factory.ExecutorFactory):
-    """Initializes execution context.
+  def __init__(self,
+               executor_fn: executor_factory.ExecutorFactory,
+               compiler_fn: Optional[Callable[[computation_base.Computation],
+                                              Any]] = None):
+    """Initializes an execution context.
 
     Args:
       executor_fn: Instance of `executor_factory.ExecutorFactory`.
+      compiler_fn: A Python function that will be used to compile a computation.
     """
     py_typecheck.check_type(executor_fn, executor_factory.ExecutorFactory)
     self._executor_factory = executor_fn
+    if compiler_fn is not None:
+      py_typecheck.check_callable(compiler_fn)
+      self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
+    else:
+      self._compiler_pipeline = None
 
   def ingest(self, val, type_spec):
     return ExecutionContextValue(val, type_spec)
@@ -162,6 +174,9 @@ class ExecutionContext(context_base.Context):
       wait_jitter_max=1000  # in milliseconds
   )
   def invoke(self, comp, arg):
+    if self._compiler_pipeline is not None:
+      with tracing.span('ExecutionContext', 'Compile', span=True):
+        comp = self._compiler_pipeline.compile(comp)
 
     with tracing.span('ExecutionContext', 'Invoke', span=True):
 

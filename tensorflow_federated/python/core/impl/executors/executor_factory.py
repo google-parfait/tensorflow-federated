@@ -50,10 +50,6 @@ class SizeInfo(object):
 class ExecutorFactory(metaclass=abc.ABCMeta):
   """Interface defining executor factories.
 
-  Executor factories will be returned to users via execution constructors
-  exposed in `tff.framework`, and are the objects accepted by
-  `tff.framework.set_default_executor`.
-
   `ExecutorFactory` should be considered to own the executors it creates; it
   is responsible for their instantiation and management.
 

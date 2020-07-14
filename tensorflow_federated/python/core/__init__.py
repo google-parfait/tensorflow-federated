@@ -57,4 +57,4 @@ from tensorflow_federated.python.core.impl.executors import default_executor
 
 # Initialize a default executor; which is implicitly executed once the first
 # time a module in the `core` package is imported.
-default_executor.initialize_default_executor()
+default_executor.initialize_default_execution_context()

@@ -60,7 +60,7 @@ class TestSetDefaultExecutor(absltest.TestCase):
       default_executor.set_default_executor(None)
 
 
-class TestInitializeDefaultExecutor(absltest.TestCase):
+class TestInitializeDefaultExecutionContext(absltest.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -72,7 +72,7 @@ class TestInitializeDefaultExecutor(absltest.TestCase):
     self.assertNotIsInstance(context_stack.current,
                              execution_context.ExecutionContext)
 
-    default_executor.initialize_default_executor()
+    default_executor.initialize_default_execution_context()
 
     self.assertIsInstance(context_stack.current,
                           execution_context.ExecutionContext)

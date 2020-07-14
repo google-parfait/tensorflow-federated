@@ -31,12 +31,12 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":emnist_data_utils",
         "//tensorflow_federated",
         "//tensorflow_federated/python/research/gans:gan_losses",
         "//tensorflow_federated/python/research/gans:gan_training_tf_fns",
         "//tensorflow_federated/python/research/gans:tff_gans",
         "//tensorflow_federated/python/research/gans:training_loops",
-        "//tensorflow_federated/python/research/gans/experiments/emnist:emnist_data_utils",
         "//tensorflow_federated/python/research/gans/experiments/emnist/classifier:emnist_classifier_model",
         "//tensorflow_federated/python/research/gans/experiments/emnist/eval:emnist_eval_util",
         "//tensorflow_federated/python/research/gans/experiments/emnist/models:convolutional_gan_networks",

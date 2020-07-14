@@ -31,11 +31,12 @@ def main(argv):
     raise app.UsageError('Too many command-line arguments.')
 
   channel = grpc.insecure_channel('{}:{}'.format(FLAGS.host, FLAGS.port))
-  remote_executor = tff.framework.RemoteExecutor(channel)
-  caching_executor = tff.framework.CachingExecutor(remote_executor)
-  reference_resolving_executor = tff.framework.ReferenceResolvingExecutor(
-      caching_executor)
-  tff.framework.set_default_executor(reference_resolving_executor)
+  ex = tff.framework.RemoteExecutor(channel)
+  ex = tff.framework.CachingExecutor(ex)
+  ex = tff.framework.ReferenceResolvingExecutor(ex)
+  factory = tff.framework.create_executor_factory(lambda _: ex)
+  context = tff.framework.ExecutionContext(factory)
+  tff.framework.set_default_context(context)
   print(tff.federated_computation(lambda: 'Hello World')())
 
 

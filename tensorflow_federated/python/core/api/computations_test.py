@@ -32,7 +32,9 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import test as core_test
+from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.types import type_factory
@@ -117,7 +119,8 @@ class TensorFlowComputationsTest(parameterized.TestCase):
       return intrinsics.federated_mean(result_map, count_map)
 
     factory = executor_stacks.sizing_executor_factory(num_clients=num_clients)
-    default_executor.set_default_executor(factory)
+    context = execution_context.ExecutionContext(factory)
+    set_default_context.set_default_context(context)
 
     to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [tf.data.Dataset.range(10).map(to_float)] * num_clients
@@ -665,5 +668,5 @@ class ComputationsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_executor()
+  default_executor.initialize_default_execution_context()
   common_test.main()

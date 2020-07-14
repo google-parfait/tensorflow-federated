@@ -855,5 +855,5 @@ class IntrinsicsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_executor()
+  default_executor.initialize_default_execution_context()
   common_test.main()

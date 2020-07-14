@@ -262,8 +262,10 @@ py_library(
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:tracing",
+        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:typed_object",
+        "//tensorflow_federated/python/core/impl/compiler:compiler_pipeline",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
@@ -360,6 +362,7 @@ py_library(
     deps = [
         ":caching_executor",
         ":eager_tf_executor",
+        ":execution_context",
         ":executor_base",
         ":executor_factory",
         ":federated_composing_strategy",
@@ -369,6 +372,7 @@ py_library(
         ":sizing_executor",
         ":thread_delegating_executor",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )

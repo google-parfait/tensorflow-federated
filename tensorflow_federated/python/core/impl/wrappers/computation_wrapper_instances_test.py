@@ -167,5 +167,5 @@ class ToComputationImplTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_executor()
+  default_executor.initialize_default_execution_context()
   test.main()

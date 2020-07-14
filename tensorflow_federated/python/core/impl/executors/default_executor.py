@@ -23,6 +23,9 @@ from tensorflow_federated.python.core.impl.executors import executor_stacks
 def set_default_executor(executor_factory_instance):
   """Places an `executor`-backed execution context at the top of the stack.
 
+  Note: This function is deprecated, please use
+  `tff.framework.set_default_context` instead.
+
   Args:
     executor_factory_instance: An instance of
       `executor_factory.ExecutorFactory`.
@@ -42,6 +45,7 @@ def set_default_executor(executor_factory_instance):
   context_stack_impl.context_stack.set_default_context(context)
 
 
-def initialize_default_executor():
-  executor_factory_instance = executor_stacks.local_executor_factory()
-  set_default_executor(executor_factory_instance)
+def initialize_default_execution_context():
+  factory = executor_stacks.local_executor_factory()
+  context = execution_context.ExecutionContext(factory)
+  context_stack_impl.context_stack.set_default_context(context)

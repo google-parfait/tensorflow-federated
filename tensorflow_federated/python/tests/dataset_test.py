@@ -102,5 +102,4 @@ class DatasetTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  # default_executor.initialize_default_executor()
   test.main()

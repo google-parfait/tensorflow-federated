@@ -13,5 +13,8 @@ py_library(
         "//tensorflow_federated:__pkg__",
         "//tensorflow_federated/python/core:__pkg__",
     ],
-    deps = ["//tensorflow_federated/python/core/backends/mapreduce"],
+    deps = [
+        "//tensorflow_federated/python/core/backends/mapreduce",
+        "//tensorflow_federated/python/core/backends/native",
+    ],
 )

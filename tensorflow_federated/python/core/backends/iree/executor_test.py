@@ -20,7 +20,8 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import executor
-from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.context_stack import set_default_context
+from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_factory
 
 
@@ -91,10 +92,11 @@ class ExecutorTest(tf.test.TestCase):
     result = asyncio.get_event_loop().run_until_complete(result_val.compute())
     self.assertEqual(result, 11.0)
 
-  def test_as_default_executor(self):
+  def test_as_default_context(self):
     ex = executor.IreeExecutor(backend_info.VULKAN_SPIRV)
-    default_executor.set_default_executor(
-        executor_factory.create_executor_factory(lambda _: ex))
+    factory = executor_factory.create_executor_factory(lambda _: ex)
+    context = execution_context.ExecutionContext(factory)
+    set_default_context.set_default_context(context)
 
     @computations.tf_computation(tf.float32)
     def comp(x):

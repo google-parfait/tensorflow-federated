@@ -66,8 +66,8 @@ class _RuntimeErrorContext(context_base.Context):
         '\n'
         'If you are getting this error when testing a module inside of '
         '`tensorflow_federated/python/core/...`, you may need to explicitly '
-        'invoke `default_executor.initialize_default_executor()` in the `main` '
-        'function of your test.')
+        'invoke `default_executor.initialize_default_execution_context()` in '
+        'the `main` function of your test.')
 
   def ingest(self, val, type_spec):
     del val  # Unused

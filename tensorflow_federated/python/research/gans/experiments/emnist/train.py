@@ -397,9 +397,8 @@ def main(argv):
   for k, v in hparam_dict.items():
     print('{} : {} '.format(k, v))
 
-  tff.framework.set_default_executor(
-      tff.framework.local_executor_factory(
-          num_clients=FLAGS.num_clients_per_round))
+  tff.backends.native.set_local_execution_context(
+      num_clients=FLAGS.num_clients_per_round)
 
   # Trained classifier model.
   classifier_model = ecm.get_trained_emnist_classifier_model()
