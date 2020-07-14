@@ -112,7 +112,7 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   """Updates `server_state` based on `weights_delta`, increase the round number.
 
   Args:
-    model: A `tff.learning.TrainableModel`.
+    model: A `tff.learning.Model`.
     server_optimizer: A `tf.keras.optimizers.Optimizer`.
     server_state: A `ServerState`, the state to be updated.
     weights_delta: An update to the trainable variables of the model.
@@ -238,7 +238,7 @@ def build_server_init_fn(model_fn, server_optimizer_fn):
   `ServerState.round_num` is set to 0.0.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
     server_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer`.
 
@@ -268,7 +268,7 @@ def build_fed_avg_process(model_fn,
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
     client_optimizer_fn: A function that accepts a `learning_rate` keyword
       argument and returns a `tf.keras.optimizers.Optimizer` instance.
     client_lr: A scalar learning rate or a function that accepts a float

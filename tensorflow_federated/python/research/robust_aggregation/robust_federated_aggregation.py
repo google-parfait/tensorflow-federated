@@ -77,7 +77,7 @@ def build_robust_federated_aggregation_process(model_fn,
   """Builds the TFF computations for robust federated aggregation using the RFA Algorithm.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
     num_communication_passes: Number of communication passes for the smoothed
       Weiszfeld algorithm to compute the approximate geometric median. The
       default is 5 and it has to be an interger at least 1.

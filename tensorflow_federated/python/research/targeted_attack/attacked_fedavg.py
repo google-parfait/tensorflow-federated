@@ -110,7 +110,7 @@ def server_update(model, server_optimizer, server_optimizer_vars, server_state,
   """Updates `server_state` based on `weights_delta`.
 
   Args:
-    model: A `tff.learning.TrainableModel`.
+    model: A `tff.learning.Model`.
     server_optimizer: A `tf.keras.optimizers.Optimizer`.
     server_optimizer_vars: A list of previous variables of server_optimzer.
     server_state: A `ServerState`, the state to be updated.
@@ -272,7 +272,7 @@ def build_server_update_fn(model_fn, server_optimizer_fn, server_state_type,
   """Builds a `tff.tf_computation` that updates `ServerState`.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
     server_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer`.
     server_state_type: type_signature of server state.
@@ -362,7 +362,7 @@ def build_run_one_round_fn_attacked(server_update_fn, client_update_fn,
     client_update_fn: A function for updates in the clients.
     stateful_delta_aggregate_fn: A 'tff.computation'that takes in model deltas
       placed@CLIENTS to an aggregated model delta placed@SERVER.
-    dummy_model_for_metadata: A dummy `tff.learning.TrainableModel`.
+    dummy_model_for_metadata: A dummy `tff.learning.Model`.
     federated_server_state_type: type_signature of federated server state.
     federated_dataset_type: type_signature of federated dataset.
 

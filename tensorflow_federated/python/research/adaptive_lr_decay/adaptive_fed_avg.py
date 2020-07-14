@@ -109,7 +109,7 @@ def server_update(model, server_optimizer, server_state, aggregated_gradients,
   arguments, respectively.
 
   Args:
-    model: A `tff.learning.TrainableModel`.
+    model: A `tff.learning.Model`.
     server_optimizer: A `tf.keras.optimizers.Optimizer`.
     server_state: A `ServerState`, the state to be updated.
     aggregated_gradients: A weighted average over clients of the per-client
@@ -250,7 +250,7 @@ def build_server_init_fn(model_fn, server_optimizer_fn, client_lr_callback,
   initialized via their constructor functions.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
     server_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer`.
     client_lr_callback: A `ReduceLROnPlateau` callback.
@@ -285,7 +285,7 @@ def build_fed_avg_process(model_fn,
   """Builds the TFF computations for FedAvg with learning rate decay.
 
   Args:
-    model_fn: A no-arg function that returns a `tff.learning.TrainableModel`.
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
     client_lr_callback: A `ReduceLROnPlateau` callback.
     client_callback_update_fn: A function that updates the client callback.
     server_lr_callback: A `ReduceLROnPlateau` callback.

@@ -170,14 +170,6 @@ In addition, the abstract interface `tff.learning.Model` exposes a property
 property mentioned earlier, allows you to control the process of aggregating
 summary statistics.
 
-Finally, the derived abstract interface `tff.learning.TrainableModel` allows you
-to customize the manner in which TFF executes individual training steps, such as
-by specifying your own optimizer, or defining separate metrics to be computed
-before and after training. You can customize this by overriding the newly
-introduced abstract method `train_on_batch`. You don't have to do it, though, if
-you only plan to use your model for evaluation, or if you're content with TFF
-choosing the standard optimizer for you.
-
 You can find examples of how to define your own custom `tf.learning.Model` in
 the second part of our
 [image classification](tutorials/federated_learning_for_image_classification.ipynb)

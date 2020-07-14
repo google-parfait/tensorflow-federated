@@ -65,7 +65,7 @@ class DummyClientComputation(tff.learning.framework.ClientDeltaFn):
     """Creates the client computation for Federated Averaging.
 
     Args:
-      model: A `tff.learning.TrainableModel`.
+      model: A `tff.learning.Model`.
       client_weight_fn: Optional argument is ignored
     """
     del client_weight_fn
