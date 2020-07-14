@@ -17,7 +17,7 @@
 #
 # Usage:
 #   bazel run //tensorflow_federated/tools/development:test_pip_package -- \
-#       "/tmp/tensorflow_federated/tensorflow_federated-"*".whl"
+#       --package "/tmp/tensorflow_federated/"*".whl"
 #
 # Arguments:
 #   package: A path to a local pip package.
@@ -28,13 +28,37 @@ die() {
   exit 1
 }
 
-main() {
-  local package="$1"
+usage() {
+  local script_name=$(basename "${0}")
+  echo "usage: ${script_name} [--package PATH]" 1>&2
+}
 
-  if [[ ! -f "${package}" ]]; then
-    die "The package '${package}' does not exist."
+main() {
+  # Parse arguments
+  local package=""
+
+  while [[ "$#" -gt 0 ]]; do
+    opt="$1"
+    case "${opt}" in
+      --package)
+        package="$2"
+        shift
+        # Shift might exit with an error code if no output_dir was provided.
+        shift || break
+        ;;
+      *)
+        usage
+        exit 1
+        ;;
+    esac
+  done
+
+  if [[ -z ${package} ]]; then
+    usage
+    exit 1
   fi
 
+  # Create working directory
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
   pushd "${temp_dir}"

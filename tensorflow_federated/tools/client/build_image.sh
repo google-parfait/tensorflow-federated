@@ -25,6 +25,7 @@
 set -e
 
 main() {
+  # Parse arguments
   local artifacts_dir="$1"
 
   if [[ -z "${artifacts_dir}" ]]; then
@@ -32,12 +33,13 @@ main() {
     trap "rm -rf ${artifacts_dir}" EXIT
   fi
 
+  # Create working directory
   cp -LR "tensorflow_federated" "${artifacts_dir}"
   pushd "${artifacts_dir}"
 
   # Build the TensorFlow Federated package
   tensorflow_federated/tools/development/build_pip_package \
-      "${artifacts_dir}"
+      --output_dir "${artifacts_dir}"
 
   # Build the TensorFlow Federated runtime image
   docker build \

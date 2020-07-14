@@ -54,19 +54,6 @@ import setuptools
 
 DOCLINES = __doc__.split('\n')
 
-project_name = 'tensorflow_federated'
-
-if '--project_name' in sys.argv:
-  project_name_idx = sys.argv.index('--project_name')
-  project_name = sys.argv[project_name_idx + 1]
-  sys.argv.remove('--project_name')
-  sys.argv.pop(project_name_idx)
-
-with open('tensorflow_federated/version.py') as fp:
-  globals_dict = {}
-  exec(fp.read(), globals_dict)  # pylint: disable=exec-used
-  VERSION = globals_dict['__version__']
-
 REQUIRED_PACKAGES = [
     'absl-py~=0.9.0',
     'attrs~=19.3.0',
@@ -84,8 +71,25 @@ REQUIRED_PACKAGES = [
     'tensorflow~=2.2.0',
 ]
 
+if '--nightly' in sys.argv:
+  sys.argv.remove('--nightly')
+  PROJECT_NAME = 'tff_nightly'
+  for index, required_package in enumerate(REQUIRED_PACKAGES):
+    package_name = get_package_name(required_package)
+    if package_name == 'tensorflow':
+      REQUIRED_PACKAGES[index] = 'tf-nightly'
+    elif package_name == 'tensorflow-addons':
+      REQUIRED_PACKAGES[index] = 'tfa-nightly'
+else:
+  PROJECT_NAME = 'tensorflow_federated'
+
+with open('tensorflow_federated/version.py') as fp:
+  globals_dict = {}
+  exec(fp.read(), globals_dict)  # pylint: disable=exec-used
+  VERSION = globals_dict['__version__']
+
 setuptools.setup(
-    name=project_name,
+    name=PROJECT_NAME,
     version=VERSION,
     packages=setuptools.find_packages(exclude=('tools')),
     description=DOCLINES[0],
@@ -97,7 +101,7 @@ setuptools.setup(
     download_url='https://github.com/tensorflow/federated/tags',
     install_requires=REQUIRED_PACKAGES,
     # PyPI package information.
-    classifiers=(
+    classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Intended Audience :: Education',
@@ -112,7 +116,16 @@ setuptools.setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Python Modules',
-    ),
+    ],
     license='Apache 2.0',
     keywords='tensorflow federated machine learning',
 )
+
+
+def get_package_name(requirement: str) -> str:
+  allowed_operators = ['~=', '<', '>', '==', '<=', '>=', '!=']
+  separator = allowed_operators[0]
+  for operator in allowed_operators[1:]:
+    requirement = requirement.replace(operator, separator)
+  name, _ = requirement.split(separator, maxsplit=1)
+  return name
