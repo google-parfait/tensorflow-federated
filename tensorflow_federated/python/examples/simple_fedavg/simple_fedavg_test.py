@@ -262,7 +262,6 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
     self.assertBetween(accuracy, 0.0, 1.0)
 
   def test_tff_learning_evaluate(self):
-    keras_model = _create_test_cnn_model()
     it_process = simple_fedavg_tff.build_federated_averaging_process(
         _tff_learning_model_fn)
     server_state = it_process.initialize()
@@ -271,6 +270,7 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
             x=np.ones([1, 28, 28, 1], dtype=np.float32),
             y=np.ones([1], dtype=np.int32))
     ]
+    keras_model = _create_test_cnn_model()
     tff.learning.assign_weights_to_keras_model(keras_model,
                                                server_state.model_weights)
     sample_data = [
