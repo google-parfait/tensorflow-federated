@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 def create_test_executor_factory():
@@ -80,6 +81,139 @@ async def create_test_value(*args, **kwargs):
 @computations.tf_computation
 def foo():
   return tf.constant(10)
+
+
+@computations.tf_computation
+def bar():
+  return tf.constant(11)
+
+
+class GetHashableKeyTest(absltest.TestCase):
+
+  def test_get_key_for_identical_anonymous_tuples_tuple_type(self):
+    tuple_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    anon_tuple = anonymous_tuple.AnonymousTuple([(
+        None,
+        0,
+    ), (None, 1.)])
+    first_key = caching_executor._get_hashable_key(anon_tuple, tuple_type)
+    second_anon_tuple = anonymous_tuple.AnonymousTuple([(
+        None,
+        0,
+    ), (None, 1.)])
+    second_key = caching_executor._get_hashable_key(second_anon_tuple,
+                                                    tuple_type)
+    self.assertEqual(hash(first_key), hash(second_key))
+
+  def test_get_key_for_different_anonymous_tuples_tuple_type(self):
+    tuple_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    anon_tuple = anonymous_tuple.AnonymousTuple([(
+        None,
+        0,
+    ), (None, 1.)])
+    first_key = caching_executor._get_hashable_key(anon_tuple, tuple_type)
+    second_anon_tuple = anonymous_tuple.AnonymousTuple([(
+        None,
+        0,
+    ), (None, 2.)])
+    second_key = caching_executor._get_hashable_key(second_anon_tuple,
+                                                    tuple_type)
+    self.assertNotEqual(hash(first_key), hash(second_key))
+
+  def test_get_key_for_identical_list_tuple_type(self):
+    tuple_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    first_list = [0, 1.]
+    first_key = caching_executor._get_hashable_key(first_list, tuple_type)
+    second_list = [0, 1.]
+    second_key = caching_executor._get_hashable_key(second_list, tuple_type)
+    self.assertEqual(hash(first_key), hash(second_key))
+
+  def test_get_key_for_different_list_tuple_type(self):
+    tuple_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    first_list = [0, 1.]
+    first_key = caching_executor._get_hashable_key(first_list, tuple_type)
+    second_list = [0, 2.]
+    second_key = caching_executor._get_hashable_key(second_list, tuple_type)
+    self.assertNotEqual(hash(first_key), hash(second_key))
+
+  def test_get_key_for_identical_list_federated_type(self):
+    federated_type = computation_types.FederatedType(
+        computation_types.TensorType(tf.float32), placement_literals.CLIENTS)
+    first_list = [0., 1.]
+    first_key = caching_executor._get_hashable_key(first_list, federated_type)
+    second_list = [0., 1.]
+    second_key = caching_executor._get_hashable_key(second_list, federated_type)
+    self.assertEqual(hash(first_key), hash(second_key))
+
+  def test_get_key_for_different_list_federated_type(self):
+    federated_type = computation_types.FederatedType(
+        computation_types.TensorType(tf.float32), placement_literals.CLIENTS)
+    first_list = [0., 1.]
+    first_key = caching_executor._get_hashable_key(first_list, federated_type)
+    second_list = [0., 2.]
+    second_key = caching_executor._get_hashable_key(second_list, federated_type)
+    self.assertNotEqual(hash(first_key), hash(second_key))
+
+  def test_get_key_for_identical_computations(self):
+    foo_proto = computation_impl.ComputationImpl.get_proto(foo)
+    foo_type = foo.type_signature
+    first_key = caching_executor._get_hashable_key(foo_proto, foo_type)
+    second_foo_proto = computation_impl.ComputationImpl.get_proto(foo)
+    second_key = caching_executor._get_hashable_key(second_foo_proto, foo_type)
+    self.assertEqual(hash(first_key), hash(second_key))
+
+  def test_get_key_for_different_computations(self):
+    foo_proto = computation_impl.ComputationImpl.get_proto(foo)
+    foo_type = foo.type_signature
+    first_key = caching_executor._get_hashable_key(foo_proto, foo_type)
+    bar_proto = computation_impl.ComputationImpl.get_proto(bar)
+    bar_type = bar.type_signature
+    second_key = caching_executor._get_hashable_key(bar_proto, bar_type)
+    self.assertNotEqual(hash(first_key), hash(second_key))
+
+  def test_get_key_for_identical_ndarray(self):
+    array_1 = np.ones(shape=[100, 100])
+    tensor_1 = tf.convert_to_tensor(array_1)
+    first_key = caching_executor._get_hashable_key(
+        array_1, computation_types.TensorType(tensor_1.dtype, tensor_1.shape))
+    array_2 = np.ones(shape=[100, 100])
+    tensor_2 = tf.convert_to_tensor(array_2)
+    second_key = caching_executor._get_hashable_key(
+        array_2, computation_types.TensorType(tensor_2.dtype, tensor_2.shape))
+    self.assertEqual(first_key, second_key)
+
+  def test_get_key_for_different_ndarray(self):
+    array_1 = np.ones(shape=[10000, 10000])
+    tensor_1 = tf.convert_to_tensor(array_1)
+    first_key = caching_executor._get_hashable_key(
+        array_1, computation_types.TensorType(tensor_1.dtype, tensor_1.shape))
+    array_2 = np.ones(shape=[10000, 10000])
+    array_2[50, 50] = 0
+    tensor_2 = tf.convert_to_tensor(array_2)
+    second_key = caching_executor._get_hashable_key(
+        array_2, computation_types.TensorType(tensor_2.dtype, tensor_2.shape))
+    self.assertNotEqual(first_key, second_key)
+
+  def test_get_key_for_same_tensors(self):
+    array_1 = np.ones(shape=[100, 100])
+    tensor_1 = tf.convert_to_tensor(array_1)
+    first_key = caching_executor._get_hashable_key(
+        tensor_1, computation_types.TensorType(tensor_1.dtype, tensor_1.shape))
+    second_key = caching_executor._get_hashable_key(
+        tensor_1, computation_types.TensorType(tensor_1.dtype, tensor_1.shape))
+    self.assertNotEqual(first_key, second_key)
+
+  def test_get_key_for_different_but_identical_tensors(self):
+    array_1 = np.ones(shape=[100, 100])
+    tensor_1 = tf.convert_to_tensor(array_1)
+    first_key = caching_executor._get_hashable_key(
+        tensor_1, computation_types.TensorType(tensor_1.dtype, tensor_1.shape))
+    # Tensors compare on ids, so constructing a new object should cause them to
+    # hash differently
+    tensor_2 = tf.convert_to_tensor(array_1)
+    second_key = caching_executor._get_hashable_key(
+        tensor_2, computation_types.TensorType(tensor_2.dtype, tensor_2.shape))
+    self.assertNotEqual(first_key, second_key)
 
 
 class CachingExecutorTest(absltest.TestCase):

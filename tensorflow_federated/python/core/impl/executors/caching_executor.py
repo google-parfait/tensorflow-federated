@@ -74,8 +74,8 @@ def _get_hashable_key(value, type_spec):
   elif isinstance(value, pb.Computation):
     return value.SerializeToString(deterministic=True)
   elif isinstance(value, np.ndarray):
-    return '<dtype={},shape={},items={}>'.format(value.dtype, value.shape,
-                                                 value.flatten())
+    return ('<dtype={},shape={}>'.format(value.dtype,
+                                         value.shape), value.tobytes())
   elif (isinstance(value, collections.Hashable) and
         not isinstance(value, (tf.Tensor, tf.Variable))):
     # TODO(b/139200385): Currently Tensor and Variable returns True for
