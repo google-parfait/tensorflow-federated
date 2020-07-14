@@ -31,6 +31,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 # is non-finite.
 
 import collections
+from typing import Collection, Callable, Optional, Union
 
 import attr
 import tensorflow as tf
@@ -39,10 +40,17 @@ import tensorflow_federated as tff
 from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
+# Convenience type aliases.
+ModelBuilder = Callable[[], tff.learning.Model]
+OptimizerBuilder = Callable[[float], tf.keras.optimizers.Optimizer]
+ClientWeightFn = Callable[..., float]
+LRScheduleFn = Callable[[int], float]
+
 ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
 
 
-def _initialize_optimizer_vars(model, optimizer):
+def _initialize_optimizer_vars(model: tff.learning.Model,
+                               optimizer: tf.keras.optimizers.Optimzer):
   """Ensures variables holding the state of `optimizer` are created."""
   delta = tf.nest.map_structure(tf.zeros_like, _get_weights(model).trainable)
   model_weights = _get_weights(model)
@@ -52,7 +60,7 @@ def _initialize_optimizer_vars(model, optimizer):
   assert optimizer.variables()
 
 
-def _get_weights(model):
+def _get_weights(model: tff.learning.Model) -> ModelWeights:
   return ModelWeights(
       trainable=tuple(model.trainable_variables),
       non_trainable=tuple(model.non_trainable_variables))
@@ -75,19 +83,19 @@ class ServerState(object):
   # schedules.
 
   @classmethod
-  def from_tff_result(cls, anon_tuple):
+  def from_tff_result(cls, anon_tuple) -> 'ServerState':
     """Constructs a `ServerState` from any compatible anonymous tuple."""
     model = ModelWeights(
         trainable=tuple(anon_tuple.model.trainable),
         non_trainable=tuple(anon_tuple.model.non_trainable))
-
     return cls(
         model=model,
         optimizer_state=list(anon_tuple.optimizer_state),
         round_num=anon_tuple.round_num)
 
   @classmethod
-  def assign_weights_to_keras_model(cls, reference_model, keras_model):
+  def assign_weights_to_keras_model(cls, reference_model: ModelWeights,
+                                    keras_model: tf.keras.Model):
     """Assign the model weights to the weights of a `tf.keras.Model`.
 
     Args:
@@ -230,7 +238,9 @@ def create_client_update_fn():
   return client_update
 
 
-def build_server_init_fn(model_fn, server_optimizer_fn):
+def build_server_init_fn(
+    model_fn: ModelBuilder,
+    server_optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer]):
   """Builds a `tff.tf_computation` that returns the initial `ServerState`.
 
   The attributes `ServerState.model` and `ServerState.optimizer_state` are
@@ -259,12 +269,40 @@ def build_server_init_fn(model_fn, server_optimizer_fn):
   return server_init_tf
 
 
-def build_fed_avg_process(model_fn,
-                          client_optimizer_fn,
-                          client_lr=0.1,
-                          server_optimizer_fn=tf.keras.optimizers.SGD,
-                          server_lr=1.0,
-                          client_weight_fn=None):
+class FederatedAveragingProcessAdapter(adapters.IterativeProcessPythonAdapter):
+  """Converts iterative process results from anonymous tuples.
+
+  Converts to ServerState and unpacks metrics. This simplifies tasks such as
+  recording metrics.
+  """
+
+  def __init__(self, iterative_process: tff.tempaltes.IterativeProcess):
+    self._iterative_process = iterative_process
+
+  def initialize(self) -> ServerState:
+    initial_state = self._iterative_process.initialize()
+    return ServerState.from_tff_result(initial_state)
+
+  def next(
+      self,
+      state: ServerState,
+      data: Collection[tf.data.Dataset],
+  ) -> adapters.IterationResult:
+    state, metrics = self._iterative_process.next(state, data)
+    state = ServerState.from_tff_result(state)
+    metrics = metrics._asdict(recursive=True)
+    outputs = None
+    return adapters.IterationResult(state, metrics, outputs)
+
+
+def build_fed_avg_process(
+    model_fn: ModelBuilder,
+    client_optimizer_fn: OptimizerBuilder,
+    client_lr: Union[float, LRScheduleFn] = 0.1,
+    server_optimizer_fn: OptimizerBuilder = tf.keras.optimizers.SGD,
+    server_lr: Union[float, LRScheduleFn] = 1.0,
+    client_weight_fn: Optional[ClientWeightFn] = None
+) -> FederatedAveragingProcessAdapter:
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
@@ -296,7 +334,10 @@ def build_fed_avg_process(model_fn,
 
   dummy_model = model_fn()
 
-  server_init_tf = build_server_init_fn(model_fn, server_optimizer_fn)
+  server_init_tf = build_server_init_fn(
+      model_fn,
+      # Initialize with the learning rate for round zero.
+      lambda: server_optimizer_fn(server_lr_schedule(0)))
   server_state_type = server_init_tf.type_signature.result
   model_weights_type = server_state_type.model
   round_num_type = server_state_type.round_num
@@ -306,7 +347,7 @@ def build_fed_avg_process(model_fn,
   @tff.tf_computation(tf_dataset_type, model_weights_type, round_num_type)
   def client_update_fn(tf_dataset, initial_model_weights, round_num):
     client_lr = client_lr_schedule(round_num)
-    client_optimizer = client_optimizer_fn(learning_rate=client_lr)
+    client_optimizer = client_optimizer_fn(client_lr)
     client_update = create_client_update_fn()
     return client_update(model_fn(), tf_dataset, initial_model_weights,
                          client_optimizer, client_weight_fn)
@@ -315,7 +356,7 @@ def build_fed_avg_process(model_fn,
   def server_update_fn(server_state, model_delta):
     model = model_fn()
     server_lr = server_lr_schedule(server_state.round_num)
-    server_optimizer = server_optimizer_fn(learning_rate=server_lr)
+    server_optimizer = server_optimizer_fn(server_lr)
     # We initialize the server optimizer variables to avoid creating them
     # within the scope of the tf.function server_update.
     _initialize_optimizer_vars(model, server_optimizer)
@@ -363,25 +404,3 @@ def build_fed_avg_process(model_fn,
       initialize_fn=initialize_fn, next_fn=run_one_round)
 
   return FederatedAveragingProcessAdapter(tff_iterative_process)
-
-
-class FederatedAveragingProcessAdapter(adapters.IterativeProcessPythonAdapter):
-  """Converts iterative process results from anonymous tuples.
-
-  Converts to ServerState and unpacks metrics. This simplifies tasks such as
-  recording metrics.
-  """
-
-  def __init__(self, iterative_process):
-    self._iterative_process = iterative_process
-
-  def initialize(self):
-    initial_state = self._iterative_process.initialize()
-    return ServerState.from_tff_result(initial_state)
-
-  def next(self, state, data):
-    state, metrics = self._iterative_process.next(state, data)
-    state = ServerState.from_tff_result(state)
-    metrics = metrics._asdict(recursive=True)
-    outputs = None
-    return adapters.IterationResult(state, metrics, outputs)

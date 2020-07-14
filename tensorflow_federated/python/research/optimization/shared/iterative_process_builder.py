@@ -16,10 +16,12 @@
 Here, scheduled iterative processes incorporate client and server learning
 rate schedules directly. For more details on the learning rate scheduling
 functions, see optimizer_utils.py.
-
 """
 
+from typing import Callable, List, Optional
+
 from absl import flags
+import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.optimization.shared import fed_avg_schedule
@@ -35,12 +37,20 @@ with utils_impl.record_hparam_flags():
 
 FLAGS = flags.FLAGS
 
+# Convenience type aliases.
+ModelBuilder = Callable[[], tff.learning.Model]
+LossBuilder = Callable[[], tf.keras.losses.Loss]
+MetricsBuilder = Callable[[], List[tf.keras.metrics.Metric]]
+ClientWeightFn = Callable[..., float]
 
-def from_flags(input_spec,
-               model_builder,
-               loss_builder,
-               metrics_builder,
-               client_weight_fn=None):
+
+def from_flags(
+    input_spec,
+    model_builder: ModelBuilder,
+    loss_builder: LossBuilder,
+    metrics_builder: MetricsBuilder,
+    client_weight_fn: Optional[ClientWeightFn] = None
+) -> fed_avg_schedule.FederatedAveragingProcessAdapter:
   """Builds a `tff.templates.IterativeProcess` instance from flags.
 
   The iterative process is designed to incorporate learning rate schedules,
@@ -62,7 +72,7 @@ def from_flags(input_spec,
       to the number of examples processed over all batches.
 
   Returns:
-    An `IterativeProcessPythonAdapter`.
+    A `fed_avg_schedule.FederatedAveragingProcessAdapter`.
   """
   # TODO(b/147808007): Assert that model_builder() returns an uncompiled keras
   # model.
@@ -72,7 +82,7 @@ def from_flags(input_spec,
   client_lr_schedule = optimizer_utils.create_lr_schedule_from_flags('client')
   server_lr_schedule = optimizer_utils.create_lr_schedule_from_flags('server')
 
-  def tff_model_fn():
+  def tff_model_fn() -> tff.learning.Model:
     return tff.learning.from_keras_model(
         keras_model=model_builder(),
         input_spec=input_spec,
