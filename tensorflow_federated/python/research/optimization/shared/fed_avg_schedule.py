@@ -50,7 +50,7 @@ ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
 
 
 def _initialize_optimizer_vars(model: tff.learning.Model,
-                               optimizer: tf.keras.optimizers.Optimzer):
+                               optimizer: tf.keras.optimizers.Optimizer):
   """Ensures variables holding the state of `optimizer` are created."""
   delta = tf.nest.map_structure(tf.zeros_like, _get_weights(model).trainable)
   model_weights = _get_weights(model)
@@ -276,7 +276,7 @@ class FederatedAveragingProcessAdapter(adapters.IterativeProcessPythonAdapter):
   recording metrics.
   """
 
-  def __init__(self, iterative_process: tff.tempaltes.IterativeProcess):
+  def __init__(self, iterative_process: tff.templates.IterativeProcess):
     self._iterative_process = iterative_process
 
   def initialize(self) -> ServerState:
