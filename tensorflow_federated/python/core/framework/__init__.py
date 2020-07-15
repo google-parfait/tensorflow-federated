@@ -53,7 +53,6 @@ from tensorflow_federated.python.core.impl.context_stack.context_stack_base impo
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_default_context
 from tensorflow_federated.python.core.impl.executors.caching_executor import CachingExecutor
-from tensorflow_federated.python.core.impl.executors.default_executor import set_default_executor
 from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
 from tensorflow_federated.python.core.impl.executors.execution_context import ExecutionContext
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor

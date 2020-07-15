@@ -14,50 +14,10 @@
 
 from absl.testing import absltest
 
-from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_test_utils
 from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import execution_context
-from tensorflow_federated.python.core.impl.executors import executor_factory
-
-
-class TestSetDefaultExecutor(absltest.TestCase):
-
-  def setUp(self):
-    super().setUp()
-    context = context_stack_test_utils.TestContext()
-    context_stack_impl.context_stack.set_default_context(context)
-
-  def test_with_executor_factory(self):
-    context_stack = context_stack_impl.context_stack
-    executor_factory_impl = executor_factory.ExecutorFactoryImpl(lambda _: None)
-    self.assertNotIsInstance(context_stack.current,
-                             execution_context.ExecutionContext)
-
-    default_executor.set_default_executor(executor_factory_impl)
-
-    self.assertIsInstance(context_stack.current,
-                          execution_context.ExecutionContext)
-    self.assertIs(context_stack.current._executor_factory,
-                  executor_factory_impl)
-
-  # TODO(b/148233458): ReferenceExecutor is special cased by the implementation
-  # of `set_default_executor.set_default_executor`. This test exists to ensure
-  # that this case is handled well, but can be removed when that special casing
-  # is removed.
-  def test_with_reference_executor(self):
-    context_stack = context_stack_impl.context_stack
-    executor = reference_executor.ReferenceExecutor()
-    self.assertIsNot(context_stack.current, executor)
-
-    default_executor.set_default_executor(executor)
-
-    self.assertIs(context_stack.current, executor)
-
-  def test_raises_type_error_with_none(self):
-    with self.assertRaises(TypeError):
-      default_executor.set_default_executor(None)
 
 
 class TestInitializeDefaultExecutionContext(absltest.TestCase):

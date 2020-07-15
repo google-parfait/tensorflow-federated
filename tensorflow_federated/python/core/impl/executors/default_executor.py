@@ -13,36 +13,9 @@
 # limitations under the License.
 """Utilities to interact with the default executor."""
 
-from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
-from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_stacks
-
-
-def set_default_executor(executor_factory_instance):
-  """Places an `executor`-backed execution context at the top of the stack.
-
-  Note: This function is deprecated, please use
-  `tff.framework.set_default_context` instead.
-
-  Args:
-    executor_factory_instance: An instance of
-      `executor_factory.ExecutorFactory`.
-  """
-  if isinstance(executor_factory_instance, executor_factory.ExecutorFactory):
-    context = execution_context.ExecutionContext(executor_factory_instance)
-  elif isinstance(executor_factory_instance,
-                  reference_executor.ReferenceExecutor):
-    # TODO(b/148233458): ReferenceExecutor inherits from ExectionContext and is
-    # used as-is here. The plan is to migrate it to the new Executor base class
-    # and stand it up inside a factory like all other executors.
-    context = executor_factory_instance
-  else:
-    raise TypeError('Expected `executor_factory_instance` to be of type '
-                    '`executor_factory.ExecutorFactory`, found {}.'.format(
-                        type(executor_factory_instance)))
-  context_stack_impl.context_stack.set_default_context(context)
 
 
 def initialize_default_execution_context():
