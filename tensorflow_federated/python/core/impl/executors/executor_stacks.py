@@ -327,11 +327,11 @@ def local_executor_factory(
       multiple levels of aggregators. The height of the stack will be on the
       order of `log(num_clients) / log(max_fanout)`.
     num_client_executors: The number of distinct client executors to run
-      concurrently; executing more clients than this number results in
-      multiple clients having their work pinned on a single executor in a
-      synchronous fashion.
-    server_tf_device: A `tf.config.LogicalDevice` to place server and
-      other computation without explicit TFF placement.
+      concurrently; executing more clients than this number results in multiple
+      clients having their work pinned on a single executor in a synchronous
+      fashion.
+    server_tf_device: A `tf.config.LogicalDevice` to place server and other
+      computation without explicit TFF placement.
     client_tf_devices: List/tuple of `tf.config.LogicalDevice` to place clients
       for simulation. Possibly accelerators returned by
       `tf.config.list_logical_devices()`.
@@ -391,9 +391,9 @@ def sizing_executor_factory(
       multiple levels of aggregators. The height of the stack will be on the
       order of `log(num_clients) / log(max_fanout)`.
     num_client_executors: The number of distinct client executors to run
-      concurrently; executing more clients than this number results in
-      multiple clients having their work pinned on a single executor in a
-      synchronous fashion.
+      concurrently; executing more clients than this number results in multiple
+      clients having their work pinned on a single executor in a synchronous
+      fashion.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the

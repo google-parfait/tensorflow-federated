@@ -38,6 +38,7 @@ class IntrinsicsTest(parameterized.TestCase):
     self.assertEqual(value.type_signature.compact_representation(), type_string)
 
   def test_federated_broadcast_with_server_all_equal_int(self):
+
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placements.SERVER))
     def foo(x):

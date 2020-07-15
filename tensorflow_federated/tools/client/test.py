@@ -18,7 +18,6 @@ from absl import flags
 import grpc
 import tensorflow_federated as tff
 
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('host', None, 'The host to connect to.')

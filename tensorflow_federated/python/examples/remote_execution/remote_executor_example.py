@@ -30,7 +30,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('host', None, 'The host to connect to.')

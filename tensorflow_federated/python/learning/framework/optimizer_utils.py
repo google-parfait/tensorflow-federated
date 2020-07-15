@@ -28,7 +28,6 @@ from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
-
 # Type aliases.
 _ModelConstructor = Callable[[], model_lib.Model]
 _OptimizerConstructor = Callable[[], tf.keras.optimizers.Optimizer]
@@ -247,8 +246,8 @@ def _build_initialize_computation(
       `tf.keras.optimizers.Optimizer`. *Must* construct and return a new
       optimizer when called. Returning captured optimizers from other scopes
       will raise errors.
-    broadcast_process: a `tff.templates.MeasuredProcess` to broadcast the
-      global model to the clients.
+    broadcast_process: a `tff.templates.MeasuredProcess` to broadcast the global
+      model to the clients.
     aggregation_process: a `tff.templates.MeasuredProcess` to aggregate client
       model deltas.
 
@@ -311,8 +310,8 @@ def _build_one_round_computation(
       that returns `tff.learning.Model` as an argument and returns a
       `ClientDeltaFn` which performs the local training loop and model delta
       computation.
-    broadcast_process: a `tff.templates.MeasuredProcess` to broadcast the
-      global model to the clients.
+    broadcast_process: a `tff.templates.MeasuredProcess` to broadcast the global
+      model to the clients.
     aggregation_process: a `tff.templates.MeasuredProcess` to aggregate client
       model deltas.
 
@@ -631,8 +630,8 @@ def build_model_delta_optimizer_process(
       `next_fn` performs a federated broadcast and updates state. That is, it
       has TFF type `(state@SERVER, value@SERVER) -> (state@SERVER,
       value@CLIENTS)`, where the `value` type is
-      `tff.learning.framework.ModelWeights`
-      corresponding to the object returned by `model_fn`.
+      `tff.learning.framework.ModelWeights` corresponding to the object returned
+      by `model_fn`.
     broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`.

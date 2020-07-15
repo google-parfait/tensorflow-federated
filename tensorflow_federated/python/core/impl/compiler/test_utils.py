@@ -113,8 +113,7 @@ def create_dummy_called_federated_aggregate(accumulate_parameter_name,
     accumulate_parameter_name: The name of the accumulate parameter.
     merge_parameter_name: The name of the merge parameter.
     report_parameter_name: The name of the report parameter.
-    value_type: The TFF type of the value to be aggregated, placed at
-      CLIENTS.
+    value_type: The TFF type of the value to be aggregated, placed at CLIENTS.
   """
   federated_value_type = computation_types.FederatedType(
       value_type, placement_literals.CLIENTS)

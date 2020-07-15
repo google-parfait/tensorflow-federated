@@ -229,9 +229,9 @@ class RemoteExecutor(executor_base.Executor):
         for the reply to a streaming RPC message. Uses the default Executor if
         not specified.
       dispose_batch_size: The batch size for requests to dispose of remote
-        worker values. Lower values will result in more requests to the
-        remote worker, but will result in values being cleaned up sooner
-        and therefore may result in lower memory usage on the remote worker.
+        worker values. Lower values will result in more requests to the remote
+        worker, but will result in values being cleaned up sooner and therefore
+        may result in lower memory usage on the remote worker.
     """
 
     py_typecheck.check_type(channel, grpc.Channel)

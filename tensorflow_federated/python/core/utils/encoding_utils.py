@@ -37,7 +37,6 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding
 
-
 _ALLOWED_ENCODERS = (tensor_encoding.core.SimpleEncoder,
                      tensor_encoding.core.GatherEncoder,
                      tensor_encoding.core.EncoderComposer)

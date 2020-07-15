@@ -30,7 +30,6 @@ from tensorflow_federated.python.core.utils.computation_utils import StatefulAgg
 from tensorflow_federated.python.core.utils.computation_utils import StatefulBroadcastFn
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
-
 _bad_encoder_named_parameters = [('float', 1.0), ('string', 'str'),
                                  ('object', object),
                                  ('encoder', te.encoders.identity())]

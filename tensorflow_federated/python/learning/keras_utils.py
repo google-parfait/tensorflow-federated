@@ -92,12 +92,12 @@ def from_keras_model(keras_model,
     loss: A `tf.keras.losses.Loss` that takes two batched tensor parameters,
       `y_true` and `y_pred`, and returns the loss. If the model has multiple
       outputs, you can  use a different loss on each output by passing a
-      dictionary or a list of losses. The loss value that will be minimized
-      by the model will then be the sum of all individual losses, each weighted
-      by `loss_weights`.
-    input_spec: A value convertible to `tff.Type` specifying the type
-      of arguments the model expects. Notice this must be a compound structure
-      of two elements, specifying both the data fed into the model to generate
+      dictionary or a list of losses. The loss value that will be minimized by
+      the model will then be the sum of all individual losses, each weighted by
+      `loss_weights`.
+    input_spec: A value convertible to `tff.Type` specifying the type of
+      arguments the model expects. Notice this must be a compound structure of
+      two elements, specifying both the data fed into the model to generate
       predictions, as its first element, as well as the expected type of the
       ground truth as its second.
     loss_weights: (Optional) a list or dictionary specifying scalar coefficients

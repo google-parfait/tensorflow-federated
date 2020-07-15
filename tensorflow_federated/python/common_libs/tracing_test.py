@@ -24,7 +24,6 @@ from absl.testing import absltest
 
 from tensorflow_federated.python.common_libs import tracing
 
-
 # Traces may not run in _exactly_ one second, but we can assert it was at least
 # one second; and most importantly the time should be logged.
 ELAPSED_ONE_REGEX = r'Elapsed time [1-9][0-9]*\.[0-9]+'

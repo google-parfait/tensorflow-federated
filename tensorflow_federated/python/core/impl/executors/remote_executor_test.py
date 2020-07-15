@@ -444,8 +444,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
     self.assertEqual(result, 230)
 
     # Make sure exactly two selections happened.
-    seletions = [x for x in context.tracer.trace
-                 if x[0] == 'create_selection']
+    seletions = [x for x in context.tracer.trace if x[0] == 'create_selection']
     self.assertLen(seletions, 2)
 
   @parameterized.named_parameters(
@@ -467,8 +466,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
     with test_context() as context:
 
       @computations.federated_computation(
-          computation_types.FederatedType(tf.int32,
-                                          placement_literals.CLIENTS))
+          computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
       def foo(x):
         return intrinsics.federated_sum(x)
 
@@ -476,8 +474,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       self.assertEqual(result, 60)
 
       @computations.federated_computation(
-          computation_types.FederatedType(tf.int32,
-                                          placement_literals.SERVER))
+          computation_types.FederatedType(tf.int32, placement_literals.SERVER))
       def bar(x):
         return intrinsics.federated_broadcast(x)
 
@@ -489,8 +486,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
         return x + 1
 
       @computations.federated_computation(
-          computation_types.FederatedType(tf.int32,
-                                          placement_literals.SERVER))
+          computation_types.FederatedType(tf.int32, placement_literals.SERVER))
       def baz(x):
         value = intrinsics.federated_broadcast(x)
         return intrinsics.federated_map(add_one, value)

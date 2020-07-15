@@ -1097,8 +1097,7 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
         return False
       arg_generator = (x.argument for x in comp)
       first_arg = next(arg_generator)
-      return all(
-          tree_analysis.trees_equal(x, first_arg) for x in arg_generator)
+      return all(tree_analysis.trees_equal(x, first_arg) for x in arg_generator)
 
   def transform(self, comp):
     if not self.should_transform(comp):

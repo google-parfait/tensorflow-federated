@@ -194,13 +194,11 @@ def build_federated_averaging_process(
       `broadcast_process` is not `None`.
     broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
-      `(input_values@SERVER -> output_values@CLIENT)`.
-      Must be `None` if
+      `(input_values@SERVER -> output_values@CLIENT)`. Must be `None` if
       `stateful_model_broadcast_fn` is not `None`.
     aggregation_process: a `tff.templates.MeasuredProcess` that aggregates the
       model updates on the clients back to the server. It must support the
-      signature `({input_values}@CLIENTS-> output_values@SERVER)`.
-      Must be
+      signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
       `None` if `stateful_delta_aggregate_fn` is not `None`.
 
   Returns:

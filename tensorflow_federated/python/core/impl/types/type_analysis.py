@@ -34,8 +34,8 @@ def count(type_signature: computation_types.Type,
 
   Args:
     type_signature: A tree of `computation_type.Type`s to count.
-    predicate: A Python function that takes a type as a parameter and
-      returns a boolean value.
+    predicate: A Python function that takes a type as a parameter and returns a
+      boolean value.
   """
   counter = 1 if predicate(type_signature) else 0
   counter += sum(count(child, predicate) for child in type_signature.children())

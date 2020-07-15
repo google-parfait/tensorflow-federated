@@ -19,7 +19,6 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
-
 # TODO(b/146086870) Move more tests into this file
 
 

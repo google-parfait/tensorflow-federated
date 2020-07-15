@@ -492,8 +492,8 @@ class ReferenceResolvingExecutor(executor_base.Executor):
 
     Args:
       comp: An instance of `pb.Computation` to process.
-      scope: A `ReferenceResolvingExecutorScope` to process it in.
-        If omitted,defaults to an empty scope.
+      scope: A `ReferenceResolvingExecutorScope` to process it in. If
+        omitted,defaults to an empty scope.
 
     Returns:
       An instance of `ReferenceResolvingExecutorValue`.

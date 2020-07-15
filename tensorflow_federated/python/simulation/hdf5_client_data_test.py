@@ -22,7 +22,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.simulation import hdf5_client_data
 
-
 TEST_DATA = {
     'CLIENT A': {
         'w': np.asarray([100, 200, 300], dtype='i8'),

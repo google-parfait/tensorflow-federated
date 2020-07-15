@@ -174,6 +174,7 @@ class SizingExecutorTest(parameterized.TestCase):
     ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
     type_spec = computation_types.NamedTupleType([tf.int32, tf.int32])
     value = anonymous_tuple.AnonymousTuple([(None, 0), (None, 1)])
+
     async def _make():
       v1 = await ex.create_value(value, type_spec)
       return await v1.compute()

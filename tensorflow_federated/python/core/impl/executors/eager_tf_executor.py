@@ -36,7 +36,6 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import graph_merge
 
-
 # Cache size here is simply heuristic, no formal analysis.
 _TF_FUNCTION_CACHE_SIZE = 100
 

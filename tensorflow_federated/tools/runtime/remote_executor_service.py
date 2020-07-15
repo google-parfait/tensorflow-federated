@@ -18,7 +18,6 @@ from absl import flags
 import grpc
 import tensorflow_federated as tff
 
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('port', '8000', 'port to listen on')

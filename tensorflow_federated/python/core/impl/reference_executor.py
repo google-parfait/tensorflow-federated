@@ -581,6 +581,7 @@ class ReferenceExecutor(context_base.Context):
 
   def __init__(self):
     """Creates a reference executor."""
+
     # TODO(b/113116813): Add a way to declare environmental bindings here,
     # e.g., a way to specify how data URIs are mapped to physical resources.
 

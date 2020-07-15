@@ -134,8 +134,7 @@ def is_argument_tuple(arg) -> bool:
   return max_unnamed < min_named
 
 
-def unpack_args_from_tuple(
-    tuple_with_args) -> Tuple[List[Any], Dict[str, Any]]:
+def unpack_args_from_tuple(tuple_with_args) -> Tuple[List[Any], Dict[str, Any]]:
   """Extracts argument types from a named tuple type.
 
   Args:

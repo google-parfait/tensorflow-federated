@@ -24,7 +24,6 @@ import tensorflow as tf
 from tensorflow_federated.python.simulation import hdf5_client_data
 from tensorflow_federated.python.simulation import transforming_client_data
 
-
 TEST_DATA = {
     'CLIENT A': {
         'x': np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4'),

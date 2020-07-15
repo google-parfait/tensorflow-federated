@@ -563,6 +563,7 @@ class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
 
 def dedupe_and_merge_tuple_intrinsics(comp, uri):
   r"""Merges tuples of called intrinsics into one called intrinsic."""
+
   # TODO(b/147359721): The application of the function below is a workaround to
   # a known pattern preventing TFF from deduplicating, effectively because tree
   # equality won't determine that [a, a][0] and [a, a][1] are actually the same
