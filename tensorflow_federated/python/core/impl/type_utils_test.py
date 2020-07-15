@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 class TypeUtilsTest(test.TestCase, parameterized.TestCase):
 
   def test_to_canonical_value_with_none(self):
-    self.assertEqual(type_utils.to_canonical_value(None), None)
+    self.assertIsNone(type_utils.to_canonical_value(None))
 
   def test_to_canonical_value_with_int(self):
     self.assertEqual(type_utils.to_canonical_value(1), 1)
