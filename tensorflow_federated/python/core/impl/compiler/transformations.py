@@ -55,7 +55,8 @@ def prepare_for_rebinding(comp):
     selections from tuples collapsed.
   """
   # TODO(b/146430051): Follow up here and consider removing or enforcing more
-  # strict output invariants when `remove_lambdas_and_blocks` is moved in here.
+  # strict output invariants when `remove_called_lambdas_and_blocks` is moved
+  # in here.
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   comp, _ = tree_transformations.uniquify_reference_names(comp)
   comp, _ = tree_transformations.replace_called_lambda_with_block(comp)
@@ -80,7 +81,7 @@ def prepare_for_rebinding(comp):
       comp, _transform_fn, symbol_tree)
 
 
-def remove_lambdas_and_blocks(comp):
+def remove_called_lambdas_and_blocks(comp):
   """Removes any called lambdas and blocks from `comp`.
 
   This function will rename all the variables in `comp` in a single walk of the
@@ -620,17 +621,17 @@ class TensorFlowGenerator(transformation_utils.TransformSpec):
   def transform(self, local_function):
     if not self.should_transform(local_function):
       return local_function, False
-    refs_removed, _ = remove_lambdas_and_blocks(local_function)
+    refs_removed, _ = remove_called_lambdas_and_blocks(local_function)
     parsed_to_tf, _ = remove_duplicate_called_graphs(refs_removed)
     if parsed_to_tf.is_compiled_computation() or (
         parsed_to_tf.is_call() and
         parsed_to_tf.function.is_compiled_computation()):
       return parsed_to_tf, True
     # TODO(b/146430051): We should only end up in this case if
-    # `remove_lambdas_and_blocks` above is in its failure mode, IE, failing to
-    # resolve references due to too-deep indirection; we should remove
-    # this extra case and simply raise if we fail here when we fix the attached
-    # bug.
+    # `remove_called_lambdas_and_blocks` above is in its failure mode, IE,
+    # failing to resolve references due to too-deep indirection; we should
+    # remove this extra case and simply raise if we fail here when we fix the
+    # attached bug.
     called_graphs_inserted, _ = tree_transformations.insert_called_tf_identity_at_leaves(
         parsed_to_tf)
     compiled_comp, _ = transformation_utils.transform_postorder(

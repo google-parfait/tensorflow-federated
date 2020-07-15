@@ -218,7 +218,7 @@ def consolidate_and_extract_local_processing(comp):
     produced by this extraction step, as described above.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  comp, _ = transformations.remove_lambdas_and_blocks(comp)
+  comp, _ = transformations.remove_called_lambdas_and_blocks(comp)
   if comp.type_signature.is_function():
     if comp.is_compiled_computation():
       return comp

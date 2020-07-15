@@ -46,7 +46,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     called_lambda = building_blocks.Call(identity_lam,
                                          building_blocks.Data('a', tf.int32))
-    lambdas_and_blocks_removed, modified = transformations.remove_lambdas_and_blocks(
+    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
         called_lambda)
     self.assertTrue(modified)
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
@@ -57,7 +57,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
     simple_block = building_blocks.Block([('x', data)],
                                          building_blocks.Reference(
                                              'x', tf.int32))
-    lambdas_and_blocks_removed, modified = transformations.remove_lambdas_and_blocks(
+    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
         simple_block)
     self.assertTrue(modified)
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
@@ -77,7 +77,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
     concrete_arg = building_blocks.Data('a', tf.int32)
     arg_tuple = building_blocks.Tuple([concrete_fn, concrete_arg])
     generated_structure = building_blocks.Block([('arg', arg_tuple)], called_fn)
-    lambdas_and_blocks_removed, modified = transformations.remove_lambdas_and_blocks(
+    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
         generated_structure)
     self.assertTrue(modified)
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
@@ -91,7 +91,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
     zipped = building_block_factory.create_federated_zip(unzipped)
     placement_unwrapped, _ = tree_transformations.unwrap_placement(zipped)
     placement_gone = placement_unwrapped.argument
-    lambdas_and_blocks_removed, modified = transformations.remove_lambdas_and_blocks(
+    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
         placement_gone)
     self.assertTrue(modified)
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
@@ -105,7 +105,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
     higher_level_lambda = building_blocks.Lambda('fn',
                                                  identity_lam.type_signature,
                                                  called_inner_lambda)
-    lambdas_and_blocks_removed, modified = transformations.remove_lambdas_and_blocks(
+    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
         higher_level_lambda)
     self.assertTrue(modified)
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
@@ -126,7 +126,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
         ('b', tuple_wrapping_ref),
         ('c', selection_from_ref),
     ], called_lambda_with_indirection)
-    lambdas_and_blocks_removed, modified = transformations.remove_lambdas_and_blocks(
+    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
         blk)
     self.assertTrue(modified)
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
@@ -145,7 +145,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
     left_lambda = building_blocks.Lambda('x', middle_lambda.type_signature, rez)
     higher_call = building_blocks.Call(left_lambda, middle_lambda)
     high_call = building_blocks.Call(higher_call, data)
-    lambdas_and_blocks_removed, modified = transformations.remove_lambdas_and_blocks(
+    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
         high_call)
     self.assertTrue(modified)
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)

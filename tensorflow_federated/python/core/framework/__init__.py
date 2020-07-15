@@ -35,7 +35,7 @@ from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERA
 from tensorflow_federated.python.core.impl.compiler.intrinsic_defs import FEDERATED_MAP_ALL_EQUAL
 from tensorflow_federated.python.core.impl.compiler.transformation_utils import get_map_of_unbound_references
 from tensorflow_federated.python.core.impl.compiler.transformation_utils import transform_postorder
-from tensorflow_federated.python.core.impl.compiler.transformations import remove_lambdas_and_blocks
+from tensorflow_federated.python.core.impl.compiler.transformations import remove_called_lambdas_and_blocks
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_broadcast_not_dependent_on_aggregate
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_has_unique_names
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_intrinsics_whitelisted_for_reduction
