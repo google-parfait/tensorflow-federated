@@ -13,4 +13,5 @@
 # limitations under the License.
 """Utilities for interacting with a native backend."""
 
+from tensorflow_federated.python.core.backends.native.compiler import transform_to_native_form
 from tensorflow_federated.python.core.backends.native.execution_contexts import set_local_execution_context

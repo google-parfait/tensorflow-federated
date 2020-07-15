@@ -13,6 +13,7 @@
 # limitations under the License.
 """Execution contexts for the native backend."""
 
+from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -30,5 +31,6 @@ def set_local_execution_context(num_clients=None,
       num_client_executors=num_client_executors,
       server_tf_device=server_tf_device,
       client_tf_devices=client_tf_devices)
-  context = execution_context.ExecutionContext(factory)
+  context = execution_context.ExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.transform_to_native_form)
   context_stack_impl.context_stack.set_default_context(context)
