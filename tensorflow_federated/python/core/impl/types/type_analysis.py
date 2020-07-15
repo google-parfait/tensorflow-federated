@@ -160,7 +160,7 @@ def check_type(value: Any, type_spec: computation_types.Type):
 
 
 def is_tensorflow_compatible_type(type_spec):
-  """Checks `type_spec` against an explicit whitelist for `tf_computation`."""
+  """Checks `type_spec` against an explicit list of `tf_computation`."""
   if type_spec is None:
     return True
   return contains_only(
@@ -175,7 +175,7 @@ def check_tensorflow_compatible_type(type_spec):
 
 
 def is_generic_op_compatible_type(type_spec):
-  """Checks `type_spec` against an explicit whitelist for generic operators."""
+  """Checks `type_spec` against an explicit list of generic operators."""
   if type_spec is None:
     return True
   return contains_only(type_spec, lambda t: t.is_tuple() or t.is_tensor())

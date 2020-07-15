@@ -37,8 +37,8 @@ from tensorflow_federated.python.core.impl.compiler.transformation_utils import 
 from tensorflow_federated.python.core.impl.compiler.transformation_utils import transform_postorder
 from tensorflow_federated.python.core.impl.compiler.transformations import remove_called_lambdas_and_blocks
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_broadcast_not_dependent_on_aggregate
+from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_contains_only_reducible_intrinsics
 from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_has_unique_names
-from tensorflow_federated.python.core.impl.compiler.tree_analysis import check_intrinsics_whitelisted_for_reduction
 from tensorflow_federated.python.core.impl.compiler.tree_transformations import inline_block_locals
 from tensorflow_federated.python.core.impl.compiler.tree_transformations import insert_called_tf_identity_at_leaves
 from tensorflow_federated.python.core.impl.compiler.tree_transformations import merge_tuple_intrinsics

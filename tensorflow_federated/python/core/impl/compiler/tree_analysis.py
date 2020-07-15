@@ -136,8 +136,8 @@ def check_has_single_placement(comp, single_placement):
   _visit_postorder(comp, _check_single_placement)
 
 
-def check_intrinsics_whitelisted_for_reduction(comp):
-  """Checks whitelist of intrinsics reducible to aggregate or broadcast.
+def check_contains_only_reducible_intrinsics(comp):
+  """Checks that `comp` contains intrinsics reducible to aggregate or broadcast.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` to check for
@@ -145,11 +145,10 @@ def check_intrinsics_whitelisted_for_reduction(comp):
       `FEDERATED_AGGREGATE` or `FEDERATED_BROADCAST`, or local processing.
 
   Raises:
-    ValueError: If we encounter an intrinsic under `comp` that is not
-    whitelisted as currently reducible.
+    ValueError: If we encounter an intrinsic under `comp` that is not reducible.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  uri_whitelist = (
+  reducible_uris = (
       intrinsic_defs.FEDERATED_AGGREGATE.uri,
       intrinsic_defs.FEDERATED_APPLY.uri,
       intrinsic_defs.FEDERATED_BROADCAST.uri,
@@ -164,13 +163,13 @@ def check_intrinsics_whitelisted_for_reduction(comp):
       intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
   )
 
-  def _check_whitelisted(comp):
-    if comp.is_intrinsic() and comp.uri not in uri_whitelist:
+  def _check(comp):
+    if comp.is_intrinsic() and comp.uri not in reducible_uris:
       raise ValueError(
           'Encountered an Intrinsic not currently reducible to aggregate or '
           'broadcast, the intrinsic {}'.format(comp.compact_representation()))
 
-  _visit_postorder(comp, _check_whitelisted)
+  _visit_postorder(comp, _check)
 
 
 def check_has_unique_names(comp):

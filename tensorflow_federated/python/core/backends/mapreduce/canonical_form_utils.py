@@ -923,8 +923,8 @@ def get_canonical_form_for_iterative_process(ip):
 
   initialize_comp = _replace_intrinsics_with_bodies(initialize_comp)
   next_comp = _replace_intrinsics_with_bodies(next_comp)
-  tree_analysis.check_intrinsics_whitelisted_for_reduction(initialize_comp)
-  tree_analysis.check_intrinsics_whitelisted_for_reduction(next_comp)
+  tree_analysis.check_contains_only_reducible_intrinsics(initialize_comp)
+  tree_analysis.check_contains_only_reducible_intrinsics(next_comp)
   tree_analysis.check_broadcast_not_dependent_on_aggregate(next_comp)
 
   if tree_analysis.contains_called_intrinsic(

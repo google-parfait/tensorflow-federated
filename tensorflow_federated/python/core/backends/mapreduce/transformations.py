@@ -165,7 +165,7 @@ def consolidate_and_extract_local_processing(comp):
   5. There is at most one unbound reference under `comp`, and this is only
      allowed in the case that `comp` is not of a functional type.
 
-  Aside from the intrinsics whitelisted above, and the possibility of allowing
+  Aside from the intrinsics specified above, and the possibility of allowing
   lambdas, blocks, and references given the constraints above, the remaining
   constructs in `comp` include a combination of tuples, selections, calls, and
   sections of TensorFlow (as `CompiledComputation`s). This helper function does

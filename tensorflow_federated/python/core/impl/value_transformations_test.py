@@ -204,7 +204,7 @@ class ReplaceIntrinsicsWithBodiesTest(absltest.TestCase):
 
     self.assertGreater(count_before_reduction, 0)
     self.assertEqual(count_after_reduction, 0)
-    tree_analysis.check_intrinsics_whitelisted_for_reduction(reduced)
+    tree_analysis.check_contains_only_reducible_intrinsics(reduced)
     self.assertTrue(modified)
 
 

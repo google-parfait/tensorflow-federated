@@ -195,8 +195,8 @@ def create_binary_operator(
                                                      operand_2_value)
     else:
       raise TypeError(
-          'Operand type {} cannot be used in generic operations. The whitelist '
-          'in `type_analysis.is_generic_op_compatible_type` has allowed it to '
+          'Operand type {} cannot be used in generic operations. The call to '
+          '`type_analysis.is_generic_op_compatible_type` has allowed it to '
           'pass, and should be updated.'.format(operand_type))
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result_value, graph)

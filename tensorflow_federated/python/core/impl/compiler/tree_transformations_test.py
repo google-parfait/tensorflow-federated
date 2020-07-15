@@ -1320,7 +1320,7 @@ class InlineBlockLocalsTest(test.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
-  def test_inlines_whitelisted_block_variables(self):
+  def test_inlines_block_variables(self):
     data = building_blocks.Data('data', tf.int32)
     ref_1 = building_blocks.Reference('a', tf.int32)
     ref_2 = building_blocks.Reference('b', tf.int32)

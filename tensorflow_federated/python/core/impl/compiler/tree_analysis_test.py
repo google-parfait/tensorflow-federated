@@ -33,11 +33,11 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
-class IntrinsicsWhitelistedTest(absltest.TestCase):
+class TestCheckContainsOnlyReducibleIntrinsics(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      tree_analysis.check_intrinsics_whitelisted_for_reduction(None)
+      tree_analysis.check_contains_only_reducible_intrinsics(None)
 
   def test_passes_with_federated_map(self):
     intrinsic = building_blocks.Intrinsic(
@@ -50,7 +50,7 @@ class IntrinsicsWhitelistedTest(absltest.TestCase):
                                        computation_types.FederatedType(
                                            tf.float32,
                                            placement_literals.CLIENTS)))
-    tree_analysis.check_intrinsics_whitelisted_for_reduction(intrinsic)
+    tree_analysis.check_contains_only_reducible_intrinsics(intrinsic)
 
   def test_raises_with_federated_mean(self):
     intrinsic = building_blocks.Intrinsic(
@@ -62,7 +62,7 @@ class IntrinsicsWhitelistedTest(absltest.TestCase):
                                             placement_literals.SERVER)))
 
     with self.assertRaisesRegex(ValueError, intrinsic.compact_representation()):
-      tree_analysis.check_intrinsics_whitelisted_for_reduction(intrinsic)
+      tree_analysis.check_contains_only_reducible_intrinsics(intrinsic)
 
 
 def dummy_intrinsic_predicate(x):

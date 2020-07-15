@@ -357,7 +357,7 @@ def extract_intrinsics(comp):
 
 
 class InlineBlock(transformation_utils.TransformSpec):
-  """Inlines the block variables in `comp` whitelisted by `variable_names`.
+  """Inlines the block variables in `comp` specified by `variable_names`.
 
   Each invocation of the `transform` method checks for presence of a
   block-bound `building_blocks.Reference`, and inlines this
@@ -423,7 +423,7 @@ class InlineBlock(transformation_utils.TransformSpec):
 
 
 def inline_block_locals(comp, variable_names=None):
-  """Inlines the block variables in `comp` whitelisted by `variable_names`."""
+  """Inlines the block variables in `comp` specified by `variable_names`."""
   symbol_tree = transformation_utils.SymbolTree(
       transformation_utils.ReferenceCounter)
   transform_spec = InlineBlock(comp, variable_names)
@@ -1612,11 +1612,11 @@ def unwrap_placement(comp):
 
   Raises:
     TypeError: If the lone unbound reference under `comp` is not of federated
-    type, `comp` itself is not of federated type, or `comp` is not a building
-    block.
+      type, `comp` itself is not of federated type, or `comp` is not a building
+      block.
     ValueError: If we encounter a placement other than the one declared by
-    `comp.type_signature`, an intrinsic not present in the whitelist above, or
-    `comp` contains more than one unbound reference.
+      `comp.type_signature`, an intrinsic not present in the conditions above,
+       or `comp` contains more than one unbound reference.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
