@@ -426,7 +426,7 @@ def sizing_executor_factory(
     sizing_executor_list = federating_executor_factory.sizing_executors
     return executor, sizing_executor_list
 
-  return executor_factory.SizingExecutorFactoryImpl(_factory_fn)
+  return executor_factory.SizingExecutorFactory(_factory_fn)
 
 
 def worker_pool_executor_factory(executors,

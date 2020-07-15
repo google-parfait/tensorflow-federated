@@ -59,6 +59,8 @@ from tensorflow_federated.python.core.impl.executors.execution_context import Ex
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_factory import create_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
+from tensorflow_federated.python.core.impl.executors.executor_factory import SizeInfo
+from tensorflow_federated.python.core.impl.executors.executor_factory import SizingExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_service import ExecutorService
 from tensorflow_federated.python.core.impl.executors.executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import sizing_executor_factory

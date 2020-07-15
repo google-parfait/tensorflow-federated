@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 class ExecutorFactoryImplTest(parameterized.TestCase):
 
   def _maybe_wrap_stack_fn(self, stack_fn, ex_factory):
-    """The stack_fn for SizingExecutorFactoryImpl requires two outputs.
+    """The stack_fn for SizingExecutorFactory requires two outputs.
 
     If required, we will wrap the stack_fn and provide a dummy value as the
     second return value.
@@ -37,7 +37,7 @@ class ExecutorFactoryImplTest(parameterized.TestCase):
     Returns:
       A stack_fn that might additionally return a list as the second value.
     """
-    if ex_factory == executor_factory.SizingExecutorFactoryImpl:
+    if ex_factory == executor_factory.SizingExecutorFactory:
       return lambda x: (stack_fn(x), [])
     else:
       return stack_fn
@@ -75,7 +75,7 @@ class ExecutorFactoryImplTest(parameterized.TestCase):
     Fine()
 
   @parameterized.named_parameters(
-      ('SizingExecutorFactoryImpl', executor_factory.SizingExecutorFactoryImpl),
+      ('SizingExecutorFactory', executor_factory.SizingExecutorFactory),
       ('ExecutorFactoryImpl', executor_factory.ExecutorFactoryImpl))
   def test_concrete_class_instantiates_stack_fn(self, ex_factory):
 
@@ -88,7 +88,7 @@ class ExecutorFactoryImplTest(parameterized.TestCase):
     self.assertIsInstance(factory, ex_factory)
 
   @parameterized.named_parameters(
-      ('SizingExecutorFactoryImpl', executor_factory.SizingExecutorFactoryImpl),
+      ('SizingExecutorFactory', executor_factory.SizingExecutorFactory),
       ('ExecutorFactoryImpl', executor_factory.ExecutorFactoryImpl))
   def test_call_constructs_executor(self, ex_factory):
 
@@ -102,7 +102,7 @@ class ExecutorFactoryImplTest(parameterized.TestCase):
     self.assertIsInstance(ex, executor_base.Executor)
 
   @parameterized.named_parameters(
-      ('SizingExecutorFactoryImpl', executor_factory.SizingExecutorFactoryImpl),
+      ('SizingExecutorFactory', executor_factory.SizingExecutorFactory),
       ('ExecutorFactoryImpl', executor_factory.ExecutorFactoryImpl))
   def test_cleanup_succeeds_without_init(self, ex_factory):
 
@@ -115,7 +115,7 @@ class ExecutorFactoryImplTest(parameterized.TestCase):
     factory.clean_up_executors()
 
   @parameterized.named_parameters(
-      ('SizingExecutorFactoryImpl', executor_factory.SizingExecutorFactoryImpl),
+      ('SizingExecutorFactory', executor_factory.SizingExecutorFactory),
       ('ExecutorFactoryImpl', executor_factory.ExecutorFactoryImpl))
   def test_cleanup_calls_close(self, ex_factory):
     ex = eager_tf_executor.EagerTFExecutor()
@@ -132,7 +132,7 @@ class ExecutorFactoryImplTest(parameterized.TestCase):
     ex.close.assert_called_once()
 
   @parameterized.named_parameters(
-      ('SizingExecutorFactoryImpl', executor_factory.SizingExecutorFactoryImpl),
+      ('SizingExecutorFactory', executor_factory.SizingExecutorFactory),
       ('ExecutorFactoryImpl', executor_factory.ExecutorFactoryImpl))
   def test_construction_with_multiple_cardinalities_reuses_existing_stacks(
       self, ex_factory):

@@ -29,7 +29,7 @@ CardinalitiesType = Mapping[placement_literals.PlacementLiteral, int]
 
 @attr.s(auto_attribs=True, eq=False, order=False, frozen=True)
 class SizeInfo(object):
-  """Structure for size information from SizingExecutorFactoryImpl.
+  """Structure for size information from SizingExecutorFactory.get_size_info().
 
   Fields:
   -   `broadcast_history`: 2D ragged list of 2-tuples which represents the
@@ -161,20 +161,15 @@ class ExecutorFactoryImpl(ExecutorFactory):
     self._executors = {}
 
 
-class SizingExecutorFactoryImpl(ExecutorFactoryImpl):
-  """Implementation of executor factory holding an executor per cardinality."""
+class SizingExecutorFactory(ExecutorFactoryImpl):
+  """A executor factory holding an executor per cardinality."""
 
   def __init__(
       self,
       executor_stack_fn: Callable[[CardinalitiesType],
                                   Tuple[executor_base.Executor,
                                         List[sizing_executor.SizingExecutor]]]):
-    """Initializes `SizingExecutorFactoryImpl`.
-
-    The difference between the SizingExecutorFactoryImpl and the
-    ExecutorFactoryImpl is that the given executor_stack_fn for this class will
-    return two values. The first is the same, but the second return value is a
-    list of sizing executors.
+    """Initializes `SizingExecutorFactory`.
 
     Args:
       executor_stack_fn: Similar to base class but the second return value of
