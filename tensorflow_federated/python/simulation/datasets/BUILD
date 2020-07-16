@@ -16,10 +16,7 @@ py_test(
     local = True,
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "manual",
-        "nopresubmit",
-    ],
+    tags = ["nopresubmit"],
     deps = [":cifar100"],
 )
 
@@ -73,10 +70,7 @@ py_test(
     local = True,
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "manual",
-        "nopresubmit",
-    ],
+    tags = ["nopresubmit"],
     deps = [":emnist"],
 )
 
