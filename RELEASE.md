@@ -1,3 +1,53 @@
+# Release 0.15.0
+
+## Major Features and Improvements
+
+*   Updated `tensorflow-addons` package dependency to `0.9.0`.
+*   Added API to expose the native backend more conveniently. See
+    `tff.backends.native.*` for more information.
+*   Added a compiler argument to the `tff.framework.ExecutionContext` API and
+    provided a compiler for the native execution environment, which improves
+    TFF’s default concurrency pattern.
+*   Introduced a new `tff.templates.MeasuredProcess` concept, a specialization
+    of `tff.templates.IterativeProcess`.
+*   Extends `tff.learning` interfaces to accept `tff.templates.MeasuredProcess`
+    objects for aggregation and broadcast computations.
+*   Introduce new convenience method `tff.learning.weights_type_from_model`.
+*   Introduced the concept of a `tff.framework.FederatingStrategy`, which
+    parameterizes the `tff.framework.FederatingExecutor` so that the
+    implementation of a specific intrinsic is easier to provide.
+*   Reduced duplication in TFF’s generated ASTs.
+*   Enabled usage of GPUs on remote workers.
+*   Documentation improvements.
+
+## Breaking Changes
+
+*   The `IterativeProcess` return from
+    `tff.learning.build_federated_averaging_process` and
+    `tff.learning.build_federated_sgd_process` now zip the second tuple output
+    (the metrics) to change the result from a structure of federated values to
+    to a federated structure of values.
+*   Removed `tff.framework.set_default_executor` function, instead you should
+    use the more convenient `tff.backends.native.set_local_execution_context`
+    function or manually construct a context an set it using
+    `tff.framework.set_default_context`.
+*   The `tff.Computation` base class now contains an abstract `__hash__` method,
+    to ensure compilation results can be cached. Any custom implementations of
+    this interface should be updated accordingly.
+
+## Bug Fixes
+
+*   Fixed issue for missing variable initialization for variables explicitly not
+    added to any collections.
+*   Fixed issue where table initializers were not run if the
+    `tff.tf_computation` decorated function used no variables.
+
+## Thanks to our Contributors
+
+This release contains contributions from many people at Google, as well as:
+
+jvmcns@
+
 # Release 0.14.0
 
 ## Major Features and Improvements
