@@ -23,6 +23,35 @@ py_library(
 )
 
 py_library(
+    name = "adaptive_zeroing",
+    srcs = ["adaptive_zeroing.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)
+
+py_test(
+    name = "adaptive_zeroing_test",
+    srcs = ["adaptive_zeroing_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":adaptive_zeroing",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl/executors:default_executor",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
+py_library(
     name = "computation_utils",
     srcs = ["computation_utils.py"],
     srcs_version = "PY3",
