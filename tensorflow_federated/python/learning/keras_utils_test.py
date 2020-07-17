@@ -64,6 +64,8 @@ def _create_tff_model_from_keras_model_tuples():
          model_examples.build_linear_regression_keras_functional_model),
         ('sequential',
          model_examples.build_linear_regression_keras_sequential_model),
+        ('sequential_regularized', model_examples
+         .build_linear_regression_regularized_keras_sequential_model)
     ]:
       tuples.append(('{}_model_{}_dims'.format(name, n_dims), n_dims, model_fn))
   return tuples
@@ -149,9 +151,61 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     #    1    |    0.0     |  0.0  |    0.0   |  0.0
     #    2    |    0.0     |  1.0  |    1.0   |  1.0
     #
+    # Note that though regularization might be applied, this has no effect on
+    # the loss since all weights are 0.
     # Total loss: 1.0
     # Batch average loss: 0.5
     self.assertEqual(self.evaluate(output.loss), 0.5)
+    metrics = self.evaluate(tff_model.report_local_outputs())
+    self.assertEqual(metrics['num_batches'], [1])
+    self.assertEqual(metrics['num_examples'], [2])
+    self.assertGreater(metrics['loss'][0], 0)
+    self.assertEqual(metrics['loss'][1], 2)
+
+  def test_tff_model_from_keras_model_regularization(self):
+    keras_model = model_examples.build_linear_regression_ones_regularized_keras_sequential_model(
+        3)
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=_create_dummy_types(3),
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+    self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+
+    # Metrics should be zero, though the model wrapper internally executes the
+    # forward pass once.
+    self.assertSequenceEqual(
+        self.evaluate(tff_model.local_variables), [0, 0, 0.0, 0.0])
+
+    batch = collections.OrderedDict(
+        x=np.stack([np.zeros(3, np.float32),
+                    np.ones(3, np.float32)]),
+        y=[[0.0], [1.0]])
+    # from_model() was called without an optimizer which creates a tff.Model.
+    # There is no train_on_batch() method available in tff.Model.
+    with self.assertRaisesRegex(AttributeError,
+                                'no attribute \'train_on_batch\''):
+      tff_model.train_on_batch(batch)
+
+    output = tff_model.forward_pass(batch)
+    # Since the model initializes all weights and biases to zero, we expect
+    # all predictions to be zero:
+    #    0*x1 + 0*x2 + ... + 0 = 0
+    self.assertAllEqual(output.predictions, [[1.0], [4.0]])
+    # For the single batch:
+    #
+    # Example | Prediction | Label | Residual | Loss
+    # --------+------------+-------+----------+ -----
+    #    1    |    1.0     |  0.0  |    1.0   |  1.0
+    #    2    |    4.0     |  1.0  |    3.0   |  9.0
+    #
+    # Regularization loss: with an L2 regularization constant of 0.01: kernel
+    # regularizer loss is (3 * 1**2) * 0.01, bias regularizer loss is
+    # 1**2 * 0.01, so total regularization loss is 0.04.
+    # Total loss: 10.0
+    # Batch average loss: 5.0
+    # Total batch loss with regularization: 5.04
+    self.assertAlmostEqual(self.evaluate(output.loss), 5.04)
     metrics = self.evaluate(tff_model.report_local_outputs())
     self.assertEqual(metrics['num_batches'], [1])
     self.assertEqual(metrics['num_examples'], [2])
@@ -515,6 +569,120 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
                 'dummy': 0.4
             })
 
+  def test_regularized_keras_model_multiple_outputs(self):
+    keras_model = model_examples.build_multiple_outputs_regularized_keras_model(
+    )
+    input_spec = collections.OrderedDict(
+        x=[
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
+        ],
+        y=[
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
+        ])
+
+    with self.subTest('loss_output_len_mismatch'):
+      with self.assertRaises(ValueError):
+        _ = keras_utils.from_keras_model(
+            keras_model=keras_model,
+            input_spec=input_spec,
+            loss=[
+                tf.keras.losses.MeanSquaredError(),
+                tf.keras.losses.MeanSquaredError()
+            ])
+
+    with self.subTest('invalid_loss'):
+      with self.assertRaises(TypeError):
+        _ = keras_utils.from_keras_model(
+            keras_model=keras_model, input_spec=input_spec, loss=3)
+
+    with self.subTest('loss_list_no_opt'):
+      tff_model = keras_utils.from_keras_model(
+          keras_model=keras_model,
+          input_spec=input_spec,
+          loss=[
+              tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError()
+          ])
+
+      self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+      dummy_batch = collections.OrderedDict(
+          x=[
+              np.zeros([1, 1], dtype=np.float32),
+              np.zeros([1, 1], dtype=np.float32)
+          ],
+          y=[
+              np.zeros([1, 1], dtype=np.float32),
+              np.ones([1, 1], dtype=np.float32),
+              np.ones([1, 1], dtype=np.float32)
+          ])
+      output = tff_model.forward_pass(dummy_batch)
+
+      # Labels are (0, 1, 1), preds are (1, 1, 3).
+      # Total MSE is 1**2 + 0**2 + 2**2 = 5.
+      # Since all weights are initialized to ones and regularization constant is
+      # 0.01, regularization loss is 0.01 * (num_params). There are 4 dense
+      # layers that take in one input and produce one output, and these each
+      # have a single weight and a single bias. There is one dense layer with
+      # two inputs and one output, so it has two weights and a single bias.
+      # So there are 11 params total and regularization loss is 0.11, for a
+      # total batch loss of 5.11.
+      self.assertAllClose(output.loss, 5.11)
+
+    keras_model = model_examples.build_multiple_outputs_regularized_keras_model(
+    )
+    with self.subTest('loss_weights_as_list'):
+      tff_model = keras_utils.from_keras_model(
+          keras_model=keras_model,
+          input_spec=input_spec,
+          loss=[
+              tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError(),
+              tf.keras.losses.MeanSquaredError()
+          ],
+          loss_weights=[0.1, 0.2, 0.3])
+
+      output = tff_model.forward_pass(dummy_batch)
+
+      # Labels are (0, 1, 1), preds are (1, 1, 3).
+      # Weighted MSE is 0.1 * 1**2 + 0.2 * 0**2 + 0.3 * 2**2 = 1.3.
+      # Regularization loss is 0.11 as before, for a total loss of 1.41.
+      self.assertAllClose(output.loss, 1.41)
+
+      output = tff_model.forward_pass(dummy_batch)
+      self.assertAllClose(output.loss, 1.41)
+
+    with self.subTest('loss_weights_assert_fail_list'):
+      with self.assertRaises(ValueError):
+        _ = keras_utils.from_keras_model(
+            keras_model=keras_model,
+            input_spec=input_spec,
+            loss=[
+                tf.keras.losses.MeanSquaredError(),
+                tf.keras.losses.MeanSquaredError(),
+                tf.keras.losses.MeanSquaredError()
+            ],
+            loss_weights=[0.1, 0.2])
+
+    with self.subTest('loss_weights_assert_fail_dict'):
+      with self.assertRaises(TypeError):
+        _ = keras_utils.from_keras_model(
+            keras_model=keras_model,
+            input_spec=input_spec,
+            loss=[
+                tf.keras.losses.MeanSquaredError(),
+                tf.keras.losses.MeanSquaredError(),
+                tf.keras.losses.MeanSquaredError()
+            ],
+            loss_weights={
+                'dense_5': 0.1,
+                'dense_6': 0.2,
+                'dummy': 0.4
+            })
+
   def test_keras_model_lookup_table(self):
     model = model_examples.build_lookup_table_keras_model()
     input_spec = collections.OrderedDict(
@@ -556,6 +724,27 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(
         self.evaluate(orig_model_output.loss),
         self.evaluate(loaded_model_output.loss))
+
+  def test_keras_model_fails_compiled(self):
+    feature_dims = 3
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims)
+
+    keras_model.compile(loss=tf.keras.losses.MeanSquaredError())
+
+    with self.assertRaisesRegex(ValueError, 'compile'):
+      keras_utils.from_keras_model(
+          keras_model=keras_model,
+          input_spec=_create_dummy_types(feature_dims),
+          loss=tf.keras.losses.MeanSquaredError(),
+          metrics=[NumBatchesCounter(),
+                   NumExamplesCounter()])
+
+    with self.assertRaisesRegex(ValueError, 'compile'):
+      keras_utils._KerasModel(
+          keras_model,
+          input_spec=_create_dummy_types(feature_dims),
+          loss_fns=[tf.keras.losses.MeanSquaredError()])
 
 
 if __name__ == '__main__':

@@ -151,10 +151,104 @@ def _dense_all_zeros_layer(input_dims=None, output_dim=1):
   return build_keras_dense_layer()
 
 
+def _dense_all_zeros_regularized_layer(input_dims=None,
+                                       output_dim=1,
+                                       regularization_constant=0.01):
+  """Create a layer that can be used in isolation for linear regression.
+
+  Constructs a Keras dense layer with a single output, using biases and weights
+  that are initialized to zero. No activation function is applied. When this is
+  the only layer in a model, the model is effectively a linear regression model.
+  The regularization constant is used to scale L2 regularization on the weights
+  and bias.
+
+  Args:
+    input_dims: the integer length of the input to this layers. Maybe None if
+      the layer input size does not need to be specified.
+    output_dim: the integer length of the flattened output tensor. Defaults to
+      one, effectively making the layer perform linear regression.
+    regularization_constant: the float scaling magnitude (lambda) for L2
+      regularization on the layer's weights and bias.
+
+  Returns:
+    a `tf.keras.layers.Dense` object.
+  """
+  regularizer = tf.keras.regularizers.l2(regularization_constant)
+  build_keras_dense_layer = functools.partial(
+      tf.keras.layers.Dense,
+      units=output_dim,
+      use_bias=True,
+      kernel_initializer='zeros',
+      bias_initializer='zeros',
+      kernel_regularizer=regularizer,
+      bias_regularizer=regularizer,
+      activation=None)
+  if input_dims is not None:
+    return build_keras_dense_layer(input_shape=(input_dims,))
+  return build_keras_dense_layer()
+
+
+def _dense_all_ones_regularized_layer(input_dims=None,
+                                      output_dim=1,
+                                      regularization_constant=0.01):
+  """Create a layer that can be used in isolation for linear regression.
+
+  Constructs a Keras dense layer with a single output, using biases and weights
+  that are initialized to ones. No activation function is applied. When this is
+  the only layer in a model, the model is effectively a linear regression model.
+  The regularization constant is used to scale L2 regularization on the weights
+  and bias.
+
+  Args:
+    input_dims: the integer length of the input to this layers. Maybe None if
+      the layer input size does not need to be specified.
+    output_dim: the integer length of the flattened output tensor. Defaults to
+      one, effectively making the layer perform linear regression.
+    regularization_constant: the float scaling magnitude (lambda) for L2
+      regularization on the layer's weights and bias.
+
+  Returns:
+    a `tf.keras.layers.Dense` object.
+  """
+  regularizer = tf.keras.regularizers.l2(regularization_constant)
+  build_keras_dense_layer = functools.partial(
+      tf.keras.layers.Dense,
+      units=output_dim,
+      use_bias=True,
+      kernel_initializer='ones',
+      bias_initializer='ones',
+      kernel_regularizer=regularizer,
+      bias_regularizer=regularizer,
+      activation=None)
+  if input_dims is not None:
+    return build_keras_dense_layer(input_shape=(input_dims,))
+  return build_keras_dense_layer()
+
+
 def build_linear_regression_keras_sequential_model(feature_dims=2):
   """Build a linear regression `tf.keras.Model` using the Sequential API."""
   keras_model = tf.keras.models.Sequential()
   keras_model.add(_dense_all_zeros_layer(feature_dims))
+  return keras_model
+
+
+def build_linear_regression_regularized_keras_sequential_model(
+    feature_dims=2, regularization_constant=0.01):
+  """Build a linear regression `tf.keras.Model` using the Sequential API."""
+  keras_model = tf.keras.models.Sequential()
+  keras_model.add(
+      _dense_all_zeros_regularized_layer(
+          feature_dims, regularization_constant=regularization_constant))
+  return keras_model
+
+
+def build_linear_regression_ones_regularized_keras_sequential_model(
+    feature_dims=2, regularization_constant=0.01):
+  """Build a linear regression `tf.keras.Model` using the Sequential API."""
+  keras_model = tf.keras.models.Sequential()
+  keras_model.add(
+      _dense_all_ones_regularized_layer(
+          feature_dims, regularization_constant=regularization_constant))
   return keras_model
 
 
@@ -256,6 +350,33 @@ def build_multiple_outputs_keras_model():
   output_a = l.Dense(1)(a)
   output_b = l.Dense(1)(b)
   output_c = l.Dense(1)(l.concatenate([l.Dense(1)(a), l.Dense(1)(b)]))
+
+  return tf.keras.Model(inputs=[a, b], outputs=[output_a, output_b, output_c])
+
+
+def build_multiple_outputs_regularized_keras_model(
+    regularization_constant=0.01):
+  """Builds a test model with three outputs.
+
+  All weights are initialized to ones.
+
+  Args:
+    regularization_constant: L2 scaling constant (lambda) for all weights and
+      biases.
+
+  Returns:
+    a `tf.keras.Model` object.
+  """
+  dense = functools.partial(
+      _dense_all_ones_regularized_layer,
+      output_dim=1,
+      regularization_constant=regularization_constant)
+  a = tf.keras.layers.Input((1,))
+  b = tf.keras.layers.Input((1,))
+
+  output_a = dense()(a)
+  output_b = dense()(b)
+  output_c = dense()(tf.keras.layers.concatenate([dense()(a), dense()(b)]))
 
   return tf.keras.Model(inputs=[a, b], outputs=[output_a, output_b, output_c])
 

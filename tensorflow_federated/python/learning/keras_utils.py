@@ -276,7 +276,14 @@ class _KerasModel(model_lib.Model):
                              lf=loss_fns,
                              llf=len(loss_fns)))
     self._loss_weights = loss_weights
+
+    # Ensure Keras model isn't compiled, possibly with a different loss or
+    # optimizer.
+    if inner_model._is_compiled:  # pylint: disable=protected-access
+      raise ValueError('Keras model must be uncompiled, but got compiled Keras '
+                       'model.')
     self._keras_model = inner_model
+
     self._metrics = metrics if metrics is not None else []
 
     # This is defined here so that it closes over the `loss_fn`.
@@ -363,10 +370,21 @@ class _KerasModel(model_lib.Model):
     if y_true is not None:
       if len(self._loss_fns) == 1:
         loss_fn = self._loss_fns[0]
-        batch_loss = loss_fn(y_true=y_true, y_pred=predictions)
+        # Note: we add each of the per-layer regularization losses to the loss
+        # that we use to update trainable parameters, in addition to the
+        # user-provided loss function. Keras does the same in the
+        # `tf.keras.Model` training step. This is expected to have no effect if
+        # no per-layer losses are added to the model.
+        batch_loss = tf.add_n([loss_fn(y_true=y_true, y_pred=predictions)] +
+                              self._keras_model.losses)
 
       else:
-        batch_loss = tf.zeros(())
+        # Note: we add each of the per-layer regularization losses to the losses
+        # that we use to update trainable parameters, in addition to the
+        # user-provided loss functions. Keras does the same in the
+        # `tf.keras.Model` training step. This is expected to have no effect if
+        # no per-layer losses are added to the model.
+        batch_loss = tf.add_n([tf.zeros(())] + self._keras_model.losses)
         for i in range(len(self._loss_fns)):
           loss_fn = self._loss_fns[i]
           loss_wt = self._loss_weights[i]
