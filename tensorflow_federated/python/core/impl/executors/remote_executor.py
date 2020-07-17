@@ -309,10 +309,10 @@ class RemoteExecutor(executor_base.Executor):
 
   @tracing.trace(span=True)
   async def create_tuple(self, elements):
-    elem = anonymous_tuple.to_elements(anonymous_tuple.from_container(elements))
+    constructed_anon_tuple = anonymous_tuple.from_container(elements)
     proto_elem = []
     type_elem = []
-    for k, v in elem:
+    for k, v in anonymous_tuple.iter_elements(constructed_anon_tuple):
       py_typecheck.check_type(v, RemoteValue)
       proto_elem.append(
           executor_pb2.CreateTupleRequest.Element(
