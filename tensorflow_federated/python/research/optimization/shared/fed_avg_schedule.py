@@ -301,7 +301,8 @@ def build_fed_avg_process(
     client_lr: Union[float, LRScheduleFn] = 0.1,
     server_optimizer_fn: OptimizerBuilder = tf.keras.optimizers.SGD,
     server_lr: Union[float, LRScheduleFn] = 1.0,
-    client_weight_fn: Optional[ClientWeightFn] = None
+    client_weight_fn: Optional[ClientWeightFn] = None,
+    dataset_preprocess_comp: Optional[tff.Computation] = None,
 ) -> FederatedAveragingProcessAdapter:
   """Builds the TFF computations for optimization using federated averaging.
 
@@ -319,6 +320,10 @@ def build_fed_avg_process(
       `model.report_local_outputs` and returns a tensor that provides the weight
       in the federated average of model deltas. If not provided, the default is
       the total number of examples processed on device.
+    dataset_preprocess_comp: Optional `tff.Computation` that sets up a data
+      pipeline on the clients. The computation must take a squence of values
+      and return a sequence of values, or in TFF type shorthand `(U* -> V*)`. If
+      `None`, no dataset preprocessing is applied.
 
   Returns:
     A `FederatedAveragingProcessAdapter`.
@@ -342,9 +347,21 @@ def build_fed_avg_process(
   model_weights_type = server_state_type.model
   round_num_type = server_state_type.round_num
 
-  tf_dataset_type = tff.SequenceType(dummy_model.input_spec)
+  if dataset_preprocess_comp is not None:
+    tf_dataset_type = dataset_preprocess_comp.type_signature.parameter
+    model_input_type = tff.SequenceType(dummy_model.input_spec)
+    preprocessed_dataset_type = dataset_preprocess_comp.type_signature.result
+    if not model_input_type.is_assignable_from(preprocessed_dataset_type):
+      raise TypeError('Supplied `dataset_preprocess_comp` does not yield '
+                      'batches that are compatible with the model constructed '
+                      'by `model_fn`. Model expects type {m}, but dataset '
+                      'yields type {d}.'.format(
+                          m=model_input_type, d=preprocessed_dataset_type))
+  else:
+    tf_dataset_type = tff.SequenceType(dummy_model.input_spec)
+    model_input_type = tff.SequenceType(dummy_model.input_spec)
 
-  @tff.tf_computation(tf_dataset_type, model_weights_type, round_num_type)
+  @tff.tf_computation(model_input_type, model_weights_type, round_num_type)
   def client_update_fn(tf_dataset, initial_model_weights, round_num):
     client_lr = client_lr_schedule(round_num)
     client_optimizer = client_optimizer_fn(client_lr)
@@ -378,6 +395,9 @@ def build_fed_avg_process(
     """
     client_model = tff.federated_broadcast(server_state.model)
     client_round_num = tff.federated_broadcast(server_state.round_num)
+    if dataset_preprocess_comp is not None:
+      federated_dataset = tff.federated_map(dataset_preprocess_comp,
+                                            federated_dataset)
     client_outputs = tff.federated_map(
         client_update_fn,
         (federated_dataset, client_model, client_round_num))

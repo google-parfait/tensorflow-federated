@@ -49,7 +49,9 @@ def from_flags(
     model_builder: ModelBuilder,
     loss_builder: LossBuilder,
     metrics_builder: MetricsBuilder,
-    client_weight_fn: Optional[ClientWeightFn] = None
+    client_weight_fn: Optional[ClientWeightFn] = None,
+    *,
+    dataset_preprocess_comp: Optional[tff.Computation] = None,
 ) -> fed_avg_schedule.FederatedAveragingProcessAdapter:
   """Builds a `tff.templates.IterativeProcess` instance from flags.
 
@@ -70,6 +72,11 @@ def from_flags(
       `tff.learning.Model.report_local_outputs` from the model returned by
       `model_builder`, and returns a scalar client weight. If `None`, defaults
       to the number of examples processed over all batches.
+    dataset_preprocess_comp: Optional `tff.Computation` that sets up a data
+      pipeline on the clients. The computation must take a squence of values
+      and return a sequence of values, or in TFF type shorthand `(U* -> V*)`. If
+      `None`, no dataset preprocessing is applied. If specified, `input_spec` is
+      optinal, as the necessary type signatures will taken from the computation.
 
   Returns:
     A `fed_avg_schedule.FederatedAveragingProcessAdapter`.
@@ -82,10 +89,19 @@ def from_flags(
   client_lr_schedule = optimizer_utils.create_lr_schedule_from_flags('client')
   server_lr_schedule = optimizer_utils.create_lr_schedule_from_flags('server')
 
+  if dataset_preprocess_comp is not None:
+    if input_spec is not None:
+      print('Specified both `dataset_preprocess_comp` and `input_spec` when '
+            'only one is necessary. Ignoring `input_spec` and using type '
+            'signature of `dataset_preprocess_comp`.')
+    model_input_spec = dataset_preprocess_comp.type_signature.result.element
+  else:
+    model_input_spec = input_spec
+
   def tff_model_fn() -> tff.learning.Model:
     return tff.learning.from_keras_model(
         keras_model=model_builder(),
-        input_spec=input_spec,
+        input_spec=model_input_spec,
         loss=loss_builder(),
         metrics=metrics_builder())
 
@@ -95,4 +111,5 @@ def from_flags(
       client_lr=client_lr_schedule,
       server_optimizer_fn=server_optimizer_fn,
       server_lr=server_lr_schedule,
-      client_weight_fn=client_weight_fn)
+      client_weight_fn=client_weight_fn,
+      dataset_preprocess_comp=dataset_preprocess_comp)

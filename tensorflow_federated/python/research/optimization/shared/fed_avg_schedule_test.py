@@ -50,12 +50,12 @@ def _uncompiled_model_builder():
 
 class ModelDeltaProcessTest(tf.test.TestCase):
 
-  def _run_rounds(self, iterative_process, federated_data, num_rounds):
+  def _run_rounds(self, iterproc_adapter, federated_data, num_rounds):
     train_outputs = []
-    initial_state = iterative_process.initialize()
+    initial_state = iterproc_adapter.initialize()
     state = initial_state
     for round_num in range(num_rounds):
-      iteration_result = iterative_process.next(state, federated_data)
+      iteration_result = iterproc_adapter.next(state, federated_data)
       train_outputs.append(iteration_result.metrics)
       logging.info('Round %d: %s', round_num, iteration_result.metrics)
       state = iteration_result.state
@@ -64,12 +64,12 @@ class ModelDeltaProcessTest(tf.test.TestCase):
   def test_fed_avg_without_schedule_decreases_loss(self):
     federated_data = [[_batch_fn()]]
 
-    iterative_process = fed_avg_schedule.build_fed_avg_process(
+    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
         _uncompiled_model_builder,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
-    _, train_outputs, _ = self._run_rounds(iterative_process, federated_data, 5)
+    _, train_outputs, _ = self._run_rounds(iterproc_adapter, federated_data, 5)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
   def test_fed_avg_with_custom_client_weight_fn(self):
@@ -78,13 +78,13 @@ class ModelDeltaProcessTest(tf.test.TestCase):
     def client_weight_fn(local_outputs):
       return 1.0/(1.0 + local_outputs['loss'][-1])
 
-    iterative_process = fed_avg_schedule.build_fed_avg_process(
+    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
         _uncompiled_model_builder,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD,
         client_weight_fn=client_weight_fn)
 
-    _, train_outputs, _ = self._run_rounds(iterative_process, federated_data, 5)
+    _, train_outputs, _ = self._run_rounds(iterproc_adapter, federated_data, 5)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
   def test_client_update_with_finite_delta(self):
@@ -112,27 +112,27 @@ class ModelDeltaProcessTest(tf.test.TestCase):
   def test_server_update_with_nan_data_is_noop(self):
     federated_data = [[_batch_fn(has_nan=True)]]
 
-    iterative_process = fed_avg_schedule.build_fed_avg_process(
+    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
         _uncompiled_model_builder,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
-    state, _, initial_state = self._run_rounds(iterative_process,
-                                               federated_data, 1)
+    state, _, initial_state = self._run_rounds(iterproc_adapter, federated_data,
+                                               1)
     self.assertAllClose(state.model, initial_state.model, 1e-8)
 
   def test_server_update_with_inf_weight_is_noop(self):
     federated_data = [[_batch_fn()]]
     client_weight_fn = lambda x: np.inf
 
-    iterative_process = fed_avg_schedule.build_fed_avg_process(
+    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
         _uncompiled_model_builder,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD,
         client_weight_fn=client_weight_fn)
 
-    state, _, initial_state = self._run_rounds(iterative_process,
-                                               federated_data, 1)
+    state, _, initial_state = self._run_rounds(iterproc_adapter, federated_data,
+                                               1)
     self.assertAllClose(state.model, initial_state.model, 1e-8)
 
   def test_fed_avg_with_client_schedule(self):
@@ -142,13 +142,13 @@ class ModelDeltaProcessTest(tf.test.TestCase):
     def lr_schedule(x):
       return 0.1 if x < 1.5 else 0.0
 
-    iterative_process = fed_avg_schedule.build_fed_avg_process(
+    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
         _uncompiled_model_builder,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         client_lr=lr_schedule,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
-    _, train_outputs, _ = self._run_rounds(iterative_process, federated_data, 4)
+    _, train_outputs, _ = self._run_rounds(iterproc_adapter, federated_data, 4)
     self.assertLess(train_outputs[1]['loss'], train_outputs[0]['loss'])
     self.assertNear(
         train_outputs[2]['loss'], train_outputs[3]['loss'], err=1e-4)
@@ -160,13 +160,13 @@ class ModelDeltaProcessTest(tf.test.TestCase):
     def lr_schedule(x):
       return 1.0 if x < 1.5 else 0.0
 
-    iterative_process = fed_avg_schedule.build_fed_avg_process(
+    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
         _uncompiled_model_builder,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD,
         server_lr=lr_schedule)
 
-    _, train_outputs, _ = self._run_rounds(iterative_process, federated_data, 4)
+    _, train_outputs, _ = self._run_rounds(iterproc_adapter, federated_data, 4)
     self.assertLess(train_outputs[1]['loss'], train_outputs[0]['loss'])
     self.assertNear(
         train_outputs[2]['loss'], train_outputs[3]['loss'], err=1e-4)
@@ -174,14 +174,14 @@ class ModelDeltaProcessTest(tf.test.TestCase):
   def test_fed_avg_with_client_and_server_schedules(self):
     federated_data = [[_batch_fn()]]
 
-    iterative_process = fed_avg_schedule.build_fed_avg_process(
+    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
         _uncompiled_model_builder,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         client_lr=lambda x: 0.1 / (x + 1)**2,
         server_optimizer_fn=tf.keras.optimizers.SGD,
         server_lr=lambda x: 1.0 / (x + 1)**2)
 
-    _, train_outputs, _ = self._run_rounds(iterative_process, federated_data, 6)
+    _, train_outputs, _ = self._run_rounds(iterproc_adapter, federated_data, 6)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
     train_gap_first_half = train_outputs[0]['loss'] - train_outputs[2]['loss']
     train_gap_second_half = train_outputs[3]['loss'] - train_outputs[5]['loss']
@@ -190,15 +190,85 @@ class ModelDeltaProcessTest(tf.test.TestCase):
   def test_conversion_from_tff_result(self):
     federated_data = [[_batch_fn()]]
 
-    iterative_process = fed_avg_schedule.build_fed_avg_process(
+    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
         _uncompiled_model_builder,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
-    state, _, _ = self._run_rounds(iterative_process, federated_data, 1)
+    state, _, _ = self._run_rounds(iterproc_adapter, federated_data, 1)
     converted_state = fed_avg_schedule.ServerState.from_tff_result(state)
     self.assertIsInstance(converted_state, fed_avg_schedule.ServerState)
     self.assertIsInstance(converted_state.model, fed_avg_schedule.ModelWeights)
+
+  def test_build_with_preprocess_function(self):
+    test_dataset = tf.data.Dataset.range(5)
+    client_datasets_type = tff.FederatedType(
+        tff.SequenceType(test_dataset.element_spec), tff.CLIENTS)
+
+    @tff.tf_computation(tff.SequenceType(test_dataset.element_spec))
+    def preprocess_dataset(ds):
+
+      def to_batch(x):
+        return _Batch(
+            tf.fill(dims=(784,), value=float(x) * 2.0),
+            tf.expand_dims(tf.cast(x + 1, dtype=tf.int64), axis=0))
+
+      return ds.map(to_batch).batch(2)
+
+    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
+        _uncompiled_model_builder,
+        client_optimizer_fn=tf.keras.optimizers.SGD,
+        server_optimizer_fn=tf.keras.optimizers.SGD,
+        dataset_preprocess_comp=preprocess_dataset)
+
+    with tf.Graph().as_default():
+      test_model_for_types = _uncompiled_model_builder()
+
+    iterproc = iterproc_adapter._iterative_process
+
+    server_state_type = tff.FederatedType(
+        fed_avg_schedule.ServerState(
+            model=tff.framework.type_from_tensors(
+                fed_avg_schedule.ModelWeights(
+                    test_model_for_types.trainable_variables,
+                    test_model_for_types.non_trainable_variables)),
+            optimizer_state=(tf.int64,),
+            round_num=tf.float32), tff.SERVER)
+    metrics_type = test_model_for_types.federated_output_computation.type_signature.result
+
+    expected_type = tff.FunctionType(
+        parameter=(server_state_type, client_datasets_type),
+        result=(server_state_type, metrics_type))
+    self.assertEqual(
+        iterproc.next.type_signature,
+        expected_type,
+        msg='{s}\n!={t}'.format(
+            s=iterproc.next.type_signature, t=expected_type))
+
+  def test_execute_with_preprocess_function(self):
+    test_dataset = tf.data.Dataset.range(1)
+
+    @tff.tf_computation(tff.SequenceType(test_dataset.element_spec))
+    def preprocess_dataset(ds):
+
+      def to_example(x):
+        del x  # Unused.
+        return _Batch(
+            x=np.ones([784], dtype=np.float32), y=np.ones([1], dtype=np.int64))
+
+      return ds.map(to_example).batch(1)
+
+    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
+        _uncompiled_model_builder,
+        client_optimizer_fn=tf.keras.optimizers.SGD,
+        server_optimizer_fn=tf.keras.optimizers.SGD,
+        dataset_preprocess_comp=preprocess_dataset)
+
+    _, train_outputs, _ = self._run_rounds(iterproc_adapter, [test_dataset], 6)
+    self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
+    train_gap_first_half = train_outputs[0]['loss'] - train_outputs[2]['loss']
+    train_gap_second_half = train_outputs[3]['loss'] - train_outputs[5]['loss']
+    self.assertLess(train_gap_second_half, train_gap_first_half)
 
 
 if __name__ == '__main__':
