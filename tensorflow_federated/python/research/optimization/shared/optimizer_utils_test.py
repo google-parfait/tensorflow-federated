@@ -135,7 +135,7 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
   def test_create_constant_client_lr_schedule_from_flags(self):
     with flag_sandbox({
         '{}_learning_rate'.format(TEST_CLIENT_FLAG_PREFIX): 3.0,
-        '{}_lr_schedule'.format(TEST_CLIENT_FLAG_PREFIX): 'constant'
+        '{}_lr_schedule'.format(TEST_CLIENT_FLAG_PREFIX): 'constant',
     }):
       lr_schedule = optimizer_utils.create_lr_schedule_from_flags(
           TEST_CLIENT_FLAG_PREFIX)
@@ -143,6 +143,19 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
       self.assertNear(lr_schedule(1), 3.0, err=1e-5)
       self.assertNear(lr_schedule(105), 3.0, err=1e-5)
       self.assertNear(lr_schedule(1042), 3.0, err=1e-5)
+    with flag_sandbox({
+        '{}_learning_rate'.format(TEST_CLIENT_FLAG_PREFIX): 3.0,
+        '{}_lr_schedule'.format(TEST_CLIENT_FLAG_PREFIX): 'constant',
+        '{}_lr_warmup_steps'.format(TEST_CLIENT_FLAG_PREFIX): 10
+    }):
+      lr_schedule = optimizer_utils.create_lr_schedule_from_flags(
+          TEST_CLIENT_FLAG_PREFIX)
+      self.assertNear(lr_schedule(0), 0.3, err=1e-5)
+      self.assertNear(lr_schedule(1), 0.6, err=1e-5)
+      self.assertNear(lr_schedule(10), 3.0, err=1e-5)
+      self.assertNear(lr_schedule(11), 3.0, err=1e-5)
+      self.assertNear(lr_schedule(115), 3.0, err=1e-5)
+      self.assertNear(lr_schedule(1052), 3.0, err=1e-5)
 
   def test_create_exp_decay_client_lr_schedule_from_flags(self):
     with flag_sandbox({
@@ -163,6 +176,7 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
     with flag_sandbox({
         '{}_learning_rate'.format(TEST_CLIENT_FLAG_PREFIX): 3.0,
         '{}_lr_schedule'.format(TEST_CLIENT_FLAG_PREFIX): 'exp_decay',
+        '{}_lr_warmup_steps'.format(TEST_CLIENT_FLAG_PREFIX): 0,
         '{}_lr_decay_steps'.format(TEST_CLIENT_FLAG_PREFIX): 10,
         '{}_lr_decay_rate'.format(TEST_CLIENT_FLAG_PREFIX): 0.1,
         '{}_lr_staircase'.format(TEST_CLIENT_FLAG_PREFIX): False,
@@ -173,6 +187,23 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
       self.assertNear(lr_schedule(1), 2.38298470417, err=1e-5)
       self.assertNear(lr_schedule(10), 0.3, err=1e-5)
       self.assertNear(lr_schedule(25), 0.00948683298, err=1e-5)
+
+    with flag_sandbox({
+        '{}_learning_rate'.format(TEST_CLIENT_FLAG_PREFIX): 3.0,
+        '{}_lr_schedule'.format(TEST_CLIENT_FLAG_PREFIX): 'exp_decay',
+        '{}_lr_warmup_steps'.format(TEST_CLIENT_FLAG_PREFIX): 10,
+        '{}_lr_decay_steps'.format(TEST_CLIENT_FLAG_PREFIX): 10,
+        '{}_lr_decay_rate'.format(TEST_CLIENT_FLAG_PREFIX): 0.1,
+        '{}_lr_staircase'.format(TEST_CLIENT_FLAG_PREFIX): False,
+    }):
+      lr_schedule = optimizer_utils.create_lr_schedule_from_flags(
+          TEST_CLIENT_FLAG_PREFIX)
+      self.assertNear(lr_schedule(0), 0.3, err=1e-5)
+      self.assertNear(lr_schedule(1), 0.6, err=1e-5)
+      self.assertNear(lr_schedule(10), 3.0, err=1e-5)
+      self.assertNear(lr_schedule(11), 2.38298470417, err=1e-5)
+      self.assertNear(lr_schedule(20), 0.3, err=1e-5)
+      self.assertNear(lr_schedule(35), 0.00948683298, err=1e-5)
 
   def test_create_inv_lin_client_lr_schedule_from_flags(self):
     with flag_sandbox({
@@ -193,6 +224,7 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
     with flag_sandbox({
         '{}_learning_rate'.format(TEST_CLIENT_FLAG_PREFIX): 5.0,
         '{}_lr_schedule'.format(TEST_CLIENT_FLAG_PREFIX): 'inv_lin_decay',
+        '{}_lr_warmup_steps'.format(TEST_CLIENT_FLAG_PREFIX): 0,
         '{}_lr_decay_steps'.format(TEST_CLIENT_FLAG_PREFIX): 10,
         '{}_lr_decay_rate'.format(TEST_CLIENT_FLAG_PREFIX): 10.0,
         '{}_lr_staircase'.format(TEST_CLIENT_FLAG_PREFIX): False,
@@ -203,6 +235,23 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
       self.assertNear(lr_schedule(1), 2.5, err=1e-5)
       self.assertNear(lr_schedule(9), 0.5, err=1e-5)
       self.assertNear(lr_schedule(19), 0.25, err=1e-5)
+
+    with flag_sandbox({
+        '{}_learning_rate'.format(TEST_CLIENT_FLAG_PREFIX): 5.0,
+        '{}_lr_schedule'.format(TEST_CLIENT_FLAG_PREFIX): 'inv_lin_decay',
+        '{}_lr_warmup_steps'.format(TEST_CLIENT_FLAG_PREFIX): 10,
+        '{}_lr_decay_steps'.format(TEST_CLIENT_FLAG_PREFIX): 10,
+        '{}_lr_decay_rate'.format(TEST_CLIENT_FLAG_PREFIX): 10.0,
+        '{}_lr_staircase'.format(TEST_CLIENT_FLAG_PREFIX): False,
+    }):
+      lr_schedule = optimizer_utils.create_lr_schedule_from_flags(
+          TEST_CLIENT_FLAG_PREFIX)
+      self.assertNear(lr_schedule(0), 0.5, err=1e-5)
+      self.assertNear(lr_schedule(1), 1.0, err=1e-5)
+      self.assertNear(lr_schedule(10), 5.0, err=1e-5)
+      self.assertNear(lr_schedule(11), 2.5, err=1e-5)
+      self.assertNear(lr_schedule(19), 0.5, err=1e-5)
+      self.assertNear(lr_schedule(29), 0.25, err=1e-5)
 
   def test_create_inv_sqrt_client_lr_schedule_from_flags(self):
     with flag_sandbox({
@@ -223,6 +272,7 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
     with flag_sandbox({
         '{}_learning_rate'.format(TEST_CLIENT_FLAG_PREFIX): 2.0,
         '{}_lr_schedule'.format(TEST_CLIENT_FLAG_PREFIX): 'inv_sqrt_decay',
+        '{}_lr_warmup_steps'.format(TEST_CLIENT_FLAG_PREFIX): 0,
         '{}_lr_decay_steps'.format(TEST_CLIENT_FLAG_PREFIX): 10,
         '{}_lr_decay_rate'.format(TEST_CLIENT_FLAG_PREFIX): 10.0,
         '{}_lr_staircase'.format(TEST_CLIENT_FLAG_PREFIX): False,
@@ -233,6 +283,23 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
       self.assertNear(lr_schedule(3), 1.0, err=1e-5)
       self.assertNear(lr_schedule(99), 0.2, err=1e-5)
       self.assertNear(lr_schedule(399), 0.1, err=1e-5)
+
+    with flag_sandbox({
+        '{}_learning_rate'.format(TEST_CLIENT_FLAG_PREFIX): 2.0,
+        '{}_lr_schedule'.format(TEST_CLIENT_FLAG_PREFIX): 'inv_sqrt_decay',
+        '{}_lr_warmup_steps'.format(TEST_CLIENT_FLAG_PREFIX): 10,
+        '{}_lr_decay_steps'.format(TEST_CLIENT_FLAG_PREFIX): 10,
+        '{}_lr_decay_rate'.format(TEST_CLIENT_FLAG_PREFIX): 10.0,
+        '{}_lr_staircase'.format(TEST_CLIENT_FLAG_PREFIX): False,
+    }):
+      lr_schedule = optimizer_utils.create_lr_schedule_from_flags(
+          TEST_CLIENT_FLAG_PREFIX)
+      self.assertNear(lr_schedule(0), 0.2, err=1e-5)
+      self.assertNear(lr_schedule(1), 0.4, err=1e-5)
+      self.assertNear(lr_schedule(10), 2.0, err=1e-5)
+      self.assertNear(lr_schedule(13), 1.0, err=1e-5)
+      self.assertNear(lr_schedule(109), 0.2, err=1e-5)
+      self.assertNear(lr_schedule(409), 0.1, err=1e-5)
 
 
 if __name__ == '__main__':
