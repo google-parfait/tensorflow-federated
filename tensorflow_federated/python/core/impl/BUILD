@@ -413,6 +413,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
 
@@ -496,7 +497,6 @@ py_library(
     srcs = ["value_impl.py"],
     srcs_version = "PY3",
     deps = [
-        ":computation_impl",
         ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",

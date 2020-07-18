@@ -98,7 +98,7 @@ class FederatedEvaluationTest(test.TestCase):
             [_temp_dict([9.0, 12.0, 13.0])],
             [_temp_dict([1.0]), _temp_dict([22.0, 23.0])],
         ])
-    self.assertEqual(str(result), '<num_over=9.0>')
+    self.assertEqual(str(result), "{'num_over': 9.0}")
 
   def test_federated_evaluation_with_keras(self):
 
@@ -139,7 +139,8 @@ class FederatedEvaluationTest(test.TestCase):
          [_input_dict([1.0]), _input_dict([22.0, 23.0])]])
     # Expect 100% accuracy and no loss because we've constructed the identity
     # function and have the same x's and y's for training data.
-    self.assertEqual(str(result), '<accuracy=1.0,loss=0.0>')
+    self.assertDictEqual(result,
+                         collections.OrderedDict(accuracy=1.0, loss=0.0))
 
 
 if __name__ == '__main__':

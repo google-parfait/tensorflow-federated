@@ -32,8 +32,14 @@ class ComputationImpl(function_utils.ConcreteFunction):
     return value._computation_proto  # pylint: disable=protected-access
 
   def to_building_block(self):
+    # FIXME(b/161560999) currently destroys annotated type.
+    # This should perhaps be fixed by adding `type_parameter` to `from_proto`.
     return building_blocks.ComputationBuildingBlock.from_proto(
         self._computation_proto)
+
+  def to_compiled_building_block(self):
+    return building_blocks.CompiledComputation(
+        self._computation_proto, type_signature=self.type_signature)
 
   def __init__(self, computation_proto, context_stack, annotated_type=None):
     """Constructs a new instance of ComputationImpl from the computation_proto.
@@ -54,11 +60,7 @@ class ComputationImpl(function_utils.ConcreteFunction):
     type_spec = type_serialization.deserialize_type(computation_proto.type)
     py_typecheck.check_type(type_spec, computation_types.Type)
     if annotated_type is not None:
-      py_typecheck.check_type(annotated_type, computation_types.Type)
-      # Extra information is encoded in a NamedTupleTypeWithPyContainerType
-      # subclass which does not override __eq__. The two type specs should still
-      # compare as equal.
-      if type_spec != annotated_type:
+      if not type_spec.is_assignable_from(annotated_type):
         raise TypeError(
             'annotated_type not compatible with computation_proto.type\n'
             'computation_proto.type: {!s}\n'

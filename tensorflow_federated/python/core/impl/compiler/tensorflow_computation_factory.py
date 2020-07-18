@@ -201,8 +201,9 @@ def create_binary_operator(
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result_value, graph)
 
-  type_signature = computation_types.FunctionType([operand_type, operand_type],
-                                                  result_type)
+  type_signature = computation_types.FunctionType(
+      computation_types.NamedTupleType((operand_type, operand_type)),
+      result_type)
   parameter_binding = pb.TensorFlow.Binding(
       tuple=pb.TensorFlow.NamedTupleBinding(
           element=[operand_1_binding, operand_2_binding]))

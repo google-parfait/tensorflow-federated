@@ -76,7 +76,8 @@ class ParseTFFToTFTest(test.TestCase):
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
     self.assertEqual(exec_lambda([0, 1.]), exec_tf([0, 1.]))
 
   def test_replaces_lambda_to_called_graph_with_tf_of_same_type(self):
@@ -95,7 +96,8 @@ class ParseTFFToTFTest(test.TestCase):
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
     self.assertEqual(exec_lambda(2), exec_tf(2))
 
   def test_replaces_lambda_to_called_graph_on_selection_from_arg_with_tf_of_same_type(
@@ -117,7 +119,9 @@ class ParseTFFToTFTest(test.TestCase):
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
+
     exec_lambda = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapper)
     exec_tf = computation_wrapper_instances.building_block_to_computation(
@@ -171,7 +175,8 @@ class ParseTFFToTFTest(test.TestCase):
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
     exec_lambda = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapper)
     exec_tf = computation_wrapper_instances.building_block_to_computation(
@@ -249,7 +254,9 @@ class ParseTFFToTFTest(test.TestCase):
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
+
     exec_lambda = computation_wrapper_instances.building_block_to_computation(
         lambda_wrapper)
     exec_tf = computation_wrapper_instances.building_block_to_computation(
@@ -286,7 +293,8 @@ class ParseTFFToTFTest(test.TestCase):
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
     self.assertEqual(exec_lambda([13, 14.]), exec_tf([13, 14.]))
 
   def test_replaces_lambda_to_called_composition_of_tf_blocks_with_tf_of_same_type_named_param(
@@ -313,7 +321,9 @@ class ParseTFFToTFTest(test.TestCase):
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
+
     self.assertEqual(
         exec_lambda({
             'a': 15,
@@ -342,7 +352,9 @@ class ParseTFFToTFTest(test.TestCase):
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
-    self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
+    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
+
     self.assertEqual(exec_lambda(17), exec_tf(17))
 
 

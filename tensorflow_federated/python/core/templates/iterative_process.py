@@ -90,7 +90,7 @@ class IterativeProcess(object):
       # be the state. If still not the right type, raise an error.
       if next_result_type.is_tuple():
         next_result_type = next_result_type[0]
-      if next_first_param_type != next_result_type:
+      if not next_first_param_type.is_assignable_from(next_result_type):
         raise TypeError('The return type of next_fn must be assignable to the '
                         'first parameter, but found\n'
                         'next_fn.type_signature.parameter[0]=\n{}\n'

@@ -181,7 +181,8 @@ class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), dict)
-    self.assertEqual(repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))])')
+    self.assertEqual(
+        repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))]) as dict')
 
   def test_ordered_dict(self):
     t = computation_types.NamedTupleTypeWithPyContainerType(
@@ -189,7 +190,9 @@ class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), collections.OrderedDict)
-    self.assertEqual(repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))])')
+    self.assertEqual(
+        repr(t),
+        'NamedTupleType([(\'a\', TensorType(tf.int32))]) as OrderedDict')
 
   def test_tuple(self):
     t = computation_types.NamedTupleTypeWithPyContainerType([('a', tf.int32)],
@@ -197,7 +200,8 @@ class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), tuple)
-    self.assertEqual(repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))])')
+    self.assertEqual(
+        repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))]) as tuple')
 
   def test_py_named_tuple(self):
     py_named_tuple_type = collections.namedtuple('test_tuple', ['a'])
@@ -206,7 +210,9 @@ class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), py_named_tuple_type)
-    self.assertEqual(repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))])')
+    self.assertEqual(
+        repr(t),
+        'NamedTupleType([(\'a\', TensorType(tf.int32))]) as test_tuple')
 
   def test_py_attr_class(self):
 
@@ -219,7 +225,8 @@ class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
     self.assertIs(
         computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
             t), TestFoo)
-    self.assertEqual(repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))])')
+    self.assertEqual(
+        repr(t), 'NamedTupleType([(\'a\', TensorType(tf.int32))]) as TestFoo')
 
 
 class SequenceTypeTest(absltest.TestCase):
@@ -229,7 +236,9 @@ class SequenceTypeTest(absltest.TestCase):
         repr(computation_types.SequenceType(tf.int32)),
         'SequenceType(TensorType(tf.int32))')
     self.assertEqual(
-        repr(computation_types.SequenceType((tf.int32, tf.bool))),
+        repr(
+            computation_types.SequenceType(
+                computation_types.NamedTupleType((tf.int32, tf.bool)))),
         'SequenceType(NamedTupleType([TensorType(tf.int32), '
         'TensorType(tf.bool)]))')
 

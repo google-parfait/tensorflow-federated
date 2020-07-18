@@ -22,7 +22,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_privacy
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -155,34 +154,14 @@ def build_dp_query(clip,
 
 # TODO(b/123092620): When fixed, should no longer need this method.
 def _default_get_value_type_fn(value):
-  return _default_from_tff_result_fn(value.type_signature.member)
-
-
-# TODO(b/123092620): When fixed, should no longer need this method.
-def _default_from_tff_result_fn(record):
-  """Converts `anonymous_tuple.AnonymousTuple` to dict or list if possible."""
-  if isinstance(record, anonymous_tuple.AnonymousTuple):
-    try:
-      record = record._asdict()
-    except ValueError:
-      # At least some of the fields in `record` were not named. If all of the
-      # fields were not named, we can return a `list`. Otherwise `record`
-      # is partially named, which is not supported.
-      if anonymous_tuple.name_list(record):
-        raise ValueError(
-            'Cannot construct a default from a TFF result that '
-            'has partially named fields. TFF result: {!s}'.format(record))
-      record = [elt for _, elt in anonymous_tuple.iter_elements(record)]
-  return record
+  return value.type_signature.member
 
 
 # TODO(b/140236959): The value_type_fn is needed as part of determining the
 # tensor type. Is there a way to infer this inline without requiring an explicit
 # method be passed as argument here?  Also, if it is necessary, is there a
 # better name than value_type_fn?
-def build_dp_aggregate(query,
-                       value_type_fn=_default_get_value_type_fn,
-                       from_tff_result_fn=_default_from_tff_result_fn):
+def build_dp_aggregate(query, value_type_fn=_default_get_value_type_fn):
   """Builds a stateful aggregator for tensorflow_privacy DPQueries.
 
   The returned `StatefulAggregateFn` can be called with any nested structure for
@@ -203,17 +182,6 @@ def build_dp_aggregate(query,
       This argument probably gets removed once b/123092620 is addressed (and the
       associated processing step gets replaced with a simple call to
       `value.type_signature.member`).
-    from_tff_result_fn: Python function that takes a client record and converts
-      it to the container type that it was in before passing through TFF. (Right
-      now, TFF computation causes the client record to be changed into an
-      `anonymous_tuple.AnonymousTuple`, and this method corrects for that). If
-      the value being aggregated is an `collections.OrderedDict`, the default
-      for this argument can be used. This argument likely goes away once
-      b/123092620 is addressed. The default behavior assumes that the client
-      record (before being converted to (as it `anonymous_tuple.AnonymousTuple`)
-      was an `collections.OrderedDict` containing a flat structure of Tensors is
-      if using the `tff.learning` APIs like
-      `tff.learning.build_federated_averaging_process`).
 
   Returns:
     A tuple of:
@@ -252,10 +220,6 @@ def build_dp_aggregate(query,
     @computations.tf_computation(derive_sample_params.type_signature.result,
                                  value.type_signature.member)
     def preprocess_record(params, record):
-      # TODO(b/123092620): Once TFF passes the expected container type (instead
-      # of AnonymousTuple), we shouldn't need this.
-      record = from_tff_result_fn(record)
-
       return query.preprocess_record(params, record)
 
     # TODO(b/123092620): We should have the expected container type here.

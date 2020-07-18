@@ -117,7 +117,7 @@ def _check_type_equal(
 ):
   py_typecheck.check_type(actual, computation_types.Type)
   py_typecheck.check_type(expected, computation_types.Type)
-  if actual != expected:
+  if not actual.is_equivalent_to(expected):
     raise err_fn('Expected type of {}, found {}.'.format(expected, actual))
 
 

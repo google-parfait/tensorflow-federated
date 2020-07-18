@@ -109,18 +109,17 @@ class StatefulBroadcastFnTest(test.TestCase):
 
     expected_type_signature = computation_types.FunctionType(
         parameter=broadcast_arg_type,
-        result=computation_types.NamedTupleType([
-            computation_types.FederatedType(
-                collections.OrderedDict([('call_count', tf.int32)]),
-                placements.SERVER),
-            computation_types.FederatedType(
-                tf.float32, placements.CLIENTS, all_equal=True)
-        ]))
-    self.assertEqual(federated_broadcast_test.type_signature,
-                     expected_type_signature)
+        result=(computation_types.FederatedType(
+            collections.OrderedDict([('call_count', tf.int32)]),
+            placements.SERVER),
+                computation_types.FederatedType(
+                    tf.float32, placements.CLIENTS, all_equal=True)))
+    self.assertEqual(
+        repr(federated_broadcast_test.type_signature),
+        repr(expected_type_signature))
     state, value = federated_broadcast_test(1.0)
     self.assertAlmostEqual(value, 1.0)
-    self.assertDictEqual(state._asdict(), {'call_count': 1})
+    self.assertDictEqual(state, {'call_count': 1})
 
 
 def agg_initialize_fn():
@@ -155,17 +154,16 @@ class StatefulAggregateFnTest(test.TestCase):
 
     expected_type_signature = computation_types.FunctionType(
         parameter=aggregate_arg_type,
-        result=computation_types.NamedTupleType([
-            computation_types.FederatedType(
-                collections.OrderedDict([('call_count', tf.int32)]),
-                placements.SERVER),
-            computation_types.FederatedType(tf.float32, placements.SERVER)
-        ]))
-    self.assertEqual(federated_aggregate_test.type_signature,
-                     expected_type_signature)
+        result=(computation_types.FederatedType(
+            collections.OrderedDict([('call_count', tf.int32)]),
+            placements.SERVER),
+                computation_types.FederatedType(tf.float32, placements.SERVER)))
+    self.assertEqual(
+        repr(federated_aggregate_test.type_signature),
+        repr(expected_type_signature))
     state, mean = federated_aggregate_test([1.0, 2.0, 3.0])
     self.assertAlmostEqual(mean, 2.0)  # (1 + 2 + 3) / (1 + 1 + 1)
-    self.assertDictEqual(state._asdict(), {'call_count': 1})
+    self.assertDictEqual(state, {'call_count': 1})
 
   def test_execute_with_explicit_weights(self):
     aggregate_fn = computation_utils.StatefulAggregateFn(
@@ -181,7 +179,7 @@ class StatefulAggregateFnTest(test.TestCase):
 
     state, mean = federated_aggregate_test([1.0, 2.0, 3.0], [4.0, 1.0, 1.0])
     self.assertAlmostEqual(mean, 1.5)  # (1*4 + 2*1 + 3*1) / (4 + 1 + 1)
-    self.assertDictEqual(state._asdict(), {'call_count': 1})
+    self.assertDictEqual(state, {'call_count': 1})
 
 
 if __name__ == '__main__':

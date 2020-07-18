@@ -53,7 +53,6 @@ py_test(
         ":keras_utils",
         ":model_examples",
         ":model_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",

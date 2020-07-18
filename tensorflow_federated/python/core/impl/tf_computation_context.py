@@ -21,6 +21,7 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
 
 
 class TensorFlowComputationContext(context_base.Context):
@@ -50,4 +51,5 @@ class TensorFlowComputationContext(context_base.Context):
             computation_proto, arg, self._graph))
     if init_op:
       self._init_ops.append(init_op)
-    return result
+    return type_conversions.type_to_py_container(result,
+                                                 comp.type_signature.result)

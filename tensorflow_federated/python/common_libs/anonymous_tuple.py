@@ -481,8 +481,8 @@ def from_container(value, recursive=False):
         return AnonymousTuple((None, v) for v in value)
     elif must_be_container:
       raise TypeError('Unable to convert a Python object of type {} into '
-                      'an `AnonymousTuple`.'.format(
-                          py_typecheck.type_string(type(value))))
+                      'an `AnonymousTuple`. Object: {}'.format(
+                          py_typecheck.type_string(type(value)), value))
     else:
       return value
 

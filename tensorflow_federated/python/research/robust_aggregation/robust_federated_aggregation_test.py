@@ -204,7 +204,7 @@ class RobustAggregationTest(tf.test.TestCase):
             model_fn, num_passes, tolerance)
         state = iterative_process.initialize()
         state, _ = iterative_process.next(state, federated_train_data)
-        median_tff = state[0][0][0].reshape(-1)
+        median_tff = state.model.trainable[0].reshape(-1)
         median_np = aggregation_fn_np(
             means,
             weights,

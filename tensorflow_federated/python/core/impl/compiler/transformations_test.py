@@ -918,7 +918,8 @@ class TensorFlowGeneratorTest(test.TestCase):
     self.assertEqual(tf_comp, transformed)
 
   def test_generates_tf_with_lambda(self):
-    ref_to_x = building_blocks.Reference('x', [tf.int32, tf.float32])
+    ref_to_x = building_blocks.Reference(
+        'x', computation_types.NamedTupleType([tf.int32, tf.float32]))
     identity_lambda = building_blocks.Lambda(ref_to_x.name,
                                              ref_to_x.type_signature, ref_to_x)
 
@@ -930,7 +931,8 @@ class TensorFlowGeneratorTest(test.TestCase):
     self.assertEqual(transformed.type_signature, identity_lambda.type_signature)
 
   def test_generates_tf_with_block(self):
-    ref_to_x = building_blocks.Reference('x', [tf.int32, tf.float32])
+    ref_to_x = building_blocks.Reference(
+        'x', computation_types.NamedTupleType([tf.int32, tf.float32]))
     identity_lambda = building_blocks.Lambda(ref_to_x.name,
                                              ref_to_x.type_signature, ref_to_x)
     tf_zero = building_block_factory.create_tensorflow_constant(
@@ -951,7 +953,9 @@ class TensorFlowGeneratorTest(test.TestCase):
 
   def test_generates_tf_with_sequence_type(self):
     ref_to_x = building_blocks.Reference(
-        'x', computation_types.SequenceType([tf.int32, tf.float32]))
+        'x',
+        computation_types.SequenceType(
+            computation_types.NamedTupleType([tf.int32, tf.float32])))
     identity_lambda = building_blocks.Lambda(ref_to_x.name,
                                              ref_to_x.type_signature, ref_to_x)
 
@@ -977,13 +981,15 @@ class TensorFlowGeneratorTest(test.TestCase):
     self.assertEqual(transformed, identity_lambda)
 
   def test_compiles_lambda_under_federated_comp_to_tf(self):
-    ref_to_x = building_blocks.Reference('x', [tf.int32, tf.float32])
+    ref_to_x = building_blocks.Reference(
+        'x', computation_types.NamedTupleType([tf.int32, tf.float32]))
     identity_lambda = building_blocks.Lambda(ref_to_x.name,
                                              ref_to_x.type_signature, ref_to_x)
     federated_data = building_blocks.Data(
         'a',
-        computation_types.FederatedType([tf.int32, tf.float32],
-                                        placement_literals.SERVER))
+        computation_types.FederatedType(
+            computation_types.NamedTupleType([tf.int32, tf.float32]),
+            placement_literals.SERVER))
     applied = building_block_factory.create_federated_apply(
         identity_lambda, federated_data)
 

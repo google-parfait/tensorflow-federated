@@ -111,6 +111,15 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual([e.name for e in z_proto.tuple.element], ['', 'y'])
     self._serialize_deserialize_roundtrip_test(z)
 
+  def test_tuple_with_container_type(self):
+    x = building_blocks.Reference('foo', tf.int32)
+    y = building_blocks.Reference('bar', tf.bool)
+    z = building_blocks.Tuple([x, ('y', y)], tuple)
+    self.assertEqual(
+        z.type_signature,
+        computation_types.NamedTupleTypeWithPyContainerType(
+            [tf.int32, ('y', tf.bool)], tuple))
+
   def test_basic_functionality_of_call_class(self):
     x = building_blocks.Reference(
         'foo', computation_types.FunctionType(tf.int32, tf.bool))
@@ -185,9 +194,9 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x.result.compact_representation(), 'y')
     self.assertEqual(
         repr(x), 'Block([(\'x\', Reference(\'arg\', '
-        'NamedTupleType([TensorType(tf.int32), TensorType(tf.int32)]))), '
+        'NamedTupleType([TensorType(tf.int32), TensorType(tf.int32)]) as tuple)), '
         '(\'y\', Selection(Reference(\'x\', '
-        'NamedTupleType([TensorType(tf.int32), TensorType(tf.int32)])), '
+        'NamedTupleType([TensorType(tf.int32), TensorType(tf.int32)]) as tuple), '
         'index=0))], '
         'Reference(\'y\', TensorType(tf.int32)))')
     self.assertEqual(x.compact_representation(), '(let x=arg,y=x[0] in y)')
@@ -226,8 +235,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x.uri, 'generic_plus')
     self.assertEqual(x.compact_representation(), 'generic_plus')
     x_proto = x.proto
-    self.assertEqual(
-        type_serialization.deserialize_type(x_proto.type), x.type_signature)
+    deserialized_type = type_serialization.deserialize_type(x_proto.type)
+    x.type_signature.check_assignable_from(deserialized_type)
     self.assertEqual(x_proto.WhichOneof('computation'), 'intrinsic')
     self.assertEqual(x_proto.intrinsic.uri, x.uri)
     self._serialize_deserialize_roundtrip_test(x)
@@ -252,7 +261,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     federated_result = computation_types.FederatedType(
         simple_function.result, placement_literals.CLIENTS)
     federated_map_concrete_type = computation_types.FunctionType(
-        [simple_function, federated_arg], federated_result)
+        computation_types.NamedTupleType((simple_function, federated_arg)),
+        federated_result)
     concrete_federated_map = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_MAP.uri, federated_map_concrete_type)
     self.assertIsInstance(concrete_federated_map, building_blocks.Intrinsic)
@@ -322,13 +332,16 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     Args:
       target: An instane of ComputationBuildingBlock to serialize-deserialize.
     """
-    assert isinstance(target, building_blocks.ComputationBuildingBlock)
-    proto = target.proto
-    target2 = building_blocks.ComputationBuildingBlock.from_proto(proto)
-    proto2 = target2.proto
-    self.assertEqual(target.compact_representation(),
-                     target2.compact_representation())
-    self.assertEqual(str(proto), str(proto2))
+    self.assertIsInstance(target, building_blocks.ComputationBuildingBlock)
+    serialized = target.proto
+    deserialized = building_blocks.ComputationBuildingBlock.from_proto(
+        serialized)
+    reserialized = deserialized.proto
+    self.assertEqual(str(serialized), str(reserialized))
+    # Note: This is not an equality comparison because ser/de is not an identity
+    # transform: it will drop the container from
+    # `NamedTupleTypeWithPyContainerType`.
+    target.type_signature.check_assignable_from(deserialized.type_signature)
 
 
 class RepresentationTest(absltest.TestCase):

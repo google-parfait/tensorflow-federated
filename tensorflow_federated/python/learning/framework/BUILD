@@ -57,7 +57,6 @@ py_library(
     srcs = ["optimizer_utils.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning:model",
@@ -73,7 +72,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":optimizer_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/learning:model_examples",

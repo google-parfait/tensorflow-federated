@@ -19,7 +19,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
@@ -139,14 +138,12 @@ class UtilsTest(test.TestCase):
   def test_state_with_new_model_weights(self):
     trainable = [np.array([1.0, 2.0]), np.array([[1.0]])]
     non_trainable = [np.array(1)]
-    state = anonymous_tuple.from_container(
-        optimizer_utils.ServerState(
-            model=model_utils.ModelWeights(
-                trainable=trainable, non_trainable=non_trainable),
-            optimizer_state=[],
-            delta_aggregate_state=tf.constant(0),
-            model_broadcast_state=tf.constant(0)),
-        recursive=True)
+    state = optimizer_utils.ServerState(
+        model=model_utils.ModelWeights(
+            trainable=trainable, non_trainable=non_trainable),
+        optimizer_state=[],
+        delta_aggregate_state=tf.constant(0),
+        model_broadcast_state=tf.constant(0))
 
     new_state = optimizer_utils.state_with_new_model_weights(
         state,
@@ -205,8 +202,9 @@ class ModelDeltaOptimizerTest(test.TestCase):
             delta_aggregate_state=(),
             model_broadcast_state=()), tff.SERVER)
 
-    self.assertEqual(iterative_process.initialize.type_signature,
-                     tff.FunctionType(parameter=None, result=server_state_type))
+    self.assertEqual(
+        str(iterative_process.initialize.type_signature),
+        str(tff.FunctionType(parameter=None, result=server_state_type)))
 
     dataset_type = tff.FederatedType(
         tff.SequenceType(
@@ -223,10 +221,11 @@ class ModelDeltaOptimizerTest(test.TestCase):
                 num_examples=tff.TensorType(tf.int32))), tff.SERVER)
 
     self.assertEqual(
-        iterative_process.next.type_signature,
-        tff.FunctionType(
-            parameter=(server_state_type, dataset_type),
-            result=(server_state_type, metrics_type)))
+        str(iterative_process.next.type_signature),
+        str(
+            tff.FunctionType(
+                parameter=(server_state_type, dataset_type),
+                result=(server_state_type, metrics_type))))
 
   def test_construction_with_adam_optimizer(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
@@ -401,16 +400,14 @@ class ModelDeltaOptimizerTest(test.TestCase):
     self.assertEqual(state.delta_aggregate_state, 1)
     self.assertEqual(state.model_broadcast_state, 1)
 
-    expected_outputs = anonymous_tuple.from_container(
-        collections.OrderedDict(
-            # The StatefulFn output no metrics.
-            broadcast=(),
-            aggregation=(),
-            train=collections.OrderedDict(
-                loss=15.25,
-                num_examples=6,
-            )),
-        recursive=True)
+    expected_outputs = collections.OrderedDict(
+        # The StatefulFn output no metrics.
+        broadcast=(),
+        aggregation=(),
+        train=collections.OrderedDict(
+            loss=15.25,
+            num_examples=6,
+        ))
     self.assertEqual(expected_outputs, outputs)
 
   def test_orchestration_execute_measured_process(self):
@@ -449,16 +446,14 @@ class ModelDeltaOptimizerTest(test.TestCase):
     self.assertEqual(state.delta_aggregate_state, 1)
     self.assertEqual(state.model_broadcast_state, 1)
 
-    expected_outputs = anonymous_tuple.from_container(
-        collections.OrderedDict(
-            broadcast=3.0,
-            aggregation=collections.OrderedDict(num_clients=3),
-            train=collections.OrderedDict(
-                loss=15.25,
-                num_examples=6,
-            )),
-        recursive=True)
-    self.assertEqual(expected_outputs, outputs)
+    expected_outputs = collections.OrderedDict(
+        broadcast=3.0,
+        aggregation=collections.OrderedDict(num_clients=3),
+        train={
+            'loss': 15.25,
+            'num_examples': 6,
+        })
+    self.assertEqual(str(expected_outputs), str(outputs))
 
 
 if __name__ == '__main__':

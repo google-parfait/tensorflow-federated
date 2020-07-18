@@ -1191,7 +1191,7 @@ class CreateFederatedValueTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-class CreateFederatedZipTest(absltest.TestCase):
+class CreateFederatedZipTest(parameterized.TestCase):
 
   def test_raises_type_error_with_none_value(self):
     with self.assertRaises(TypeError):
@@ -1553,6 +1553,22 @@ class CreateFederatedZipTest(absltest.TestCase):
     )
     # pyformat: enable
     self.assertEqual(str(comp.type_signature), '{<int32,float32,bool>}@CLIENTS')
+
+  @parameterized.named_parameters(('one_element', 1), ('two_elements', 2),
+                                  ('three_elements', 3))
+  def test_returns_federated_zip_with_container_type(self, num_elements):
+    value_type = computation_types.FederatedType(tf.int32,
+                                                 placement_literals.CLIENTS)
+    value = building_blocks.Data('v', value_type)
+    tup = building_blocks.Tuple([value] * num_elements, list)
+    comp = building_block_factory.create_federated_zip(tup)
+    self.assertEqual(
+        repr(comp.type_signature),
+        repr(
+            computation_types.FederatedType(
+                computation_types.NamedTupleTypeWithPyContainerType(
+                    [tf.int32] * num_elements, list),
+                placement_literals.CLIENTS)))
 
   def test_returns_federated_apply_with_one_value_unnamed(self):
     value_type = computation_types.FederatedType(tf.int32,
@@ -1934,10 +1950,8 @@ class CreateGenericConstantTest(absltest.TestCase):
 
   def test_create_unnamed_tuple_zero(self):
     tensor_type = computation_types.TensorType(tf.float32, [2, 2])
-    tuple_type = computation_types.NamedTupleType([tensor_type] * 2)
-
+    tuple_type = computation_types.NamedTupleType((tensor_type, tensor_type))
     tuple_zero = building_block_factory.create_generic_constant(tuple_type, 0)
-
     self.assertEqual(tuple_zero.type_signature, tuple_type)
     self.assertIsInstance(tuple_zero, building_blocks.Call)
     result = test_utils.run_tensorflow(tuple_zero.function.proto)
@@ -2406,15 +2420,18 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
           anonymous_tuple.from_container([[selection_spec]], recursive=False))
 
   def test_construct_selection_from_tuple_with_empty_list_type_signature(self):
-    parameter_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    ntt = computation_types.NamedTupleType
+    parameter_type = ntt([tf.int32, tf.float32])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, anonymous_tuple.from_container([]))
     self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
-    self.assertEqual(constructed_tf.type_signature,
-                     computation_types.FunctionType([tf.int32, tf.float32], []))
+    self.assertEqual(
+        constructed_tf.type_signature,
+        computation_types.FunctionType(ntt((tf.int32, tf.float32)), ntt(())))
 
   def test_construct_selection_from_two_tuple_correct_type_signature(self):
-    parameter_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    ntt = computation_types.NamedTupleType
+    parameter_type = ntt([tf.int32, tf.float32])
     selection_spec_1 = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[])
     selection_spec_2 = building_block_factory.SelectionSpec(
@@ -2426,8 +2443,8 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
     self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
     self.assertEqual(
         constructed_tf.type_signature,
-        computation_types.FunctionType([tf.int32, tf.float32],
-                                       [tf.int32, tf.int32]))
+        computation_types.FunctionType(
+            ntt((tf.int32, tf.float32)), ntt((tf.int32, tf.int32))))
 
   def test_construct_selection_from_two_tuple_correct_singleton_type_signature(
       self):
@@ -2435,12 +2452,14 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
     selection_spec = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[])
     output_structure = anonymous_tuple.from_container([selection_spec])
+    ntt = computation_types.NamedTupleType
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
     self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
     self.assertEqual(
         constructed_tf.type_signature,
-        computation_types.FunctionType([tf.int32, tf.float32], [tf.int32]))
+        computation_types.FunctionType(
+            ntt((tf.int32, tf.float32)), ntt((tf.int32,))))
 
   def test_construct_selection_from_two_tuple_executes_correctly(self):
     parameter_type = computation_types.NamedTupleType([tf.int32, tf.float32])
@@ -2489,12 +2508,14 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
          anonymous_tuple.from_container([selection_spec_1, selection_spec_2],
                                         recursive=True))
     ])
+    ntt = computation_types.NamedTupleType
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
     self.assertEqual(
         constructed_tf.type_signature,
-        computation_types.FunctionType([('a', tf.int32), ('b', tf.float32)],
-                                       [('c', [tf.int32, tf.float32])]))
+        computation_types.FunctionType(
+            ntt((('a', tf.int32), ('b', tf.float32))),
+            ntt((('c', ntt((tf.int32, tf.float32)))))))
 
   def test_construct_selection_from_nested_tuple_executes_correctly(self):
     parameter_type = computation_types.NamedTupleType([[[tf.int32]],
@@ -2533,12 +2554,13 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
         selection_spec_2
     ],
                                                       recursive=True)
+    ntt = computation_types.NamedTupleType
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
     self.assertEqual(
         constructed_tf.type_signature,
-        computation_types.FunctionType([tf.int32, tf.float32],
-                                       [[('a', tf.int32)], tf.int32]))
+        computation_types.FunctionType(
+            ntt((tf.int32, tf.float32)), ntt((ntt(('a', tf.int32)), tf.int32))))
 
   def test_construct_selection_from_two_tuple_repack_lower_level_output_executes_correctly(
       self):

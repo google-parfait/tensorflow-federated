@@ -1111,7 +1111,7 @@ class GraphUtilsTest(test.TestCase):
     y = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
         x, element_type)
 
-    self.assertEqual(computation_types.to_type(y.element_spec), element_type)
+    computation_types.to_type(y.element_spec).check_equivalent_to(element_type)
 
 
 if __name__ == '__main__':

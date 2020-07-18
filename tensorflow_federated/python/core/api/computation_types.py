@@ -136,6 +136,11 @@ class Type(object, metaclass=abc.ABCMeta):
     return self.compact_representation()
 
   @abc.abstractmethod
+  def __hash__(self):
+    """Produces a hash value for this type."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
   def __eq__(self, other):
     """Determines whether two type definitions are identical.
 
@@ -179,6 +184,10 @@ class Type(object, metaclass=abc.ABCMeta):
     return self.is_assignable_from(other) and other.is_assignable_from(self)
 
 
+def _hash_dtype_and_shape(dtype: tf.DType, shape: tf.TensorShape) -> int:
+  return hash((dtype.name, tuple(shape.as_list())))
+
+
 class TensorType(Type):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
 
@@ -211,6 +220,7 @@ class TensorType(Type):
       self._shape = shape
     else:
       self._shape = tf.TensorShape(shape)
+    self._hash = None
 
   def children(self):
     return iter(())
@@ -234,6 +244,11 @@ class TensorType(Type):
       return 'TensorType({!r}, {!r})'.format(self._dtype, values)
     else:
       return 'TensorType({!r})'.format(self._dtype)
+
+  def __hash__(self):
+    if self._hash is None:
+      self._hash = _hash_dtype_and_shape(self._dtype, self._shape)
+    return self._hash
 
   def __eq__(self, other):
     return ((self is other) or
@@ -263,6 +278,18 @@ class TensorType(Type):
         _dimension_is_assignable_from(target_shape.dims[k],
                                       source_shape.dims[k])
         for k in range(target_shape.ndims))
+
+
+def _format_named_tuple_type_members(named_tuple_type) -> str:
+
+  def _element_repr(element):
+    name, value = element
+    if name is not None:
+      return '(\'{}\', {!r})'.format(name, value)
+    return repr(value)
+
+  return ', '.join(
+      _element_repr(e) for e in anonymous_tuple.iter_elements(named_tuple_type))
 
 
 class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
@@ -319,19 +346,17 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
     return True
 
   def __repr__(self):
+    members = _format_named_tuple_type_members(self)
+    return 'NamedTupleType([{}])'.format(members)
 
-    def _element_repr(element):
-      name, value = element
-      if name is not None:
-        return '(\'{}\', {!r})'.format(name, value)
-      return repr(value)
-
-    return 'NamedTupleType([{}])'.format(', '.join(
-        _element_repr(e) for e in anonymous_tuple.iter_elements(self)))
+  def __hash__(self):
+    # Salt to avoid overlap.
+    return hash((anonymous_tuple.AnonymousTuple.__hash__(self), 'NTT'))
 
   def __eq__(self, other):
-    return ((self is other) or
-            (isinstance(other, NamedTupleType) and super().__eq__(other)))
+    return (self is other) or (isinstance(other, NamedTupleType) and
+                               anonymous_tuple.AnonymousTuple.__eq__(
+                                   self, other))
 
   def is_assignable_from(self, source_type: 'Type') -> bool:
     if not isinstance(source_type, NamedTupleType):
@@ -351,11 +376,27 @@ class NamedTupleTypeWithPyContainerType(NamedTupleType):
 
   def __init__(self, elements, container_type):
     py_typecheck.check_type(container_type, type)
+    # FIXME(b/161561250) check the `container_type` for validity.
     self._container_type = container_type
     super().__init__(elements)
 
   def is_tuple_with_py_container(self):
     return True
+
+  def __repr__(self):
+    members = _format_named_tuple_type_members(self)
+    return 'NamedTupleType([{}]) as {}'.format(members,
+                                               self._container_type.__name__)
+
+  def __hash__(self):
+    # Salt to avoid overlap.
+    return hash((anonymous_tuple.AnonymousTuple.__hash__(self), 'NTTWPCT'))
+
+  def __eq__(self, other):
+    return ((self is other) or
+            (isinstance(other, NamedTupleTypeWithPyContainerType) and
+             (self._container_type == other._container_type) and
+             anonymous_tuple.AnonymousTuple.__eq__(self, other)))
 
   @classmethod
   def get_container_type(cls, value):
@@ -386,6 +427,9 @@ class SequenceType(Type):
 
   def __repr__(self):
     return 'SequenceType({!r})'.format(self._element)
+
+  def __hash__(self):
+    return hash(self._element)
 
   def __eq__(self, other):
     return ((self is other) or (isinstance(other, SequenceType) and
@@ -431,6 +475,9 @@ class FunctionType(Type):
   def __repr__(self):
     return 'FunctionType({!r}, {!r})'.format(self._parameter, self._result)
 
+  def __hash__(self):
+    return hash((self._parameter, self._result))
+
   def __eq__(self, other):
     return ((self is other) or (isinstance(other, FunctionType) and
                                 self._parameter == other.parameter and
@@ -473,6 +520,9 @@ class AbstractType(Type):
   def __repr__(self):
     return 'AbstractType(\'{}\')'.format(self._label)
 
+  def __hash__(self):
+    return hash(self._label)
+
   def __eq__(self, other):
     return (self is other) or (isinstance(other, AbstractType) and
                                self._label == other.label)
@@ -499,6 +549,9 @@ class PlacementType(Type):
 
   def __repr__(self):
     return 'PlacementType()'
+
+  def __hash__(self):
+    return 0
 
   def __eq__(self, other):
     return (self is other) or isinstance(other, PlacementType)
@@ -563,6 +616,9 @@ class FederatedType(Type):
     return 'FederatedType({!r}, {!r}, {!r})'.format(self._member,
                                                     self._placement,
                                                     self._all_equal)
+
+  def __hash__(self):
+    return hash((self._member, self._placement, self._all_equal))
 
   def __eq__(self, other):
     return ((self is other) or (isinstance(other, FederatedType) and

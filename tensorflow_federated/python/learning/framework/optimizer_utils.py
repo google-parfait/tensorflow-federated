@@ -22,7 +22,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
@@ -134,9 +133,7 @@ def state_with_new_model_weights(
     A new server `ServerState` object which can be passed to the `next` method
     of the iterative process.
   """
-  # TODO(b/123092620): This can be simplified if TFF stops exposing
-  # AnonymousTuple.
-  py_typecheck.check_type(server_state, anonymous_tuple.AnonymousTuple)
+  py_typecheck.check_type(server_state, ServerState)
   leaf_types = (int, float, np.ndarray, tf.Tensor)
 
   def assert_weight_lists_match(old_value, new_value):
@@ -148,10 +145,7 @@ def state_with_new_model_weights(
                         f'({old_value.dtype}, {old_value.shape}) != '
                         f'new ({new_value.dtype}, {new_value.shape})')
     elif (isinstance(new_value, collections.Sequence) and
-          isinstance(old_value, anonymous_tuple.AnonymousTuple)):
-      if anonymous_tuple.name_list(old_value):
-        raise TypeError('`tff.learning` does not support named structures of '
-                        'model weights. Received: {old_value}')
+          isinstance(old_value, collections.Sequence)):
       if len(old_value) != len(new_value):
         raise TypeError('Model weights have different lengths: '
                         f'(old) {len(old_value)} != (new) {len(new_value)})\n'
@@ -170,15 +164,11 @@ def state_with_new_model_weights(
   assert_weight_lists_match(server_state.model.trainable, trainable_weights)
   assert_weight_lists_match(server_state.model.non_trainable,
                             non_trainable_weights)
-  # TODO(b/123092620): We can't use tff.utils.update_state because this
-  # is an AnonymousTuple, not a ServerState. We should do something
-  # that doesn't mention every entry in the state.
-  return ServerState(
+  new_server_state = tff.utils.update_state(
+      server_state,
       model=model_utils.ModelWeights(
-          trainable=trainable_weights, non_trainable=non_trainable_weights),
-      optimizer_state=server_state.optimizer_state,
-      delta_aggregate_state=server_state.delta_aggregate_state,
-      model_broadcast_state=server_state.model_broadcast_state)
+          trainable=trainable_weights, non_trainable=non_trainable_weights))
+  return new_server_state
 
 
 def _apply_delta(
@@ -501,7 +491,7 @@ def _is_valid_aggregation_process(
 
 # ============================================================================
 
-NONE_SERVER_TYPE = tff.FederatedType(tff.NamedTupleType([]), tff.SERVER)
+NONE_SERVER_TYPE = tff.FederatedType((), tff.SERVER)
 
 
 def _wrap_in_measured_process(

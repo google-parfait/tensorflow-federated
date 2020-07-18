@@ -19,7 +19,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
@@ -122,14 +121,13 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
     for _ in range(3):
       state, metric_outputs = process.next(state, datasets)
       self.assertEqual(
-          anonymous_tuple.name_list(metric_outputs),
-          ['broadcast', 'aggregation', 'train'])
-      self.assertEmpty(metric_outputs.broadcast)
-      self.assertEmpty(metric_outputs.aggregation)
-      train_metrics = metric_outputs.train
-      self.assertEqual(train_metrics.num_examples, expected_num_examples)
-      self.assertLess(train_metrics.loss, prev_loss)
-      prev_loss = train_metrics.loss
+          list(metric_outputs.keys()), ['broadcast', 'aggregation', 'train'])
+      self.assertEmpty(metric_outputs['broadcast'])
+      self.assertEmpty(metric_outputs['aggregation'])
+      train_metrics = metric_outputs['train']
+      self.assertEqual(train_metrics['num_examples'], expected_num_examples)
+      self.assertLess(train_metrics['loss'], prev_loss)
+      prev_loss = train_metrics['loss']
 
   def test_fails_stateful_broadcast_and_process(self):
     model_weights_type = model_utils.weights_type_from_model(
@@ -248,8 +246,8 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
     first_state, metric_outputs = iterative_process.next(server_state, [ds] * 2)
     self.assertAllClose(
         list(first_state.model.trainable), [[[0.0], [0.0]], 0.0])
-    self.assertEqual(metric_outputs.train.num_examples, 0)
-    self.assertTrue(tf.math.is_nan(metric_outputs.train.loss))
+    self.assertEqual(metric_outputs['train']['num_examples'], 0)
+    self.assertTrue(tf.math.is_nan(metric_outputs['train']['loss']))
 
 
 if __name__ == '__main__':

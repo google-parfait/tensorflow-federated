@@ -25,7 +25,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -312,6 +311,13 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
       context_stack)
 
 
+def _dictlike_items_to_value(items, context_stack, container_type) -> ValueImpl:
+  value = building_blocks.Tuple(
+      [(k, ValueImpl.get_comp(to_value(v, None, context_stack)))
+       for k, v in items], container_type)
+  return ValueImpl(value, context_stack)
+
+
 def to_value(
     arg: Any,
     type_spec,
@@ -383,9 +389,7 @@ def to_value(
       type_analysis.check_well_formed(parameter_type_hint)
       arg = arg.fn_for_argument_type(parameter_type_hint)
     py_typecheck.check_type(arg, computation_base.Computation)
-    result = ValueImpl(
-        building_blocks.CompiledComputation(
-            computation_impl.ComputationImpl.get_proto(arg)), context_stack)
+    result = ValueImpl(arg.to_compiled_building_block(), context_stack)
   elif type_spec is not None and type_spec.is_sequence():
     result = _wrap_sequence_as_value(arg, type_spec.element, context_stack)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
@@ -395,26 +399,23 @@ def to_value(
             for k, v in anonymous_tuple.iter_elements(arg)
         ]), context_stack)
   elif py_typecheck.is_named_tuple(arg):
-    result = to_value(arg._asdict(), None, context_stack)  # pytype: disable=attribute-error
+    items = arg._asdict().items()  # pytype: disable=attribute-error
+    result = _dictlike_items_to_value(items, context_stack, type(arg))
   elif py_typecheck.is_attrs(arg):
-    result = to_value(
-        attr.asdict(arg, dict_factory=collections.OrderedDict, recurse=False),
-        None, context_stack)
+    items = attr.asdict(
+        arg, dict_factory=collections.OrderedDict, recurse=False).items()
+    result = _dictlike_items_to_value(items, context_stack, type(arg))
   elif isinstance(arg, dict):
     if isinstance(arg, collections.OrderedDict):
       items = arg.items()
     else:
       items = sorted(arg.items())
-    value = building_blocks.Tuple([
-        (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
-        for k, v in items
-    ])
-    result = ValueImpl(value, context_stack)
+    result = _dictlike_items_to_value(items, context_stack, type(arg))
   elif isinstance(arg, (tuple, list)):
     result = ValueImpl(
-        building_blocks.Tuple([
-            ValueImpl.get_comp(to_value(x, None, context_stack)) for x in arg
-        ]), context_stack)
+        building_blocks.Tuple(
+            [ValueImpl.get_comp(to_value(x, None, context_stack)) for x in arg],
+            type(arg)), context_stack)
   elif isinstance(arg, tensorflow_utils.TENSOR_REPRESENTATION_TYPES):
     result = _wrap_constant_as_value(arg, context_stack)
   elif isinstance(arg, (tf.Tensor, tf.Variable)):

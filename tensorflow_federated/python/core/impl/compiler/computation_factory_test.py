@@ -29,7 +29,8 @@ class CreateLambdaEmptyTupleTest(absltest.TestCase):
 
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
-    expected_type = computation_types.FunctionType(None, [])
+    expected_type = computation_types.FunctionType(
+        None, computation_types.NamedTupleType(()))
     self.assertEqual(actual_type, expected_type)
 
 

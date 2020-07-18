@@ -178,7 +178,8 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
     self.assertEqual(value_type, sequence_type)
 
     y, type_spec = executor_service_utils.deserialize_value(value_proto)
-    self.assertEqual(type_spec, sequence_type)
+    # These aren't the same because ser/de destroys the PyContainer
+    type_spec.check_equivalent_to(sequence_type)
 
     def _build_expected_structure(x):
       return collections.OrderedDict([

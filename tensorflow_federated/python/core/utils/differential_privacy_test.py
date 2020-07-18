@@ -18,7 +18,6 @@ from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_privacy
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -131,8 +130,8 @@ class BuildDpAggregateTest(test.TestCase):
 
     global_state, result = aggregate(global_state, [1.0, 3.0, 5.0])
 
-    self.assertEqual(global_state['l2_norm_clip'], 4.0)
-    self.assertEqual(global_state['stddev'], 0.0)
+    self.assertEqual(global_state.l2_norm_clip, 4.0)
+    self.assertEqual(global_state.stddev, 0.0)
     self.assertEqual(result, 8.0)
 
   def test_dp_sum_structure_odict(self):
@@ -154,8 +153,8 @@ class BuildDpAggregateTest(test.TestCase):
 
     global_state, result = aggregate(global_state, data)
 
-    self.assertEqual(global_state['l2_norm_clip'], 5.0)
-    self.assertEqual(global_state['stddev'], 0.0)
+    self.assertEqual(global_state.l2_norm_clip, 5.0)
+    self.assertEqual(global_state.stddev, 0.0)
 
     self.assertEqual(result['a'][0], 6.0)
     self.assertEqual(result['b'][0], 9.0)
@@ -187,8 +186,8 @@ class BuildDpAggregateTest(test.TestCase):
 
     global_state, result = aggregate(global_state, data)
 
-    self.assertEqual(global_state['l2_norm_clip'], 5.0)
-    self.assertEqual(global_state['stddev'], 0.0)
+    self.assertEqual(global_state.l2_norm_clip, 5.0)
+    self.assertEqual(global_state.stddev, 0.0)
 
     result = list(result)
     self.assertEqual(result[0], 6.0)
@@ -215,11 +214,11 @@ class BuildDpAggregateTest(test.TestCase):
 
     def run_and_check(global_state, expected_l2_norm_clip, expected_result):
       global_state, result = aggregate(global_state, records)
-      self.assertEqual(global_state['l2_norm_clip'], expected_l2_norm_clip)
+      self.assertEqual(global_state.l2_norm_clip, expected_l2_norm_clip)
       self.assertEqual(result, expected_result)
       return global_state
 
-    self.assertEqual(global_state['l2_norm_clip'], 4.0)
+    self.assertEqual(global_state.l2_norm_clip, 4.0)
     global_state = run_and_check(global_state, 3.0, 8.0)
     global_state = run_and_check(global_state, 2.0, 7.0)
     global_state = run_and_check(global_state, 1.0, 5.0)
@@ -234,19 +233,6 @@ class BuildDpAggregateTest(test.TestCase):
     self.assertEqual(dp_global_state_type.__class__.__name__,
                      'NamedTupleTypeWithPyContainerType')
 
-  def test_default_from_tff_result_fn(self):
-
-    def check(elements, expected):
-      record = anonymous_tuple.AnonymousTuple(elements)
-      result = differential_privacy._default_from_tff_result_fn(record)
-      self.assertEqual(result, expected)
-
-    check([('a', 1), ('b', 2)], collections.OrderedDict([('a', 1), ('b', 2)]))
-    check([(None, 1), (None, 2)], [1, 2])
-
-    with self.assertRaisesRegex(ValueError, 'partially named fields'):
-      check([('a', 1), (None, 2)], None)
-
 
 class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
 
@@ -260,9 +246,7 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
         value_type, query)
 
     server_state_type = computation_types.FederatedType(
-        computation_types.NamedTupleType([('l2_norm_clip', tf.float32),
-                                          ('stddev', tf.float32)]),
-        placements.SERVER)
+        query._GlobalState(tf.float32, tf.float32), placements.SERVER)
     self.assertEqual(
         dp_aggregate_process.initialize.type_signature,
         computation_types.FunctionType(
@@ -278,14 +262,12 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(
         dp_aggregate_process.next.type_signature,
         computation_types.FunctionType(
-            parameter=computation_types.NamedTupleType([
-                (None, server_state_type), (None, client_value_type),
-                (None, client_value_weight_type)
-            ]),
-            result=computation_types.NamedTupleType([
-                ('state', server_state_type), ('result', server_result_type),
-                ('measurements', server_metrics_type)
-            ])))
+            parameter=(server_state_type, client_value_type,
+                       client_value_weight_type),
+            result=collections.OrderedDict([('state', server_state_type),
+                                            ('result', server_result_type),
+                                            ('measurements',
+                                             server_metrics_type)])))
 
   def test_dp_sum(self):
     query = tensorflow_privacy.GaussianSumQuery(4.0, 0.0)
@@ -299,8 +281,8 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
     output = dp_aggregate_process.next(global_state, [1.0, 3.0, 5.0],
                                        [1.0, 1.0, 1.0])
 
-    self.assertEqual(output['state']['l2_norm_clip'], 4.0)
-    self.assertEqual(output['state']['stddev'], 0.0)
+    self.assertEqual(output['state'].l2_norm_clip, 4.0)
+    self.assertEqual(output['state'].stddev, 0.0)
     self.assertEqual(output['result'], 8.0)
 
   def test_dp_sum_structure_odict(self):
@@ -323,8 +305,8 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
 
     output = dp_aggregate_process.next(global_state, data, [1.0, 1.0, 1.0])
 
-    self.assertEqual(output['state']['l2_norm_clip'], 5.0)
-    self.assertEqual(output['state']['stddev'], 0.0)
+    self.assertEqual(output['state'].l2_norm_clip, 5.0)
+    self.assertEqual(output['state'].stddev, 0.0)
 
     self.assertEqual(output['result']['a'][0], 6.0)
     self.assertEqual(output['result']['b'][0], 9.0)
@@ -352,8 +334,8 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
 
     output = dp_aggregate_process.next(global_state, data, [1.0, 1.0, 1.0])
 
-    self.assertEqual(output['state']['l2_norm_clip'], 5.0)
-    self.assertEqual(output['state']['stddev'], 0.0)
+    self.assertEqual(output['state'].l2_norm_clip, 5.0)
+    self.assertEqual(output['state'].stddev, 0.0)
 
     self.assertEqual(output['result']['a'][0], 6.0)
     self.assertEqual(output['result']['bc']['b'][0], 9.0)
@@ -379,8 +361,8 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
 
     output = dp_aggregate_process.next(global_state, data, [1.0, 1.0, 1.0])
 
-    self.assertEqual(output['state']['l2_norm_clip'], 5.0)
-    self.assertEqual(output['state']['stddev'], 0.0)
+    self.assertEqual(output['state'].l2_norm_clip, 5.0)
+    self.assertEqual(output['state'].stddev, 0.0)
 
     self.assertEqual(output['result']['a'][0], 6.0)
     self.assertEqual(output['result']['bc'][0][0], 9.0)
@@ -407,8 +389,8 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
 
     output = dp_aggregate_process.next(global_state, data, [1.0, 1.0, 1.0])
 
-    self.assertEqual(output['state']['l2_norm_clip'], 5.0)
-    self.assertEqual(output['state']['stddev'], 0.0)
+    self.assertEqual(output['state'].l2_norm_clip, 5.0)
+    self.assertEqual(output['state'].stddev, 0.0)
 
     result = list(output['result'])
     self.assertEqual(result[0], 6.0)
@@ -436,11 +418,11 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
 
     def run_and_check(global_state, expected_l2_norm_clip, expected_result):
       output = dp_aggregate_process.next(global_state, records, [1.0, 1.0, 1.0])
-      self.assertEqual(output['state']['l2_norm_clip'], expected_l2_norm_clip)
+      self.assertEqual(output['state'].l2_norm_clip, expected_l2_norm_clip)
       self.assertEqual(output['result'], expected_result)
       return output['state']
 
-    self.assertEqual(global_state['l2_norm_clip'], 4.0)
+    self.assertEqual(global_state.l2_norm_clip, 4.0)
     global_state = run_and_check(global_state, 3.0, 8.0)
     global_state = run_and_check(global_state, 2.0, 7.0)
     global_state = run_and_check(global_state, 1.0, 5.0)

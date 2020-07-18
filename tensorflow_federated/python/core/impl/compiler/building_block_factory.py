@@ -494,7 +494,12 @@ def create_named_tuple_setattr_lambda(
       elements.append((key, value_comp_placeholder))
     else:
       elements.append((key, building_blocks.Selection(lambda_arg, index=idx)))
-  return_tuple = building_blocks.Tuple(elements)
+  if named_tuple_signature.is_tuple_with_py_container():
+    container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+        named_tuple_signature)
+  else:
+    container_type = None
+  return_tuple = building_blocks.Tuple(elements, container_type)
   lambda_to_return = building_blocks.Lambda(lambda_arg.name,
                                             named_tuple_signature, return_tuple)
   symbols = ((value_comp_placeholder.name, value_comp),)
@@ -1118,7 +1123,12 @@ def create_federated_unzip(
     fn = building_blocks.Lambda(fn_ref.name, fn_ref.type_signature, sel)
     intrinsic = create_federated_map_or_apply(fn, value_ref)
     elements.append((name, intrinsic))
-  result = building_blocks.Tuple(elements)
+  if value.type_signature.member.is_tuple_with_py_container():
+    container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+        value.type_signature.member)
+  else:
+    container_type = None
+  result = building_blocks.Tuple(elements, container_type)
   symbols = ((value_ref.name, value),)
   return building_blocks.Block(symbols, result)
 
@@ -1183,6 +1193,11 @@ def _create_flat_federated_zip(value):
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
+  if value.type_signature.is_tuple_with_py_container():
+    container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+        value.type_signature)
+  else:
+    container_type = None
   names_to_add = [name for name, _ in named_type_signatures]
   length = len(named_type_signatures)
   if length == 0:
@@ -1197,7 +1212,7 @@ def _create_flat_federated_zip(value):
         first_type_signature.placement))
   if length == 1:
     ref = building_blocks.Reference('arg', first_type_signature.member)
-    values = building_blocks.Tuple(((first_name, ref),))
+    values = building_blocks.Tuple(((first_name, ref),), container_type)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, values)
     sel = building_blocks.Selection(value, index=0)
     return map_fn(fn, sel)
@@ -1230,7 +1245,7 @@ def _create_flat_federated_zip(value):
                                         zipped_tree_ref.type_signature,
                                         flattened_tree)
     unnamed_zip = map_fn(flatten_fn, zipped_block)
-  return create_named_federated_tuple(unnamed_zip, names_to_add)
+  return create_named_federated_tuple(unnamed_zip, names_to_add, container_type)
 
 
 def _prepend_to_paths(paths: List[List[int]], element: int):
@@ -1373,10 +1388,15 @@ def create_federated_zip(
     elif type_signature.is_tuple():
       elements = anonymous_tuple.to_elements(type_signature)
       return_tuple = []
-      for name, element in elements:
-        selection, index = _make_flat_selections(element, index)
+      for name, element_type in elements:
+        selection, index = _make_flat_selections(element_type, index)
         return_tuple.append((name, selection))
-      return building_blocks.Tuple(return_tuple), index
+      if type_signature.is_tuple_with_py_container():
+        container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+            type_signature)
+      else:
+        container_type = None
+      return building_blocks.Tuple(return_tuple, container_type), index
     else:
       # This shouldn't be possible since the structure was already traversed
       # above.
@@ -1453,7 +1473,12 @@ def create_generic_constant(
       elements.append(create_generic_constant(type_spec[k], scalar_value))
     names = [name for name, _ in anonymous_tuple.iter_elements(type_spec)]
     packed_elements = building_blocks.Tuple(elements)
-    named_tuple = create_named_tuple(packed_elements, names)
+    if type_spec.is_tuple_with_py_container():
+      container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
+          type_spec)
+    else:
+      container_type = None
+    named_tuple = create_named_tuple(packed_elements, names, container_type)
     return named_tuple
   else:
     raise ValueError(
@@ -1616,7 +1641,7 @@ def create_sequence_sum(
   return building_blocks.Call(intrinsic, value)
 
 
-def _create_naming_function(tuple_type_to_name, names_to_add):
+def _create_naming_function(tuple_type_to_name, names_to_add, container_type):
   """Private function to construct lambda naming a given tuple type.
 
   Args:
@@ -1624,6 +1649,8 @@ def _create_naming_function(tuple_type_to_name, names_to_add):
       of the argument which we wish to name.
     names_to_add: Python `list` or `tuple`, the names we wish to give to
       `tuple_type_to_name`.
+    container_type: Optional Python container type to associate with the
+      resulting tuple.
 
   Returns:
     An instance of `building_blocks.Lambda` representing a function
@@ -1648,14 +1675,17 @@ def _create_naming_function(tuple_type_to_name, names_to_add):
             building_blocks.Selection(naming_lambda_arg, index=i))
 
   named_result = building_blocks.Tuple(
-      [_create_tuple_element(k) for k in range(len(names_to_add))])
+      [_create_tuple_element(k) for k in range(len(names_to_add))],
+      container_type)
   return building_blocks.Lambda('x', naming_lambda_arg.type_signature,
                                 named_result)
 
 
 def create_named_federated_tuple(
     tuple_to_name: building_blocks.ComputationBuildingBlock,
-    names_to_add: Sequence[str]) -> building_blocks.ComputationBuildingBlock:
+    names_to_add: Sequence[str],
+    container_type=None,
+) -> building_blocks.ComputationBuildingBlock:
   """Name tuple elements with names in `names_to_add`.
 
   Certain intrinsics, e.g. `federated_zip`, only accept unnamed tuples as
@@ -1672,6 +1702,8 @@ def create_named_federated_tuple(
       `names_to_add`.
     names_to_add: Python `tuple` or `list` containing instances of type `str` or
       `None`, the names to give to `tuple_to_name`.
+    container_type: An optional Python type to associate with the resulting
+      tuple.
 
   Returns:
     An instance of `building_blocks.ComputationBuildingBlock`
@@ -1693,19 +1725,23 @@ def create_named_federated_tuple(
                           computation_types.FederatedType)
   existing_names = (name for name, _ in anonymous_tuple.to_elements(
       tuple_to_name.type_signature.member))
-  if all((existing_name == name_to_add
-          for existing_name, name_to_add in zip(existing_names, names_to_add))):
+  if (all(
+      (existing_name == name_to_add
+       for existing_name, name_to_add in zip(existing_names, names_to_add))) and
+      container_type is None):
     # The names are already correct, so no work is necessary
     return tuple_to_name
 
   naming_fn = _create_naming_function(tuple_to_name.type_signature.member,
-                                      names_to_add)
+                                      names_to_add, container_type)
   return create_federated_map_or_apply(naming_fn, tuple_to_name)
 
 
 def create_named_tuple(
     comp: building_blocks.ComputationBuildingBlock,
-    names: Sequence[str]) -> building_blocks.ComputationBuildingBlock:
+    names: Sequence[str],
+    container_type=None,
+) -> building_blocks.ComputationBuildingBlock:
   """Creates a computation that applies `names` to `comp`.
 
   Args:
@@ -1713,6 +1749,8 @@ def create_named_tuple(
       of type `computation_types.NamedTupleType`.
     names: Python `tuple` or `list` containing instances of type `str` or
       `None`, the names to apply to `comp`.
+    container_type: Optional Python container type to associated with the
+      resulting tuple.
 
   Returns:
     A `building_blocks.ComputationBuildingBlock` representing a
@@ -1728,7 +1766,7 @@ def create_named_tuple(
                     '`None`, found {}'.format(names))
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(comp.type_signature, computation_types.NamedTupleType)
-  fn = _create_naming_function(comp.type_signature, names)
+  fn = _create_naming_function(comp.type_signature, names, container_type)
   return building_blocks.Call(fn, comp)
 
 

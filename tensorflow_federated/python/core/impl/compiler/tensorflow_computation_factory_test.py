@@ -97,7 +97,7 @@ class CreateConstantTest(parameterized.TestCase):
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
     expected_type = computation_types.FunctionType(None, type_signature)
-    self.assertEqual(actual_type, expected_type)
+    expected_type.check_assignable_from(actual_type)
     actual_result = test_utils.run_tensorflow(proto)
     if isinstance(expected_result, list):
       self.assertCountEqual(actual_result, expected_result)
@@ -266,13 +266,13 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
 
 class CreateEmptyTupleTest(absltest.TestCase):
 
-  def test_returns_coputation(self):
+  def test_returns_computation(self):
     proto = tensorflow_computation_factory.create_empty_tuple()
 
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
     expected_type = computation_types.FunctionType(None, [])
-    self.assertEqual(actual_type, expected_type)
+    expected_type.check_assignable_from(actual_type)
     actual_result = test_utils.run_tensorflow(proto)
     expected_result = anonymous_tuple.AnonymousTuple([])
     self.assertEqual(actual_result, expected_result)
@@ -333,7 +333,7 @@ class CreateReplicateInputTest(parameterized.TestCase):
     actual_type = type_serialization.deserialize_type(proto.type)
     expected_type = computation_types.FunctionType(type_signature,
                                                    [type_signature] * count)
-    self.assertEqual(actual_type, expected_type)
+    expected_type.check_assignable_from(actual_type)
     actual_result = test_utils.run_tensorflow(proto, value)
     expected_result = anonymous_tuple.AnonymousTuple([(None, value)] * count)
     self.assertEqual(actual_result, expected_result)

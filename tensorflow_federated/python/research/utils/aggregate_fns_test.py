@@ -49,8 +49,7 @@ class ClipNormAggregateFnTest(tf.test.TestCase):
       state = tff.federated_value(aggregate_fn.initialize(), tff.SERVER)
       return aggregate_fn(state, deltas, weights)
 
-    self.assertEqual(
-        federated_aggregate_test.type_signature.result,
+    federated_aggregate_test.type_signature.result.check_equivalent_to(
         tff.NamedTupleType((
             tff.FederatedType(
                 aggregate_fns.ClipNormAggregateState(
@@ -59,7 +58,6 @@ class ClipNormAggregateFnTest(tf.test.TestCase):
         )))
 
     state, mean = federated_aggregate_test(deltas, weights)
-    mean = mean._asdict()
 
     expected_clipped = []
     for delta in deltas:
@@ -109,7 +107,7 @@ class FixedClipNormProcessTest(tf.test.TestCase):
       expected_clipped.append(tf.nest.pack_sequence_as(delta, clipped))
     expected_mean = tf.nest.map_structure(lambda a, b: (a + b) / 2,
                                           *expected_clipped)
-    self.assertAllClose(expected_mean, output['result']._asdict())
+    self.assertAllClose(expected_mean, output['result'])
 
     # Global l2 norms [17.74824, 53.99074].
     metrics = output['measurements']

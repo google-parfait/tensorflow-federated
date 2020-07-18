@@ -79,10 +79,11 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
         computation_types.FunctionType(
             parameter=(server_state_type, client_value_type,
                        client_value_weight_type),
-            result=computation_types.NamedTupleType([
-                ('state', server_state_type), ('result', server_result_type),
-                ('measurements', server_metrics_type)
-            ])))
+            result=collections.OrderedDict(
+                state=server_state_type,
+                result=server_result_type,
+                measurements=server_metrics_type,
+            )))
 
   def test_raises_with_empty_value(self):
     value_type = type_conversions.type_from_tensors(())
@@ -108,7 +109,7 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
     output = mean_process.next(global_state, values, [1, 1, 1])
     self._check_result(output, 1, shapes)
     metrics = output['measurements']
-    self.assertEqual(metrics['num_zeroed'], 0)
+    self.assertEqual(metrics.num_zeroed, 0)
 
     # Weighted average.
     global_state = output['state']
@@ -116,7 +117,7 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
     output = mean_process.next(global_state, values, [1, 2, 3, 2])
     self._check_result(output, 2, shapes)
     metrics = output['measurements']
-    self.assertEqual(metrics['num_zeroed'], 0)
+    self.assertEqual(metrics.num_zeroed, 0)
 
     # One value zeroed.
     global_state = output['state']
@@ -124,7 +125,7 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
     output = mean_process.next(global_state, values, [1, 1])
     self._check_result(output, 50, shapes)
     metrics = output['measurements']
-    self.assertEqual(metrics['num_zeroed'], 1)
+    self.assertEqual(metrics.num_zeroed, 1)
 
     # Both values zeroed.
     global_state = mean_process.initialize()
@@ -132,7 +133,7 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
     output = mean_process.next(global_state, values, [1, 1])
     self._check_result(output, 0, shapes)
     metrics = output['measurements']
-    self.assertEqual(metrics['num_zeroed'], 2)
+    self.assertEqual(metrics.num_zeroed, 2)
 
   @parameterized.named_parameters(
       ('scalar', [()]),
@@ -146,24 +147,24 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
         value_type, 100.0, 0.0, 1.0, np.log(2.0), np.inf)
 
     global_state = mean_process.initialize()
-    self.assertEqual(global_state['current_estimate'], 100.0)
+    self.assertEqual(global_state.current_estimate, 100.0)
 
     values = [_make_value(x, shapes) for x in [0, 1, 2]]
     output = mean_process.next(global_state, values, [1, 1, 1])
     self._check_result(output, 1, shapes)
     global_state = output['state']
-    self.assertAllClose(global_state['current_estimate'], 50.0)
+    self.assertAllClose(global_state.current_estimate, 50.0)
     metrics = output['measurements']
-    self.assertAllClose(metrics['current_threshold'], 50.0)
-    self.assertEqual(metrics['num_zeroed'], 0)
+    self.assertAllClose(metrics.current_threshold, 50.0)
+    self.assertEqual(metrics.num_zeroed, 0)
 
     output = mean_process.next(global_state, values, [1, 1, 1])
     self._check_result(output, 1, shapes)
     global_state = output['state']
-    self.assertAllClose(global_state['current_estimate'], 25.0)
+    self.assertAllClose(global_state.current_estimate, 25.0)
     metrics = output['measurements']
-    self.assertAllClose(metrics['current_threshold'], 25.0)
-    self.assertEqual(metrics['num_zeroed'], 0)
+    self.assertAllClose(metrics.current_threshold, 25.0)
+    self.assertEqual(metrics.num_zeroed, 0)
 
   @parameterized.named_parameters(
       ('scalar', [()]),
@@ -177,24 +178,24 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
         value_type, 1.0, 1.0, 1.0, np.log(2.0), np.inf)
 
     global_state = mean_process.initialize()
-    self.assertEqual(global_state['current_estimate'], 1.0)
+    self.assertEqual(global_state.current_estimate, 1.0)
 
     values = [_make_value(x, shapes) for x in [90, 91, 92]]
     output = mean_process.next(global_state, values, [1, 1, 1])
     self._check_result(output, 0, shapes)
     global_state = output['state']
-    self.assertAllClose(global_state['current_estimate'], 2.0)
+    self.assertAllClose(global_state.current_estimate, 2.0)
     metrics = output['measurements']
-    self.assertAllClose(metrics['current_threshold'], 2.0)
-    self.assertEqual(metrics['num_zeroed'], 3)
+    self.assertAllClose(metrics.current_threshold, 2.0)
+    self.assertEqual(metrics.num_zeroed, 3)
 
     output = mean_process.next(global_state, values, [1, 1, 1])
     self._check_result(output, 0, shapes)
     global_state = output['state']
-    self.assertAllClose(global_state['current_estimate'], 4.0)
+    self.assertAllClose(global_state.current_estimate, 4.0)
     metrics = output['measurements']
-    self.assertAllClose(metrics['current_threshold'], 4.0)
-    self.assertEqual(metrics['num_zeroed'], 3)
+    self.assertAllClose(metrics.current_threshold, 4.0)
+    self.assertEqual(metrics.num_zeroed, 3)
 
   @parameterized.named_parameters(
       ('scalar', [()]),
@@ -208,7 +209,7 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
         value_type, 100.0, 0.5, 1.0, np.log(4.0), np.inf)
 
     global_state = mean_process.initialize()
-    self.assertEqual(global_state['current_estimate'], 100.0)
+    self.assertEqual(global_state.current_estimate, 100.0)
 
     values = [_make_value(x, shapes) for x in [30, 60]]
 
@@ -217,20 +218,20 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
     output = mean_process.next(global_state, values, [1, 1])
     self._check_result(output, 45, shapes)
     global_state = output['state']
-    self.assertAllClose(global_state['current_estimate'], 50.0)
+    self.assertAllClose(global_state.current_estimate, 50.0)
     metrics = output['measurements']
-    self.assertAllClose(metrics['current_threshold'], 50.0)
-    self.assertEqual(metrics['num_zeroed'], 0)
+    self.assertAllClose(metrics.current_threshold, 50.0)
+    self.assertEqual(metrics.num_zeroed, 0)
 
     # In second round, target is achieved, no adaptation occurs, but one update
     # is zeroed.
     output = mean_process.next(global_state, values, [1, 1])
     self._check_result(output, 30, shapes)
     global_state = output['state']
-    self.assertAllClose(global_state['current_estimate'], 50.0)
+    self.assertAllClose(global_state.current_estimate, 50.0)
     metrics = output['measurements']
-    self.assertAllClose(metrics['current_threshold'], 50.0)
-    self.assertEqual(metrics['num_zeroed'], 1)
+    self.assertAllClose(metrics.current_threshold, 50.0)
+    self.assertEqual(metrics.num_zeroed, 1)
 
   @parameterized.named_parameters(
       ('scalar', [()]),
@@ -244,7 +245,7 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
         value_type, 200.0, 0.5, 2.0, np.log(4.0), np.inf)
 
     global_state = mean_process.initialize()
-    self.assertEqual(global_state['current_estimate'], 100.0)
+    self.assertEqual(global_state.current_estimate, 100.0)
 
     values = [_make_value(x, shapes) for x in [30, 60]]
 
@@ -253,20 +254,20 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
     output = mean_process.next(global_state, values, [1, 1])
     self._check_result(output, 45, shapes)
     global_state = output['state']
-    self.assertAllClose(global_state['current_estimate'], 50.0)
+    self.assertAllClose(global_state.current_estimate, 50.0)
     metrics = output['measurements']
-    self.assertAllClose(metrics['current_threshold'], 100.0)
-    self.assertEqual(metrics['num_zeroed'], 0)
+    self.assertAllClose(metrics.current_threshold, 100.0)
+    self.assertEqual(metrics.num_zeroed, 0)
 
     # In second round, target is achieved, no adaptation occurs, and no updates
     # are zeroed becaues of multiplier.
     output = mean_process.next(global_state, values, [1, 1])
     self._check_result(output, 45, shapes)
     global_state = output['state']
-    self.assertAllClose(global_state['current_estimate'], 50.0)
+    self.assertAllClose(global_state.current_estimate, 50.0)
     metrics = output['measurements']
-    self.assertAllClose(metrics['current_threshold'], 100.0)
-    self.assertEqual(metrics['num_zeroed'], 0)
+    self.assertAllClose(metrics.current_threshold, 100.0)
+    self.assertEqual(metrics.num_zeroed, 0)
 
 
 if __name__ == '__main__':

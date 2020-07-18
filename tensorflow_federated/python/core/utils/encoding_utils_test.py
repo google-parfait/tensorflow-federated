@@ -67,9 +67,7 @@ class EncodedBroadcastTest(test.TestCase, parameterized.TestCase):
     state_type = broadcast_fn._initialize_fn.type_signature.result
     broadcast_signature = computations.federated_computation(
         broadcast_fn._next_fn,
-        computation_types.FederatedType(
-            broadcast_fn._initialize_fn.type_signature.result,
-            placements.SERVER),
+        computation_types.FederatedType(state_type, placements.SERVER),
         computation_types.FederatedType(value_type,
                                         placements.SERVER)).type_signature
 

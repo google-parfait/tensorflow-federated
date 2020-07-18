@@ -536,7 +536,15 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     def foo(dataset):
       return dataset.map(lambda x: tf.nest.map_structure(lambda v: v * 2, x))
 
-    self.assertEqual(foo.type_signature.result, input_type)
+    # Note: if `collections.OrderedDict` changes here, that is completely okay.
+    # This test merely serves as documentation of the current state of the
+    # world. The `collections.OrderedDict` addition is the result of recording
+    # the Python container that carries the result of `foo`.
+    self.assertEqual(
+        foo.type_signature.result,
+        computation_types.SequenceType(
+            computation_types.NamedTupleTypeWithPyContainerType(
+                [('a', tf.int64)], collections.OrderedDict)))
     input_value = tf.data.Dataset.range(5).map(
         lambda x: collections.OrderedDict(a=x))
     self.assertAllEqual([i for i in foo(input_value)],
@@ -552,8 +560,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(
         foo.type_signature.result,
         computation_types.SequenceType(
-            computation_types.NamedTupleType(
-                collections.OrderedDict(a=tf.int64))))
+            computation_types.NamedTupleTypeWithPyContainerType(
+                collections.OrderedDict(a=tf.int64), collections.OrderedDict)))
     self.assertAllEqual([i for i in foo()],
                         [collections.OrderedDict(a=i) for i in range(5)])
 
@@ -1020,7 +1028,9 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
     self.assertEqual(
         str(bar.type_signature), '(int32* -> <sum=int32,product=int32>)')
-    self.assertEqual(str(bar([1, 2, 3, 4, 5])), '<sum=15,product=120>')
+    self.assertEqual(
+        str(bar([1, 2, 3, 4, 5])),
+        "OrderedDict([('sum', 15), ('product', 120)])")
 
   def test_federated_reduce_with_integers(self):
 

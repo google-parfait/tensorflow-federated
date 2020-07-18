@@ -58,14 +58,18 @@ def _get_hashable_key(value, type_spec):
     TypeError: If there is no hashable key for this type of a value.
   """
   if type_spec.is_tuple():
-    if isinstance(value, anonymous_tuple.AnonymousTuple):
-      type_specs = anonymous_tuple.iter_elements(type_spec)
-      r_elem = []
-      for v, (field_name, field_type) in zip(value, type_specs):
-        r_elem.append((field_name, _get_hashable_key(v, field_type)))
-      return anonymous_tuple.AnonymousTuple(r_elem)
-    else:
-      return _get_hashable_key(anonymous_tuple.from_container(value), type_spec)
+    if not isinstance(value, anonymous_tuple.AnonymousTuple):
+      try:
+        value = anonymous_tuple.from_container(value)
+      except Exception as e:
+        raise TypeError(
+            'Failed to convert value with type_spec {} to `AnonymousTuple`'
+            .format(repr(type_spec))) from e
+    type_specs = anonymous_tuple.iter_elements(type_spec)
+    r_elem = []
+    for v, (field_name, field_type) in zip(value, type_specs):
+      r_elem.append((field_name, _get_hashable_key(v, field_type)))
+    return anonymous_tuple.AnonymousTuple(r_elem)
   elif type_spec.is_federated():
     if type_spec.all_equal:
       return _get_hashable_key(value, type_spec.member)

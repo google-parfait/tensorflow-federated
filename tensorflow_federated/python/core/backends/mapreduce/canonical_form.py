@@ -290,12 +290,18 @@ class CanonicalForm(object):
         raise TypeError('Expected all computations supplied as arguments to '
                         'be plain TensorFlow, found {}.'.format(which_comp))
 
-    if prepare.type_signature.parameter != initialize.type_signature.result:
+    def is_assignable_from_or_both_none(first, second):
+      if first is None:
+        return second is None
+      return first.is_assignable_from(second)
+
+    prepare_arg_type = prepare.type_signature.parameter
+    init_result_type = initialize.type_signature.result
+    if not is_assignable_from_or_both_none(prepare_arg_type, init_result_type):
       raise TypeError(
           'The `prepare` computation expects an argument of type {}, '
           'which does not match the result type {} of `initialize`.'.format(
-              prepare.type_signature.parameter,
-              initialize.type_signature.result))
+              prepare_arg_type, init_result_type))
 
     if (not work.type_signature.parameter.is_tuple() or
         len(work.type_signature.parameter) != 2):
@@ -303,12 +309,15 @@ class CanonicalForm(object):
           'The `work` computation expects an argument of type {} that is not '
           'a two-tuple.'.format(work.type_signature.parameter))
 
-    if work.type_signature.parameter[1] != prepare.type_signature.result:
+    work_2nd_arg_type = work.type_signature.parameter[1]
+    prepare_result_type = prepare.type_signature.result
+    if not is_assignable_from_or_both_none(work_2nd_arg_type,
+                                           prepare_result_type):
       raise TypeError(
           'The `work` computation expects an argument tuple with type {} as '
           'the second element (the initial client state from the server), '
           'which does not match the result type {} of `prepare`.'.format(
-              work.type_signature.parameter[1], prepare.type_signature.result))
+              work_2nd_arg_type, prepare_result_type))
 
     if (not work.type_signature.result.is_tuple() or
         len(work.type_signature.result) != 2):
@@ -323,14 +332,16 @@ class CanonicalForm(object):
     py_typecheck.check_len(accumulate.type_signature.parameter, 2)
     accumulate.type_signature.parameter[0].check_assignable_from(
         zero.type_signature.result)
-    if (accumulate.type_signature.parameter[1] !=
-        work.type_signature.result[0]):
+    accumulate_2nd_arg_type = accumulate.type_signature.parameter[1]
+    work_client_update_type = work.type_signature.result[0]
+    if not is_assignable_from_or_both_none(accumulate_2nd_arg_type,
+                                           work_client_update_type):
 
       raise TypeError(
           'The `accumulate` computation expects a second argument of type {}, '
           'which does not match the expected {} as implied by the type '
-          'signature of `work`.'.format(accumulate.type_signature.parameter[1],
-                                        work.type_signature.result[0]))
+          'signature of `work`.'.format(accumulate_2nd_arg_type,
+                                        work_client_update_type))
     accumulate.type_signature.parameter[0].check_assignable_from(
         accumulate.type_signature.result)
 
@@ -356,7 +367,8 @@ class CanonicalForm(object):
         initialize.type_signature.result,
         [report.type_signature.result, work.type_signature.result[1]],
     ])
-    if update.type_signature.parameter != expected_update_parameter_type:
+    if not is_assignable_from_or_both_none(update.type_signature.parameter,
+                                           expected_update_parameter_type):
       raise TypeError(
           'The `update` computation expects an argument of type {}, '
           'which does not match the expected {} as implied by the type '
@@ -369,7 +381,8 @@ class CanonicalForm(object):
           'The `update` computation returns a result  of type {} that is not '
           'a two-tuple.'.format(update.type_signature.result))
 
-    if update.type_signature.result[0] != initialize.type_signature.result:
+    if not update.type_signature.result[0].is_equivalent_to(
+        initialize.type_signature.result):
       raise TypeError(
           'The `update` computation returns a result tuple with type {} as '
           'the first element (the updated state of the server), which does '

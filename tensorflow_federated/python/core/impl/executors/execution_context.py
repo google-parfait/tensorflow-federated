@@ -32,7 +32,6 @@ from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
@@ -105,29 +104,26 @@ async def _ingest(executor, val, type_spec):
     return await executor.create_value(val, type_spec)
 
 
-async def _invoke(executor, comp, arg):
+async def _invoke(executor, comp, arg, result_type: computation_types.Type):
   """A coroutine that handles invocation.
 
   Args:
     executor: An instance of `executor_base.Executor`.
     comp: The first argument to `context_base.Context.invoke()`.
     arg: The optional second argument to `context_base.Context.invoke()`.
+    result_type: The type signature of the result. This is used to convert the
+      execution result into the proper container types.
 
   Returns:
     The result of the invocation.
   """
-  py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
-  result_type = comp.type_signature.result
   if arg is not None:
     py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
   comp = await executor.create_value(comp)
   result = await executor.create_call(comp, arg)
   py_typecheck.check_type(result, executor_value_base.ExecutorValue)
   result_val = _unwrap(await result.compute())
-  if type_analysis.is_anon_tuple_with_py_container(result_val, result_type):
-    return type_conversions.type_to_py_container(result_val, result_type)
-  else:
-    return result_val
+  return type_conversions.type_to_py_container(result_val, result_type)
 
 
 def _unwrap_execution_context_value(val):
@@ -174,6 +170,11 @@ class ExecutionContext(context_base.Context):
       wait_jitter_max=1000  # in milliseconds
   )
   def invoke(self, comp, arg):
+    comp.type_signature.check_function()
+    # Save the type signature before compiling. Compilation currently loses
+    # container types, so we must remember them here so that they can be
+    # restored in the output.
+    result_type = comp.type_signature.result
     if self._compiler_pipeline is not None:
       with tracing.span('ExecutionContext', 'Compile', span=True):
         comp = self._compiler_pipeline.compile(comp)
@@ -215,4 +216,4 @@ class ExecutionContext(context_base.Context):
 
         return event_loop.run_until_complete(
             tracing.wrap_coroutine_in_current_trace_context(
-                _invoke(executor, comp, arg)))
+                _invoke(executor, comp, arg, result_type)))

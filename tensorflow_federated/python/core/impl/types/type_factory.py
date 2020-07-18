@@ -29,8 +29,9 @@ def reduction_op(
   Returns:
     The type of the corresponding reduction operator (`(<U,T> -> U)`).
   """
-  return computation_types.FunctionType([result_type_spec, element_type_spec],
-                                        result_type_spec)
+  return computation_types.FunctionType(
+      computation_types.NamedTupleType([result_type_spec, element_type_spec]),
+      result_type_spec)
 
 
 def unary_op(type_spec: computation_types.Type) -> computation_types.Type:

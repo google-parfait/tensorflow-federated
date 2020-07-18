@@ -140,9 +140,11 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
   def test_serialize_deserialize_sequence_types(self):
     self._serialize_deserialize_roundtrip_test([
         computation_types.SequenceType(tf.int32),
-        computation_types.SequenceType([tf.int32, tf.bool]),
         computation_types.SequenceType(
-            [tf.int32, computation_types.SequenceType(tf.bool)]),
+            computation_types.NamedTupleType((tf.int32, tf.bool))),
+        computation_types.SequenceType(
+            computation_types.NamedTupleType(
+                (tf.int32, computation_types.SequenceType(tf.bool)))),
     ])
 
   def test_serialize_deserialize_named_tuple_types(self):
@@ -154,6 +156,18 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
         ]),
         computation_types.NamedTupleType([('x', tf.int32)]),
     ])
+
+  def test_serialize_deserialize_named_tuple_types_py_container(self):
+    # The Py container is destroyed during ser/de.
+    with_container = computation_types.NamedTupleTypeWithPyContainerType(
+        (tf.int32, tf.bool), tuple)
+    p1 = type_serialization.serialize_type(with_container)
+    without_container = type_serialization.deserialize_type(p1)
+    self.assertNotEqual(with_container, without_container)  # Not equal.
+    self.assertIsInstance(without_container, computation_types.NamedTupleType)
+    self.assertNotIsInstance(
+        without_container, computation_types.NamedTupleTypeWithPyContainerType)
+    with_container.check_equivalent_to(without_container)
 
   def test_serialize_deserialize_function_types(self):
     self._serialize_deserialize_roundtrip_test([

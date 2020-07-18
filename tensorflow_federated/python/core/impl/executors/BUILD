@@ -267,7 +267,6 @@ py_library(
         "//tensorflow_federated/python/core/api:typed_object",
         "//tensorflow_federated/python/core/impl/compiler:compiler_pipeline",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
