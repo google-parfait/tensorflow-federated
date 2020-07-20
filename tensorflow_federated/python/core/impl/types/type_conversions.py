@@ -309,12 +309,8 @@ def type_to_py_container(value, type_spec):
   `anonymous_tuple.from_container`.
 
   Args:
-    value: An `anonymous_tuple.AnonymousTuple`, in which case this method
-      recurses, replacing all ``anonymous_tuple.AnonymousTuple``s with the
-      appropriate Python containers if possible (and keeping
-      `anonymous_tuple.AnonymousTuple` otherwise); or some other value, in which
-      case that value is returned unmodified immediately (terminating the
-      recursion).
+    value: A structure of anonymous tuples of values corresponding to
+      `type_spec`.
     type_spec: The `tff.Type` to which value should conform, possibly including
       `computation_types.NamedTupleTypeWithPyContainerType`.
 
@@ -326,15 +322,31 @@ def type_to_py_container(value, type_spec):
     ValueError: If the conversion is not possible due to a mix of named
       and unnamed values.
   """
-  if not isinstance(value, anonymous_tuple.AnonymousTuple):
-    return value
-
-  anon_tuple = value
   if type_spec.is_federated():
     structure_type_spec = type_spec.member
   else:
     structure_type_spec = type_spec
-  py_typecheck.check_type(structure_type_spec, computation_types.NamedTupleType)
+
+  if structure_type_spec.is_sequence():
+    element_type = structure_type_spec.element
+    if isinstance(value, list):
+      return [type_to_py_container(element, element_type) for element in value]
+    if isinstance(value, tf.data.Dataset):
+      return value.map(
+          lambda element: type_to_py_container(element, element_type))
+    raise TypeError('Unexpected Python type for TF type {}: {}'.format(
+        structure_type_spec, type(value)))
+
+  if not structure_type_spec.is_tuple():
+    return value
+
+  if not isinstance(value, anonymous_tuple.AnonymousTuple):
+    # NOTE: When encountering non-anonymous tuples, we assume that
+    # this means that we're attempting to re-convert a value that
+    # already has the proper containers, and we short-circuit to
+    # avoid re-converting. This is a possibly dangerous assumption.
+    return value
+  anon_tuple = value
 
   def is_container_type_without_names(container_type):
     return (issubclass(container_type, (list, tuple)) and

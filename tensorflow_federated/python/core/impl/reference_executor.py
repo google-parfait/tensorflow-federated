@@ -679,34 +679,20 @@ class ReferenceExecutor(context_base.Context):
     computed_comp = self._compute(comp, root_context)
     comp.type_signature.check_assignable_from(computed_comp.type_signature)
 
-    def _convert_to_py_container(value, type_spec):
-      """Converts value to a Python container if type_spec has an annotation."""
-      if type_analysis.is_anon_tuple_with_py_container(value, type_spec):
-        return type_conversions.type_to_py_container(value, type_spec)
-      elif type_spec.is_sequence():
-        if all(
-            type_analysis.is_anon_tuple_with_py_container(
-                element, type_spec.element) for element in value):
-          return [
-              type_conversions.type_to_py_container(element, type_spec.element)
-              for element in value
-          ]
-      return value
-
     if not computed_comp.type_signature.is_function():
       if computed_arg is not None:
         raise TypeError('Unexpected argument {}.'.format(arg))
       else:
         value = computed_comp.value
         result_type = fn.type_signature.result
-        return _convert_to_py_container(value, result_type)
+        return type_conversions.type_to_py_container(value, result_type)
     else:
       result = computed_comp.value(computed_arg)
       py_typecheck.check_type(result, ComputedValue)
       comp.type_signature.result.check_assignable_from(result.type_signature)
       value = result.value
       fn_result_type = fn.type_signature.result
-      return _convert_to_py_container(value, fn_result_type)
+      return type_conversions.type_to_py_container(value, fn_result_type)
 
   def _compile(self, comp):
     """Compiles a `computation_base.Computation` to prepare it for execution.

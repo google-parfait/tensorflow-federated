@@ -18,7 +18,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -444,22 +443,16 @@ class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
     it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
 
     state = it.initialize()
-    self.assertLen(state, 1)
-    self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
-    self.assertEqual(state[0], 0)
+    self.assertAllEqual(state, collections.OrderedDict(num_rounds=0))
 
     state, metrics = it.next(state, [[28.0], [30.0, 33.0, 29.0]])
-    self.assertLen(state, 1)
-    self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
-    self.assertEqual(state[0], 1)
-    self.assertLen(metrics, 1)
-    self.assertAllEqual(
-        anonymous_tuple.name_list(metrics), ['ratio_over_threshold'])
-    self.assertEqual(metrics[0], 0.5)
+    self.assertAllEqual(state, collections.OrderedDict(num_rounds=1))
+    self.assertAllClose(metrics,
+                        collections.OrderedDict(ratio_over_threshold=0.5))
 
     state, metrics = it.next(state, [[33.0], [34.0], [35.0], [36.0]])
-    self.assertAllEqual(state, (2,))
-    self.assertAllClose(metrics, {'ratio_over_threshold': 0.75})
+    self.assertAllClose(metrics,
+                        collections.OrderedDict(ratio_over_threshold=0.75))
 
 
 class CreateBeforeAndAfterBroadcastForNoBroadcastTest(test.TestCase):
@@ -720,27 +713,23 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
   def test_temperature_example_round_trip(self):
+    # NOTE: the roundtrip through CanonicalForm->IterProc->CanonicalForm seems
+    # to lose the python container annotations on the NamedTupleType.
     it = canonical_form_utils.get_iterative_process_for_canonical_form(
         test_utils.get_temperature_sensor_example())
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
     new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     state = new_it.initialize()
-    self.assertLen(state, 1)
-    self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
-    self.assertEqual(state[0], 0)
+    self.assertEqual(state.num_rounds, 0)
 
     state, metrics = new_it.next(state, [[28.0], [30.0, 33.0, 29.0]])
-    self.assertLen(state, 1)
-    self.assertAllEqual(anonymous_tuple.name_list(state), ['num_rounds'])
-    self.assertEqual(state[0], 1)
-    self.assertLen(metrics, 1)
-    self.assertAllEqual(
-        anonymous_tuple.name_list(metrics), ['ratio_over_threshold'])
-    self.assertEqual(metrics[0], 0.5)
+    self.assertEqual(state.num_rounds, 1)
+    self.assertAllClose(metrics,
+                        collections.OrderedDict(ratio_over_threshold=0.5))
 
     state, metrics = new_it.next(state, [[33.0], [34.0], [35.0], [36.0]])
-    self.assertAllEqual(state, (2,))
-    self.assertAllClose(metrics, {'ratio_over_threshold': 0.75})
+    self.assertAllClose(metrics,
+                        collections.OrderedDict(ratio_over_threshold=0.75))
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
             test_utils.computation_to_building_block(it.next)),
@@ -754,7 +743,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     state1 = it.initialize()
     state2 = new_it.initialize()
-    self.assertEqual(str(state1), str(state2))
+    self.assertAllClose(state1, state2)
     dummy_x = np.array([[0.5] * 784], dtype=np.float32)
     dummy_y = np.array([1], dtype=np.int32)
     client_data = [collections.OrderedDict(x=dummy_x, y=dummy_y)]
@@ -763,13 +752,8 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     metrics = round_1[1]
     alt_round_1 = new_it.next(state2, [client_data])
     alt_state = alt_round_1[0]
-    alt_metrics = alt_round_1[1]
-    self.assertAllEqual(
-        anonymous_tuple.name_list(state), anonymous_tuple.name_list(alt_state))
-    self.assertAllEqual(
-        anonymous_tuple.name_list(metrics),
-        anonymous_tuple.name_list(alt_metrics))
     self.assertAllClose(state, alt_state)
+    alt_metrics = alt_round_1[1]
     self.assertAllClose(metrics, alt_metrics)
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(

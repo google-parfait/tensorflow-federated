@@ -488,19 +488,6 @@ class TypeFromTensorsTest(absltest.TestCase):
 
 class TypeToPyContainerTest(absltest.TestCase):
 
-  def test_fails_without_namedtupletype(self):
-    test_anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1)])
-    with self.assertRaises(TypeError):
-      type_conversions.type_to_py_container(
-          test_anon_tuple, computation_types.TensorType(tf.int32))
-
-    with self.assertRaises(TypeError):
-      type_conversions.type_to_py_container(
-          test_anon_tuple,
-          computation_types.FederatedType(
-              computation_types.TensorType(tf.int32),
-              placement_literals.SERVER))
-
   def test_not_anon_tuple_passthrough(self):
     value = (1, 2.0)
     result = type_conversions.type_to_py_container(

@@ -1097,7 +1097,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
         str(foo.type_signature),
         '(<int32@SERVER,int32@SERVER> -> <int32,int32>@SERVER)')
 
-    self.assertEqual(str(foo(5, 6)), '<5,6>')  # pylint: disable=too-many-function-args
+    self.assertEqual(str(foo(5, 6)), '[5, 6]')  # pylint: disable=too-many-function-args
 
   def assert_list(self, value, expected: str):
     """Assert that a value is a list with a given string representation."""
