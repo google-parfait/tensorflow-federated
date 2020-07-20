@@ -83,17 +83,6 @@ class ServerState(object):
   # schedules.
 
   @classmethod
-  def from_tff_result(cls, anon_tuple) -> 'ServerState':
-    """Constructs a `ServerState` from any compatible anonymous tuple."""
-    model = ModelWeights(
-        trainable=tuple(anon_tuple.model.trainable),
-        non_trainable=tuple(anon_tuple.model.non_trainable))
-    return cls(
-        model=model,
-        optimizer_state=list(anon_tuple.optimizer_state),
-        round_num=anon_tuple.round_num)
-
-  @classmethod
   def assign_weights_to_keras_model(cls, reference_model: ModelWeights,
                                     keras_model: tf.keras.Model):
     """Assign the model weights to the weights of a `tf.keras.Model`.
@@ -280,8 +269,7 @@ class FederatedAveragingProcessAdapter(adapters.IterativeProcessPythonAdapter):
     self._iterative_process = iterative_process
 
   def initialize(self) -> ServerState:
-    initial_state = self._iterative_process.initialize()
-    return ServerState.from_tff_result(initial_state)
+    return self._iterative_process.initialize()
 
   def next(
       self,
@@ -289,8 +277,6 @@ class FederatedAveragingProcessAdapter(adapters.IterativeProcessPythonAdapter):
       data: Collection[tf.data.Dataset],
   ) -> adapters.IterationResult:
     state, metrics = self._iterative_process.next(state, data)
-    state = ServerState.from_tff_result(state)
-    metrics = metrics._asdict(recursive=True)
     outputs = None
     return adapters.IterationResult(state, metrics, outputs)
 

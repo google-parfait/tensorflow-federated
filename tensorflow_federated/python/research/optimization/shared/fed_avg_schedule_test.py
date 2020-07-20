@@ -187,19 +187,6 @@ class ModelDeltaProcessTest(tf.test.TestCase):
     train_gap_second_half = train_outputs[3]['loss'] - train_outputs[5]['loss']
     self.assertLess(train_gap_second_half, train_gap_first_half)
 
-  def test_conversion_from_tff_result(self):
-    federated_data = [[_batch_fn()]]
-
-    iterproc_adapter = fed_avg_schedule.build_fed_avg_process(
-        _uncompiled_model_builder,
-        client_optimizer_fn=tf.keras.optimizers.SGD,
-        server_optimizer_fn=tf.keras.optimizers.SGD)
-
-    state, _, _ = self._run_rounds(iterproc_adapter, federated_data, 1)
-    converted_state = fed_avg_schedule.ServerState.from_tff_result(state)
-    self.assertIsInstance(converted_state, fed_avg_schedule.ServerState)
-    self.assertIsInstance(converted_state.model, fed_avg_schedule.ModelWeights)
-
   def test_build_with_preprocess_function(self):
     test_dataset = tf.data.Dataset.range(5)
     client_datasets_type = tff.FederatedType(
@@ -239,9 +226,8 @@ class ModelDeltaProcessTest(tf.test.TestCase):
     expected_type = tff.FunctionType(
         parameter=(server_state_type, client_datasets_type),
         result=(server_state_type, metrics_type))
-    self.assertEqual(
-        iterproc.next.type_signature,
-        expected_type,
+    self.assertTrue(
+        iterproc.next.type_signature.is_equivalent_to(expected_type),
         msg='{s}\n!={t}'.format(
             s=iterproc.next.type_signature, t=expected_type))
 
