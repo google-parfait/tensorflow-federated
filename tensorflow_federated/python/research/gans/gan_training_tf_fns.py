@@ -52,13 +52,6 @@ class FromServer(object):
   generator_weights = attr.ib()
   discriminator_weights = attr.ib()
 
-  @classmethod
-  def from_tff_result(cls, anon_tuple):
-    # TODO(b/123092620): These conversions should not be needed.
-    return assert_no_anon_tuples(
-        cls(generator_weights=list(anon_tuple.generator_weights),
-            discriminator_weights=list(anon_tuple.discriminator_weights)))
-
 
 # Set cmp=False to get a default hash function for tf.function.
 @attr.s(eq=False, frozen=False)
@@ -78,25 +71,6 @@ class ServerState(object):
   counters = attr.ib()
   dp_averaging_state = attr.ib(default=None)
 
-  @classmethod
-  def from_tff_result(cls, anon_tuple):
-    # TODO(b/123092620): These conversions should not be needed.
-    return assert_no_anon_tuples(
-        cls(
-            generator_weights=list(anon_tuple.generator_weights),
-            discriminator_weights=list(anon_tuple.discriminator_weights),
-            counters=anon_tuple.counters._asdict(),
-            # TODO(b/123092620): Using _asdict(recursive=True) is a work-around
-            # which at least gets rid of AnonymousTuples to allow the use of
-            # tf.nest. However, really these should be the appropriate
-            # namedtuple types expected by the TF Privacy code. This
-            # means that in some cases ServerState.dp_averaging_state
-            # needs dict-style access, and sometimes attribute-style.
-            # However, since this is really opaque state, this only comes up
-            # in the test.
-            dp_averaging_state=anon_tuple.dp_averaging_state._asdict(
-                recursive=True)))
-
 
 # Set cmp=False to get a default hash function for tf.function.
 @attr.s(eq=False, frozen=True)
@@ -112,15 +86,6 @@ class ClientOutput(object):
   discriminator_weights_delta = attr.ib()
   update_weight = attr.ib()
   counters = attr.ib()
-
-  @classmethod
-  def from_tff_result(cls, anon_tuple):
-    # TODO(b/123092620): These conversions should not be needed.
-    return assert_no_anon_tuples(
-        cls(discriminator_weights_delta=list(
-            anon_tuple.discriminator_weights_delta),
-            update_weight=anon_tuple.update_weight,
-            counters=anon_tuple.counters._asdict()))
 
 
 def _weights(model):

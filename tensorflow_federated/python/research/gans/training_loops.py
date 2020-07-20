@@ -228,10 +228,7 @@ def federated_training_loop(gan: tff_gans.GanFnsAndTypes,
   logging.info('Starting federated_training_loop.')
   start_time = time.time()
   process = tff_gans.build_gan_training_process(gan)
-  # TODO(b/123092620): The following conversion (from anon tuple to ServerState)
-  # should not be needed.
-  server_state = gan_training_tf_fns.ServerState.from_tff_result(
-      process.initialize())
+  server_state = process.initialize()
   logging.info(
       'Built processes and computed initial state in {:.2f} seconds'.format(
           time.time() - start_time))
@@ -267,11 +264,8 @@ def federated_training_loop(gan: tff_gans.GanFnsAndTypes,
       do_eval(round_num, server_state)
 
     client_gen_inputs, client_real_inputs = zip(*client_datasets_fn(round_num))
-    # TODO(b/123092620): The following conversion (from anon tuple to
-    # ServerState) should not be needed.
-    server_state = gan_training_tf_fns.ServerState.from_tff_result(
-        process.next(server_state, server_gen_inputs_fn(round_num),
-                     client_gen_inputs, client_real_inputs))
+    server_state = process.next(server_state, server_gen_inputs_fn(round_num),
+                                client_gen_inputs, client_real_inputs)
 
     round_num += 1
     if round_num % rounds_per_checkpoint == 0:
