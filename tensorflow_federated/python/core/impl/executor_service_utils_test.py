@@ -30,40 +30,33 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
 
   def test_serialize_deserialize_tensor_value(self):
     x = tf.constant(10.0).numpy()
-    value_proto, value_type = executor_service_utils.serialize_tensor_value(x)
+    type_spec = computation_types.TensorType(tf.as_dtype(x.dtype), x.shape)
+    value_proto, value_type = executor_service_utils.serialize_value(
+        x, type_spec)
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assertEqual(str(value_type), 'float32')
-    y, type_spec = executor_service_utils.deserialize_tensor_value(value_proto)
-    self.assertEqual(str(type_spec), 'float32')
-    self.assertTrue(np.array_equal(x, y))
-
-  def test_serialize_deserialize_tensor_value_with_type_spec(self):
-    x = tf.constant(10.0).numpy()
-    value_proto, value_type = (
-        executor_service_utils.serialize_tensor_value(x, tf.float32))
-    self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assertEqual(str(value_type), 'float32')
-    y, type_spec = executor_service_utils.deserialize_tensor_value(value_proto)
+    y, type_spec = executor_service_utils.deserialize_value(value_proto)
     self.assertEqual(str(type_spec), 'float32')
     self.assertTrue(np.array_equal(x, y))
 
   def test_serialize_deserialize_tensor_value_with_different_dtype(self):
     x = tf.constant(10.0).numpy()
     value_proto, value_type = (
-        executor_service_utils.serialize_tensor_value(x, tf.int32))
+        executor_service_utils.serialize_value(
+            x, computation_types.TensorType(tf.int32)))
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assertEqual(str(value_type), 'int32')
-    y, type_spec = executor_service_utils.deserialize_tensor_value(value_proto)
+    y, type_spec = executor_service_utils.deserialize_value(value_proto)
     self.assertEqual(str(type_spec), 'int32')
     self.assertEqual(y, 10)
 
   def test_serialize_deserialize_tensor_value_with_nontrivial_shape(self):
     x = tf.constant([10, 20, 30]).numpy()
-    value_proto, value_type = executor_service_utils.serialize_tensor_value(
-        x, (tf.int32, [3]))
+    value_proto, value_type = executor_service_utils.serialize_value(
+        x, computation_types.TensorType(tf.int32, [3]))
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assertEqual(str(value_type), 'int32[3]')
-    y, type_spec = executor_service_utils.deserialize_tensor_value(value_proto)
+    y, type_spec = executor_service_utils.deserialize_value(value_proto)
     self.assertEqual(str(type_spec), 'int32[3]')
     self.assertTrue(np.array_equal(x, y))
 
@@ -201,7 +194,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
   def test_serialize_deserialize_tensor_value_with_bad_shape(self):
     x = tf.constant([10, 20, 30]).numpy()
     with self.assertRaises(TypeError):
-      executor_service_utils.serialize_tensor_value(x, tf.int32)
+      executor_service_utils.serialize_value(x, tf.int32)
 
   def test_serialize_deserialize_computation_value(self):
 
