@@ -110,6 +110,12 @@ code for your research:
     change
     [emnist_fedavg_main](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples/simple_fedavg/emnist_fedavg_main.py).
 
+1.  Implement a model that uses L2 regularization. You will need to change the
+    model definition in
+    [emnist_fedavg_main](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples/simple_fedavg/emnist_fedavg_main.py)
+    and add Keras regularization losses in the `KerasModelWrapper` class in
+    [simple_fedavg_tf](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples/simple_fedavg/simple_fedavg_tf.py).
+
 1.  Implement a decaying learning rate schedule on the clients based on the
     global round, using the `round_num` broadcasted to the clients in
     [simple_fedavg_tf](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples/simple_fedavg/simple_fedavg_tf.py).
