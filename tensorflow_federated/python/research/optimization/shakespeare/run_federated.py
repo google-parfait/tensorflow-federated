@@ -74,9 +74,10 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  train_clientdata, test_dataset = shakespeare_dataset.construct_character_level_datasets(
+  train_clientdata = shakespeare_dataset.construct_character_level_datasets(
       FLAGS.client_batch_size, FLAGS.client_epochs_per_round,
       FLAGS.sequence_length)
+  _, test_dataset = shakespeare_dataset.construct_centralized_datasets()
   test_dataset = test_dataset.cache()
 
   loss_fn_builder = functools.partial(
