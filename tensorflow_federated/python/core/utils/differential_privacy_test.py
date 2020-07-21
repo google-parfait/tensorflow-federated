@@ -93,9 +93,10 @@ class BuildDpQueryTest(test.TestCase):
     def make_mock_tensor(*dims):
       return MockTensor(mock_shape([mock_dim(dim) for dim in dims]))
 
-    vectors = collections.OrderedDict([('a', make_mock_tensor(2)),
-                                       ('b', make_mock_tensor(2, 3)),
-                                       ('c', make_mock_tensor(1, 3, 4))])
+    vectors = collections.OrderedDict(
+        a=make_mock_tensor(2),
+        b=make_mock_tensor(2, 3),
+        c=make_mock_tensor(1, 3, 4))
     model = mock_model(mock_weights(vectors))
 
     query = differential_privacy.build_dp_query(
@@ -238,7 +239,7 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('float', 0.0), ('list', [0.0, 0.0]),
-      ('odict', collections.OrderedDict([('a', 0.0), ('b', 0.0)])))
+      ('odict', collections.OrderedDict(a=0.0, b=0.0)))
   def test_process_type_signature(self, value_template):
     query = tensorflow_privacy.GaussianSumQuery(4.0, 0.0)
     value_type = type_conversions.type_from_tensors(value_template)
@@ -246,7 +247,8 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
         value_type, query)
 
     server_state_type = computation_types.FederatedType(
-        query._GlobalState(tf.float32, tf.float32), placements.SERVER)
+        type_conversions.type_from_tensors(query.initial_global_state()),
+        placements.SERVER)
     self.assertEqual(
         dp_aggregate_process.initialize.type_signature,
         computation_types.FunctionType(
@@ -264,10 +266,10 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
         computation_types.FunctionType(
             parameter=(server_state_type, client_value_type,
                        client_value_weight_type),
-            result=collections.OrderedDict([('state', server_state_type),
-                                            ('result', server_result_type),
-                                            ('measurements',
-                                             server_metrics_type)])))
+            result=collections.OrderedDict(
+                state=server_state_type,
+                result=server_result_type,
+                measurements=server_metrics_type)))
 
   def test_dp_sum(self):
     query = tensorflow_privacy.GaussianSumQuery(4.0, 0.0)
@@ -289,7 +291,7 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
     query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
 
     def datapoint(a, b):
-      return collections.OrderedDict([('a', (a,)), ('b', [b])])
+      return collections.OrderedDict(a=(a,), b=[b])
 
     data = [
         datapoint(1.0, 2.0),
@@ -315,10 +317,8 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
     query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
 
     def datapoint(a, b, c):
-      return collections.OrderedDict([('a', (a,)),
-                                      ('bc',
-                                       collections.OrderedDict([('b', [b]),
-                                                                ('c', (c,))]))])
+      return collections.OrderedDict(
+          a=(a,), bc=collections.OrderedDict(b=[b], c=(c,)))
 
     data = [
         datapoint(1.0, 2.0, 1.0),
@@ -345,7 +345,7 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
     query = tensorflow_privacy.GaussianSumQuery(5.0, 0.0)
 
     def datapoint(a, b, c):
-      return collections.OrderedDict([('a', (a,)), ('bc', ([b], (c,)))])
+      return collections.OrderedDict(a=(a,), bc=([b], (c,)))
 
     data = [
         datapoint(1.0, 2.0, 1.0),
