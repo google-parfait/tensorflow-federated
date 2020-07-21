@@ -40,7 +40,6 @@ class CompilerPipeline(object):
                                               Any]):
     py_typecheck.check_callable(compilation_fn)
     self._compilation_fn = compilation_fn
-    self._compiled_computations = {}
 
   @functools.lru_cache()
   def compile(self, computation_to_compile: computation_base.Computation):
