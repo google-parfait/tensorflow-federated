@@ -85,35 +85,6 @@ class ReduceLROnPlateau(object):
   cooldown = attr.ib(default=None)
   cooldown_counter = attr.ib(default=None)
 
-  @classmethod
-  def from_anonymous_tuple(cls, anon_tuple):
-    """Creates a `ReduceLROnPlateau` instance from an anonymout tuple.
-
-    Used to convert objects such as anonymous tuples with matching named
-    attributes into `ReduceLROnPlateau` objects.
-
-    Args:
-      anon_tuple: An object with named attributes matching that of
-        `ReduceLROnPlateau`.
-
-    Returns:
-      A `ReduceLROnPlateau` instance.
-    """
-    return cls(
-        learning_rate=anon_tuple.learning_rate,
-        monitor=anon_tuple.monitor,
-        decay_factor=anon_tuple.decay_factor,
-        minimize=anon_tuple.minimize,
-        best=anon_tuple.best,
-        min_delta=anon_tuple.min_delta,
-        min_lr=anon_tuple.min_lr,
-        window_size=anon_tuple.window_size,
-        metrics_window=list(anon_tuple.metrics_window),
-        patience=anon_tuple.patience,
-        wait=anon_tuple.wait,
-        cooldown=anon_tuple.cooldown,
-        cooldown_counter=anon_tuple.cooldown_counter)
-
 
 def create_reduce_lr_on_plateau(**kwargs):
   """Initializes a callback in a way that automatically infers attributes."""

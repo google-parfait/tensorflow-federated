@@ -61,22 +61,6 @@ class ServerState(object):
   server_lr_callback = attr.ib()
 
   @classmethod
-  def from_tff_result(cls, anon_tuple, from_anon_client_callback,
-                      from_anon_server_callback):
-    """Constructs a `ServerState` from any compatible anonymous tuple."""
-    model = tff.learning.ModelWeights(
-        trainable=tuple(anon_tuple.model.trainable),
-        non_trainable=tuple(anon_tuple.model.non_trainable))
-
-    return cls(
-        model=model,
-        optimizer_state=list(anon_tuple.optimizer_state),
-        client_lr_callback=from_anon_client_callback(
-            anon_tuple.client_lr_callback),
-        server_lr_callback=from_anon_server_callback(
-            anon_tuple.server_lr_callback))
-
-  @classmethod
   def assign_weights_to_keras_model(cls, reference_weights, keras_model):
     """Assign the model weights to the weights of a `tf.keras.Model`.
 
@@ -398,9 +382,7 @@ def build_fed_avg_process(model_fn,
   tff_iterative_process = tff.templates.IterativeProcess(
       initialize_fn=initialize_fn, next_fn=run_one_round)
 
-  return FedAvgDecayAdapter(tff_iterative_process,
-                            client_lr_callback.from_anonymous_tuple,
-                            server_lr_callback.from_anonymous_tuple)
+  return FedAvgDecayAdapter(tff_iterative_process)
 
 
 class FedAvgDecayAdapter(adapters.IterativeProcessPythonAdapter):
@@ -410,24 +392,14 @@ class FedAvgDecayAdapter(adapters.IterativeProcessPythonAdapter):
   recording metrics.
   """
 
-  def __init__(self, iterative_process, from_anon_client_callback,
-               from_anon_server_callback):
+  def __init__(self, iterative_process):
     self._iterative_process = iterative_process
-    self._from_anon_client_callback = from_anon_client_callback
-    self._from_anon_server_callback = from_anon_server_callback
 
   def initialize(self):
-    initial_state = self._iterative_process.initialize()
-    return ServerState.from_tff_result(initial_state,
-                                       self._from_anon_client_callback,
-                                       self._from_anon_server_callback)
+    return self._iterative_process.initialize()
 
   def next(self, state, data):
     state, initial_metrics, metrics = self._iterative_process.next(state, data)
-    state = ServerState.from_tff_result(state, self._from_anon_client_callback,
-                                        self._from_anon_server_callback)
-    initial_metrics = initial_metrics._asdict(recursive=True)
-    metrics = metrics._asdict(recursive=True)
     total_metrics = {
         'before_training': initial_metrics,
         'during_training': metrics

@@ -105,11 +105,9 @@ class DecayIterativeProcessBuilderTest(tf.test.TestCase):
     server_state_type = tff.FederatedType(
         adaptive_fed_avg.ServerState(
             model=tff.learning.ModelWeights(
-                trainable=[
-                    tff.TensorType(tf.float32, [1, 1]),
-                    tff.TensorType(tf.float32, [1])
-                ],
-                non_trainable=[]),
+                trainable=(tff.TensorType(tf.float32, [1, 1]),
+                           tff.TensorType(tf.float32, [1])),
+                non_trainable=()),
             optimizer_state=[tf.int64],
             client_lr_callback=lr_callback_type,
             server_lr_callback=lr_callback_type), tff.SERVER)
@@ -129,11 +127,12 @@ class DecayIterativeProcessBuilderTest(tf.test.TestCase):
             mean_squared_error=tff.TensorType(tf.float32),
             loss=tff.TensorType(tf.float32)), tff.SERVER)
 
-    self.assertEqual(
-        iterative_process._iterative_process.next.type_signature,
-        tff.FunctionType(
-            parameter=(server_state_type, dataset_type),
-            result=(server_state_type, metrics_type, metrics_type)))
+    actual_type = iterative_process._iterative_process.next.type_signature
+    expected_type = tff.FunctionType(
+        parameter=(server_state_type, dataset_type),
+        result=(server_state_type, metrics_type, metrics_type))
+
+    self.assertTrue(actual_type.is_equivalent_to(expected_type))
 
   def test_iterative_process_decreases_loss(self):
     iterative_process = decay_iterative_process_builder.from_flags(
