@@ -17,7 +17,7 @@ A composite transformation is one that applies multiple atomic transformation to
 an AST either pointwise or serially.
 """
 
-from typing import Mapping, Tuple
+from typing import Mapping
 
 from absl import logging
 
@@ -631,7 +631,7 @@ def compile_local_computation_to_tensorflow(comp):
 
 def transform_to_call_dominant(
     comp: building_blocks.ComputationBuildingBlock
-) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+) -> transformation_utils.TransformReturnType:
   """Normalizes computations into Call-Dominant Form.
 
   A computation is in call-dominant form if the following conditions are true:

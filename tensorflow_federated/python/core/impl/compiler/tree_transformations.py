@@ -2156,7 +2156,7 @@ def unwrap_placement(comp):
 
 def group_block_locals_by_dependency(
     comp: building_blocks.ComputationBuildingBlock
-) -> Tuple[building_blocks.ComputationBuildingBlock, bool]:
+) -> transformation_utils.TransformReturnType:
   """Groups local variables in blocks under `comp` by dependency structure.
 
   `building_block.Block` objects obey LET*-semantics in their variable
