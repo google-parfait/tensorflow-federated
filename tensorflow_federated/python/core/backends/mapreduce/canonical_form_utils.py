@@ -940,6 +940,11 @@ def get_canonical_form_for_iterative_process(ip):
       next_comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
   contains_federated_secure_sum = tree_analysis.contains_called_intrinsic(
       next_comp, intrinsic_defs.FEDERATED_SECURE_SUM.uri)
+  if not (contains_federated_aggregate or contains_federated_secure_sum):
+    raise ValueError(
+        'Expected an `tff.templates.IterativeProcess` containing at least one '
+        '`federated_aggregate` or `federated_secure_sum`, found none.')
+
   if contains_federated_aggregate and contains_federated_secure_sum:
     before_aggregate, after_aggregate = (
         transformations.force_align_and_split_by_intrinsics(
@@ -947,18 +952,16 @@ def get_canonical_form_for_iterative_process(ip):
                 intrinsic_defs.FEDERATED_AGGREGATE.uri,
                 intrinsic_defs.FEDERATED_SECURE_SUM.uri,
             ]))
-  elif not contains_federated_aggregate:
+  elif contains_federated_secure_sum:
+    assert not contains_federated_aggregate
     before_aggregate, after_aggregate = (
         _create_before_and_after_aggregate_for_no_federated_aggregate(
             after_broadcast))
-  elif not contains_federated_secure_sum:
+  else:
+    assert contains_federated_aggregate and not contains_federated_secure_sum
     before_aggregate, after_aggregate = (
         _create_before_and_after_aggregate_for_no_federated_secure_sum(
             after_broadcast))
-  else:
-    raise ValueError(
-        'Expected an `tff.templates.IterativeProcess` containing at least one '
-        '`federated_aggregate` or `federated_secure_sum`, found none.')
 
   type_info = _get_type_info(initialize_comp, before_broadcast, after_broadcast,
                              before_aggregate, after_aggregate)

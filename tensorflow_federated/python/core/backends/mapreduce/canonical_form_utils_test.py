@@ -793,7 +793,10 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
   def test_raises_value_error_for_sum_example_with_no_aggregation(self):
     ip = get_iterative_process_for_sum_example_with_no_aggregation()
 
-    with self.assertRaises(ValueError):
+    with self.assertRaisesRegex(
+        ValueError,
+        r'Expected .* containing at least one `federated_aggregate` or '
+        r'`federated_secure_sum`'):
       canonical_form_utils.get_canonical_form_for_iterative_process(ip)
 
   def test_returns_canonical_form_with_indirection_to_intrinsic(self):
