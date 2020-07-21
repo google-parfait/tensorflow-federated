@@ -15,7 +15,6 @@
 
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.research.utils import adapters
 
 
@@ -34,29 +33,11 @@ class DPFedAvgProcessAdapter(adapters.IterativeProcessPythonAdapter):
   def _get_clip(self, state):
     return state.numerator_state.sum_state.l2_norm_clip
 
-  def _server_state_from_tff_result(self, result):
-    if self._per_vector_clipping:
-      per_vector_aggregate_states = [
-          anonymous_tuple.to_odict(elt, recursive=True) for _, elt in
-          anonymous_tuple.iter_elements(result.delta_aggregate_state)
-      ]
-    else:
-      per_vector_aggregate_states = anonymous_tuple.to_odict(
-          result.delta_aggregate_state, recursive=True)
-    return tff.learning.framework.ServerState(
-        tff.learning.ModelWeights(
-            tuple(result.model.trainable), tuple(result.model.non_trainable)),
-        list(result.optimizer_state), per_vector_aggregate_states,
-        tuple(result.model_broadcast_state))
-
   def initialize(self):
-    initial_state = self._iterative_process.initialize()
-    return self._server_state_from_tff_result(initial_state)
+    return self._iterative_process.initialize()
 
   def next(self, state, data):
     state, metrics = self._iterative_process.next(state, data)
-    python_state = self._server_state_from_tff_result(state)
-    metrics = metrics._asdict(recursive=True)
     if self._adaptive_clipping:
       if self._per_vector_clipping:
         metrics.update({
@@ -67,7 +48,7 @@ class DPFedAvgProcessAdapter(adapters.IterativeProcessPythonAdapter):
         metrics.update({'clip': self._get_clip(state.delta_aggregate_state)})
 
     outputs = None
-    return adapters.IterationResult(python_state, metrics, outputs)
+    return adapters.IterationResult(state, metrics, outputs)
 
 
 def assign_weights_to_keras_model(reference_model, keras_model):

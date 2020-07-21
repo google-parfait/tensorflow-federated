@@ -26,29 +26,6 @@ class CompressionServerState(tff.learning.framework.ServerState):
   """Represents the state of the server carried between rounds."""
 
   @classmethod
-  def from_tff_value(cls, anon_tuple):
-    """Creates a `CompressionServerState` from a compatible anonymous tuple."""
-
-    model = ModelWeights(
-        trainable=tuple(anon_tuple.model.trainable),
-        non_trainable=tuple(anon_tuple.model.non_trainable))
-
-    delta_aggregate_state = tuple(
-        [tuple(x) for x in anon_tuple.delta_aggregate_state])
-
-    model_broadcast_state = ModelWeights(
-        trainable=tuple(
-            [tuple(x) for x in anon_tuple.model_broadcast_state.trainable]),
-        non_trainable=tuple(
-            [tuple(x) for x in anon_tuple.model_broadcast_state.non_trainable]))
-
-    return cls(
-        model=model,
-        optimizer_state=list(anon_tuple.optimizer_state),
-        delta_aggregate_state=delta_aggregate_state,
-        model_broadcast_state=model_broadcast_state)
-
-  @classmethod
   def assign_weights_to_keras_model(cls, reference_model, keras_model):
     """Assign the model weights to the weights of a `tf.keras.Model`.
 
@@ -81,12 +58,9 @@ class CompressionProcessAdapter(adapters.IterativeProcessPythonAdapter):
     self._iterative_process = iterative_process
 
   def initialize(self):
-    initial_state = self._iterative_process.initialize()
-    return CompressionServerState.from_tff_value(initial_state)
+    return self._iterative_process.initialize()
 
   def next(self, state, data):
     state, metrics = self._iterative_process.next(state, data)
-    state = CompressionServerState.from_tff_value(state)
-    metrics = metrics._asdict(recursive=True)
     outputs = None
     return adapters.IterationResult(state, metrics, outputs)
