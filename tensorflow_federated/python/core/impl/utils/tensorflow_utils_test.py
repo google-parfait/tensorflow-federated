@@ -252,9 +252,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(str(t), '<int32,bool>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), list)
+    self.assertIs(t.python_container, list)
 
   @test.graph_mode_test
   def test_capture_result_with_tuple_of_constants(self):
@@ -262,9 +260,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(str(t), '<int32,bool>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), tuple)
+    self.assertIs(t.python_container, tuple)
 
   @test.graph_mode_test
   def test_capture_result_with_dict_of_constants(self):
@@ -275,9 +271,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(str(t1), '<a=int32,b=bool>')
     self.assertIsInstance(t1,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t1), dict)
+    self.assertIs(t1.python_container, dict)
 
     t2 = self._checked_capture_result({
         'b': tf.constant(True),
@@ -286,9 +280,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(str(t2), '<a=int32,b=bool>')
     self.assertIsInstance(t2,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t2), dict)
+    self.assertIs(t2.python_container, dict)
 
   @test.graph_mode_test
   def test_capture_result_with_ordered_dict_of_constants(self):
@@ -300,9 +292,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(str(t), '<b=bool,a=int32>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), collections.OrderedDict)
+    self.assertIs(t.python_container, collections.OrderedDict)
 
   @test.graph_mode_test
   def test_capture_result_with_namedtuple_of_constants(self):
@@ -312,9 +302,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(str(t), '<x=int32,y=bool>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), test_named_tuple)
+    self.assertIs(t.python_container, test_named_tuple)
 
   @test.graph_mode_test
   def test_capture_result_with_attrs_of_constants(self):
@@ -330,9 +318,7 @@ class GraphUtilsTest(test.TestCase):
     self.assertEqual(str(type_spec), '<x=int32,y=bool>')
     self.assertIsInstance(type_spec,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            type_spec), TestFoo)
+    self.assertIs(type_spec.python_container, TestFoo)
 
   @test.graph_mode_test
   def test_capture_result_with_anonymous_tuple_of_constants(self):
@@ -364,14 +350,10 @@ class GraphUtilsTest(test.TestCase):
         t, computation_types.NamedTupleTypeWithPyContainerType)
     self.assertIsInstance(t.x,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t.x), named_tuple_type)
+    self.assertIs(t.x.python_container, named_tuple_type)
     self.assertIsInstance(t[1],
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t[1]), list)
+    self.assertIs(t[1].python_container, list)
 
   @test.graph_mode_test
   def test_capture_result_with_sequence_of_ints_using_from_tensors(self):

@@ -494,12 +494,8 @@ def create_named_tuple_setattr_lambda(
       elements.append((key, value_comp_placeholder))
     else:
       elements.append((key, building_blocks.Selection(lambda_arg, index=idx)))
-  if named_tuple_signature.is_tuple_with_py_container():
-    container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-        named_tuple_signature)
-  else:
-    container_type = None
-  return_tuple = building_blocks.Tuple(elements, container_type)
+  return_tuple = building_blocks.Tuple(elements,
+                                       named_tuple_signature.python_container)
   lambda_to_return = building_blocks.Lambda(lambda_arg.name,
                                             named_tuple_signature, return_tuple)
   symbols = ((value_comp_placeholder.name, value_comp),)
@@ -1123,12 +1119,8 @@ def create_federated_unzip(
     fn = building_blocks.Lambda(fn_ref.name, fn_ref.type_signature, sel)
     intrinsic = create_federated_map_or_apply(fn, value_ref)
     elements.append((name, intrinsic))
-  if value.type_signature.member.is_tuple_with_py_container():
-    container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-        value.type_signature.member)
-  else:
-    container_type = None
-  result = building_blocks.Tuple(elements, container_type)
+  result = building_blocks.Tuple(elements,
+                                 value.type_signature.member.python_container)
   symbols = ((value_ref.name, value),)
   return building_blocks.Block(symbols, result)
 
@@ -1193,11 +1185,7 @@ def _create_flat_federated_zip(value):
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
-  if value.type_signature.is_tuple_with_py_container():
-    container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-        value.type_signature)
-  else:
-    container_type = None
+  container_type = value.type_signature.python_container
   names_to_add = [name for name, _ in named_type_signatures]
   length = len(named_type_signatures)
   if length == 0:
@@ -1391,12 +1379,8 @@ def create_federated_zip(
       for name, element_type in elements:
         selection, index = _make_flat_selections(element_type, index)
         return_tuple.append((name, selection))
-      if type_signature.is_tuple_with_py_container():
-        container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            type_signature)
-      else:
-        container_type = None
-      return building_blocks.Tuple(return_tuple, container_type), index
+      return building_blocks.Tuple(return_tuple,
+                                   type_signature.python_container), index
     else:
       # This shouldn't be possible since the structure was already traversed
       # above.
@@ -1473,12 +1457,8 @@ def create_generic_constant(
       elements.append(create_generic_constant(type_spec[k], scalar_value))
     names = [name for name, _ in anonymous_tuple.iter_elements(type_spec)]
     packed_elements = building_blocks.Tuple(elements)
-    if type_spec.is_tuple_with_py_container():
-      container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-          type_spec)
-    else:
-      container_type = None
-    named_tuple = create_named_tuple(packed_elements, names, container_type)
+    named_tuple = create_named_tuple(packed_elements, names,
+                                     type_spec.python_container)
     return named_tuple
   else:
     raise ValueError(

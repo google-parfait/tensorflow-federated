@@ -646,10 +646,9 @@ def assemble_result_from_graph(type_spec, binding, output_map):
         element_object = assemble_result_from_graph(element_type,
                                                     element_binding, output_map)
         result_elements.append((element_name, element_object))
-      if not type_spec.is_tuple_with_py_container():
+      if type_spec.python_container is None:
         return anonymous_tuple.AnonymousTuple(result_elements)
-      container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-          type_spec)
+      container_type = type_spec.python_container
       if (py_typecheck.is_named_tuple(container_type) or
           py_typecheck.is_attrs(container_type)):
         return container_type(**dict(result_elements))

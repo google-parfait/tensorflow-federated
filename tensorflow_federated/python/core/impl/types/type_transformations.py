@@ -84,10 +84,8 @@ def transform_type_postorder(
       elements.append((element[0], transformed_element))
     if elements_mutated:
       if type_signature.is_tuple_with_py_container():
-        container_type = computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            type_signature)
         type_signature = computation_types.NamedTupleTypeWithPyContainerType(
-            elements, container_type)
+            elements, type_signature.python_container)
       else:
         type_signature = computation_types.NamedTupleType(elements)
     type_signature, type_signature_mutated = transform_fn(type_signature)

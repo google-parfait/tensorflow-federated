@@ -132,18 +132,14 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(t), '<int32,int32,int32>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), list)
+    self.assertIs(t.python_container, list)
 
   def test_with_nested_float_list(self):
     t = type_conversions.infer_type([[0.1], [0.2], [0.3]])
     self.assertEqual(str(t), '<<float32>,<float32>,<float32>>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), list)
+    self.assertIs(t.python_container, list)
 
   def test_with_anonymous_tuple(self):
     t = type_conversions.infer_type(
@@ -176,9 +172,7 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(t), '<y=int32,x=bool>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), test_named_tuple)
+    self.assertIs(t.python_container, test_named_tuple)
 
   def test_with_dict(self):
     v1 = {
@@ -189,9 +183,7 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(inferred_type), '<a=int32,b=float32>')
     self.assertIsInstance(inferred_type,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            inferred_type), dict)
+    self.assertIs(inferred_type.python_container, dict)
 
     v2 = {
         'b': 2.0,
@@ -201,9 +193,7 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(inferred_type), '<a=int32,b=float32>')
     self.assertIsInstance(inferred_type,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            inferred_type), dict)
+    self.assertIs(inferred_type.python_container, dict)
 
   def test_with_ordered_dict(self):
     t = type_conversions.infer_type(
@@ -211,9 +201,7 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(t), '<b=float32,a=int32>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), collections.OrderedDict)
+    self.assertIs(t.python_container, collections.OrderedDict)
 
   def test_with_nested_attrs_class(self):
 
@@ -226,12 +214,8 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(t), '<a=int32,b=<x=bool,y=float32>>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), TestAttrClass)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t.b), dict)
+    self.assertIs(t.python_container, TestAttrClass)
+    self.assertIs(t.b.python_container, dict)
 
   def test_with_dataset_list(self):
     t = type_conversions.infer_type(
@@ -239,9 +223,7 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(t), '<int32*,bool*,float32[1]*>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), list)
+    self.assertIs(t.python_container, list)
 
   def test_with_nested_dataset_list_tuple(self):
     t = type_conversions.infer_type(
@@ -249,9 +231,7 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(t), '<<int32*>,<bool*>,<float32[1]*>>')
     self.assertIsInstance(t,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t), tuple)
+    self.assertIs(t.python_container, tuple)
 
   def test_with_dataset_of_named_tuple(self):
     test_named_tuple = collections.namedtuple('_', 'A B')
@@ -263,9 +243,7 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(str(t), '<A=float32,B=int32>*')
     self.assertIsInstance(t.element,
                           computation_types.NamedTupleTypeWithPyContainerType)
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            t.element), test_named_tuple)
+    self.assertIs(t.element.python_container, test_named_tuple)
 
 
 class TypeToTfDtypesAndShapesTest(test.TestCase):

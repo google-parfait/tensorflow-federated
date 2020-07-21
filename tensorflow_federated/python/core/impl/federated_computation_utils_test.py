@@ -87,11 +87,8 @@ class ZeroOrOneArgFnToBuildingBlockTest(parameterized.TestCase):
     _, type_signature = federated_computation_utils.zero_or_one_arg_fn_to_building_block(
         fn, parameter_name, parameter_type, context_stack_impl.context_stack)
     self.assertIs(type(type_signature.result), type(exepcted_result_type))
-    self.assertIs(
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            type_signature.result),
-        computation_types.NamedTupleTypeWithPyContainerType.get_container_type(
-            exepcted_result_type))
+    self.assertIs(type_signature.result.python_container,
+                  exepcted_result_type.python_container)
     self.assertEqual(type_signature.result, exepcted_result_type)
 
 

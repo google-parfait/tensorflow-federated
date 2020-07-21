@@ -16,7 +16,7 @@
 import abc
 import collections
 import typing
-from typing import Any, Type as TypingType, TypeVar
+from typing import Any, Optional, Type as TypingType, TypeVar
 
 import attr
 import tensorflow as tf
@@ -342,6 +342,10 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
   def children(self):
     return (element for _, element in anonymous_tuple.iter_elements(self))
 
+  @property
+  def python_container(self) -> Optional[TypingType[Any]]:
+    return None
+
   def is_tuple(self):
     return True
 
@@ -382,6 +386,10 @@ class NamedTupleTypeWithPyContainerType(NamedTupleType):
 
   def is_tuple_with_py_container(self):
     return True
+
+  @property
+  def python_container(self) -> TypingType[Any]:
+    return self._container_type
 
   def __repr__(self):
     members = _format_named_tuple_type_members(self)
