@@ -110,16 +110,14 @@ class CanonicalFormTest(test.TestCase):
     cf = tff.backends.mapreduce.get_canonical_form_for_iterative_process(ip_1)
     ip_2 = tff.backends.mapreduce.get_iterative_process_for_canonical_form(cf)
 
-    self.assertEqual(ip_1.initialize.type_signature,
-                     ip_2.initialize.type_signature)
+    ip_1.initialize.type_signature.check_equivalent_to(
+        ip_2.initialize.type_signature)
     # The next functions type_signatures may not be equal, since we may have
     # appended an empty tuple as client side-channel outputs if none existed.
-    self.assertEqual(ip_1.next.type_signature.parameter,
-                     ip_2.next.type_signature.parameter)
-    self.assertEqual(ip_1.next.type_signature.result[0],
-                     ip_2.next.type_signature.result[0])
-    self.assertEqual(ip_1.next.type_signature.result[1],
-                     ip_2.next.type_signature.result[1])
+    ip_1.next.type_signature.parameter.check_equivalent_to(
+        ip_2.next.type_signature.parameter)
+    ip_1.next.type_signature.result.check_equivalent_to(
+        ip_2.next.type_signature.result)
 
     sample_batch = collections.OrderedDict(
         x=np.array([[1., 1.]], dtype=np.float32),
@@ -128,25 +126,25 @@ class CanonicalFormTest(test.TestCase):
     client_data = [sample_batch]
     state_1 = ip_1.initialize()
     server_state_1, server_output_1 = ip_1.next(state_1, [client_data])
-    server_state_1_names = anonymous_tuple.name_list(server_state_1)
+    server_state_1 = anonymous_tuple.from_container(
+        server_state_1, recursive=True)
+    server_output_1 = anonymous_tuple.from_container(
+        server_output_1, recursive=True)
     server_state_1_arrays = anonymous_tuple.flatten(server_state_1)
-    server_output_1_names = [
-        x[0] for x in anonymous_tuple.iter_elements(server_output_1)
-    ]
     server_output_1_arrays = anonymous_tuple.flatten(server_output_1)
     state_2 = ip_2.initialize()
     server_state_2, server_output_2 = ip_2.next(state_2, [client_data])
-    server_state_2_names = anonymous_tuple.name_list(server_state_2)
     server_state_2_arrays = anonymous_tuple.flatten(server_state_2)
-    server_output_2_names = [
-        x[0] for x in anonymous_tuple.iter_elements(server_output_2)
-    ]
     server_output_2_arrays = anonymous_tuple.flatten(server_output_2)
 
     self.assertEmpty(server_state_1.delta_aggregate_state)
     self.assertEmpty(server_state_1.model_broadcast_state)
-    self.assertAllEqual(server_state_1_names, server_state_2_names)
-    self.assertAllEqual(server_output_1_names, server_output_2_names)
+    # Note that we cannot simply use assertEqual because the values may differ
+    # due to floating point issues.
+    self.assertTrue(
+        anonymous_tuple.is_same_structure(server_state_1, server_state_2))
+    self.assertTrue(
+        anonymous_tuple.is_same_structure(server_output_1, server_output_2))
     self.assertAllClose(server_state_1_arrays, server_state_2_arrays)
     self.assertAllClose(server_output_1_arrays[:2], server_output_2_arrays[:2])
 
