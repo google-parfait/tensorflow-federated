@@ -60,17 +60,10 @@ class ServerState(object):
   model = attr.ib()
   optimizer_state = attr.ib()
 
-  @classmethod
-  def from_tff_result(cls, anon_tuple):
-    return cls(
-        model=tff.learning.framework.ModelWeights.from_tff_result(
-            anon_tuple.model),
-        optimizer_state=list(anon_tuple.optimizer_state))
-
 
 def _create_optimizer_vars(model, optimizer):
   """Generate variables for optimizer."""
-  model_weights = _get_weights(model)
+  model_weights = tff.learning.framework.ModelWeights.from_model(model)
   delta = tf.nest.map_structure(tf.zeros_like, model_weights.trainable)
   flat_trainable_weights = tf.nest.flatten(model_weights.trainable)
   grads_and_vars = tf.nest.map_structure(
@@ -81,14 +74,6 @@ def _create_optimizer_vars(model, optimizer):
       [tf.constant(1, dtype=w.dtype) for w in flat_trainable_weights])
   optimizer.apply_gradients(grads_and_vars, name='server_update')
   return optimizer.variables()
-
-
-def _get_weights(model):
-  model_weights = collections.namedtuple('ModelWeights',
-                                         'trainable non_trainable')
-  return model_weights(
-      trainable=tensor_utils.to_var_dict(model.trainable_variables),
-      non_trainable=tensor_utils.to_var_dict(model.non_trainable_variables))
 
 
 @tf.function
@@ -107,7 +92,7 @@ def server_update(model, server_optimizer, server_optimizer_vars, server_state,
   Returns:
     An updated `ServerState`.
   """
-  model_weights = _get_weights(model)
+  model_weights = tff.learning.framework.ModelWeights.from_model(model)
   tf.nest.map_structure(lambda v, t: v.assign(t),
                         (model_weights, server_optimizer_vars),
                         (server_state.model, server_state.optimizer_state))
@@ -140,7 +125,7 @@ def client_update(model, optimizer, dataset, initial_weights):
   Returns:
     A 'ClientOutput`.
   """
-  model_weights = _get_weights(model)
+  model_weights = tff.learning.framework.ModelWeights.from_model(model)
   tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
                         initial_weights)
   flat_trainable_weights = tuple(tf.nest.flatten(model_weights.trainable))
@@ -221,7 +206,8 @@ def build_server_init_fn(model_fn, server_optimizer_fn):
     # state.
     server_optimizer_vars = _create_optimizer_vars(model, server_optimizer)
     return ServerState(
-        model=_get_weights(model), optimizer_state=server_optimizer_vars)
+        model=tff.learning.framework.ModelWeights.from_model(model),
+        optimizer_state=server_optimizer_vars)
 
   return server_init_tf
 
@@ -373,13 +359,14 @@ def build_federated_averaging_process(
   Returns:
     A `tff.templates.IterativeProcess`.
   """
-  dummy_model_for_metadata = model_fn()
-  type_signature_grads_norm = tff.NamedTupleType([
+  with tf.Graph().as_default():
+    dummy_model_for_metadata = model_fn()
+  type_signature_grads_norm = tuple(
       weight.dtype for weight in tf.nest.flatten(
-          _get_weights(dummy_model_for_metadata).trainable)
-  ])
+          dummy_model_for_metadata.trainable_variables))
 
   server_init_tf = build_server_init_fn(model_fn, server_optimizer_fn)
+
   server_state_type = server_init_tf.type_signature.result
   server_update_fn = build_server_update_fn(model_fn, server_optimizer_fn,
                                             server_state_type,
@@ -400,5 +387,5 @@ def build_federated_averaging_process(
 
   return tff.templates.IterativeProcess(
       initialize_fn=tff.federated_computation(
-          lambda: tff.federated_value(server_init_tf(), tff.SERVER)),
+          lambda: tff.federated_eval(server_init_tf, tff.SERVER)),
       next_fn=run_one_round_tff)

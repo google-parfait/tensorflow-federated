@@ -15,7 +15,6 @@
 
 import collections
 
-import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -39,44 +38,10 @@ def _keras_model_fn():
       loss=tf.keras.losses.SparseCategoricalCrossentropy())
 
 
-def mnist_forward_pass(variables, batch):
-  inputs, label = batch
-  y = tf.nn.softmax(tf.matmul(inputs, variables.weights) + variables.bias)
-  predictions = tf.cast(tf.argmax(y, 1), tf.int32)
-
-  flat_labels = tf.reshape(label, [-1])
-  loss = -tf.reduce_mean(
-      tf.reduce_sum(tf.one_hot(flat_labels, 10) * tf.math.log(y), axis=[1]))
-  accuracy = tf.reduce_mean(
-      tf.cast(tf.equal(predictions, flat_labels), tf.float32))
-
-  num_examples = tf.cast(tf.size(batch['y']), tf.float32)
-
-  variables.num_examples.assign_add(num_examples)
-  variables.loss_sum.assign_add(loss * num_examples)
-  variables.accuracy_sum.assign_add(accuracy * num_examples)
-
-  return loss, predictions
-
-
-def get_local_mnist_metrics(variables):
-  return collections.OrderedDict(
-      num_examples=variables.num_examples,
-      loss=variables.loss_sum / variables.num_examples,
-      accuracy=variables.accuracy_sum / variables.num_examples)
-
-
-@tff.federated_computation
-def aggregate_mnist_metrics_across_clients(metrics):
-  return collections.OrderedDict(
-      num_examples=tff.federated_sum(metrics.num_examples),
-      loss=tff.federated_mean(metrics.loss, metrics.num_examples),
-      accuracy=tff.federated_mean(metrics.accuracy, metrics.num_examples))
-
-
 def create_client_data():
   emnist_batch = collections.OrderedDict(
-      label=[5], pixels=np.random.rand(28, 28))
+      label=[5],
+      pixels=tf.random.stateless_uniform(shape=(28, 28), seed=(7, 42)))
 
   output_types = collections.OrderedDict(label=tf.int64, pixels=tf.float32)
   output_shapes = collections.OrderedDict(
@@ -116,8 +81,8 @@ class FlarsFedAvgTest(tf.test.TestCase):
     @tf.function
     def deterministic_batch():
       return collections.OrderedDict(
-          x=np.ones([1, 784], dtype=np.float32),
-          y=np.ones([1, 1], dtype=np.int64))
+          x=tf.ones([1, 784], dtype=tf.float32),
+          y=tf.ones([1, 1], dtype=tf.int64))
 
     batch = deterministic_batch()
     federated_data = [[batch]]
@@ -132,10 +97,10 @@ class FlarsFedAvgTest(tf.test.TestCase):
     for _ in range(3):
       keras_evaluate(server_state)
       server_state, output = it_process.next(server_state, federated_data)
-      loss_list.append(output.loss)
+      loss_list.append(output['loss'])
     keras_evaluate(server_state)
 
-    self.assertLess(np.mean(loss_list[1:]), loss_list[0])
+    self.assertLess(tf.reduce_mean(loss_list[1:]), loss_list[0])
 
   def test_self_contained_example_keras_model(self):
     client_data = create_client_data()
@@ -148,7 +113,7 @@ class FlarsFedAvgTest(tf.test.TestCase):
     for _ in range(2):
       state, outputs = trainer.next(state, train_data)
       # Track the loss.
-      losses.append(outputs.loss)
+      losses.append(outputs['loss'])
     self.assertLess(losses[1], losses[0])
 
 
@@ -164,7 +129,7 @@ def server_init(model, optimizer):
   """
   optimizer_vars = flars_fedavg._create_optimizer_vars(model, optimizer)
   return (flars_fedavg.ServerState(
-      model=flars_fedavg._get_weights(model),
+      model=tff.learning.framework.ModelWeights.from_model(model),
       optimizer_state=optimizer_vars), optimizer_vars)
 
 
@@ -178,17 +143,19 @@ class ServerTest(tf.test.TestCase):
 
     grad_norm = [1.0, 1.0]
     weights_delta = tf.nest.map_structure(
-        lambda t: tf.ones_like(t) * np.inf,
-        flars_fedavg._get_weights(model).trainable)
+        lambda t: tf.ones_like(t) * float('inf'),
+        flars_fedavg.tff.learning.framework.ModelWeights.from_model(
+            model).trainable)
 
-    old_model_vars = self.evaluate(state.model)
+    old_model_vars = state.model
     for _ in range(2):
       state = flars_fedavg.server_update(model, server_optimizer,
                                          optimizer_vars, state, weights_delta,
                                          grad_norm)
-    model_vars = self.evaluate(state.model)
-
-    self.assertAllClose(old_model_vars._asdict(), model_vars._asdict())
+    model_vars = state.model
+    # Assert the model hasn't changed.
+    self.assertAllClose(old_model_vars.trainable, model_vars.trainable)
+    self.assertAllClose(old_model_vars.non_trainable, model_vars.non_trainable)
 
 
 class ClientTest(tf.test.TestCase):
@@ -196,10 +163,9 @@ class ClientTest(tf.test.TestCase):
   def test_self_contained_example(self):
     client_data = create_client_data()
     model = _keras_model_fn()
-    outputs = self.evaluate(
-        flars_fedavg.client_update(model, tf.keras.optimizers.SGD(0.1),
-                                   client_data(),
-                                   flars_fedavg._get_weights(model)))
+    outputs = flars_fedavg.client_update(
+        model, tf.keras.optimizers.SGD(0.1), client_data(),
+        flars_fedavg.tff.learning.framework.ModelWeights.from_model(model))
 
     self.assertAllEqual(outputs.weights_delta_weight, 2)
     # Expect a grad for each layer:
