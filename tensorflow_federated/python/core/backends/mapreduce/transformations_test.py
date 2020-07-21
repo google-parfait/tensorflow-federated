@@ -220,7 +220,6 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     self.assertEqual(executable_tf(), 0)
 
   def test_reduces_lambda_returning_empty_tuple_to_tf(self):
-    self.skipTest('Depends on a lower level fix, currently in review.')
     empty_tuple = building_blocks.Tuple([])
     lam = building_blocks.Lambda('x', tf.int32, empty_tuple)
     extracted_tf = transformations.consolidate_and_extract_local_processing(lam)
