@@ -332,8 +332,11 @@ def type_to_py_container(value, type_spec):
     if isinstance(value, list):
       return [type_to_py_container(element, element_type) for element in value]
     if isinstance(value, tf.data.Dataset):
-      return value.map(
-          lambda element: type_to_py_container(element, element_type))
+      # `tf.data.Dataset` does not understand `AnonymousTuple`, so the dataset
+      # in `value` must already be yielding Python containers. This is because
+      # when TFF is constructing datasets it always uses the proper Python
+      # container, so we simply return `value` here without modification.
+      return value
     raise TypeError('Unexpected Python type for TF type {}: {}'.format(
         structure_type_spec, type(value)))
 

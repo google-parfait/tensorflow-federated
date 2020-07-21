@@ -14,7 +14,6 @@
 
 import collections
 
-from absl.testing import absltest
 from absl.testing import parameterized
 import attr
 import numpy as np
@@ -269,7 +268,7 @@ class InferTypeTest(parameterized.TestCase):
             t.element), test_named_tuple)
 
 
-class TypeToTfDtypesAndShapesTest(absltest.TestCase):
+class TypeToTfDtypesAndShapesTest(test.TestCase):
 
   def test_with_int_scalar(self):
     type_signature = computation_types.TensorType(tf.int32)
@@ -335,7 +334,7 @@ class TypeToTfDtypesAndShapesTest(absltest.TestCase):
         })
 
 
-class TypeToTfTensorSpecsTest(absltest.TestCase):
+class TypeToTfTensorSpecsTest(test.TestCase):
 
   def test_with_int_scalar(self):
     type_signature = computation_types.TensorType(tf.int32)
@@ -392,7 +391,7 @@ class TypeToTfTensorSpecsTest(absltest.TestCase):
     test.assert_nested_struct_eq(tensor_specs, (tf.TensorSpec([], tf.int32),))
 
 
-class TypeToTfStructureTest(absltest.TestCase):
+class TypeToTfStructureTest(test.TestCase):
 
   def test_with_names(self):
     expected_structure = collections.OrderedDict([
@@ -448,7 +447,7 @@ class TypeToTfStructureTest(absltest.TestCase):
           computation_types.NamedTupleType([]))
 
 
-class TypeFromTensorsTest(absltest.TestCase):
+class TypeFromTensorsTest(test.TestCase):
 
   def test_with_single(self):
     v = tf.Variable(0.0, name='a', dtype=tf.float32, shape=[])
@@ -486,7 +485,7 @@ class TypeFromTensorsTest(absltest.TestCase):
     self.assertEqual(str(result), '<x=float32,y=int32>')
 
 
-class TypeToPyContainerTest(absltest.TestCase):
+class TypeToPyContainerTest(test.TestCase):
 
   def test_not_anon_tuple_passthrough(self):
     value = (1, 2.0)
@@ -645,6 +644,26 @@ class TypeToPyContainerTest(absltest.TestCase):
     self.assertEqual(
         type_conversions.type_to_py_container(anon_tuple, type_spec),
         expected_nested_structure)
+
+  def test_sequence_type_with_collections_sequence_elements(self):
+    dataset_yielding_sequences = tf.data.Dataset.range(5).map(lambda t: (t, t))
+    converted_dataset = type_conversions.type_to_py_container(
+        dataset_yielding_sequences,
+        computation_types.SequenceType((tf.int64, tf.int64)))
+    actual_elements = list(converted_dataset)
+    expected_elements = list(dataset_yielding_sequences)
+    self.assertAllEqual(actual_elements, expected_elements)
+
+  def test_sequence_type_with_collections_mapping_elements(self):
+    dataset_yielding_mappings = tf.data.Dataset.range(5).map(
+        lambda t: collections.OrderedDict(a=t, b=t))
+    converted_dataset = type_conversions.type_to_py_container(
+        dataset_yielding_mappings,
+        computation_types.SequenceType(
+            collections.OrderedDict(a=tf.int64, b=tf.int64)))
+    actual_elements = list(converted_dataset)
+    expected_elements = list(dataset_yielding_mappings)
+    self.assertAllEqual(actual_elements, expected_elements)
 
 
 class TypeToNonAllEqualTest(test.TestCase):
