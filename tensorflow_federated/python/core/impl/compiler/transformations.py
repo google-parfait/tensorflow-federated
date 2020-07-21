@@ -84,11 +84,12 @@ def prepare_for_rebinding(comp):
 def remove_called_lambdas_and_blocks(comp):
   """Removes any called lambdas and blocks from `comp`.
 
-  This function will rename all the variables in `comp` in a single walk of the
-  AST, then replace called lambdas with blocks in another walk, since this
-  transformation interacts with scope in delicate ways. It will chain inlining
-  the blocks and collapsing the selection-from-tuple pattern together into a
-  final pass.
+  This function first resolves any higher-order functions, so that replacing
+  called lambdas with blocks and then inlining the block locals cannot result
+  in more called lambdas. It then performs this sequence of transformations,
+  taking care to inline selections from tuples before inlining the rest of
+  the block locals to prevent possible combinatorial growth of the generated
+  AST.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` from which we
@@ -99,64 +100,18 @@ def remove_called_lambdas_and_blocks(comp):
     no extraneous selections from tuples.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-
-  # TODO(b/146904968): In general, any bounded number of passes of these
-  # transforms as currently implemented is insufficient in order to satisfy
-  # the purpose of this function. Filing a new bug to followup if this becomes a
-  # pressing issue.
-  modified = False
-  for fn in [
-      tree_transformations.remove_unused_block_locals,
-      tree_transformations.inline_selections_from_tuple,
-      tree_transformations.replace_called_lambda_with_block,
-  ] * 2:
-    comp, inner_modified = fn(comp)
-    modified = inner_modified or modified
-  for fn in [
-      tree_transformations.remove_unused_block_locals,
-      tree_transformations.uniquify_reference_names,
-  ]:
-    comp, inner_modified = fn(comp)
-    modified = inner_modified or modified
-
-  block_inliner = tree_transformations.InlineBlock(comp)
-  selection_replacer = tree_transformations.ReplaceSelectionFromTuple()
-  transforms = [block_inliner, selection_replacer]
-
-  def _transform_fn(comp, symbol_tree):
-    """Transform function chaining inlining and collapsing selections.
-
-    This function is inlined here as opposed to factored out and parameterized
-    by the transforms to apply, due to the delicacy of chaining transformations
-    which rely on state. These transformations should be safe if they appear
-    first in the list of transforms, but due to the difficulty of reasoning
-    about the invariants the transforms can rely on in this setting, there is
-    no function exposed which hoists out the internal logic.
-
-    Args:
-      comp: Instance of `building_blocks.ComputationBuildingBlock` we wish to
-        check for inlining and collapsing of selections.
-      symbol_tree: Instance of `building_blocks.SymbolTree` defining the
-        bindings available to `comp`.
-
-    Returns:
-      A transformed version of `comp`.
-    """
-    modified = False
-    for transform in transforms:
-      if transform.global_transform:
-        comp, transform_modified = transform.transform(comp, symbol_tree)
-      else:
-        comp, transform_modified = transform.transform(comp)
-      modified = modified or transform_modified
-    return comp, modified
-
-  symbol_tree = transformation_utils.SymbolTree(
-      transformation_utils.ReferenceCounter)
-  transformed_comp, inner_modified = transformation_utils.transform_postorder_with_symbol_bindings(
-      comp, _transform_fn, symbol_tree)
-  modified = modified or inner_modified
-  return transformed_comp, modified
+  comp, names_uniquified = tree_transformations.uniquify_reference_names(comp)
+  comp, fns_resolved = tree_transformations.resolve_higher_order_functions(comp)
+  comp, lambdas_replaced = tree_transformations.replace_called_lambda_with_block(
+      comp)
+  if fns_resolved or lambdas_replaced:
+    comp, _ = tree_transformations.uniquify_reference_names(comp)
+  comp, sels_removed = tree_transformations.inline_selections_from_tuple(comp)
+  if sels_removed:
+    comp, _ = tree_transformations.uniquify_reference_names(comp)
+  comp, locals_inlined = tree_transformations.inline_block_locals(comp)
+  modified = names_uniquified or fns_resolved or lambdas_replaced or sels_removed or locals_inlined
+  return comp, modified
 
 
 def _generate_simple_tensorflow(comp):

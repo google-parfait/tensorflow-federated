@@ -132,7 +132,6 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
 
   def test_with_higher_level_lambdas(self):
-    self.skipTest('b/146904968')
     data = building_blocks.Data('a', tf.int32)
     dummy = building_blocks.Reference('z', tf.int32)
     lowest_lambda = building_blocks.Lambda(
@@ -1203,7 +1202,6 @@ class TestTransformToCallDominantForm(test.TestCase):
     self.assertTrue(modified)
     self.assertEqual(call_dominant_rep.compact_representation(),
                      '(_var1 -> (let _var3=(_var2 -> _var2)(_var1) in _var3))')
-
 
 if __name__ == '__main__':
   test.main()

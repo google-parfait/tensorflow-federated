@@ -29,6 +29,9 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_transformations
 
 
+TransformReturnType = Tuple[building_blocks.ComputationBuildingBlock, bool]
+
+
 class TransformationError(Exception):
   """Raised when a transformation fails."""
 
@@ -1331,6 +1334,281 @@ class ReplaceSelectionFromTuple(transformation_utils.TransformSpec):
 def replace_selection_from_tuple_with_element(comp):
   """Replaces any selection from a tuple with the underlying tuple element."""
   return _apply_transforms(comp, ReplaceSelectionFromTuple())
+
+
+def resolve_higher_order_functions(
+    comp: building_blocks.ComputationBuildingBlock) -> TransformReturnType:
+  """Resolves higher order functions into the concrete functions they represent.
+
+  The terminology "resolve" came into existence thinking of cases like:
+
+  ```
+  (let x=federated_aggregate in x(some_federated_value))
+  ```
+
+  In this case, in order to rely on simply pattern-matching on called intrinsics
+  in a downstream transformation, we must "resolve" `x` to the function it
+  represents. This terminology continued to evolve to consider the case of
+  higher-order functions, e.g.
+
+  ```
+  ( -> federated_aggregate)()(some_federated_value)
+  ```
+
+  In this case, we must "resolve" the call to the no-arg lambda into its return
+  value to achieve coverage via pattern-matching, as before.
+
+  Concretely, we consider functions "resolved" if the folllwing condition is
+  satisfied: all instances of `building_blocks.Call` are either to a concrete
+  function (`building_blocks.Intrinsic`, `building_blocks.CompiledComputation`
+  or `building_blocks.Lambda`) whose return type has no functional elements, or
+  are to a reference to a function bound as parameter to an uncalled lambda. In
+  this final case, we slightly elide the distinction between a reference to
+  this parameter directly and a selection from a tuple-type parameter which
+  contains a functional element.
+
+  Args:
+    comp: An instance of `building_blocks.ComputationBuildingBlock` in which to
+      resolve higher-order functions as much as possible.
+
+  Returns:
+    A transformed version of `comp` whose functions are resolved, as specified
+    above.
+  """
+  tree_analysis.check_has_unique_names(comp)
+  unbound_refs = transformation_utils.get_map_of_unbound_references(comp)[comp]
+
+  # TODO(b/161803017): Remove this extra check when we strengthen the
+  # guarantees of `uniquify_reference_names` and the checks in
+  # `check_has_unique_names`.
+  def _check_does_not_rebind_unbound_ref(inner_comp):
+    if inner_comp.is_lambda() and inner_comp.parameter_name in unbound_refs:
+      raise ValueError('Encountered a rebinding of a variable {} which is '
+                       'unbound in the parent computation {}. This is '
+                       'disallowed. Please uniquify the reference names in '
+                       'the computation which binds this reference.'.format(
+                           inner_comp.parameter_name, comp))
+    elif inner_comp.is_block():
+      for name, _ in inner_comp.locals:
+        if name in unbound_refs:
+          raise ValueError('Encountered a rebinding of a variable {} which is '
+                           'unbound in the parent computation {}. This is '
+                           'disallowed. Please uniquify the reference names in '
+                           'the computation which binds this reference.'.format(
+                               name, comp))
+    return inner_comp, False
+
+  transformation_utils.transform_postorder(comp,
+                                           _check_does_not_rebind_unbound_ref)
+
+  functional_bindings = {}
+
+  def _contains_function(type_signature: computation_types.Type) -> bool:
+    return type_analysis.contains(type_signature, lambda x: x.is_function())
+
+  def _resolve_functional_reference(
+      ref: building_blocks.Reference) -> TransformReturnType:
+    """Inlines functional references if bound under `comp`."""
+    if ref.name in functional_bindings:
+      return functional_bindings[ref.name], True
+    return ref, False
+
+  def _resolve_block(block: building_blocks.Block) -> TransformReturnType:
+    """Resolves higher-order functions underneath a block.
+
+    The main responsibility of this function is to populate
+    `functional_bindings` with any bindings in the locals of `block` of
+    functional type. Beyond this, this functions simply continues the walk.
+
+    Args:
+      block: Instance of `building_blocks.Block` to transform.
+
+    Returns:
+      Transformed version of `block` as described above, plus a boolean
+      indicating whether `block` was indeed transformed.
+    """
+    new_locals = []
+    modified = False
+    for name, old_local in block.locals:
+      new_local, local_modified = transformation_utils.transform_preorder(
+          old_local, _resolve_higher_order_fns)
+      if _contains_function(new_local.type_signature):
+        functional_bindings[name] = new_local
+      modified = modified or local_modified
+      new_locals.append((name, new_local))
+    new_result, result_modified = transformation_utils.transform_preorder(
+        block.result, _resolve_higher_order_fns)
+    modified = modified or result_modified
+    new_block = building_blocks.Block(new_locals, new_result)
+    return new_block, modified
+
+  def _resolve_functional_selection(
+      sel: building_blocks.Selection) -> TransformReturnType:
+    """Resolves a selection of functional type.
+
+    This function can return any type of computation building block of
+    functional type. This function first continues the preorder walk with the
+    source of the selection to resolve any higher order functions in this
+    source. If the transformed source of `sel` is a tuple, this
+    function grabs the appropriate element from the underlying tuple. If the
+    source of `sel` is a block, this function returns a block with the selection
+    pushed through to the result. In any other case, this function returns a
+    selection building block, with source the resolved source of `sel`.
+
+    Args:
+      sel: Instance of `building_blocks.Selection` of type containing function.
+
+    Returns:
+      A transformed version of `sel` as described above, plus a boolean
+      indicating whether `sel` was indeed transformed.
+    """
+    resolved_source, source_modified = transformation_utils.transform_preorder(
+        sel.source, _resolve_higher_order_fns)
+    if resolved_source.is_block():
+      new_block = building_blocks.Block(
+          resolved_source.locals,
+          building_blocks.Selection(
+              source=resolved_source.result, index=sel.index, name=sel.name))
+      # No need to re-traverse, this cannot break the desired invariant of the
+      # top-level function.
+      return new_block, True
+    elif resolved_source.is_tuple():
+      if sel.index is not None:
+        return resolved_source[sel.index], True
+      else:
+        return resolved_source.__getattr__(sel.name), True
+    else:
+      return building_blocks.Selection(
+          source=resolved_source, index=sel.index,
+          name=sel.name), source_modified
+
+  def _resolve_call(call: building_blocks.Call) -> TransformReturnType:
+    """Resolves higher-order functions underneath a call.
+
+    This function is responsible for ensuring that the postcondition of
+    `resolve_higher_order_functions` holds, as it is the only function of these
+    three that can return a `building_blocks.Call`. Before returning, it ensures
+    that the functional argument to any call it constructs is either a concrete
+    function (IE, a function which has no functional elements in its return
+    type) or a function which is essentially bound to a reference in the larger
+    AST.
+
+    Note that `_resolve_call` encodes the only potential performance problem
+    of this traversal--if creating a call to a resolved function still returns
+    a functional type, the block which represents this call must be retraversed
+    until the functional type is resolved. All the other traversal calls in
+    these private functions represent only a continuation of the original
+    preorder walk--if is the retraversals called out below that can cause
+    a rewalk of the same tree. As implemented, this entire transform is of
+    complexity (size of tree * (order of highest lambda + 1)) where a 0th-
+    order lambda is a function with nonfunctional return type, a 1st-order
+    lambda returns a 0th-order lambda, etc.
+
+    Args:
+      call: Instance of `building_blocks.Call` to transform.
+
+    Returns:
+      A transformed version of `call` satisfying the above, plus a boolean
+      indicating whether `call` was indeed transformed.
+
+    Raises:
+      TransformationError: If construction of the postcondition of the
+        top-level transformation fails.
+    """
+    resolved_fn, fn_modified = transformation_utils.transform_preorder(
+        call.function, _resolve_higher_order_fns)
+    arg_modified = False
+    if call.argument is not None:
+      resolved_argument, arg_modified = transformation_utils.transform_preorder(
+          call.argument, _resolve_higher_order_fns)
+    else:
+      resolved_argument = None
+
+    if resolved_fn.is_compiled_computation() or resolved_fn.is_intrinsic():
+      # Base case
+      return building_blocks.Call(
+          resolved_fn, resolved_argument), fn_modified or arg_modified
+
+    elif resolved_fn.is_lambda():
+      if not _contains_function(resolved_fn.result.type_signature):
+        # Not a higher order lambda, we are in our base case.
+        return building_blocks.Call(
+            resolved_fn, resolved_argument), fn_modified or arg_modified
+      block_to_walk = building_blocks.Block(
+          [(resolved_fn.parameter_name, resolved_argument)], resolved_fn.result)
+      # Retraversal of already walked tree to resolve higher-order function.
+      resolved, _ = transformation_utils.transform_preorder(
+          block_to_walk, _resolve_higher_order_fns)
+      return resolved, True
+    elif resolved_fn.is_block():
+      new_result = building_blocks.Call(resolved_fn.result, resolved_argument)
+      block_to_walk = building_blocks.Block(resolved_fn.locals, new_result)
+      if resolved_fn.result.is_lambda() or resolved_fn.result.is_intrinsic(
+      ) or resolved_fn.result.is_compiled_computation():
+        if resolved_fn.result.is_lambda() and not _contains_function(
+            resolved_fn.result.type_signature):
+          # Not a higher order lambda, we are in our base case.
+          return block_to_walk, True
+      # Retraversal of already walked tree to resolve higher-order function.
+      resolved, _ = transformation_utils.transform_preorder(
+          block_to_walk, _resolve_higher_order_fns)
+      return resolved, True
+    else:
+      # In the case of a functional parameter or a tuple containing functions,
+      # resolved_fn may be a reference or a string of selections from
+      # references. Since we eagerly inline this does not represent an issue,
+      # but these are the only possible cases, so we check them here.
+      if not resolved_fn.is_reference():
+        comp_to_check = resolved_fn
+        while comp_to_check.is_selection():
+          comp_to_check = comp_to_check.source
+        if not comp_to_check.is_reference():
+          raise TransformationError(
+              'Unexpected state encountered in resolving higher-order '
+              'functions. This error represents a bug in the transformation '
+              'itself. At this point, every call should be only to functions '
+              'declared as parameters to uncalled functions, but encountered:\n'
+              '{}'.format(resolved_fn.formatted_representation()))
+      return building_blocks.Call(
+          resolved_fn, resolved_argument), fn_modified or arg_modified
+
+  def _resolve_higher_order_fns(
+      comp: building_blocks.ComputationBuildingBlock) -> TransformReturnType:
+    """Internal switch to cover resolution of higher order functions.
+
+    This algorithm achieves higher order function resolution essentially by
+    replacing called functions with blocks binding their arguments, lazily
+    inlining the functional bindings that can be introduced by this procedure,
+    and continuing to walk the computation top-down. This function is designed
+    to be called in a preorder fashion on TFF ASTs, and therefore the functions
+    called out to from the body here handle their own preorder walks of the
+    AST. This pattern is used to avoid nasty infinite recursions if preorder
+    traversals go wrong.
+
+    Args:
+      comp: Instance of `building_blocks.ComputationBuildingBlock` whose
+        higher-order functions we wish to resolve.
+
+    Returns:
+      A transformed version of `comp` whose higher-order functions are as
+      resolved as possible, plus a boolean indicating whether `comp` was indeed
+      transformed.
+    """
+    if comp.is_selection() and _contains_function(comp.type_signature):
+      return _resolve_functional_selection(comp)
+    elif comp.is_reference() and _contains_function(comp.type_signature):
+      return _resolve_functional_reference(comp)
+    elif comp.is_block():
+      return _resolve_block(comp)
+    elif comp.is_call():
+      return _resolve_call(comp)
+    return comp, False
+
+  # A preorder walk here is crucial to the efficiency of this transform; for
+  # this reason we don't perform the usual split into TransformSpec and
+  # application function here.
+  return transformation_utils.transform_preorder(comp,
+                                                 _resolve_higher_order_fns)
 
 
 def uniquify_compiled_computation_names(comp):

@@ -218,20 +218,21 @@ def consolidate_and_extract_local_processing(comp):
     produced by this extraction step, as described above.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  comp, _ = transformations.remove_called_lambdas_and_blocks(comp)
   if comp.type_signature.is_function():
     if comp.is_compiled_computation():
       return comp
     elif not comp.is_lambda():
-      raise ValueError('Any `building_blocks.ComputationBuildingBlock` of '
-                       'functional type passed to '
-                       '`consolidate_and_extract_local_processing`  should be '
-                       'either a `building_blocks.CompiledComputation` or a '
-                       '`building_blocks.Lambda`; you have passed a {} of type '
-                       '{}.'.format(type(comp), comp.type_signature))
-    if comp.result.type_signature.is_federated():
-      comp, _ = tree_transformations.merge_chained_federated_maps_or_applys(
-          comp)
+      comp, _ = transformations.remove_called_lambdas_and_blocks(comp)
+      if not comp.is_lambda():
+        raise ValueError(
+            'Any `building_blocks.ComputationBuildingBlock` of '
+            'functional type passed to '
+            '`consolidate_and_extract_local_processing`  should be '
+            'either a `building_blocks.CompiledComputation` or a '
+            '`building_blocks.Lambda`, or convertible to one; '
+            'after removing lambdas and blocks, have a a {} of '
+            'type {}.'.format(type(comp), comp.type_signature))
+    if comp.type_signature.result.is_federated():
       unwrapped, _ = tree_transformations.unwrap_placement(comp.result)
       # Unwrapped can be a call to `federated_value_at_P`, or
       # `federated_apply/map`.
@@ -241,11 +242,9 @@ def consolidate_and_extract_local_processing(comp):
         check_extraction_result(unwrapped.argument[0], extracted)
         return extracted
       else:
-        decorated_result, _ = tree_transformations.insert_called_tf_identity_at_leaves(
-            unwrapped.argument)
         member_type = None if comp.parameter_type is None else comp.parameter_type.member
         rebound = building_blocks.Lambda(comp.parameter_name, member_type,
-                                         decorated_result)
+                                         unwrapped.argument)
         extracted = parse_tff_to_tf(rebound)
         check_extraction_result(rebound, extracted)
         return extracted
@@ -254,7 +253,6 @@ def consolidate_and_extract_local_processing(comp):
       check_extraction_result(comp, extracted)
       return extracted
   elif comp.type_signature.is_federated():
-    comp, _ = tree_transformations.merge_chained_federated_maps_or_applys(comp)
     unwrapped, _ = tree_transformations.unwrap_placement(comp)
     # Unwrapped can be a call to `federated_value_at_P`, or
     # `federated_apply/map`.
@@ -264,10 +262,8 @@ def consolidate_and_extract_local_processing(comp):
       check_extraction_result(unwrapped.argument[0], extracted)
       return extracted
     else:
-      decorated, _ = tree_transformations.insert_called_tf_identity_at_leaves(
-          unwrapped.argument)
-      extracted = parse_tff_to_tf(decorated)
-      check_extraction_result(decorated, extracted)
+      extracted = parse_tff_to_tf(unwrapped.argument)
+      check_extraction_result(unwrapped.argument, extracted)
       return extracted.function
   else:
     called_tf = parse_tff_to_tf(comp)
@@ -279,7 +275,7 @@ def parse_tff_to_tf(comp):
   """Parses TFF construct `comp` into TensorFlow construct.
 
   Does not change the type signature of `comp`. Therefore may return either
-  a `tff.fframework.CompiledComputation` or a `tff.framework.Call` with no
+  a `tff.framework.CompiledComputation` or a `tff.framework.Call` with no
   argument and function `tff.framework.CompiledComputation`.
 
   Args:

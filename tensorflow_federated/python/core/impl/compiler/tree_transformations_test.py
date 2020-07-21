@@ -3568,6 +3568,312 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
     self.assertFalse(modified)
 
 
+class ResolveHigherOrderFunctionsTest(test.TestCase):
+
+  def _apply_resolution_and_remove_unused_block_locals(self, comp):
+    fns_resolved, modified = tree_transformations.resolve_higher_order_functions(
+        comp)
+    locals_removed, locals_modified = tree_transformations.remove_unused_block_locals(
+        fns_resolved)
+    return locals_removed, modified or locals_modified
+
+  def test_raises_with_nonunique_names(self):
+    dummy_int = building_blocks.Data('data', tf.int32)
+    blk_with_renamed = building_blocks.Block([('x', dummy_int),
+                                              ('x', dummy_int)], dummy_int)
+    with self.assertRaises(ValueError):
+      tree_transformations.resolve_higher_order_functions(blk_with_renamed)
+
+  def test_raises_with_unsafe_rebinding(self):
+    dummy_int = building_blocks.Data('data', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    blk_with_renamed = building_blocks.Block([('y', ref_to_x),
+                                              ('x', dummy_int)], dummy_int)
+    with self.assertRaises(ValueError):
+      tree_transformations.resolve_higher_order_functions(blk_with_renamed)
+
+  def test_resolves_selection_from_call(self):
+    int_identity = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    dummy_int = building_blocks.Data('data', tf.int32)
+    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
+    lambda_returning_tup = building_blocks.Lambda('z', tf.int32,
+                                                  tup_containing_fn)
+    called_tup = building_blocks.Call(lambda_returning_tup, dummy_int)
+    selected_identity = building_blocks.Selection(source=called_tup, index=0)
+    called_id = building_blocks.Call(selected_identity, dummy_int)
+
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        called_id)
+
+    self.assertTrue(transformed)
+    self.assertEqual(resolved.compact_representation(), '(x -> x)(data)')
+
+  def test_resolves_selection_from_symbol_bound_to_call(self):
+    int_identity = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    dummy_int = building_blocks.Data('data', tf.int32)
+    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
+    lambda_returning_tup = building_blocks.Lambda('z', tf.int32,
+                                                  tup_containing_fn)
+    called_tup = building_blocks.Call(lambda_returning_tup, dummy_int)
+    ref_to_y = building_blocks.Reference('y', called_tup.type_signature)
+    selected_identity = building_blocks.Selection(source=ref_to_y, index=0)
+    called_id = building_blocks.Call(selected_identity, dummy_int)
+    blk = building_blocks.Block([('y', called_tup)], called_id)
+
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        blk)
+
+    self.assertTrue(transformed)
+    self.assertEqual(resolved.compact_representation(), '(x -> x)(data)')
+
+  def test_resolves_selection_from_tuple(self):
+    int_identity = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    dummy_int = building_blocks.Data('data', tf.int32)
+    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
+    selected_identity = building_blocks.Selection(
+        source=tup_containing_fn, index=0)
+    called_id = building_blocks.Call(selected_identity, dummy_int)
+
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        called_id)
+
+    self.assertTrue(transformed)
+    self.assertEqual(resolved.compact_representation(), '(x -> x)(data)')
+
+  def test_resolves_selection_from_nested_tuple(self):
+    int_identity = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    dummy_int = building_blocks.Data('data', tf.int32)
+    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
+    nested_tuple = building_blocks.Tuple([tup_containing_fn])
+    selected_tuple = building_blocks.Selection(source=nested_tuple, index=0)
+    selected_identity = building_blocks.Selection(
+        source=selected_tuple, index=0)
+    called_id = building_blocks.Call(selected_identity, dummy_int)
+
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        called_id)
+
+    self.assertTrue(transformed)
+    self.assertEqual(resolved.compact_representation(), '(x -> x)(data)')
+
+  def test_resolves_selection_from_symbol_bound_to_tuple(self):
+    int_identity = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    dummy_int = building_blocks.Data('data', tf.int32)
+    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
+    ref_to_y = building_blocks.Reference('y', tup_containing_fn.type_signature)
+    selected_identity = building_blocks.Selection(source=ref_to_y, index=0)
+    called_id = building_blocks.Call(selected_identity, dummy_int)
+    blk = building_blocks.Block([('y', tup_containing_fn)], called_id)
+
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        blk)
+
+    self.assertTrue(transformed)
+    self.assertEqual(resolved.compact_representation(), '(x -> x)(data)')
+
+  def test_resolves_selection_from_nested_symbol_bound_to_nested_tuple(self):
+    int_identity = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    dummy_int = building_blocks.Data('data', tf.int32)
+    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
+    nested_tuple = building_blocks.Tuple([tup_containing_fn])
+    ref_to_nested_tuple = building_blocks.Reference('nested_tuple',
+                                                    nested_tuple.type_signature)
+    selected_tuple = building_blocks.Selection(
+        source=ref_to_nested_tuple, index=0)
+    selected_identity = building_blocks.Selection(
+        source=selected_tuple, index=0)
+    called_id = building_blocks.Call(selected_identity, dummy_int)
+    blk = building_blocks.Block([('nested_tuple', nested_tuple)], called_id)
+
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        blk)
+
+    self.assertTrue(transformed)
+    self.assertEqual(resolved.compact_representation(), '(x -> x)(data)')
+
+  def test_leaves_called_tf_unchanged(self):
+    called_tf = building_block_factory.create_tensorflow_constant(
+        computation_types.TensorType(tf.int32), 0)
+
+    resolved, modified = self._apply_resolution_and_remove_unused_block_locals(
+        called_tf)
+
+    self.assertFalse(modified)
+    self.assertRegexMatch(resolved.compact_representation(),
+                          [r'comp#[a-zA-Z0-9]*\(\)'])
+
+  def test_leaves_directly_called_lambda_unchanged(self):
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    int_identity = building_blocks.Lambda('z', tf.int32, ref_to_z)
+    data = building_blocks.Data('data', tf.int32)
+    called_identity = building_blocks.Call(int_identity, data)
+    resolved, modified = self._apply_resolution_and_remove_unused_block_locals(
+        called_identity)
+
+    self.assertFalse(modified)
+    self.assertEqual(resolved.compact_representation(), '(z -> z)(data)')
+
+  def test_leaves_call_to_lambda_parameter_unchanged(self):
+    ref_to_fn = building_blocks.Reference(
+        'fn', computation_types.FunctionType(tf.int32, tf.int32))
+    data = building_blocks.Data('data', tf.int32)
+    called_fn = building_blocks.Call(ref_to_fn, data)
+    lam = building_blocks.Lambda(ref_to_fn.name, ref_to_fn.type_signature,
+                                 called_fn)
+
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        lam)
+
+    self.assertFalse(transformed)
+    self.assertEqual(resolved.compact_representation(), '(fn -> fn(data))')
+
+  def test_resolves_nested_calls(self):
+    data = building_blocks.Data('data', tf.int32)
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    int_identity = building_blocks.Lambda('z', tf.int32, ref_to_z)
+    middle_lambda = building_blocks.Lambda('x', tf.int32, int_identity)
+    called_middle_lam = building_blocks.Call(middle_lambda, data)
+    top_level_call = building_blocks.Call(called_middle_lam, data)
+
+    resolved, modified = self._apply_resolution_and_remove_unused_block_locals(
+        top_level_call)
+
+    self.assertTrue(modified)
+    self.assertEqual(resolved.compact_representation(), '(z -> z)(data)')
+
+  def test_resolves_call_to_block_with_functional_result(self):
+    data = building_blocks.Data('data', tf.int32)
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    lowest_lam = building_blocks.Lambda(
+        'z', tf.int32, building_blocks.Tuple([ref_to_z, ref_to_x]))
+    blk = building_blocks.Block([('x', data)], lowest_lam)
+    called_blk = building_blocks.Call(blk, data)
+
+    resolved, modified = self._apply_resolution_and_remove_unused_block_locals(
+        called_blk)
+
+    self.assertTrue(modified)
+    self.assertEqual(resolved.compact_representation(),
+                     '(let x=data in (z -> <z,x>)(data))')
+
+  def test_resolves_call_to_block_under_tuple_selection(self):
+    data = building_blocks.Data('data', tf.int32)
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    lowest_lam = building_blocks.Lambda(
+        'z', tf.int32, building_blocks.Tuple([ref_to_z, ref_to_x]))
+    blk = building_blocks.Block([('x', data)], lowest_lam)
+    tuple_holding_blk = building_blocks.Tuple([blk])
+    zeroth_selection_from_tuple = building_blocks.Selection(
+        source=tuple_holding_blk, index=0)
+    called_sel = building_blocks.Call(zeroth_selection_from_tuple, data)
+
+    resolved, modified = self._apply_resolution_and_remove_unused_block_locals(
+        called_sel)
+
+    self.assertTrue(modified)
+    self.assertEqual(resolved.compact_representation(),
+                     '(let x=data in (z -> <z,x>)(data))')
+
+  def test_resolves_call_to_block_bound_to_symbol(self):
+    data = building_blocks.Data('data', tf.int32)
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    ref_to_x = building_blocks.Reference('x', tf.int32)
+    lowest_lam = building_blocks.Lambda(
+        'z', tf.int32, building_blocks.Tuple([ref_to_z, ref_to_x]))
+    blk = building_blocks.Block([('x', data)], lowest_lam)
+    ref_to_y = building_blocks.Reference('y', blk.type_signature)
+
+    called_ref = building_blocks.Call(ref_to_y, data)
+    higher_blk = building_blocks.Block([('y', blk)], called_ref)
+
+    resolved, modified = self._apply_resolution_and_remove_unused_block_locals(
+        higher_blk)
+
+    self.assertTrue(modified)
+    self.assertEqual(resolved.compact_representation(),
+                     '(let x=data in (z -> <z,x>)(data))')
+
+  def test_resolves_call_to_functional_reference(self):
+    data = building_blocks.Data('data', tf.int32)
+    ref_to_z = building_blocks.Reference('z', tf.int32)
+    int_identity = building_blocks.Lambda('z', tf.int32, ref_to_z)
+    ref_to_fn = building_blocks.Reference('fn', int_identity.type_signature)
+    called_ref = building_blocks.Call(ref_to_fn, data)
+    blk = building_blocks.Block([('fn', int_identity)], called_ref)
+
+    resolved, modified = self._apply_resolution_and_remove_unused_block_locals(
+        blk)
+
+    self.assertTrue(modified)
+    self.assertEqual(resolved.compact_representation(), '(z -> z)(data)')
+
+  def test_resolves_call_to_functional_reference_under_tuple_selection(self):
+    int_identity = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    ref_to_fn = building_blocks.Reference('function',
+                                          int_identity.type_signature)
+    dummy_int = building_blocks.Data('data', tf.int32)
+    tup_containing_fn = building_blocks.Tuple([ref_to_fn, dummy_int])
+    nested_tuple = building_blocks.Tuple([tup_containing_fn])
+    selected_tuple = building_blocks.Selection(source=nested_tuple, index=0)
+    selected_identity = building_blocks.Selection(
+        source=selected_tuple, index=0)
+    called_id = building_blocks.Call(selected_identity, dummy_int)
+    blk = building_blocks.Block([('function', int_identity)], called_id)
+
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        blk)
+
+    self.assertTrue(transformed)
+    self.assertEqual(resolved.compact_representation(), '(x -> x)(data)')
+
+  def test_resolves_call_which_correctly_returns_lambda(self):
+    int_identity = building_blocks.Lambda(
+        'x', tf.int32, building_blocks.Reference('x', tf.int32))
+    higher_lambda = building_blocks.Lambda('z', tf.int32, int_identity)
+    data = building_blocks.Data('data', tf.int32)
+    call = building_blocks.Call(higher_lambda, data)
+
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        call)
+
+    self.assertTrue(transformed)
+    self.assertEqual(resolved.compact_representation(), '(x -> x)')
+
+  def test_resolves_capturing_function(self):
+    # This test indicates that the current implementation of resolving higher
+    # order functions does not respect necessary semantics for nondeterminism.
+    noarg_lambda = building_blocks.Lambda(
+        None, None, building_blocks.Data('data', tf.int32))
+    called_lam = building_blocks.Call(noarg_lambda)
+    ref_to_data = building_blocks.Reference('a', called_lam.type_signature)
+    capturing_fn = building_blocks.Lambda('x', tf.int32, ref_to_data)
+    blk_representing_captures = building_blocks.Block([('a', called_lam)],
+                                                      capturing_fn)
+    called_blk = building_blocks.Call(blk_representing_captures,
+                                      building_blocks.Data('arg', tf.int32))
+    tup_holding_blocks = building_blocks.Tuple([called_blk, called_blk])
+
+    tup_holding_blocks, _ = tree_transformations.uniquify_reference_names(
+        tup_holding_blocks)
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        tup_holding_blocks)
+
+    self.assertTrue(transformed)
+    self.assertEqual(
+        resolved.compact_representation(),
+        '<(let _var1=( -> data)() in (_var2 -> _var1)(arg)),(let _var3=( -> data)() in (_var4 -> _var3)(arg))>'
+    )
+
+
 class UniquifyReferenceNamesTest(test.TestCase):
 
   def test_raises_type_error(self):
