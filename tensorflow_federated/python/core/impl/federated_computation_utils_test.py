@@ -47,7 +47,7 @@ class ZeroOrOneArgFnToBuildingBlockTest(parameterized.TestCase):
        lambda x: (x[1], x[0]),
        computation_types.NamedTupleType([tf.int32, tf.int32]),
        '(FEDERATED_foo -> <FEDERATED_foo[1],FEDERATED_foo[0]>)'),
-      ('constant', lambda: 'stuff', None, '( -> comp#'))
+      ('constant', lambda: 'stuff', None, '( -> (let fc_FEDERATED_symbol_0=comp#'))
   # pyformat: enable
   def test_zero_or_one_arg_fn_to_building_block(self, fn, parameter_type,
                                                 fn_str):

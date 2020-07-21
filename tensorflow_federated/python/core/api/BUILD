@@ -154,5 +154,7 @@ py_test(
     deps = [
         ":value_base",
         ":values",
+        "//tensorflow_federated/python/core/impl:federated_computation_context",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
     ],
 )

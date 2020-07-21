@@ -161,7 +161,12 @@ class ValueImplTest(parameterized.TestCase):
     z = x + y
     self.assertIsInstance(z, value_base.Value)
     self.assertEqual(str(z.type_signature), 'int32')
-    self.assertEqual(str(z), 'generic_plus(<x,y>)')
+    self.assertEqual(str(z), 'fc_FEDERATED_symbol_0')
+    bindings = value_impl.ValueImpl.get_context_stack(z).current.symbol_bindings
+    self.assertLen(bindings, 1)
+    name, comp = bindings[0]
+    self.assertEqual(name, 'fc_FEDERATED_symbol_0')
+    self.assertEqual(comp.compact_representation(), 'generic_plus(<x,y>)')
 
   def test_to_value_for_tuple(self):
     x = value_impl.ValueImpl(
@@ -387,7 +392,7 @@ class ValueImplTest(parameterized.TestCase):
       _ = v[2:4:-1]
 
   @parameterized.named_parameters(('list', list), ('tuple', tuple))
-  def test_slicing_tuple_values(self, sequence_type):
+  def test_slicing_tuple_values_from_front(self, sequence_type):
 
     def _to_value(cbb):
       return value_impl.to_value(cbb, None, context_stack_impl.context_stack)
@@ -402,15 +407,89 @@ class ValueImplTest(parameterized.TestCase):
 
     sliced = v[:2]
     self.assertEqual((str(sliced.type_signature)), '<int32,int32>')
-    self.assertEqual(str(sliced), '<comp#1(),comp#2()>')
+    self.assertEqual(
+        str(sliced), '<fc_FEDERATED_symbol_0,fc_FEDERATED_symbol_1>')
+
+    expected_symbol_bindings = [
+        ('fc_FEDERATED_symbol_0', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_1', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_2', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_3', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_4', [r'comp#[a-zA-Z0-9]*()']),
+    ]
+
+    bindings = value_impl.ValueImpl.get_context_stack(
+        sliced).current.symbol_bindings
+    for (bound_name, comp), (expected_name,
+                             expected_regex) in zip(bindings,
+                                                    expected_symbol_bindings):
+      self.assertEqual(bound_name, expected_name)
+      self.assertRegexMatch(comp.compact_representation(), expected_regex)
+
+  @parameterized.named_parameters(('list', list), ('tuple', tuple))
+  def test_slicing_tuple_values_from_back(self, sequence_type):
+
+    def _to_value(cbb):
+      return value_impl.to_value(cbb, None, context_stack_impl.context_stack)
+
+    t = sequence_type(range(0, 50, 10))
+    v = _to_value(t)
+
+    self.assertEqual((str(v.type_signature)), '<int32,int32,int32,int32,int32>')
+    self.assertEqual(str(v[:]), str(v))
 
     sliced = v[-3:]
     self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
-    self.assertEqual(str(sliced), '<comp#3(),comp#4(),comp#5()>')
+    self.assertEqual(
+        str(sliced),
+        '<fc_FEDERATED_symbol_2,fc_FEDERATED_symbol_3,fc_FEDERATED_symbol_4>')
+
+    expected_symbol_bindings = [
+        ('fc_FEDERATED_symbol_0', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_1', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_2', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_3', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_4', [r'comp#[a-zA-Z0-9]*()']),
+    ]
+
+    bindings = value_impl.ValueImpl.get_context_stack(
+        sliced).current.symbol_bindings
+    for (bound_name, comp), (expected_name,
+                             expected_regex) in zip(bindings,
+                                                    expected_symbol_bindings):
+      self.assertEqual(bound_name, expected_name)
+      self.assertRegexMatch(comp.compact_representation(), expected_regex)
+
+  @parameterized.named_parameters(('list', list), ('tuple', tuple))
+  def test_slicing_tuple_values_skipping_steps(self, sequence_type):
+
+    def _to_value(val):
+      return value_impl.to_value(val, None, context_stack_impl.context_stack)
+
+    t = sequence_type(range(0, 50, 10))
+    v = _to_value(t)
 
     sliced = v[::2]
     self.assertEqual((str(sliced.type_signature)), '<int32,int32,int32>')
-    self.assertEqual(str(sliced), '<comp#1(),comp#3(),comp#5()>')
+    self.assertEqual(
+        str(sliced),
+        '<fc_FEDERATED_symbol_0,fc_FEDERATED_symbol_2,fc_FEDERATED_symbol_4>')
+
+    expected_symbol_bindings = [
+        ('fc_FEDERATED_symbol_0', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_1', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_2', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_3', [r'comp#[a-zA-Z0-9]*()']),
+        ('fc_FEDERATED_symbol_4', [r'comp#[a-zA-Z0-9]*()']),
+    ]
+
+    bindings = value_impl.ValueImpl.get_context_stack(
+        sliced).current.symbol_bindings
+    for (bound_name, comp), (expected_name,
+                             expected_regex) in zip(bindings,
+                                                    expected_symbol_bindings):
+      self.assertEqual(bound_name, expected_name)
+      self.assertRegexMatch(comp.compact_representation(), expected_regex)
 
   def test_getitem_resolution_federated_value_clients(self):
     federated_value = value_impl.to_value(
@@ -472,7 +551,6 @@ class ValueImplTest(parameterized.TestCase):
         str(federated_value.type_signature), '<a=int32,b=bool>@SERVER')
     federated_attribute = federated_value['a']
     self.assertEqual(str(federated_attribute.type_signature), 'int32@SERVER')
-    print(repr(federated_value))
     with self.assertRaises(ValueError):
       _ = federated_value['badkey']
 

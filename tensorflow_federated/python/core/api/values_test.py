@@ -16,9 +16,17 @@ from absl.testing import absltest
 
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.api import values
+from tensorflow_federated.python.core.impl import federated_computation_context
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 
 
 class ValuesTest(absltest.TestCase):
+
+  def run(self, result=None):
+    fc_context = federated_computation_context.FederatedComputationContext(
+        context_stack_impl.context_stack)
+    with context_stack_impl.context_stack.install(fc_context):
+      super(ValuesTest, self).run(result=result)
 
   # Note: No need to test all supported types, as those are already tested in
   # the test of the underlying implementation (`value_impl_test.py`).
