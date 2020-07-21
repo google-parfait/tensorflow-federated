@@ -183,7 +183,7 @@ class ClientAttackTest(tf.test.TestCase):
     for _ in range(2):
       state, outputs = trainer.next(state, train_data, malicious_data,
                                     client_type_list)
-      losses.append(outputs.loss)
+      losses.append(outputs['loss'])
     self.assertLess(losses[1], losses[0])
 
   def test_self_contained_example_custom_model(self):
@@ -198,7 +198,7 @@ class ClientAttackTest(tf.test.TestCase):
     for _ in range(2):
       state, outputs = trainer.next(state, train_data, malicious_data,
                                     client_type_list)
-      losses.append(outputs.loss)
+      losses.append(outputs['loss'])
     self.assertLess(losses[1], losses[0])
 
   def test_attack(self):
@@ -313,9 +313,8 @@ class AggregationTest(tf.test.TestCase):
     state = trainer.initialize()
     initial_weights = state.model.trainable
     state, _ = trainer.next(state, train_data, malicious_data, client_type_list)
-    weights_delta = tf.nest.map_structure(tf.subtract,
-                                          state.model.trainable._asdict(),
-                                          initial_weights._asdict())
+    weights_delta = tf.nest.map_structure(tf.subtract, state.model.trainable,
+                                          initial_weights)
     self.assertLess(attacked_fedavg._get_norm(weights_delta), l2_norm * 1.1)
 
   def test_aggregate_and_clip(self):
@@ -332,9 +331,8 @@ class AggregationTest(tf.test.TestCase):
     state = trainer.initialize()
     initial_weights = state.model.trainable
     state, _ = trainer.next(state, train_data, malicious_data, client_type_list)
-    weights_delta = tf.nest.map_structure(tf.subtract,
-                                          state.model.trainable._asdict(),
-                                          initial_weights._asdict())
+    weights_delta = tf.nest.map_structure(tf.subtract, state.model.trainable,
+                                          initial_weights)
     self.assertLess(attacked_fedavg._get_norm(weights_delta), l2_norm * 1.01)
 
 
