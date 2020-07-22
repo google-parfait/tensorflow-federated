@@ -17,40 +17,38 @@ import collections
 from absl.testing import absltest
 import attr
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 
 
-class AnonymousTupleTest(absltest.TestCase):
+class StructTest(absltest.TestCase):
 
   def test_construction_from_list(self):
     v = [('a', 1), ('b', 2), (None, 3)]
-    x = anonymous_tuple.AnonymousTuple(v)
-    self.assertSequenceEqual(anonymous_tuple.to_elements(x), v)
+    x = structure.Struct(v)
+    self.assertSequenceEqual(structure.to_elements(x), v)
 
   def test_construction_from_tuple(self):
     v = (('a', 1), ('b', 2), (None, 3))
-    x = anonymous_tuple.AnonymousTuple(v)
-    self.assertSequenceEqual(anonymous_tuple.to_elements(x), v)
+    x = structure.Struct(v)
+    self.assertSequenceEqual(structure.to_elements(x), v)
 
   def test_construction_from_ordereddict(self):
     v = collections.OrderedDict(a=1, b=2, c=3)
-    x = anonymous_tuple.AnonymousTuple(v.items())
-    self.assertSequenceEqual(anonymous_tuple.to_elements(x), list(v.items()))
+    x = structure.Struct(v.items())
+    self.assertSequenceEqual(structure.to_elements(x), list(v.items()))
 
   def test_construction_from_generator_expression(self):
-    x = anonymous_tuple.AnonymousTuple(
-        (name, i) for i, name in enumerate(('a', 'b', None)))
+    x = structure.Struct((name, i) for i, name in enumerate(('a', 'b', None)))
     self.assertSequenceEqual(
-        anonymous_tuple.to_elements(x), [('a', 0), ('b', 1), (None, 2)])
+        structure.to_elements(x), [('a', 0), ('b', 1), (None, 2)])
 
   def test_construction_from_iter_elements(self):
-    x = anonymous_tuple.AnonymousTuple((('a', 1), ('b', 2), (None, 3)))
-    self.assertSequenceEqual(
-        anonymous_tuple.AnonymousTuple(anonymous_tuple.iter_elements(x)), x)
+    x = structure.Struct((('a', 1), ('b', 2), (None, 3)))
+    self.assertSequenceEqual(structure.Struct(structure.iter_elements(x)), x)
 
   def test_empty(self):
     v = []
-    x = anonymous_tuple.AnonymousTuple(v)
+    x = structure.Struct(v)
     # Explicitly test the implementation of __len__() here so use, assertLen()
     # instead of assertEmpty().
     self.assertLen(x, 0)  # pylint: disable=g-generic-assert
@@ -58,36 +56,35 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(list(iter(x)), [])
     self.assertEqual(dir(x), [])
     self.assertRaises(AttributeError, lambda _: x.foo, None)
-    self.assertEqual(x, anonymous_tuple.AnonymousTuple([]))
-    self.assertNotEqual(x, anonymous_tuple.AnonymousTuple([('foo', 10)]))
-    self.assertEqual(anonymous_tuple.to_elements(x), v)
-    self.assertEqual(anonymous_tuple.to_odict(x), collections.OrderedDict())
-    self.assertEqual(repr(x), 'AnonymousTuple([])')
+    self.assertEqual(x, structure.Struct([]))
+    self.assertNotEqual(x, structure.Struct([('foo', 10)]))
+    self.assertEqual(structure.to_elements(x), v)
+    self.assertEqual(structure.to_odict(x), collections.OrderedDict())
+    self.assertEqual(repr(x), 'Struct([])')
     self.assertEqual(str(x), '<>')
 
   def test_single_unnamed(self):
     v = [(None, 10)]
-    x = anonymous_tuple.AnonymousTuple(v)
+    x = structure.Struct(v)
     self.assertLen(x, 1)
     self.assertRaises(IndexError, lambda _: x[1], None)
     self.assertEqual(x[0], 10)
     self.assertEqual(list(iter(x)), [10])
     self.assertEqual(dir(x), [])
     self.assertRaises(AttributeError, lambda _: x.foo, None)
-    self.assertNotEqual(x, anonymous_tuple.AnonymousTuple([]))
-    self.assertNotEqual(x, anonymous_tuple.AnonymousTuple([('foo', 10)]))
-    self.assertEqual(x, anonymous_tuple.AnonymousTuple([(None, 10)]))
-    self.assertNotEqual(
-        x, anonymous_tuple.AnonymousTuple([(None, 10), ('foo', 20)]))
-    self.assertEqual(anonymous_tuple.to_elements(x), v)
-    self.assertEqual(repr(x), 'AnonymousTuple([(None, 10)])')
+    self.assertNotEqual(x, structure.Struct([]))
+    self.assertNotEqual(x, structure.Struct([('foo', 10)]))
+    self.assertEqual(x, structure.Struct([(None, 10)]))
+    self.assertNotEqual(x, structure.Struct([(None, 10), ('foo', 20)]))
+    self.assertEqual(structure.to_elements(x), v)
+    self.assertEqual(repr(x), 'Struct([(None, 10)])')
     self.assertEqual(str(x), '<10>')
     with self.assertRaisesRegex(ValueError, 'unnamed'):
-      anonymous_tuple.to_odict(x)
+      structure.to_odict(x)
 
   def test_single_named(self):
     v = [('foo', 20)]
-    x = anonymous_tuple.AnonymousTuple(v)
+    x = structure.Struct(v)
     self.assertLen(x, 1)
     self.assertEqual(x[0], 20)
     self.assertRaises(IndexError, lambda _: x[1], None)
@@ -95,20 +92,19 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertEqual(dir(x), ['foo'])
     self.assertEqual(x.foo, 20)
     self.assertRaises(AttributeError, lambda _: x.bar, None)
-    self.assertNotEqual(x, anonymous_tuple.AnonymousTuple([]))
-    self.assertNotEqual(x, anonymous_tuple.AnonymousTuple([('foo', 10)]))
-    self.assertNotEqual(x, anonymous_tuple.AnonymousTuple([(None, 20)]))
-    self.assertEqual(x, anonymous_tuple.AnonymousTuple([('foo', 20)]))
-    self.assertNotEqual(
-        x, anonymous_tuple.AnonymousTuple([('foo', 20), ('bar', 30)]))
-    self.assertEqual(anonymous_tuple.to_elements(x), v)
-    self.assertEqual(repr(x), 'AnonymousTuple([(\'foo\', 20)])')
+    self.assertNotEqual(x, structure.Struct([]))
+    self.assertNotEqual(x, structure.Struct([('foo', 10)]))
+    self.assertNotEqual(x, structure.Struct([(None, 20)]))
+    self.assertEqual(x, structure.Struct([('foo', 20)]))
+    self.assertNotEqual(x, structure.Struct([('foo', 20), ('bar', 30)]))
+    self.assertEqual(structure.to_elements(x), v)
+    self.assertEqual(repr(x), 'Struct([(\'foo\', 20)])')
     self.assertEqual(str(x), '<foo=20>')
-    self.assertEqual(anonymous_tuple.to_odict(x), collections.OrderedDict(v))
+    self.assertEqual(structure.to_odict(x), collections.OrderedDict(v))
 
   def test_multiple_named_and_unnamed(self):
     v = [(None, 10), ('foo', 20), ('bar', 30)]
-    x = anonymous_tuple.AnonymousTuple(v)
+    x = structure.Struct(v)
     self.assertLen(x, 3)
     self.assertEqual(x[0], 10)
     self.assertEqual(x[1], 20)
@@ -116,45 +112,43 @@ class AnonymousTupleTest(absltest.TestCase):
     self.assertRaises(IndexError, lambda _: x[3], None)
     self.assertEqual(list(iter(x)), [10, 20, 30])
     self.assertEqual(dir(x), ['bar', 'foo'])
-    self.assertEqual(anonymous_tuple.name_list(x), ['foo', 'bar'])
+    self.assertEqual(structure.name_list(x), ['foo', 'bar'])
     self.assertEqual(x.foo, 20)
     self.assertEqual(x.bar, 30)
     self.assertRaises(AttributeError, lambda _: x.baz, None)
-    self.assertEqual(
-        x, anonymous_tuple.AnonymousTuple([(None, 10), ('foo', 20),
-                                           ('bar', 30)]))
+    self.assertEqual(x, structure.Struct([(None, 10), ('foo', 20),
+                                          ('bar', 30)]))
     self.assertNotEqual(
-        x, anonymous_tuple.AnonymousTuple([('foo', 10), ('bar', 20),
-                                           (None, 30)]))
-    self.assertEqual(anonymous_tuple.to_elements(x), v)
+        x, structure.Struct([('foo', 10), ('bar', 20), (None, 30)]))
+    self.assertEqual(structure.to_elements(x), v)
     self.assertEqual(
-        repr(x), 'AnonymousTuple([(None, 10), (\'foo\', 20), (\'bar\', 30)])')
+        repr(x), 'Struct([(None, 10), (\'foo\', 20), (\'bar\', 30)])')
     self.assertEqual(str(x), '<10,foo=20,bar=30>')
     with self.assertRaisesRegex(ValueError, 'unnamed'):
-      anonymous_tuple.to_odict(x)
+      structure.to_odict(x)
 
   def test_bad_names(self):
     with self.assertRaisesRegex(ValueError, 'duplicated.*foo'):
-      anonymous_tuple.AnonymousTuple([('foo', 20), ('foo', 30)])
+      structure.Struct([('foo', 20), ('foo', 30)])
 
     with self.assertRaisesRegex(ValueError, '_asdict.*reserved'):
-      anonymous_tuple.AnonymousTuple([('_asdict', 40)])
+      structure.Struct([('_asdict', 40)])
 
     with self.assertRaisesRegex(ValueError, '_element_array.*reserved'):
-      anonymous_tuple.AnonymousTuple([('_element_array', 40)])
+      structure.Struct([('_element_array', 40)])
 
     with self.assertRaisesRegex(ValueError, '_name_to_index.*reserved'):
-      anonymous_tuple.AnonymousTuple([('_name_to_index', 40)])
+      structure.Struct([('_name_to_index', 40)])
 
     with self.assertRaisesRegex(ValueError, '_name_array.*reserved'):
-      anonymous_tuple.AnonymousTuple([('_name_array', 40)])
+      structure.Struct([('_name_array', 40)])
 
     with self.assertRaisesRegex(ValueError, '_hash.*reserved'):
-      anonymous_tuple.AnonymousTuple([('_hash', 40)])
+      structure.Struct([('_hash', 40)])
 
   def test_immutable(self):
     v = [('foo', 'a string'), ('bar', 1), ('baz', [1.0, 2.0, 3.0])]
-    t = anonymous_tuple.AnonymousTuple(v)
+    t = structure.Struct(v)
 
     # Expect that we can read by name the values.
     self.assertEqual(t.foo, 'a string')
@@ -185,32 +179,32 @@ class AnonymousTupleTest(absltest.TestCase):
 
   def test_equality_unnamed(self):
     # identity
-    t1 = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2)])
+    t1 = structure.Struct([(None, 1), (None, 2)])
     self.assertTrue(t1.__eq__(t1))
     self.assertFalse(t1.__ne__(t1))
     # different type
     self.assertFalse(t1.__eq__(None))
     self.assertTrue(t1.__ne__(None))
     # copy
-    t2 = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2)])
+    t2 = structure.Struct([(None, 1), (None, 2)])
     self.assertTrue(t1.__eq__(t2))
     self.assertTrue(t2.__eq__(t1))
     self.assertFalse(t1.__ne__(t2))
     self.assertFalse(t2.__ne__(t1))
     # different ordering
-    t3 = anonymous_tuple.AnonymousTuple([(None, 2), (None, 1)])
+    t3 = structure.Struct([(None, 2), (None, 1)])
     self.assertFalse(t1.__eq__(t3))
     self.assertFalse(t3.__eq__(t1))
     self.assertTrue(t1.__ne__(t3))
     self.assertTrue(t3.__ne__(t1))
     # different names
-    t4 = anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2)])
+    t4 = structure.Struct([('a', 1), ('b', 2)])
     self.assertFalse(t1.__eq__(t4))
     self.assertFalse(t4.__eq__(t1))
     self.assertTrue(t1.__ne__(t4))
     self.assertTrue(t4.__ne__(t1))
     # different values
-    t5 = anonymous_tuple.AnonymousTuple([(None, 10), (None, 10)])
+    t5 = structure.Struct([(None, 10), (None, 10)])
     self.assertFalse(t1.__eq__(t5))
     self.assertFalse(t5.__eq__(t1))
     self.assertTrue(t1.__ne__(t5))
@@ -218,32 +212,32 @@ class AnonymousTupleTest(absltest.TestCase):
 
   def test_equality_named(self):
     # identity
-    t1 = anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2)])
+    t1 = structure.Struct([('a', 1), ('b', 2)])
     self.assertTrue(t1.__eq__(t1))
     self.assertFalse(t1.__ne__(t1))
     # different type
     self.assertFalse(t1.__eq__(None))
     self.assertTrue(t1.__ne__(None))
     # copy
-    t2 = anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2)])
+    t2 = structure.Struct([('a', 1), ('b', 2)])
     self.assertTrue(t1.__eq__(t2))
     self.assertTrue(t2.__eq__(t1))
     self.assertFalse(t1.__ne__(t2))
     self.assertFalse(t2.__ne__(t1))
     # different ordering
-    t3 = anonymous_tuple.AnonymousTuple([('b', 2), ('a', 1)])
+    t3 = structure.Struct([('b', 2), ('a', 1)])
     self.assertFalse(t1.__eq__(t3))
     self.assertFalse(t3.__eq__(t1))
     self.assertTrue(t1.__ne__(t3))
     self.assertTrue(t3.__ne__(t1))
     # different names
-    t4 = anonymous_tuple.AnonymousTuple([('c', 1), ('d', 2)])
+    t4 = structure.Struct([('c', 1), ('d', 2)])
     self.assertFalse(t1.__eq__(t4))
     self.assertFalse(t4.__eq__(t1))
     self.assertTrue(t1.__ne__(t4))
     self.assertTrue(t4.__ne__(t1))
     # different values
-    t5 = anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10)])
+    t5 = structure.Struct([('a', 10), ('b', 10)])
     self.assertFalse(t1.__eq__(t5))
     self.assertFalse(t5.__eq__(t1))
     self.assertTrue(t1.__ne__(t5))
@@ -251,23 +245,23 @@ class AnonymousTupleTest(absltest.TestCase):
 
   def test_hash(self):
     v1 = [(str(i) if i > 30 else None, i) for i in range(0, 50, 10)]
-    x1 = anonymous_tuple.AnonymousTuple(v1)
+    x1 = structure.Struct(v1)
     self.assertNotEqual(x1, v1)
     self.assertNotEqual(hash(x1), hash(iter(v1)))
     v2 = [(None, i) for i in range(0, 50, 10)]
-    x2 = anonymous_tuple.AnonymousTuple(v2)
+    x2 = structure.Struct(v2)
     self.assertNotEqual(hash(x2), hash(iter(v2)))
     self.assertNotEqual(x1, x2)
     self.assertNotEqual(hash(x1), hash(x2))
     v3 = [(None, 0), (None, 10), (None, 20), (None, 30), (None, 40)]
-    x3 = anonymous_tuple.AnonymousTuple(v3)
+    x3 = structure.Struct(v3)
     self.assertEqual(v2, v3)
     self.assertEqual(x2, x3)
     self.assertEqual(hash(x2), hash(x3))
 
   def test_slicing_behavior(self):
     v = [(None, i) for i in range(0, 50, 10)]
-    x = anonymous_tuple.AnonymousTuple(v)
+    x = structure.Struct(v)
     self.assertEqual(x[:], tuple(range(0, 50, 10)))
     self.assertEqual(x[::-1], tuple(reversed(range(0, 50, 10))))
     self.assertEqual(x[:-1], tuple(range(0, 40, 10)))
@@ -276,7 +270,7 @@ class AnonymousTupleTest(absltest.TestCase):
 
   def test_getitem_key(self):
     v = [('foo', 10), ('bar', 20)]
-    x = anonymous_tuple.AnonymousTuple(v)
+    x = structure.Struct(v)
     self.assertEqual(x['foo'], 10)
     self.assertEqual(x['bar'], 20)
     with self.assertRaises(AttributeError):
@@ -284,18 +278,18 @@ class AnonymousTupleTest(absltest.TestCase):
 
   def test_getitem_key_builtin_attribute_raises(self):
     v = [('foo', 10), ('bar', 20)]
-    x = anonymous_tuple.AnonymousTuple(v)
+    x = structure.Struct(v)
     with self.assertRaises(AttributeError):
       _ = x['__getattr__']
 
   def test_getitem_bad_bounds(self):
     v = [(None, i) for i in range(0, 50, 10)]
-    x = anonymous_tuple.AnonymousTuple(v)
+    x = structure.Struct(v)
     with self.assertRaises(IndexError):
       _ = x[10]
 
-  def test_pack_sequence_as_fails_non_anonymous_tuple(self):
-    x = anonymous_tuple.AnonymousTuple([
+  def test_pack_sequence_as_fails_non_struct(self):
+    x = structure.Struct([
         ('a', 10),
         ('b', {
             'd': 20
@@ -304,126 +298,125 @@ class AnonymousTupleTest(absltest.TestCase):
     ])
     y = [10, 20, 30]
     with self.assertRaisesRegex(TypeError, 'Cannot pack sequence'):
-      _ = anonymous_tuple.pack_sequence_as(x, y)
+      _ = structure.pack_sequence_as(x, y)
 
   def test_flatten_and_pack_sequence_as(self):
-    x = anonymous_tuple.AnonymousTuple([
+    x = structure.Struct([
         ('a', 10),
         ('b',
-         anonymous_tuple.AnonymousTuple([
-             ('x', anonymous_tuple.AnonymousTuple([('p', 40)])),
+         structure.Struct([
+             ('x', structure.Struct([('p', 40)])),
              ('y', 30),
-             ('z', anonymous_tuple.AnonymousTuple([('q', 50), ('r', 60)])),
+             ('z', structure.Struct([('q', 50), ('r', 60)])),
          ])),
         ('c', 20),
     ])
-    y = anonymous_tuple.flatten(x)
+    y = structure.flatten(x)
     self.assertEqual(y, [10, 40, 30, 50, 60, 20])
-    z = anonymous_tuple.pack_sequence_as(x, y)
+    z = structure.pack_sequence_as(x, y)
     self.assertEqual(str(z), '<a=10,b=<x=<p=40>,y=30,z=<q=50,r=60>>,c=20>')
 
   def test_is_same_structure_check_types(self):
     self.assertTrue(
-        anonymous_tuple.is_same_structure(
-            anonymous_tuple.AnonymousTuple([('a', 10)]),
-            anonymous_tuple.AnonymousTuple([('a', 20)])))
+        structure.is_same_structure(
+            structure.Struct([('a', 10)]), structure.Struct([('a', 20)])))
     self.assertTrue(
-        anonymous_tuple.is_same_structure(
-            anonymous_tuple.AnonymousTuple([
+        structure.is_same_structure(
+            structure.Struct([
                 ('a', 10),
-                ('b', anonymous_tuple.AnonymousTuple([('z', 5)])),
+                ('b', structure.Struct([('z', 5)])),
             ]),
-            anonymous_tuple.AnonymousTuple([
+            structure.Struct([
                 ('a', 20),
-                ('b', anonymous_tuple.AnonymousTuple([('z', 50)])),
+                ('b', structure.Struct([('z', 50)])),
             ])))
     self.assertFalse(
-        anonymous_tuple.is_same_structure(
-            anonymous_tuple.AnonymousTuple([('x', {
+        structure.is_same_structure(
+            structure.Struct([('x', {
                 'y': 4
-            })]), anonymous_tuple.AnonymousTuple([('x', {
+            })]), structure.Struct([('x', {
                 'y': 5,
                 'z': 6
             })])))
     self.assertTrue(
-        anonymous_tuple.is_same_structure(
-            anonymous_tuple.AnonymousTuple([('x', {
+        structure.is_same_structure(
+            structure.Struct([('x', {
                 'y': 5
-            })]), anonymous_tuple.AnonymousTuple([('x', {
+            })]), structure.Struct([('x', {
                 'y': 6
             })])))
     with self.assertRaises(TypeError):
-      anonymous_tuple.is_same_structure(
-          {'x': 5.0},  # not an AnonymousTuple
-          anonymous_tuple.AnonymousTuple([('x', 5.0)]))
+      structure.is_same_structure(
+          {'x': 5.0},  # not an Struct
+          structure.Struct([('x', 5.0)]))
 
   def test_map_structure(self):
-    x = anonymous_tuple.AnonymousTuple([
+    x = structure.Struct([
         ('a', 10),
         ('b',
-         anonymous_tuple.AnonymousTuple([
-             ('x', anonymous_tuple.AnonymousTuple([('p', 40)])),
+         structure.Struct([
+             ('x', structure.Struct([('p', 40)])),
              ('y', 30),
-             ('z', anonymous_tuple.AnonymousTuple([('q', 50), ('r', 60)])),
+             ('z', structure.Struct([('q', 50), ('r', 60)])),
          ])),
         ('c', 20),
     ])
-    y = anonymous_tuple.AnonymousTuple([
+    y = structure.Struct([
         ('a', 1),
         ('b',
-         anonymous_tuple.AnonymousTuple([
-             ('x', anonymous_tuple.AnonymousTuple([('p', 4)])),
+         structure.Struct([
+             ('x', structure.Struct([('p', 4)])),
              ('y', 3),
-             ('z', anonymous_tuple.AnonymousTuple([('q', 5), ('r', 6)])),
+             ('z', structure.Struct([('q', 5), ('r', 6)])),
          ])),
         ('c', 2),
     ])
 
     self.assertEqual(
-        anonymous_tuple.map_structure(lambda x, y: x + y, x, y),
-        anonymous_tuple.AnonymousTuple([
+        structure.map_structure(lambda x, y: x + y, x, y),
+        structure.Struct([
             ('a', 11),
             ('b',
-             anonymous_tuple.AnonymousTuple([
-                 ('x', anonymous_tuple.AnonymousTuple([('p', 44)])),
+             structure.Struct([
+                 ('x', structure.Struct([('p', 44)])),
                  ('y', 33),
-                 ('z', anonymous_tuple.AnonymousTuple([('q', 55), ('r', 66)])),
+                 ('z', structure.Struct([('q', 55), ('r', 66)])),
              ])),
             ('c', 22),
         ]))
 
   def test_from_container_with_none(self):
     with self.assertRaises(TypeError):
-      anonymous_tuple.from_container(None)
+      structure.from_container(None)
 
   def test_from_container_with_int(self):
     with self.assertRaises(TypeError):
-      anonymous_tuple.from_container(10)
+      structure.from_container(10)
 
   def test_from_container_with_list(self):
-    x = anonymous_tuple.from_container([10, 20])
-    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    x = structure.from_container([10, 20])
+    self.assertIsInstance(x, structure.Struct)
     self.assertEqual(str(x), '<10,20>')
 
   def test_from_container_with_tuple(self):
-    x = anonymous_tuple.from_container(tuple([10, 20]))
-    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    x = structure.from_container(tuple([10, 20]))
+    self.assertIsInstance(x, structure.Struct)
     self.assertEqual(str(x), '<10,20>')
 
   def test_from_container_with_dict(self):
-    x = anonymous_tuple.from_container({'z': 10, 'y': 20, 'a': 30})
-    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    x = structure.from_container({'z': 10, 'y': 20, 'a': 30})
+    self.assertIsInstance(x, structure.Struct)
     self.assertEqual(str(x), '<a=30,y=20,z=10>')
 
   def test_from_container_with_ordered_dict(self):
-    x = anonymous_tuple.from_container(
+    x = structure.from_container(
         collections.OrderedDict([('z', 10), ('y', 20), ('a', 30)]))
-    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    self.assertIsInstance(x, structure.Struct)
     self.assertEqual(str(x), '<z=10,y=20,a=30>')
 
   def test_from_container_with_namedtuple(self):
-    x = anonymous_tuple.from_container(collections.namedtuple('_', 'x y')(1, 2))
-    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    x = structure.from_container(collections.namedtuple('_', 'x y')(1, 2))
+    self.assertIsInstance(x, structure.Struct)
     self.assertEqual(str(x), '<x=1,y=2>')
 
   def test_from_container_with_attrs_class(self):
@@ -433,17 +426,16 @@ class AnonymousTupleTest(absltest.TestCase):
       x = attr.ib()
       y = attr.ib()
 
-    x = anonymous_tuple.from_container(TestFoo(1, 2))
-    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    x = structure.from_container(TestFoo(1, 2))
+    self.assertIsInstance(x, structure.Struct)
     self.assertEqual(str(x), '<x=1,y=2>')
 
-  def test_from_container_with_anonymous_tuple(self):
-    x = anonymous_tuple.from_container(
-        anonymous_tuple.AnonymousTuple([('a', 10), ('b', 20)]))
+  def test_from_container_with_struct(self):
+    x = structure.from_container(structure.Struct([('a', 10), ('b', 20)]))
     self.assertIs(x, x)
 
   def test_from_container_with_namedtuple_of_odict_recursive(self):
-    x = anonymous_tuple.from_container(
+    x = structure.from_container(
         collections.namedtuple('_',
                                'x y')(collections.OrderedDict([('a', 10),
                                                                ('b', 20)]),
@@ -459,23 +451,23 @@ class AnonymousTupleTest(absltest.TestCase):
 
     # Nested OrderedDicts.
     s = odict(a=1, b=2, c=odict(d=3, e=odict(f=4, g=5)))
-    x = anonymous_tuple.from_container(s, recursive=True)
+    x = structure.from_container(s, recursive=True)
     s2 = x._asdict(recursive=True)
     self.assertEqual(s, s2)
 
     # Single OrderedDict.
     s = odict(a=1, b=2)
-    x = anonymous_tuple.from_container(s)
+    x = structure.from_container(s)
     self.assertEqual(x._asdict(recursive=True), s)
 
     # Single empty OrderedDict.
     s = odict()
-    x = anonymous_tuple.from_container(s)
+    x = structure.from_container(s)
     self.assertEqual(x._asdict(recursive=True), s)
 
     # Invalid argument.
     with self.assertRaises(TypeError):
-      anonymous_tuple.from_container(3)
+      structure.from_container(3)
 
 
 if __name__ == '__main__':

@@ -35,8 +35,8 @@ py_library(
     srcs = ["computation_types.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],

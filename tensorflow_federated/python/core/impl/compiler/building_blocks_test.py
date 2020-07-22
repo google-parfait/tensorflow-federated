@@ -48,7 +48,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertIsNone(y.index)
     self.assertEqual(str(y.type_signature), 'int32')
     self.assertEqual(
-        repr(y), 'Selection(Reference(\'foo\', NamedTupleType(['
+        repr(y), 'Selection(Reference(\'foo\', StructType(['
         '(\'bar\', TensorType(tf.int32)), (\'baz\', TensorType(tf.bool))]))'
         ', name=\'bar\')')
     self.assertEqual(y.compact_representation(), 'foo.bar')
@@ -62,7 +62,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x0.index, 0)
     self.assertEqual(str(x0.type_signature), 'int32')
     self.assertEqual(
-        repr(x0), 'Selection(Reference(\'foo\', NamedTupleType(['
+        repr(x0), 'Selection(Reference(\'foo\', StructType(['
         '(\'bar\', TensorType(tf.int32)), (\'baz\', TensorType(tf.bool))]))'
         ', index=0)')
     self.assertEqual(x0.compact_representation(), 'foo[0]')
@@ -162,7 +162,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(str(x.parameter_type), '<f=(int32 -> int32),x=int32>')
     self.assertEqual(x.result.compact_representation(), 'arg.f(arg.f(arg.x))')
     arg_type_repr = (
-        'NamedTupleType(['
+        'StructType(['
         '(\'f\', FunctionType(TensorType(tf.int32), TensorType(tf.int32))), '
         '(\'x\', TensorType(tf.int32))])')
     self.assertEqual(
@@ -194,9 +194,9 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self.assertEqual(x.result.compact_representation(), 'y')
     self.assertEqual(
         repr(x), 'Block([(\'x\', Reference(\'arg\', '
-        'NamedTupleType([TensorType(tf.int32), TensorType(tf.int32)]) as tuple)), '
+        'StructType([TensorType(tf.int32), TensorType(tf.int32)]) as tuple)), '
         '(\'y\', Selection(Reference(\'x\', '
-        'NamedTupleType([TensorType(tf.int32), TensorType(tf.int32)]) as tuple), '
+        'StructType([TensorType(tf.int32), TensorType(tf.int32)]) as tuple), '
         'index=0))], '
         'Reference(\'y\', TensorType(tf.int32)))')
     self.assertEqual(x.compact_representation(), '(let x=arg,y=x[0] in y)')

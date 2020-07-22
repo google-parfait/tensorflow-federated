@@ -584,7 +584,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
     comp = building_block_factory.create_compiled_identity(
         computation_types.NamedTupleType([tf.int32]))
     tensor_type = computation_types.TensorType(tf.int32)
-    with self.assertRaisesRegex(TypeError, r'Expected.*NamedTupleType'):
+    with self.assertRaisesRegex(TypeError, r'Expected.*StructType'):
       compiled_computation_transforms.pad_graph_inputs_to_match_type(
           comp, tensor_type)
 

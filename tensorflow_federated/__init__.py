@@ -22,6 +22,8 @@ from tensorflow_federated.python.core.api.computation_types import FederatedType
 from tensorflow_federated.python.core.api.computation_types import FunctionType
 from tensorflow_federated.python.core.api.computation_types import NamedTupleType
 from tensorflow_federated.python.core.api.computation_types import SequenceType
+from tensorflow_federated.python.core.api.computation_types import StructType
+from tensorflow_federated.python.core.api.computation_types import StructWithPythonType
 from tensorflow_federated.python.core.api.computation_types import TensorType
 from tensorflow_federated.python.core.api.computation_types import to_type
 from tensorflow_federated.python.core.api.computation_types import Type

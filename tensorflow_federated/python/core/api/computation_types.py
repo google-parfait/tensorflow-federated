@@ -21,8 +21,8 @@ from typing import Any, Optional, Type as TypingType, TypeVar
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
@@ -99,6 +99,24 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns whether or not this type is a `tff.SequenceType`."""
     return False
 
+  def check_struct(self):
+    """Check that this is a `tff.StructType`."""
+    if not self.is_struct():
+      raise UnexpectedTypeError(StructType, self)
+
+  def is_struct(self):
+    """Returns whether or not this type is a `tff.StructType`."""
+    return False
+
+  def check_struct_with_python(self):
+    """Check that this is a `tff.StructWithPythonType`."""
+    if not self.is_struct_with_python():
+      raise UnexpectedTypeError(StructWithPythonType, self)
+
+  def is_struct_with_python(self):
+    """Returns whether or not this type is a `tff.StructWithPythonType`."""
+    return False
+
   def check_tensor(self):
     """Check that this is a `tff.TensorType`."""
     if not self.is_tensor():
@@ -109,22 +127,24 @@ class Type(object, metaclass=abc.ABCMeta):
     return False
 
   def check_tuple(self):
-    """Check that this is a `tff.NamedTupleType`."""
-    if not self.is_tuple():
-      raise UnexpectedTypeError(NamedTupleType, self)
+    """Check that this is a `tff.StructType`."""
+    # FIXME(b/161836891) Remove this method.
+    self.check_struct()
 
   def is_tuple(self) -> bool:
-    """Returns whether or not this type is a `tff.NamedTupleType`."""
-    return False
+    """Returns whether or not this type is a `tff.StructType`."""
+    # FIXME(b/161836891) Remove this method.
+    return self.is_struct()
 
   def check_tuple_with_py_container(self):
-    """Check that this is a `tff.NamedTupleTypeWithPyContainerType`."""
-    if not self.is_tuple_with_py_container():
-      raise UnexpectedTypeError(NamedTupleTypeWithPyContainerType, self)
+    """Check that this is a `tff.StructWithPythonType`."""
+    # FIXME(b/161836891) Remove this method.
+    self.check_struct_with_python()
 
   def is_tuple_with_py_container(self) -> bool:
-    """Returns whether this is a `tff.NamedTupleTypeWithPyContainerType`."""
-    return False
+    """Returns whether this is a `tff.StructWithPythonType`."""
+    # FIXME(b/161836891) Remove this method.
+    return self.is_struct_with_python()
 
   @abc.abstractmethod
   def __repr__(self):
@@ -280,7 +300,7 @@ class TensorType(Type):
         for k in range(target_shape.ndims))
 
 
-def _format_named_tuple_type_members(named_tuple_type) -> str:
+def _format_struct_type_members(struct_type: 'StructType') -> str:
 
   def _element_repr(element):
     name, value = element
@@ -289,11 +309,11 @@ def _format_named_tuple_type_members(named_tuple_type) -> str:
     return repr(value)
 
   return ', '.join(
-      _element_repr(e) for e in anonymous_tuple.iter_elements(named_tuple_type))
+      _element_repr(e) for e in structure.iter_elements(struct_type))
 
 
-class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
-  """An implementation of `tff.Type` representing named tuple types in TFF.
+class StructType(structure.Struct, Type):
+  """An implementation of `tff.Type` representing structural types in TFF.
 
   Elements initialized by name can be accessed as `foo.name`, and otherwise by
   index, `foo[index]`.
@@ -337,46 +357,47 @@ class NamedTupleType(anonymous_tuple.AnonymousTuple, Type):
       else:
         elements = (_map_element(e) for e in elements)
 
-    anonymous_tuple.AnonymousTuple.__init__(self, elements)
+    structure.Struct.__init__(self, elements)
 
   def children(self):
-    return (element for _, element in anonymous_tuple.iter_elements(self))
+    return (element for _, element in structure.iter_elements(self))
 
   @property
   def python_container(self) -> Optional[TypingType[Any]]:
     return None
 
-  def is_tuple(self):
+  def is_struct(self):
     return True
 
   def __repr__(self):
-    members = _format_named_tuple_type_members(self)
-    return 'NamedTupleType([{}])'.format(members)
+    members = _format_struct_type_members(self)
+    return 'StructType([{}])'.format(members)
 
   def __hash__(self):
     # Salt to avoid overlap.
-    return hash((anonymous_tuple.AnonymousTuple.__hash__(self), 'NTT'))
+    return hash((structure.Struct.__hash__(self), 'NTT'))
 
   def __eq__(self, other):
-    return (self is other) or (isinstance(other, NamedTupleType) and
-                               anonymous_tuple.AnonymousTuple.__eq__(
-                                   self, other))
+    return (self is other) or (isinstance(other, StructType) and
+                               structure.Struct.__eq__(self, other))
 
   def is_assignable_from(self, source_type: 'Type') -> bool:
-    if not isinstance(source_type, NamedTupleType):
+    if not isinstance(source_type, StructType):
       return False
-    target_elements = anonymous_tuple.to_elements(self)
-    source_elements = anonymous_tuple.to_elements(source_type)
+    target_elements = structure.to_elements(self)
+    source_elements = structure.to_elements(source_type)
     return ((len(target_elements) == len(source_elements)) and all(
         ((source_elements[k][0] in [target_elements[k][0], None]) and
          target_elements[k][1].is_assignable_from(source_elements[k][1]))
         for k in range(len(target_elements))))
 
 
-# While this lives in the `api` diretory, `NamedTupleTypeWithPyContainerType` is
-# intended to be TFF internal and not exposed in the public API.
-class NamedTupleTypeWithPyContainerType(NamedTupleType):
-  """A representation of a TFF named tuple type and a Python container type."""
+# FIXME(b/161836891) Remove this alias.
+NamedTupleType = StructType
+
+
+class StructWithPythonType(StructType):
+  """A representation of a structure paired with a Python container type."""
 
   def __init__(self, elements, container_type):
     py_typecheck.check_type(container_type, type)
@@ -384,7 +405,7 @@ class NamedTupleTypeWithPyContainerType(NamedTupleType):
     self._container_type = container_type
     super().__init__(elements)
 
-  def is_tuple_with_py_container(self):
+  def is_struct_with_python(self):
     return True
 
   @property
@@ -392,23 +413,27 @@ class NamedTupleTypeWithPyContainerType(NamedTupleType):
     return self._container_type
 
   def __repr__(self):
-    members = _format_named_tuple_type_members(self)
-    return 'NamedTupleType([{}]) as {}'.format(members,
-                                               self._container_type.__name__)
+    members = _format_struct_type_members(self)
+    return 'StructType([{}]) as {}'.format(members,
+                                           self._container_type.__name__)
 
   def __hash__(self):
     # Salt to avoid overlap.
-    return hash((anonymous_tuple.AnonymousTuple.__hash__(self), 'NTTWPCT'))
+    return hash((structure.Struct.__hash__(self), 'NTTWPCT'))
 
   def __eq__(self, other):
     return ((self is other) or
-            (isinstance(other, NamedTupleTypeWithPyContainerType) and
+            (isinstance(other, StructWithPythonType) and
              (self._container_type == other._container_type) and
-             anonymous_tuple.AnonymousTuple.__eq__(self, other)))
+             structure.Struct.__eq__(self, other)))
 
   @classmethod
   def get_container_type(cls, value):
     return value._container_type  # pylint: disable=protected-access
+
+
+# FIXME(b/161836891) Remove this alias.
+NamedTupleTypeWithPyContainerType = StructWithPythonType
 
 
 class SequenceType(Type):
@@ -457,7 +482,7 @@ class FunctionType(Type):
     Args:
       parameter: A specification of the parameter type, either an instance of
         `tff.Type` or something convertible to it by `tff.to_type`. Multiple
-        input arguments can be specified as a single `tff.NamedTupleType`.
+        input arguments can be specified as a single `tff.StructType`.
       result: A specification of the result type, either an instance of
         `tff.Type` or something convertible to it by `tff.to_type`.
     """
@@ -698,17 +723,17 @@ def to_type(spec) -> Type:
   elif isinstance(spec, (list, tuple)):
     if any(py_typecheck.is_name_value_pair(e) for e in spec):
       # The sequence has a (name, value) elements, the whole sequence is most
-      # likely intended to be an AnonymousTuple, do not store the Python
+      # likely intended to be a `Struct`, do not store the Python
       # container.
-      return NamedTupleType(spec)
+      return StructType(spec)
     else:
-      return NamedTupleTypeWithPyContainerType(spec, type(spec))
+      return StructWithPythonType(spec, type(spec))
   elif isinstance(spec, collections.OrderedDict):
-    return NamedTupleTypeWithPyContainerType(spec, type(spec))
+    return StructWithPythonType(spec, type(spec))
   elif py_typecheck.is_attrs(spec):
     return _to_type_from_attrs(spec)
   elif isinstance(spec, collections.Mapping):
-    # This is an unsupported mapping, likely a `dict`. NamedTupleType adds an
+    # This is an unsupported mapping, likely a `dict`. StructType adds an
     # ordering, which the original container did not have.
     raise TypeError(
         'Unsupported mapping type {}. Use collections.OrderedDict for '
@@ -738,7 +763,7 @@ def _to_type_from_attrs(spec) -> Type:
         spec, dict_factory=collections.OrderedDict, recurse=False)
     the_type = type(spec)
 
-  return NamedTupleTypeWithPyContainerType(elements, the_type)
+  return StructWithPythonType(elements, the_type)
 
 
 def _string_representation(type_spec, formatted: bool) -> str:
@@ -845,7 +870,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
     elif type_spec.is_tuple():
       if len(type_spec) == 0:  # pylint: disable=g-explicit-length-test
         return ['<>']
-      elements = anonymous_tuple.to_elements(type_spec)
+      elements = structure.to_elements(type_spec)
       elements_lines = _lines_for_named_types(elements, formatted)
       if formatted:
         elements_lines = _indent(elements_lines)

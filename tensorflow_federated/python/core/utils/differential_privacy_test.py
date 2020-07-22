@@ -231,8 +231,8 @@ class BuildDpAggregateTest(test.TestCase):
 
     _, dp_global_state_type = differential_privacy.build_dp_aggregate(query)
 
-    self.assertEqual(dp_global_state_type.__class__.__name__,
-                     'NamedTupleTypeWithPyContainerType')
+    self.assertIsInstance(dp_global_state_type,
+                          computation_types.StructWithPythonType)
 
 
 class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):

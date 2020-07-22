@@ -18,16 +18,25 @@ py_library(
     name = "anonymous_tuple",
     srcs = ["anonymous_tuple.py"],
     srcs_version = "PY3",
+    deps = [
+        ":structure",
+    ],
+)
+
+py_library(
+    name = "structure",
+    srcs = ["structure.py"],
+    srcs_version = "PY3",
     deps = [":py_typecheck"],
 )
 
 py_test(
-    name = "anonymous_tuple_test",
+    name = "structure_test",
     size = "small",
-    srcs = ["anonymous_tuple_test.py"],
+    srcs = ["structure_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":anonymous_tuple"],
+    deps = [":structure"],
 )
 
 py_library(
