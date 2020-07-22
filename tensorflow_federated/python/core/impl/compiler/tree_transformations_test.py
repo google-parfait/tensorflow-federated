@@ -2980,26 +2980,26 @@ class RemoveDuplicateBlockLocals(test.TestCase):
     self.assertEqual(
         transformed_comp.formatted_representation(),
         '(let\n'
-        '  _var1=federated_aggregate,\n'
-        '  _var2=data,\n'
-        '  _var3=data,\n'
-        '  _var5=(_var4 -> _var3),\n'
-        '  _var7=(_var6 -> _var3),\n'
-        '  _var8=data,\n'
-        '  _var10=(_var9 -> _var8),\n'
-        '  _var11=<\n'
-        '    _var2,\n'
-        '    _var3,\n'
-        '    _var5,\n'
-        '    _var7,\n'
-        '    _var10\n'
+        '  _dep1=federated_aggregate,\n'
+        '  _dep2=data,\n'
+        '  _dep3=data,\n'
+        '  _dep5=(_dep4 -> _dep3),\n'
+        '  _dep7=(_dep6 -> _dep3),\n'
+        '  _dep8=data,\n'
+        '  _dep10=(_dep9 -> _dep8),\n'
+        '  _dep11=<\n'
+        '    _dep2,\n'
+        '    _dep3,\n'
+        '    _dep5,\n'
+        '    _dep7,\n'
+        '    _dep10\n'
         '  >,\n'
-        '  _var12=_var1(_var11),\n'
-        '  _var13=<\n'
-        '    _var12,\n'
-        '    _var12\n'
+        '  _dep12=_dep1(_dep11),\n'
+        '  _dep13=<\n'
+        '    _dep12,\n'
+        '    _dep12\n'
         '  >\n'
-        ' in _var13)'
+        ' in _dep13)'
     )
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
@@ -4671,7 +4671,7 @@ class GroupBlockLocalsByDependencyTest(test.TestCase):
   def test_raises_rebound_reference(self):
     ref_to_x = building_blocks.Reference('x', tf.int32)
     block = building_blocks.Block([('x', ref_to_x)], ref_to_x)
-    with self.assertRaisesRegex(ValueError, 'do not rebind'):
+    with self.assertRaises(ValueError):
       tree_transformations.group_block_locals_by_dependency(block)
 
   def test_no_change_to_single_block_local(self):

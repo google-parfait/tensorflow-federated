@@ -651,20 +651,26 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
         'x', tuple_of_federated_types,
         building_blocks.Selection(
             building_blocks.Reference('x', tuple_of_federated_types), index=0))
+    expected_fn_regex = (r'\(_([a-z]{3})2 -> federated_map\(<\(_(\1)3 -> '
+                         r'_(\1)3\[0\]\),_(\1)2>\)\)')
+    expected_arg_regex = (r'federated_map\(<\(_([a-z]{3})4 -> '
+                          r'<_(\1)4>\),<_(\1)1\[0\]>\[0\]>\)')
+
     zeroth_index_extracted = (
         transformations.zip_selection_as_argument_to_lower_level_lambda(
             lam, [[0]]))
+
     self.assertEqual(zeroth_index_extracted.type_signature, lam.type_signature)
     self.assertIsInstance(zeroth_index_extracted, building_blocks.Lambda)
     self.assertIsInstance(zeroth_index_extracted.result, building_blocks.Call)
     self.assertIsInstance(zeroth_index_extracted.result.function,
                           building_blocks.Lambda)
-    self.assertEqual(
-        str(zeroth_index_extracted.result.function),
-        '(_var2 -> federated_map(<(_var3 -> _var3[0]),_var2>))')
-    self.assertEqual(
-        str(zeroth_index_extracted.result.argument),
-        'federated_map(<(_var4 -> <_var4>),<_var1[0]>[0]>)')
+    self.assertRegexMatch(
+        zeroth_index_extracted.result.function.compact_representation(),
+        [expected_fn_regex])
+    self.assertRegexMatch(
+        zeroth_index_extracted.result.argument.compact_representation(),
+        [expected_arg_regex])
 
   def test_binds_single_argument_to_lower_lambda(self):
     fed_at_clients = computation_types.FederatedType(tf.int32,
@@ -716,8 +722,15 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
                 building_blocks.Reference('x', tuple_of_federated_types),
                 index=0),
             index=0))
+
+    expected_fn_regex = (r'\(_([a-z]{3})2 -> federated_map\(<\(_(\1)3 -> '
+                         r'_(\1)3\[0\]\),_(\1)2>\)\)')
+    expected_arg_regex = (r'federated_map\(<\(_([a-z]{3})4 -> '
+                          r'<_(\1)4>\),<_(\1)1\[0\]\[0\]>\[0\]>\)')
+
     deep_zeroth_index_extracted = transformations.zip_selection_as_argument_to_lower_level_lambda(
         lam, [[0, 0]])
+
     self.assertEqual(deep_zeroth_index_extracted.type_signature,
                      lam.type_signature)
     self.assertIsInstance(deep_zeroth_index_extracted, building_blocks.Lambda)
@@ -725,13 +738,13 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
                           building_blocks.Call)
     self.assertIsInstance(deep_zeroth_index_extracted.result.function,
                           building_blocks.Lambda)
-    self.assertEqual(
-        str(deep_zeroth_index_extracted.result.function),
-        '(_var2 -> federated_map(<(_var3 -> _var3[0]),_var2>))')
-    # The below is not clear to me...ah, it makes more sense now...
-    self.assertEqual(
-        str(deep_zeroth_index_extracted.result.argument),
-        'federated_map(<(_var4 -> <_var4>),<_var1[0][0]>[0]>)')
+    self.assertRegexMatch(
+        deep_zeroth_index_extracted.result.function.compact_representation(),
+        [expected_fn_regex])
+
+    self.assertRegexMatch(
+        deep_zeroth_index_extracted.result.argument.compact_representation(),
+        [expected_arg_regex])
 
   def test_binds_multiple_args_deep_in_type_tree_to_lower_lambda(self):
     fed_at_clients = computation_types.FederatedType(tf.int32,
@@ -750,8 +763,14 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
         building_blocks.Tuple([first_selection, second_selection]))
+    expected_fn_regex = (r'\(_([a-z]{3})2 -> <federated_map\(<\(_(\1)3 -> '
+                         r'_(\1)3\[0\]\),_(\1)2>\),federated_map\(<\(_(\1)4 -> '
+                         r'_(\1)4\[1\]\),_(\1)2>\)>\)')
+    expected_arg_regex = r'federated_zip_at_clients\(<_([a-z]{3})1\[0\]\[0\],_(\1)1\[2\]\[0\]>\)'
+
     deep_zeroth_index_extracted = transformations.zip_selection_as_argument_to_lower_level_lambda(
         lam, [[0, 0], [2, 0]])
+
     self.assertEqual(deep_zeroth_index_extracted.type_signature,
                      lam.type_signature)
     self.assertIsInstance(deep_zeroth_index_extracted, building_blocks.Lambda)
@@ -759,13 +778,12 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
                           building_blocks.Call)
     self.assertIsInstance(deep_zeroth_index_extracted.result.function,
                           building_blocks.Lambda)
-    self.assertEqual(
-        str(deep_zeroth_index_extracted.result.function),
-        '(_var2 -> <federated_map(<(_var3 -> _var3[0]),_var2>),'
-        'federated_map(<(_var4 -> _var4[1]),_var2>)>)')
-    self.assertEqual(
-        str(deep_zeroth_index_extracted.result.argument),
-        'federated_zip_at_clients(<_var1[0][0],_var1[2][0]>)')
+    self.assertRegexMatch(
+        deep_zeroth_index_extracted.result.function.compact_representation(),
+        [expected_fn_regex])
+    self.assertRegexMatch(
+        deep_zeroth_index_extracted.result.argument.compact_representation(),
+        [expected_arg_regex])
 
   def test_binding_multiple_args_results_in_unique_names(self):
     fed_at_clients = computation_types.FederatedType(tf.int32,

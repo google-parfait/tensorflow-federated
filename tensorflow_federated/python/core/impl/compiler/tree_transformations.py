@@ -1653,10 +1653,14 @@ def uniquify_reference_names(comp):
 
   Returns:
     Returns a transformed version of comp inside of which all variable names
-      are guaranteed to be unique.
+    are guaranteed to be unique, and are guaranteed to not mask any unbound
+    names referenced in the body of `comp`.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  name_generator = building_block_factory.unique_name_generator(None)
+  # Passing `comp` to `unique_name_generator` here will ensure that the
+  # generated names conflict with neither bindings in `comp` nor unbound
+  # references in `comp`.
+  name_generator = building_block_factory.unique_name_generator(comp)
 
   class _RenameNode(transformation_utils.BoundVariableTracker):
     """transformation_utils.SymbolTree node for renaming References in ASTs."""
@@ -2222,13 +2226,10 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
 
   def __init__(self, comp: building_blocks.ComputationBuildingBlock):
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-    # The combination of these two checks ensures that we can rely on a simple
+    # `check_has_unique_names` ensures that we can rely on a simple
     # map from old local names to new computations in transforming the mutated
     # computation.
     tree_analysis.check_has_unique_names(comp)
-    unbound_refs_in_comp = transformation_utils.get_map_of_unbound_references(
-        comp)[comp]
-    self._disallowed_names = unbound_refs_in_comp
     self._name_generator = building_block_factory.unique_name_generator(
         comp, prefix='var')
 
@@ -2344,13 +2345,6 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
     """
     if not self.should_transform(block_to_transform):
       return block_to_transform, False
-    for name, _ in block_to_transform.locals:
-      if name in self._disallowed_names:
-        raise ValueError('Block local regrouping is only supported on '
-                         'computations which do not rebind any of their '
-                         'unbound names in their block locals, for ease of '
-                         'reasoning. Encountered a binding for the name {}, '
-                         'which is unbound in the global computation.')
 
     locals_partitioned = self._create_groups_of_block_locals(block_to_transform)
     new_symbols = []

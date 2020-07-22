@@ -1113,6 +1113,9 @@ def get_unique_names(comp):
 def has_unique_names(comp):
   """Checks that each variable of `comp` is bound at most once.
 
+  Additionally, checks that `comp` does not mask any names which are unbound
+  at the top level.
+
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock`.
 
@@ -1121,7 +1124,9 @@ def has_unique_names(comp):
     Returns `False` if this condition fails.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  names = set()
+  # Initializing `names` to unbound names in `comp` ensures that `comp` does not
+  # mask any names from its parent scope.
+  names = get_map_of_unbound_references(comp)[comp]
   unique = True
 
   def _transform(comp):

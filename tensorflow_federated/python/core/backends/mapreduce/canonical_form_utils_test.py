@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
@@ -515,9 +516,9 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(test.TestCase):
     )
     # pyformat: enable
 
-    self.assertEqual(
-        before_aggregate.result[1].formatted_representation(),
-        before_federated_secure_sum.result.formatted_representation())
+    self.assertTrue(
+        tree_analysis.trees_equal(before_aggregate.result[1],
+                                  before_federated_secure_sum.result))
 
     self.assertIsInstance(after_aggregate, building_blocks.Lambda)
     self.assertIsInstance(after_aggregate.result, building_blocks.Call)
@@ -525,8 +526,7 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(test.TestCase):
         after_aggregate.result.function)
     expected_tree, _ = tree_transformations.uniquify_reference_names(
         after_federated_secure_sum)
-    self.assertEqual(actual_tree.formatted_representation(),
-                     expected_tree.formatted_representation())
+    self.assertTrue(tree_analysis.trees_equal(actual_tree, expected_tree))
 
     # pyformat: disable
     self.assertEqual(
@@ -556,9 +556,27 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(test.TestCase):
     self.assertIsInstance(before_aggregate, building_blocks.Lambda)
     self.assertIsInstance(before_aggregate.result, building_blocks.Tuple)
     self.assertLen(before_aggregate.result, 2)
-    self.assertEqual(
-        before_aggregate.result[0].formatted_representation(),
-        before_federated_aggregate.result.formatted_representation())
+
+    # trees_equal will fail if computations refer to unbound references, so we
+    # create a new dummy computation to bind them.
+    unbound_refs_in_before_agg_result = transformation_utils.get_map_of_unbound_references(
+        before_aggregate.result[0])[before_aggregate.result[0]]
+    unbound_refs_in_before_fed_agg_result = transformation_utils.get_map_of_unbound_references(
+        before_federated_aggregate.result)[before_federated_aggregate.result]
+
+    dummy_data = building_blocks.Data('data',
+                                      computation_types.AbstractType('T'))
+
+    blk_binding_refs_in_before_agg = building_blocks.Block(
+        [(name, dummy_data) for name in unbound_refs_in_before_agg_result],
+        before_aggregate.result[0])
+    blk_binding_refs_in_before_fed_agg = building_blocks.Block(
+        [(name, dummy_data) for name in unbound_refs_in_before_fed_agg_result],
+        before_federated_aggregate.result)
+
+    self.assertTrue(
+        tree_analysis.trees_equal(blk_binding_refs_in_before_agg,
+                                  blk_binding_refs_in_before_fed_agg))
 
     # pyformat: disable
     self.assertEqual(
@@ -572,12 +590,10 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(test.TestCase):
 
     self.assertIsInstance(after_aggregate, building_blocks.Lambda)
     self.assertIsInstance(after_aggregate.result, building_blocks.Call)
-    actual_tree, _ = tree_transformations.uniquify_reference_names(
-        after_aggregate.result.function)
-    expected_tree, _ = tree_transformations.uniquify_reference_names(
-        after_federated_aggregate)
-    self.assertEqual(actual_tree.formatted_representation(),
-                     expected_tree.formatted_representation())
+
+    self.assertTrue(
+        tree_analysis.trees_equal(after_aggregate.result.function,
+                                  after_federated_aggregate))
 
     # pyformat: disable
     self.assertEqual(
