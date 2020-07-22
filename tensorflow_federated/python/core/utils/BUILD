@@ -14,6 +14,7 @@ py_library(
         "//tensorflow_federated/python/core:__pkg__",
     ],
     deps = [
+        ":adaptive_zeroing",
         ":computation_utils",
         ":differential_privacy",
         ":encoding_utils",
