@@ -1,0 +1,63 @@
+digraph {
+  graph [style="dotted,rounded", size="7.1 100"]
+  node [shape="box", style="rounded,filled"]
+  edge [color="#616161"]
+  newrank=true
+
+  subgraph cluster_low {
+    label="Low-Level API"
+    core_context [label="Context", fillcolor="#E8F0FE", color="#7BAAF7"]
+  }
+
+  subgraph cluster_high {
+    label="High-Level API"
+    core_execution_context [label="ExecutionContext", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_compiler [label="Compiler", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_runtime [label="Runtime", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_execution_context -> core_compiler
+    core_execution_context -> core_runtime
+  }
+
+  core_context -> core_execution_context [style="dashed"]
+
+  subgraph cluster_native {
+    label="Native"
+    native_context [label="ExecutionContext", href="#context", target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+    native_compiler [label="Compiler", href="#compiler", target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+    native_runtime [label="Runtime", href="#runtime", target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    native_context -> native_compiler
+    native_context -> native_runtime
+  }
+
+  subgraph cluster_mapreduce {
+    label="MapReduce"
+    mapreduce_context [label="(Execution)?Context", href="#context-2", target="_parent", style="dashed,rounded", fillcolor="#FFFFFF", color="#757575"]
+    mapreduce_compiler [label="Compiler", href="#compiler-2", target="_parent", fillcolor="#FBE9E7", color="#E67C73"]
+    mapreduce_runtime [label="Runtime", href="#runtime-2", target="_parent", style="dashed,rounded", fillcolor="#FFFFFF", color="#757575"]
+    mapreduce_context -> mapreduce_compiler
+    mapreduce_context -> mapreduce_runtime
+  }
+
+  subgraph cluster_iree {
+    label="IREE"
+    iree_context [label="ExecutionContext", href="#context-3", target="_parent", fillcolor="#FEF6E0", color="#F7CB4D"]
+    iree_compiler [label="Compiler", href="#compiler-3", target="_parent", fillcolor="#FEF6E0", color="#F7CB4D"]
+    iree_runtime [label="Runtime", href="#runtime-3", target="_parent", fillcolor="#FEF6E0", color="#F7CB4D"]
+    iree_context -> iree_compiler
+    iree_context -> iree_runtime
+  }
+
+  subgraph cluster_reference {
+    label="Reference"
+    reference_context [label="Context", href="#reference", target="_parent", fillcolor="#F3E5F5", color="#BA68C8"]
+    reference_compiler [label="Compiler", style="invisible"]
+    reference_runtime [label="Runtime", style="invisible"]
+    reference_context -> reference_compiler [arrowhead="none", style="invisible"]
+    reference_context -> reference_runtime [arrowhead="none", style="invisible"]
+  }
+
+  // Layout
+  {rank=same; core_context, reference_context}
+  {rank=same; core_execution_context, native_context, mapreduce_context, iree_context}
+  {rank=same; core_compiler, core_runtime, native_compiler, native_runtime, mapreduce_compiler, mapreduce_runtime, iree_compiler, iree_runtime}
+}
