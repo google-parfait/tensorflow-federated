@@ -309,13 +309,18 @@ def warmup_and_decay_schedule_builder(base_value, warmup_steps, decay_fn):
     A 1-arg callable that produces a warmed up then decayed version of the base
     value when passed the (unadjusted) current round_num.
   """
+  if warmup_steps is None or warmup_steps <= 0:
 
-  def warmup_and_decay_fn(round_num):
-    if warmup_steps and warmup_steps > 0:
-      if round_num < warmup_steps:
-        return base_value * (round_num + 1) / warmup_steps
-      round_num = round_num - warmup_steps
-    return decay_fn(round_num)
+    def warmup_and_decay_fn(round_num):
+      return decay_fn(round_num)
+
+  else:
+
+    def warmup_and_decay_fn(round_num):
+      warmedup_value = base_value * (round_num + 1) / warmup_steps
+      return tf.cond(
+          tf.less(round_num, warmup_steps), lambda: warmedup_value,
+          lambda: decay_fn(round_num - warmup_steps))
 
   return warmup_and_decay_fn
 
