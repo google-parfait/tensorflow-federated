@@ -1070,20 +1070,29 @@ class TensorFlowGeneratorTest(test.TestCase):
 
 class TestTransformToCallDominantForm(test.TestCase):
 
-  def test_raises_called_lambda_returning_function(self):
+  def test_handles_called_lambda_returning_function(self):
     lower_level_lambda = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     higher_level_lambda = building_blocks.Lambda('y', tf.int32,
                                                  lower_level_lambda)
-    with self.assertRaises(ValueError):
-      transformations.transform_to_call_dominant(higher_level_lambda)
 
-  def test_raises_block_returning_function(self):
+    call_dominant_rep, modified = transformations.transform_to_call_dominant(
+        higher_level_lambda)
+
+    self.assertTrue(modified)
+    self.assertEqual(call_dominant_rep.compact_representation(),
+                     '(_var1 -> (_var2 -> _var2))')
+
+  def test_handles_block_returning_function(self):
     lower_level_lambda = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     blk = building_blocks.Block([], lower_level_lambda)
-    with self.assertRaises(ValueError):
-      transformations.transform_to_call_dominant(blk)
+
+    call_dominant_rep, modified = transformations.transform_to_call_dominant(
+        blk)
+    self.assertTrue(modified)
+    self.assertEqual(call_dominant_rep.compact_representation(),
+                     '(_var1 -> _var1)')
 
   def test_merges_nested_blocks(self):
     data = building_blocks.Data('a', tf.int32)
@@ -1202,6 +1211,7 @@ class TestTransformToCallDominantForm(test.TestCase):
     self.assertTrue(modified)
     self.assertEqual(call_dominant_rep.compact_representation(),
                      '(_var1 -> (let _var3=(_var2 -> _var2)(_var1) in _var3))')
+
 
 if __name__ == '__main__':
   test.main()
