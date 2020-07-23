@@ -8,6 +8,7 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        "//tensorflow_federated",
         "//tensorflow_federated/python/research/optimization/shared:fed_avg_schedule",
         "//tensorflow_federated/python/research/optimization/shared:iterative_process_builder",
         "//tensorflow_federated/python/research/optimization/shared:keras_metrics",
