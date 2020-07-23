@@ -63,7 +63,7 @@ def get_type_information(value, type_spec):
     return [[num_elements, type_spec.dtype]]
 
   # If the type is a NamedTupleType we can continue traversing the type_spec.
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     type_info = []
     if isinstance(value, collections.OrderedDict):
       value = anonymous_tuple.from_container(value, recursive=False)
@@ -117,8 +117,8 @@ class SizingExecutor(executor_base.Executor):
       wrapped_val = SizingExecutorValue(self, target_val)
       return wrapped_val
 
-  async def create_tuple(self, elements):
-    target_val = await self._target.create_tuple(
+  async def create_struct(self, elements):
+    target_val = await self._target.create_struct(
         anonymous_tuple.map_structure(lambda x: x.value, elements))
     wrapped_val = SizingExecutorValue(self, target_val)
     return wrapped_val

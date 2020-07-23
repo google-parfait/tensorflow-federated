@@ -66,8 +66,8 @@ class ComputationWrapperInstancesTest(test.TestCase):
     y = tf.compat.v1.placeholder(tf.int32)
     result = tf.import_graph_def(
         serialization_utils.unpack_graph_def(comp.tensorflow.graph_def), {
-            comp.tensorflow.parameter.tuple.element[0].tensor.tensor_name: x,
-            comp.tensorflow.parameter.tuple.element[1].tensor.tensor_name: y
+            comp.tensorflow.parameter.struct.element[0].tensor.tensor_name: x,
+            comp.tensorflow.parameter.struct.element[1].tensor.tensor_name: y
         }, [comp.tensorflow.result.tensor.tensor_name])
     with self.session() as sess:
 

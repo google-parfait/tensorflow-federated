@@ -64,8 +64,8 @@ class TransformingExecutor(executor_base.Executor):
   async def create_call(self, comp, arg=None):
     return await self._target_executor.create_call(comp, arg)
 
-  async def create_tuple(self, elements):
-    return await self._target_executor.create_tuple(elements)
+  async def create_struct(self, elements):
+    return await self._target_executor.create_struct(elements)
 
   async def create_selection(self, source, index=None, name=None):
     return await self._target_executor.create_selection(

@@ -18,8 +18,8 @@ from typing import Optional
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.types import placement_literals
 
@@ -73,11 +73,11 @@ def serialize_type(
   elif type_spec.is_sequence():
     return pb.Type(
         sequence=pb.SequenceType(element=serialize_type(type_spec.element)))
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     return pb.Type(
-        tuple=pb.NamedTupleType(element=[
-            pb.NamedTupleType.Element(name=e[0], value=serialize_type(e[1]))
-            for e in anonymous_tuple.iter_elements(type_spec)
+        struct=pb.StructType(element=[
+            pb.StructType.Element(name=e[0], value=serialize_type(e[1]))
+            for e in structure.iter_elements(type_spec)
         ]))
   elif type_spec.is_function():
     return pb.Type(
@@ -130,16 +130,16 @@ def deserialize_type(
   elif type_variant == 'sequence':
     return computation_types.SequenceType(
         deserialize_type(type_proto.sequence.element))
-  elif type_variant == 'tuple':
+  elif type_variant == 'struct':
 
     def empty_str_to_none(s):
       if s == '':  # pylint: disable=g-explicit-bool-comparison
         return None
       return s
 
-    return computation_types.NamedTupleType(
+    return computation_types.StructType(
         [(empty_str_to_none(e.name), deserialize_type(e.value))
-         for e in type_proto.tuple.element],
+         for e in type_proto.struct.element],
         convert=False)
   elif type_variant == 'function':
     return computation_types.FunctionType(

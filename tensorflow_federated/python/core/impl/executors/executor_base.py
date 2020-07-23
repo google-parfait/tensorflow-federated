@@ -79,7 +79,7 @@ class Executor(object, metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  async def create_tuple(self, elements) -> evb.ExecutorValue:
+  async def create_struct(self, elements) -> evb.ExecutorValue:
     """A coroutine that creates a tuple of `elements`.
 
     Args:

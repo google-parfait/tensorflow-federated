@@ -120,13 +120,13 @@ class ThreadDelegatingExecutor(eb.Executor):
     return await self._delegate(self._target_executor.create_call(comp, arg))
 
   @tracing.trace
-  async def create_tuple(self, elements):
+  async def create_struct(self, elements):
     elements_as_anonymous_tuple = anonymous_tuple.from_container(elements)
     elements_iter = anonymous_tuple.iter_elements(elements_as_anonymous_tuple)
     pairs = ((n, v.internal_representation) for (n, v) in elements_iter)
     inner_elements = anonymous_tuple.AnonymousTuple(pairs)
     return await self._delegate(
-        self._target_executor.create_tuple(inner_elements))
+        self._target_executor.create_struct(inner_elements))
 
   @tracing.trace
   async def create_selection(self, source, index=None, name=None):

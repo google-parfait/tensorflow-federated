@@ -44,7 +44,7 @@ class SizingExecutorTest(parameterized.TestCase):
       v2 = await ex.create_value(
           tf.constant([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], tf.int32), tensor_type)
       v3 = await ex.create_call(v1, v2)
-      v4 = await ex.create_tuple(anonymous_tuple.AnonymousTuple([('foo', v3)]))
+      v4 = await ex.create_struct(anonymous_tuple.AnonymousTuple([('foo', v3)]))
       v5 = await ex.create_selection(v4, name='foo')
       return await v5.compute()
 
@@ -104,7 +104,7 @@ class SizingExecutorTest(parameterized.TestCase):
       v1 = await ex.create_value(add)
       v2 = await ex.create_value([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], float_type)
       v3 = await ex.create_value([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], int_type)
-      v4 = await ex.create_tuple(
+      v4 = await ex.create_struct(
           anonymous_tuple.AnonymousTuple([(None, v2), (None, v3)]))
       v5 = await ex.create_call(v1, v4)
       return await v5.compute()

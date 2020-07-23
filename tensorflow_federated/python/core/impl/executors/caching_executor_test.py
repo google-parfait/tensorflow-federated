@@ -287,42 +287,42 @@ class CachingExecutorTest(absltest.TestCase):
     self.assertIsInstance(results[0], TestError)
     self.assertIsInstance(results[1], TestError)
 
-  def test_create_tuple_does_not_cache_error(self):
+  def test_create_struct_does_not_cache_error(self):
     loop = asyncio.get_event_loop()
     mock_executor = mock.create_autospec(executor_base.Executor)
     mock_executor.create_value.side_effect = create_test_value
-    mock_executor.create_tuple.side_effect = raise_error
+    mock_executor.create_struct.side_effect = raise_error
     cached_executor = caching_executor.CachingExecutor(mock_executor)
     value = loop.run_until_complete(cached_executor.create_value(foo))
     value_tuple = (value, value)
     with self.assertRaises(TestError):
-      _ = loop.run_until_complete(cached_executor.create_tuple(value_tuple))
+      _ = loop.run_until_complete(cached_executor.create_struct(value_tuple))
     with self.assertRaises(TestError):
-      _ = loop.run_until_complete(cached_executor.create_tuple(value_tuple))
-    # Ensure create_tuple was called twice on the mock (not cached and only
+      _ = loop.run_until_complete(cached_executor.create_struct(value_tuple))
+    # Ensure create_struct was called twice on the mock (not cached and only
     # called once).
     anon_tuple_value = anonymous_tuple.AnonymousTuple([(None, TEST_VALUE),
                                                        (None, TEST_VALUE)])
-    mock_executor.create_tuple.assert_has_calls(
+    mock_executor.create_struct.assert_has_calls(
         [mock.call(anon_tuple_value),
          mock.call(anon_tuple_value)])
 
-  def test_create_tuple_does_not_cache_error_avoids_double_delete(self):
+  def test_create_struct_does_not_cache_error_avoids_double_delete(self):
     loop = asyncio.get_event_loop()
     mock_executor = mock.create_autospec(executor_base.Executor)
     mock_executor.create_value.side_effect = create_test_value
-    mock_executor.create_tuple.side_effect = raise_error
+    mock_executor.create_struct.side_effect = raise_error
     cached_executor = caching_executor.CachingExecutor(mock_executor)
     value = loop.run_until_complete(cached_executor.create_value(foo))
     value_tuple = (value, value)
-    future1 = cached_executor.create_tuple(value_tuple)
-    future2 = cached_executor.create_tuple(value_tuple)
+    future1 = cached_executor.create_struct(value_tuple)
+    future2 = cached_executor.create_struct(value_tuple)
     results = loop.run_until_complete(
         asyncio.gather(future1, future2, return_exceptions=True))
     # Ensure create_call is only called once, since the first call inserts the
     # inner executor future into the cache. However we expect two errors to be
     # returned.
-    mock_executor.create_tuple.assert_called_once_with(
+    mock_executor.create_struct.assert_called_once_with(
         anonymous_tuple.AnonymousTuple([(None, TEST_VALUE),
                                         (None, TEST_VALUE)]))
     self.assertLen(results, 2)
@@ -343,7 +343,7 @@ class CachingExecutorTest(absltest.TestCase):
       _ = loop.run_until_complete(cached_executor.create_selection(value, 1))
     with self.assertRaises(TestError):
       _ = loop.run_until_complete(cached_executor.create_selection(value, 1))
-    # Ensure create_tuple was called twice on the mock (not cached and only
+    # Ensure create_struct was called twice on the mock (not cached and only
     # called once).
     mock_executor.create_selection.assert_has_calls([])
 
@@ -362,7 +362,7 @@ class CachingExecutorTest(absltest.TestCase):
     future2 = cached_executor.create_selection(value, 1)
     results = loop.run_until_complete(
         asyncio.gather(future1, future2, return_exceptions=True))
-    # Ensure create_tuple was called twice on the mock (not cached and only
+    # Ensure create_struct was called twice on the mock (not cached and only
     # called once).
     mock_executor.create_selection.assert_has_calls([])
     self.assertLen(results, 2)
@@ -468,9 +468,9 @@ class CachingExecutorTest(absltest.TestCase):
     self.assertEqual(str(v1.identifier), '1')
     v2 = loop.run_until_complete(ex.create_value(11, tf.int32))
     self.assertEqual(str(v2.identifier), '2')
-    v3 = loop.run_until_complete(ex.create_tuple([v1, v2]))
+    v3 = loop.run_until_complete(ex.create_struct([v1, v2]))
     self.assertEqual(str(v3.identifier), '<1,2>')
-    v4 = loop.run_until_complete(ex.create_tuple((v1, v2)))
+    v4 = loop.run_until_complete(ex.create_struct((v1, v2)))
     self.assertIs(v4, v3)
     c4 = loop.run_until_complete(v4.compute())
     self.assertEqual(
@@ -485,10 +485,10 @@ class CachingExecutorTest(absltest.TestCase):
     v2 = loop.run_until_complete(ex.create_value(11, tf.int32))
     self.assertEqual(str(v2.identifier), '2')
     v3 = loop.run_until_complete(
-        ex.create_tuple(collections.OrderedDict([('P', v1), ('Q', v2)])))
+        ex.create_struct(collections.OrderedDict([('P', v1), ('Q', v2)])))
     self.assertEqual(str(v3.identifier), '<P=1,Q=2>')
     v4 = loop.run_until_complete(
-        ex.create_tuple(collections.OrderedDict([('P', v1), ('Q', v2)])))
+        ex.create_struct(collections.OrderedDict([('P', v1), ('Q', v2)])))
     self.assertIs(v4, v3)
     c4 = loop.run_until_complete(v4.compute())
     self.assertEqual(

@@ -19,8 +19,8 @@ from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-def create_lambda_empty_tuple() -> pb.Computation:
-  """Returns a lambda computation returning an empty tuple.
+def create_lambda_empty_struct() -> pb.Computation:
+  """Returns a lambda computation returning an empty struct.
 
   Has the type signature:
 
@@ -29,11 +29,11 @@ def create_lambda_empty_tuple() -> pb.Computation:
   Returns:
     An instance of `pb.Computation`.
   """
-  result_type = computation_types.NamedTupleType([])
+  result_type = computation_types.StructType([])
   type_signature = computation_types.FunctionType(None, result_type)
   result = pb.Computation(
       type=type_serialization.serialize_type(result_type),
-      tuple=pb.Tuple(element=[]))
+      struct=pb.Struct(element=[]))
   fn = pb.Lambda(parameter_name=None, result=result)
   # We are unpacking the lambda argument here because `lambda` is a reserved
   # keyword in Python, but it is also the name of the parameter for a

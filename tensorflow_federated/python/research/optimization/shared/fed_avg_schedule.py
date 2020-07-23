@@ -397,7 +397,7 @@ def build_fed_avg_process(
 
     aggregated_outputs = dummy_model.federated_output_computation(
         client_outputs.model_output)
-    if aggregated_outputs.type_signature.is_tuple():
+    if aggregated_outputs.type_signature.is_struct():
       aggregated_outputs = tff.federated_zip(aggregated_outputs)
 
     return server_state, aggregated_outputs

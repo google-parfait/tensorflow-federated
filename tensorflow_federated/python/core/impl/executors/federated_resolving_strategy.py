@@ -344,7 +344,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       new_vals.append(
           anonymous_tuple.AnonymousTuple([(k, v[idx]) for k, v in elements]))
     new_vals = await asyncio.gather(
-        *[c.create_tuple(x) for c, x in zip(children, new_vals)])
+        *[c.create_struct(x) for c, x in zip(children, new_vals)])
     return FederatedResolvingStrategyValue(
         new_vals,
         computation_types.FederatedType(
@@ -474,7 +474,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
                                                 float(1.0 / count)),
         executor_utils.embed_tf_binary_operator(child, member_type,
                                                 tf.multiply))
-    multiply_arg = await child.create_tuple(
+    multiply_arg = await child.create_struct(
         anonymous_tuple.AnonymousTuple([(None,
                                          arg_sum.internal_representation[0]),
                                         (None, factor)]))
@@ -515,7 +515,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     result = zero
     for item in items:
       result = await child.create_call(
-          op, await child.create_tuple(
+          op, await child.create_struct(
               anonymous_tuple.AnonymousTuple([(None, result), (None, item)])))
     return FederatedResolvingStrategyValue([result],
                                            computation_types.FederatedType(

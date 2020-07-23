@@ -73,7 +73,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
       async def create_call(self, comp, arg=None):
         raise NotImplementedError
 
-      async def create_tuple(self, elements):
+      async def create_struct(self, elements):
         raise NotImplementedError
 
       async def create_selection(self, source, index=None, name=None):
@@ -115,7 +115,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
 
     async def compute():
       return await ex.create_selection(
-          await ex.create_tuple(
+          await ex.create_struct(
               collections.OrderedDict([
                   ('a', await
                    ex.create_call(await ex.create_value(add_one), await
@@ -134,7 +134,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
 
     async def compute():
       return await ex.create_selection(
-          await ex.create_tuple(
+          await ex.create_struct(
               collections.OrderedDict([
                   ('a', await
                    ex.create_call(await ex.create_value(add_one), await
@@ -171,7 +171,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
 
     async def compute():
       return await ex.create_selection(
-          await ex.create_tuple(
+          await ex.create_struct(
               collections.OrderedDict([
                   ('a', await
                    ex.create_call(await ex.create_value(add_one), await

@@ -449,7 +449,7 @@ class FederatingExecutor(executor_base.Executor):
           py_typecheck.type_string(type(comp.internal_representation))))
 
   @tracing.trace
-  async def create_tuple(
+  async def create_struct(
       self, elements: List[executor_value_base.ExecutorValue]
   ) -> executor_value_base.ExecutorValue:
     """Creates an embedded tuple of the given `elements`.

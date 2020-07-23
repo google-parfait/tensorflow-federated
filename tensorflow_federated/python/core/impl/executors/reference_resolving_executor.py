@@ -19,8 +19,8 @@ from typing import Set, Union
 import cachetools
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
@@ -156,7 +156,7 @@ class ScopedLambda():
 
 
 LambdaValueInner = Union[executor_value_base.ExecutorValue, ScopedLambda,
-                         anonymous_tuple.AnonymousTuple]
+                         structure.Struct]
 
 
 class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
@@ -173,7 +173,7 @@ class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
 
     * A `ScopedLambda` (a `pb.Computation` lambda with some attached scope).
 
-    * A single-level tuple (`anonymous_tuple.AnonymousTuple`) of instances
+    * A single-level struct (`structure.Struct`) of instances
       of this class (of any of the supported forms listed here).
 
     Args:
@@ -190,13 +190,13 @@ class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
     elif isinstance(value, ScopedLambda):
       py_typecheck.check_type(type_spec, computation_types.FunctionType)
     else:
-      py_typecheck.check_type(value, anonymous_tuple.AnonymousTuple)
+      py_typecheck.check_type(value, structure.Struct)
       py_typecheck.check_none(type_spec)
       type_elements = []
-      for k, v in anonymous_tuple.iter_elements(value):
+      for k, v in structure.iter_elements(value):
         py_typecheck.check_type(v, ReferenceResolvingExecutorValue)
         type_elements.append((k, v.type_signature))
-      type_spec = computation_types.NamedTupleType([
+      type_spec = computation_types.StructType([
           (k, v) if k is not None else v for k, v in type_elements
       ])
     self._value = value
@@ -228,17 +228,17 @@ class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
     else:
       # `ScopedLambda` would have had to declare a functional type, so this is
       # the only case left to handle.
-      py_typecheck.check_type(self._value, anonymous_tuple.AnonymousTuple)
-      elem = anonymous_tuple.to_elements(self._value)
+      py_typecheck.check_type(self._value, structure.Struct)
+      elem = structure.to_elements(self._value)
       vals = await asyncio.gather(*[v.compute() for _, v in elem])
-      return anonymous_tuple.AnonymousTuple(zip([k for k, _ in elem], vals))
+      return structure.Struct(zip([k for k, _ in elem], vals))
 
 
 class ReferenceResolvingExecutor(executor_base.Executor):
   """The lambda executor handles lambda expressions and related abstractions.
 
   This executor understands TFF computation compositional constructs, including
-  lambdas, blocks, references, calls, tuples, and selections, and orchestrates
+  lambdas, blocks, references, calls, structs, and selections, and orchestrates
   the execution of these constructs, while delegating all the non-compositional
   constructs (tensorflow, intrinsics, data, or placement) to a target executor.
 
@@ -276,28 +276,25 @@ class ReferenceResolvingExecutor(executor_base.Executor):
           type_utils.reconcile_value_with_type_spec(value, type_spec))
     elif isinstance(value, pb.Computation):
       return await self._evaluate(value)
-    elif type_spec is not None and type_spec.is_tuple():
-      v_el = anonymous_tuple.to_elements(anonymous_tuple.from_container(value))
+    elif type_spec is not None and type_spec.is_struct():
+      v_el = structure.to_elements(structure.from_container(value))
       vals = await asyncio.gather(
           *[self.create_value(val, t) for (_, val), t in zip(v_el, type_spec)])
       return ReferenceResolvingExecutorValue(
-          anonymous_tuple.AnonymousTuple(
-              (name, val) for (name, _), val in zip(v_el, vals)))
+          structure.Struct((name, val) for (name, _), val in zip(v_el, vals)))
     else:
       return ReferenceResolvingExecutorValue(await
                                              self._target_executor.create_value(
                                                  value, type_spec))
 
   @tracing.trace
-  async def create_tuple(self, elements):
-    return ReferenceResolvingExecutorValue(
-        anonymous_tuple.from_container(elements))
+  async def create_struct(self, elements):
+    return ReferenceResolvingExecutorValue(structure.from_container(elements))
 
   @tracing.trace
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, ReferenceResolvingExecutorValue)
-    py_typecheck.check_type(source.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(source.type_signature, computation_types.StructType)
     source_repr = source.internal_representation
     if isinstance(source_repr, executor_value_base.ExecutorValue):
       return ReferenceResolvingExecutorValue(
@@ -306,7 +303,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
     elif isinstance(source_repr, ScopedLambda):
       raise ValueError('Cannot index into a lambda.')
     else:
-      py_typecheck.check_type(source_repr, anonymous_tuple.AnonymousTuple)
+      py_typecheck.check_type(source_repr, structure.Struct)
       if index is not None:
         if name is not None:
           raise ValueError('Cannot specify both index and name for selection.')
@@ -375,13 +372,12 @@ class ReferenceResolvingExecutor(executor_base.Executor):
     value_repr = value.internal_representation
     if isinstance(value_repr, executor_value_base.ExecutorValue):
       return value_repr
-    elif isinstance(value_repr, anonymous_tuple.AnonymousTuple):
+    elif isinstance(value_repr, structure.Struct):
       vals = await asyncio.gather(
           *[self._embed_value_in_target_exec(v) for v in value_repr])
-      return await self._target_executor.create_tuple(
-          anonymous_tuple.AnonymousTuple(
-              zip((k for k, _ in anonymous_tuple.iter_elements(value_repr)),
-                  vals)))
+      return await self._target_executor.create_struct(
+          structure.Struct(
+              zip((k for k, _ in structure.iter_elements(value_repr)), vals)))
     else:
       py_typecheck.check_type(value_repr, ScopedLambda)
       # Pull `comp` out of the `ScopedLambda`, asserting that it doesn't
@@ -461,16 +457,15 @@ class ReferenceResolvingExecutor(executor_base.Executor):
         source, **{which_selection: getattr(comp.selection, which_selection)})
 
   @tracing.trace(stats=False)
-  async def _evaluate_tuple(
+  async def _evaluate_struct(
       self,
       comp: pb.Computation,
       scope: ReferenceResolvingExecutorScope,
   ) -> ReferenceResolvingExecutorValue:
-    names = [str(e.name) if e.name else None for e in comp.tuple.element]
-    values = [self._evaluate(e.value, scope=scope) for e in comp.tuple.element]
+    names = [str(e.name) if e.name else None for e in comp.struct.element]
+    values = [self._evaluate(e.value, scope=scope) for e in comp.struct.element]
     values = await asyncio.gather(*values)
-    return await self.create_tuple(
-        anonymous_tuple.AnonymousTuple(zip(names, values)))
+    return await self.create_struct(structure.Struct(zip(names, values)))
 
   @tracing.trace(stats=False)
   async def _evaluate_block(
@@ -512,8 +507,8 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       return await self._evaluate_call(comp, scope)
     elif which_computation == 'selection':
       return await self._evaluate_selection(comp, scope)
-    elif which_computation == 'tuple':
-      return await self._evaluate_tuple(comp, scope)
+    elif which_computation == 'struct':
+      return await self._evaluate_struct(comp, scope)
     elif which_computation == 'block':
       return await self._evaluate_block(comp, scope)
     else:

@@ -23,7 +23,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 
 
 class Struct(object):
-  """Represents a tuple-like structure with named and/or unnamed fields.
+  """Represents a struct-like structure with named and/or unnamed fields.
 
   `Struct`s are similar to `collections.namedtuple` in that their elements can
   be accessed by name or by index. However, `Struct`s provide a performance
@@ -131,14 +131,14 @@ class Struct(object):
     if isinstance(key, int):
       if key < 0 or key >= len(self._element_array):
         raise IndexError(
-            'Element index {} is out of range, tuple has {} elements.'.format(
-                key, len(self._element_array)))
+            'Element index {} is out of range, `Struct` has {} elements.'
+            .format(key, len(self._element_array)))
     return self._element_array[key]
 
   def __getattr__(self, name):
     if name not in self._name_to_index:
       raise AttributeError(
-          'The tuple of length {:d} does not have named field "{!s}". '
+          'The `Struct` of length {:d} does not have named field "{!s}". '
           'Fields (up to first 10): {!s}'.format(
               len(self._element_array), name,
               list(self._name_to_index.keys())[:10]))

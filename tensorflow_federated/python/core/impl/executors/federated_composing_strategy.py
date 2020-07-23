@@ -291,7 +291,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       py_typecheck.check_type(v, executor_value_base.ExecutorValue)
       aggr_func, aggr_args = await asyncio.gather(
           ex.create_value(aggr_comp, aggr_type),
-          ex.create_tuple([v] + list(await asyncio.gather(
+          ex.create_struct([v] + list(await asyncio.gather(
               ex.create_value(zero, zero_type),
               ex.create_value(accumulate, accumulate_type),
               ex.create_value(merge, merge_type),
@@ -309,7 +309,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     for next_val in parent_vals[1:]:
       merge_result = await self._server_executor.create_call(
           parent_merge, await
-          self._server_executor.create_tuple([merge_result, next_val]))
+          self._server_executor.create_struct([merge_result, next_val]))
     return FederatedComposingStrategyValue(
         await self._server_executor.create_call(parent_report, merge_result),
         type_factory.at_server(report_type.result))
@@ -425,7 +425,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       py_typecheck.check_type(v, executor_value_base.ExecutorValue)
       fn_val = await ex.create_value(fn, fn_type)
       map_val, map_arg = await asyncio.gather(
-          ex.create_value(map_comp, map_type), ex.create_tuple([fn_val, v]))
+          ex.create_value(map_comp, map_type), ex.create_struct([fn_val, v]))
       return await ex.create_call(map_val, map_arg)
 
     result_vals = await asyncio.gather(
@@ -467,7 +467,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
     async def _create_multiply_arg():
       total, factor = await asyncio.gather(_create_total(), _create_factor())
-      return await self._server_executor.create_tuple([total, factor])
+      return await self._server_executor.create_struct([total, factor])
 
     multiply_fn, multiply_arg = await asyncio.gather(
         executor_utils.embed_tf_binary_operator(self._server_executor,
@@ -500,7 +500,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
             tensorflow_computation_factory.create_identity(
                 arg.type_signature.member),
             type_factory.unary_op(arg.type_signature.member)))
-    aggregate_args = await self._executor.create_tuple(
+    aggregate_args = await self._executor.create_struct(
         [arg, zero, plus, plus, identity])
     return await self.compute_federated_aggregate(aggregate_args)
 
@@ -566,7 +566,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       py_typecheck.check_type(x, executor_value_base.ExecutorValue)
       py_typecheck.check_type(y, executor_value_base.ExecutorValue)
       return await ex.create_call(
-          await ex.create_value(zip_comp, zip_type), await ex.create_tuple(
+          await ex.create_value(zip_comp, zip_type), await ex.create_struct(
               anonymous_tuple.AnonymousTuple([(keys[0], x), (keys[1], y)])))
 
     result = await asyncio.gather(*[
@@ -591,7 +591,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
           placement=placement_literals.SERVER,
           all_equal=True)
     return FederatedComposingStrategyValue(
-        await self._server_executor.create_tuple(
+        await self._server_executor.create_struct(
             [arg.internal_representation[n] for n in [0, 1]]),
         type_factory.at_server(
             computation_types.NamedTupleType(

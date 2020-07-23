@@ -28,8 +28,8 @@ import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl import executor_service_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
@@ -97,9 +97,9 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     elif which == 'create_call':
       response = executor_pb2.ExecuteResponse(
           create_call=self.CreateCall(req.create_call, context))
-    elif which == 'create_tuple':
+    elif which == 'create_struct':
       response = executor_pb2.ExecuteResponse(
-          create_tuple=self.CreateTuple(req.create_tuple, context))
+          create_struct=self.CreateStruct(req.create_struct, context))
     elif which == 'create_selection':
       response = executor_pb2.ExecuteResponse(
           create_selection=self.CreateSelection(req.create_selection, context))
@@ -214,13 +214,13 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       _set_invalid_arg_err(context, err)
       return executor_pb2.CreateCallResponse()
 
-  def CreateTuple(
+  def CreateStruct(
       self,
-      request: executor_pb2.CreateTupleRequest,
+      request: executor_pb2.CreateStructRequest,
       context: grpc.ServicerContext,
-  ) -> executor_pb2.CreateTupleResponse:
-    """Creates a tuple embedded in the executor."""
-    py_typecheck.check_type(request, executor_pb2.CreateTupleRequest)
+  ) -> executor_pb2.CreateStructResponse:
+    """Creates a struct embedded in the executor."""
+    py_typecheck.check_type(request, executor_pb2.CreateStructRequest)
     try:
       with self._lock:
         elem_futures = [self._values[e.value_ref.id] for e in request.element]
@@ -232,18 +232,18 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         elem_values = await asyncio.gather(
             *[asyncio.wrap_future(v) for v in elem_futures])
         elements = list(zip(elem_names, elem_values))
-        anon_tuple = anonymous_tuple.AnonymousTuple(elements)
-        return await self._executor.create_tuple(anon_tuple)
+        struct = structure.Struct(elements)
+        return await self._executor.create_struct(struct)
 
       result_fut = self._run_coro_threadsafe_with_tracing(_processing())
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
-      return executor_pb2.CreateTupleResponse(
+      return executor_pb2.CreateStructResponse(
           value_ref=executor_pb2.ValueRef(id=result_id))
     except (ValueError, TypeError) as err:
       _set_invalid_arg_err(context, err)
-      return executor_pb2.CreateTupleResponse()
+      return executor_pb2.CreateStructResponse()
 
   def CreateSelection(
       self,

@@ -200,13 +200,13 @@ class TracingExecutor(executor_base.Executor):
       self._trace.append(('create_call', comp.index, wrapped_val.index))
       return wrapped_val
 
-  async def create_tuple(self, elements):
-    target_val = await self._target.create_tuple(
+  async def create_struct(self, elements):
+    target_val = await self._target.create_struct(
         anonymous_tuple.map_structure(lambda x: x.value, elements))
     wrapped_val = TracingExecutorValue(self, self._get_new_value_index(),
                                        target_val)
     self._trace.append(
-        ('create_tuple',
+        ('create_struct',
          anonymous_tuple.map_structure(lambda x: x.index,
                                        elements), wrapped_val.index))
     return wrapped_val
@@ -435,7 +435,7 @@ def create_dummy_computation_intrinsic():
 
 def create_dummy_computation_lambda_empty():
   """Returns a lambda computation and type `( -> <>)`."""
-  value = computation_factory.create_lambda_empty_tuple()
+  value = computation_factory.create_lambda_empty_struct()
   type_signature = computation_types.FunctionType(None, [])
   return value, type_signature
 
@@ -494,9 +494,9 @@ def create_dummy_computation_tensorflow_add():
 
   parameter_type = computation_types.NamedTupleType([type_spec, type_spec])
   type_signature = computation_types.FunctionType(parameter_type, result_type)
-  tuple_binding = pb.TensorFlow.NamedTupleBinding(
+  struct_binding = pb.TensorFlow.StructBinding(
       element=[parameter_1_binding, parameter_2_binding])
-  parameter_binding = pb.TensorFlow.Binding(tuple=tuple_binding)
+  parameter_binding = pb.TensorFlow.Binding(struct=struct_binding)
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
@@ -583,12 +583,12 @@ def create_dummy_computation_tuple():
       type=type_serialization.serialize_type(fn_type),
       call=pb.Call(function=fn))
   element_type = fn_type.result
-  elements = [pb.Tuple.Element(name=n, value=element_value) for n in names]
+  elements = [pb.Struct.Element(name=n, value=element_value) for n in names]
   type_signature = computation_types.NamedTupleType(
       (n, element_type) for n in names)
   value = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
-      tuple=pb.Tuple(element=elements))
+      struct=pb.Struct(element=elements))
   return value, type_signature
 
 

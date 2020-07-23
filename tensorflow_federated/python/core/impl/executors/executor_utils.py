@@ -42,7 +42,7 @@ async def delegate_entirely_to_executor(arg, arg_type, executor):
   The supported types of `arg` and the manner in which they are handled:
 
   * For instances of `pb.Computation`, calls `create_value()`.
-  * For instances of `anonymous_tuple.AnonymousTuple`, calls `create_tuple()`.
+  * For instances of `anonymous_tuple.AnonymousTuple`, calls `create_struct()`.
   * Otherwise, must be `executor_value_base.ExecutorValue`, and assumed to
     already be owned by the target executor.
 
@@ -67,7 +67,7 @@ async def delegate_entirely_to_executor(arg, arg_type, executor):
         delegate_entirely_to_executor(value, type_spec, executor)
         for value, type_spec in zip(arg, arg_type)
     ])
-    return await executor.create_tuple(
+    return await executor.create_struct(
         anonymous_tuple.AnonymousTuple(
             zip((k for k, _ in anonymous_tuple.iter_elements(arg_type)), vals)))
   else:
@@ -273,7 +273,7 @@ async def compute_intrinsic_federated_weighted_mean(
   async def _compute_product_arg():
     multiply_fn, multiply_arg = await asyncio.gather(_compute_multiply_fn(),
                                                      _compute_multiply_arg())
-    return await executor.create_tuple((multiply_fn, multiply_arg))
+    return await executor.create_struct((multiply_fn, multiply_arg))
 
   async def _compute_products():
     product_fn, product_arg = await asyncio.gather(_compute_product_fn(),
@@ -301,7 +301,7 @@ async def compute_intrinsic_federated_weighted_mean(
   async def _compute_zip2_arg():
     sum_of_products, total_weight = await asyncio.gather(
         _compute_sum_of_products(), _compute_total_weight())
-    return await executor.create_tuple([sum_of_products, total_weight])
+    return await executor.create_struct([sum_of_products, total_weight])
 
   async def _compute_divide_fn():
     return await executor.create_value(divide_blk.proto,
@@ -324,7 +324,7 @@ async def compute_intrinsic_federated_weighted_mean(
   async def _compute_apply_arg():
     divide_fn, divide_arg = await asyncio.gather(_compute_divide_fn(),
                                                  _compute_divide_arg())
-    return await executor.create_tuple([divide_fn, divide_arg])
+    return await executor.create_struct([divide_fn, divide_arg])
 
   async def _compute_divided():
     apply_fn, apply_arg = await asyncio.gather(_compute_apply_fn(),

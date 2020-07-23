@@ -95,7 +95,7 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
                      first_element_selected.proto.tensorflow.initialize_op)
-    self.assertEqual(foo.proto.tensorflow.result.tuple.element[0].tensor,
+    self.assertEqual(foo.proto.tensorflow.result.struct.element[0].tensor,
                      first_element_selected.proto.tensorflow.result.tensor)
 
     self.assertProtoEquals(
@@ -109,7 +109,7 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                      second_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
                      second_element_selected.proto.tensorflow.initialize_op)
-    self.assertEqual(foo.proto.tensorflow.result.tuple.element[1].tensor,
+    self.assertEqual(foo.proto.tensorflow.result.struct.element[1].tensor,
                      second_element_selected.proto.tensorflow.result.tensor)
 
   def test_select_graph_output_by_name_single_level_of_nesting(self):
@@ -139,7 +139,7 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
                      first_element_selected.proto.tensorflow.initialize_op)
-    self.assertEqual(foo.proto.tensorflow.result.tuple.element[0].tensor,
+    self.assertEqual(foo.proto.tensorflow.result.struct.element[0].tensor,
                      first_element_selected.proto.tensorflow.result.tensor)
 
     self.assertProtoEquals(
@@ -153,7 +153,7 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                      second_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
                      second_element_selected.proto.tensorflow.initialize_op)
-    self.assertEqual(foo.proto.tensorflow.result.tuple.element[1].tensor,
+    self.assertEqual(foo.proto.tensorflow.result.struct.element[1].tensor,
                      second_element_selected.proto.tensorflow.result.tensor)
 
   def test_select_graph_output_by_index_two_nested_levels_keeps_nested_type(
@@ -189,8 +189,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
                      first_element_selected.proto.tensorflow.initialize_op)
-    self.assertEqual(foo.proto.tensorflow.result.tuple.element[0].tuple,
-                     first_element_selected.proto.tensorflow.result.tuple)
+    self.assertEqual(foo.proto.tensorflow.result.struct.element[0].struct,
+                     first_element_selected.proto.tensorflow.result.struct)
 
     self.assertProtoEquals(
         serialization_utils.unpack_graph_def(
@@ -203,8 +203,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                      second_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
                      second_element_selected.proto.tensorflow.initialize_op)
-    self.assertEqual(foo.proto.tensorflow.result.tuple.element[1].tuple,
-                     second_element_selected.proto.tensorflow.result.tuple)
+    self.assertEqual(foo.proto.tensorflow.result.struct.element[1].struct,
+                     second_element_selected.proto.tensorflow.result.struct)
 
   def test_select_graph_output_by_name_two_nested_levels_keeps_nested_type(
       self):
@@ -237,8 +237,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
                      first_element_selected.proto.tensorflow.initialize_op)
-    self.assertEqual(foo.proto.tensorflow.result.tuple.element[0].tuple,
-                     first_element_selected.proto.tensorflow.result.tuple)
+    self.assertEqual(foo.proto.tensorflow.result.struct.element[0].struct,
+                     first_element_selected.proto.tensorflow.result.struct)
 
     self.assertProtoEquals(
         serialization_utils.unpack_graph_def(
@@ -251,8 +251,8 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
                      second_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
                      second_element_selected.proto.tensorflow.initialize_op)
-    self.assertEqual(foo.proto.tensorflow.result.tuple.element[1].tuple,
-                     second_element_selected.proto.tensorflow.result.tuple)
+    self.assertEqual(foo.proto.tensorflow.result.struct.element[1].struct,
+                     second_element_selected.proto.tensorflow.result.struct)
 
   def test_permute_graph_inputs_with_none_comp_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -594,7 +594,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
         computation_types.TensorType(tf.int32))
     with self.assertRaisesRegex(
         TypeError,
-        r'Can only pad inputs of a CompiledComputation with parameter type tuple'
+        r'Can only pad inputs of a CompiledComputation with parameter type struct'
     ):
       compiled_computation_transforms.pad_graph_inputs_to_match_type(
           comp, computation_types.NamedTupleType([tf.int32]))
@@ -1077,15 +1077,15 @@ def _create_simple_tuple_of_called_graphs():
   tensor_type = computation_types.TensorType(tf.float32)
   called_const = building_block_factory.create_tensorflow_constant(
       tensor_type, 1.0)
-  tuple_of_called_graphs = building_blocks.Tuple([called_const, called_const])
+  tuple_of_called_graphs = building_blocks.Struct([called_const, called_const])
   return tuple_of_called_graphs
 
 
-class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
+class StructCalledGraphsTest(test.TestCase, parameterized.TestCase):
 
   def test_empty_tuple(self):
-    pattern = building_blocks.Tuple([])
-    logic = compiled_computation_transforms.TupleCalledGraphs()
+    pattern = building_blocks.Struct([])
+    logic = compiled_computation_transforms.StructCalledGraphs()
     transformed, _ = logic.transform(pattern)
     self.assertEqual(transformed.type_signature, pattern.type_signature)
     self.assertIsInstance(transformed, building_blocks.Call)
@@ -1095,25 +1095,25 @@ class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
     pattern = _create_simple_tuple_of_called_graphs()
-    logic = compiled_computation_transforms.TupleCalledGraphs()
+    logic = compiled_computation_transforms.StructCalledGraphs()
     self.assertTrue(logic.should_transform(pattern))
 
   def test_should_not_transform_compiled_computation(self):
     integer_square = _create_compiled_computation(
         lambda x: x * x, computation_types.TensorType(tf.int32))
-    tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
+    tuple_parser = compiled_computation_transforms.StructCalledGraphs()
     self.assertFalse(tuple_parser.should_transform(integer_square))
 
   def test_transform_constructs_correct_root_node(self):
     pattern = _create_simple_tuple_of_called_graphs()
-    logic = compiled_computation_transforms.TupleCalledGraphs()
+    logic = compiled_computation_transforms.StructCalledGraphs()
     parsed_selection, mutated = logic.transform(pattern)
     self.assertIsInstance(parsed_selection, building_blocks.Call)
     self.assertTrue(mutated)
 
   def test_leaves_type_signature_alone(self):
     pattern = _create_simple_tuple_of_called_graphs()
-    logic = compiled_computation_transforms.TupleCalledGraphs()
+    logic = compiled_computation_transforms.StructCalledGraphs()
     parsed, mutated = logic.transform(pattern)
     self.assertEqual(parsed.type_signature, pattern.type_signature)
     self.assertTrue(mutated)
@@ -1125,10 +1125,10 @@ class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
     called_noarg_const_1_type = computation_types.TensorType(tf.int32)
     called_noarg_const_1 = building_block_factory.create_tensorflow_constant(
         called_noarg_const_1_type, 1)
-    tuple_of_called_graphs = building_blocks.Tuple([('a', called_noarg_const_0),
-                                                    ('b', called_noarg_const_1)
-                                                   ])
-    tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
+    tuple_of_called_graphs = building_blocks.Struct([
+        ('a', called_noarg_const_0), ('b', called_noarg_const_1)
+    ])
+    tuple_parser = compiled_computation_transforms.StructCalledGraphs()
     parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
     self.assertEqual(parsed_tuple.type_signature,
                      tuple_of_called_graphs.type_signature)
@@ -1141,10 +1141,10 @@ class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
     called_noarg_const_1_type = computation_types.TensorType(tf.int32)
     called_noarg_const_1 = building_block_factory.create_tensorflow_constant(
         called_noarg_const_1_type, 1)
-    tuple_of_called_graphs = building_blocks.Tuple(
+    tuple_of_called_graphs = building_blocks.Struct(
         [called_noarg_const_0, called_noarg_const_1])
 
-    tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
+    tuple_parser = compiled_computation_transforms.StructCalledGraphs()
     parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
 
     self.assertEqual(parsed_tuple.type_signature,
@@ -1165,10 +1165,10 @@ class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
         lambda x: x**2, computation_types.TensorType(tf.int32))
     square_arg = building_blocks.Reference('x', tf.int32)
     called_square = building_blocks.Call(integer_square, square_arg)
-    tuple_of_called_graphs = building_blocks.Tuple(
+    tuple_of_called_graphs = building_blocks.Struct(
         [called_noarg_const_0, called_square])
 
-    tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
+    tuple_parser = compiled_computation_transforms.StructCalledGraphs()
     parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
 
     self.assertEqual(parsed_tuple.type_signature,
@@ -1188,9 +1188,10 @@ class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
     called_cube = building_blocks.Call(float_cube, cube_arg)
     square_arg = building_blocks.Reference('x', tf.int32)
     called_square = building_blocks.Call(integer_square, square_arg)
-    tuple_of_called_graphs = building_blocks.Tuple([called_cube, called_square])
+    tuple_of_called_graphs = building_blocks.Struct(
+        [called_cube, called_square])
 
-    tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
+    tuple_parser = compiled_computation_transforms.StructCalledGraphs()
     parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
 
     self.assertEqual(parsed_tuple.type_signature,
@@ -1215,10 +1216,10 @@ class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
     called_selection = building_blocks.Call(select_from_tuple, selection_arg)
     square_arg = building_blocks.Reference('x', tf.int32)
     called_square = building_blocks.Call(integer_square, square_arg)
-    tuple_of_called_graphs = building_blocks.Tuple(
+    tuple_of_called_graphs = building_blocks.Struct(
         [called_selection, called_square])
 
-    tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
+    tuple_parser = compiled_computation_transforms.StructCalledGraphs()
     parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
 
     self.assertEqual(parsed_tuple.type_signature,
@@ -1244,10 +1245,10 @@ class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
     called_selection = building_blocks.Call(select_from_tuple, selection_arg)
     square_arg = building_blocks.Reference('x', tf.int32)
     called_square = building_blocks.Call(integer_square, square_arg)
-    tuple_of_called_graphs = building_blocks.Tuple(
+    tuple_of_called_graphs = building_blocks.Struct(
         [called_selection, called_square])
 
-    tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
+    tuple_parser = compiled_computation_transforms.StructCalledGraphs()
     parsed_tuple, mutated = tuple_parser.transform(tuple_of_called_graphs)
 
     self.assertEqual(parsed_tuple.type_signature,
@@ -1269,7 +1270,7 @@ class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
     id_applied_const = building_blocks.Call(
         building_block_factory.create_compiled_identity(id_applied_const_type),
         called_const)
-    tuple_with_identical_args = building_blocks.Tuple(
+    tuple_with_identical_args = building_blocks.Struct(
         [id_applied_const, id_applied_const])
 
     called_float_type = computation_types.TensorType(tf.float32)
@@ -1286,10 +1287,10 @@ class TupleCalledGraphsTest(test.TestCase, parameterized.TestCase):
     id_applied_int = building_blocks.Call(
         building_block_factory.create_compiled_identity(id_applied_int_type),
         called_int)
-    tuple_with_distinct_args = building_blocks.Tuple(
+    tuple_with_distinct_args = building_blocks.Struct(
         [id_applied_float, id_applied_int])
 
-    tuple_parser = compiled_computation_transforms.TupleCalledGraphs()
+    tuple_parser = compiled_computation_transforms.StructCalledGraphs()
     identical_tuple_parsed, _ = tuple_parser.transform(
         tuple_with_identical_args)
     distinct_tuple_parsed, _ = tuple_parser.transform(tuple_with_distinct_args)
@@ -1592,7 +1593,7 @@ def _create_simple_lambda_call_tuple_of_selections_from_arg():
                                               [tf.float32, tf.int32, tf.bool])
   selection_1 = building_blocks.Selection(tuple_reference, index=1)
   selection_0 = building_blocks.Selection(tuple_reference, index=0)
-  tuple_of_selections = building_blocks.Tuple([selection_1, selection_0])
+  tuple_of_selections = building_blocks.Struct([selection_1, selection_0])
   called_identity = building_blocks.Call(identity, tuple_of_selections)
   lambda_wrapping_call = building_blocks.Lambda('x',
                                                 tuple_reference.type_signature,
@@ -1608,7 +1609,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     identity = building_block_factory.create_compiled_identity(tuple_type)
     tuple_reference = building_blocks.Reference('x', [tf.int32] * 2)
     selection = building_blocks.Selection(tuple_reference, index=0)
-    tuple_of_selections = building_blocks.Tuple([selection] * 3)
+    tuple_of_selections = building_blocks.Struct([selection] * 3)
     called_identity = building_blocks.Call(identity, tuple_of_selections)
     lambda_wrapping_call = building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_identity)
@@ -1665,7 +1666,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
                                                 [tf.float32, tf.int32, tf.bool])
     selection_1 = building_blocks.Selection(tuple_reference, index=1)
     selection_0 = building_blocks.Selection(tuple_reference, index=0)
-    tuple_of_selections = building_blocks.Tuple([selection_1, selection_0])
+    tuple_of_selections = building_blocks.Struct([selection_1, selection_0])
     called_identity = building_blocks.Call(identity, tuple_of_selections)
     lambda_wrapping_call = building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_identity)
@@ -1684,7 +1685,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
                                                 [tf.float32, tf.int32, tf.bool])
     selection_1 = building_blocks.Selection(tuple_reference, index=1)
     selection_0 = building_blocks.Selection(tuple_reference, index=0)
-    tuple_of_selections = building_blocks.Tuple([selection_1, selection_0])
+    tuple_of_selections = building_blocks.Struct([selection_1, selection_0])
     called_identity = building_blocks.Call(identity, tuple_of_selections)
     lambda_wrapping_call = building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_identity)
@@ -1707,7 +1708,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     selection_2 = building_blocks.Selection(tuple_reference, index=2)
     selection_1 = building_blocks.Selection(tuple_reference, index=1)
     selection_0 = building_blocks.Selection(tuple_reference, index=0)
-    tuple_of_selections = building_blocks.Tuple(
+    tuple_of_selections = building_blocks.Struct(
         [selection_2, selection_1, selection_0])
     called_identity = building_blocks.Call(identity, tuple_of_selections)
     lambda_wrapping_call = building_blocks.Lambda(
@@ -1729,7 +1730,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     selection_2 = building_blocks.Selection(tuple_reference, index=2)
     selection_1 = building_blocks.Selection(tuple_reference, index=1)
     selection_0 = building_blocks.Selection(tuple_reference, index=0)
-    tuple_of_selections = building_blocks.Tuple(
+    tuple_of_selections = building_blocks.Struct(
         [selection_2, selection_1, selection_0])
     called_identity = building_blocks.Call(identity, tuple_of_selections)
     lambda_wrapping_call = building_blocks.Lambda(
@@ -1754,7 +1755,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
                                                       ('c', tf.bool)])
     selection_1 = building_blocks.Selection(tuple_reference, name='b')
     selection_0 = building_blocks.Selection(tuple_reference, name='a')
-    tuple_of_selections = building_blocks.Tuple([selection_1, selection_0])
+    tuple_of_selections = building_blocks.Struct([selection_1, selection_0])
     called_identity = building_blocks.Call(identity, tuple_of_selections)
     lambda_wrapping_call = building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_identity)
@@ -1774,7 +1775,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
                                                       ('c', tf.bool)])
     selection_1 = building_blocks.Selection(tuple_reference, name='b')
     selection_0 = building_blocks.Selection(tuple_reference, name='a')
-    tuple_of_selections = building_blocks.Tuple([selection_1, selection_0])
+    tuple_of_selections = building_blocks.Struct([selection_1, selection_0])
     called_identity = building_blocks.Call(identity, tuple_of_selections)
     lambda_wrapping_call = building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_identity)
@@ -1800,7 +1801,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
                                                       ('c', tf.bool)])
     selection_1 = building_blocks.Selection(tuple_reference, index=1)
     selection_0 = building_blocks.Selection(tuple_reference, index=0)
-    tuple_of_selections = building_blocks.Tuple([selection_1, selection_0])
+    tuple_of_selections = building_blocks.Struct([selection_1, selection_0])
     called_identity = building_blocks.Call(identity, tuple_of_selections)
     lambda_wrapping_call = building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_identity)
@@ -1820,7 +1821,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
                                                       ('c', tf.bool)])
     selection_1 = building_blocks.Selection(tuple_reference, index=1)
     selection_0 = building_blocks.Selection(tuple_reference, index=0)
-    tuple_of_selections = building_blocks.Tuple([selection_1, selection_0])
+    tuple_of_selections = building_blocks.Struct([selection_1, selection_0])
     called_identity = building_blocks.Call(identity, tuple_of_selections)
     lambda_wrapping_call = building_blocks.Lambda(
         'x', tuple_reference.type_signature, called_identity)
@@ -2261,7 +2262,7 @@ def _create_simple_called_graph_on_replicated_arg(n_replicates=2):
   tuple_identity = building_block_factory.create_compiled_identity(tuple_type)
   ref_to_int = building_blocks.Reference('x', tf.int32)
   called_tuple_id = building_blocks.Call(
-      tuple_identity, building_blocks.Tuple([ref_to_int] * n_replicates))
+      tuple_identity, building_blocks.Struct([ref_to_int] * n_replicates))
   return called_tuple_id
 
 
@@ -2352,7 +2353,7 @@ class CalledGraphOnReplicatedArgTest(test.TestCase):
     tuple_reference = building_blocks.Reference('x', [tf.int32, tf.float32])
 
     called_slicer = building_blocks.Call(
-        slicer, building_blocks.Tuple([tuple_reference, tuple_reference]))
+        slicer, building_blocks.Struct([tuple_reference, tuple_reference]))
     logic = compiled_computation_transforms.CalledGraphOnReplicatedArg()
     parsed, mutated = logic.transform(called_slicer)
     self.assertEqual(parsed.type_signature, called_slicer.type_signature)
@@ -2368,7 +2369,7 @@ class CalledGraphOnReplicatedArgTest(test.TestCase):
                                                       ('b', tf.float32)])
 
     called_slicer = building_blocks.Call(
-        slicer, building_blocks.Tuple([tuple_reference, tuple_reference]))
+        slicer, building_blocks.Struct([tuple_reference, tuple_reference]))
     logic = compiled_computation_transforms.CalledGraphOnReplicatedArg()
     parsed, mutated = logic.transform(called_slicer)
     self.assertEqual(parsed.type_signature, called_slicer.type_signature)
@@ -2382,7 +2383,7 @@ class CalledGraphOnReplicatedArgTest(test.TestCase):
     tuple_reference = building_blocks.Reference('x', [tf.int32, tf.float32])
 
     called_slicer = building_blocks.Call(
-        slicer, building_blocks.Tuple([tuple_reference, tuple_reference]))
+        slicer, building_blocks.Struct([tuple_reference, tuple_reference]))
 
     logic = compiled_computation_transforms.CalledGraphOnReplicatedArg()
     parsed, _ = logic.transform(called_slicer)

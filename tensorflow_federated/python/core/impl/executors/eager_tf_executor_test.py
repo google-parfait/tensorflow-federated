@@ -384,14 +384,14 @@ class EagerTFExecutorTest(tf.test.TestCase):
     self.assertEqual(result.internal_representation.a.numpy(), 60)
     self.assertEqual(result.internal_representation.b.numpy(), 15)
 
-  def test_executor_create_tuple_and_selection(self):
+  def test_executor_create_struct_and_selection(self):
     ex = eager_tf_executor.EagerTFExecutor()
     loop = asyncio.get_event_loop()
     v1, v2 = tuple(
         loop.run_until_complete(
             asyncio.gather(*[ex.create_value(x, tf.int32) for x in [10, 20]])))
     v3 = loop.run_until_complete(
-        ex.create_tuple(collections.OrderedDict([('a', v1), ('b', v2)])))
+        ex.create_struct(collections.OrderedDict([('a', v1), ('b', v2)])))
     self.assertIsInstance(v3, eager_tf_executor.EagerValue)
     self.assertIsInstance(v3.internal_representation,
                           anonymous_tuple.AnonymousTuple)

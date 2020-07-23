@@ -190,7 +190,7 @@ def create_binary_operator(
     if operand_type is not None:
       if operand_type.is_tensor():
         result_value = operator(operand_1_value, operand_2_value)
-      elif operand_type.is_tuple():
+      elif operand_type.is_struct():
         result_value = anonymous_tuple.map_structure(operator, operand_1_value,
                                                      operand_2_value)
     else:
@@ -205,7 +205,7 @@ def create_binary_operator(
       computation_types.NamedTupleType((operand_type, operand_type)),
       result_type)
   parameter_binding = pb.TensorFlow.Binding(
-      tuple=pb.TensorFlow.NamedTupleBinding(
+      struct=pb.TensorFlow.StructBinding(
           element=[operand_1_binding, operand_2_binding]))
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
@@ -236,7 +236,7 @@ def create_binary_operator_with_upcast(
   py_typecheck.check_type(type_signature, computation_types.NamedTupleType)
   py_typecheck.check_callable(operator)
   type_analysis.check_tensorflow_compatible_type(type_signature)
-  if not type_signature.is_tuple() or len(type_signature) != 2:
+  if not type_signature.is_struct() or len(type_signature) != 2:
     raise TypeError('To apply a binary operator, we must by definition have an '
                     'argument which is a `NamedTupleType` with 2 elements; '
                     'asked to create a binary operator for type: {t}'.format(
@@ -249,7 +249,7 @@ def create_binary_operator_with_upcast(
 
   def _pack_into_type(to_pack, type_spec):
     """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
-    if type_spec.is_tuple():
+    if type_spec.is_struct():
       elem_iter = anonymous_tuple.iter_elements(type_spec)
       return anonymous_tuple.AnonymousTuple([
           (elem_name, _pack_into_type(to_pack, elem_type))
@@ -270,7 +270,7 @@ def create_binary_operator_with_upcast(
 
     if type_signature[0].is_tensor():
       result_value = operator(first_arg, second_arg)
-    elif type_signature[0].is_tuple():
+    elif type_signature[0].is_struct():
       result_value = anonymous_tuple.map_structure(operator, first_arg,
                                                    second_arg)
     else:
@@ -282,7 +282,7 @@ def create_binary_operator_with_upcast(
 
   type_signature = computation_types.FunctionType(type_signature, result_type)
   parameter_binding = pb.TensorFlow.Binding(
-      tuple=pb.TensorFlow.NamedTupleBinding(
+      struct=pb.TensorFlow.StructBinding(
           element=[operand_1_binding, operand_2_binding]))
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),

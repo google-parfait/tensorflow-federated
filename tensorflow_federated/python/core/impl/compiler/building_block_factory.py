@@ -1340,7 +1340,7 @@ def create_federated_zip(
     if nested.type_signature.is_federated():
       all_placements.add(nested.type_signature.placement)
       nested_selections.append(nested)
-    elif nested.type_signature.is_tuple():
+    elif nested.type_signature.is_struct():
       for i in range(len(nested.type_signature)):
         inner_selection = building_blocks.Selection(nested, index=i)
         _make_nested_selections(inner_selection)
@@ -1373,7 +1373,7 @@ def create_federated_zip(
     """Generates nested struct of selections from flattened representation."""
     if type_signature.is_federated():
       return building_blocks.Selection(ref, index=index), index + 1
-    elif type_signature.is_tuple():
+    elif type_signature.is_struct():
       elements = anonymous_tuple.to_elements(type_signature)
       return_tuple = []
       for name, element_type in elements:
@@ -1429,10 +1429,10 @@ def create_generic_constant(
         'Must pass a scalar value to `create_generic_constant`; encountered a '
         'value {}'.format(scalar_value))
   if not type_analysis.contains_only(
-      type_spec, lambda t: t.is_federated() or t.is_tuple() or t.is_tensor()):
+      type_spec, lambda t: t.is_federated() or t.is_struct() or t.is_tensor()):
     raise TypeError
   if type_analysis.contains_only(type_spec,
-                                 lambda t: t.is_tuple() or t.is_tensor()):
+                                 lambda t: t.is_struct() or t.is_tensor()):
     return create_tensorflow_constant(type_spec, scalar_value)
   elif type_spec.is_federated():
     unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)
@@ -1451,7 +1451,7 @@ def create_generic_constant(
       placement_function = building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri, placement_fn_type)
     return building_blocks.Call(placement_function, unplaced_zero)
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     elements = []
     for k in range(len(type_spec)):
       elements.append(create_generic_constant(type_spec[k], scalar_value))
@@ -1650,12 +1650,12 @@ def _create_naming_function(tuple_type_to_name, names_to_add, container_type):
             len(names_to_add), len(tuple_type_to_name)))
   naming_lambda_arg = building_blocks.Reference('x', tuple_type_to_name)
 
-  def _create_tuple_element(i):
+  def _create_struct_element(i):
     return (names_to_add[i],
             building_blocks.Selection(naming_lambda_arg, index=i))
 
   named_result = building_blocks.Tuple(
-      [_create_tuple_element(k) for k in range(len(names_to_add))],
+      [_create_struct_element(k) for k in range(len(names_to_add))],
       container_type)
   return building_blocks.Lambda('x', naming_lambda_arg.type_signature,
                                 named_result)
@@ -1815,12 +1815,12 @@ def create_zip(
 def _check_generic_operator_type(type_spec):
   """Checks that `type_spec` can be the signature of args to a generic op."""
   if not type_analysis.contains_only(
-      type_spec, lambda t: t.is_federated() or t.is_tuple() or t.is_tensor()):
+      type_spec, lambda t: t.is_federated() or t.is_struct() or t.is_tensor()):
     raise TypeError(
         'Generic operators are only implemented for arguments both containing '
         'only federated, tuple and tensor types; you have passed an argument '
         'of type {} '.format(type_spec))
-  if not (type_spec.is_tuple() and len(type_spec) == 2):
+  if not (type_spec.is_struct() and len(type_spec) == 2):
     raise TypeError(
         'We are trying to construct a generic operator declaring argument that '
         'is not a two-tuple, the type {}.'.format(type_spec))
@@ -1901,8 +1901,8 @@ def apply_binary_operator_with_upcast(
   py_typecheck.check_callable(operator)
   if arg.type_signature.is_federated():
     tuple_type = arg.type_signature.member
-    assert tuple_type.is_tuple()
-  elif arg.type_signature.is_tuple():
+    assert tuple_type.is_struct()
+  elif arg.type_signature.is_struct():
     tuple_type = arg.type_signature
   else:
     raise TypeError(

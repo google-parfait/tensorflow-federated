@@ -81,7 +81,7 @@ class ExecutorMock(mock.MagicMock, executor_base.Executor):
   def create_selection(self, *args):
     pass
 
-  def create_tuple(self, *args):
+  def create_struct(self, *args):
     pass
 
   def close(self, *args):

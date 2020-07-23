@@ -34,7 +34,7 @@ class FakeEx(executor_base.Executor):
   async def create_call(self, comp, arg=None):
     raise NotImplementedError
 
-  async def create_tuple(self, elements):
+  async def create_struct(self, elements):
     raise NotImplementedError
 
   async def create_selection(self, source, index=None, name=None):

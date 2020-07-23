@@ -168,7 +168,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
             return True
     elif comp.is_selection():
       return self._passes_test_or_block(comp.source)
-    elif comp.is_tuple():
+    elif comp.is_struct():
       return any(self._passes_test_or_block(e) for e in comp)
     return False
 
@@ -312,7 +312,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
       comp = self._extract_from_lambda(comp)
     elif comp.is_selection():
       comp = self._extract_from_selection(comp)
-    elif comp.is_tuple():
+    elif comp.is_struct():
       comp = self._extract_from_tuple(comp)
     return comp, True
 
@@ -452,18 +452,18 @@ class InlineSelectionsFromTuples(transformation_utils.TransformSpec):
     super().__init__(global_transform=True)
 
   def should_transform(self, comp, symbol_tree):
-    if comp.is_selection() and comp.source.is_tuple():
+    if comp.is_selection() and comp.source.is_struct():
       return True
     elif comp.is_selection() and comp.source.is_reference():
       resolved = symbol_tree.get_payload_with_name(comp.source.name)
       return (resolved is not None and resolved.value is not None and
-              resolved.value.is_tuple())
+              resolved.value.is_struct())
     return False
 
   def transform(self, comp, symbol_tree):
     if not self.should_transform(comp, symbol_tree):
       return comp, False
-    if comp.source.is_tuple():
+    if comp.source.is_struct():
       tup = comp.source
     else:
       tup = symbol_tree.get_payload_with_name(comp.source.name).value
@@ -777,7 +777,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     self._uri = uri
 
   def should_transform(self, comp):
-    return (comp.is_tuple() and comp and
+    return (comp.is_struct() and comp and
             building_block_analysis.is_called_intrinsic(comp[0], self._uri) and
             all(
                 building_block_analysis.is_called_intrinsic(
@@ -874,7 +874,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     functions = building_blocks.Tuple(comps)
     fn_name = next(self._name_generator)
     fn_ref = building_blocks.Reference(fn_name, functions.type_signature)
-    if type_signature.parameter.is_tuple():
+    if type_signature.parameter.is_struct():
       arg_type = [[] for _ in range(len(type_signature.parameter))]
       for functional_comp in comps:
         named_type_signatures = anonymous_tuple.to_elements(
@@ -885,7 +885,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       arg_type = [e.type_signature.parameter for e in comps]
     arg_name = next(self._name_generator)
     arg_ref = building_blocks.Reference(arg_name, arg_type)
-    if type_signature.parameter.is_tuple():
+    if type_signature.parameter.is_struct():
       arg = building_block_factory.create_zip(arg_ref)
     else:
       arg = arg_ref
@@ -915,7 +915,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       A `building_blocks.ComputationBuildingBlock` representing the
       transformed arguments from `comp`.
     """
-    if type_signature.is_tuple():
+    if type_signature.is_struct():
       comps = [[] for _ in range(len(type_signature))]
       for _, call in anonymous_tuple.iter_elements(comp):
         for index, arg in enumerate(call.argument):
@@ -964,7 +964,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
 
   def _create_merged_parameter_for_functional_type(self, param_types,
                                                    type_signature):
-    if type_signature.parameter.is_tuple():
+    if type_signature.parameter.is_struct():
       parameter_types = [[] for _ in range(len(type_signature.parameter))]
       for functional_type in param_types:
         named_type_signatures = anonymous_tuple.to_elements(
@@ -1003,7 +1003,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       An instance of `computation_types.Type` representing the concrete
       parameter type of the merged intrinsic.
     """
-    if type_signature.is_tuple():
+    if type_signature.is_struct():
       packed_param_types = [[] for _ in range(len(type_signature))]
       for _, call in anonymous_tuple.iter_elements(comp):
         for index, parameter_type in enumerate(
@@ -1315,7 +1315,7 @@ class ReplaceSelectionFromTuple(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return comp.is_selection() and comp.source.is_tuple()
+    return comp.is_selection() and comp.source.is_struct()
 
   def _get_index_from_name(self, selection_name, tuple_type_signature):
     named_type_signatures = anonymous_tuple.to_elements(tuple_type_signature)
@@ -1472,7 +1472,7 @@ def resolve_higher_order_functions(
       # No need to re-traverse, this cannot break the desired invariant of the
       # top-level function.
       return new_block, True
-    elif resolved_source.is_tuple():
+    elif resolved_source.is_struct():
       if sel.index is not None:
         return resolved_source[sel.index], True
       else:
@@ -1828,7 +1828,7 @@ def insert_called_tf_identity_at_leaves(comp):
 
   def _decorate_if_reference_without_graph(comp):
     """Decorates references under `comp` if necessary."""
-    if (comp.is_tuple() and any(_should_decorate(x) for x in comp)):
+    if (comp.is_struct() and any(_should_decorate(x) for x in comp)):
       elems = []
       for x in anonymous_tuple.iter_elements(comp):
         if _should_decorate(x[1]):
@@ -2116,7 +2116,7 @@ def unwrap_placement(comp):
             comp.function.parameter_name and
             comp.function.result.function.source.is_reference() and
             comp.function.result.function.source.name ==
-            comp.function.parameter_name and comp.argument.is_tuple())
+            comp.function.parameter_name and comp.argument.is_struct())
         if map_removed:
           return building_blocks.Call(comp.argument[0], comp.argument[1])
       return comp

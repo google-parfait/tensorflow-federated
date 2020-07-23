@@ -364,12 +364,12 @@ class IsValidBitwidthTypeForValueType(parameterized.TestCase):
       ('single int',
        computation_types.TensorType(tf.int32),
        computation_types.TensorType(tf.int32)),
-      ('tuple',
-       computation_types.NamedTupleType([tf.int32, tf.int32]),
-       computation_types.NamedTupleType([tf.int32, tf.int32])),
-      ('named tuple',
-       computation_types.NamedTupleType([('x', tf.int32)]),
-       computation_types.NamedTupleType([('x', tf.int32)])),
+      ('struct',
+       computation_types.StructType([tf.int32, tf.int32]),
+       computation_types.StructType([tf.int32, tf.int32])),
+      ('struct with named fields',
+       computation_types.StructType([('x', tf.int32)]),
+       computation_types.StructType([('x', tf.int32)])),
       ('single int for complex tensor',
        computation_types.TensorType(tf.int32),
        computation_types.TensorType(tf.int32, [5, 97, 204])),
@@ -385,18 +385,18 @@ class IsValidBitwidthTypeForValueType(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('single int_for_tuple',
+      ('single int_for_struct',
        computation_types.TensorType(tf.int32),
-       computation_types.NamedTupleType([tf.int32, tf.int32])),
-      ('miscounted tuple',
-       computation_types.NamedTupleType([tf.int32, tf.int32, tf.int32]),
-       computation_types.NamedTupleType([tf.int32, tf.int32])),
-      ('miscounted tuple 2',
-       computation_types.NamedTupleType([tf.int32, tf.int32]),
-       computation_types.NamedTupleType([tf.int32, tf.int32, tf.int32])),
-      ('misnamed tuple',
-       computation_types.NamedTupleType([('x', tf.int32)]),
-       computation_types.NamedTupleType([('y', tf.int32)])),
+       computation_types.StructType([tf.int32, tf.int32])),
+      ('miscounted struct',
+       computation_types.StructType([tf.int32, tf.int32, tf.int32]),
+       computation_types.StructType([tf.int32, tf.int32])),
+      ('miscounted struct 2',
+       computation_types.StructType([tf.int32, tf.int32]),
+       computation_types.StructType([tf.int32, tf.int32, tf.int32])),
+      ('misnamed struct',
+       computation_types.StructType([('x', tf.int32)]),
+       computation_types.StructType([('y', tf.int32)])),
   )
   # pyformat: enable
   def test_returns_false(self, bitwidth_type, value_type):
@@ -411,21 +411,20 @@ class IsAnonTupleWithPyContainerTest(absltest.TestCase):
     value = anonymous_tuple.AnonymousTuple([('a', 0.0)])
     type_spec = computation_types.NamedTupleTypeWithPyContainerType(
         [('a', tf.float32)], dict)
-    self.assertTrue(
-        type_analysis.is_anon_tuple_with_py_container(value, type_spec))
+    self.assertTrue(type_analysis.is_struct_with_py_container(value, type_spec))
 
   def test_returns_false_with_none_value(self):
     value = None
     type_spec = computation_types.NamedTupleTypeWithPyContainerType(
         [('a', tf.float32)], dict)
     self.assertFalse(
-        type_analysis.is_anon_tuple_with_py_container(value, type_spec))
+        type_analysis.is_struct_with_py_container(value, type_spec))
 
   def test_returns_false_with_named_tuple_type_spec(self):
     value = anonymous_tuple.AnonymousTuple([('a', 0.0)])
     type_spec = computation_types.NamedTupleType([('a', tf.float32)])
     self.assertFalse(
-        type_analysis.is_anon_tuple_with_py_container(value, type_spec))
+        type_analysis.is_struct_with_py_container(value, type_spec))
 
 
 class IsConcreteInstanceOf(absltest.TestCase):
@@ -596,7 +595,7 @@ def _convert_sequence_to_tensor(type_spec):
 
 
 def _convert_tuple_to_tensor(type_spec):
-  if type_spec.is_tuple():
+  if type_spec.is_struct():
     return computation_types.TensorType(tf.float32), True
   return type_spec, False
 

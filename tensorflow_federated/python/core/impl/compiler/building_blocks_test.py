@@ -16,7 +16,7 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -84,17 +84,17 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(x0)
     self._serialize_deserialize_roundtrip_test(x1)
 
-  def test_basic_functionality_of_tuple_class(self):
+  def test_basic_functionality_of_struct_class(self):
     x = building_blocks.Reference('foo', tf.int32)
     y = building_blocks.Reference('bar', tf.bool)
-    z = building_blocks.Tuple([x, ('y', y)])
+    z = building_blocks.Struct([x, ('y', y)])
     with self.assertRaises(ValueError):
-      _ = building_blocks.Tuple([('', y)])
-    self.assertIsInstance(z, anonymous_tuple.AnonymousTuple)
+      _ = building_blocks.Struct([('', y)])
+    self.assertIsInstance(z, structure.Struct)
     self.assertEqual(str(z.type_signature), '<int32,y=bool>')
     self.assertEqual(
         repr(z),
-        'Tuple([(None, Reference(\'foo\', TensorType(tf.int32))), (\'y\', '
+        'Struct([(None, Reference(\'foo\', TensorType(tf.int32))), (\'y\', '
         'Reference(\'bar\', TensorType(tf.bool)))])')
     self.assertEqual(z.compact_representation(), '<foo,y=bar>')
     self.assertEqual(dir(z), ['y'])
@@ -107,18 +107,18 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     z_proto = z.proto
     self.assertEqual(
         type_serialization.deserialize_type(z_proto.type), z.type_signature)
-    self.assertEqual(z_proto.WhichOneof('computation'), 'tuple')
-    self.assertEqual([e.name for e in z_proto.tuple.element], ['', 'y'])
+    self.assertEqual(z_proto.WhichOneof('computation'), 'struct')
+    self.assertEqual([e.name for e in z_proto.struct.element], ['', 'y'])
     self._serialize_deserialize_roundtrip_test(z)
 
-  def test_tuple_with_container_type(self):
+  def test_struct_with_container_type(self):
     x = building_blocks.Reference('foo', tf.int32)
     y = building_blocks.Reference('bar', tf.bool)
-    z = building_blocks.Tuple([x, ('y', y)], tuple)
+    z = building_blocks.Struct([x, ('y', y)], tuple)
     self.assertEqual(
         z.type_signature,
-        computation_types.NamedTupleTypeWithPyContainerType(
-            [tf.int32, ('y', tf.bool)], tuple))
+        computation_types.StructWithPythonType([tf.int32, ('y', tf.bool)],
+                                               tuple))
 
   def test_basic_functionality_of_call_class(self):
     x = building_blocks.Reference(
@@ -247,7 +247,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
           intrinsic_defs.GENERIC_PLUS.uri,
           computation_types.FunctionType([tf.int32, tf.int32], tf.float32))
 
-  def test_intrinsic_class_fails_named_tuple_type_with_names(self):
+  def test_intrinsic_class_fails_struct_type_with_names(self):
     with self.assertRaises(TypeError):
       _ = building_blocks.Intrinsic(
           intrinsic_defs.GENERIC_PLUS.uri,
@@ -261,7 +261,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     federated_result = computation_types.FederatedType(
         simple_function.result, placement_literals.CLIENTS)
     federated_map_concrete_type = computation_types.FunctionType(
-        computation_types.NamedTupleType((simple_function, federated_arg)),
+        computation_types.StructType((simple_function, federated_arg)),
         federated_result)
     concrete_federated_map = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_MAP.uri, federated_map_concrete_type)
@@ -339,8 +339,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     reserialized = deserialized.proto
     self.assertEqual(str(serialized), str(reserialized))
     # Note: This is not an equality comparison because ser/de is not an identity
-    # transform: it will drop the container from
-    # `NamedTupleTypeWithPyContainerType`.
+    # transform: it will drop the container from `StructWithPythonType`.
     target.type_signature.check_assignable_from(deserialized.type_signature)
 
 
@@ -483,9 +482,9 @@ class RepresentationTest(absltest.TestCase):
     )
     # pyformat: enable
 
-  def test_returns_string_for_tuple_with_names(self):
+  def test_returns_string_for_struct_with_names(self):
     data = building_blocks.Data('data', tf.int32)
-    comp = building_blocks.Tuple([('a', data), ('b', data)])
+    comp = building_blocks.Struct([('a', data), ('b', data)])
 
     self.assertEqual(comp.compact_representation(), '<a=data,b=data>')
     # pyformat: disable
@@ -498,15 +497,15 @@ class RepresentationTest(absltest.TestCase):
     )
     self.assertEqual(
         comp.structural_representation(),
-        'Tuple\n'
+        'Struct\n'
         '|\n'
         '[a=data, b=data]'
     )
     # pyformat: enable
 
-  def test_returns_string_for_tuple_with_no_names(self):
+  def test_returns_string_for_struct_with_no_names(self):
     data = building_blocks.Data('data', tf.int32)
-    comp = building_blocks.Tuple([data, data])
+    comp = building_blocks.Struct([data, data])
 
     self.assertEqual(comp.compact_representation(), '<data,data>')
     # pyformat: disable
@@ -519,21 +518,21 @@ class RepresentationTest(absltest.TestCase):
     )
     self.assertEqual(
         comp.structural_representation(),
-        'Tuple\n'
+        'Struct\n'
         '|\n'
         '[data, data]'
     )
     # pyformat: enable
 
-  def test_returns_string_for_tuple_with_no_elements(self):
-    comp = building_blocks.Tuple([])
+  def test_returns_string_for_struct_with_no_elements(self):
+    comp = building_blocks.Struct([])
 
     self.assertEqual(comp.compact_representation(), '<>')
     self.assertEqual(comp.formatted_representation(), '<>')
     # pyformat: disable
     self.assertEqual(
         comp.structural_representation(),
-        'Tuple\n'
+        'Struct\n'
         '|\n'
         '[]'
     )
@@ -563,7 +562,7 @@ class RepresentationTest(absltest.TestCase):
         comp.structural_representation(),
         '                    Call\n'
         '                   /    \\\n'
-        'federated_aggregate      Tuple\n'
+        'federated_aggregate      Struct\n'
         '                         |\n'
         '                         [data, data, Lambda(a), Lambda(b), Lambda(c)]\n'
         '                                      |          |          |\n'
@@ -588,7 +587,7 @@ class RepresentationTest(absltest.TestCase):
         comp.structural_representation(),
         '              Call\n'
         '             /    \\\n'
-        'federated_map      Tuple\n'
+        'federated_map      Struct\n'
         '                   |\n'
         '                   [Lambda(a), data]\n'
         '                    |\n'
@@ -620,7 +619,7 @@ class RepresentationTest(absltest.TestCase):
   def test_returns_string_for_comp_with_right_overhang(self):
     ref = building_blocks.Reference('a', tf.int32)
     data = building_blocks.Data('data', tf.int32)
-    tup = building_blocks.Tuple([ref, data, data, data, data])
+    tup = building_blocks.Struct([ref, data, data, data, data])
     sel = building_blocks.Selection(tup, index=0)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, sel)
     comp = building_blocks.Call(fn, data)
@@ -646,7 +645,7 @@ class RepresentationTest(absltest.TestCase):
         '|\n'
         'Sel(0)\n'
         '|\n'
-        'Tuple\n'
+        'Struct\n'
         '|\n'
         '[Ref(a), data, data, data, data]'
     )

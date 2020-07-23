@@ -24,8 +24,8 @@ import "google/protobuf/any.proto";
 message Computation {
   // The type of what's represented by this structure, which may be functional
   // or non-functional. If it is a TensorFlow block or a lambda expression,
-  // the type will be functional. If it is a Tuple, or a Call that returns a
-  // tensor or a tuple in the result, the type will be non-functional.
+  // the type will be functional. If it is a Struct, or a Call that returns a
+  // tensor or a Struct in the result, the type will be non-functional.
   //
   // A Call is a typical way to represent an invocation of a top-level federated
   // computation with all its parameters fully specified. Thus, a top-level
@@ -72,12 +72,12 @@ message Computation {
   //                     function=Computation(
   //                         intrinsic=Intrinsic(uri='federated_map')),
   //                     argument=Computation(
-  //                         tuple=Tuple(element=[
-  //                             Tuple.Element(
+  //                         struct=Struct(element=[
+  //                             Struct.Element(
   //                                 value=Computation(
   //                                     reference=Reference(
   //                                         name='local_eval'))),
-  //                             Tuple.Element(
+  //                             Struct.Element(
   //                                 value=Computation(
   //                                     reference=Reference(
   //                                         name='local_client_model')))
@@ -147,12 +147,12 @@ message Computation {
     // T to a function of type T -> T' has type T'.
     Call call = 7;
 
-    // A named tuple is explicitly constructed from individual member values.
-    Tuple tuple = 8;
+    // A struct is explicitly constructed from individual member values.
+    Struct struct = 8;
 
     // A selection by name or index from the result of another expression that
-    // returns a named tuple. The type of the selection matches the type of the
-    // tuple element being selected (known statically, as the name or index is
+    // returns a Struct. The type of the selection matches the type of the
+    // Struct element being selected (known statically, as the name or index is
     // known statically, rather than computed).
     //
     // Note: In higher layers of the API, we will offer convenience mechanisms
@@ -160,7 +160,7 @@ message Computation {
     // federated type "{<foo=int, bar=string>}@clients", we will allow notation
     // such as "x.foo" as a convenient shortcut for a pointwise selection that
     // might be written as "federated_map(x, y->y.foo)" in a more complete form
-    // even though "x" is technically not a tuple. Here at the level of
+    // even though "x" is technically not a Struct. Here at the level of
     // the Computation proto, however, we will represent computations in their
     // fully fleshed-out form, with map and other implicit operators already
     // injected at construction time by the framework as it translates a Python
@@ -186,12 +186,12 @@ message Computation {
 // limitations on nesting are as follows:
 // - FederatedType and FunctionType cannot be nested within a FederatedType or
 //   within a SequenceType. Currently, these may only be nested within a
-//   NamedTupleType.
+//   StructType.
 // - A SequenceType currently cannot be nested within another SequenceType.
 message Type {
   oneof type {
     FunctionType function = 1;
-    NamedTupleType tuple = 2;
+    StructType struct = 2;
     SequenceType sequence = 3;
     TensorType tensor = 4;
     AbstractType abstract = 5;
@@ -202,7 +202,7 @@ message Type {
 
 // A representation of a functional type. Functions must have at most a single
 // parameter and a single result. Multiple parameters or results to be modeled
-// as compound types (e.g., as named tuples). Note that since functions accept
+// as compound types (e.g., as Structs). Note that since functions accept
 // generic types, one can declare functions as parameters or results of other
 // functions. We may not support functions as first-class values directly in
 // the API surface, but the ability to express this is useful in defining type
@@ -215,16 +215,16 @@ message FunctionType {
   Type result = 2;
 }
 
-// A representation of a type of a named tuple. A named tuple is a compound type
+// A representation of a type of a struct. A struct is a compound type
 // based on a similar type in Python that defines a finite set of named members,
 // the types of which are known statically, that are arranged in a prescribed
-// order and can be referred to by their position within the tuple. Note that
-// besides named tuples, this abstract type can also be used to represent dicts,
+// order and can be referred to by their position within the Struct. Note that
+// besides structs, this abstract type can also be used to represent dicts,
 // OrderedDicts, and regular tuples in Python.
-// Concise syntax for examples of tuple types: "T_i" or "name_i=T_i" separated
+// Concise syntax for examples of struct types: "T_i" or "name_i=T_i" separated
 // by commas and optionally enclosed in "<>" (e.g., "<bool, foo=string>"),
 // where name_i is the optional name, and T_i is the type of i-th element.
-message NamedTupleType {
+message StructType {
   repeated Element element = 1;
   message Element {
     string name = 1;
@@ -477,12 +477,12 @@ message PlacementType {
   //
   // federated_broadcast: T, p: placement -> T@p
   //
-  // The type specification of the 2nd element of the broadcast argument tuple
+  // The type specification of the 2nd element of the broadcast argument Struct
   // would be PlacementType(instance_label=PlacementLabel(label='p')). Here, the
   // type of the second element is still simply "placement"; as noted above,
   // there is only one such built-in type to represent all sorts of collectives.
   // The presence of the label only associates 'p' with the value of the second
-  // element of the parameter tuple. On the right side, the pecification of the
+  // element of the parameter Struct. On the right side, the pecification of the
   // federated result type contains Placement(label=PlacementLabel(label='p')),
   // thus binding the placement of the result to the value in the argument. When
   // comparing types, the presence of this label is ignored.
@@ -492,7 +492,7 @@ message PlacementType {
 // A representation of a section of TensorFlow code.
 //
 // The type signature associated with this type of computation must be defined
-// only in terms of tensors, tuples, and sequences. Sequences cannot be nested.
+// only in terms of tensors, Structs, and sequences. Sequences cannot be nested.
 //
 // At the moment, we only allow sequences as a parameters (note that pointwise
 // transformations of sequences can still be expressed using a map intrinsic).
@@ -563,9 +563,9 @@ message TensorFlow {
   // the type signature.
   message Binding {
     oneof binding {
-      // A binding associated with a tuple in the type signature. Specifies an
-      // individual binding for each element of the tuple.
-      NamedTupleBinding tuple = 1;
+      // A binding associated with a struct in the type signature. Specifies an
+      // individual binding for each element of the struct.
+      StructBinding struct = 1;
 
       // A binding associated with a (logical) tensor in the type signature.
       // Associates that tensor to one or more (concrete) tensors in the graph.
@@ -578,13 +578,13 @@ message TensorFlow {
     }
   }
 
-  // A binding of a named tuple declared in the type signature to parts of the
+  // A binding of a Struct declared in the type signature to parts of the
   // embedded TensorFlow graph.
-  message NamedTupleBinding {
-    // Bindings for elements of the tuple. The number of elements in this field
-    // must be equal to the number of tuple elements declared in the type
+  message StructBinding {
+    // Bindings for elements of the Struct. The number of elements in this field
+    // must be equal to the number of Struct elements declared in the type
     // signature, with the k-th binding declared here corresponding to the k-th
-    // tuple element in the type signature. The element names are omitted since
+    // Struct element in the type signature. The element names are omitted since
     // they are redundant (correspondence is established by element order).
     repeated Binding element = 1;
   }
@@ -645,7 +645,7 @@ message Intrinsic {
 // Concise syntax for lambdas: "parameter_name -> comp" where "comp" represents
 // a parameterized computation that produces the result, or in the more general
 // form "parameter_name : T -> comp" to indicate that parameter is of type "T".
-// For example, a lambda that takes a 2-tuple of an unary operator and an
+// For example, a lambda that takes a 2-Struct of an unary operator and an
 // integer as input, and returns the result of calling the unary operator
 // on the integer, can be written as "x -> x[0](x[1])", or in the full form with
 // type annotation as "x: <(int->int), arg=int> -> x[0](x[1])".
@@ -760,13 +760,13 @@ message Call {
   Computation argument = 2;
 }
 
-// A representation of a named tuple constructor.
+// A representation of a Struct constructor.
 //
-// The concise representation of a tuple constructor is "<>"-enclosed and
+// The concise representation of a Struct constructor is "<>"-enclosed and
 // comma-separated list of value or "name=value" sections, for example "<1,2>"
 // or "<foo=1,bar=2>".
-message Tuple {
-  // The ordering of tuple elements is significant, and determines the type of
+message Struct {
+  // The ordering of Struct elements is significant, and determines the type of
   // the value represented by the expression. The names are optional.
   repeated Element element = 1;
   message Element {
@@ -775,22 +775,22 @@ message Tuple {
   }
 }
 
-// A representation of a value selected from a named tuple returned by another
+// A representation of a value selected from a Struct returned by another
 // computation.
 //
 // The concise representation of a selection is "x[index]" for positional
 // selection, and "x.name" for name-based selection, where "x" represents the
 // source from which to select. For example, in lambda "x -> x[0](x[1])", where
-// "x[0]" and "x[1]" both represent selections of named members from the named
-// tuple "x", respectively.
+// "x[0]" and "x[1]" both represent selections of named members from the STruct
+// "x", respectively.
 message Selection {
   // The source of selection, always required. This is a computation that
-  // returns a named tuple (possibly nested), from which to select an element
+  // returns a Struct (possibly nested), from which to select an element
   // by name or by index.
   Computation source = 1;
 
-  // A specification of what to select from the context (named tuple). Indexes,
-  // when applied to named tuples, are 0-based, i.e., "[0]" selects the first
+  // A specification of what to select from the context (Struct). Indexes,
+  // when applied to Structs, are 0-based, i.e., "[0]" selects the first
   // element.
   oneof selection {
     string name = 2;
@@ -801,8 +801,8 @@ message Selection {
 // A specification of an external source of data to be used by a computation.
 //
 // Data streams are curently expected to always be nested structures composed
-// of sequences, named tuples, and tensor types. Sequences cannot be nested.
-// Named tuples may appear at the outer level (to return multiple sequences,
+// of sequences, Structs, and tensor types. Sequences cannot be nested.
+// Structs may appear at the outer level (to return multiple sequences,
 // e.g., training and testing samples), or at the element level (if sequences
 // contain structured elements, e.g., examples already parsed into individual
 // features).

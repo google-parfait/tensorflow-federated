@@ -63,14 +63,14 @@ def _federated_reduce_with_func(value, tf_func, zeros):
   @computations.tf_computation(value.type_signature.member,
                                value.type_signature.member)
   def accumulate(current, value):
-    if member_type.is_tuple():
+    if member_type.is_struct():
       return anonymous_tuple.map_structure(tf_func, current, value)
     return tf.nest.map_structure(tf_func, current, value)
 
   @computations.tf_computation(value.type_signature.member,
                                value.type_signature.member)
   def merge(a, b):
-    if member_type.is_tuple():
+    if member_type.is_struct():
       return anonymous_tuple.map_structure(tf_func, a, b)
     return tf.nest.map_structure(tf_func, a, b)
 
@@ -96,7 +96,7 @@ def _initial_values(initial_value_fn, member_type):
 
   @computations.tf_computation
   def zeros_fn():
-    if member_type.is_tuple():
+    if member_type.is_struct():
       anonymous_tuple.map_structure(
           lambda v: _validate_dtype_is_numeric(v.dtype), member_type)
       return anonymous_tuple.map_structure(
@@ -169,7 +169,7 @@ def _zeros_for_sample(member_type):
   def accumlator_type_fn():
     """Gets the type for the accumulators."""
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
-    if member_type.is_tuple():
+    if member_type.is_struct():
       a = anonymous_tuple.map_structure(
           lambda v: tf.zeros([0] + v.shape.dims, v.dtype), member_type)
       return _Samples(
@@ -195,7 +195,7 @@ def _get_accumulator_type(member_type):
     lists are used to sample from the accumulators with equal probability.
   """
   # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
-  if member_type.is_tuple():
+  if member_type.is_struct():
     a = anonymous_tuple.map_structure(
         lambda v: computation_types.TensorType(v.dtype, [None] + v.shape.dims),
         member_type)
@@ -260,7 +260,7 @@ def federated_sample(value, max_num_samples=100):
     k = tf.minimum(size, max_num_samples)
     indices = tf.math.top_k(rands, k=k).indices
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
-    if member_type.is_tuple():
+    if member_type.is_struct():
       return anonymous_tuple.map_structure(lambda v: fed_gather(v, indices),
                                            accumulators), fed_gather(
                                                rands, indices)
@@ -271,7 +271,7 @@ def federated_sample(value, max_num_samples=100):
     """Accumulates samples through concatenation."""
     rands = fed_concat_expand_dims(current.rands, tf.random.uniform(shape=()))
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
-    if member_type.is_tuple():
+    if member_type.is_struct():
       accumulators = anonymous_tuple.map_structure(
           fed_concat_expand_dims, _ensure_anonymous_tuple(current.accumulators),
           _ensure_anonymous_tuple(value))
@@ -285,7 +285,7 @@ def federated_sample(value, max_num_samples=100):
   def merge(a, b):
     """Merges accumulators through concatenation."""
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
-    if accumulator_type.is_tuple():
+    if accumulator_type.is_struct():
       samples = anonymous_tuple.map_structure(fed_concat,
                                               _ensure_anonymous_tuple(a),
                                               _ensure_anonymous_tuple(b))

@@ -221,8 +221,8 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
       (anonymous_tuple.AnonymousTuple([(None, 1), ('a', 2)]), True),
       (anonymous_tuple.AnonymousTuple([('a', 1), (None, 2)]), False))
   # pyformat: enable
-  def test_is_argument_tuple(self, arg, expected_result):
-    self.assertEqual(function_utils.is_argument_tuple(arg), expected_result)
+  def test_is_argument_struct(self, arg, expected_result):
+    self.assertEqual(function_utils.is_argument_struct(arg), expected_result)
 
   # pyformat: disable
   @parameterized.parameters(
@@ -232,7 +232,7 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
   def test_unpack_args_from_anonymous_tuple(self, tuple_with_args,
                                             expected_args, expected_kwargs):
     self.assertEqual(
-        function_utils.unpack_args_from_tuple(tuple_with_args),
+        function_utils.unpack_args_from_struct(tuple_with_args),
         (expected_args, expected_kwargs))
 
   # pyformat: disable
@@ -243,9 +243,9 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
       ([tf.int32, ('b', tf.bool)], [tf.int32], {'b': tf.bool}),
       ([('a', tf.int32), ('b', tf.bool)], [], {'a': tf.int32, 'b': tf.bool}))
   # pyformat: enable
-  def test_unpack_args_from_tuple_type(self, tuple_with_args, expected_args,
-                                       expected_kwargs):
-    args, kwargs = function_utils.unpack_args_from_tuple(tuple_with_args)
+  def test_unpack_args_from_struct_type(self, tuple_with_args, expected_args,
+                                        expected_kwargs):
+    args, kwargs = function_utils.unpack_args_from_struct(tuple_with_args)
     self.assertEqual(len(args), len(expected_args))
     for idx, arg in enumerate(args):
       self.assertTrue(
@@ -255,12 +255,12 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
       self.assertTrue(
           v.is_equivalent_to(computation_types.to_type(expected_kwargs[k])))
 
-  def test_pack_args_into_anonymous_tuple_without_type_spec(self):
+  def test_pack_args_into_struct_without_type_spec(self):
     self.assertEqual(
-        function_utils.pack_args_into_anonymous_tuple([1], {'a': 10}),
+        function_utils.pack_args_into_struct([1], {'a': 10}),
         anonymous_tuple.AnonymousTuple([(None, 1), ('a', 10)]))
     self.assertIn(
-        function_utils.pack_args_into_anonymous_tuple([1, 2], {
+        function_utils.pack_args_into_struct([1, 2], {
             'a': 10,
             'b': 20
         }), [
@@ -278,7 +278,7 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
             ])
         ])
     self.assertIn(
-        function_utils.pack_args_into_anonymous_tuple([], {
+        function_utils.pack_args_into_struct([], {
             'a': 10,
             'b': 20
         }), [
@@ -286,7 +286,7 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
             anonymous_tuple.AnonymousTuple([('b', 20), ('a', 10)])
         ])
     self.assertEqual(
-        function_utils.pack_args_into_anonymous_tuple([1], {}),
+        function_utils.pack_args_into_struct([1], {}),
         anonymous_tuple.AnonymousTuple([(None, 1)]))
 
   # pyformat: disable
@@ -303,11 +303,11 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
        [('x', tf.int32), ('y', tf.bool)],
        [('x', 1), ('y', True)]))
   # pyformat: enable
-  def test_pack_args_into_anonymous_tuple_with_type_spec_expect_success(
+  def test_pack_args_into_struct_with_type_spec_expect_success(
       self, args, kwargs, type_spec, elements):
     self.assertEqual(
-        function_utils.pack_args_into_anonymous_tuple(
-            args, kwargs, type_spec, NoopIngestContextForTest()),
+        function_utils.pack_args_into_struct(args, kwargs, type_spec,
+                                             NoopIngestContextForTest()),
         anonymous_tuple.AnonymousTuple(elements))
 
   # pyformat: disable
@@ -315,11 +315,11 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
       ([1], {}, [(tf.bool)]),
       ([], {'x': 1, 'y': True}, [(tf.int32), (tf.bool)]))
   # pyformat: enable
-  def test_pack_args_into_anonymous_tuple_with_type_spec_expect_failure(
+  def test_pack_args_into_struct_with_type_spec_expect_failure(
       self, args, kwargs, type_spec):
     with self.assertRaises(TypeError):
-      function_utils.pack_args_into_anonymous_tuple(args, kwargs, type_spec,
-                                                    NoopIngestContextForTest())
+      function_utils.pack_args_into_struct(args, kwargs, type_spec,
+                                           NoopIngestContextForTest())
 
   # pyformat: disable
   @parameterized.parameters(

@@ -65,7 +65,7 @@ def finalize_binding(binding, tensor_info_map):
           'Did not find tensor_name {} in provided tensor_info_map with keys {}'
           .format(name, list(tensor_info_map.keys())))
     binding.tensor_name = tensor_info_map[name].name
-  elif isinstance(binding, pb.TensorFlow.NamedTupleBinding):
+  elif isinstance(binding, pb.TensorFlow.StructBinding):
     for sub_binding in binding.element:
       finalize_binding(sub_binding, tensor_info_map)
   else:

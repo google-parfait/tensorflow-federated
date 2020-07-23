@@ -468,7 +468,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     comp = self.run_sync(executor.create_value(comp, comp_type))
     elements = [self.run_sync(executor.create_value(*x)) for x in args]
     if len(elements) > 1:
-      arg = self.run_sync(executor.create_tuple(elements))
+      arg = self.run_sync(executor.create_struct(elements))
     else:
       arg = elements[0]
     result = self.run_sync(executor.create_call(comp, arg))
@@ -597,7 +597,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     comp = self.run_sync(executor.create_value(comp, comp_type))
     arg_1 = self.run_sync(executor.create_value(arg_1, arg_1_type))
     arg_2 = self.run_sync(executor.create_value(arg_2, arg_2_type))
-    args = self.run_sync(executor.create_tuple([arg_1, arg_2]))
+    args = self.run_sync(executor.create_struct([arg_1, arg_2]))
     with self.assertRaises(NotImplementedError):
       self.run_sync(executor.create_call(comp, args))
 
@@ -616,8 +616,8 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
       self.run_sync(executor.create_call(comp))
 
 
-class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
-                                        parameterized.TestCase):
+class FederatingExecutorCreateStructTest(executor_test_utils.AsyncTestCase,
+                                         parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters([
@@ -637,7 +637,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     element = self.run_sync(executor.create_value(value, type_signature))
     elements = [element] * 3
     type_signature = computation_types.NamedTupleType([type_signature] * 3)
-    result = self.run_sync(executor.create_tuple(elements))
+    result = self.run_sync(executor.create_struct(elements))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
@@ -653,7 +653,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     element = self.run_sync(executor.create_value(value, type_signature))
     elements = [element] * 3
     type_signature = computation_types.NamedTupleType([type_signature] * 3)
-    result = self.run_sync(executor.create_tuple(elements))
+    result = self.run_sync(executor.create_struct(elements))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
@@ -678,7 +678,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     element = self.run_sync(executor.create_call(fn, arg))
     elements = [element] * 3
     type_signature = computation_types.NamedTupleType([fn_type.result] * 3)
-    result = self.run_sync(executor.create_tuple(elements))
+    result = self.run_sync(executor.create_struct(elements))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
@@ -700,7 +700,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
     element = self.run_sync(executor.create_call(fn))
     elements = [element] * 3
     type_signature = computation_types.NamedTupleType([fn_type.result] * 3)
-    result = self.run_sync(executor.create_tuple(elements))
+    result = self.run_sync(executor.create_struct(elements))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
@@ -715,7 +715,7 @@ class FederatingExecutorCreateTupleTest(executor_test_utils.AsyncTestCase,
 
     elements = [element] * 3
     with self.assertRaises(TypeError):
-      self.run_sync(executor.create_tuple(elements))
+      self.run_sync(executor.create_struct(elements))
 
 
 class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
@@ -743,7 +743,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     element = self.run_sync(executor.create_value(element, element_type))
     elements = [element] * 3
     type_signature = computation_types.NamedTupleType([element_type] * 3)
-    source = self.run_sync(executor.create_tuple(elements))
+    source = self.run_sync(executor.create_struct(elements))
     result = self.run_sync(executor.create_selection(source, index=0))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
@@ -778,7 +778,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     elements = anonymous_tuple.AnonymousTuple((n, element) for n in names)
     type_signature = computation_types.NamedTupleType(
         (n, element_type) for n in names)
-    source = self.run_sync(executor.create_tuple(elements))
+    source = self.run_sync(executor.create_struct(elements))
     result = self.run_sync(executor.create_selection(source, name='a'))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
@@ -811,7 +811,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
     element = self.run_sync(executor.create_value(element, element_type))
     elements = [element] * 3
-    source = self.run_sync(executor.create_tuple(elements))
+    source = self.run_sync(executor.create_struct(elements))
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_selection(source))
 

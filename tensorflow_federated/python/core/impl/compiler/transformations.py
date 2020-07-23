@@ -132,7 +132,7 @@ def construct_tensorflow_calling_lambda_on_concrete_arg(
   invoking a function with parameter `parameter` and body `body`, with argument
   `concrete_arg`.
 
-  Via the guarantee made in `compiled_computation_transforms.TupleCalledGraphs`,
+  Via the guarantee made in `compiled_computation_transforms.StructCalledGraphs`
   this function makes the claim that the computations which define
   `concrete_arg` will be executed exactly once in the generated TenosorFlow.
 
@@ -270,7 +270,7 @@ def _check_parameters_for_tf_block_generation(block):
 
   def _check_contains_only_refs_sels_and_tuples(inner_comp):
     if not (inner_comp.is_reference() or inner_comp.is_selection() or
-            inner_comp.is_tuple()):
+            inner_comp.is_struct()):
       raise ValueError(
           'create_tensorflow_representing_block may only be called '
           'on a block whose result contains only Selections, '
@@ -475,7 +475,7 @@ class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
     self._interim_transform = interim_transform_spec
 
   def should_transform(self, comp):
-    return self._interim_transform.should_transform(comp) and comp.is_tuple()
+    return self._interim_transform.should_transform(comp) and comp.is_struct()
 
   def _construct_deduped_tuple_and_selection_map(self, comp):
     deduped_tuple = []
@@ -501,7 +501,7 @@ class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
         comp)
     transform_applied, _ = self._interim_transform.transform(
         building_blocks.Tuple(deduped_tuple))
-    transform_applied.type_signature.check_tuple()
+    transform_applied.type_signature.check_struct()
     if len(comp) == len(deduped_tuple):
       # Fall back if no optimization is made.
       return transform_applied, True
@@ -531,7 +531,7 @@ def dedupe_and_merge_tuple_intrinsics(comp, uri):
   def _remove_selection_from_block_holding_tuple(comp):
     """Reduces selection from a block holding a tuple."""
     if (comp.is_selection() and comp.source.is_block() and
-        comp.source.result.is_tuple()):
+        comp.source.result.is_struct()):
       if comp.index is None:
         names = [
             x[0]

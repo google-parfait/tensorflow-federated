@@ -194,7 +194,7 @@ class IreeExecutor(executor_base.Executor):
   # TODO(b/153499219): Implement tuples and selections below.
 
   @tracing.trace
-  async def create_tuple(self, elements):
+  async def create_struct(self, elements):
     raise NotImplementedError
 
   @tracing.trace

@@ -74,7 +74,7 @@ def transform_type_postorder(
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, (
         type_signature_mutated or parameter_mutated or result_mutated)
-  elif type_signature.is_tuple():
+  elif type_signature.is_struct():
     elements = []
     elements_mutated = False
     for element in anonymous_tuple.iter_elements(type_signature):
@@ -83,11 +83,11 @@ def transform_type_postorder(
       elements_mutated = elements_mutated or element_mutated
       elements.append((element[0], transformed_element))
     if elements_mutated:
-      if type_signature.is_tuple_with_py_container():
-        type_signature = computation_types.NamedTupleTypeWithPyContainerType(
+      if type_signature.is_struct_with_python():
+        type_signature = computation_types.StructWithPythonType(
             elements, type_signature.python_container)
       else:
-        type_signature = computation_types.NamedTupleType(elements)
+        type_signature = computation_types.StructType(elements)
     type_signature, type_signature_mutated = transform_fn(type_signature)
     return type_signature, type_signature_mutated or elements_mutated
   elif type_signature.is_abstract() or type_signature.is_placement(

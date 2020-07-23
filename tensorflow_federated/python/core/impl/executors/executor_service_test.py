@@ -103,7 +103,7 @@ class ExecutorServiceTest(absltest.TestCase):
       async def create_call(self, comp, arg=None):
         raise NotImplementedError
 
-      async def create_tuple(self, elements):
+      async def create_struct(self, elements):
         raise NotImplementedError
 
       async def create_selection(self, source, index=None, name=None):
@@ -223,14 +223,14 @@ class ExecutorServiceTest(absltest.TestCase):
     twenty_ref = response.value_ref
     self.assertEqual(env.get_value(twenty_ref.id), 20)
 
-    response = env.stub.CreateTuple(
-        executor_pb2.CreateTupleRequest(element=[
-            executor_pb2.CreateTupleRequest.Element(
+    response = env.stub.CreateStruct(
+        executor_pb2.CreateStructRequest(element=[
+            executor_pb2.CreateStructRequest.Element(
                 name='a', value_ref=ten_ref),
-            executor_pb2.CreateTupleRequest.Element(
+            executor_pb2.CreateStructRequest.Element(
                 name='b', value_ref=twenty_ref)
         ]))
-    self.assertIsInstance(response, executor_pb2.CreateTupleResponse)
+    self.assertIsInstance(response, executor_pb2.CreateStructResponse)
     tuple_ref = response.value_ref
     self.assertEqual(str(env.get_value(tuple_ref.id)), '<a=10,b=20>')
 

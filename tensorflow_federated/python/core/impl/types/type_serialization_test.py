@@ -63,14 +63,13 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
     ])
     actual_proto = type_serialization.serialize_type(type_signature)
     expected_proto = pb.Type(
-        tuple=pb.NamedTupleType(element=[
-            pb.NamedTupleType.Element(
+        struct=pb.StructType(element=[
+            pb.StructType.Element(
                 name='x', value=_create_scalar_tensor_type(tf.int32)),
-            pb.NamedTupleType.Element(
+            pb.StructType.Element(
                 name='y', value=_create_scalar_tensor_type(tf.string)),
-            pb.NamedTupleType.Element(
-                value=_create_scalar_tensor_type(tf.float32)),
-            pb.NamedTupleType.Element(
+            pb.StructType.Element(value=_create_scalar_tensor_type(tf.float32)),
+            pb.StructType.Element(
                 name='z', value=_create_scalar_tensor_type(tf.bool)),
         ]))
     self.assertEqual(actual_proto, expected_proto)
@@ -82,15 +81,15 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
     actual_proto = type_serialization.serialize_type(type_signature)
 
     def _tuple_type_proto(elements):
-      return pb.Type(tuple=pb.NamedTupleType(element=elements))
+      return pb.Type(struct=pb.StructType(element=elements))
 
-    z_proto = pb.NamedTupleType.Element(
+    z_proto = pb.StructType.Element(
         name='z', value=_create_scalar_tensor_type(tf.bool))
     expected_proto = _tuple_type_proto([
-        pb.NamedTupleType.Element(
+        pb.StructType.Element(
             name='x',
             value=_tuple_type_proto([
-                pb.NamedTupleType.Element(
+                pb.StructType.Element(
                     name='y', value=_tuple_type_proto([z_proto]))
             ]))
     ])
@@ -102,10 +101,10 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
     expected_proto = pb.Type(
         function=pb.FunctionType(
             parameter=pb.Type(
-                tuple=pb.NamedTupleType(element=[
-                    pb.NamedTupleType.Element(
+                struct=pb.StructType(element=[
+                    pb.StructType.Element(
                         value=_create_scalar_tensor_type(tf.int32)),
-                    pb.NamedTupleType.Element(
+                    pb.StructType.Element(
                         value=_create_scalar_tensor_type(tf.int32))
                 ])),
             result=_create_scalar_tensor_type(tf.bool)))

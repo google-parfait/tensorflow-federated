@@ -822,7 +822,7 @@ def _split_by_intrinsics_in_top_level_lambda(comp):
   name, first_local = comp.result.locals[0]
   if building_block_analysis.is_called_intrinsic(first_local):
     result = first_local.argument
-  elif first_local.is_tuple():
+  elif first_local.is_struct():
     elements = []
     for element in first_local:
       if not building_block_analysis.is_called_intrinsic(element):
@@ -1179,21 +1179,21 @@ def select_output_from_lambda(comp, indices):
                           computation_types.NamedTupleType)
   py_typecheck.check_type(indices, (int, tuple, list))
 
-  def _create_selected_output(comp, index, is_tuple_opt):
-    if is_tuple_opt:
+  def _create_selected_output(comp, index, is_struct_opt):
+    if is_struct_opt:
       return comp[index]
     else:
       return building_blocks.Selection(comp, index=index)
 
   result_tuple = comp.result
-  tuple_opt = result_tuple.is_tuple()
+  tuple_opt = result_tuple.is_struct()
   elements = []
   if isinstance(indices, (tuple, list)):
     for x in indices:
       if isinstance(x, (tuple, list)):
         selected_output = result_tuple
         for y in x:
-          tuple_opt = selected_output.is_tuple()
+          tuple_opt = selected_output.is_struct()
           selected_output = _create_selected_output(selected_output, y,
                                                     tuple_opt)
       else:

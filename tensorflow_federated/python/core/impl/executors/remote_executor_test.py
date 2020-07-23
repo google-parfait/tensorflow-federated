@@ -266,10 +266,10 @@ class RemoteExecutorTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       loop.run_until_complete(executor.create_call(comp))
 
-  def test_create_tuple_returns_remote_value(self, mock_stub):
-    response = executor_pb2.CreateTupleResponse()
+  def test_create_struct_returns_remote_value(self, mock_stub):
+    response = executor_pb2.CreateStructResponse()
     instance = mock_stub.return_value
-    instance.CreateTuple = mock.Mock(side_effect=[response])
+    instance.CreateStruct = mock.Mock(side_effect=[response])
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
     type_signature = computation_types.TensorType(tf.int32)
@@ -278,15 +278,15 @@ class RemoteExecutorTest(absltest.TestCase):
     value_2 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                           type_signature, executor)
 
-    result = loop.run_until_complete(executor.create_tuple([value_1, value_2]))
+    result = loop.run_until_complete(executor.create_struct([value_1, value_2]))
 
-    instance.CreateTuple.assert_called_once()
+    instance.CreateStruct.assert_called_once()
     self.assertIsInstance(result, remote_executor.RemoteValue)
 
-  def test_create_tuple_raises_retryable_error_on_grpc_error_unavailable(
+  def test_create_struct_raises_retryable_error_on_grpc_error_unavailable(
       self, mock_stub):
     instance = mock_stub.return_value
-    instance.CreateTuple = mock.Mock(side_effect=_raise_grpc_error_unavailable)
+    instance.CreateStruct = mock.Mock(side_effect=_raise_grpc_error_unavailable)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
     type_signature = computation_types.TensorType(tf.int32)
@@ -296,11 +296,11 @@ class RemoteExecutorTest(absltest.TestCase):
                                           type_signature, executor)
 
     with self.assertRaises(execution_context.RetryableError):
-      loop.run_until_complete(executor.create_tuple([value_1, value_2]))
+      loop.run_until_complete(executor.create_struct([value_1, value_2]))
 
-  def test_create_tuple_reraises_grpc_error(self, mock_stub):
+  def test_create_struct_reraises_grpc_error(self, mock_stub):
     instance = mock_stub.return_value
-    instance.CreateTuple = mock.Mock(
+    instance.CreateStruct = mock.Mock(
         side_effect=_raise_non_retryable_grpc_error)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
@@ -311,13 +311,13 @@ class RemoteExecutorTest(absltest.TestCase):
                                           type_signature, executor)
 
     with self.assertRaises(grpc.RpcError) as context:
-      loop.run_until_complete(executor.create_tuple([value_1, value_2]))
+      loop.run_until_complete(executor.create_struct([value_1, value_2]))
 
     self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
-  def test_create_tuple_reraises_type_error(self, mock_stub):
+  def test_create_struct_reraises_type_error(self, mock_stub):
     instance = mock_stub.return_value
-    instance.CreateTuple = mock.Mock(side_effect=TypeError)
+    instance.CreateStruct = mock.Mock(side_effect=TypeError)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
     type_signature = computation_types.TensorType(tf.int32)
@@ -327,7 +327,7 @@ class RemoteExecutorTest(absltest.TestCase):
                                           type_signature, executor)
 
     with self.assertRaises(TypeError):
-      loop.run_until_complete(executor.create_tuple([value_1, value_2]))
+      loop.run_until_complete(executor.create_struct([value_1, value_2]))
 
   def test_create_selection_returns_remote_value(self, mock_stub):
     response = executor_pb2.CreateSelectionResponse()

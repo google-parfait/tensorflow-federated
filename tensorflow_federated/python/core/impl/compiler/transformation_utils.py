@@ -73,7 +73,7 @@ def transform_postorder(comp, transform):
       comp = building_blocks.Selection(source, comp.name, comp.index)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or source_modified
-  elif comp.is_tuple():
+  elif comp.is_struct():
     elements = []
     elements_modified = False
     for key, value in anonymous_tuple.iter_elements(comp):
@@ -171,7 +171,7 @@ def transform_preorder(
     return building_blocks.Lambda(inner_comp.parameter_name,
                                   inner_comp.parameter_type,
                                   transformed_result), True
-  elif inner_comp.is_tuple():
+  elif inner_comp.is_struct():
     elements_modified = False
     elements = []
     for name, val in anonymous_tuple.iter_elements(inner_comp):
@@ -286,7 +286,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     elif comp.is_selection():
       return _traverse_selection(comp, transform, ctxt_tree,
                                  identifier_sequence)
-    elif comp.is_tuple():
+    elif comp.is_struct():
       return _traverse_tuple(comp, transform, ctxt_tree, identifier_sequence)
     elif comp.is_call():
       return _traverse_call(comp, transform, ctxt_tree, identifier_sequence)
@@ -1193,7 +1193,7 @@ def get_map_of_unbound_references(
       references[comp] = set([e for e in elements if e != comp.parameter_name])
     elif comp.is_selection():
       references[comp] = references[comp.source]
-    elif comp.is_tuple():
+    elif comp.is_struct():
       elements = [references[e] for e in comp]
       references[comp] = set(itertools.chain.from_iterable(elements))
     else:

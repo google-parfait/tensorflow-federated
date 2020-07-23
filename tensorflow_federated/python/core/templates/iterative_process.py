@@ -73,7 +73,7 @@ class IterativeProcess(object):
     initialize_result_type = initialize_fn.type_signature.result
 
     py_typecheck.check_type(next_fn, computation_base.Computation)
-    if next_fn.type_signature.parameter.is_tuple():
+    if next_fn.type_signature.parameter.is_struct():
       next_first_param_type = next_fn.type_signature.parameter[0]
     else:
       next_first_param_type = next_fn.type_signature.parameter
@@ -88,7 +88,7 @@ class IterativeProcess(object):
     if not next_first_param_type.is_assignable_from(next_result_type):
       # This might be multiple output next_fn, check if the first argument might
       # be the state. If still not the right type, raise an error.
-      if next_result_type.is_tuple():
+      if next_result_type.is_struct():
         next_result_type = next_result_type[0]
       if not next_first_param_type.is_assignable_from(next_result_type):
         raise TypeError('The return type of next_fn must be assignable to the '

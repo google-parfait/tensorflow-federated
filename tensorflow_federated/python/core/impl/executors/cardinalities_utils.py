@@ -74,7 +74,7 @@ def infer_cardinalities(value, type_spec):
       return {}
     py_typecheck.check_type(value, collections.Sized)
     return {type_spec.placement: len(value)}
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     anonymous_tuple_value = anonymous_tuple.from_container(
         value, recursive=False)
     cardinality_dict = {}

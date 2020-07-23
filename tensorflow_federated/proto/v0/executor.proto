@@ -14,8 +14,8 @@ service Executor {
   // Creates a call in the executor and returns a reference to the result.
   rpc CreateCall(CreateCallRequest) returns (CreateCallResponse) {}
 
-  // Creates a tuple of values in the executor and returns a reference to it.
-  rpc CreateTuple(CreateTupleRequest) returns (CreateTupleResponse) {}
+  // Creates a struct of values in the executor and returns a reference to it.
+  rpc CreateStruct(CreateStructRequest) returns (CreateStructResponse) {}
 
   // Creates a selection from an executor value and returns a reference to it.
   rpc CreateSelection(CreateSelectionRequest)
@@ -43,7 +43,7 @@ message ExecuteRequest {
   oneof request {
     CreateValueRequest create_value = 1;
     CreateCallRequest create_call = 2;
-    CreateTupleRequest create_tuple = 3;
+    CreateStructRequest create_struct = 3;
     CreateSelectionRequest create_selection = 4;
     ComputeRequest compute = 5;
     DisposeRequest dispose = 7;
@@ -55,7 +55,7 @@ message ExecuteResponse {
   oneof response {
     CreateValueResponse create_value = 1;
     CreateCallResponse create_call = 2;
-    CreateTupleResponse create_tuple = 3;
+    CreateStructResponse create_struct = 3;
     CreateSelectionResponse create_selection = 4;
     ComputeResponse compute = 5;
     DisposeResponse dispose = 7;
@@ -84,7 +84,7 @@ message CreateCallResponse {
   ValueRef value_ref = 1;
 }
 
-message CreateTupleRequest {
+message CreateStructRequest {
   repeated Element element = 1;
   message Element {
     string name = 1;
@@ -92,7 +92,7 @@ message CreateTupleRequest {
   }
 }
 
-message CreateTupleResponse {
+message CreateStructResponse {
   ValueRef value_ref = 1;
 }
 
@@ -126,10 +126,10 @@ message DisposeResponse {}
 // A representation of a value that's to be embedded in the executor, or that
 // is being returned as a result of a computation.
 message Value {
-  // A representation of a tuple of values. Unlike in the computation proto,
-  // elements of this tuple can contain actual computed values such as
+  // A representation of a struct of values. Unlike in the computation proto,
+  // elements of this struct can contain actual computed values such as
   // serialized tensors (rather than computations).
-  message Tuple {
+  message Struct {
     repeated Element element = 1;
     message Element {
       string name = 1;
@@ -174,8 +174,8 @@ message Value {
     // does not necessarily have to be of a functional type.
     Computation computation = 2;
 
-    // A tuple of values.
-    Tuple tuple = 3;
+    // A struct of values.
+    Struct struct = 3;
 
     // A sequence of values.
     Sequence sequence = 4;

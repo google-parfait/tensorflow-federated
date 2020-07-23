@@ -63,7 +63,7 @@ class TFParser(object):
         compiled_computation_transforms.SelectionFromCalledTensorFlowBlock(),
         compiled_computation_transforms.LambdaWrappingGraph(),
         compiled_computation_transforms.LambdaWrappingNoArgGraph(),
-        compiled_computation_transforms.TupleCalledGraphs(),
+        compiled_computation_transforms.StructCalledGraphs(),
         compiled_computation_transforms.CalledCompositionOfTensorFlowBlocks(),
         compiled_computation_transforms.CalledGraphOnReplicatedArg(),
     ]

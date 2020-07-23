@@ -308,24 +308,24 @@ class RemoteExecutor(executor_base.Executor):
     return RemoteValue(response.value_ref, comp.type_signature.result, self)
 
   @tracing.trace(span=True)
-  async def create_tuple(self, elements):
+  async def create_struct(self, elements):
     constructed_anon_tuple = anonymous_tuple.from_container(elements)
     proto_elem = []
     type_elem = []
     for k, v in anonymous_tuple.iter_elements(constructed_anon_tuple):
       py_typecheck.check_type(v, RemoteValue)
       proto_elem.append(
-          executor_pb2.CreateTupleRequest.Element(
+          executor_pb2.CreateStructRequest.Element(
               name=(k if k else None), value_ref=v.value_ref))
       type_elem.append((k, v.type_signature) if k else v.type_signature)
     result_type = computation_types.NamedTupleType(type_elem)
-    request = executor_pb2.CreateTupleRequest(element=proto_elem)
+    request = executor_pb2.CreateStructRequest(element=proto_elem)
     if self._bidi_stream is None:
-      response = _request(self._stub.CreateTuple, request)
+      response = _request(self._stub.CreateStruct, request)
     else:
       response = (await self._bidi_stream.send_request(
-          executor_pb2.ExecuteRequest(create_tuple=request))).create_tuple
-    py_typecheck.check_type(response, executor_pb2.CreateTupleResponse)
+          executor_pb2.ExecuteRequest(create_struct=request))).create_struct
+    py_typecheck.check_type(response, executor_pb2.CreateStructResponse)
     return RemoteValue(response.value_ref, result_type, self)
 
   @tracing.trace(span=True)

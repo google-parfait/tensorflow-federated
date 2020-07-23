@@ -164,7 +164,7 @@ def is_tensorflow_compatible_type(type_spec):
   if type_spec is None:
     return True
   return contains_only(
-      type_spec, lambda t: t.is_tuple() or t.is_sequence() or t.is_tensor())
+      type_spec, lambda t: t.is_struct() or t.is_sequence() or t.is_tensor())
 
 
 def check_tensorflow_compatible_type(type_spec):
@@ -178,7 +178,7 @@ def is_generic_op_compatible_type(type_spec):
   """Checks `type_spec` against an explicit list of generic operators."""
   if type_spec is None:
     return True
-  return contains_only(type_spec, lambda t: t.is_tuple() or t.is_tensor())
+  return contains_only(type_spec, lambda t: t.is_struct() or t.is_tensor())
 
 
 def is_binary_op_with_upcast_compatible_pair(
@@ -302,7 +302,7 @@ def check_all_abstract_types_are_bound(type_spec):
     elif type_spec.is_federated():
       return _check_or_get_unbound_abstract_type_labels(type_spec.member,
                                                         bound_labels, check)
-    elif type_spec.is_tuple():
+    elif type_spec.is_struct():
       return set().union(*[
           _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
           for _, v in anonymous_tuple.iter_elements(type_spec)
@@ -357,7 +357,7 @@ def is_sum_compatible(type_spec: computation_types.Type) -> bool:
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
     return is_numeric_dtype(type_spec.dtype)
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     return all(
         is_sum_compatible(v)
         for _, v in anonymous_tuple.iter_elements(type_spec))
@@ -387,7 +387,7 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
   if type_spec.is_tensor():
     py_typecheck.check_type(type_spec.dtype, tf.DType)
     return type_spec.dtype.is_integer
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     return all(
         is_structure_of_integers(v)
         for _, v in anonymous_tuple.iter_elements(type_spec))
@@ -420,7 +420,7 @@ def is_valid_bitwidth_type_for_value_type(
     # since we want a single bitwidth integer per tensor.
     return bitwidth_type.dtype.is_integer and (
         bitwidth_type.shape.num_elements() == 1)
-  elif value_type.is_tuple() and bitwidth_type.is_tuple():
+  elif value_type.is_struct() and bitwidth_type.is_struct():
     bitwidth_name_and_types = list(anonymous_tuple.iter_elements(bitwidth_type))
     value_name_and_types = list(anonymous_tuple.iter_elements(value_type))
     if len(bitwidth_name_and_types) != len(value_name_and_types):
@@ -490,7 +490,7 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
     return type_spec.dtype.is_floating or type_spec.dtype.is_complex
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     return all(
         is_average_compatible(v)
         for _, v in anonymous_tuple.iter_elements(type_spec))
@@ -500,8 +500,8 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
     return False
 
 
-def is_anon_tuple_with_py_container(value, type_spec):
-  return (type_spec.is_tuple_with_py_container() and
+def is_struct_with_py_container(value, type_spec):
+  return (type_spec.is_struct_with_python() and
           isinstance(value, anonymous_tuple.AnonymousTuple))
 
 
@@ -565,8 +565,8 @@ def is_concrete_instance_of(type_with_concrete_elements,
         return concrete_type_spec
     elif abstract_type_spec.is_tensor():
       return abstract_type_spec
-    elif abstract_type_spec.is_tuple():
-      if not concrete_type_spec.is_tuple():
+    elif abstract_type_spec.is_struct():
+      if not concrete_type_spec.is_struct():
         raise TypeError(type_error_string)
       abstract_elements = anonymous_tuple.to_elements(abstract_type_spec)
       concrete_elements = anonymous_tuple.to_elements(concrete_type_spec)

@@ -160,7 +160,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
           'The tensor type {} of the value representation does not match '
           'the type spec {}.'.format(inferred_type_spec, type_spec))
     return value
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     type_spec_elements = anonymous_tuple.to_elements(type_spec)
     # Special-casing unodered dictionaries to allow their elements to be fed in
     # the order in which they're defined in the named tuple type.
@@ -285,7 +285,7 @@ def stamp_computed_value_into_graph(
               value.value,
               dtype=value.type_signature.dtype,
               shape=value.type_signature.shape)
-    elif value.type_signature.is_tuple():
+    elif value.type_signature.is_struct():
       elements = anonymous_tuple.to_elements(value.value)
       type_elements = anonymous_tuple.to_elements(value.type_signature)
       stamped_elements = []
@@ -399,7 +399,7 @@ def multiply_by_scalar(value, multiplier):
                             value.type_signature.dtype,
                             value.type_signature.shape)
     return ComputedValue(result_val, value.type_signature)
-  elif value.type_signature.is_tuple():
+  elif value.type_signature.is_struct():
     elements = anonymous_tuple.to_elements(value.value)
     type_elements = anonymous_tuple.to_elements(value.type_signature)
     result_elements = []
@@ -519,7 +519,7 @@ def fit_argument(arg: ComputedValue, type_spec,
   type_spec.check_assignable_from(arg.type_signature)
   if arg.type_signature == type_spec:
     return arg
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     py_typecheck.check_type(arg.value, anonymous_tuple.AnonymousTuple)
     result_elements = []
     for idx, (elem_name,
@@ -733,7 +733,7 @@ class ReferenceExecutor(context_base.Context):
       return self._compute_compiled(comp, context)
     elif comp.is_call():
       return self._compute_call(comp, context)
-    elif comp.is_tuple():
+    elif comp.is_struct():
       return self._compute_tuple(comp, context)
     elif comp.is_reference():
       return self._compute_reference(comp, context)
@@ -1020,7 +1020,7 @@ class ReferenceExecutor(context_base.Context):
         with tf.compat.v1.Session(graph=graph) as sess:
           zeros_val = sess.run(zeros)
       return ComputedValue(zeros_val, type_spec)
-    elif type_spec.is_tuple():
+    elif type_spec.is_struct():
       type_elements_iter = anonymous_tuple.iter_elements(type_spec)
       return ComputedValue(
           anonymous_tuple.AnonymousTuple(
@@ -1061,7 +1061,7 @@ class ReferenceExecutor(context_base.Context):
       val = numpy_cast(arg.value[0] + arg.value[1], element_type.dtype,
                        element_type.shape)
       return ComputedValue(val, element_type)
-    elif element_type.is_tuple():
+    elif element_type.is_struct():
       py_typecheck.check_type(arg.value[0], anonymous_tuple.AnonymousTuple)
       py_typecheck.check_type(arg.value[1], anonymous_tuple.AnonymousTuple)
       result_val_elements = []

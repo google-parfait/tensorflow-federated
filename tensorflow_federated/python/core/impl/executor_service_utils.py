@@ -20,8 +20,8 @@ import tensorflow as tf
 from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
@@ -126,21 +126,21 @@ def _serialize_sequence_value(
 
 
 @tracing.trace
-def _serialize_tuple_type(
-    tuple_typed_value: Any,
-    type_spec: computation_types.NamedTupleType) -> _SerializeReturnType:
+def _serialize_struct_type(
+    struct_typed_value: Any,
+    type_spec: computation_types.StructType) -> _SerializeReturnType:
   """Serializes a value of tuple type."""
-  type_elem_iter = anonymous_tuple.iter_elements(type_spec)
-  val_elem_iter = anonymous_tuple.iter_elements(
-      anonymous_tuple.from_container(tuple_typed_value))
+  type_elem_iter = structure.iter_elements(type_spec)
+  val_elem_iter = structure.iter_elements(
+      structure.from_container(struct_typed_value))
   tup_elems = []
   for (e_name, e_type), (_, e_val) in zip(type_elem_iter, val_elem_iter):
     e_proto, _ = serialize_value(e_val, e_type)
     tup_elems.append(
-        executor_pb2.Value.Tuple.Element(
+        executor_pb2.Value.Struct.Element(
             name=e_name if e_name else None, value=e_proto))
   result_proto = (
-      executor_pb2.Value(tuple=executor_pb2.Value.Tuple(element=tup_elems)))
+      executor_pb2.Value(struct=executor_pb2.Value.Struct(element=tup_elems)))
   return result_proto, type_spec
 
 
@@ -205,8 +205,8 @@ def serialize_value(
     return _serialize_tensor_value(value, type_spec)
   elif type_spec.is_sequence():
     return _serialize_sequence_value(value, type_spec)
-  elif type_spec.is_tuple():
-    return _serialize_tuple_type(value, type_spec)
+  elif type_spec.is_struct():
+    return _serialize_struct_type(value, type_spec)
   elif type_spec.is_federated():
     return _serialize_federated_value(value, type_spec)
   else:
@@ -299,18 +299,17 @@ def _deserialize_sequence_value(
 
 
 @tracing.trace
-def _deserialize_tuple_value(
+def _deserialize_struct_value(
     value_proto: executor_pb2.Value) -> _DeserializeReturnType:
-  """Deserializes a value of tuple type."""
+  """Deserializes a value of struct type."""
   val_elems = []
   type_elems = []
-  for e in value_proto.tuple.element:
+  for e in value_proto.struct.element:
     name = e.name if e.name else None
     e_val, e_type = deserialize_value(e.value)
     val_elems.append((name, e_val))
     type_elems.append((name, e_type) if name else e_type)
-  return (anonymous_tuple.AnonymousTuple(val_elems),
-          computation_types.NamedTupleType(type_elems))
+  return (structure.Struct(val_elems), computation_types.StructType(type_elems))
 
 
 @tracing.trace
@@ -360,8 +359,8 @@ def deserialize_value(
     return _deserialize_computation(value_proto)
   elif which_value == 'sequence':
     return _deserialize_sequence_value(value_proto.sequence)
-  elif which_value == 'tuple':
-    return _deserialize_tuple_value(value_proto)
+  elif which_value == 'struct':
+    return _deserialize_struct_value(value_proto)
   elif which_value == 'federated':
     return _deserialize_federated_value(value_proto)
   else:

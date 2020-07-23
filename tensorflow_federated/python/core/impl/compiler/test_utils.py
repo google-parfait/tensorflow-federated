@@ -463,7 +463,7 @@ def _stamp_value_into_graph(value, type_signature, graph):
       with graph.as_default():
         return tf.constant(
             value, dtype=type_signature.dtype, shape=type_signature.shape)
-  elif type_signature.is_tuple():
+  elif type_signature.is_struct():
     if isinstance(value, (list, dict)):
       value = anonymous_tuple.from_container(value)
     stamped_elements = []

@@ -287,7 +287,7 @@ def to_representation_for_type(
     embedded_fn = embed_tensorflow_computation(value, type_spec, device)
     tf_function_cache[key] = embedded_fn
     return embedded_fn
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     type_elem = anonymous_tuple.to_elements(type_spec)
     value_elem = (
         anonymous_tuple.to_elements(anonymous_tuple.from_container(value)))
@@ -396,7 +396,7 @@ class EagerTFExecutor(executor_base.Executor):
   This executor understands the following kinds of TFF computation building
   blocks: tensorflow computations, and external data. It does not understand
   lambda calculus or any compositional constructs. Tuples and selections can
-  only be created using `create_tuple()` and `create_selection()` in the API.
+  only be created using `create_struct()` and `create_selection()` in the API.
 
   The arguments to be ingested can be Python constants of simple types, nested
   structures of those, as well as eager tensors and eager datasets.
@@ -497,7 +497,7 @@ class EagerTFExecutor(executor_base.Executor):
       raise TypeError('Cannot pass an argument to a no-argument function.')
 
   @tracing.trace
-  async def create_tuple(self, elements):
+  async def create_struct(self, elements):
     """Creates a tuple of `elements`.
 
     Args:

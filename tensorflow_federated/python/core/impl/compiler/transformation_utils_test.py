@@ -101,9 +101,9 @@ def _construct_trivial_instance_of_all_computation_building_blocks():
   function_type = computation_types.FunctionType(tf.int32, tf.int32)
   intrinsic = building_blocks.Intrinsic('dummy_intrinsic', function_type)
   cbb_list.append(('intrinsic', intrinsic))
-  tff_tuple = building_blocks.Tuple([ref_to_x])
-  cbb_list.append(('tuple', tff_tuple))
-  selection = building_blocks.Selection(tff_tuple, index=0)
+  tff_struct = building_blocks.Struct([ref_to_x])
+  cbb_list.append(('struct', tff_struct))
+  selection = building_blocks.Selection(tff_struct, index=0)
   cbb_list.append(('selection', selection))
   call = building_blocks.Call(lam, ref_to_x)
   cbb_list.append(('call', call))
@@ -403,7 +403,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       ('reference', building_blocks.Reference),
       ('lambda', building_blocks.Lambda), ('block', building_blocks.Block),
       ('data', building_blocks.Data), ('intrinsic', building_blocks.Intrinsic),
-      ('tuple', building_blocks.Tuple),
+      ('struct', building_blocks.Struct),
       ('selection', building_blocks.Selection), ('call', building_blocks.Call),
       ('compiled_computation', building_blocks.CompiledComputation),
       ('placement', building_blocks.Placement))

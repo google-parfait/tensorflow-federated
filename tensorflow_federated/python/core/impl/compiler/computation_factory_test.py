@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 class CreateLambdaEmptyTupleTest(absltest.TestCase):
 
   def test_returns_coputation(self):
-    proto = computation_factory.create_lambda_empty_tuple()
+    proto = computation_factory.create_lambda_empty_struct()
 
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)

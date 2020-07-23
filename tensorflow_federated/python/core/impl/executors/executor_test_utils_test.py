@@ -91,7 +91,7 @@ class TracingExecutorTest(absltest.TestCase):
       v1 = await ex.create_value(add_one)
       v2 = await ex.create_value(10, tf.int32)
       v3 = await ex.create_call(v1, v2)
-      v4 = await ex.create_tuple(anonymous_tuple.AnonymousTuple([('foo', v3)]))
+      v4 = await ex.create_struct(anonymous_tuple.AnonymousTuple([('foo', v3)]))
       v5 = await ex.create_selection(v4, name='foo')
       return await v5.compute()
 
@@ -101,7 +101,7 @@ class TracingExecutorTest(absltest.TestCase):
     expected_trace = [('create_value', add_one, 1),
                       ('create_value', 10, tf.int32, 2),
                       ('create_call', 1, 2, 3),
-                      ('create_tuple',
+                      ('create_struct',
                        anonymous_tuple.AnonymousTuple([('foo', 3)]), 4),
                       ('create_selection', 4, 'foo', 5), ('compute', 5, result)]
 

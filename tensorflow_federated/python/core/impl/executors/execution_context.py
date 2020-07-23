@@ -88,7 +88,7 @@ async def _ingest(executor, val, type_spec):
     return val
   elif (isinstance(val, anonymous_tuple.AnonymousTuple) and
         not type_spec.is_federated()):
-    type_spec.check_tuple()
+    type_spec.check_struct()
     v_elem = anonymous_tuple.to_elements(val)
     t_elem = anonymous_tuple.to_elements(type_spec)
     if ([k for k, _ in v_elem] != [k for k, _ in t_elem]):
@@ -97,7 +97,7 @@ async def _ingest(executor, val, type_spec):
     for (_, v), (_, t) in zip(v_elem, t_elem):
       ingested.append(_ingest(executor, v, t))
     ingested = await asyncio.gather(*ingested)
-    return await executor.create_tuple(
+    return await executor.create_struct(
         anonymous_tuple.AnonymousTuple(
             (name, val) for (name, _), val in zip(t_elem, ingested)))
   else:

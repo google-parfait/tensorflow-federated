@@ -214,7 +214,7 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
     expected_result = sum([x**2 for x in value]) / sum(value)
 
     value = self.run_sync(executor.create_value(value, type_signature))
-    arg = self.run_sync(executor.create_tuple([value, value]))
+    arg = self.run_sync(executor.create_struct([value, value]))
     result = self.run_sync(
         executor_utils.compute_intrinsic_federated_weighted_mean(executor, arg))
 
@@ -244,7 +244,7 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
   def test_raises_type_error(self, executor, value_and_type_signature):
     value, type_signature = value_and_type_signature
     value = self.run_sync(executor.create_value(value, type_signature))
-    arg = self.run_sync(executor.create_tuple([value, value]))
+    arg = self.run_sync(executor.create_struct([value, value]))
 
     with self.assertRaises(TypeError):
       self.run_sync(
@@ -269,7 +269,7 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
     value, type_signature = executor_test_utils.create_dummy_value_at_clients(
         num_clients)
     value = self.run_sync(executor.create_value(value, type_signature))
-    arg = self.run_sync(executor.create_tuple([value]))
+    arg = self.run_sync(executor.create_struct([value]))
 
     with self.assertRaises(TypeError):
       self.run_sync(

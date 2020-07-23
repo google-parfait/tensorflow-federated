@@ -57,7 +57,7 @@ def _get_hashable_key(value, type_spec):
   Raises:
     TypeError: If there is no hashable key for this type of a value.
   """
-  if type_spec.is_tuple():
+  if type_spec.is_struct():
     if not isinstance(value, anonymous_tuple.AnonymousTuple):
       try:
         value = anonymous_tuple.from_container(value)
@@ -289,7 +289,7 @@ class CachingExecutor(executor_base.Executor):
     type_spec.check_assignable_from(target_value.type_signature)
     return cached_value
 
-  async def create_tuple(self, elements):
+  async def create_struct(self, elements):
     if not isinstance(elements, anonymous_tuple.AnonymousTuple):
       elements = anonymous_tuple.from_container(elements)
     element_strings = []
@@ -313,7 +313,7 @@ class CachingExecutor(executor_base.Executor):
       cached_value = self._cache[identifier]
     except KeyError:
       target_future = asyncio.ensure_future(
-          self._target_executor.create_tuple(
+          self._target_executor.create_struct(
               anonymous_tuple.AnonymousTuple(
                   (k, v) for (k, _), v in zip(element_kv_pairs, gathered))))
       cached_value = CachedValue(identifier, None, type_spec, target_future)

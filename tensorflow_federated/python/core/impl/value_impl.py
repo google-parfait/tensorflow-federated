@@ -42,12 +42,12 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 # Note: not a `ValueImpl` method because of the `__setattr__` override
 def _is_federated_named_tuple(vimpl: 'ValueImpl') -> bool:
   comp_ty = vimpl._comp.type_signature  # pylint: disable=protected-access
-  return comp_ty.is_federated() and comp_ty.member.is_tuple()
+  return comp_ty.is_federated() and comp_ty.member.is_struct()
 
 
 # Note: not a `ValueImpl` method because of the `__setattr__` override
 def _is_named_tuple(vimpl: 'ValueImpl') -> bool:
-  return vimpl._comp.type_signature.is_tuple()  # pylint: disable=protected-access
+  return vimpl._comp.type_signature.is_struct()  # pylint: disable=protected-access
 
 
 def _check_is_optionally_federated_named_tuple(
@@ -127,7 +127,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
 
   def __dir__(self):
     attributes = ['type_signature']
-    if self._comp.type_signature.is_tuple():
+    if self._comp.type_signature.is_struct():
       attributes.extend(dir(self._comp.type_signature))
     return attributes
 
@@ -143,7 +143,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
       raise AttributeError(
           'There is no such attribute \'{}\' in this tuple. Valid attributes: ({})'
           .format(name, ', '.join(dir(self._comp.type_signature))))
-    if self._comp.is_tuple():
+    if self._comp.is_struct():
       return ValueImpl(getattr(self._comp, name), self._context_stack)
     return ValueImpl(
         building_blocks.Selection(self._comp, name=name), self._context_stack)
@@ -175,7 +175,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     type_signature = self._comp.type_signature
     if type_signature.is_federated():
       type_signature = type_signature.member
-    if not type_signature.is_tuple():
+    if not type_signature.is_struct():
       raise TypeError(
           'Operator len() is only supported for (possibly federated) named '
           'tuples, but the object on which it has been invoked is of type {}.'
@@ -200,7 +200,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
       if key < 0 or key >= elem_length:
         raise IndexError(
             'The index of the selected element {} is out of range.'.format(key))
-      if self._comp.is_tuple():
+      if self._comp.is_struct():
         return ValueImpl(self._comp[key], self._context_stack)
       else:
         return ValueImpl(
@@ -217,7 +217,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     type_signature = self._comp.type_signature
     if type_signature.is_federated():
       type_signature = type_signature.member
-    if not type_signature.is_tuple():
+    if not type_signature.is_struct():
       raise TypeError(
           'Operator iter() is only supported for (possibly federated) named '
           'tuples, but the object on which it has been invoked is of type {}.'

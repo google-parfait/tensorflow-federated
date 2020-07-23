@@ -50,7 +50,7 @@ def create_variables(name, type_spec, **kwargs):
         initial_value=tf.zeros(dtype=type_spec.dtype, shape=type_spec.shape),
         name=name,
         **kwargs)
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
 
     def _scoped_name(var_name, index):
       if var_name is None:

@@ -148,7 +148,7 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
     return (type_spec.dtype, type_spec.shape)
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     elements = anonymous_tuple.to_elements(type_spec)
     if not elements:
       output_dtypes = []
@@ -249,7 +249,7 @@ def type_to_tf_structure(type_spec: computation_types.Type):
   py_typecheck.check_type(type_spec, computation_types.Type)
   if type_spec.is_tensor():
     return tf.TensorSpec(type_spec.shape, type_spec.dtype)
-  elif type_spec.is_tuple():
+  elif type_spec.is_struct():
     elements = anonymous_tuple.to_elements(type_spec)
     if not elements:
       raise ValueError('Empty tuples are unsupported.')
@@ -338,7 +338,7 @@ def type_to_py_container(value, type_spec):
     raise TypeError('Unexpected Python type for TF type {}: {}'.format(
         structure_type_spec, type(value)))
 
-  if not structure_type_spec.is_tuple():
+  if not structure_type_spec.is_struct():
     return value
 
   if not isinstance(value, anonymous_tuple.AnonymousTuple):

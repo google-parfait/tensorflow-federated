@@ -214,7 +214,7 @@ def extract_nodes_consuming(tree, predicate):
     elif comp.is_block():
       return any(x[1] in dependent_nodes
                  for x in comp.locals) or comp.result in dependent_nodes
-    elif comp.is_tuple():
+    elif comp.is_struct():
       return any(x in dependent_nodes for x in comp)
     elif comp.is_selection():
       return comp.source in dependent_nodes
@@ -517,7 +517,7 @@ def trees_equal(comp_1, comp_2):
       return (comp_1.name == comp_2.name and
               comp_1.index == comp_2.index and _trees_equal(
                   comp_1.source, comp_2.source, reference_equivalences))
-    elif comp_1.is_tuple():
+    elif comp_1.is_struct():
       # The element names are checked as part of the `type_signature`.
       if len(comp_1) != len(comp_2):
         return False

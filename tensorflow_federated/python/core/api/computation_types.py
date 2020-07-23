@@ -126,26 +126,6 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns whether or not this type is a `tff.TensorType`."""
     return False
 
-  def check_tuple(self):
-    """Check that this is a `tff.StructType`."""
-    # FIXME(b/161836891) Remove this method.
-    self.check_struct()
-
-  def is_tuple(self) -> bool:
-    """Returns whether or not this type is a `tff.StructType`."""
-    # FIXME(b/161836891) Remove this method.
-    return self.is_struct()
-
-  def check_tuple_with_py_container(self):
-    """Check that this is a `tff.StructWithPythonType`."""
-    # FIXME(b/161836891) Remove this method.
-    self.check_struct_with_python()
-
-  def is_tuple_with_py_container(self) -> bool:
-    """Returns whether this is a `tff.StructWithPythonType`."""
-    # FIXME(b/161836891) Remove this method.
-    return self.is_struct_with_python()
-
   @abc.abstractmethod
   def __repr__(self):
     """Returns a full-form representation of this type."""
@@ -867,7 +847,7 @@ def _string_representation(type_spec, formatted: bool) -> str:
         parameter_lines = ['']
       result_lines = _lines_for_type(type_spec.result, formatted)
       return _combine([['('], parameter_lines, [' -> '], result_lines, [')']])
-    elif type_spec.is_tuple():
+    elif type_spec.is_struct():
       if len(type_spec) == 0:  # pylint: disable=g-explicit-length-test
         return ['<>']
       elements = structure.to_elements(type_spec)

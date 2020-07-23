@@ -19,8 +19,8 @@ from typing import Any, Iterable, List, Optional, Tuple as TypingTuple, Type
 import zlib
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -145,13 +145,13 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
     """Returns whether or not this block is a `Selection`."""
     return False
 
-  def check_tuple(self):
-    """Check that this is a 'Tuple'."""
-    if not self.is_tuple():
-      UnexpectedBlockError(Tuple, self)
+  def check_struct(self):
+    """Check that this is a `Struct`."""
+    if not self.is_struct():
+      UnexpectedBlockError(Struct, self)
 
-  def is_tuple(self):
-    """Returns whether or not this block is a `Tuple`."""
+  def is_struct(self):
+    """Returns whether or not this block is a `Struct`."""
     return False
 
   def check_call(self):
@@ -303,7 +303,7 @@ class Reference(ComputationBuildingBlock):
 
 
 class Selection(ComputationBuildingBlock):
-  """A selection by name or index from a tuple-typed value in TFF's language.
+  """A selection by name or index from a struct-typed value in TFF's language.
 
   The concise syntax for selections is `foo.bar` (selecting a named `bar` from
   the value of expression `foo`), and `foo[n]` (selecting element at index `n`
@@ -352,29 +352,27 @@ class Selection(ComputationBuildingBlock):
       raise ValueError(
           'Cannot simultaneously specify a name and an index, choose one.')
     source_type = source.type_signature
-    if not source_type.is_tuple():
-      raise TypeError(
-          'Expected the source of selection to be a TFF named tuple, '
-          'instead found it to be of type {}.'.format(source_type))
+    if not source_type.is_struct():
+      raise TypeError('Expected the source of selection to be a TFF struct, '
+                      'instead found it to be of type {}.'.format(source_type))
     if name is not None:
       py_typecheck.check_type(name, str)
       if not name:
         raise ValueError('The name of the selected element cannot be empty.')
       # Normalize, in case we are dealing with a Unicode type or some such.
       name = str(name)
-      if not anonymous_tuple.has_field(source_type, name):
+      if not structure.has_field(source_type, name):
         raise ValueError(
             'The name \'{}\' does not correspond to any of the names in the '
-            'named tuple type: {}.'.format(
-                name, anonymous_tuple.name_list(source_type)))
+            'struct type: {}.'.format(name, structure.name_list(source_type)))
       type_signature = source_type[name]
     else:
       py_typecheck.check_type(index, int)
       length = len(source_type)
       if index < 0 or index >= length:
         raise ValueError(
-            'The index \'{}\' does not fit into the valid range in the named '
-            'tuple type: 0..{}.'.format(name, length))
+            'The index \'{}\' does not fit into the valid range in the '
+            'struct type: 0..{}.'.format(name, length))
       type_signature = source_type[index]
     super().__init__(type_signature)
     self._source = source
@@ -413,46 +411,45 @@ class Selection(ComputationBuildingBlock):
       return 'Selection({!r}, index={})'.format(self._source, self._index)
 
 
-class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
-  """A tuple with named or unnamed elements in TFF's internal language.
+class Struct(ComputationBuildingBlock, structure.Struct):
+  """A struct with named or unnamed elements in TFF's internal language.
 
-  The concise notation for tuples is `<name_1=value_1, ...., name_n=value_n>`
-  for tuples with named elements, `<value_1, ..., value_n>` for tuples with
-  unnamed elements, or a mixture of these for tuples with ome named and some
+  The concise notation for structs is `<name_1=value_1, ...., name_n=value_n>`
+  for structs with named elements, `<value_1, ..., value_n>` for structs with
+  unnamed elements, or a mixture of these for structs with some named and some
   unnamed elements, where `name_k` are the names, and `value_k` are the value
   expressions.
 
-  For example, a lambda expression that applies `fn` to elements of 2-tuples
+  For example, a lambda expression that applies `fn` to elements of 2-structs
   pointwise could be represented as `(arg -> <fn(arg[0]),fn(arg[1])>)`.
   """
 
   @classmethod
   def from_proto(
-      cls: Type['Tuple'],
+      cls: Type['Struct'],
       computation_proto: pb.Computation,
-  ) -> 'Tuple':
-    _check_computation_oneof(computation_proto, 'tuple')
+  ) -> 'Struct':
+    _check_computation_oneof(computation_proto, 'struct')
     return cls([(str(e.name) if e.name else None,
                  ComputationBuildingBlock.from_proto(e.value))
-                for e in computation_proto.tuple.element])
+                for e in computation_proto.struct.element])
 
   def __init__(self, elements, container_type=None):
-    """Constructs a tuple from the given list of elements.
+    """Constructs a struct from the given list of elements.
 
     Args:
-      elements: The elements of the tuple, supplied as a list of (name, value)
+      elements: The elements of the struct, supplied as a list of (name, value)
         pairs, where 'name' can be None in case the corresponding element is not
-        named and only accessible via an index (see also
-        `anonymous_tuple.AnonymousTuple`).
+        named and only accessible via an index (see also `structure.Struct`).
       container_type: An optional Python container type to associate with the
-        tuple.
+        struct.
 
     Raises:
       TypeError: if arguments are of the wrong types.
     """
 
     # Not using super() here and below, as the two base classes have different
-    # signatures of their constructors, and the named tuple implementation
+    # signatures of their constructors, and the struct implementation
     # of selection interfaces should override that in the generic class 'Value'
     # to favor simplified expressions where simplification is possible.
     def _map_element(e):
@@ -462,10 +459,10 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
       elif py_typecheck.is_name_value_pair(
           e, name_required=False, value_type=ComputationBuildingBlock):
         if e[0] is not None and not e[0]:
-          raise ValueError('Unexpected tuple element with empty string name.')
+          raise ValueError('Unexpected struct element with empty string name.')
         return (e[0], e[1])
       else:
-        raise TypeError('Unexpected tuple element: {}.'.format(e))
+        raise TypeError('Unexpected struct element: {}.'.format(e))
 
     elements = [_map_element(e) for e in elements]
     element_pairs = [((e[0],
@@ -473,27 +470,27 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
                      for e in elements]
 
     if container_type is None:
-      type_signature = computation_types.NamedTupleType(element_pairs)
+      type_signature = computation_types.StructType(element_pairs)
     else:
-      type_signature = computation_types.NamedTupleTypeWithPyContainerType(
+      type_signature = computation_types.StructWithPythonType(
           element_pairs, container_type)
     ComputationBuildingBlock.__init__(self, type_signature)
-    anonymous_tuple.AnonymousTuple.__init__(self, elements)
+    structure.Struct.__init__(self, elements)
 
   @property
   def proto(self):
     elements = []
-    for k, v in anonymous_tuple.iter_elements(self):
+    for k, v in structure.iter_elements(self):
       if k is not None:
-        element = pb.Tuple.Element(name=k, value=v.proto)
+        element = pb.Struct.Element(name=k, value=v.proto)
       else:
-        element = pb.Tuple.Element(value=v.proto)
+        element = pb.Struct.Element(value=v.proto)
       elements.append(element)
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
-        tuple=pb.Tuple(element=elements))
+        struct=pb.Struct(element=elements))
 
-  def is_tuple(self):
+  def is_struct(self):
     return True
 
   def __repr__(self):
@@ -503,14 +500,18 @@ class Tuple(ComputationBuildingBlock, anonymous_tuple.AnonymousTuple):
       name_repr = '\'{}\''.format(name) if name is not None else 'None'
       return '({}, {!r})'.format(name_repr, value)
 
-    return 'Tuple([{}])'.format(', '.join(
-        _element_repr(e) for e in anonymous_tuple.iter_elements(self)))
+    return 'Struct([{}])'.format(', '.join(
+        _element_repr(e) for e in structure.iter_elements(self)))
+
+
+# FIXME(b/161836891): Remove this alias.
+Tuple = Struct
 
 
 class Call(ComputationBuildingBlock):
   """A representation of a function invocation in TFF's internal language.
 
-  The call construct takes an argument tuple with two elements, the first being
+  The call construct takes an argument struct with two elements, the first being
   the function to invoke (represented as a computation with a functional result
   type), and the second being the argument to feed to that function. Typically,
   the function is either a TFF instrinsic, or a lambda expression.
@@ -767,7 +768,7 @@ class Block(ComputationBuildingBlock):
       if (not isinstance(element, tuple) or (len(element) != 2) or
           not isinstance(element[0], str)):
         raise TypeError(
-            'Expected the locals to be a list of 2-element tuples with string '
+            'Expected the locals to be a list of 2-element structs with string '
             'name as their first element, but this is not the case for the '
             'local at position {} in the sequence: {}.'.format(index, element))
       name = element[0]
@@ -1152,10 +1153,10 @@ def _string_representation(
       return _join(lines)
     elif comp.is_placement():
       return [comp._literal.name]  # pylint: disable=protected-access
-    elif comp.is_tuple():
+    elif comp.is_struct():
       if len(comp) == 0:  # pylint: disable=g-explicit-length-test
         return ['<>']
-      elements = anonymous_tuple.to_elements(comp)
+      elements = structure.to_elements(comp)
       elements_lines = _lines_for_named_comps(elements, formatted)
       if formatted:
         elements_lines = _indent(elements_lines)
@@ -1410,8 +1411,8 @@ def _structural_representation(comp):
     elif comp.is_selection():
       key = comp.name if comp.name is not None else comp.index
       return 'Sel({})'.format(key)
-    elif comp.is_tuple():
-      return 'Tuple'
+    elif comp.is_struct():
+      return 'Struct'
     else:
       raise TypeError('Unexpected type found: {}.'.format(type(comp)))
 
@@ -1506,8 +1507,8 @@ def _structural_representation(comp):
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
       edge_line = '{}|'.format(padding_char * leading_padding)
       return _concatenate([node_line, edge_line], source_lines, Alignment.LEFT)
-    elif comp.is_tuple():
-      elements = anonymous_tuple.to_elements(comp)
+    elif comp.is_struct():
+      elements = structure.to_elements(comp)
       elements_lines = _lines_for_named_comps(elements)
       leading_padding = _get_leading_padding(elements_lines[0])
       node_line = '{}{}'.format(padding_char * leading_padding, node_label)
@@ -1526,7 +1527,7 @@ def _structural_representation(comp):
 ComputationBuildingBlock._deserializer_dict = {
     'reference': Reference.from_proto,
     'selection': Selection.from_proto,
-    'tuple': Tuple.from_proto,
+    'struct': Struct.from_proto,
     'call': Call.from_proto,
     'lambda': Lambda.from_proto,
     'block': Block.from_proto,

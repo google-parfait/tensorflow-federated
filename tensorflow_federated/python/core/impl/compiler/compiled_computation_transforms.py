@@ -92,16 +92,16 @@ def select_graph_output(comp, name=None, index=None):
   proto = comp.proto
   graph_result_binding = proto.tensorflow.result
   binding_oneof = graph_result_binding.WhichOneof('binding')
-  if binding_oneof != 'tuple':
+  if binding_oneof != 'struct':
     raise TypeError(
         'Can only select output from a CompiledComputation with return type '
-        'tuple; you have attempted a selection from a CompiledComputation '
+        'struct; you have attempted a selection from a CompiledComputation '
         'with return type {}'.format(binding_oneof))
   proto_type = type_serialization.deserialize_type(proto.type)
   py_typecheck.check_type(proto_type.result, computation_types.NamedTupleType)
   if name is not None:
     index = _index_from_name(proto_type.result, name)
-  result = graph_result_binding.tuple.element[index]
+  result = graph_result_binding.struct.element[index]
   result_type = proto_type.result[index]
   serialized_type = type_serialization.serialize_type(
       computation_types.FunctionType(proto_type.parameter, result_type))
@@ -180,16 +180,16 @@ def permute_graph_inputs(comp, input_permutation):
   py_typecheck.check_type(proto_type.parameter,
                           computation_types.NamedTupleType)
   binding_oneof = graph_parameter_binding.WhichOneof('binding')
-  if binding_oneof != 'tuple':
+  if binding_oneof != 'struct':
     raise TypeError(
         'Can only permute inputs of a CompiledComputation with parameter type '
-        'tuple; you have attempted a permutation with a CompiledComputation '
+        'struct; you have attempted a permutation with a CompiledComputation '
         'with parameter type {}'.format(binding_oneof))
 
   original_parameter_type_elements = anonymous_tuple.to_elements(
       proto_type.parameter)
   original_parameter_bindings = [
-      x for x in graph_parameter_binding.tuple.element
+      x for x in graph_parameter_binding.struct.element
   ]
 
   def _is_permutation(ls):
@@ -220,7 +220,7 @@ def permute_graph_inputs(comp, input_permutation):
           graph_def=proto.tensorflow.graph_def,
           initialize_op=proto.tensorflow.initialize_op,
           parameter=pb.TensorFlow.Binding(
-              tuple=pb.TensorFlow.NamedTupleBinding(
+              struct=pb.TensorFlow.StructBinding(
                   element=new_parameter_bindings)),
           result=proto.tensorflow.result))
   proto_pruned = tensorflow_computation_transformations.prune_tensorflow_proto(
@@ -261,7 +261,7 @@ def bind_graph_parameter_as_tuple(comp, name=None):
   parameter_binding = [proto.tensorflow.parameter]
   parameter_type_list = [(name, proto_type.parameter)]
   new_parameter_binding = pb.TensorFlow.Binding(
-      tuple=pb.TensorFlow.NamedTupleBinding(element=parameter_binding))
+      struct=pb.TensorFlow.StructBinding(element=parameter_binding))
 
   new_function_type = computation_types.FunctionType(parameter_type_list,
                                                      proto_type.result)
@@ -312,7 +312,7 @@ def bind_graph_result_as_tuple(comp, name=None):
   result_binding = [proto.tensorflow.result]
   result_type_list = [(name, proto_type.result)]
   new_result_binding = pb.TensorFlow.Binding(
-      tuple=pb.TensorFlow.NamedTupleBinding(element=result_binding))
+      struct=pb.TensorFlow.StructBinding(element=result_binding))
 
   new_function_type = computation_types.FunctionType(proto_type.parameter,
                                                      result_type_list)
@@ -393,15 +393,15 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
   graph_parameter_binding = proto.tensorflow.parameter
   proto_type = type_serialization.deserialize_type(proto.type)
   binding_oneof = graph_parameter_binding.WhichOneof('binding')
-  if binding_oneof != 'tuple':
+  if binding_oneof != 'struct':
     raise TypeError(
         'Can only pad inputs of a CompiledComputation with parameter type '
-        'tuple; you have attempted to pad a CompiledComputation '
+        'struct; you have attempted to pad a CompiledComputation '
         'with parameter type {}'.format(binding_oneof))
   # This line provides protection against an improperly serialized proto
   py_typecheck.check_type(proto_type.parameter,
                           computation_types.NamedTupleType)
-  parameter_bindings = [x for x in graph_parameter_binding.tuple.element]
+  parameter_bindings = [x for x in graph_parameter_binding.struct.element]
   parameter_type_elements = anonymous_tuple.to_elements(proto_type.parameter)
   type_signature_elements = anonymous_tuple.to_elements(type_signature)
   if len(parameter_bindings) > len(type_signature):
@@ -440,7 +440,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
     parameter_type_elements.append((name, type_spec))
 
   new_parameter_binding = pb.TensorFlow.Binding(
-      tuple=pb.TensorFlow.NamedTupleBinding(element=parameter_bindings))
+      struct=pb.TensorFlow.StructBinding(element=parameter_bindings))
   new_graph_def = g.as_graph_def()
 
   new_function_type = computation_types.FunctionType(type_signature_elements,
@@ -512,18 +512,18 @@ def _repack_binding_with_new_name(binding, name_map):
   Raises:
     TypeError: If `binding` does represent a
     `computation_pb2.TensorFlow.TensorBinding`,
-    `computation_pb2.TensorFlow.NamedTupleBinding`, or
+    `computation_pb2.TensorFlow.StructBinding`, or
     `computation_pb2.TensorFlow.SequenceBinding`.
   """
   if binding.WhichOneof('binding') == 'tensor':
     return pb.TensorFlow.Binding(
         tensor=pb.TensorFlow.TensorBinding(
             tensor_name=name_map[binding.tensor.tensor_name]))
-  elif binding.WhichOneof('binding') == 'tuple':
+  elif binding.WhichOneof('binding') == 'struct':
     return pb.TensorFlow.Binding(
-        tuple=pb.TensorFlow.NamedTupleBinding(element=[
+        struct=pb.TensorFlow.StructBinding(element=[
             _repack_binding_with_new_name(e, name_map)
-            for e in binding.tuple.element
+            for e in binding.struct.element
         ]))
   elif binding.WhichOneof('binding') == 'sequence':
     sequence_oneof = binding.sequence.WhichOneof('binding')
@@ -569,7 +569,7 @@ def _pack_concatenated_bindings(old_bindings, tensor_name_maps):
   if len(remapped_bindings) == 1:
     return remapped_bindings[0]
   return pb.TensorFlow.Binding(
-      tuple=pb.TensorFlow.NamedTupleBinding(element=remapped_bindings))
+      struct=pb.TensorFlow.StructBinding(element=remapped_bindings))
 
 
 def _construct_concatenated_type(type_list):
@@ -935,7 +935,8 @@ class CalledGraphOnReplicatedArg(transformation_utils.TransformSpec):
     argument = comp.argument
     if not function.is_compiled_computation():
       return False
-    if not (argument is not None and argument.is_tuple() and len(argument) > 0):  # pylint: disable=g-explicit-length-test
+    if not (argument is not None and argument.is_struct() and
+            len(argument) > 0):  # pylint: disable=g-explicit-length-test
       return False
     first_arg = argument[0]
     return all(tree_analysis.trees_equal(x, first_arg) for x in argument[1:])  # pylint: disable=protected-access
@@ -1043,7 +1044,7 @@ class LambdaWrappingGraph(transformation_utils.TransformSpec):
     return comp.result.function, True
 
 
-class TupleCalledGraphs(transformation_utils.TransformSpec):
+class StructCalledGraphs(transformation_utils.TransformSpec):
   r"""`TransformSpec` representing a tuple of called TF graphs.
 
   Transforms the pattern:
@@ -1077,9 +1078,9 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
 
   where `tree_analysis.trees_equal(Arg, Arg(i))` is `True` for all `i`.
 
-  In particular this implies that, although `TupleCalledGraphs` will not check
+  In particular this implies that, although `StructCalledGraphs` will not check
   to see if the functions it is passed are identical, calling
-  `TupleCalledGraphs.transform` on distinct called graphs with identical
+  `StructCalledGraphs.transform` on distinct called graphs with identical
   arguments will not introduce any unwarranted duplication.
   """
 
@@ -1087,7 +1088,7 @@ class TupleCalledGraphs(transformation_utils.TransformSpec):
     self._only_equal_args = only_equal_args
 
   def should_transform(self, comp):
-    if not (comp.is_tuple() and all(
+    if not (comp.is_struct() and all(
         (x.is_call() and x.function.is_compiled_computation()) for x in comp)):
       return False
     if not self._only_equal_args:
@@ -1307,7 +1308,7 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
   """
 
   def should_transform(self, comp):
-    return (comp.is_lambda() and comp.parameter_type.is_tuple() and
+    return (comp.is_lambda() and comp.parameter_type.is_struct() and
             comp.result.is_call() and
             comp.result.function.is_compiled_computation() and
             comp.result.argument.is_selection() and
@@ -1364,13 +1365,13 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
   """
 
   def should_transform(self, comp):
-    if not (comp.is_lambda() and comp.parameter_type.is_tuple()):
+    if not (comp.is_lambda() and comp.parameter_type.is_struct()):
       return False
     result = comp.result
     if not (result.is_call() and result.function.is_compiled_computation()):
       return False
     compiled_comp_arg = result.argument
-    if not compiled_comp_arg.is_tuple():
+    if not compiled_comp_arg.is_struct():
       return False
     if not all(tuple_elem.is_selection() for tuple_elem in compiled_comp_arg):
       return False

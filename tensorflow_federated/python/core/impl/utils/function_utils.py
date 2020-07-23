@@ -18,8 +18,8 @@ import types
 import typing
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
@@ -99,29 +99,29 @@ def is_signature_compatible_with_types(signature: inspect.Signature, *args,
   return True
 
 
-def is_argument_tuple(arg) -> bool:
-  """Determines if 'arg' is interpretable as an argument tuple.
+def is_argument_struct(arg) -> bool:
+  """Determines if 'arg' is interpretable as an argument struct.
 
   Args:
     arg: A value or type to test.
 
   Returns:
-    True iff 'arg' is either an anonymous tuple in which all unnamed elements
-    precede named ones, or a named tuple typle with this property, or something
+    True iff 'arg' is either a `Struct` in which all unnamed elements
+    precede named ones, or a `StructType` with this property, or something
     that can be converted into the latter by computation_types.to_type().
 
   Raises:
-    TypeError: If the argument is neither an `anonymous_tuple.AnonymousTuple`,
+    TypeError: If the argument is neither an `structure.Struct`,
       nor a type spec.
   """
-  if isinstance(arg, anonymous_tuple.AnonymousTuple):
-    elements = anonymous_tuple.to_elements(arg)
+  if isinstance(arg, structure.Struct):
+    elements = structure.to_elements(arg)
   elif isinstance(arg, value_base.Value):
-    return is_argument_tuple(arg.type_signature)
+    return is_argument_struct(arg.type_signature)
   else:
     arg = computation_types.to_type(arg)
-    if arg.is_tuple():
-      elements = anonymous_tuple.to_elements(arg)
+    if arg.is_struct():
+      elements = structure.to_elements(arg)
     else:
       return False
   max_unnamed = -1
@@ -134,36 +134,37 @@ def is_argument_tuple(arg) -> bool:
   return max_unnamed < min_named
 
 
-def unpack_args_from_tuple(tuple_with_args) -> Tuple[List[Any], Dict[str, Any]]:
-  """Extracts argument types from a named tuple type.
+def unpack_args_from_struct(
+    struct_with_args) -> Tuple[List[Any], Dict[str, Any]]:
+  """Extracts argument types from a struct.
 
   Args:
-    tuple_with_args: An instance of either an `anonymous_tuple.AnonymousTuple`
-      or computation_types.NamedTupleType (or something convertible to it by
-      computation_types.to_type()), on which is_argument_tuple() is True.
+    struct_with_args: An instance of either an `struct.Struct` or
+      computation_types.StructType` (or something convertible to it by
+      computation_types.to_type()), on which is_argument_struct() is True.
 
   Returns:
-    A pair (args, kwargs) containing tuple elements from 'tuple_with_args'.
+    A pair (args, kwargs) containing tuple elements from 'struct_with_args'.
 
   Raises:
-    TypeError: if 'tuple_with_args' is of a wrong type.
+    TypeError: if 'struct_with_args' is of a wrong type.
   """
-  if not is_argument_tuple(tuple_with_args):
-    raise TypeError('Not an argument tuple: {}.'.format(tuple_with_args))
-  if isinstance(tuple_with_args, anonymous_tuple.AnonymousTuple):
-    elements = anonymous_tuple.to_elements(tuple_with_args)
-  elif isinstance(tuple_with_args, value_base.Value):
+  if not is_argument_struct(struct_with_args):
+    raise TypeError('Not an argument struct: {}.'.format(struct_with_args))
+  if isinstance(struct_with_args, structure.Struct):
+    elements = structure.to_elements(struct_with_args)
+  elif isinstance(struct_with_args, value_base.Value):
     elements = []
     for index, (name, _) in enumerate(
-        anonymous_tuple.to_elements(tuple_with_args.type_signature)):
+        structure.to_elements(struct_with_args.type_signature)):
       if name is not None:
-        elements.append((name, getattr(tuple_with_args, name)))
+        elements.append((name, getattr(struct_with_args, name)))
       else:
-        elements.append((None, tuple_with_args[index]))
+        elements.append((None, struct_with_args[index]))
   else:
-    tuple_with_args = computation_types.to_type(tuple_with_args)
-    py_typecheck.check_type(tuple_with_args, computation_types.NamedTupleType)
-    elements = anonymous_tuple.to_elements(tuple_with_args)
+    struct_with_args = computation_types.to_type(struct_with_args)
+    struct_with_args.check_struct()
+    elements = structure.to_elements(struct_with_args)
   args = []
   kwargs = {}
   for name, value in elements:
@@ -174,17 +175,16 @@ def unpack_args_from_tuple(tuple_with_args) -> Tuple[List[Any], Dict[str, Any]]:
   return args, kwargs
 
 
-def pack_args_into_anonymous_tuple(
+def pack_args_into_struct(
     args: Sequence[Any],
     kwargs: Mapping[str, Any],
     type_spec=None,
-    context: Optional[context_base.Context] = None
-) -> anonymous_tuple.AnonymousTuple:
-  """Packs positional and keyword arguments into an anonymous tuple.
+    context: Optional[context_base.Context] = None) -> structure.Struct:
+  """Packs positional and keyword arguments into a `Struct`.
 
-  If 'type_spec' is not None, it must be a tuple type or something that's
+  If 'type_spec' is not None, it must be a `StructType` or something that's
   convertible to it by computation_types.to_type(). The assignment of arguments
-  to fields of the tuple follows the same rule as during function calls. If
+  to fields of the struct follows the same rule as during function calls. If
   'type_spec' is None, the positional arguments precede any of the keyword
   arguments, and the ordering of the keyword arguments matches the ordering in
   which they appear in kwargs. If the latter is an OrderedDict, the ordering
@@ -195,38 +195,38 @@ def pack_args_into_anonymous_tuple(
     args: Positional arguments.
     kwargs: Keyword arguments.
     type_spec: The optional type specification (either an instance of
-      computation_types.NamedTupleType or something convertible to it), or None
-      if there's no type. Used to drive the arrangements of args into fields of
-      the constructed anonymous tuple, as noted in the description.
+      `computation_types.StructType` or something convertible to it), or None if
+      there's no type. Used to drive the arrangements of args into fields of the
+      constructed struct, as noted in the description.
     context: The optional context (an instance of `context_base.Context`) in
       which the arguments are being packed. Required if and only if the
       `type_spec` is not `None`.
 
   Returns:
-    An anoymous tuple containing all the arguments.
+    An struct containing all the arguments.
 
   Raises:
     TypeError: if the arguments are of the wrong computation_types.
   """
   type_spec = computation_types.to_type(type_spec)
   if not type_spec:
-    return anonymous_tuple.AnonymousTuple([(None, arg) for arg in args] +
-                                          list(kwargs.items()))
+    return structure.Struct([(None, arg) for arg in args] +
+                            list(kwargs.items()))
   else:
-    py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
+    py_typecheck.check_type(type_spec, computation_types.StructType)
     py_typecheck.check_type(context, context_base.Context)
     context = typing.cast(context_base.Context, context)
-    if not is_argument_tuple(type_spec):  # pylint: disable=attribute-error
+    if not is_argument_struct(type_spec):  # pylint: disable=attribute-error
       raise TypeError(
-          'Parameter type {} does not have a structure of an argument tuple, '
+          'Parameter type {} does not have a structure of an argument struct, '
           'and cannot be populated from multiple positional and keyword '
           'arguments'.format(type_spec))
     else:
       result_elements = []
       positions_used = set()
       keywords_used = set()
-      for index, (name, elem_type) in enumerate(
-          anonymous_tuple.to_elements(type_spec)):
+      for index, (name,
+                  elem_type) in enumerate(structure.to_elements(type_spec)):
         if index < len(args):
           if name is not None and name in kwargs:
             raise TypeError('Argument {} specified twice.'.format(name))
@@ -250,15 +250,15 @@ def pack_args_into_anonymous_tuple(
       if keywords_missing:
         raise TypeError(
             'Keyword arguments at {} not used.'.format(keywords_missing))
-      return anonymous_tuple.AnonymousTuple(result_elements)
+      return structure.Struct(result_elements)
 
 
 def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any],
               context: context_base.Context):
   """Pack arguments into a single one that matches the given parameter type.
 
-  The arguments may or may not be packed into a tuple, depending on the type of
-  the parameter, and how many arguments are present.
+  The arguments may or may not be packed into a `Struct`, depending on the type
+  of the parameter, and how many arguments are present.
 
   Args:
     parameter_type: The type of the single parameter expected by a computation,
@@ -291,8 +291,8 @@ def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any],
               parameter_type))
     else:
       single_positional_arg = (len(args) == 1) and not kwargs
-      if not parameter_type.is_tuple():
-        # If not a named tuple type, a single positional argument is the only
+      if not parameter_type.is_struct():
+        # If not a `StructType`, a single positional argument is the only
         # supported call style.
         if not single_positional_arg:
           raise TypeError(
@@ -303,15 +303,14 @@ def pack_args(parameter_type, args: Sequence[Any], kwargs: Mapping[str, Any],
           arg = args[0]
       elif single_positional_arg:
         arg = args[0]
-      elif not is_argument_tuple(parameter_type):
+      elif not is_argument_struct(parameter_type):
         raise TypeError(
             'Parameter type {} does not have a structure of an argument '
-            'tuple, and cannot be populated from multiple positional and '
-            'keyword arguments; please construct a tuple before the '
+            'struct, and cannot be populated from multiple positional and '
+            'keyword arguments; please construct a struct before the '
             'call.'.format(parameter_type))
       else:
-        arg = pack_args_into_anonymous_tuple(args, kwargs, parameter_type,
-                                             context)
+        arg = pack_args_into_struct(args, kwargs, parameter_type, context)
       return context.ingest(arg, parameter_type)
 
 
@@ -355,8 +354,8 @@ def infer_unpack_needed(fn: types.FunctionType,
         'The supplied function \'{}\' with signature {} cannot accept a '
         'value of type \'{}\' as a single argument.'.format(
             fn.__name__, signature, parameter_type))
-  if is_argument_tuple(parameter_type):
-    arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
+  if is_argument_struct(parameter_type):
+    arg_types, kwarg_types = unpack_args_from_struct(parameter_type)
     unpack_possible = is_signature_compatible_with_types(
         signature, *arg_types, **kwarg_types)
   else:
@@ -402,8 +401,8 @@ def wrap_as_zero_or_one_arg_callable(
   such, conceptually only accept a single parameter. The returned callable has
   a single positional parameter or no parameters. If it has one parameter, the
   parameter is expected to contain all arguments required by `fn` and matching
-  the supplied parameter type signature bundled together into an anonymous
-  tuple, if needed. The callable unpacks that structure, and passes all of
+  the supplied parameter type signature bundled together into a `Struct`,
+  if needed. The callable unpacks that structure, and passes all of
   its elements as positional or keyword-based arguments in the call to `fn`.
 
   Example usage:
@@ -416,7 +415,7 @@ def wrap_as_zero_or_one_arg_callable(
 
     wrapped_fn = wrap_as_zero_or_one_arg_callable(my_fn, type_spec)
 
-    arg = AnonymoutTuple([('x', 10), ('y', 20)])
+    arg = Struct([('x', 10), ('y', 20)])
 
     ... = wrapped_fn(arg)
 
@@ -458,7 +457,7 @@ def wrap_as_zero_or_one_arg_callable(
           'a body of a no-parameter computation.'.format(signature))
   else:
     if infer_unpack_needed(fn, parameter_type, unpack):
-      arg_types, kwarg_types = unpack_args_from_tuple(parameter_type)
+      arg_types, kwarg_types = unpack_args_from_struct(parameter_type)
 
       def _unpack_and_call(fn, arg_types, kwarg_types, arg):
         """An interceptor function that unpacks 'arg' before calling `fn`.
@@ -480,8 +479,7 @@ def wrap_as_zero_or_one_arg_callable(
         Raises:
           TypeError: if types don't match.
         """
-        py_typecheck.check_type(
-            arg, (anonymous_tuple.AnonymousTuple, value_base.Value))
+        py_typecheck.check_type(arg, (structure.Struct, value_base.Value))
         args = []
         for idx, expected_type in enumerate(arg_types):
           element_value = arg[idx]
@@ -490,7 +488,7 @@ def wrap_as_zero_or_one_arg_callable(
             raise TypeError(
                 'Expected element at position {} to be of type {}, found {}.'
                 .format(idx, expected_type, actual_type))
-          if isinstance(element_value, anonymous_tuple.AnonymousTuple):
+          if isinstance(element_value, structure.Struct):
             element_value = type_conversions.type_to_py_container(
                 element_value, expected_type)
           args.append(element_value)
@@ -502,8 +500,8 @@ def wrap_as_zero_or_one_arg_callable(
             raise TypeError(
                 'Expected element named {} to be of type {}, found {}.'.format(
                     name, expected_type, actual_type))
-          if type_analysis.is_anon_tuple_with_py_container(
-              element_value, expected_type):
+          if type_analysis.is_struct_with_py_container(element_value,
+                                                       expected_type):
             element_value = type_conversions.type_to_py_container(
                 element_value, expected_type)
           kwargs[name] = element_value
@@ -523,7 +521,7 @@ def wrap_as_zero_or_one_arg_callable(
         if not parameter_type.is_assignable_from(arg_type):
           raise TypeError('Expected an argument of type {}, found {}.'.format(
               parameter_type, arg_type))
-        if type_analysis.is_anon_tuple_with_py_container(arg, parameter_type):
+        if type_analysis.is_struct_with_py_container(arg, parameter_type):
           arg = type_conversions.type_to_py_container(arg, parameter_type)
         return fn(arg)
 
@@ -638,8 +636,8 @@ class PolymorphicFunction(object):
     # TODO(b/113112885): We may need to normalize individuals args, such that
     # the type is more predictable and uniform (e.g., if someone supplies an
     # unordered dictionary), possibly by converting dict-like and tuple-like
-    # containters into anonymous tuples.
-    packed_arg = pack_args_into_anonymous_tuple(args, kwargs)
+    # containers into `Struct`s.
+    packed_arg = pack_args_into_struct(args, kwargs)
     arg_type = type_conversions.infer_type(packed_arg)
     # We know the argument types have been packed, so force unpacking.
     concrete_fn = self.fn_for_argument_type(arg_type, unpack=True)

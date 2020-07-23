@@ -122,7 +122,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     v2 = loop.run_until_complete(ex.create_value(10, tf.int32))
     v3 = loop.run_until_complete(ex.create_value(20, tf.int32))
     v4 = loop.run_until_complete(
-        ex.create_tuple(
+        ex.create_struct(
             anonymous_tuple.AnonymousTuple([(None, v2), (None, v3)])))
     v5 = loop.run_until_complete(ex.create_call(v1, v4))
     result = loop.run_until_complete(v5.compute())
@@ -148,7 +148,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     v2 = loop.run_until_complete(ex.create_value(add_one))
     v3 = loop.run_until_complete(ex.create_value(10, tf.int32))
     v4 = loop.run_until_complete(
-        ex.create_tuple(
+        ex.create_struct(
             anonymous_tuple.AnonymousTuple([(None, v2), (None, v3)])))
     v5 = loop.run_until_complete(ex.create_call(v1, v4))
     result = loop.run_until_complete(v5.compute())
@@ -180,7 +180,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     v1 = loop.run_until_complete(ex.create_value(10, tf.int32))
     v2 = loop.run_until_complete(ex.create_value(20, tf.int32))
     v3 = loop.run_until_complete(
-        ex.create_tuple(
+        ex.create_struct(
             anonymous_tuple.AnonymousTuple([(None, v1), (None, v2)])))
     v4 = loop.run_until_complete(ex.create_selection(v3, index=0))
     v5 = loop.run_until_complete(ex.create_selection(v3, index=1))
@@ -240,7 +240,8 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     v2 = loop.run_until_complete(ex.create_value(add_one))
     v3 = loop.run_until_complete(ex.create_value(10, tf.int32))
     v4 = loop.run_until_complete(
-        ex.create_tuple(anonymous_tuple.AnonymousTuple([('f', v2), ('x', v3)])))
+        ex.create_struct(
+            anonymous_tuple.AnonymousTuple([('f', v2), ('x', v3)])))
     v5 = loop.run_until_complete(ex.create_call(v1, v4))
     result = loop.run_until_complete(v5.compute())
     self.assertEqual(result.numpy(), 12)
