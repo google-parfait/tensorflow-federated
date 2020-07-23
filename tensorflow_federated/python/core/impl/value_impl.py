@@ -29,7 +29,9 @@ from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.context_stack import symbol_binding_context
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -51,11 +53,22 @@ def _is_named_tuple(vimpl: 'ValueImpl') -> bool:
 def _check_is_optionally_federated_named_tuple(
     vimpl: 'ValueImpl',
     context_name: str,
-) -> bool:
+):
   if not (_is_named_tuple(vimpl) or _is_federated_named_tuple(vimpl)):
     raise TypeError('{} is only supported for named tuples, but the '
                     'object on which it has been invoked is of type {}.'.format(
                         context_name, vimpl._comp.type_signature))  # pylint: disable=protected-access
+
+
+def _check_symbol_binding_context(context: context_base.Context):
+  if not isinstance(context, symbol_binding_context.SymbolBindingContext):
+    raise context_base.ContextError('TFF values should only be materialized '
+                                    'inside a context which can bind '
+                                    'references, generally a '
+                                    '`FederatedComputationContext`. Attempted '
+                                    'to materialize a TFF value in a context '
+                                    '{c} of type {t}.'.format(
+                                        c=context, t=type(context)))
 
 
 class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
@@ -85,6 +98,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     """
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+    _check_symbol_binding_context(context_stack.current)
     # We override `__setattr__` for `ValueImpl` and so must assign fields using
     # the `__setattr__` impl on the superclass (rather than simply using
     # e.g. `self._comp = comp`.

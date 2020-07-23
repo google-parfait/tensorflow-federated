@@ -89,6 +89,13 @@ py_test(
 )
 
 py_library(
+    name = "symbol_binding_context",
+    srcs = ["symbol_binding_context.py"],
+    srcs_version = "PY3",
+    deps = [":context_base"],
+)
+
+py_library(
     name = "set_default_context",
     srcs = ["set_default_context.py"],
     srcs_version = "PY3",

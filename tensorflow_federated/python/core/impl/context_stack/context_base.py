@@ -74,3 +74,7 @@ class Context(object, metaclass=abc.ABCMeta):
       The result of invocation, which is context-dependent.
     """
     raise NotImplementedError
+
+
+class ContextError(RuntimeError):
+  pass

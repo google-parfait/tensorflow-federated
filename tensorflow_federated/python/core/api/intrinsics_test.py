@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -36,6 +37,15 @@ class IntrinsicsTest(parameterized.TestCase):
 
   def assert_type(self, value, type_string):
     self.assertEqual(value.type_signature.compact_representation(), type_string)
+
+  def test_intrinsic_construction_raises_context_error_outside_decorator(self):
+
+    @computations.tf_computation()
+    def return_2():
+      return 2
+
+    with self.assertRaises(context_base.ContextError):
+      intrinsics.federated_eval(return_2, placements.SERVER)
 
   def test_federated_broadcast_with_server_all_equal_int(self):
 

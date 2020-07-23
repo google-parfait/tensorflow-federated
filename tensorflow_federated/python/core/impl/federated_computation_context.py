@@ -18,12 +18,12 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.context_stack import symbol_binding_context
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 
-class FederatedComputationContext(context_base.Context):
+class FederatedComputationContext(symbol_binding_context.SymbolBindingContext):
   """The context for building federated computations.
 
   This context additionally holds a list of symbols which are bound to
