@@ -1534,8 +1534,12 @@ def resolve_higher_order_functions(
         # Not a higher order lambda, we are in our base case.
         return building_blocks.Call(
             resolved_fn, resolved_argument), fn_modified or arg_modified
-      block_to_walk = building_blocks.Block(
-          [(resolved_fn.parameter_name, resolved_argument)], resolved_fn.result)
+      if resolved_fn.parameter_name is None:
+        block_to_walk = resolved_fn.result
+      else:
+        block_to_walk = building_blocks.Block(
+            [(resolved_fn.parameter_name, resolved_argument)],
+            resolved_fn.result)
       # Retraversal of already walked tree to resolve higher-order function.
       resolved, _ = transformation_utils.transform_preorder(
           block_to_walk, _resolve_higher_order_fns)

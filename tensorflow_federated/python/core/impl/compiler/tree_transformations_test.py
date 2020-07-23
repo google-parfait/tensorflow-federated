@@ -3609,6 +3609,24 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     self.assertTrue(transformed)
     self.assertEqual(resolved.compact_representation(), '(x -> x)(data)')
 
+  def test_resolves_selection_from_call_with_no_param_lambda(self):
+    materialize_int = building_blocks.Lambda(
+        None, None, building_blocks.Data('x', tf.int32))
+    dummy_int = building_blocks.Data('data', tf.int32)
+    tup_containing_fn = building_blocks.Tuple([materialize_int, dummy_int])
+    lambda_returning_tup = building_blocks.Lambda('z', tf.int32,
+                                                  tup_containing_fn)
+    called_tup = building_blocks.Call(lambda_returning_tup, dummy_int)
+    selected_materialize_int = building_blocks.Selection(
+        source=called_tup, index=0)
+    called_id = building_blocks.Call(selected_materialize_int)
+
+    resolved, transformed = self._apply_resolution_and_remove_unused_block_locals(
+        called_id)
+
+    self.assertTrue(transformed)
+    self.assertEqual(resolved.compact_representation(), '( -> x)()')
+
   def test_resolves_selection_from_symbol_bound_to_call(self):
     int_identity = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
