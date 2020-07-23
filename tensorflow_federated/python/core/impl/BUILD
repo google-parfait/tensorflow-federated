@@ -1,5 +1,6 @@
 package_group(
-    name = "core_visibility",
+    name = "impl_visibility",
+    includes = ["//tensorflow_federated/python/core:core_visibility"],
     packages = [
         "//tensorflow_federated/python/core/api/...",
         "//tensorflow_federated/python/core/backends/...",
@@ -13,9 +14,10 @@ package_group(
 package_group(
     name = "default_visibility",
     includes = [
-        # TODO(b/143772942): This include is temporary and can be removed once
-        # all the appropriate  modules have been moved out of the `impl` package.
-        ":core_visibility",
+        # TODO(b/143772942): This visibility is temporary and can be removed
+        # once all the appropriate modules have been moved out of the `impl`
+        # package.
+        ":impl_visibility",
     ],
     packages = [
         # Subpackages

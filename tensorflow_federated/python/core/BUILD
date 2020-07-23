@@ -1,12 +1,28 @@
-package(default_visibility = ["//tensorflow_federated:__subpackages__"])
+package_group(
+    name = "core_visibility",
+    packages = [
+        "//tensorflow_federated/python/learning/...",
+        "//tensorflow_federated/python/simulation/...",
+    ],
+)
+
+package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])
 
-# Modules outside the core/ directory should import this.
 py_library(
     name = "core",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
+    visibility = [
+        "//tensorflow_federated:__pkg__",
+        "//tensorflow_federated/tools:__subpackages__",
+
+        # TODO(b/143772942): This visibility is temporary and can be removed
+        # once the `learning` and `simulation` packages depend on targets
+        # explicitly.
+        "//tensorflow_federated:__subpackages__",
+    ],
     deps = [
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",

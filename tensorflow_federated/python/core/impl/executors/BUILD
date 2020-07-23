@@ -1,6 +1,6 @@
 package_group(
     name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core/impl:core_visibility"],
+    includes = ["//tensorflow_federated/python/core/impl:impl_visibility"],
     packages = [
         # Subpackages
         "//tensorflow_federated/python/core/impl/executors/...",
