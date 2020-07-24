@@ -190,8 +190,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
         e.close()
 
   def _check_arg_is_anonymous_tuple(self, arg):
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     py_typecheck.check_type(arg.internal_representation,
                             anonymous_tuple.AnonymousTuple)
 
@@ -348,7 +347,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     return FederatedResolvingStrategyValue(
         new_vals,
         computation_types.FederatedType(
-            computation_types.NamedTupleType((
+            computation_types.StructType((
                 (k, v.member) if k else v.member
                 for k, v in anonymous_tuple.iter_elements(arg.type_signature))),
             placement,
@@ -380,7 +379,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
         FederatedResolvingStrategyValue(
             anonymous_tuple.AnonymousTuple([(None, val), (None, zero),
                                             (None, accumulate)]),
-            computation_types.NamedTupleType(
+            computation_types.StructType(
                 (val_type, zero_type, accumulate_type))))
 
     py_typecheck.check_type(pre_report.type_signature,
@@ -393,7 +392,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
             anonymous_tuple.AnonymousTuple([
                 (None, report), (None, pre_report.internal_representation)
             ]),
-            computation_types.NamedTupleType(
+            computation_types.StructType(
                 (report_type, pre_report.type_signature))))
 
   @tracing.trace
@@ -547,7 +546,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
                 (None, zero.internal_representation),
                 (None, plus.internal_representation)
             ]),
-            computation_types.NamedTupleType(
+            computation_types.StructType(
                 (arg.type_signature, zero.type_signature, plus.type_signature)))
     )
 

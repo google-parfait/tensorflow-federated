@@ -147,7 +147,7 @@ found in existing mainstream languages:
     The compact representation of sequence types is `T*`, where `T` is the type
     of elements. For example `int32*` represents an integer sequence.
 
-*   **Named tuple types** (`tff.NamedTupleType`). These are TFF's way of
+*   **Named tuple types** (`tff.StructType`). These are TFF's way of
     constructing tuples and dictionary-like structures that have a predefined
     number of *elements* with specific types, named or unnamed. Importantly,
     TFF's named tuple concept encompasses the abstract equivalent of Python's

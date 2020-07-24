@@ -631,7 +631,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
     fed_at_clients = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.NamedTupleType(
+    tuple_of_federated_types = computation_types.StructType(
         [fed_at_clients, fed_at_server])
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
@@ -645,7 +645,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
     fed_at_clients = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.NamedTupleType(
+    tuple_of_federated_types = computation_types.StructType(
         [fed_at_clients, fed_at_server])
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
@@ -676,7 +676,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
     fed_at_clients = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.NamedTupleType(
+    tuple_of_federated_types = computation_types.StructType(
         [fed_at_clients, fed_at_server])
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
@@ -697,7 +697,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
     fed_at_clients = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.NamedTupleType(
+    tuple_of_federated_types = computation_types.StructType(
         [fed_at_clients, fed_at_server])
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
@@ -713,8 +713,8 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
     fed_at_clients = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.NamedTupleType(
-        [[fed_at_clients], fed_at_server])
+    tuple_of_federated_types = computation_types.StructType([[fed_at_clients],
+                                                             fed_at_server])
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
         building_blocks.Selection(
@@ -750,8 +750,9 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
     fed_at_clients = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.NamedTupleType(
-        [[fed_at_clients], fed_at_server, [fed_at_clients]])
+    tuple_of_federated_types = computation_types.StructType([[fed_at_clients],
+                                                             fed_at_server,
+                                                             [fed_at_clients]])
     first_selection = building_blocks.Selection(
         building_blocks.Selection(
             building_blocks.Reference('x', tuple_of_federated_types), index=0),
@@ -789,8 +790,9 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
     fed_at_clients = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.NamedTupleType(
-        [[fed_at_clients], fed_at_server, [fed_at_clients]])
+    tuple_of_federated_types = computation_types.StructType([[fed_at_clients],
+                                                             fed_at_server,
+                                                             [fed_at_clients]])
     first_selection = building_blocks.Selection(
         building_blocks.Selection(
             building_blocks.Reference('x', tuple_of_federated_types), index=0),
@@ -858,7 +860,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
                      lam.type_signature.parameter)
     self.assertEqual(
         tuple_selected.type_signature.result,
-        computation_types.NamedTupleType(
+        computation_types.StructType(
             [lam.type_signature.result[0], lam.type_signature.result[1]]))
     self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
 
@@ -874,7 +876,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
                      lam.type_signature.parameter)
     self.assertEqual(
         tuple_selected.type_signature.result,
-        computation_types.NamedTupleType(
+        computation_types.StructType(
             [lam.type_signature.result[0], lam.type_signature.result[1]]))
     self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
 
@@ -895,7 +897,7 @@ class SelectFederatedOutputFromLambdaTest(absltest.TestCase):
                      lam.type_signature.parameter)
     self.assertEqual(
         tuple_selected.type_signature.result,
-        computation_types.NamedTupleType(
+        computation_types.StructType(
             [lam.type_signature.result[0], lam.type_signature.result[1]]))
     self.assertEqual(str(tuple_selected), '(x -> <x[0],x[1]>)')
 

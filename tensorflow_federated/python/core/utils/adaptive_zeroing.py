@@ -28,8 +28,7 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.templates import measured_process
 
-ValueType = Union[computation_types.TensorType,
-                  computation_types.NamedTupleType]
+ValueType = Union[computation_types.TensorType, computation_types.StructType]
 
 
 @attr.s(auto_attribs=True, eq=False, frozen=True)
@@ -65,7 +64,7 @@ def build_adaptive_zeroing_mean_process(
 
   Args:
     value_type: The type of values to be averaged by the `MeasuredProcess`. Can
-      be a `tff.TensorType` or a nested structure of `tff.NamedTupleType` that
+      be a `tff.TensorType` or a nested structure of `tff.StructType` that
       bottoms out in `tff.TensorType`.
     initial_threshold: The initial value of C * r. Values with norm greater than
       this will be zeroed out.
@@ -82,13 +81,12 @@ def build_adaptive_zeroing_mean_process(
     A `MeasuredProcess` implementing averaging values with adaptive zeroing with
     the type signature described above.
   """
-  # Actually value_type can be any nested structure of NamedTupleType bottoming
+  # Actually value_type can be any nested structure of StructType bottoming
   # out in TensorType, but we'll just verify this much here.
   py_typecheck.check_type(
-      value_type,
-      (computation_types.TensorType, computation_types.NamedTupleType))
+      value_type, (computation_types.TensorType, computation_types.StructType))
 
-  if isinstance(value_type, computation_types.NamedTupleType):
+  if isinstance(value_type, computation_types.StructType):
     if not value_type:
       raise ValueError("value_type cannot be empty.")
 

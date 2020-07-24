@@ -43,7 +43,7 @@ def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
       target_fn, parameter_type, unpack)
   if not type_analysis.is_tensorflow_compatible_type(parameter_type):
     raise TypeError('`tf_computation`s can accept only parameter types with '
-                    'constituents `SequenceType`, `NamedTupleType` '
+                    'constituents `SequenceType`, `StructType` '
                     'and `TensorType`; you have attempted to create one '
                     'with the type {}.'.format(parameter_type))
   ctx_stack = context_stack_impl.context_stack

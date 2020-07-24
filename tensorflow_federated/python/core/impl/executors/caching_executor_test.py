@@ -91,7 +91,7 @@ def bar():
 class GetHashableKeyTest(absltest.TestCase):
 
   def test_get_key_for_identical_anonymous_tuples_tuple_type(self):
-    tuple_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    tuple_type = computation_types.StructType([tf.int32, tf.float32])
     anon_tuple = anonymous_tuple.AnonymousTuple([(
         None,
         0,
@@ -106,7 +106,7 @@ class GetHashableKeyTest(absltest.TestCase):
     self.assertEqual(hash(first_key), hash(second_key))
 
   def test_get_key_for_different_anonymous_tuples_tuple_type(self):
-    tuple_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    tuple_type = computation_types.StructType([tf.int32, tf.float32])
     anon_tuple = anonymous_tuple.AnonymousTuple([(
         None,
         0,
@@ -121,7 +121,7 @@ class GetHashableKeyTest(absltest.TestCase):
     self.assertNotEqual(hash(first_key), hash(second_key))
 
   def test_get_key_for_identical_list_tuple_type(self):
-    tuple_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    tuple_type = computation_types.StructType([tf.int32, tf.float32])
     first_list = [0, 1.]
     first_key = caching_executor._get_hashable_key(first_list, tuple_type)
     second_list = [0, 1.]
@@ -129,7 +129,7 @@ class GetHashableKeyTest(absltest.TestCase):
     self.assertEqual(hash(first_key), hash(second_key))
 
   def test_get_key_for_different_list_tuple_type(self):
-    tuple_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    tuple_type = computation_types.StructType([tf.int32, tf.float32])
     first_list = [0, 1.]
     first_key = caching_executor._get_hashable_key(first_list, tuple_type)
     second_list = [0, 2.]
@@ -337,7 +337,7 @@ class CachingExecutorTest(absltest.TestCase):
     cached_executor = caching_executor.CachingExecutor(mock_executor)
     value = loop.run_until_complete(
         cached_executor.create_value((1, 2),
-                                     computation_types.NamedTupleType(
+                                     computation_types.StructType(
                                          (tf.int32, tf.int32))))
     with self.assertRaises(TestError):
       _ = loop.run_until_complete(cached_executor.create_selection(value, 1))
@@ -356,7 +356,7 @@ class CachingExecutorTest(absltest.TestCase):
     cached_executor = caching_executor.CachingExecutor(mock_executor)
     value = loop.run_until_complete(
         cached_executor.create_value((1, 2),
-                                     computation_types.NamedTupleType(
+                                     computation_types.StructType(
                                          (tf.int32, tf.int32))))
     future1 = cached_executor.create_selection(value, 1)
     future2 = cached_executor.create_selection(value, 1)
@@ -501,7 +501,7 @@ class CachingExecutorTest(absltest.TestCase):
 
     v1 = loop.run_until_complete(
         ex.create_value([10, 20],
-                        computation_types.NamedTupleType([tf.int32, tf.int32])))
+                        computation_types.StructType([tf.int32, tf.int32])))
     self.assertEqual(str(v1.identifier), '1')
     v2 = loop.run_until_complete(ex.create_selection(v1, index=0))
     self.assertEqual(str(v2.identifier), '1[0]')

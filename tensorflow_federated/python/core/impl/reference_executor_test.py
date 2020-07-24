@@ -129,7 +129,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
         reference_executor.to_representation_for_type(
             ds,
             computation_types.SequenceType(
-                computation_types.NamedTupleType([
+                computation_types.StructType([
                     (None, computation_types.TensorType(tf.int32, (2,))),
                     (None, computation_types.TensorType(tf.float32, (2, 4))),
                 ]))), [])
@@ -269,7 +269,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(foo(20, 10), 30)
 
   def test_tensorflow_computation_with_empty_tuple(self):
-    tuple_type = computation_types.NamedTupleType([])
+    tuple_type = computation_types.StructType([])
 
     @computations.tf_computation(tuple_type)
     def foo(z):
@@ -279,7 +279,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(foo(()), 1)
 
   def test_tensorflow_computation_with_tuple_of_one_constant(self):
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         ('x', tf.int32),
     ])
 
@@ -293,7 +293,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   # above, but does not have a name on the types. This behavior may change in
   # the future, this unittest
   def test_tensorflow_computation_with_tuple_of_one_unnamed_constant(self):
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         (None, tf.int32),
     ])
 
@@ -304,7 +304,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(foo((10,)), 11)
 
   def test_tensorflow_computation_with_tuple_of_constants(self):
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         ('x', tf.int32),
         ('y', tf.int32),
     ])
@@ -317,8 +317,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(foo((20, 10)), 30)
 
   def test_tensorflow_computation_with_tuple_of_empty_tuples(self):
-    tuple_type = computation_types.NamedTupleType([])
-    tuple_group_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([])
+    tuple_group_type = computation_types.StructType([
         ('a', tuple_type),
         ('b', tuple_type),
     ])
@@ -332,11 +332,11 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(foo(((), ())), 1)
 
   def test_tensorflow_computation_with_tuple_of_tuples(self):
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         ('x', tf.int32),
         ('y', tf.int32),
     ])
-    tuple_group_type = computation_types.NamedTupleType([
+    tuple_group_type = computation_types.StructType([
         ('a', tuple_type),
         ('b', tuple_type),
     ])
@@ -350,7 +350,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
   def test_tensorflow_computation_with_tuple_of_sequences(self):
     sequence_type = computation_types.SequenceType(tf.int32)
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         ('a', sequence_type),
         ('b', sequence_type),
     ])
@@ -516,7 +516,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
         bar([ds1, ds2])
 
   def test_tensorflow_computation_with_tuples_of_constants(self):
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         ('x', tf.int32),
         ('y', tf.int32),
     ])
@@ -530,7 +530,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
   def test_tensorflow_computation_with_result_sequence_anon_tuple(self):
     input_type = computation_types.SequenceType(
-        computation_types.NamedTupleType([('a', tf.int64)]))
+        computation_types.StructType([('a', tf.int64)]))
 
     @computations.tf_computation(input_type)
     def foo(dataset):
@@ -543,8 +543,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(
         foo.type_signature.result,
         computation_types.SequenceType(
-            computation_types.NamedTupleTypeWithPyContainerType(
-                [('a', tf.int64)], collections.OrderedDict)))
+            computation_types.StructWithPythonType([('a', tf.int64)],
+                                                   collections.OrderedDict)))
     input_value = tf.data.Dataset.range(5).map(
         lambda x: collections.OrderedDict(a=x))
     self.assertAllEqual([i for i in foo(input_value)],
@@ -560,7 +560,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(
         foo.type_signature.result,
         computation_types.SequenceType(
-            computation_types.NamedTupleTypeWithPyContainerType(
+            computation_types.StructWithPythonType(
                 collections.OrderedDict(a=tf.int64), collections.OrderedDict)))
     self.assertAllEqual([i for i in foo()],
                         [collections.OrderedDict(a=i) for i in range(5)])
@@ -598,7 +598,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(foo(ds), 30)
 
   def test_tensorflow_computation_with_arg_sequence_of_tuples(self):
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         ('x', tf.int32),
         ('y', tf.int32),
     ])
@@ -1405,15 +1405,15 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
   def test_merge_tuple_intrinsics_executes_with_federated_aggregate(self):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.CLIENTS)
-    ref_type = computation_types.NamedTupleType(
+    ref_type = computation_types.StructType(
         (value_type, tf.float32, tf.float32, tf.float32, tf.bool))
     ref = bb.Reference('a', ref_type)
     value = bb.Selection(ref, index=0)
     zero = bb.Selection(ref, index=1)
-    accumulate_type = computation_types.NamedTupleType((tf.float32, tf.int32))
+    accumulate_type = computation_types.StructType((tf.float32, tf.int32))
     accumulate_result = bb.Selection(ref, index=2)
     accumulate = bb.Lambda('b', accumulate_type, accumulate_result)
-    merge_type = computation_types.NamedTupleType((tf.float32, tf.float32))
+    merge_type = computation_types.StructType((tf.float32, tf.float32))
     merge_result = bb.Selection(ref, index=3)
     merge = bb.Lambda('c', merge_type, merge_result)
     report_result = bb.Selection(ref, index=4)

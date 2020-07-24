@@ -318,7 +318,7 @@ class RemoteExecutor(executor_base.Executor):
           executor_pb2.CreateStructRequest.Element(
               name=(k if k else None), value_ref=v.value_ref))
       type_elem.append((k, v.type_signature) if k else v.type_signature)
-    result_type = computation_types.NamedTupleType(type_elem)
+    result_type = computation_types.StructType(type_elem)
     request = executor_pb2.CreateStructRequest(element=proto_elem)
     if self._bidi_stream is None:
       response = _request(self._stub.CreateStruct, request)
@@ -331,8 +331,7 @@ class RemoteExecutor(executor_base.Executor):
   @tracing.trace(span=True)
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, RemoteValue)
-    py_typecheck.check_type(source.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(source.type_signature, computation_types.StructType)
     if index is not None:
       py_typecheck.check_type(index, int)
       py_typecheck.check_none(name)

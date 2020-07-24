@@ -78,14 +78,14 @@ class CreateConstantTest(parameterized.TestCase):
        computation_types.TensorType(tf.float32, [3]),
        [10.0] * 3),
       ('unnamed_tuple', 10,
-       computation_types.NamedTupleType([tf.int32] * 3),
+       computation_types.StructType([tf.int32] * 3),
        anonymous_tuple.AnonymousTuple([(None, 10)] * 3)),
       ('named_tuple', 10,
-       computation_types.NamedTupleType(
+       computation_types.StructType(
            [('a', tf.int32), ('b', tf.int32), ('c', tf.int32)]),
        anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10), ('c', 10)])),
       ('nested_tuple', 10,
-       computation_types.NamedTupleType([[tf.int32] * 3] * 3),
+       computation_types.StructType([[tf.int32] * 3] * 3),
        anonymous_tuple.AnonymousTuple(
            [(None, anonymous_tuple.AnonymousTuple([(None, 10)] * 3))] * 3)),
   )
@@ -127,11 +127,11 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
        computation_types.TensorType(tf.float32),
        [1.0, 2.25], 3.25),
       ('add_unnamed_tuple', tf.math.add,
-       computation_types.NamedTupleType([tf.int32, tf.float32]),
+       computation_types.StructType([tf.int32, tf.float32]),
        [[1, 1.0], [2, 2.25]],
        anonymous_tuple.AnonymousTuple([(None, 3), (None, 3.25)])),
       ('add_named_tuple', tf.math.add,
-       computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]),
+       computation_types.StructType([('a', tf.int32), ('b', tf.float32)]),
        [[1, 1.0], [2, 2.25]],
        anonymous_tuple.AnonymousTuple([('a', 3), ('b', 3.25)])),
       ('multiply_int', tf.math.multiply,
@@ -162,7 +162,7 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
     # Note: It is only useful to test the parameter type; the result type
     # depends on the `operator` used, not the implemenation
     # `create_binary_operator`.
-    expected_parameter_type = computation_types.NamedTupleType(
+    expected_parameter_type = computation_types.StructType(
         [type_signature, type_signature])
     self.assertEqual(actual_type.parameter, expected_parameter_type)
     actual_result = test_utils.run_tensorflow(proto, operands)
@@ -186,60 +186,60 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters(
       ('add_int_same_shape', tf.math.add,
-       computation_types.NamedTupleType([
+       computation_types.StructType([
            computation_types.TensorType(tf.int32),
            computation_types.TensorType(tf.int32),
        ]),
        [1, 2], 3),
       ('add_int_different_shape', tf.math.add,
-       computation_types.NamedTupleType([
+       computation_types.StructType([
            computation_types.TensorType(tf.int32, shape=[1]),
            computation_types.TensorType(tf.int32),
        ]),
        [tf.constant(1, shape=[1]), 2], 3),
       ('add_int_different_types', tf.math.add,
-       computation_types.NamedTupleType([
-           computation_types.NamedTupleType([
+       computation_types.StructType([
+           computation_types.StructType([
                computation_types.TensorType(tf.int32, shape=[1])]),
            computation_types.TensorType(tf.int32),
        ]),
        [[tf.constant(1, shape=[1])], 2],
        anonymous_tuple.AnonymousTuple([(None, 3)])),
       ('multiply_int_same_shape', tf.math.multiply,
-       computation_types.NamedTupleType([
+       computation_types.StructType([
            computation_types.TensorType(tf.int32),
            computation_types.TensorType(tf.int32),
        ]),
        [1, 2], 2),
       ('multiply_int_different_shape', tf.math.multiply,
-       computation_types.NamedTupleType([
+       computation_types.StructType([
            computation_types.TensorType(tf.int32, shape=[1]),
            computation_types.TensorType(tf.int32),
        ]),
        [tf.constant(1, shape=[1]), 2], 2),
       ('multiply_int_different_types', tf.math.multiply,
-       computation_types.NamedTupleType([
-           computation_types.NamedTupleType([
+       computation_types.StructType([
+           computation_types.StructType([
                computation_types.TensorType(tf.int32, shape=[1])]),
            computation_types.TensorType(tf.int32)
        ]),
        [[tf.constant(1, shape=[1])], 2],
        anonymous_tuple.AnonymousTuple([(None, 2)])),
       ('divide_int_same_shape', tf.math.divide,
-       computation_types.NamedTupleType([
+       computation_types.StructType([
            computation_types.TensorType(tf.int32),
            computation_types.TensorType(tf.int32),
        ]),
        [1, 2], 0.5),
       ('divide_int_different_shape', tf.math.divide,
-       computation_types.NamedTupleType([
+       computation_types.StructType([
            computation_types.TensorType(tf.int32, shape=[1]),
            computation_types.TensorType(tf.int32),
        ]),
        [tf.constant(1, shape=[1]), 2], 0.5),
       ('divide_int_different_types', tf.math.divide,
-       computation_types.NamedTupleType([
-           computation_types.NamedTupleType([
+       computation_types.StructType([
+           computation_types.StructType([
                computation_types.TensorType(tf.int32, shape=[1])]),
            computation_types.TensorType(tf.int32),
        ]),
@@ -258,7 +258,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
     # Note: It is only useful to test the parameter type; the result type
     # depends on the `operator` used, not the implemenation
     # `create_binary_operator_with_upcast`.
-    expected_parameter_type = computation_types.NamedTupleType(type_signature)
+    expected_parameter_type = computation_types.StructType(type_signature)
     self.assertEqual(actual_type.parameter, expected_parameter_type)
     actual_result = test_utils.run_tensorflow(proto, operands)
     self.assertEqual(actual_result, expected_result)
@@ -284,10 +284,10 @@ class CreateIdentityTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('int', computation_types.TensorType(tf.int32), 10),
       ('unnamed_tuple',
-       computation_types.NamedTupleType([tf.int32, tf.float32]),
+       computation_types.StructType([tf.int32, tf.float32]),
        anonymous_tuple.AnonymousTuple([(None, 10), (None, 10.0)])),
       ('named_tuple',
-       computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]),
+       computation_types.StructType([('a', tf.int32), ('b', tf.float32)]),
        anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10.0)])),
       ('sequence', computation_types.SequenceType(tf.int32), [10] * 3),
   )
@@ -316,11 +316,10 @@ class CreateReplicateInputTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('int', computation_types.TensorType(tf.int32), 3, 10),
       ('float', computation_types.TensorType(tf.float32), 3, 10.0),
-      ('unnamed_tuple', computation_types.NamedTupleType([
-          tf.int32, tf.float32
-      ]), 3, anonymous_tuple.AnonymousTuple([(None, 10), (None, 10.0)])),
+      ('unnamed_tuple', computation_types.StructType([tf.int32, tf.float32]), 3,
+       anonymous_tuple.AnonymousTuple([(None, 10), (None, 10.0)])),
       ('named_tuple',
-       computation_types.NamedTupleType([
+       computation_types.StructType([
            ('a', tf.int32), ('b', tf.float32)
        ]), 3, anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10.0)])),
       ('sequence', computation_types.SequenceType(tf.int32), 3, [10] * 3),

@@ -183,7 +183,7 @@ class MeasuredProcessTest(test.TestCase):
           initialize_fn=initialize, next_fn=add_bad_multi_result)
 
     with self.assertRaisesRegex(TypeError,
-                                'MeasuredProcess must return a NamedTupleType'):
+                                'MeasuredProcess must return a StructType'):
 
       @computations.federated_computation(tf.int32)
       def add_not_tuple_result(_):

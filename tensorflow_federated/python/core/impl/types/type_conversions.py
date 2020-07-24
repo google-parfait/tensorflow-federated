@@ -65,25 +65,25 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
     element_type = computation_types.to_type(arg.element_spec)
     return computation_types.SequenceType(element_type)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
-    return computation_types.NamedTupleType([
+    return computation_types.StructType([
         (k, infer_type(v)) if k else infer_type(v)
         for k, v in anonymous_tuple.iter_elements(arg)
     ])
   elif py_typecheck.is_attrs(arg):
     items = attr.asdict(
         arg, dict_factory=collections.OrderedDict, recurse=False)
-    return computation_types.NamedTupleTypeWithPyContainerType(
+    return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items.items()], type(arg))
   elif py_typecheck.is_named_tuple(arg):
     items = arg._asdict()
-    return computation_types.NamedTupleTypeWithPyContainerType(
+    return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items.items()], type(arg))
   elif isinstance(arg, dict):
     if isinstance(arg, collections.OrderedDict):
       items = arg.items()
     else:
       items = sorted(arg.items())
-    return computation_types.NamedTupleTypeWithPyContainerType(
+    return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items], type(arg))
   elif isinstance(arg, (tuple, list)):
     elements = []
@@ -92,12 +92,11 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
       all_elements_named &= py_typecheck.is_name_value_pair(element)
       elements.append(infer_type(element))
     # If this is a tuple of (name, value) pairs, the caller most likely intended
-    # this to be a NamedTupleType, so we avoid storing the Python container.
+    # this to be a StructType, so we avoid storing the Python container.
     if all_elements_named:
-      return computation_types.NamedTupleType(elements)
+      return computation_types.StructType(elements)
     else:
-      return computation_types.NamedTupleTypeWithPyContainerType(
-          elements, type(arg))
+      return computation_types.StructWithPythonType(elements, type(arg))
   elif isinstance(arg, str):
     return computation_types.TensorType(tf.string)
   elif isinstance(arg, (np.generic, np.ndarray)):
@@ -310,7 +309,7 @@ def type_to_py_container(value, type_spec):
     value: A structure of anonymous tuples of values corresponding to
       `type_spec`.
     type_spec: The `tff.Type` to which value should conform, possibly including
-      `computation_types.NamedTupleTypeWithPyContainerType`.
+      `computation_types.StructWithPythonType`.
 
   Returns:
     The input value, with containers converted to appropriate Python
@@ -358,7 +357,7 @@ def type_to_py_container(value, type_spec):
             py_typecheck.is_attrs(container_type) or
             issubclass(container_type, dict))
 
-  # TODO(b/133228705): Consider requiring NamedTupleTypeWithPyContainerType.
+  # TODO(b/133228705): Consider requiring StructWithPythonType.
   container_type = structure_type_spec.python_container or anonymous_tuple.AnonymousTuple
   container_is_anon_tuple = structure_type_spec.python_container is None
 

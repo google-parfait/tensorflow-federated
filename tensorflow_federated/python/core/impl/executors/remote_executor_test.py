@@ -335,7 +335,7 @@ class RemoteExecutorTest(absltest.TestCase):
     instance.CreateSelection = mock.Mock(side_effect=[response])
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
-    type_signature = computation_types.NamedTupleType([tf.int32, tf.int32])
+    type_signature = computation_types.StructType([tf.int32, tf.int32])
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                          type_signature, executor)
 
@@ -351,7 +351,7 @@ class RemoteExecutorTest(absltest.TestCase):
         side_effect=_raise_grpc_error_unavailable)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
-    type_signature = computation_types.NamedTupleType([tf.int32, tf.int32])
+    type_signature = computation_types.StructType([tf.int32, tf.int32])
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                          type_signature, executor)
 
@@ -364,7 +364,7 @@ class RemoteExecutorTest(absltest.TestCase):
         side_effect=_raise_non_retryable_grpc_error)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
-    type_signature = computation_types.NamedTupleType([tf.int32, tf.int32])
+    type_signature = computation_types.StructType([tf.int32, tf.int32])
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                          type_signature, executor)
 
@@ -378,7 +378,7 @@ class RemoteExecutorTest(absltest.TestCase):
     instance.CreateSelection = mock.Mock(side_effect=TypeError)
     loop = asyncio.get_event_loop()
     executor = create_remote_executor()
-    type_signature = computation_types.NamedTupleType([tf.int32, tf.int32])
+    type_signature = computation_types.StructType([tf.int32, tf.int32])
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                          type_signature, executor)
 

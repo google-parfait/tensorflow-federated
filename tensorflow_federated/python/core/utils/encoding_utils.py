@@ -117,7 +117,7 @@ def build_encoded_broadcast_process(value_type, encoders):
 
   Args:
     value_type: The type of values to be broadcasted by the `MeasuredProcess`.
-      Either a `tff.TensorType` or a `tff.NamedTupleType`.
+      Either a `tff.TensorType` or a `tff.StructType`.
     encoders: A collection of `SimpleEncoder` objects to be used for encoding
       `values`. Must have the same structure as `values`.
 
@@ -132,8 +132,7 @@ def build_encoded_broadcast_process(value_type, encoders):
       `value_type` are not compatible with the expected input of the `encoders`.
   """
   py_typecheck.check_type(
-      value_type,
-      (computation_types.TensorType, computation_types.NamedTupleType))
+      value_type, (computation_types.TensorType, computation_types.StructType))
 
   _validate_value_type_and_encoders(value_type, encoders,
                                     tensor_encoding.core.SimpleEncoder)
@@ -250,7 +249,7 @@ def build_encoded_sum_process(value_type, encoders):
 
   Args:
     value_type: The type of values to be encoded by the `MeasuredProcess`.
-      Either a `tff.TensorType` or a `tff.NamedTupleType`.
+      Either a `tff.TensorType` or a `tff.StructType`.
     encoders: A collection of `GatherEncoder` objects to be used for encoding
       `values`. Must have the same structure as `values`.
 
@@ -265,8 +264,7 @@ def build_encoded_sum_process(value_type, encoders):
       `value_type` are not compatible with the expected input of the `encoders`.
   """
   py_typecheck.check_type(
-      value_type,
-      (computation_types.TensorType, computation_types.NamedTupleType))
+      value_type, (computation_types.TensorType, computation_types.StructType))
 
   _validate_value_type_and_encoders(value_type, encoders,
                                     tensor_encoding.core.GatherEncoder)
@@ -367,7 +365,7 @@ def build_encoded_mean_process(value_type, encoders):
 
   Args:
     value_type: The type of values to be encoded by the `MeasuredProcess`.
-      Either a `tff.TensorType` or a `tff.NamedTupleType`.
+      Either a `tff.TensorType` or a `tff.StructType`.
     encoders: A collection of `GatherEncoder` objects to be used for encoding
       `values`. Must have the same structure as `values`.
 
@@ -382,8 +380,7 @@ def build_encoded_mean_process(value_type, encoders):
       `value_type` are not compatible with the expected input of the `encoders`.
   """
   py_typecheck.check_type(
-      value_type,
-      (computation_types.TensorType, computation_types.NamedTupleType))
+      value_type, (computation_types.TensorType, computation_types.StructType))
 
   _validate_value_type_and_encoders(value_type, encoders,
                                     tensor_encoding.core.GatherEncoder)
@@ -639,8 +636,8 @@ def _validate_value_type_and_encoders(value_type, encoders, encoder_type):
     _validate_encoder(encoders, value_type, encoder_type)
   else:
     # If `encoders` is a container, then `value_type` should be an instance of
-    # `tff.NamedTupleType.`
-    if not isinstance(value_type, computation_types.NamedTupleType):
+    # `tff.StructType.`
+    if not isinstance(value_type, computation_types.StructType):
       raise TypeError('`value_type` is not compatible with the expected input '
                       'of the `encoders`.')
     anonymous_tuple.map_structure(

@@ -64,8 +64,8 @@ def _dummy_canonical_form_computations():
   def bitwidth():
     return []
 
-  @computations.tf_computation(
-      tf.int32, (tf.float32, computation_types.NamedTupleType([])))
+  @computations.tf_computation(tf.int32,
+                               (tf.float32, computation_types.StructType([])))
   def update(server_state, global_update):
     del server_state  # Unused
     del global_update  # Unused
@@ -134,8 +134,8 @@ class CanonicalFormTest(absltest.TestCase):
     def bitwidth():
       return []
 
-    @computations.tf_computation(
-        tf.int32, (tf.float32, computation_types.NamedTupleType([])))
+    @computations.tf_computation(tf.int32,
+                                 (tf.float32, computation_types.StructType([])))
     def update(server_state, global_update):
       del server_state  # Unused
       del global_update  # Unused
@@ -343,8 +343,8 @@ class CanonicalFormTest(absltest.TestCase):
     (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
      _) = _dummy_canonical_form_computations()
 
-    @computations.tf_computation(
-        tf.float32, (tf.float32, computation_types.NamedTupleType([])))
+    @computations.tf_computation(tf.float32,
+                                 (tf.float32, computation_types.StructType([])))
     def update(server_state, global_update):
       del server_state  # Unused
       del global_update  # Unused
@@ -358,8 +358,8 @@ class CanonicalFormTest(absltest.TestCase):
     (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
      _) = _dummy_canonical_form_computations()
 
-    @computations.tf_computation(
-        tf.int32, (tf.int32, computation_types.NamedTupleType([])))
+    @computations.tf_computation(tf.int32,
+                                 (tf.int32, computation_types.StructType([])))
     def update(server_state, global_update):
       del server_state  # Unused
       del global_update  # Unused
@@ -373,8 +373,8 @@ class CanonicalFormTest(absltest.TestCase):
     (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
      _) = _dummy_canonical_form_computations()
 
-    @computations.tf_computation(
-        tf.int32, (tf.float32, computation_types.NamedTupleType([])))
+    @computations.tf_computation(tf.int32,
+                                 (tf.float32, computation_types.StructType([])))
     def update(server_state, global_update):
       del server_state  # Unused
       del global_update  # Unused

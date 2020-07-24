@@ -909,7 +909,7 @@ class ExtractIntrinsicsTest(test.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_selection_intrinsic(self):
-    parameter_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    parameter_type = computation_types.StructType((tf.int32, tf.int32))
     called_intrinsic = test_utils.create_dummy_called_intrinsic(
         parameter_name='a', parameter_type=parameter_type)
     sel = building_blocks.Selection(called_intrinsic, index=0)
@@ -924,7 +924,7 @@ class ExtractIntrinsicsTest(test.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_selection_named_intrinsic(self):
-    parameter_type = computation_types.NamedTupleType((
+    parameter_type = computation_types.StructType((
         ('a', tf.int32),
         ('b', tf.int32),
     ))
@@ -942,7 +942,7 @@ class ExtractIntrinsicsTest(test.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_selection_block_one_var(self):
-    parameter_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    parameter_type = computation_types.StructType((tf.int32, tf.int32))
     called_intrinsic = test_utils.create_dummy_called_intrinsic(
         parameter_name='a', parameter_type=parameter_type)
     ref = building_blocks.Reference('b', called_intrinsic.type_signature)
@@ -960,7 +960,7 @@ class ExtractIntrinsicsTest(test.TestCase):
     self.assertTrue(modified)
 
   def test_extracts_from_selection_block_multiple_vars(self):
-    parameter_type = computation_types.NamedTupleType((tf.int32, tf.int32))
+    parameter_type = computation_types.StructType((tf.int32, tf.int32))
     called_intrinsic = test_utils.create_dummy_called_intrinsic(
         parameter_name='a', parameter_type=parameter_type)
     ref = building_blocks.Reference('b', called_intrinsic.type_signature)
@@ -2011,10 +2011,10 @@ class MergeTupleIntrinsicsTest(test.TestCase):
     zero = building_blocks.Data(
         'data', computation_types.TensorType(tf.float32, shape=[0]))
     zero_type = computation_types.TensorType(tf.float32, shape=[None])
-    accumulate_type = computation_types.NamedTupleType((zero_type, value_type))
+    accumulate_type = computation_types.StructType((zero_type, value_type))
     accumulate_result = building_blocks.Data('data', zero_type)
     accumulate = building_blocks.Lambda('a', accumulate_type, accumulate_result)
-    merge_type = computation_types.NamedTupleType((zero_type, zero_type))
+    merge_type = computation_types.StructType((zero_type, zero_type))
     merge_result = building_blocks.Data('data', zero_type)
     merge = building_blocks.Lambda('b', merge_type, merge_result)
     report_result = building_blocks.Data('data', tf.bool)

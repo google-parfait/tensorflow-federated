@@ -84,7 +84,7 @@ state_incrementing_broadcaster = tff.utils.StatefulBroadcastFn(
 
 
 def _build_test_measured_broadcast(
-    model_weights_type: tff.NamedTupleType) -> tff.templates.MeasuredProcess:
+    model_weights_type: tff.StructType) -> tff.templates.MeasuredProcess:
   """Builds a test `MeasuredProcess` that has state and metrics."""
 
   @tff.federated_computation()
@@ -109,7 +109,7 @@ def _build_test_measured_broadcast(
 
 
 def _build_test_measured_mean(
-    model_update_type: tff.NamedTupleType) -> tff.templates.MeasuredProcess:
+    model_update_type: tff.StructType) -> tff.templates.MeasuredProcess:
   """Builds a test `MeasuredProcess` that has state and metrics."""
 
   @tff.federated_computation()

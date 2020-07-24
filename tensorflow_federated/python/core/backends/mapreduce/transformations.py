@@ -840,7 +840,7 @@ def _split_by_intrinsics_in_top_level_lambda(comp):
                                   result)
 
   ref_name = next(name_generator)
-  ref_type = computation_types.NamedTupleType(
+  ref_type = computation_types.StructType(
       (comp.parameter_type, first_local.type_signature))
   ref = building_blocks.Reference(ref_name, ref_type)
   sel_after_arg_1 = building_blocks.Selection(ref, index=0)
@@ -876,7 +876,7 @@ def _construct_selection_from_federated_tuple(federated_tuple, selected_index,
   py_typecheck.check_type(federated_tuple.type_signature,
                           computation_types.FederatedType)
   py_typecheck.check_type(federated_tuple.type_signature.member,
-                          computation_types.NamedTupleType)
+                          computation_types.StructType)
   unique_reference_name = next(name_generator)
   selection_function_ref = building_blocks.Reference(
       unique_reference_name, federated_tuple.type_signature.member)
@@ -1160,14 +1160,14 @@ def select_output_from_lambda(comp, indices):
   """Constructs a new function with result of selecting `indices` from `comp`.
 
   Args:
-    comp: Instance of `tff.framework.Lambda` of result type `tff.NamedTupleType`
+    comp: Instance of `tff.framework.Lambda` of result type `tff.StructType`
       from which we wish to select `indices`. Notice that this named tuple type
       must have elements of federated type.
     indices: Instance of `int`, `list`, or `tuple`, specifying the indices we
       wish to select from the result of `comp`. If `indices` is an `int`, the
       result of the returned `comp` will be of type at index `indices` in
       `comp.type_signature.result`. If `indices` is a `list` or `tuple`, the
-      result type will be a `tff.NamedTupleType` wrapping the specified
+      result type will be a `tff.StructType` wrapping the specified
       selections.
 
   Returns:
@@ -1176,7 +1176,7 @@ def select_output_from_lambda(comp, indices):
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
   py_typecheck.check_type(comp.type_signature.result,
-                          computation_types.NamedTupleType)
+                          computation_types.StructType)
   py_typecheck.check_type(indices, (int, tuple, list))
 
   def _create_selected_output(comp, index, is_struct_opt):

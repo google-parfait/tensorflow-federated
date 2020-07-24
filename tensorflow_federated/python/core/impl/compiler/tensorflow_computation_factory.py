@@ -156,7 +156,7 @@ def create_binary_operator(
   `operand_type` and `U` is the result of applying the `operator` to a tuple of
   type `<T,T>`
 
-  Note: If `operand_type` is a `computation_types.NamedTupleType`, then
+  Note: If `operand_type` is a `computation_types.StructType`, then
   `operator` will be applied pointwise. This places the burden on callers of
   this function to construct the correct values to pass into the returned
   function. For example, to divide `[2, 2]` by `2`, first `2` must be packed
@@ -178,7 +178,7 @@ def create_binary_operator(
   if not type_analysis.is_generic_op_compatible_type(operand_type):
     raise TypeError(
         'The type {} contains a type other than `computation_types.TensorType` '
-        'and `computation_types.NamedTupleType`; this is disallowed in the '
+        'and `computation_types.StructType`; this is disallowed in the '
         'generic operators.'.format(operand_type))
   py_typecheck.check_callable(operator)
   with tf.Graph().as_default() as graph:
@@ -202,8 +202,7 @@ def create_binary_operator(
         result_value, graph)
 
   type_signature = computation_types.FunctionType(
-      computation_types.NamedTupleType((operand_type, operand_type)),
-      result_type)
+      computation_types.StructType((operand_type, operand_type)), result_type)
   parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(
           element=[operand_1_binding, operand_2_binding]))
@@ -217,12 +216,12 @@ def create_binary_operator(
 
 
 def create_binary_operator_with_upcast(
-    type_signature: computation_types.NamedTupleType,
+    type_signature: computation_types.StructType,
     operator: Callable[[Any, Any], Any]) -> pb.Computation:
   """Creates TF computation upcasting its argument and applying `operator`.
 
   Args:
-    type_signature: A `computation_types.NamedTupleType` with two elements, both
+    type_signature: A `computation_types.StructType` with two elements, both
       of the same type or the second able to be upcast to the first, as
       explained in `apply_binary_operator_with_upcast`, and both containing only
       tuples and tensors in their type tree.
@@ -233,18 +232,18 @@ def create_binary_operator_with_upcast(
     upcasts the second element of its argument and applies the binary
     operator.
   """
-  py_typecheck.check_type(type_signature, computation_types.NamedTupleType)
+  py_typecheck.check_type(type_signature, computation_types.StructType)
   py_typecheck.check_callable(operator)
   type_analysis.check_tensorflow_compatible_type(type_signature)
   if not type_signature.is_struct() or len(type_signature) != 2:
     raise TypeError('To apply a binary operator, we must by definition have an '
-                    'argument which is a `NamedTupleType` with 2 elements; '
+                    'argument which is a `StructType` with 2 elements; '
                     'asked to create a binary operator for type: {t}'.format(
                         t=type_signature))
   if type_analysis.contains(type_signature, lambda t: t.is_sequence()):
     raise TypeError(
         'Applying binary operators in TensorFlow is only '
-        'supported on Tensors and NamedTupleTypes; you '
+        'supported on Tensors and StructTypes; you '
         'passed {t} which contains a SequenceType.'.format(t=type_signature))
 
   def _pack_into_type(to_pack, type_spec):
@@ -275,7 +274,7 @@ def create_binary_operator_with_upcast(
                                                    second_arg)
     else:
       raise TypeError('Encountered unexpected type {t}; can only handle Tensor '
-                      'and NamedTupleTypes.'.format(t=type_signature[0]))
+                      'and StructTypes.'.format(t=type_signature[0]))
 
   result_type, result_binding = tensorflow_utils.capture_result_from_graph(
       result_value, graph)

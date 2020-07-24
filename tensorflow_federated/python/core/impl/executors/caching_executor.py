@@ -306,7 +306,7 @@ class CachingExecutor(executor_base.Executor):
       else:
         element_strings.append(str(v.identifier))
         type_elements.append(v.type_signature)
-    type_spec = computation_types.NamedTupleType(type_elements)
+    type_spec = computation_types.StructType(type_elements)
     gathered = await asyncio.gather(*to_gather)
     identifier = CachedValueIdentifier('<{}>'.format(','.join(element_strings)))
     try:
@@ -332,8 +332,7 @@ class CachingExecutor(executor_base.Executor):
 
   async def create_selection(self, source, index=None, name=None):
     py_typecheck.check_type(source, CachedValue)
-    py_typecheck.check_type(source.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(source.type_signature, computation_types.StructType)
     source_val = await source.target_future
     if index is not None:
       py_typecheck.check_none(name)

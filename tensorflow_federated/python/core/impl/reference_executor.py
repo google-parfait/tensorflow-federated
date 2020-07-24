@@ -795,15 +795,14 @@ class ReferenceExecutor(context_base.Context):
       result_type_elements.append((k, computed_v.type_signature))
     return ComputedValue(
         anonymous_tuple.AnonymousTuple(result_elements),
-        computation_types.NamedTupleType([
+        computation_types.StructType([
             (k, v) if k else v for k, v in result_type_elements
         ]))
 
   def _compute_selection(self, comp, context):
     py_typecheck.check_type(comp, building_blocks.Selection)
     source = self._compute(comp.source, context)
-    py_typecheck.check_type(source.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(source.type_signature, computation_types.StructType)
     py_typecheck.check_type(source.value, anonymous_tuple.AnonymousTuple)
     if comp.name is not None:
       result_value = getattr(source.value, comp.name)
@@ -978,8 +977,7 @@ class ReferenceExecutor(context_base.Context):
     return ComputedValue(result_val, result_type)
 
   def _federated_secure_sum(self, arg, context):
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     py_typecheck.check_len(arg.type_signature, 2)
     value = ComputedValue(arg.value[0], arg.type_signature[0])
     return self._federated_sum(value, context)
@@ -1047,8 +1045,7 @@ class ReferenceExecutor(context_base.Context):
               type_spec))
 
   def _generic_plus(self, arg):
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     if len(arg.type_signature) != 2:
       raise TypeError('Generic plus is undefined for tuples of size {}.'.format(
           len(arg.type_signature)))
@@ -1099,15 +1096,14 @@ class ReferenceExecutor(context_base.Context):
 
   def _sequence_reduce(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     sequence_type = arg.type_signature[0]
     py_typecheck.check_type(sequence_type, computation_types.SequenceType)
     zero_type = arg.type_signature[1]
     op_type = arg.type_signature[2]
     py_typecheck.check_type(op_type, computation_types.FunctionType)
     op_type.parameter.check_assignable_from(
-        computation_types.NamedTupleType([zero_type, sequence_type.element]))
+        computation_types.StructType([zero_type, sequence_type.element]))
     total = ComputedValue(arg.value[1], zero_type)
     reduce_fn = arg.value[2]
     for v in arg.value[0]:
@@ -1118,8 +1114,7 @@ class ReferenceExecutor(context_base.Context):
     return total
 
   def _federated_reduce(self, arg, context):
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     federated_type = arg.type_signature[0]
     type_analysis.check_federated_type(federated_type, None,
                                        placement_literals.CLIENTS, False)
@@ -1127,7 +1122,7 @@ class ReferenceExecutor(context_base.Context):
     op_type = arg.type_signature[2]
     py_typecheck.check_type(op_type, computation_types.FunctionType)
     op_type.parameter.check_assignable_from(
-        computation_types.NamedTupleType([zero_type, federated_type.member]))
+        computation_types.StructType([zero_type, federated_type.member]))
     total = ComputedValue(arg.value[1], zero_type)
     reduce_fn = arg.value[2]
     for v in arg.value[0]:
@@ -1150,23 +1145,21 @@ class ReferenceExecutor(context_base.Context):
 
   def _federated_zip_at_server(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     for idx in range(len(arg.type_signature)):
       type_analysis.check_federated_type(arg.type_signature[idx], None,
                                          placement_literals.SERVER, True)
     return ComputedValue(
         arg.value,
         type_factory.at_server(
-            computation_types.NamedTupleType([
+            computation_types.StructType([
                 (k, v.member) if k else v.member
                 for k, v in anonymous_tuple.iter_elements(arg.type_signature)
             ])))
 
   def _federated_zip_at_clients(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     py_typecheck.check_type(arg.value, anonymous_tuple.AnonymousTuple)
     zip_args = []
     zip_arg_types = []
@@ -1181,12 +1174,10 @@ class ReferenceExecutor(context_base.Context):
     zipped_val = [anonymous_tuple.from_container(x) for x in zip(*zip_args)]
     return ComputedValue(
         zipped_val,
-        type_factory.at_clients(
-            computation_types.NamedTupleType(zip_arg_types)))
+        type_factory.at_clients(computation_types.StructType(zip_arg_types)))
 
   def _federated_aggregate(self, arg, context):
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     if len(arg.type_signature) != 5:
       raise TypeError('Expected a 5-tuple, found {}.'.format(
           arg.type_signature))

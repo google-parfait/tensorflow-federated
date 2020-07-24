@@ -95,7 +95,7 @@ class TestModel(model_lib.Model):
 
   @property
   def input_spec(self):
-    return tff_core.NamedTupleType((
+    return tff_core.StructType((
         tff_core.TensorSpec(tf.float32, [3]),
         tff_core.TensorSpec(tf.float32, [1]),
     ))
@@ -123,28 +123,28 @@ class WeightsTypeFromModelTest(test.TestCase):
     model = TestModel()
     weights_type = model_utils.weights_type_from_model(model)
     self.assertEqual(
-        tff_core.NamedTupleTypeWithPyContainerType(
+        tff_core.StructWithPythonType(
             [('trainable',
-              tff_core.NamedTupleTypeWithPyContainerType([
+              tff_core.StructWithPythonType([
                   tff_core.TensorType(tf.float32, [3]),
                   tff_core.TensorType(tf.float32, [1]),
               ], list)),
              ('non_trainable',
-              tff_core.NamedTupleTypeWithPyContainerType([
+              tff_core.StructWithPythonType([
                   tff_core.TensorType(tf.int32),
               ], list))], model_utils.ModelWeights), weights_type)
 
   def test_returns_model_weights_for_model_callable(self):
     weights_type = model_utils.weights_type_from_model(TestModel)
     self.assertEqual(
-        tff_core.NamedTupleTypeWithPyContainerType(
+        tff_core.StructWithPythonType(
             [('trainable',
-              tff_core.NamedTupleTypeWithPyContainerType([
+              tff_core.StructWithPythonType([
                   tff_core.TensorType(tf.float32, [3]),
                   tff_core.TensorType(tf.float32, [1]),
               ], list)),
              ('non_trainable',
-              tff_core.NamedTupleTypeWithPyContainerType([
+              tff_core.StructWithPythonType([
                   tff_core.TensorType(tf.int32),
               ], list))], model_utils.ModelWeights), weights_type)
 

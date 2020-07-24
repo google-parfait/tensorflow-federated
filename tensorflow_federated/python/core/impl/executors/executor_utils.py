@@ -79,13 +79,13 @@ def parse_federated_aggregate_argument_types(type_spec):
   """Verifies and parses `type_spec` into constituents.
 
   Args:
-    type_spec: An instance of `computation_types.NamedTupleType`.
+    type_spec: An instance of `computation_types.StructType`.
 
   Returns:
     A tuple of (value_type, zero_type, accumulate_type, merge_type, report_type)
     for the 5 type constituents.
   """
-  py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
+  py_typecheck.check_type(type_spec, computation_types.StructType)
   py_typecheck.check_len(type_spec, 5)
   value_type = type_spec[0]
   py_typecheck.check_type(value_type, computation_types.FederatedType)
@@ -223,19 +223,19 @@ async def compute_intrinsic_federated_weighted_mean(
   type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
       arg.type_signature)
   zip1_type = computation_types.FunctionType(
-      computation_types.NamedTupleType([
+      computation_types.StructType([
           type_factory.at_clients(arg.type_signature[0].member),
           type_factory.at_clients(arg.type_signature[1].member)
       ]),
       type_factory.at_clients(
-          computation_types.NamedTupleType(
+          computation_types.StructType(
               [arg.type_signature[0].member, arg.type_signature[1].member])))
 
   multiply_blk = building_block_factory.create_tensorflow_binary_operator_with_upcast(
       zip1_type.result.member, tf.multiply)
 
   map_type = computation_types.FunctionType(
-      computation_types.NamedTupleType(
+      computation_types.StructType(
           [multiply_blk.type_signature, zip1_type.result]),
       type_factory.at_clients(multiply_blk.type_signature.result))
 
@@ -248,9 +248,9 @@ async def compute_intrinsic_federated_weighted_mean(
       type_factory.at_server(arg.type_signature[1].member))
 
   zip2_type = computation_types.FunctionType(
-      computation_types.NamedTupleType([sum1_type.result, sum2_type.result]),
+      computation_types.StructType([sum1_type.result, sum2_type.result]),
       type_factory.at_server(
-          computation_types.NamedTupleType(
+          computation_types.StructType(
               [sum1_type.result.member, sum2_type.result.member])))
 
   divide_blk = building_block_factory.create_tensorflow_binary_operator_with_upcast(
@@ -314,7 +314,7 @@ async def compute_intrinsic_federated_weighted_mean(
 
   async def _compute_apply_fn():
     apply_type = computation_types.FunctionType(
-        computation_types.NamedTupleType(
+        computation_types.StructType(
             [divide_blk.type_signature, zip2_type.result]),
         type_factory.at_server(divide_blk.type_signature.result))
     apply_comp = create_intrinsic_comp(intrinsic_defs.FEDERATED_APPLY,

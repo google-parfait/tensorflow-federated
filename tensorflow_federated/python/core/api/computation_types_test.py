@@ -100,50 +100,46 @@ class TensorTypeTest(absltest.TestCase):
     self.assertFalse(t2.is_equivalent_to(t1))
 
 
-class NamedTupleTypeTest(absltest.TestCase):
+class StructTypeTest(absltest.TestCase):
 
   def test_repr(self):
     self.assertEqual(
-        repr(computation_types.NamedTupleType([tf.int32, ('a', tf.bool)])),
+        repr(computation_types.StructType([tf.int32, ('a', tf.bool)])),
         'StructType([TensorType(tf.int32), (\'a\', TensorType(tf.bool))])')
 
   def test_str(self):
+    self.assertEqual(str(computation_types.StructType([tf.int32])), '<int32>')
     self.assertEqual(
-        str(computation_types.NamedTupleType([tf.int32])), '<int32>')
+        str(computation_types.StructType([('a', tf.int32)])), '<a=int32>')
     self.assertEqual(
-        str(computation_types.NamedTupleType([('a', tf.int32)])), '<a=int32>')
+        str(computation_types.StructType(('a', tf.int32))), '<a=int32>')
     self.assertEqual(
-        str(computation_types.NamedTupleType(('a', tf.int32))), '<a=int32>')
+        str(computation_types.StructType([tf.int32, tf.bool])), '<int32,bool>')
     self.assertEqual(
-        str(computation_types.NamedTupleType([tf.int32, tf.bool])),
-        '<int32,bool>')
-    self.assertEqual(
-        str(computation_types.NamedTupleType([('a', tf.int32), tf.float32])),
+        str(computation_types.StructType([('a', tf.int32), tf.float32])),
         '<a=int32,float32>')
     self.assertEqual(
-        str(
-            computation_types.NamedTupleType([('a', tf.int32),
-                                              ('b', tf.float32)])),
+        str(computation_types.StructType([('a', tf.int32), ('b', tf.float32)])),
         '<a=int32,b=float32>')
     self.assertEqual(
         str(
-            computation_types.NamedTupleType([
-                ('a', tf.int32),
-                ('b',
-                 computation_types.NamedTupleType([('x', tf.string),
-                                                   ('y', tf.bool)]))
-            ])), '<a=int32,b=<x=string,y=bool>>')
+            computation_types.StructType([('a', tf.int32),
+                                          ('b',
+                                           computation_types.StructType([
+                                               ('x', tf.string), ('y', tf.bool)
+                                           ]))])),
+        '<a=int32,b=<x=string,y=bool>>')
 
   def test_elements(self):
     self.assertEqual(
         repr(
             anonymous_tuple.to_elements(
-                computation_types.NamedTupleType([tf.int32, ('a', tf.bool)]))),
+                computation_types.StructType([tf.int32, ('a', tf.bool)]))),
         '[(None, TensorType(tf.int32)), (\'a\', TensorType(tf.bool))]')
 
   def test_with_none_keys(self):
     self.assertEqual(
-        str(computation_types.NamedTupleType([(None, tf.int32)])), '<int32>')
+        str(computation_types.StructType([(None, tf.int32)])), '<int32>')
 
   def test_equality(self):
     t1 = computation_types.to_type([tf.int32, tf.bool])
@@ -159,12 +155,12 @@ class NamedTupleTypeTest(absltest.TestCase):
     self.assertNotEqual(t4, t6)
 
   def test_is_assignable_from(self):
-    t1 = computation_types.NamedTupleType([tf.int32, ('a', tf.bool)])
-    t2 = computation_types.NamedTupleType([tf.int32, ('a', tf.bool)])
-    t3 = computation_types.NamedTupleType([tf.int32, ('b', tf.bool)])
-    t4 = computation_types.NamedTupleType([tf.int32, ('a', tf.string)])
-    t5 = computation_types.NamedTupleType([tf.int32])
-    t6 = computation_types.NamedTupleType([tf.int32, tf.bool])
+    t1 = computation_types.StructType([tf.int32, ('a', tf.bool)])
+    t2 = computation_types.StructType([tf.int32, ('a', tf.bool)])
+    t3 = computation_types.StructType([tf.int32, ('b', tf.bool)])
+    t4 = computation_types.StructType([tf.int32, ('a', tf.string)])
+    t5 = computation_types.StructType([tf.int32])
+    t6 = computation_types.StructType([tf.int32, tf.bool])
     self.assertTrue(t1.is_assignable_from(t2))
     self.assertFalse(t1.is_assignable_from(t3))
     self.assertFalse(t1.is_assignable_from(t4))
@@ -173,33 +169,31 @@ class NamedTupleTypeTest(absltest.TestCase):
     self.assertFalse(t6.is_assignable_from(t1))
 
 
-class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
+class StructWithPythonTypeTest(absltest.TestCase):
 
   def test_dict(self):
-    t = computation_types.NamedTupleTypeWithPyContainerType([('a', tf.int32)],
-                                                            dict)
+    t = computation_types.StructWithPythonType([('a', tf.int32)], dict)
     self.assertIs(t.python_container, dict)
     self.assertEqual(
         repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as dict')
 
   def test_ordered_dict(self):
-    t = computation_types.NamedTupleTypeWithPyContainerType(
-        [('a', tf.int32)], collections.OrderedDict)
+    t = computation_types.StructWithPythonType([('a', tf.int32)],
+                                               collections.OrderedDict)
     self.assertIs(t.python_container, collections.OrderedDict)
     self.assertEqual(
         repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as OrderedDict')
 
   def test_tuple(self):
-    t = computation_types.NamedTupleTypeWithPyContainerType([('a', tf.int32)],
-                                                            tuple)
+    t = computation_types.StructWithPythonType([('a', tf.int32)], tuple)
     self.assertIs(t.python_container, tuple)
     self.assertEqual(
         repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as tuple')
 
   def test_py_named_tuple(self):
     py_named_tuple_type = collections.namedtuple('test_tuple', ['a'])
-    t = computation_types.NamedTupleTypeWithPyContainerType([('a', tf.int32)],
-                                                            py_named_tuple_type)
+    t = computation_types.StructWithPythonType([('a', tf.int32)],
+                                               py_named_tuple_type)
     self.assertIs(t.python_container, py_named_tuple_type)
     self.assertEqual(
         repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as test_tuple')
@@ -210,8 +204,7 @@ class NamedTupleTypeWithPyContainerTypeTest(absltest.TestCase):
     class TestFoo(object):
       a = attr.ib()
 
-    t = computation_types.NamedTupleTypeWithPyContainerType([('a', tf.int32)],
-                                                            TestFoo)
+    t = computation_types.StructWithPythonType([('a', tf.int32)], TestFoo)
     self.assertIs(t.python_container, TestFoo)
     self.assertEqual(
         repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as TestFoo')
@@ -226,7 +219,7 @@ class SequenceTypeTest(absltest.TestCase):
     self.assertEqual(
         repr(
             computation_types.SequenceType(
-                computation_types.NamedTupleType((tf.int32, tf.bool)))),
+                computation_types.StructType((tf.int32, tf.bool)))),
         'SequenceType(StructType([TensorType(tf.int32), '
         'TensorType(tf.bool)]))')
 
@@ -429,85 +422,73 @@ class ToTypeTest(absltest.TestCase):
   def test_list_of_tf_types(self):
     s = [tf.int32, tf.bool]
     t = computation_types.to_type(s)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertEqual(str(t), '<int32,bool>')
 
   def test_tuple_of_tf_types(self):
     s = (tf.int32, tf.bool)
     t = computation_types.to_type(s)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, tuple)
     self.assertEqual(str(t), '<int32,bool>')
 
   def test_singleton_named_tf_type(self):
     s = ('a', tf.int32)
     t = computation_types.to_type(s)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, tuple)
     self.assertEqual(str(t), '<a=int32>')
 
   def test_list_of_named_tf_types(self):
     s = [('a', tf.int32), ('b', tf.bool)]
     t = computation_types.to_type(s)
-    # Note: list of pairs should be interpreted as a plain NamedTupleType, and
+    # Note: list of pairs should be interpreted as a plain StructType, and
     # not try to convert into a python list afterwards.
-    self.assertNotIsInstance(
-        t, computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertNotIsInstance(t, computation_types.StructWithPythonType)
     self.assertEqual(str(t), '<a=int32,b=bool>')
 
   def test_list_of_partially_named_tf_types(self):
     s = [tf.bool, ('a', tf.int32)]
     t = computation_types.to_type(s)
-    # Note: list of pairs should be interpreted as a plain NamedTupleType, and
+    # Note: list of pairs should be interpreted as a plain StructType, and
     # not try to convert into a python list afterwards.
-    self.assertNotIsInstance(
-        t, computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertNotIsInstance(t, computation_types.StructWithPythonType)
     self.assertEqual(str(t), '<bool,a=int32>')
 
   def test_ordered_dict_of_tf_types(self):
     s = collections.OrderedDict([('a', tf.int32), ('b', tf.bool)])
     t = computation_types.to_type(s)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, collections.OrderedDict)
     self.assertEqual(str(t), '<a=int32,b=bool>')
 
   def test_nested_tuple_of_tf_types(self):
     s = (tf.int32, (tf.float32, tf.bool))
     t = computation_types.to_type(s)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, tuple)
     self.assertEqual(str(t), '<int32,<float32,bool>>')
 
   def test_nested_tuple_of_named_tf_types(self):
     s = (tf.int32, (('x', tf.float32), tf.bool))
     t = computation_types.to_type(s)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, tuple)
-    self.assertNotIsInstance(
-        t[1], computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertNotIsInstance(t[1], computation_types.StructWithPythonType)
     self.assertEqual(str(t), '<int32,<x=float32,bool>>')
 
   def test_nested_tuple_of_named_nonscalar_tf_types(self):
     s = ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
     t = computation_types.to_type(s)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, tuple)
-    self.assertNotIsInstance(
-        t[1], computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertNotIsInstance(t[1], computation_types.StructWithPythonType)
     self.assertEqual(str(t), '<int32[1],<x=float32[2],bool[3]>>')
 
   def test_namedtuple_elements_two_tuples(self):
     elems = [tf.int32 for k in range(10)]
     t = computation_types.to_type(elems)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, list)
     for k in anonymous_tuple.iter_elements(t):
       self.assertLen(k, 2)
@@ -515,10 +496,9 @@ class ToTypeTest(absltest.TestCase):
   def test_namedtuples_addressable_by_name(self):
     elems = [('item' + str(k), tf.int32) for k in range(5)]
     t = computation_types.to_type(elems)
-    # Note: list of pairs should be interpreted as a plain NamedTupleType, and
+    # Note: list of pairs should be interpreted as a plain StructType, and
     # not try to convert into a python list afterwards.
-    self.assertNotIsInstance(
-        t, computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertNotIsInstance(t, computation_types.StructWithPythonType)
     self.assertIsInstance(t.item0, computation_types.TensorType)
     self.assertEqual(t.item0, t[0])
 
@@ -537,8 +517,7 @@ class ToTypeTest(absltest.TestCase):
       b = attr.ib(type=(tf.float32, [2]))
 
     t = computation_types.to_type(TestFoo)
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, TestFoo)
     self.assertEqual(str(t), '<a=int32,b=float32[2]>')
 
@@ -564,8 +543,7 @@ class ToTypeTest(absltest.TestCase):
       b = attr.ib()
 
     t = computation_types.to_type(TestFoo(a=tf.int32, b=(tf.float32, [2])))
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, TestFoo)
     self.assertEqual(str(t), '<a=int32,b=float32[2]>')
 
@@ -581,14 +559,11 @@ class ToTypeTest(absltest.TestCase):
       c = attr.ib(type=(tf.float32, [2]))
 
     t = computation_types.to_type(TestFoo(a=[tf.int32, tf.bool], b=TestFoo2))
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, TestFoo)
-    self.assertIsInstance(t.a,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t.a, computation_types.StructWithPythonType)
     self.assertIs(t.a.python_container, list)
-    self.assertIsInstance(t.b,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t.b, computation_types.StructWithPythonType)
     self.assertIs(t.b.python_container, TestFoo2)
     self.assertEqual(str(t), '<a=<int32,bool>,b=<c=float32[2]>>')
 
@@ -621,7 +596,7 @@ class RepresentationTest(absltest.TestCase):
 
   def test_returns_string_for_function_type_with_named_tuple_type_parameter(
       self):
-    parameter = computation_types.NamedTupleType((tf.int32, tf.float32))
+    parameter = computation_types.StructType((tf.int32, tf.float32))
     type_spec = computation_types.FunctionType(parameter, tf.bool)
 
     self.assertEqual(type_spec.compact_representation(),
@@ -637,7 +612,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_function_type_with_named_tuple_type_result(self):
-    result = computation_types.NamedTupleType((tf.int32, tf.float32))
+    result = computation_types.StructType((tf.int32, tf.float32))
     type_spec = computation_types.FunctionType(tf.bool, result)
 
     self.assertEqual(type_spec.compact_representation(),
@@ -654,8 +629,8 @@ class RepresentationTest(absltest.TestCase):
 
   def test_returns_string_for_function_type_with_named_tuple_type_parameter_and_result(
       self):
-    parameter = computation_types.NamedTupleType((tf.int32, tf.float32))
-    result = computation_types.NamedTupleType((tf.bool, tf.string))
+    parameter = computation_types.StructType((tf.int32, tf.float32))
+    result = computation_types.StructType((tf.bool, tf.string))
     type_spec = computation_types.FunctionType(parameter, result)
 
     self.assertEqual(type_spec.compact_representation(),
@@ -674,7 +649,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_named_tuple_type_unnamed(self):
-    type_spec = computation_types.NamedTupleType((tf.int32, tf.float32))
+    type_spec = computation_types.StructType((tf.int32, tf.float32))
 
     self.assertEqual(type_spec.compact_representation(), '<int32,float32>')
     # pyformat: disable
@@ -688,7 +663,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_named_tuple_type_named(self):
-    type_spec = computation_types.NamedTupleType(
+    type_spec = computation_types.StructType(
         (('a', tf.int32), ('b', tf.float32)))
 
     self.assertEqual(type_spec.compact_representation(), '<a=int32,b=float32>')
@@ -703,9 +678,9 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_named_tuple_type_nested(self):
-    type_spec_1 = computation_types.NamedTupleType((tf.int32, tf.float32))
-    type_spec_2 = computation_types.NamedTupleType((type_spec_1, tf.bool))
-    type_spec_3 = computation_types.NamedTupleType((type_spec_2, tf.string))
+    type_spec_1 = computation_types.StructType((tf.int32, tf.float32))
+    type_spec_2 = computation_types.StructType((type_spec_1, tf.bool))
+    type_spec_3 = computation_types.StructType((type_spec_2, tf.string))
     type_spec = type_spec_3
 
     self.assertEqual(type_spec.compact_representation(),
@@ -727,7 +702,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_named_tuple_type_with_one_element(self):
-    type_spec = computation_types.NamedTupleType((tf.int32,))
+    type_spec = computation_types.StructType((tf.int32,))
 
     self.assertEqual(type_spec.compact_representation(), '<int32>')
     # pyformat: disable
@@ -740,7 +715,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_named_tuple_type_with_no_element(self):
-    type_spec = computation_types.NamedTupleType([])
+    type_spec = computation_types.StructType([])
 
     self.assertEqual(type_spec.compact_representation(), '<>')
     self.assertEqual(type_spec.formatted_representation(), '<>')
@@ -764,7 +739,7 @@ class RepresentationTest(absltest.TestCase):
     self.assertEqual(type_spec.formatted_representation(), 'float32*')
 
   def test_returns_string_for_sequence_type_named_tuple_type(self):
-    element = computation_types.NamedTupleType((tf.int32, tf.float32))
+    element = computation_types.StructType((tf.int32, tf.float32))
     type_spec = computation_types.SequenceType(element)
 
     self.assertEqual(type_spec.compact_representation(), '<int32,float32>*')

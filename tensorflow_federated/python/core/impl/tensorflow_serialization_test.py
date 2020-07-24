@@ -105,10 +105,10 @@ class TensorFlowSerializationTest(test.TestCase):
         str(extra_type_spec),
         '(<x=int32,y=float32[2]> -> <A=float32,B=float32[2]>)')
     self.assertIsInstance(extra_type_spec.parameter,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+                          computation_types.StructWithPythonType)
     self.assertIs(extra_type_spec.parameter.python_container, batch_type)
     self.assertIsInstance(extra_type_spec.result,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+                          computation_types.StructWithPythonType)
     self.assertIs(extra_type_spec.result.python_container, output_type)
 
   @test.graph_mode_test

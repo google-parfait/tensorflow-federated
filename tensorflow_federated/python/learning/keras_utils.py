@@ -183,7 +183,7 @@ def federated_aggregate_keras_metric(
 
   @tff.tf_computation
   def zeros_fn():
-    # `member_type` is a (potentially nested) `tff.NamedTupleType`, which is an
+    # `member_type` is a (potentially nested) `tff.StructType`, which is an
     # `anonymous_tuple.AnonymousTuple`.
     return anonymous_tuple.map_structure(
         lambda v: tf.zeros(v.shape, dtype=v.dtype), member_types)

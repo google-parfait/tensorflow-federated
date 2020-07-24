@@ -85,7 +85,7 @@ class NormClippedAggregationMetrics(object):
 def build_fixed_clip_norm_mean_process(
     *,
     clip_norm: float,
-    model_update_type: Union[tff.NamedTupleType, tff.TensorType],
+    model_update_type: Union[tff.StructType, tff.TensorType],
 ) -> tff.templates.MeasuredProcess:
   """Returns process that clips the client deltas before averaging.
 

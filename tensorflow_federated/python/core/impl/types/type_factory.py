@@ -30,7 +30,7 @@ def reduction_op(
     The type of the corresponding reduction operator (`(<U,T> -> U)`).
   """
   return computation_types.FunctionType(
-      computation_types.NamedTupleType([result_type_spec, element_type_spec]),
+      computation_types.StructType([result_type_spec, element_type_spec]),
       result_type_spec)
 
 

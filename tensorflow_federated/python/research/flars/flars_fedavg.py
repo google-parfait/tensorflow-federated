@@ -334,7 +334,7 @@ def build_run_one_round_fn(server_update_fn, client_update_fn,
 
     aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
         client_outputs.model_output)
-    if isinstance(aggregated_outputs.type_signature, tff.NamedTupleType):
+    if isinstance(aggregated_outputs.type_signature, tff.StructType):
       aggregated_outputs = tff.federated_zip(aggregated_outputs)
 
     return server_state, aggregated_outputs

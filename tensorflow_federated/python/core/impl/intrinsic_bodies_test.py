@@ -190,7 +190,7 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]))
+        computation_types.StructType([('a', tf.int32), ('b', tf.float32)]))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_DIVIDE.uri]([x, x])
 
@@ -206,8 +206,8 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.NamedTupleType([[('a', tf.float32),
-                                           ('b', tf.float32)], tf.float32]))
+        computation_types.StructType([[('a', tf.float32), ('b', tf.float32)],
+                                      tf.float32]))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_DIVIDE.uri](x)
 
@@ -360,8 +360,8 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.NamedTupleType([[('a', tf.float32),
-                                           ('b', tf.float32)], tf.float32]))
+        computation_types.StructType([[('a', tf.float32), ('b', tf.float32)],
+                                      tf.float32]))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri](x)
 
@@ -445,8 +445,7 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.NamedTupleType([('a', tf.float32),
-                                          ('b', tf.float32)]))
+        computation_types.StructType([('a', tf.float32), ('b', tf.float32)]))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_MULTIPLY.uri]([x, x])
 
@@ -549,7 +548,7 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.NamedTupleType([('a', tf.int32), ('b', tf.float32)]))
+        computation_types.StructType([('a', tf.int32), ('b', tf.float32)]))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, x])
 
@@ -564,8 +563,8 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
         context_stack_impl.context_stack)
 
     @computations.federated_computation(
-        computation_types.NamedTupleType([[('a', tf.float32),
-                                           ('b', tf.float32)], tf.float32]))
+        computation_types.StructType([[('a', tf.float32), ('b', tf.float32)],
+                                      tf.float32]))
     def foo(x):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri](x)
 

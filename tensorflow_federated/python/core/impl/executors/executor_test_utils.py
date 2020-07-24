@@ -492,7 +492,7 @@ def create_dummy_computation_tensorflow_add():
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result_value, graph)
 
-  parameter_type = computation_types.NamedTupleType([type_spec, type_spec])
+  parameter_type = computation_types.StructType([type_spec, type_spec])
   type_signature = computation_types.FunctionType(parameter_type, result_type)
   struct_binding = pb.TensorFlow.StructBinding(
       element=[parameter_1_binding, parameter_2_binding])
@@ -584,7 +584,7 @@ def create_dummy_computation_tuple():
       call=pb.Call(function=fn))
   element_type = fn_type.result
   elements = [pb.Struct.Element(name=n, value=element_value) for n in names]
-  type_signature = computation_types.NamedTupleType(
+  type_signature = computation_types.StructType(
       (n, element_type) for n in names)
   value = pb.Computation(
       type=type_serialization.serialize_type(type_signature),

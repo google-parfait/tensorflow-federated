@@ -119,10 +119,9 @@ class SizingExecutorTest(parameterized.TestCase):
     a = computation_types.TensorType(tf.int32, [4])
     b = computation_types.TensorType(tf.bool, [2])
     c = computation_types.TensorType(tf.int64, [2, 3])
-    inner_type = computation_types.NamedTupleType([('a', a), ('b', b),
-                                                   ('c', c)])
-    outer_type = computation_types.NamedTupleType([('a', inner_type),
-                                                   ('b', inner_type)])
+    inner_type = computation_types.StructType([('a', a), ('b', b), ('c', c)])
+    outer_type = computation_types.StructType([('a', inner_type),
+                                               ('b', inner_type)])
     inner_type_val = collections.OrderedDict()
     inner_type_val['a'] = [0, 1, 2, 3]
     inner_type_val['b'] = [True, False]
@@ -142,7 +141,7 @@ class SizingExecutorTest(parameterized.TestCase):
 
   def test_empty_tuple(self):
     ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
-    tup = computation_types.NamedTupleType([])
+    tup = computation_types.StructType([])
     empty_dict = collections.OrderedDict()
 
     async def _make():
@@ -155,7 +154,7 @@ class SizingExecutorTest(parameterized.TestCase):
   def test_ordered_dict(self):
     a = computation_types.TensorType(tf.string, [4])
     b = computation_types.TensorType(tf.int64, [2, 3])
-    tup = computation_types.NamedTupleType([('a', a), ('b', b)])
+    tup = computation_types.StructType([('a', a), ('b', b)])
     ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
     od = collections.OrderedDict()
     od['a'] = ['some', 'arbitrary', 'string', 'here']
@@ -172,7 +171,7 @@ class SizingExecutorTest(parameterized.TestCase):
 
   def test_unnamed_tuple(self):
     ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
-    type_spec = computation_types.NamedTupleType([tf.int32, tf.int32])
+    type_spec = computation_types.StructType([tf.int32, tf.int32])
     value = anonymous_tuple.AnonymousTuple([(None, 0), (None, 1)])
 
     async def _make():
@@ -217,10 +216,9 @@ class SizingExecutorTest(parameterized.TestCase):
     a = computation_types.TensorType(tf.int32, [4])
     b = computation_types.TensorType(tf.bool, [2])
     c = computation_types.TensorType(tf.int64, [2, 3])
-    inner_type = computation_types.NamedTupleType([('a', a), ('b', b),
-                                                   ('c', c)])
-    outer_type = computation_types.NamedTupleType([('a', inner_type),
-                                                   ('b', inner_type)])
+    inner_type = computation_types.StructType([('a', a), ('b', b), ('c', c)])
+    outer_type = computation_types.StructType([('a', inner_type),
+                                               ('b', inner_type)])
     inner_type_val = collections.OrderedDict()
     inner_type_val['a'] = [0, 1, 2, 3]
     inner_type_val['b'] = [True, False]

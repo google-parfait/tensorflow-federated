@@ -950,13 +950,12 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
   def _create_merged_parameter_for_abstract_type(self, param_types,
                                                  type_signature):
     del type_signature  # Unused
-    return computation_types.NamedTupleType(param_types)
+    return computation_types.StructType(param_types)
 
   def _create_merged_parameter_for_federated_type(self, param_types,
                                                   type_signature):
     del type_signature  # Unused
-    member_types = computation_types.NamedTupleType(
-        [x.member for x in param_types])
+    member_types = computation_types.StructType([x.member for x in param_types])
     all_equal = all(x.all_equal for x in param_types)
     placement = param_types[0].placement
     return computation_types.FederatedType(
@@ -973,8 +972,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
           parameter_types[index].append(concrete_type)
     else:
       parameter_types = [t.parameter for t in param_types]
-    result_types = computation_types.NamedTupleType(
-        [x.result for x in param_types])
+    result_types = computation_types.StructType([x.result for x in param_types])
     return computation_types.FunctionType(parameter_types, result_types)
 
   def _create_merged_parameter_type(self, comp, type_signature):
@@ -1015,7 +1013,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
         param_type_element = self._create_merged_parameter_for_type(
             param_type, merged_type_spec)
         param_types.append(param_type_element)
-      return computation_types.NamedTupleType(param_types)
+      return computation_types.StructType(param_types)
     else:
       packed_param_types = []
       for _, call in anonymous_tuple.iter_elements(comp):
@@ -2315,7 +2313,7 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
   ):
     """Creates mapping from old symbol names to replacement computations."""
     if isinstance(new_comp, building_blocks.Tuple):
-      tup_type_spec_names_stripped = computation_types.NamedTupleType([
+      tup_type_spec_names_stripped = computation_types.StructType([
           x[1] for x in anonymous_tuple.iter_elements(new_comp.type_signature)  # pytype: disable=attribute-error
       ])
       ref_to_tuple = building_blocks.Reference(new_symbol,

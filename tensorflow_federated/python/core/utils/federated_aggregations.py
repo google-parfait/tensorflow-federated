@@ -189,7 +189,7 @@ def _get_accumulator_type(member_type):
       federated type.
 
   Returns:
-    The `tff.NamedTupleType` associated with the accumulator. The tuple contains
+    The `tff.StructType` associated with the accumulator. The tuple contains
     two parts, `accumulators` and `rands`, that are parallel lists (e.g. the
     i-th index in one corresponds to the i-th index in the other). These two
     lists are used to sample from the accumulators with equal probability.
@@ -199,15 +199,14 @@ def _get_accumulator_type(member_type):
     a = anonymous_tuple.map_structure(
         lambda v: computation_types.TensorType(v.dtype, [None] + v.shape.dims),
         member_type)
-    return computation_types.NamedTupleType(
+    return computation_types.StructType(
         collections.OrderedDict({
             'accumulators':
-                computation_types.NamedTupleType(
-                    anonymous_tuple.to_odict(a, True)),
+                computation_types.StructType(anonymous_tuple.to_odict(a, True)),
             'rands':
                 computation_types.TensorType(tf.float32, shape=[None]),
         }))
-  return computation_types.NamedTupleType(
+  return computation_types.StructType(
       collections.OrderedDict({
           'accumulators':
               computation_types.TensorType(

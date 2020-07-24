@@ -75,7 +75,7 @@ class ValueUtilsTest(parameterized.TestCase):
   def test_ensure_federated_value_implicitly_zippable(self):
 
     @computations.federated_computation(
-        computation_types.NamedTupleType(
+        computation_types.StructType(
             (computation_types.FederatedType(tf.int32,
                                              placement_literals.CLIENTS),
              computation_types.FederatedType(tf.int32,
@@ -88,7 +88,7 @@ class ValueUtilsTest(parameterized.TestCase):
   def test_ensure_federated_value_fails_on_unzippable(self):
 
     @computations.federated_computation(
-        computation_types.NamedTupleType(
+        computation_types.StructType(
             (computation_types.FederatedType(tf.int32,
                                              placement_literals.CLIENTS),
              computation_types.FederatedType(tf.int32,

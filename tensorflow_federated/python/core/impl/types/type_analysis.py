@@ -580,7 +580,7 @@ def is_concrete_instance_of(type_with_concrete_elements,
             (abstract_elements[k][0],
              _concretize_abstract_types(abstract_elements[k][1],
                                         concrete_elements[k][1])))
-      return computation_types.NamedTupleType(concretized_tuple_elements)
+      return computation_types.StructType(concretized_tuple_elements)
     elif abstract_type_spec.is_sequence():
       if not concrete_type_spec.is_sequence():
         raise TypeError(type_error_string)
@@ -624,16 +624,16 @@ def is_concrete_instance_of(type_with_concrete_elements,
 
 
 def check_valid_federated_weighted_mean_argument_tuple_type(
-    type_spec: computation_types.NamedTupleType):
+    type_spec: computation_types.StructType):
   """Checks that `type_spec` is a valid type of a federated weighted mean arg.
 
   Args:
-    type_spec: A `computation_types.NamedTupleType`.
+    type_spec: A `computation_types.StructType`.
 
   Raises:
     TypeError: If the check fails.
   """
-  py_typecheck.check_type(type_spec, computation_types.NamedTupleType)
+  py_typecheck.check_type(type_spec, computation_types.StructType)
   if len(type_spec) != 2:
     raise TypeError('Expected a 2-tuple, found {}.'.format(type_spec))
   for _, v in anonymous_tuple.iter_elements(type_spec):

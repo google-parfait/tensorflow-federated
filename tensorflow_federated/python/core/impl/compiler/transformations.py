@@ -564,7 +564,7 @@ class TensorFlowGenerator(transformation_utils.TransformSpec):
 
   Any TFF computation which declares as its parameters and return values only
   instances of `computation_types.SequenceType`,
-  `computation_types.NamedTupleType`, and `computation_types.TensorType`s, and
+  `computation_types.StructType`, and `computation_types.TensorType`s, and
   not capturing any references from an outer scope or containing any intrinsics,
   can be represented by a TensorFlow computation. This TransformSpec identifies
   computations such computations and generates a semantically equivalent

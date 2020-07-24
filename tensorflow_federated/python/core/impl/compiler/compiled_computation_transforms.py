@@ -68,7 +68,7 @@ def select_graph_output(comp, name=None, index=None):
 
   Args:
     comp: Instance of `building_blocks.CompiledComputation` which must have
-      result type `computation_types.NamedTupleType`, the function from which to
+      result type `computation_types.StructType`, the function from which to
       select `output`.
     name: Instance of `str`, the name of the field to select from the output of
       `comp`. Optional, but one of `name` or `index` must be specified.
@@ -98,7 +98,7 @@ def select_graph_output(comp, name=None, index=None):
         'struct; you have attempted a selection from a CompiledComputation '
         'with return type {}'.format(binding_oneof))
   proto_type = type_serialization.deserialize_type(proto.type)
-  py_typecheck.check_type(proto_type.result, computation_types.NamedTupleType)
+  py_typecheck.check_type(proto_type.result, computation_types.StructType)
   if name is not None:
     index = _index_from_name(proto_type.result, name)
   result = graph_result_binding.struct.element[index]
@@ -177,8 +177,7 @@ def permute_graph_inputs(comp, input_permutation):
   proto = comp.proto
   graph_parameter_binding = proto.tensorflow.parameter
   proto_type = type_serialization.deserialize_type(proto.type)
-  py_typecheck.check_type(proto_type.parameter,
-                          computation_types.NamedTupleType)
+  py_typecheck.check_type(proto_type.parameter, computation_types.StructType)
   binding_oneof = graph_parameter_binding.WhichOneof('binding')
   if binding_oneof != 'struct':
     raise TypeError(
@@ -368,7 +367,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
   Args:
     comp: Instance of `building_blocks.CompiledComputation` representing the
       graph whose inputs we want to pad to match `type_signature`.
-    type_signature: Instance of `computation_types.NamedTupleType` representing
+    type_signature: Instance of `computation_types.StructType` representing
       the type signature we wish to pad `comp` to accept as a parameter.
 
   Returns:
@@ -380,13 +379,13 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
 
   Raises:
     TypeError: If the proto underlying `comp` has a parameter type which
-      is not of `NamedTupleType`, the `type_signature` argument is not of type
-      `NamedTupleType`, or there is a type mismatch between the declared
+      is not of `StructType`, the `type_signature` argument is not of type
+      `StructType`, or there is a type mismatch between the declared
       parameters of `comp` and the requested `type_signature`.
     ValueError: If the requested `type_signature` is shorter than the
       parameter type signature declared by `comp`.
   """
-  py_typecheck.check_type(type_signature, computation_types.NamedTupleType)
+  py_typecheck.check_type(type_signature, computation_types.StructType)
   py_typecheck.check_type(comp, building_blocks.CompiledComputation)
   proto = comp.proto
   graph_def = proto.tensorflow.graph_def
@@ -399,8 +398,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
         'struct; you have attempted to pad a CompiledComputation '
         'with parameter type {}'.format(binding_oneof))
   # This line provides protection against an improperly serialized proto
-  py_typecheck.check_type(proto_type.parameter,
-                          computation_types.NamedTupleType)
+  py_typecheck.check_type(proto_type.parameter, computation_types.StructType)
   parameter_bindings = [x for x in graph_parameter_binding.struct.element]
   parameter_type_elements = anonymous_tuple.to_elements(proto_type.parameter)
   type_signature_elements = anonymous_tuple.to_elements(type_signature)
@@ -593,7 +591,7 @@ def _construct_concatenated_type(type_list):
     return None
   elif len(non_none_type_list) == 1:
     return non_none_type_list[0]
-  return computation_types.NamedTupleType(non_none_type_list)
+  return computation_types.StructType(non_none_type_list)
 
 
 def _called_graph_equality(comp1, comp2):
@@ -1141,11 +1139,11 @@ def _construct_padding(list_of_indices, tuple_type):
   Args:
     list_of_indices: Python `list` containing integers between 0 and the length
       of `tuple_type`.
-    tuple_type: Instance of `computation_types.NamedTupleType` as described in
+    tuple_type: Instance of `computation_types.StructType` as described in
       the docstring of `_remap_graph_inputs`.
 
   Returns:
-    An instance of `computation_types.NamedTupleType` containing
+    An instance of `computation_types.StructType` containing
     prefix identical to that constructed from selecting `list_of_indices` in
     order from `tuple_type`, with the remaining elements being the remaining
     elements of `tuple_type` in order.
@@ -1157,8 +1155,8 @@ def _construct_padding(list_of_indices, tuple_type):
   type_padding_remaining = [
       x for i, x in enumerate(type_elements) if i not in list_of_indices
   ]
-  how_to_pad = computation_types.NamedTupleType(existing_type +
-                                                type_padding_remaining)
+  how_to_pad = computation_types.StructType(existing_type +
+                                            type_padding_remaining)
   return how_to_pad
 
 
@@ -1173,7 +1171,7 @@ def _construct_permutation(list_of_indices, tuple_type):
   Args:
     list_of_indices: Python `list` containing integers between 0 and the length
       of `tuple_type`.
-    tuple_type: Instance of `computation_types.NamedTupleType` as described in
+    tuple_type: Instance of `computation_types.StructType` as described in
       the docstring of `_remap_graph_inputs`.
 
   Returns:
@@ -1248,7 +1246,7 @@ def _remap_graph_inputs(graph, list_of_indices, tuple_type):
       type we are trying to match with `tuple_type` if possible.
     list_of_indices: Python `list` containing integers between 0 and the length
       of `tuple_type`.
-    tuple_type: Instance of `computation_types.NamedTupleType` as described
+    tuple_type: Instance of `computation_types.StructType` as described
       above.
 
   Returns:
@@ -1257,7 +1255,7 @@ def _remap_graph_inputs(graph, list_of_indices, tuple_type):
     type `tuple_type`.
 
   Raises:
-    TypeError: If `tuple_type` is not a `computation_types.NamedTupleType` or
+    TypeError: If `tuple_type` is not a `computation_types.StructType` or
     `list_of_indices` is not a `list`.
     ValueError: If `list_of_indices` contains an index less than 0 or out of
     range for the `tuple_type`.
@@ -1266,8 +1264,8 @@ def _remap_graph_inputs(graph, list_of_indices, tuple_type):
   # selections.
   py_typecheck.check_type(graph, building_blocks.CompiledComputation)
   py_typecheck.check_type(graph.type_signature.parameter,
-                          computation_types.NamedTupleType)
-  py_typecheck.check_type(tuple_type, computation_types.NamedTupleType)
+                          computation_types.StructType)
+  py_typecheck.check_type(tuple_type, computation_types.StructType)
   py_typecheck.check_type(list_of_indices, list)
   tuple_type_len = len(tuple_type)
   if len(set(list_of_indices)) != len(list_of_indices):

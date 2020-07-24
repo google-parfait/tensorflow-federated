@@ -74,8 +74,8 @@ def _check_symbol_binding_context(context: context_base.Context):
 class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
   """A generic base class for values that appear in TFF computations.
 
-  If the value in this class is of `NamedTupleType` or `FederatedType`
-  containing a `NamedTupleType`, the inner fields can be accessed by name
+  If the value in this class is of `StructType` or `FederatedType`
+  containing a `StructType`, the inner fields can be accessed by name
   (e.g. `my_value_impl.x = ...` or `y = my_value_impl.y`).
 
   Note that setting nested fields (e.g. `my_value_impl.x.y = ...`) will not

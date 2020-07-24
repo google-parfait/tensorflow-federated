@@ -730,7 +730,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
 
   def test_temperature_example_round_trip(self):
     # NOTE: the roundtrip through CanonicalForm->IterProc->CanonicalForm seems
-    # to lose the python container annotations on the NamedTupleType.
+    # to lose the python container annotations on the StructType.
     it = canonical_form_utils.get_iterative_process_for_canonical_form(
         test_utils.get_temperature_sensor_example())
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)

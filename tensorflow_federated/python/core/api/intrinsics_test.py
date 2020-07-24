@@ -516,7 +516,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
   def test_federated_aggregate_with_unknown_dimension(self):
     Accumulator = collections.namedtuple('Accumulator', ['samples'])  # pylint: disable=invalid-name
-    accumulator_type = computation_types.NamedTupleType(
+    accumulator_type = computation_types.StructType(
         Accumulator(
             samples=computation_types.TensorType(dtype=tf.int32, shape=[None])))
 
@@ -587,7 +587,7 @@ class IntrinsicsTest(parameterized.TestCase):
                                   ('test_n_5', 5))
   def test_n_tuple_federated_zip_tensor_args(self, n):
     fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    initial_tuple_type = computation_types.NamedTupleType([fed_type] * n)
+    initial_tuple_type = computation_types.StructType([fed_type] * n)
     final_fed_type = computation_types.FederatedType([tf.int32] * n,
                                                      placements.CLIENTS)
     function_type = computation_types.FunctionType(initial_tuple_type,
@@ -619,7 +619,7 @@ class IntrinsicsTest(parameterized.TestCase):
        computation_types.FederatedType([tf.int32, tf.int32],
                                        placements.CLIENTS)))
   def test_named_n_tuple_federated_zip(self, n, fed_type):
-    initial_tuple_type = computation_types.NamedTupleType([fed_type] * n)
+    initial_tuple_type = computation_types.StructType([fed_type] * n)
     named_fed_type = computation_types.FederatedType(
         [(str(k), fed_type.member) for k in range(n)], placements.CLIENTS)
     mixed_fed_type = computation_types.FederatedType(
@@ -665,8 +665,8 @@ class IntrinsicsTest(parameterized.TestCase):
                                                      placements.CLIENTS)
     single_fed_type = computation_types.FederatedType(tf.int32,
                                                       placements.CLIENTS)
-    initial_tuple_type = computation_types.NamedTupleType([tuple_fed_type] * n +
-                                                          [single_fed_type] * m)
+    initial_tuple_type = computation_types.StructType([tuple_fed_type] * n +
+                                                      [single_fed_type] * m)
     final_fed_type = computation_types.FederatedType(
         [[tf.int32, tf.int32]] * n + [tf.int32] * m, placements.CLIENTS)
     function_type = computation_types.FunctionType(initial_tuple_type,
@@ -674,7 +674,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
     @computations.federated_computation([
         computation_types.FederatedType(
-            computation_types.NamedTupleType([tf.int32, tf.int32]),
+            computation_types.StructType([tf.int32, tf.int32]),
             placements.CLIENTS)
     ] * n + [computation_types.FederatedType(tf.int32, placements.CLIENTS)] * m)
     def baz(x):

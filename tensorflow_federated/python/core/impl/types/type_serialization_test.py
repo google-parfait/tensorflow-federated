@@ -55,7 +55,7 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_tensor_tuple(self):
-    type_signature = computation_types.NamedTupleType([
+    type_signature = computation_types.StructType([
         ('x', tf.int32),
         ('y', tf.string),
         tf.float32,
@@ -75,7 +75,7 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_proto, expected_proto)
 
   def test_serialize_type_with_nested_tuple(self):
-    type_signature = computation_types.NamedTupleType([
+    type_signature = computation_types.StructType([
         ('x', [('y', [('z', tf.bool)])]),
     ])
     actual_proto = type_serialization.serialize_type(type_signature)
@@ -140,32 +140,32 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
     self._serialize_deserialize_roundtrip_test([
         computation_types.SequenceType(tf.int32),
         computation_types.SequenceType(
-            computation_types.NamedTupleType((tf.int32, tf.bool))),
+            computation_types.StructType((tf.int32, tf.bool))),
         computation_types.SequenceType(
-            computation_types.NamedTupleType(
+            computation_types.StructType(
                 (tf.int32, computation_types.SequenceType(tf.bool)))),
     ])
 
   def test_serialize_deserialize_named_tuple_types(self):
     self._serialize_deserialize_roundtrip_test([
-        computation_types.NamedTupleType([tf.int32, tf.bool]),
-        computation_types.NamedTupleType([
+        computation_types.StructType([tf.int32, tf.bool]),
+        computation_types.StructType([
             tf.int32,
-            computation_types.NamedTupleType([('x', tf.bool)]),
+            computation_types.StructType([('x', tf.bool)]),
         ]),
-        computation_types.NamedTupleType([('x', tf.int32)]),
+        computation_types.StructType([('x', tf.int32)]),
     ])
 
   def test_serialize_deserialize_named_tuple_types_py_container(self):
     # The Py container is destroyed during ser/de.
-    with_container = computation_types.NamedTupleTypeWithPyContainerType(
-        (tf.int32, tf.bool), tuple)
+    with_container = computation_types.StructWithPythonType((tf.int32, tf.bool),
+                                                            tuple)
     p1 = type_serialization.serialize_type(with_container)
     without_container = type_serialization.deserialize_type(p1)
     self.assertNotEqual(with_container, without_container)  # Not equal.
-    self.assertIsInstance(without_container, computation_types.NamedTupleType)
-    self.assertNotIsInstance(
-        without_container, computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(without_container, computation_types.StructType)
+    self.assertNotIsInstance(without_container,
+                             computation_types.StructWithPythonType)
     with_container.check_equivalent_to(without_container)
 
   def test_serialize_deserialize_function_types(self):

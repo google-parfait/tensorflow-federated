@@ -84,7 +84,7 @@ class ModelWeights(object):
 
 def weights_type_from_model(
     model: Union[model_lib.Model, Callable[[], model_lib.Model]]
-) -> tff_core.NamedTupleType:
+) -> tff_core.StructType:
   """Creates a `tff.Type` from a `tff.learning.Model` or callable that constructs a model.
 
   Args:
@@ -92,7 +92,7 @@ def weights_type_from_model(
       model.
 
   Returns:
-    A `tff.NamedTupleType` representing the TFF type of the `ModelWeights`
+    A `tff.StructType` representing the TFF type of the `ModelWeights`
     structure for `model`.
   """
   if callable(model):

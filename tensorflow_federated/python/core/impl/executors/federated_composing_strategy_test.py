@@ -165,7 +165,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     self.assertEqual(result, 10 * num_clients + 5)
 
   def test_federated_aggregate_of_nested_tuple(self):
-    test_type = computation_types.NamedTupleType([
+    test_type = computation_types.StructType([
         ('a', (tf.int32, tf.float32)),
     ])
 

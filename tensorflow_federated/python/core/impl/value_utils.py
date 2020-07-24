@@ -41,7 +41,7 @@ def get_curried(fn):
   py_typecheck.check_type(fn, value_base.Value)
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
   py_typecheck.check_type(fn.type_signature.parameter,
-                          computation_types.NamedTupleType)
+                          computation_types.StructType)
   param_elements = anonymous_tuple.to_elements(fn.type_signature.parameter)
   references = []
   for idx, (_, elem_type) in enumerate(param_elements):
@@ -58,7 +58,7 @@ def ensure_federated_value(value, placement=None, label=None):
   """Ensures `value` is a federated value placed at `placement`.
 
   If `value` is not a `computation_types.FederatedType` but is a
-  `computation_types.NamedTupleType` that can be converted via `federated_zip`
+  `computation_types.StructType` that can be converted via `federated_zip`
   to a `computation_types.FederatedType`, inserts the call to `federated_zip`
   and returns the result. If `value` cannot be converted, raises a TypeError.
 

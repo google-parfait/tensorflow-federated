@@ -549,7 +549,7 @@ def _empty_server_initialization():
 
 
 def build_stateless_mean(
-    *, model_delta_type: Union[tff.NamedTupleType, tff.TensorType]
+    *, model_delta_type: Union[tff.StructType, tff.TensorType]
 ) -> tff.templates.MeasuredProcess:
   """Builds a `MeasuredProcess` that wraps` tff.federated_mean`."""
 
@@ -568,7 +568,7 @@ def build_stateless_mean(
 
 
 def build_stateless_broadcaster(
-    *, model_weights_type: Union[tff.NamedTupleType, tff.TensorType]
+    *, model_weights_type: Union[tff.StructType, tff.TensorType]
 ) -> tff.templates.MeasuredProcess:
   """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
 
@@ -649,7 +649,7 @@ def build_model_delta_optimizer_process(
       stateful_fn: Optional[Union[tff.utils.StatefulBroadcastFn,
                                   tff.utils.StatefulAggregateFn]],
       process: Optional[tff.templates.MeasuredProcess],
-      process_input_type: Union[tff.NamedTupleType, tff.TensorType],
+      process_input_type: Union[tff.StructType, tff.TensorType],
   ) -> Optional[tff.templates.MeasuredProcess]:
     """Validate that only one of two arguments is specified.
 

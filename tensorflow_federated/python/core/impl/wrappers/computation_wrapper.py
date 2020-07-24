@@ -171,7 +171,7 @@ class ComputationWrapper(object):
         ```
 
      b. If the Python function declares multiple parameters, the computation's
-        parameter type must be convertible to type `tff.NamedTupleType`
+        parameter type must be convertible to type `tff.StructType`
         (usually a list containing types or pairs of `(str, types.Type)`.
 
         ```python
@@ -203,7 +203,7 @@ class ComputationWrapper(object):
 
         If `*args` is the only argument to the Python function, an exception
         will be thrown, since it's ambiguous whether the function accepts a
-        single `tff.NamedTupleType` argument (as in the single-argument case (a)
+        single `tff.StructType` argument (as in the single-argument case (a)
         above) or a list of arguments.
 
   2. When the decorator is specified without arguments (`@xyz` or `@xyz()`):

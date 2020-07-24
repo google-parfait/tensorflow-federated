@@ -276,7 +276,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     identity_report = tensorflow_computation_factory.create_identity(zero_type)
     identity_report_type = type_factory.unary_op(zero_type)
     aggr_type = computation_types.FunctionType(
-        computation_types.NamedTupleType([
+        computation_types.StructType([
             value_type, zero_type, accumulate_type, merge_type,
             identity_report_type
         ]), type_factory.at_server(zero_type))
@@ -535,8 +535,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
   async def compute_federated_zip_at_clients(
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     py_typecheck.check_len(arg.type_signature, 2)
     py_typecheck.check_type(arg.internal_representation,
                             anonymous_tuple.AnonymousTuple)
@@ -550,13 +549,13 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       types[n] = type_factory.at_clients(types[n].member)
       py_typecheck.check_type(vals[n], list)
       py_typecheck.check_len(vals[n], len(self._target_executors))
-    item_type = computation_types.NamedTupleType([
+    item_type = computation_types.StructType([
         ((keys[n], types[n].member) if keys[n] else types[n].member)
         for n in [0, 1]
     ])
     result_type = type_factory.at_clients(item_type)
     zip_type = computation_types.FunctionType(
-        computation_types.NamedTupleType([
+        computation_types.StructType([
             ((keys[n], types[n]) if keys[n] else types[n]) for n in [0, 1]
         ]), result_type)
     zip_comp = executor_utils.create_intrinsic_comp(
@@ -579,8 +578,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
   async def compute_federated_zip_at_server(
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
-    py_typecheck.check_type(arg.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     py_typecheck.check_len(arg.type_signature, 2)
     py_typecheck.check_type(arg.internal_representation,
                             anonymous_tuple.AnonymousTuple)
@@ -594,5 +592,5 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
         await self._server_executor.create_struct(
             [arg.internal_representation[n] for n in [0, 1]]),
         type_factory.at_server(
-            computation_types.NamedTupleType(
+            computation_types.StructType(
                 [arg.type_signature[0].member, arg.type_signature[1].member])))

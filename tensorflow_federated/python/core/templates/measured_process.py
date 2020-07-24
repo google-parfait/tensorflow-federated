@@ -71,12 +71,12 @@ class MeasuredProcess(iterative_process.IterativeProcess):
                   computation_types.FederatedType):
       next_result_type = next_fn.type_signature.result.member
     elif isinstance(next_fn.type_signature.result,
-                    computation_types.NamedTupleType):
+                    computation_types.StructType):
       next_result_type = next_fn.type_signature.result
     else:
       raise TypeError(
-          'MeasuredProcess must return a NamedTupleType (or '
-          'FederatedType containing a NamedTupleType) with the signature '
+          'MeasuredProcess must return a StructType (or '
+          'FederatedType containing a StructType) with the signature '
           '<state=A,result=B,measurements=C>. Received a ({t}): {s}'.format(
               t=type(next_fn.type_signature.result),
               s=next_fn.type_signature.result))

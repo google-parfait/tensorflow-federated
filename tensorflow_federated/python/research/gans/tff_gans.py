@@ -99,7 +99,7 @@ class GanFnsAndTypes(object):
   dp_averaging_fn = attr.ib(
       init=False, type=tff.utils.StatefulAggregateFn, default=None)
   # TFF Type for the DP averaging state. If not using DP, this is effectively
-  # set to be 'empty' (a `tff.NamedTupleType` wrapping an empty tuple).
+  # set to be 'empty' (a `tff.StructType` wrapping an empty tuple).
   dp_averaging_state_type = attr.ib(init=False, default=tff.to_type(()))
 
   # Sample generator and discriminator.

@@ -168,10 +168,10 @@ def _check_iterative_process_compatible_with_canonical_form(
   py_typecheck.check_type(next_tree.type_signature,
                           computation_types.FunctionType)
   py_typecheck.check_type(next_tree.type_signature.parameter,
-                          computation_types.NamedTupleType)
+                          computation_types.StructType)
   py_typecheck.check_len(next_tree.type_signature.parameter, 2)
   py_typecheck.check_type(next_tree.type_signature.result,
-                          computation_types.NamedTupleType)
+                          computation_types.StructType)
   py_typecheck.check_len(next_tree.type_signature.parameter, 2)
   next_result_len = len(next_tree.type_signature.result)
   if next_result_len != 2:
@@ -235,7 +235,7 @@ def _create_before_and_after_broadcast_for_no_broadcast(tree):
   parameter_name = next(name_generator)
   type_signature = computation_types.FederatedType(
       before_broadcast.type_signature.result.member, placements.CLIENTS)
-  parameter_type = computation_types.NamedTupleType(
+  parameter_type = computation_types.StructType(
       [tree.type_signature.parameter, type_signature])
   ref = building_blocks.Reference(parameter_name, parameter_type)
   arg = building_blocks.Selection(ref, index=0)
@@ -310,7 +310,7 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
 
   def _create_empty_function(type_elements):
     ref_name = next(name_generator)
-    ref_type = computation_types.NamedTupleType(type_elements)
+    ref_type = computation_types.StructType(type_elements)
     ref = building_blocks.Reference(ref_name, ref_type)
     empty_tuple = building_blocks.Tuple([])
     return building_blocks.Lambda(ref.name, ref.type_signature, empty_tuple)
@@ -330,10 +330,10 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
 
   ref_name = next(name_generator)
   s3_type = computation_types.FederatedType([], placements.SERVER)
-  ref_type = computation_types.NamedTupleType([
+  ref_type = computation_types.StructType([
       after_aggregate.parameter_type[0],
-      computation_types.NamedTupleType(
-          [s3_type, after_aggregate.parameter_type[1]]),
+      computation_types.StructType([s3_type,
+                                    after_aggregate.parameter_type[1]]),
   ])
   ref = building_blocks.Reference(ref_name, ref_type)
   sel_arg = building_blocks.Selection(ref, index=0)
@@ -419,9 +419,9 @@ def _create_before_and_after_aggregate_for_no_federated_secure_sum(tree):
 
   ref_name = next(name_generator)
   s4_type = computation_types.FederatedType([], placements.SERVER)
-  ref_type = computation_types.NamedTupleType([
+  ref_type = computation_types.StructType([
       after_aggregate.parameter_type[0],
-      computation_types.NamedTupleType([
+      computation_types.StructType([
           after_aggregate.parameter_type[1],
           s4_type,
       ]),
@@ -620,9 +620,9 @@ def _extract_update(after_aggregate):
       s6_to_s7_computation)
 
   pack_ref_name = next(name_generator)
-  pack_ref_type = computation_types.NamedTupleType([
+  pack_ref_type = computation_types.StructType([
       s6_to_s7_computation.parameter_type.member[0],
-      computation_types.NamedTupleType([
+      computation_types.StructType([
           s6_to_s7_computation.parameter_type.member[1],
           s6_to_s7_computation.parameter_type.member[2],
       ]),
@@ -732,7 +732,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   # The type signature of `before_broadcast` is: `(<s1,c1> -> s2)`.
   _check_type(before_broadcast.type_signature, computation_types.FunctionType)
   _check_type(before_broadcast.type_signature.parameter,
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(before_broadcast.type_signature.parameter, 2)
   s1_type = before_broadcast.type_signature.parameter[0]
   _check_type(s1_type, computation_types.FederatedType)
@@ -749,10 +749,10 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   # The type signature of `after_broadcast` is: `(<<s1,c1>,c2> -> <s8,s9>)'.
   _check_type(after_broadcast.type_signature, computation_types.FunctionType)
   _check_type(after_broadcast.type_signature.parameter,
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(after_broadcast.type_signature.parameter, 2)
   _check_type(after_broadcast.type_signature.parameter[0],
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(after_broadcast.type_signature.parameter[0], 2)
   _check_type_equal(after_broadcast.type_signature.parameter[0][0], s1_type)
   _check_type_equal(after_broadcast.type_signature.parameter[0][1], c1_type)
@@ -760,7 +760,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   _check_type(c2_type, computation_types.FederatedType)
   _check_placement(c2_type, placements.CLIENTS)
   _check_type(after_broadcast.type_signature.result,
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(after_broadcast.type_signature.result, 2)
   s8_type = after_broadcast.type_signature.result[0]
   _check_type(s8_type, computation_types.FederatedType)
@@ -773,16 +773,16 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   # `(<<s1,c1>,c2> -> <<c5,zero,accumulate,merge,report>,<c6,bitwidth>>)`.
   _check_type(before_aggregate.type_signature, computation_types.FunctionType)
   _check_type(before_aggregate.type_signature.parameter,
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(before_aggregate.type_signature.parameter, 2)
   _check_type(before_aggregate.type_signature.parameter[0],
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(before_aggregate.type_signature.parameter[0], 2)
   _check_type_equal(before_aggregate.type_signature.parameter[0][0], s1_type)
   _check_type_equal(before_aggregate.type_signature.parameter[0][1], c1_type)
   _check_type_equal(before_aggregate.type_signature.parameter[1], c2_type)
   _check_type(before_aggregate.type_signature.result,
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(before_aggregate.type_signature.result, 2)
   _check_len(before_aggregate.type_signature.result[0], 5)
   c5_type = before_aggregate.type_signature.result[0][0]
@@ -798,7 +798,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   report_type = before_aggregate.type_signature.result[0][4]
   _check_type(report_type, computation_types.FunctionType)
   _check_type(before_aggregate.type_signature.result[1],
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(before_aggregate.type_signature.result[1], 2)
   c6_type = before_aggregate.type_signature.result[1][0]
   _check_type(c6_type, computation_types.FederatedType)
@@ -816,13 +816,13 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   # `(<<<s1,c1>,c2>,<s3,s4>> -> <s8,s9>)'.
   _check_type(after_aggregate.type_signature, computation_types.FunctionType)
   _check_type(after_aggregate.type_signature.parameter,
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(after_aggregate.type_signature.parameter, 2)
   _check_type(after_aggregate.type_signature.parameter[0],
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(after_aggregate.type_signature.parameter[0], 2)
   _check_type(after_aggregate.type_signature.parameter[0][0],
-              computation_types.NamedTupleType)
+              computation_types.StructType)
   _check_len(after_aggregate.type_signature.parameter[0][0], 2)
   _check_type_equal(after_aggregate.type_signature.parameter[0][0][0], s1_type)
   _check_type_equal(after_aggregate.type_signature.parameter[0][0][1], c1_type)

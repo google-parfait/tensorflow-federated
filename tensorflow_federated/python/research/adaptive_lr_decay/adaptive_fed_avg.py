@@ -358,13 +358,12 @@ def build_fed_avg_process(model_fn,
 
     initial_aggregated_outputs = dummy_model.federated_output_computation(
         client_outputs.initial_model_output)
-    if isinstance(initial_aggregated_outputs.type_signature,
-                  tff.NamedTupleType):
+    if isinstance(initial_aggregated_outputs.type_signature, tff.StructType):
       initial_aggregated_outputs = tff.federated_zip(initial_aggregated_outputs)
 
     aggregated_outputs = dummy_model.federated_output_computation(
         client_outputs.model_output)
-    if isinstance(aggregated_outputs.type_signature, tff.NamedTupleType):
+    if isinstance(aggregated_outputs.type_signature, tff.StructType):
       aggregated_outputs = tff.federated_zip(aggregated_outputs)
     client_monitor_value = initial_aggregated_outputs[client_monitor]
     server_monitor_value = initial_aggregated_outputs[server_monitor]

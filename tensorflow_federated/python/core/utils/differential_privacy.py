@@ -284,7 +284,7 @@ def build_dp_aggregate_process(value_type, query):
 
   Args:
     value_type: The type of values to be aggregated by the `MeasuredProcess`.
-      Can be a `tff.TensorType` or a nested structure of `tff.NamedTupleType`
+      Can be a `tff.TensorType` or a nested structure of `tff.StructType`
       that bottoms out in `tff.TensorType`.
     query: A DPQuery to aggregate. For compatibility with tensorflow_federated,
       the global_state and sample_state of the query must be structures
@@ -297,8 +297,7 @@ def build_dp_aggregate_process(value_type, query):
   `MeasuredProcess` will be ignored.
   """
   py_typecheck.check_type(
-      value_type,
-      (computation_types.TensorType, computation_types.NamedTupleType))
+      value_type, (computation_types.TensorType, computation_types.StructType))
 
   @computations.tf_computation
   def initial_state_fn():

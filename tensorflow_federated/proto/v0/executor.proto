@@ -140,7 +140,7 @@ message Value {
   // A representation of a sequence value.
   // This message holds its type annotation because the underlying serialization
   // provided by TensorFlow does not preserve the ordering of keys for sequences
-  // of `NamedTupleType`.
+  // of `StructType`.
   message Sequence {
     // The serialized representation of this sequence.
     oneof value {

@@ -475,7 +475,7 @@ class FederatingExecutor(executor_base.Executor):
       else:
         element_types.append(value.type_signature)
     value = anonymous_tuple.AnonymousTuple(element_values)
-    type_signature = computation_types.NamedTupleType(element_types)
+    type_signature = computation_types.StructType(element_types)
     return self._strategy.ingest_value(value, type_signature)
 
   @tracing.trace
@@ -503,13 +503,12 @@ class FederatingExecutor(executor_base.Executor):
 
     Raises:
       TypeError: If `source` is not embedded in the executor or if the
-        `type_signature` of `source` is not a `tff.NamedTupleType`.
+        `type_signature` of `source` is not a `tff.StructType`.
       ValueError: If both `index` and `name` are `None` or if `source` is not a
         kind supported by the `FederatingExecutor`.
     """
     py_typecheck.check_type(source, executor_value_base.ExecutorValue)
-    py_typecheck.check_type(source.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(source.type_signature, computation_types.StructType)
     if index is None and name is None:
       raise ValueError(
           'Expected either `index` or `name` to be specificed, found both are '

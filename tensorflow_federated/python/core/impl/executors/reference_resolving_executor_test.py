@@ -220,7 +220,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
 
     f_type = computation_types.FunctionType(tf.int32, tf.int32)
     a = building_blocks.Reference(
-        'a', computation_types.NamedTupleType([('f', f_type), ('x', tf.int32)]))
+        'a', computation_types.StructType([('f', f_type), ('x', tf.int32)]))
     ret = building_blocks.Block([('f', building_blocks.Selection(a, name='f')),
                                  ('x', building_blocks.Selection(a, name='x'))],
                                 building_blocks.Call(

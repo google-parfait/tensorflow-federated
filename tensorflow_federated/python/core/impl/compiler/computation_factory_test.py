@@ -30,7 +30,7 @@ class CreateLambdaEmptyTupleTest(absltest.TestCase):
     self.assertIsInstance(proto, pb.Computation)
     actual_type = type_serialization.deserialize_type(proto.type)
     expected_type = computation_types.FunctionType(
-        None, computation_types.NamedTupleType(()))
+        None, computation_types.StructType(()))
     self.assertEqual(actual_type, expected_type)
 
 
@@ -47,7 +47,7 @@ class CreateLambdaIdentityTest(absltest.TestCase):
     self.assertEqual(actual_type, expected_type)
 
   def test_returns_computation_tuple_unnamed(self):
-    type_signature = computation_types.NamedTupleType([tf.int32, tf.float32])
+    type_signature = computation_types.StructType([tf.int32, tf.float32])
 
     proto = computation_factory.create_lambda_identity(type_signature)
 
@@ -57,8 +57,8 @@ class CreateLambdaIdentityTest(absltest.TestCase):
     self.assertEqual(actual_type, expected_type)
 
   def test_returns_computation_tuple_named(self):
-    type_signature = computation_types.NamedTupleType([('a', tf.int32),
-                                                       ('b', tf.float32)])
+    type_signature = computation_types.StructType([('a', tf.int32),
+                                                   ('b', tf.float32)])
 
     proto = computation_factory.create_lambda_identity(type_signature)
 

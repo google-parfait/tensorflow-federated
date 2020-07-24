@@ -27,8 +27,7 @@ class TypeConstructorsTest(absltest.TestCase):
     element_type = computation_types.TensorType(tf.int32)
     actual_type = type_factory.reduction_op(result_type, element_type)
     expected_type = computation_types.FunctionType(
-        computation_types.NamedTupleType([result_type, element_type]),
-        result_type)
+        computation_types.StructType([result_type, element_type]), result_type)
     self.assertEqual(actual_type, expected_type)
 
   def test_unary_op(self):
@@ -41,7 +40,7 @@ class TypeConstructorsTest(absltest.TestCase):
     type_spec = computation_types.TensorType(tf.bool)
     actual_type = type_factory.binary_op(type_spec)
     expected_type = computation_types.FunctionType(
-        computation_types.NamedTupleType([type_spec, type_spec]), type_spec)
+        computation_types.StructType([type_spec, type_spec]), type_spec)
     self.assertEqual(actual_type, expected_type)
 
   def test_at_server(self):

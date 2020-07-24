@@ -516,7 +516,7 @@ class EagerTFExecutor(executor_base.Executor):
       type_elements.append((k, v.type_signature))
     return EagerValue(
         anonymous_tuple.AnonymousTuple(val_elements), self._tf_function_cache,
-        computation_types.NamedTupleType([
+        computation_types.StructType([
             (k, v) if k is not None else v for k, v in type_elements
         ]))
 
@@ -537,8 +537,7 @@ class EagerTFExecutor(executor_base.Executor):
       ValueError: If either both, or neither of `name` and `index` are present.
     """
     py_typecheck.check_type(source, EagerValue)
-    py_typecheck.check_type(source.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(source.type_signature, computation_types.StructType)
     py_typecheck.check_type(source.internal_representation,
                             anonymous_tuple.AnonymousTuple)
     if index is not None:

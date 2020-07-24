@@ -76,7 +76,7 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
       tree_analysis.extract_nodes_consuming(None, lambda x: True)
 
   def test_raises_on_none_predicate(self):
-    data_type = computation_types.NamedTupleType([])
+    data_type = computation_types.StructType([])
     data = building_blocks.Data('dummy', data_type)
     with self.assertRaises(TypeError):
       tree_analysis.extract_nodes_consuming(data, None)
@@ -134,7 +134,7 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     self.assertIn(tup, dependent_nodes)
 
   def test_propogates_dependence_up_through_selection(self):
-    type_signature = computation_types.NamedTupleType([tf.int32])
+    type_signature = computation_types.StructType([tf.int32])
     dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
                                                 type_signature)
     selection = building_blocks.Selection(dummy_intrinsic, index=0)

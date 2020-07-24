@@ -50,7 +50,7 @@ class ClipNormAggregateFnTest(tf.test.TestCase):
       return aggregate_fn(state, deltas, weights)
 
     federated_aggregate_test.type_signature.result.check_equivalent_to(
-        tff.NamedTupleType((
+        tff.StructType((
             tff.FederatedType(
                 aggregate_fns.ClipNormAggregateState(
                     clip_norm=tf.float32, max_norm=tf.float32), tff.SERVER),

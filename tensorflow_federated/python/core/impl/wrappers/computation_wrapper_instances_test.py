@@ -98,7 +98,7 @@ class ComputationWrapperInstancesTest(test.TestCase):
         None, computation_types.TensorType(tf.int32))
     federated = computation_types.FederatedType(tf.int32,
                                                 placement_literals.CLIENTS)
-    tuple_on_function = computation_types.NamedTupleType([federated, function])
+    tuple_on_function = computation_types.StructType([federated, function])
 
     with self.assertRaisesRegex(
         TypeError,

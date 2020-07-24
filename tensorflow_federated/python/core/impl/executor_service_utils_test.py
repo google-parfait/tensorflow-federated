@@ -115,7 +115,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
 
     ds = tf.data.Dataset.range(5).map(make_test_tuple)
 
-    element_type = computation_types.NamedTupleType([
+    element_type = computation_types.StructType([
         ('a', tf.int64),
         ('b', tf.int32),
         ('c', tf.float32),
@@ -152,15 +152,14 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
       ])
 
     ds = tf.data.Dataset.range(5).map(_make_nested_tf_structure)
-    element_type = computation_types.NamedTupleType([
+    element_type = computation_types.StructType([
         ('b', tf.int32),
         ('a',
-         computation_types.NamedTupleType([
+         computation_types.StructType([
              (None, tf.int64),
              (None, test_tuple_type(tf.int64, tf.int64)),
              (None,
-              computation_types.NamedTupleType([('x', tf.int64),
-                                                ('y', tf.int64)])),
+              computation_types.StructType([('x', tf.int64), ('y', tf.int64)])),
          ])),
     ])
     sequence_type = computation_types.SequenceType(element=element_type)

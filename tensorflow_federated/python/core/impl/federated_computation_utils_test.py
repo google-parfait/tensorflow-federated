@@ -32,20 +32,20 @@ class ZeroOrOneArgFnToBuildingBlockTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('nested_fn_same',
        lambda f, x: f(f(x)),
-       computation_types.NamedTupleType([
+       computation_types.StructType([
            ('f', computation_types.FunctionType(tf.int32, tf.int32)),
            ('x', tf.int32)]),
        '(FEDERATED_foo -> (let fc_FEDERATED_symbol_0=FEDERATED_foo.f(FEDERATED_foo.x),fc_FEDERATED_symbol_1=FEDERATED_foo.f(fc_FEDERATED_symbol_0) in fc_FEDERATED_symbol_1))'),
       ('nested_fn_different',
        lambda f, g, x: f(g(x)),
-       computation_types.NamedTupleType([
+       computation_types.StructType([
            ('f', computation_types.FunctionType(tf.int32, tf.int32)),
            ('g', computation_types.FunctionType(tf.int32, tf.int32)),
            ('x', tf.int32)]),
        '(FEDERATED_foo -> (let fc_FEDERATED_symbol_0=FEDERATED_foo.g(FEDERATED_foo.x),fc_FEDERATED_symbol_1=FEDERATED_foo.f(fc_FEDERATED_symbol_0) in fc_FEDERATED_symbol_1))'),
       ('selection',
        lambda x: (x[1], x[0]),
-       computation_types.NamedTupleType([tf.int32, tf.int32]),
+       computation_types.StructType([tf.int32, tf.int32]),
        '(FEDERATED_foo -> <FEDERATED_foo[1],FEDERATED_foo[0]>)'),
       ('constant', lambda: 'stuff', None, '( -> (let fc_FEDERATED_symbol_0=comp#'))
   # pyformat: enable
@@ -61,23 +61,23 @@ class ZeroOrOneArgFnToBuildingBlockTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('tuple_result',
        lambda x: (x[1], x[0]),
-       computation_types.NamedTupleType([tf.int32, tf.float32]),
-       computation_types.NamedTupleTypeWithPyContainerType([
+       computation_types.StructType([tf.int32, tf.float32]),
+       computation_types.StructWithPythonType([
            (None, tf.float32), (None, tf.int32)], tuple)),
       ('list_result',
        lambda x: [x[1], x[0]],
-       computation_types.NamedTupleType([tf.int32, tf.float32]),
-       computation_types.NamedTupleTypeWithPyContainerType([
+       computation_types.StructType([tf.int32, tf.float32]),
+       computation_types.StructWithPythonType([
            (None, tf.float32), (None, tf.int32)], list)),
       ('odict_result',
        lambda x: collections.OrderedDict([('A', x[1]), ('B', x[0])]),
-       computation_types.NamedTupleType([tf.int32, tf.float32]),
-       computation_types.NamedTupleTypeWithPyContainerType([
+       computation_types.StructType([tf.int32, tf.float32]),
+       computation_types.StructWithPythonType([
            ('A', tf.float32), ('B', tf.int32)], collections.OrderedDict)),
       ('namedtuple_result',
        lambda x: TestNamedTuple(x=x[1], y=x[0]),
-       computation_types.NamedTupleType([tf.int32, tf.float32]),
-       computation_types.NamedTupleTypeWithPyContainerType([
+       computation_types.StructType([tf.int32, tf.float32]),
+       computation_types.StructWithPythonType([
            ('x', tf.float32), ('y', tf.int32)], TestNamedTuple)),
   )
   # pyformat: enable

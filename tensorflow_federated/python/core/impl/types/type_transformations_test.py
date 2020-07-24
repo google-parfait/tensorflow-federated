@@ -186,9 +186,9 @@ class TransformTypePostorderTest(absltest.TestCase):
     self.assertTrue(mutated)
 
   def test_transforms_unnamed_tuple_type_preserving_tuple_container(self):
-    orig_type = computation_types.NamedTupleTypeWithPyContainerType(
-        [tf.int32, tf.float64], tuple)
-    expected_type = computation_types.NamedTupleTypeWithPyContainerType(
+    orig_type = computation_types.StructWithPythonType([tf.int32, tf.float64],
+                                                       tuple)
+    expected_type = computation_types.StructWithPythonType(
         [tf.float32, tf.float32], tuple)
     result_type, mutated = type_transformations.transform_type_postorder(
         orig_type, _convert_tensor_to_float)
@@ -200,8 +200,8 @@ class TransformTypePostorderTest(absltest.TestCase):
     self.assertFalse(not_mutated)
 
   def test_transforms_unnamed_tuple_type(self):
-    orig_type = computation_types.NamedTupleType([tf.int32, tf.float64])
-    expected_type = computation_types.NamedTupleType([tf.float32, tf.float32])
+    orig_type = computation_types.StructType([tf.int32, tf.float64])
+    expected_type = computation_types.StructType([tf.float32, tf.float32])
     result_type, mutated = type_transformations.transform_type_postorder(
         orig_type, _convert_tensor_to_float)
     noop_type, not_mutated = type_transformations.transform_type_postorder(
@@ -212,16 +212,16 @@ class TransformTypePostorderTest(absltest.TestCase):
     self.assertFalse(not_mutated)
 
   def test_updates_mutated_bit_at_tuple(self):
-    orig_type = computation_types.NamedTupleType([tf.int32, tf.float64])
+    orig_type = computation_types.StructType([tf.int32, tf.float64])
     _, mutated = type_transformations.transform_type_postorder(
         orig_type, _convert_tuple_to_tensor)
     self.assertTrue(mutated)
 
   def test_transforms_named_tuple_type(self):
-    orig_type = computation_types.NamedTupleType([('a', tf.int32),
-                                                  ('b', tf.float64)])
-    expected_type = computation_types.NamedTupleType([('a', tf.float32),
-                                                      ('b', tf.float32)])
+    orig_type = computation_types.StructType([('a', tf.int32),
+                                              ('b', tf.float64)])
+    expected_type = computation_types.StructType([('a', tf.float32),
+                                                  ('b', tf.float32)])
     result_type, mutated = type_transformations.transform_type_postorder(
         orig_type, _convert_tensor_to_float)
     noop_type, not_mutated = type_transformations.transform_type_postorder(
@@ -232,10 +232,10 @@ class TransformTypePostorderTest(absltest.TestCase):
     self.assertFalse(not_mutated)
 
   def test_recurses_under_named_tuple_type(self):
-    orig_type = computation_types.NamedTupleType([[('a', tf.int32),
-                                                   ('b', tf.float64)]])
-    expected_type = computation_types.NamedTupleType([[('a', tf.float32),
-                                                       ('b', tf.float32)]])
+    orig_type = computation_types.StructType([[('a', tf.int32),
+                                               ('b', tf.float64)]])
+    expected_type = computation_types.StructType([[('a', tf.float32),
+                                                   ('b', tf.float32)]])
     result_type, mutated = type_transformations.transform_type_postorder(
         orig_type, _convert_tensor_to_float)
     noop_type, not_mutated = type_transformations.transform_type_postorder(
@@ -246,10 +246,12 @@ class TransformTypePostorderTest(absltest.TestCase):
     self.assertFalse(not_mutated)
 
   def test_transforms_named_tuple_type_preserving_tuple_container(self):
-    orig_type = computation_types.NamedTupleTypeWithPyContainerType(
-        [('a', tf.int32), ('b', tf.float64)], dict)
-    expected_type = computation_types.NamedTupleTypeWithPyContainerType(
-        [('a', tf.float32), ('b', tf.float32)], dict)
+    orig_type = computation_types.StructWithPythonType([('a', tf.int32),
+                                                        ('b', tf.float64)],
+                                                       dict)
+    expected_type = computation_types.StructWithPythonType([('a', tf.float32),
+                                                            ('b', tf.float32)],
+                                                           dict)
     result_type, mutated = type_transformations.transform_type_postorder(
         orig_type, _convert_tensor_to_float)
     noop_type, not_mutated = type_transformations.transform_type_postorder(
@@ -310,7 +312,7 @@ class VisitPreorderTest(parameterized.TestCase):
                computation_types.SequenceType(tf.int32))),
        4),
       ('named_tuple_type',
-       computation_types.NamedTupleType([
+       computation_types.StructType([
            tf.int32,
            tf.bool,
            computation_types.SequenceType(tf.int32)]),

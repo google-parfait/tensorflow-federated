@@ -139,7 +139,7 @@ def _extract_selections(parameter_value, output_spec):
 
 
 def construct_tensorflow_selecting_and_packing_outputs(
-    parameter_type: computation_types.NamedTupleType,
+    parameter_type: computation_types.StructType,
     output_structure: anonymous_tuple.AnonymousTuple
 ) -> building_blocks.CompiledComputation:
   """Constructs TensorFlow selecting and packing elements from its input.
@@ -161,7 +161,7 @@ def construct_tensorflow_selecting_and_packing_outputs(
   `output_structure`) will be selections from the argument.
 
   Args:
-    parameter_type: A `computation_types.NamedTupleType` of the argument on
+    parameter_type: A `computation_types.StructType` of the argument on
       which the constructed function will be called.
     output_structure: `anonymous_tuple.AnonymousTuple` with `SelectionSpec` or
       `anonymous_tupl.AnonymousTuple` elements, mapping from elements of the
@@ -174,13 +174,13 @@ def construct_tensorflow_selecting_and_packing_outputs(
     above.
 
   Raises:
-    TypeError: If `arg_type` is not a `computation_types.NamedTupleType`, or
+    TypeError: If `arg_type` is not a `computation_types.StructType`, or
       represents a type which cannot act as an input or output to a TensorFlow
       computation in TFF, IE does not contain exclusively
-      `computation_types.SequenceType`, `computation_types.NamedTupleType` or
+      `computation_types.SequenceType`, `computation_types.StructType` or
       `computation_types.TensorType`.
   """
-  py_typecheck.check_type(parameter_type, computation_types.NamedTupleType)
+  py_typecheck.check_type(parameter_type, computation_types.StructType)
   py_typecheck.check_type(output_structure, anonymous_tuple.AnonymousTuple)
 
   def _check_output_structure(elem):
@@ -311,7 +311,7 @@ def create_tensorflow_binary_operator(
   additionally cannot contain a `computation_types.SequenceType`, as checked by
   `type_analysis.is_generic_op_compatible_type`.
 
-  Notice also that if `operand_type` is a `computation_types.NamedTupleType`,
+  Notice also that if `operand_type` is a `computation_types.StructType`,
   `operator` will be applied pointwise. This places the burden on callers of
   this function to construct the correct values to pass into the returned
   function. For example, to divide `[2, 2]` by `2`, first the `int 2` must
@@ -347,10 +347,10 @@ def create_federated_getitem_call(
   Args:
     arg: Instance of `building_blocks.ComputationBuildingBlock` of
       `computation_types.FederatedType` with member of type
-      `computation_types.NamedTupleType` from which we wish to pick out item
+      `computation_types.StructType` from which we wish to pick out item
       `idx`.
     idx: Index, instance of `int` or `slice` used to address the
-      `computation_types.NamedTupleType` underlying `arg`.
+      `computation_types.StructType` underlying `arg`.
 
   Returns:
     Returns a `building_blocks.Call` with type signature
@@ -362,7 +362,7 @@ def create_federated_getitem_call(
   py_typecheck.check_type(idx, (int, slice))
   py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(arg.type_signature.member,
-                          computation_types.NamedTupleType)
+                          computation_types.StructType)
   getitem_comp = create_federated_getitem_comp(arg, idx)
   return create_federated_map_or_apply(getitem_comp, arg)
 
@@ -374,9 +374,9 @@ def create_federated_getattr_call(arg: building_blocks.ComputationBuildingBlock,
   Args:
     arg: Instance of `building_blocks.ComputationBuildingBlock` of
       `computation_types.FederatedType` with member of type
-      `computation_types.NamedTupleType` from which we wish to pick out item
+      `computation_types.StructType` from which we wish to pick out item
       `name`.
-    name: String name to address the `computation_types.NamedTupleType`
+    name: String name to address the `computation_types.StructType`
       underlying `arg`.
 
   Returns:
@@ -389,7 +389,7 @@ def create_federated_getattr_call(arg: building_blocks.ComputationBuildingBlock,
   py_typecheck.check_type(name, str)
   py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(arg.type_signature.member,
-                          computation_types.NamedTupleType)
+                          computation_types.StructType)
   getattr_comp = create_federated_getattr_comp(arg, name)
   return create_federated_map_or_apply(getattr_comp, arg)
 
@@ -412,7 +412,7 @@ def create_federated_setattr_call(
   Args:
     federated_comp: Instance of `building_blocks.ComputationBuildingBlock` of
       type `computation_types.FederatedType`, with member of type
-      `computation_types.NamedTupleType` whose attribute `name` we wish to set
+      `computation_types.StructType` whose attribute `name` we wish to set
       to `value_comp`.
     name: String name of the attribute we wish to overwrite in `federated_comp`.
     value_comp: Instance of `building_blocks.ComputationBuildingBlock`, the
@@ -430,7 +430,7 @@ def create_federated_setattr_call(
   py_typecheck.check_type(federated_comp.type_signature,
                           computation_types.FederatedType)
   py_typecheck.check_type(federated_comp.type_signature.member,
-                          computation_types.NamedTupleType)
+                          computation_types.StructType)
   named_tuple_type_signature = federated_comp.type_signature.member
   setattr_lambda = create_named_tuple_setattr_lambda(named_tuple_type_signature,
                                                      name, value_comp)
@@ -438,20 +438,20 @@ def create_federated_setattr_call(
 
 
 def create_named_tuple_setattr_lambda(
-    named_tuple_signature: computation_types.NamedTupleType, name: str,
+    named_tuple_signature: computation_types.StructType, name: str,
     value_comp: building_blocks.ComputationBuildingBlock
 ) -> building_blocks.Lambda:
   """Creates a building block for replacing one attribute in a named tuple.
 
   Returns an instance of `building_blocks.Lambda` which takes an
-  argument of type `computation_types.NamedTupleType` and returns a
+  argument of type `computation_types.StructType` and returns a
   `building_blocks.Tuple` which contains all the same elements as
   the argument, except the attribute `name` now has value `value_comp`. The
   Lambda constructed is the analogue of Python's `setattr` for the concrete
   type `named_tuple_signature`.
 
   Args:
-    named_tuple_signature: Instance of `computation_types.NamedTupleType`, the
+    named_tuple_signature: Instance of `computation_types.StructType`, the
       type of the argument to the constructed `building_blocks.Lambda`.
     name: String name of the attribute in the `named_tuple_signature` to replace
       with `value_comp`. Must be present as a name in `named_tuple_signature;
@@ -470,8 +470,7 @@ def create_named_tuple_setattr_lambda(
     AttributeError: If `name` is not present as a named element in
       `named_tuple_signature`
   """
-  py_typecheck.check_type(named_tuple_signature,
-                          computation_types.NamedTupleType)
+  py_typecheck.check_type(named_tuple_signature, computation_types.StructType)
   py_typecheck.check_type(name, str)
   py_typecheck.check_type(value_comp, building_blocks.ComputationBuildingBlock)
   value_comp_placeholder = building_blocks.Reference('value_comp_placeholder',
@@ -509,12 +508,12 @@ def create_federated_getattr_comp(
 
   Creates a `building_blocks.ComputationBuildingBlock`
   which selects `name` from its argument, of type `comp.type_signature.member`,
-  an instance of `computation_types.NamedTupleType`.
+  an instance of `computation_types.StructType`.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` with type
       signature `computation_types.FederatedType` whose `member` attribute is of
-      type `computation_types.NamedTupleType`.
+      type `computation_types.StructType`.
     name: String name of attribute to grab.
 
   Returns:
@@ -524,7 +523,7 @@ def create_federated_getattr_comp(
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(comp.type_signature.member,
-                          computation_types.NamedTupleType)
+                          computation_types.StructType)
   py_typecheck.check_type(name, str)
   element_names = [
       x for x, _ in anonymous_tuple.iter_elements(comp.type_signature.member)
@@ -547,15 +546,15 @@ def create_federated_getitem_comp(
 
   Creates a `building_blocks.ComputationBuildingBlock`
   which selects `key` from its argument, of type `comp.type_signature.member`,
-  of type `computation_types.NamedTupleType`.
+  of type `computation_types.StructType`.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` with type
       signature `computation_types.FederatedType` whose `member` attribute is of
-      type `computation_types.NamedTupleType`.
+      type `computation_types.StructType`.
     key: Instance of `int` or `slice`, key used to grab elements from the member
       of `comp`. implementation of slicing for `ValueImpl` objects with
-      `type_signature` `computation_types.NamedTupleType`.
+      `type_signature` `computation_types.StructType`.
 
   Returns:
     Instance of `building_blocks.Lambda` which grabs slice
@@ -564,7 +563,7 @@ def create_federated_getitem_comp(
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
   py_typecheck.check_type(comp.type_signature.member,
-                          computation_types.NamedTupleType)
+                          computation_types.StructType)
   py_typecheck.check_type(key, (int, slice))
   apply_input = building_blocks.Reference('x', comp.type_signature.member)
   if isinstance(key, int):
@@ -599,7 +598,7 @@ def create_computation_appending(
 
   Args:
     comp1: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
-      of type `computation_type.NamedTupleType`.
+      of type `computation_type.StructType`.
     comp2: A `building_blocks.ComputationBuildingBlock` or a named computation
       (a tuple pair of name, computation) representing a single element of an
       `anonymous_tuple.AnonymousTuple`.
@@ -1095,7 +1094,7 @@ def create_federated_unzip(
 
   Args:
     value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
-      of type `computation_types.NamedTupleType` containing at least one
+      of type `computation_types.StructType` containing at least one
       element.
 
   Returns:
@@ -1173,7 +1172,7 @@ def _create_flat_federated_zip(value):
 
   Args:
     value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
-      of type `computation_types.NamedTupleType` containing at least one
+      of type `computation_types.StructType` containing at least one
       element.
 
   Returns:
@@ -1259,7 +1258,7 @@ def _build_tree_of_zips_and_paths_to_elements(
     with `_selection_from_path` to select an element out of the result.
   """
   py_typecheck.check_type(args, building_blocks.Reference)
-  py_typecheck.check_type(args.type_signature, computation_types.NamedTupleType)
+  py_typecheck.check_type(args.type_signature, computation_types.StructType)
   if start_index == end_index:
     # Base case for one element
     tree = building_blocks.Selection(args, index=start_index)
@@ -1309,14 +1308,14 @@ def create_federated_zip(
 
   Args:
     value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
-      of type `computation_types.NamedTupleType` that may contain other nested
-      `computation_types.NamedTupleTypes` bottoming out in at least one element
+      of type `computation_types.StructType` that may contain other nested
+      `computation_types.StructTypes` bottoming out in at least one element
       of type `computation_Types.FederatedType`. These federated types must be
       at the same placement.
 
   Returns:
     A `building_blocks.Call` whose type signature is now a federated
-      `computation_types.NamedTupleType`, placed at the same placement as the
+      `computation_types.StructType`, placed at the same placement as the
       leaves of `value`.
 
   Raises:
@@ -1324,8 +1323,7 @@ def create_federated_zip(
     ValueError: If `value` does not contain any elements.
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(value.type_signature,
-                          computation_types.NamedTupleType)
+  py_typecheck.check_type(value.type_signature, computation_types.StructType)
 
   # If the type signature is flat, just call _create_flat_federated_zip.
   elements = anonymous_tuple.to_elements(value.type_signature)
@@ -1346,7 +1344,7 @@ def create_federated_zip(
         _make_nested_selections(inner_selection)
     else:
       raise TypeError(
-          'Expected type signatures consisting of structures of NamedTupleType '
+          'Expected type signatures consisting of structures of StructType '
           'bottoming out in FederatedType, found: \n{}'.format(
               nested.type_signature))
 
@@ -1385,7 +1383,7 @@ def create_federated_zip(
       # This shouldn't be possible since the structure was already traversed
       # above.
       raise TypeError('Only type signatures consisting of structures of '
-                      'NamedTupleType bottoming out in FederatedType can be '
+                      'StructType bottoming out in FederatedType can be '
                       'used in federated_zip.')
 
   repacked, _ = _make_flat_selections(value.type_signature, 0)
@@ -1486,7 +1484,7 @@ def create_zip_two_values(
 
   Args:
     value: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
-      of type `computation_types.NamedTupleType` containing exactly two
+      of type `computation_types.StructType` containing exactly two
       elements.
 
   Returns:
@@ -1517,7 +1515,7 @@ def create_zip_two_values(
     federated_type = computation_types.FederatedType(type_signature.member,
                                                      placement, all_equal)
     elements.append((None, federated_type))
-  parameter_type = computation_types.NamedTupleType(elements)
+  parameter_type = computation_types.StructType(elements)
   result_type = computation_types.FederatedType(
       [(None, e.member) for _, e in named_type_signatures], placement,
       all_equal)
@@ -1625,7 +1623,7 @@ def _create_naming_function(tuple_type_to_name, names_to_add, container_type):
   """Private function to construct lambda naming a given tuple type.
 
   Args:
-    tuple_type_to_name: Instance of `computation_types.NamedTupleType`, the type
+    tuple_type_to_name: Instance of `computation_types.StructType`, the type
       of the argument which we wish to name.
     names_to_add: Python `list` or `tuple`, the names we wish to give to
       `tuple_type_to_name`.
@@ -1641,7 +1639,7 @@ def _create_naming_function(tuple_type_to_name, names_to_add, container_type):
     ValueError: If `tuple_type_to_name` and `names_to_add` have different
     lengths.
   """
-  py_typecheck.check_type(tuple_type_to_name, computation_types.NamedTupleType)
+  py_typecheck.check_type(tuple_type_to_name, computation_types.StructType)
   if len(names_to_add) != len(tuple_type_to_name):
     raise ValueError(
         'Number of elements in `names_to_add` must match number of element in '
@@ -1678,7 +1676,7 @@ def create_named_federated_tuple(
   Args:
     tuple_to_name: Instance of `building_blocks.ComputationBuildingBlock` of
       type `computation_types.FederatedType` with
-      `computation_types.NamedTupleType` member, to populate with names from
+      `computation_types.StructType` member, to populate with names from
       `names_to_add`.
     names_to_add: Python `tuple` or `list` containing instances of type `str` or
       `None`, the names to give to `tuple_to_name`.
@@ -1726,7 +1724,7 @@ def create_named_tuple(
 
   Args:
     comp: A `building_blocks.ComputationBuildingBlock` with a `type_signature`
-      of type `computation_types.NamedTupleType`.
+      of type `computation_types.StructType`.
     names: Python `tuple` or `list` containing instances of type `str` or
       `None`, the names to apply to `comp`.
     container_type: Optional Python container type to associated with the
@@ -1745,7 +1743,7 @@ def create_named_tuple(
     raise TypeError('Expected `names` containing only instances of `str` or '
                     '`None`, found {}'.format(names))
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(comp.type_signature, computation_types.NamedTupleType)
+  py_typecheck.check_type(comp.type_signature, computation_types.StructType)
   fn = _create_naming_function(comp.type_signature, names, container_type)
   return building_blocks.Call(fn, comp)
 
@@ -1778,17 +1776,16 @@ def create_zip(
     comp: The computation building block in which to perform the merges.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(comp.type_signature, computation_types.NamedTupleType)
+  py_typecheck.check_type(comp.type_signature, computation_types.StructType)
   named_type_signatures = anonymous_tuple.to_elements(comp.type_signature)
   _, first_type_signature = named_type_signatures[0]
-  py_typecheck.check_type(first_type_signature,
-                          computation_types.NamedTupleType)
+  py_typecheck.check_type(first_type_signature, computation_types.StructType)
   length = len(first_type_signature)
   for _, type_signature in named_type_signatures:
-    py_typecheck.check_type(type_signature, computation_types.NamedTupleType)
+    py_typecheck.check_type(type_signature, computation_types.StructType)
     if len(type_signature) != length:
       raise TypeError(
-          'Expected a NamedTupleType containing NamedTupleTypes with the same '
+          'Expected a StructType containing StructTypes with the same '
           'length, found: {}'.format(comp.type_signature))
   if not comp.is_reference():
     name_generator = unique_name_generator(comp)
@@ -1844,7 +1841,7 @@ def create_tensorflow_binary_operator_with_upcast(
   `apply_binary_operator_with_upcast`.
 
   Args:
-    type_signature: Value convertible to `computation_types.NamedTupleType`,
+    type_signature: Value convertible to `computation_types.StructType`,
       with two elements, both of the same type or the second able to be upcast
       to the first, as explained in `apply_binary_operator_with_upcast`, and
       both containing only tuples and tensors in their type tree.

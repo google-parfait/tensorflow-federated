@@ -221,7 +221,7 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
         building_blocks.Selection(param, index=1),
         building_blocks.Selection(param, index=0)
     ])
-    int_constant_type = computation_types.NamedTupleType([tf.int32, tf.float32])
+    int_constant_type = computation_types.StructType([tf.int32, tf.float32])
     int_constant = building_block_factory.create_tensorflow_constant(
         int_constant_type, 1)
     tf_block = transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
@@ -533,8 +533,7 @@ class DeduplicateCalledGraphsTest(test.TestCase):
     self.assertEqual(transformed.type_signature, lam.type_signature)
 
   def test_returns_called_tf_computation_with_non_functional_type(self):
-    constant_tuple_type = computation_types.NamedTupleType(
-        [tf.int32, tf.float32])
+    constant_tuple_type = computation_types.StructType([tf.int32, tf.float32])
     constant_tuple = building_block_factory.create_tensorflow_constant(
         constant_tuple_type, 1)
     sel = building_blocks.Selection(source=constant_tuple, index=0)
@@ -918,7 +917,7 @@ class TensorFlowGeneratorTest(test.TestCase):
 
   def test_generates_tf_with_lambda(self):
     ref_to_x = building_blocks.Reference(
-        'x', computation_types.NamedTupleType([tf.int32, tf.float32]))
+        'x', computation_types.StructType([tf.int32, tf.float32]))
     identity_lambda = building_blocks.Lambda(ref_to_x.name,
                                              ref_to_x.type_signature, ref_to_x)
 
@@ -931,11 +930,11 @@ class TensorFlowGeneratorTest(test.TestCase):
 
   def test_generates_tf_with_block(self):
     ref_to_x = building_blocks.Reference(
-        'x', computation_types.NamedTupleType([tf.int32, tf.float32]))
+        'x', computation_types.StructType([tf.int32, tf.float32]))
     identity_lambda = building_blocks.Lambda(ref_to_x.name,
                                              ref_to_x.type_signature, ref_to_x)
     tf_zero = building_block_factory.create_tensorflow_constant(
-        computation_types.NamedTupleType([tf.int32, tf.float32]), 0)
+        computation_types.StructType([tf.int32, tf.float32]), 0)
     ref_to_z = building_blocks.Reference('z', [tf.int32, tf.float32])
     called_lambda_on_z = building_blocks.Call(identity_lambda, ref_to_z)
     blk = building_blocks.Block([('z', tf_zero)], called_lambda_on_z)
@@ -954,7 +953,7 @@ class TensorFlowGeneratorTest(test.TestCase):
     ref_to_x = building_blocks.Reference(
         'x',
         computation_types.SequenceType(
-            computation_types.NamedTupleType([tf.int32, tf.float32])))
+            computation_types.StructType([tf.int32, tf.float32])))
     identity_lambda = building_blocks.Lambda(ref_to_x.name,
                                              ref_to_x.type_signature, ref_to_x)
 
@@ -981,13 +980,13 @@ class TensorFlowGeneratorTest(test.TestCase):
 
   def test_compiles_lambda_under_federated_comp_to_tf(self):
     ref_to_x = building_blocks.Reference(
-        'x', computation_types.NamedTupleType([tf.int32, tf.float32]))
+        'x', computation_types.StructType([tf.int32, tf.float32]))
     identity_lambda = building_blocks.Lambda(ref_to_x.name,
                                              ref_to_x.type_signature, ref_to_x)
     federated_data = building_blocks.Data(
         'a',
         computation_types.FederatedType(
-            computation_types.NamedTupleType([tf.int32, tf.float32]),
+            computation_types.StructType([tf.int32, tf.float32]),
             placement_literals.SERVER))
     applied = building_block_factory.create_federated_apply(
         identity_lambda, federated_data)
@@ -1189,7 +1188,7 @@ class TestTransformToCallDominantForm(test.TestCase):
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     ref_to_fn_and_int = building_blocks.Reference(
         'y',
-        computation_types.NamedTupleType([
+        computation_types.StructType([
             int_identity_lambda.type_signature,
             computation_types.TensorType(tf.int32)
         ]))

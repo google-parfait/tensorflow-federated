@@ -69,13 +69,13 @@ class IntrinsicFactory(object):
         accumulate,
         None,
         self._context_stack,
-        parameter_type_hint=computation_types.NamedTupleType(
+        parameter_type_hint=computation_types.StructType(
             [zero.type_signature, value.type_signature.member]))
     merge = value_impl.to_value(
         merge,
         None,
         self._context_stack,
-        parameter_type_hint=computation_types.NamedTupleType(
+        parameter_type_hint=computation_types.StructType(
             [zero.type_signature, zero.type_signature]))
     report = value_impl.to_value(
         report,
@@ -314,7 +314,7 @@ class IntrinsicFactory(object):
         op,
         None,
         self._context_stack,
-        parameter_type_hint=computation_types.NamedTupleType(
+        parameter_type_hint=computation_types.StructType(
             [zero.type_signature, value.type_signature.member]))
     py_typecheck.check_type(op, value_base.Value)
     py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
@@ -369,8 +369,7 @@ class IntrinsicFactory(object):
     # sidestepping the issue) which we may want to explore.
     value = value_impl.to_value(value, None, self._context_stack)
     py_typecheck.check_type(value, value_base.Value)
-    py_typecheck.check_type(value.type_signature,
-                            computation_types.NamedTupleType)
+    py_typecheck.check_type(value.type_signature, computation_types.StructType)
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_zip(value)

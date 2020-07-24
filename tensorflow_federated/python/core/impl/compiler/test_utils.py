@@ -119,11 +119,11 @@ def create_dummy_called_federated_aggregate(accumulate_parameter_name,
       value_type, placement_literals.CLIENTS)
   value = building_blocks.Data('data', federated_value_type)
   zero = building_blocks.Data('data', tf.float32)
-  accumulate_type = computation_types.NamedTupleType((tf.float32, value_type))
+  accumulate_type = computation_types.StructType((tf.float32, value_type))
   accumulate_result = building_blocks.Data('data', tf.float32)
   accumulate = building_blocks.Lambda(accumulate_parameter_name,
                                       accumulate_type, accumulate_result)
-  merge_type = computation_types.NamedTupleType((tf.float32, tf.float32))
+  merge_type = computation_types.StructType((tf.float32, tf.float32))
   merge_result = building_blocks.Data('data', tf.float32)
   merge = building_blocks.Lambda(merge_parameter_name, merge_type, merge_result)
   report_result = building_blocks.Data('data', tf.bool)

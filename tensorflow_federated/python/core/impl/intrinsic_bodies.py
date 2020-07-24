@@ -165,7 +165,7 @@ def get_intrinsic_bodies(context_stack):
                                                        0), context_stack)
     plus_op = value_impl.ValueImpl(
         building_block_factory.create_tensorflow_binary_operator_with_upcast(
-            computation_types.NamedTupleType(
+            computation_types.StructType(
                 [x.type_signature.member, x.type_signature.member]), tf.add),
         context_stack)
     return federated_reduce([x, zero, plus_op])

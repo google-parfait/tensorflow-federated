@@ -34,7 +34,7 @@ def get_type_information(value, type_spec):
   """Gets size and dtype of the type_spec as a list.
 
   This function only considers type_specs which are of TensorType or
-  NamedTupleType. Other types are considered not to have an appropriate metric
+  StructType. Other types are considered not to have an appropriate metric
   for number of elements. In that case, an empty list is returned.
 
   Args:
@@ -62,7 +62,7 @@ def get_type_information(value, type_spec):
       num_elements = type_spec.shape.num_elements()
     return [[num_elements, type_spec.dtype]]
 
-  # If the type is a NamedTupleType we can continue traversing the type_spec.
+  # If the type is a StructType we can continue traversing the type_spec.
   elif type_spec.is_struct():
     type_info = []
     if isinstance(value, collections.OrderedDict):

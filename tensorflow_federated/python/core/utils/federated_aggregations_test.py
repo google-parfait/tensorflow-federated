@@ -38,7 +38,7 @@ class FederatedMinTest(test.TestCase):
     self.assertEqual(value, 1.0)
 
   def test_federated_min_on_nested_scalars(self):
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         ('x', tf.float32),
         ('y', tf.float32),
     ])
@@ -114,7 +114,7 @@ class FederatedMaxTest(test.TestCase):
       call_federated_max([True, False])
 
   def test_federated_max_on_nested_scalars(self):
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         ('a', tf.int32),
         ('b', tf.int32),
     ])
@@ -131,7 +131,7 @@ class FederatedMaxTest(test.TestCase):
     self.assertDictEqual(value._asdict(), {'a': 2, 'b': 8})
 
   def test_federated_max_nested_tensor_value(self):
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         ('a', (tf.int32, [2])),
         ('b', (tf.int32, [3])),
     ])
@@ -175,7 +175,7 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertCountEqual(value, [1.0, 2.0, 5.0])
 
   def test_federated_sample_on_nested_scalars(self):
-    tuple_type = computation_types.NamedTupleType([
+    tuple_type = computation_types.StructType([
         ('x', tf.float32),
         ('y', tf.float32),
     ])
@@ -267,12 +267,11 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_nested_named_tuples(self):
     tuple_test_type = (
-        computation_types.NamedTupleType([('x', tf.float32),
-                                          ('y', tf.float32)]))
+        computation_types.StructType([('x', tf.float32), ('y', tf.float32)]))
     dict_test_type = (
         computation_types.to_type(
             collections.OrderedDict([('a', tf.float32), ('b', tf.float32)])))
-    nested_tuple_type = computation_types.NamedTupleType([
+    nested_tuple_type = computation_types.StructType([
         ('tuple_1', tuple_test_type), ('tuple_2', dict_test_type)
     ])
     nested_test_type = collections.namedtuple('Nested', ['tuple_1', 'tuple_2'])

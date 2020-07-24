@@ -76,7 +76,7 @@ class InferCardinalitiesTest(absltest.TestCase):
         tf.int32, placement_literals.CLIENTS, all_equal=False)
     five_clients = list(range(5))
     ten_clients = list(range(10))
-    tuple_of_federated_types = computation_types.NamedTupleType(
+    tuple_of_federated_types = computation_types.StructType(
         [federated_type, federated_type])
     with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
       cardinalities_utils.infer_cardinalities([five_clients, ten_clients],
@@ -103,7 +103,7 @@ class InferCardinalitiesTest(absltest.TestCase):
     ten_clients = list(range(10))
     mixed_cardinalities = cardinalities_utils.infer_cardinalities(
         [ten_clients, five_aggregators],
-        computation_types.NamedTupleType([client_int, aggregator_placed_int]))
+        computation_types.StructType([client_int, aggregator_placed_int]))
     self.assertEqual(mixed_cardinalities[placement_literals.CLIENTS], 10)
     self.assertEqual(mixed_cardinalities[new_placement], 5)
 
@@ -115,7 +115,7 @@ class InferCardinalitiesTest(absltest.TestCase):
              anonymous_tuple.AnonymousTuple([('C', [[1, 2], [3, 4], [5, 6]]),
                                              ('D', [True, False, True])]))
         ]),
-        computation_types.NamedTupleType([
+        computation_types.StructType([
             ('A',
              computation_types.FederatedType(tf.int32,
                                              placement_literals.CLIENTS)),
@@ -134,7 +134,7 @@ class InferCardinalitiesTest(absltest.TestCase):
     with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
       cardinalities_utils.infer_cardinalities(
           anonymous_tuple.AnonymousTuple([('A', [1, 2, 3]), ('B', [1, 2])]),
-          computation_types.NamedTupleType([
+          computation_types.StructType([
               ('A',
                computation_types.FederatedType(tf.int32,
                                                placement_literals.CLIENTS)),

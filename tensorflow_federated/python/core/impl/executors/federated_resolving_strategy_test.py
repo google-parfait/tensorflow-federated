@@ -75,7 +75,7 @@ class FederatedResolvingStrategyValueComputeTest(
     element_type = computation_types.TensorType(tf.float32)
     names = ['a', 'b', 'c']
     value = anonymous_tuple.AnonymousTuple((n, element) for n in names)
-    type_signature = computation_types.NamedTupleType(
+    type_signature = computation_types.StructType(
         (n, element_type) for n in names)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
         value, type_signature)

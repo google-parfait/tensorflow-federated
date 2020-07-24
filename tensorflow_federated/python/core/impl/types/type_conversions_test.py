@@ -130,15 +130,13 @@ class InferTypeTest(parameterized.TestCase):
   def test_with_int_list(self):
     t = type_conversions.infer_type([1, 2, 3])
     self.assertEqual(str(t), '<int32,int32,int32>')
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, list)
 
   def test_with_nested_float_list(self):
     t = type_conversions.infer_type([[0.1], [0.2], [0.3]])
     self.assertEqual(str(t), '<<float32>,<float32>,<float32>>')
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, list)
 
   def test_with_anonymous_tuple(self):
@@ -148,9 +146,8 @@ class InferTypeTest(parameterized.TestCase):
             (None, False),
         ]))
     self.assertEqual(str(t), '<a=int32,bool>')
-    self.assertIsInstance(t, computation_types.NamedTupleType)
-    self.assertNotIsInstance(
-        t, computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructType)
+    self.assertNotIsInstance(t, computation_types.StructWithPythonType)
 
   def test_with_nested_anonymous_tuple(self):
     t = type_conversions.infer_type(
@@ -162,16 +159,14 @@ class InferTypeTest(parameterized.TestCase):
             ])),
         ]))
     self.assertEqual(str(t), '<a=int32,<bool,float32>>')
-    self.assertIsInstance(t, computation_types.NamedTupleType)
-    self.assertNotIsInstance(
-        t, computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructType)
+    self.assertNotIsInstance(t, computation_types.StructWithPythonType)
 
   def test_with_namedtuple(self):
     test_named_tuple = collections.namedtuple('TestNamedTuple', 'y x')
     t = type_conversions.infer_type(test_named_tuple(1, True))
     self.assertEqual(str(t), '<y=int32,x=bool>')
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, test_named_tuple)
 
   def test_with_dict(self):
@@ -181,8 +176,7 @@ class InferTypeTest(parameterized.TestCase):
     }
     inferred_type = type_conversions.infer_type(v1)
     self.assertEqual(str(inferred_type), '<a=int32,b=float32>')
-    self.assertIsInstance(inferred_type,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(inferred_type, computation_types.StructWithPythonType)
     self.assertIs(inferred_type.python_container, dict)
 
     v2 = {
@@ -191,16 +185,14 @@ class InferTypeTest(parameterized.TestCase):
     }
     inferred_type = type_conversions.infer_type(v2)
     self.assertEqual(str(inferred_type), '<a=int32,b=float32>')
-    self.assertIsInstance(inferred_type,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(inferred_type, computation_types.StructWithPythonType)
     self.assertIs(inferred_type.python_container, dict)
 
   def test_with_ordered_dict(self):
     t = type_conversions.infer_type(
         collections.OrderedDict([('b', 2.0), ('a', 1)]))
     self.assertEqual(str(t), '<b=float32,a=int32>')
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, collections.OrderedDict)
 
   def test_with_nested_attrs_class(self):
@@ -212,8 +204,7 @@ class InferTypeTest(parameterized.TestCase):
 
     t = type_conversions.infer_type(TestAttrClass(a=0, b={'x': True, 'y': 0.0}))
     self.assertEqual(str(t), '<a=int32,b=<x=bool,y=float32>>')
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, TestAttrClass)
     self.assertIs(t.b.python_container, dict)
 
@@ -221,16 +212,14 @@ class InferTypeTest(parameterized.TestCase):
     t = type_conversions.infer_type(
         [tf.data.Dataset.from_tensors(x) for x in [1, True, [0.5]]])
     self.assertEqual(str(t), '<int32*,bool*,float32[1]*>')
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, list)
 
   def test_with_nested_dataset_list_tuple(self):
     t = type_conversions.infer_type(
         tuple([(tf.data.Dataset.from_tensors(x),) for x in [1, True, [0.5]]]))
     self.assertEqual(str(t), '<<int32*>,<bool*>,<float32[1]*>>')
-    self.assertIsInstance(t,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, tuple)
 
   def test_with_dataset_of_named_tuple(self):
@@ -241,8 +230,7 @@ class InferTypeTest(parameterized.TestCase):
             'y': [1],
         }).map(lambda v: test_named_tuple(v['x'], v['y'])))
     self.assertEqual(str(t), '<A=float32,B=int32>*')
-    self.assertIsInstance(t.element,
-                          computation_types.NamedTupleTypeWithPyContainerType)
+    self.assertIsInstance(t.element, computation_types.StructWithPythonType)
     self.assertIs(t.element.python_container, test_named_tuple)
 
 
@@ -263,7 +251,7 @@ class TypeToTfDtypesAndShapesTest(test.TestCase):
     test.assert_nested_struct_eq(shapes, tf.TensorShape([10]))
 
   def test_with_tensor_triple(self):
-    type_signature = computation_types.NamedTupleTypeWithPyContainerType([
+    type_signature = computation_types.StructWithPythonType([
         ('a', computation_types.TensorType(tf.int32, [5])),
         ('b', computation_types.TensorType(tf.bool)),
         ('c', computation_types.TensorType(tf.float32, [3])),
@@ -282,14 +270,14 @@ class TypeToTfDtypesAndShapesTest(test.TestCase):
     })
 
   def test_with_two_level_tuple(self):
-    type_signature = computation_types.NamedTupleTypeWithPyContainerType([
+    type_signature = computation_types.StructWithPythonType([
         ('a', tf.bool),
         ('b',
-         computation_types.NamedTupleTypeWithPyContainerType([
+         computation_types.StructWithPythonType([
              ('c', computation_types.TensorType(tf.float32)),
              ('d', computation_types.TensorType(tf.int32, [20])),
          ], collections.OrderedDict)),
-        ('e', computation_types.NamedTupleType([])),
+        ('e', computation_types.StructType([])),
     ], collections.OrderedDict)
     dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
         type_signature)
@@ -325,7 +313,7 @@ class TypeToTfTensorSpecsTest(test.TestCase):
     test.assert_nested_struct_eq(tensor_specs, tf.TensorSpec([10], tf.int32))
 
   def test_with_tensor_triple(self):
-    type_signature = computation_types.NamedTupleTypeWithPyContainerType([
+    type_signature = computation_types.StructWithPythonType([
         ('a', computation_types.TensorType(tf.int32, [5])),
         ('b', computation_types.TensorType(tf.bool)),
         ('c', computation_types.TensorType(tf.float32, [3])),
@@ -339,14 +327,14 @@ class TypeToTfTensorSpecsTest(test.TestCase):
         })
 
   def test_with_two_level_tuple(self):
-    type_signature = computation_types.NamedTupleTypeWithPyContainerType([
+    type_signature = computation_types.StructWithPythonType([
         ('a', tf.bool),
         ('b',
-         computation_types.NamedTupleTypeWithPyContainerType([
+         computation_types.StructWithPythonType([
              ('c', computation_types.TensorType(tf.float32)),
              ('d', computation_types.TensorType(tf.int32, [20])),
          ], collections.OrderedDict)),
-        ('e', computation_types.NamedTupleType([])),
+        ('e', computation_types.StructType([])),
     ], collections.OrderedDict)
     tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
     test.assert_nested_struct_eq(
@@ -364,7 +352,7 @@ class TypeToTfTensorSpecsTest(test.TestCase):
       type_conversions.type_to_tf_tensor_specs(tf.constant([0.0]))
 
   def test_with_unnamed_element(self):
-    type_signature = computation_types.NamedTupleType([tf.int32])
+    type_signature = computation_types.StructType([tf.int32])
     tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
     test.assert_nested_struct_eq(tensor_specs, (tf.TensorSpec([], tf.int32),))
 
@@ -380,8 +368,8 @@ class TypeToTfStructureTest(test.TestCase):
              ('d', tf.TensorSpec(shape=(20,), dtype=tf.int32)),
          ])),
     ])
-    type_spec = computation_types.NamedTupleTypeWithPyContainerType(
-        expected_structure, collections.OrderedDict)
+    type_spec = computation_types.StructWithPythonType(expected_structure,
+                                                       collections.OrderedDict)
     tf_structure = type_conversions.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
       ds = tf.data.experimental.from_variant(
@@ -395,8 +383,8 @@ class TypeToTfStructureTest(test.TestCase):
         tf.TensorSpec(shape=(), dtype=tf.bool),
         tf.TensorSpec(shape=(), dtype=tf.int32),
     )
-    type_spec = computation_types.NamedTupleTypeWithPyContainerType(
-        expected_structure, tuple)
+    type_spec = computation_types.StructWithPythonType(expected_structure,
+                                                       tuple)
     tf_structure = type_conversions.type_to_tf_structure(type_spec)
     with tf.Graph().as_default():
       ds = tf.data.experimental.from_variant(
@@ -417,12 +405,11 @@ class TypeToTfStructureTest(test.TestCase):
   def test_with_inconsistently_named_elements(self):
     with self.assertRaises(ValueError):
       type_conversions.type_to_tf_structure(
-          computation_types.NamedTupleType([('a', tf.int32), tf.bool]))
+          computation_types.StructType([('a', tf.int32), tf.bool]))
 
   def test_with_no_elements(self):
     with self.assertRaises(ValueError):
-      type_conversions.type_to_tf_structure(
-          computation_types.NamedTupleType([]))
+      type_conversions.type_to_tf_structure(computation_types.StructType([]))
 
 
 class TypeFromTensorsTest(test.TestCase):
@@ -469,16 +456,15 @@ class TypeToPyContainerTest(test.TestCase):
     value = (1, 2.0)
     result = type_conversions.type_to_py_container(
         (1, 2.0),
-        computation_types.NamedTupleTypeWithPyContainerType(
-            [tf.int32, tf.float32], container_type=list))
+        computation_types.StructWithPythonType([tf.int32, tf.float32],
+                                               container_type=list))
     self.assertEqual(result, value)
 
   def test_anon_tuple_return(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2.0)])
     self.assertEqual(
         type_conversions.type_to_py_container(
-            anon_tuple, computation_types.NamedTupleType([tf.int32,
-                                                          tf.float32])),
+            anon_tuple, computation_types.StructType([tf.int32, tf.float32])),
         anon_tuple)
 
   def test_anon_tuple_without_names_to_container_without_names(self):
@@ -486,13 +472,11 @@ class TypeToPyContainerTest(test.TestCase):
     types = [tf.int32, tf.float32]
     self.assertSequenceEqual(
         type_conversions.type_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(types, list)),
+            anon_tuple, computation_types.StructWithPythonType(types, list)),
         [1, 2.0])
     self.assertSequenceEqual(
         type_conversions.type_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(types, tuple)),
+            anon_tuple, computation_types.StructWithPythonType(types, tuple)),
         (1, 2.0))
 
   def test_succeeds_with_federated_namedtupletype(self):
@@ -502,14 +486,14 @@ class TypeToPyContainerTest(test.TestCase):
         type_conversions.type_to_py_container(
             anon_tuple,
             computation_types.FederatedType(
-                computation_types.NamedTupleTypeWithPyContainerType(
-                    types, list), placement_literals.SERVER)), [1, 2.0])
+                computation_types.StructWithPythonType(types, list),
+                placement_literals.SERVER)), [1, 2.0])
     self.assertSequenceEqual(
         type_conversions.type_to_py_container(
             anon_tuple,
             computation_types.FederatedType(
-                computation_types.NamedTupleTypeWithPyContainerType(
-                    types, tuple), placement_literals.SERVER)), (1, 2.0))
+                computation_types.StructWithPythonType(types, tuple),
+                placement_literals.SERVER)), (1, 2.0))
 
   def test_anon_tuple_with_names_to_container_without_names_fails(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), ('a', 2.0)])
@@ -517,36 +501,33 @@ class TypeToPyContainerTest(test.TestCase):
     with self.assertRaisesRegex(ValueError,
                                 'contains a mix of named and unnamed elements'):
       type_conversions.type_to_py_container(
-          anon_tuple,
-          computation_types.NamedTupleTypeWithPyContainerType(types, tuple))
+          anon_tuple, computation_types.StructWithPythonType(types, tuple))
     anon_tuple = anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2.0)])
     with self.assertRaisesRegex(ValueError, 'which does not support names'):
       type_conversions.type_to_py_container(
-          anon_tuple,
-          computation_types.NamedTupleTypeWithPyContainerType(types, list))
+          anon_tuple, computation_types.StructWithPythonType(types, list))
 
   def test_anon_tuple_with_names_to_container_with_names(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2.0)])
     types = [('a', tf.int32), ('b', tf.float32)]
     self.assertDictEqual(
         type_conversions.type_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(types, dict)), {
+            anon_tuple, computation_types.StructWithPythonType(types, dict)), {
                 'a': 1,
                 'b': 2.0
             })
     self.assertSequenceEqual(
         type_conversions.type_to_py_container(
             anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(
-                types, collections.OrderedDict)),
+            computation_types.StructWithPythonType(types,
+                                                   collections.OrderedDict)),
         collections.OrderedDict([('a', 1), ('b', 2.0)]))
     test_named_tuple = collections.namedtuple('TestNamedTuple', ['a', 'b'])
     self.assertSequenceEqual(
         type_conversions.type_to_py_container(
             anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(
-                types, test_named_tuple)), test_named_tuple(a=1, b=2.0))
+            computation_types.StructWithPythonType(types, test_named_tuple)),
+        test_named_tuple(a=1, b=2.0))
 
     @attr.s
     class TestFoo(object):
@@ -555,9 +536,7 @@ class TypeToPyContainerTest(test.TestCase):
 
     self.assertEqual(
         type_conversions.type_to_py_container(
-            anon_tuple,
-            computation_types.NamedTupleTypeWithPyContainerType(types,
-                                                                TestFoo)),
+            anon_tuple, computation_types.StructWithPythonType(types, TestFoo)),
         TestFoo(a=1, b=2.0))
 
   def test_anon_tuple_without_names_to_container_with_names_fails(self):
@@ -565,21 +544,19 @@ class TypeToPyContainerTest(test.TestCase):
     types = [('a', tf.int32), ('b', tf.float32)]
     with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
       type_conversions.type_to_py_container(
-          anon_tuple,
-          computation_types.NamedTupleTypeWithPyContainerType(types, dict))
+          anon_tuple, computation_types.StructWithPythonType(types, dict))
 
     with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
       type_conversions.type_to_py_container(
           anon_tuple,
-          computation_types.NamedTupleTypeWithPyContainerType(
-              types, collections.OrderedDict))
+          computation_types.StructWithPythonType(types,
+                                                 collections.OrderedDict))
 
     test_named_tuple = collections.namedtuple('TestNamedTuple', ['a', 'b'])
     with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
       type_conversions.type_to_py_container(
           anon_tuple,
-          computation_types.NamedTupleTypeWithPyContainerType(
-              types, test_named_tuple))
+          computation_types.StructWithPythonType(types, test_named_tuple))
 
     @attr.s
     class TestFoo(object):
@@ -588,8 +565,7 @@ class TypeToPyContainerTest(test.TestCase):
 
     with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
       type_conversions.type_to_py_container(
-          anon_tuple,
-          computation_types.NamedTupleTypeWithPyContainerType(types, TestFoo))
+          anon_tuple, computation_types.StructWithPythonType(types, TestFoo))
 
   def test_nested_py_containers(self):
     anon_tuple = anonymous_tuple.AnonymousTuple([
@@ -601,14 +577,14 @@ class TypeToPyContainerTest(test.TestCase):
          ]))
     ])
 
-    dict_subtype = computation_types.NamedTupleTypeWithPyContainerType(
+    dict_subtype = computation_types.StructWithPythonType(
         [('a', tf.int32),
          ('b',
-          computation_types.NamedTupleTypeWithPyContainerType(
-              [tf.int32, tf.int32], tuple))], dict)
-    type_spec = computation_types.NamedTupleType([(None, tf.int32),
-                                                  (None, tf.float32),
-                                                  ('dict_key', dict_subtype)])
+          computation_types.StructWithPythonType([tf.int32, tf.int32], tuple))],
+        dict)
+    type_spec = computation_types.StructType([(None, tf.int32),
+                                              (None, tf.float32),
+                                              ('dict_key', dict_subtype)])
 
     expected_nested_structure = anonymous_tuple.AnonymousTuple([
         (None, 1),

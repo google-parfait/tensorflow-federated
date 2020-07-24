@@ -231,10 +231,10 @@ def get_tf2_result_dict_and_binding(result, name_prefix=None):
       ntt_pairs.append((name, result_type))
 
     if container_type:
-      tff_type = computation_types.NamedTupleTypeWithPyContainerType(
+      tff_type = computation_types.StructWithPythonType(
           ntt_pairs, container_type=container_type)
     else:
-      tff_type = computation_types.NamedTupleType(ntt_pairs)
+      tff_type = computation_types.StructType(ntt_pairs)
 
     return (tff_type,
             pb.TensorFlow.Binding(
@@ -326,7 +326,7 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
           tensor=pb.TensorFlow.TensorBinding(tensor_name=placeholder.name))
       return (placeholder, binding)
   elif parameter_type.is_struct():
-    # The parameter_type could be a NamedTupleTypeWithPyContainer, however, we
+    # The parameter_type could be a StructTypeWithPyContainer, however, we
     # ignore that for now. Instead, the proper containers will be inserted at
     # call time by function_utils.wrap_as_zero_or_one_arg_callable.
     if not parameter_type:
@@ -443,7 +443,7 @@ def capture_result_from_graph(result, graph):
     return _get_bindings_for_elements(
         name_value_pairs, graph,
         functools.partial(
-            computation_types.NamedTupleTypeWithPyContainerType,
+            computation_types.StructWithPythonType,
             container_type=type(result)))
   elif py_typecheck.is_attrs(result):
     name_value_pairs = attr.asdict(
@@ -451,11 +451,11 @@ def capture_result_from_graph(result, graph):
     return _get_bindings_for_elements(
         name_value_pairs.items(), graph,
         functools.partial(
-            computation_types.NamedTupleTypeWithPyContainerType,
+            computation_types.StructWithPythonType,
             container_type=type(result)))
   elif isinstance(result, structure.Struct):
     return _get_bindings_for_elements(
-        structure.to_elements(result), graph, computation_types.NamedTupleType)
+        structure.to_elements(result), graph, computation_types.StructType)
   elif isinstance(result, collections.Mapping):
     if isinstance(result, collections.OrderedDict):
       name_value_pairs = result.items()
@@ -464,13 +464,13 @@ def capture_result_from_graph(result, graph):
     return _get_bindings_for_elements(
         name_value_pairs, graph,
         functools.partial(
-            computation_types.NamedTupleTypeWithPyContainerType,
+            computation_types.StructWithPythonType,
             container_type=type(result)))
   elif isinstance(result, (list, tuple)):
     element_type_binding_pairs = [
         capture_result_from_graph(e, graph) for e in result
     ]
-    return (computation_types.NamedTupleTypeWithPyContainerType(
+    return (computation_types.StructWithPythonType(
         [e[0] for e in element_type_binding_pairs], type(result)),
             pb.TensorFlow.Binding(
                 struct=pb.TensorFlow.StructBinding(
@@ -751,7 +751,7 @@ def make_dummy_element_for_type_spec(type_spec, none_dim_replacement=0):
   Returns:
     Returns possibly nested `numpy ndarray`s containing all zeros: a single
     `ndarray` if `type_spec` is a `computation_types.TensorType` and a list
-    of such arrays if  `type_spec` is `computation_types.NamedTupleType`.
+    of such arrays if  `type_spec` is `computation_types.StructType`.
     This data structure is of the minimal size necessary in order to be
     compatible with `type_spec`.
   """
@@ -760,7 +760,7 @@ def make_dummy_element_for_type_spec(type_spec, none_dim_replacement=0):
                                      lambda t: t.is_struct() or t.is_tensor()):
     raise ValueError('Cannot construct array for TFF type containing anything '
                      'other than `computation_types.TensorType` or '
-                     '`computation_types.NamedTupleType`; you have passed the '
+                     '`computation_types.StructType`; you have passed the '
                      'type {}'.format(type_spec))
   py_typecheck.check_type(none_dim_replacement, int)
   if none_dim_replacement < 0:
@@ -1169,7 +1169,7 @@ def coerce_dataset_elements_to_tff_type_spec(dataset, element_type):
   Args:
     dataset: a `tf.data.Dataset` instance.
     element_type: a `tff.Type` specifying the type of the elements of `dataset`.
-      Must be a `tff.TensorType` or `tff.NamedTupleType`.
+      Must be a `tff.TensorType` or `tff.StructType`.
 
   Returns:
     A `tf.data.Dataset` whose output types are compatible with

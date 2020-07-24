@@ -144,7 +144,7 @@ class EncodedBroadcastProcessTest(test.TestCase, parameterized.TestCase):
                                                      incompatible_encoder)
 
   def test_build_encoded_broadcast_process_raises_bad_structure(self):
-    value_type = computation_types.NamedTupleType([
+    value_type = computation_types.StructType([
         computation_types.TensorType(tf.float32, shape=[2]),
         computation_types.TensorType(tf.float32, shape=[2])
     ])
@@ -303,7 +303,7 @@ class EncodedSumProcessTest(test.TestCase, parameterized.TestCase):
       encoding_utils.build_encoded_sum_process(value_type, incompatible_encoder)
 
   def test_build_encoded_sum_process_raises_bad_structure(self):
-    value_type = computation_types.NamedTupleType([
+    value_type = computation_types.StructType([
         computation_types.TensorType(tf.float32, shape=[2]),
         computation_types.TensorType(tf.float32, shape=[2])
     ])
@@ -465,7 +465,7 @@ class EncodedMeanProcessTest(test.TestCase, parameterized.TestCase):
                                                 incompatible_encoder)
 
   def test_build_encoded_mean_process_raises_bad_structure(self):
-    value_type = computation_types.NamedTupleType([
+    value_type = computation_types.StructType([
         computation_types.TensorType(tf.float32, shape=[2]),
         computation_types.TensorType(tf.float32, shape=[2])
     ])
