@@ -128,7 +128,7 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
     dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
                                                 type_signature)
     integer_reference = building_blocks.Reference('int', tf.int32)
-    tup = building_blocks.Tuple([integer_reference, dummy_intrinsic])
+    tup = building_blocks.Struct([integer_reference, dummy_intrinsic])
     dependent_nodes = tree_analysis.extract_nodes_consuming(
         tup, dummy_intrinsic_predicate)
     self.assertIn(tup, dependent_nodes)
@@ -242,7 +242,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
         tensor_type)
     node_tf_op_count = building_block_analysis.count_tensorflow_ops_in(
         integer_identity)
-    tf_tuple = building_blocks.Tuple([integer_identity, integer_identity])
+    tf_tuple = building_blocks.Struct([integer_identity, integer_identity])
     tree_tf_op_count = tree_analysis.count_tensorflow_ops_under(tf_tuple)
     self.assertEqual(tree_tf_op_count, 2 * node_tf_op_count)
 
@@ -302,7 +302,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
     two_variable_comp = _create_two_variable_tensorflow()
     node_tf_variable_count = building_block_analysis.count_tensorflow_variables_in(
         two_variable_comp)
-    tf_tuple = building_blocks.Tuple([two_variable_comp, two_variable_comp])
+    tf_tuple = building_blocks.Struct([two_variable_comp, two_variable_comp])
     tree_tf_variable_count = tree_analysis.count_tensorflow_variables_under(
         tf_tuple)
     self.assertEqual(tree_tf_variable_count, 2 * node_tf_variable_count)
@@ -674,30 +674,30 @@ class ComputationsEqualTest(absltest.TestCase):
 
   def test_returns_false_for_tuples_with_different_lengths(self):
     data_1 = building_blocks.Data('data', tf.int32)
-    tuple_1 = building_blocks.Tuple([data_1])
+    tuple_1 = building_blocks.Struct([data_1])
     data_2 = building_blocks.Data('data', tf.int32)
-    tuple_2 = building_blocks.Tuple([data_2, data_2])
+    tuple_2 = building_blocks.Struct([data_2, data_2])
     self.assertFalse(tree_analysis.trees_equal(tuple_1, tuple_2))
 
   def test_returns_false_for_tuples_with_different_names(self):
     data_1 = building_blocks.Data('data', tf.int32)
-    tuple_1 = building_blocks.Tuple([('a', data_1), ('b', data_1)])
+    tuple_1 = building_blocks.Struct([('a', data_1), ('b', data_1)])
     data_2 = building_blocks.Data('data', tf.float32)
-    tuple_2 = building_blocks.Tuple([('c', data_2), ('d', data_2)])
+    tuple_2 = building_blocks.Struct([('c', data_2), ('d', data_2)])
     self.assertFalse(tree_analysis.trees_equal(tuple_1, tuple_2))
 
   def test_returns_false_for_tuples_with_different_elements(self):
     data_1 = building_blocks.Data('data', tf.int32)
-    tuple_1 = building_blocks.Tuple([data_1, data_1])
+    tuple_1 = building_blocks.Struct([data_1, data_1])
     data_2 = building_blocks.Data('data', tf.float32)
-    tuple_2 = building_blocks.Tuple([data_2, data_2])
+    tuple_2 = building_blocks.Struct([data_2, data_2])
     self.assertFalse(tree_analysis.trees_equal(tuple_1, tuple_2))
 
   def test_returns_true_for_tuples(self):
     data_1 = building_blocks.Data('data', tf.int32)
-    tuple_1 = building_blocks.Tuple([data_1, data_1])
+    tuple_1 = building_blocks.Struct([data_1, data_1])
     data_2 = building_blocks.Data('data', tf.int32)
-    tuple_2 = building_blocks.Tuple([data_2, data_2])
+    tuple_2 = building_blocks.Struct([data_2, data_2])
     self.assertTrue(tree_analysis.trees_equal(tuple_1, tuple_2))
 
 

@@ -1222,7 +1222,7 @@ class TransformationUtilsTest(parameterized.TestCase):
       self):
     simple_block = _construct_simple_block(tf.int32)
     ref = simple_block.result
-    result = building_blocks.Tuple([ref, ref])
+    result = building_blocks.Struct([ref, ref])
     simple_block = building_blocks.Block(simple_block.locals, result)
     self.assertEqual(simple_block.compact_representation(),
                      '(let x=data in <x,x>)')
@@ -1424,7 +1424,7 @@ class TransformationUtilsTest(parameterized.TestCase):
     intermediate_arg = building_blocks.Reference('y', tf.int32)
     inner_block = building_blocks.Block([('x', intermediate_arg)], innermost)
     item1 = building_blocks.Reference('x', tf.int32)
-    mediate_tuple = building_blocks.Tuple([item1, inner_block])
+    mediate_tuple = building_blocks.Struct([item1, inner_block])
     used = building_blocks.Data('used', tf.int32)
     used1 = building_blocks.Data('used1', tf.int32)
     outer_block = building_blocks.Block([('x', used), ('y', used1)],
@@ -1671,7 +1671,7 @@ class TransformPreorderTest(parameterized.TestCase):
         return building_blocks.Reference(comp.uri, comp.type_signature), True
       return comp, False
 
-    tuple_holding_data = building_blocks.Tuple(
+    tuple_holding_data = building_blocks.Struct(
         [building_blocks.Data('a', tf.int32)])
     data_replaced, modified = transformation_utils.transform_preorder(
         tuple_holding_data, transform_data_to_reference)
@@ -1743,7 +1743,7 @@ class HasUniqueNamesTest(absltest.TestCase):
     data = building_blocks.Data('x', tf.int32)
     lambda_1 = building_blocks.Lambda(None, None, data)
     lambda_2 = building_blocks.Lambda(None, None, data)
-    tup = building_blocks.Tuple([lambda_1, lambda_2])
+    tup = building_blocks.Struct([lambda_1, lambda_2])
     self.assertTrue(transformation_utils.has_unique_names(tup))
 
   def test_returns_false_on_nested_lambdas_with_same_variable_name(self):

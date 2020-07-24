@@ -47,7 +47,7 @@ def get_curried(fn):
   for idx, (_, elem_type) in enumerate(param_elements):
     references.append(building_blocks.Reference('arg{}'.format(idx), elem_type))
   result = building_blocks.Call(
-      value_impl.ValueImpl.get_comp(fn), building_blocks.Tuple(references))
+      value_impl.ValueImpl.get_comp(fn), building_blocks.Struct(references))
   for ref in references[::-1]:
     result = building_blocks.Lambda(ref.name, ref.type_signature, result)
   return value_impl.ValueImpl(result,

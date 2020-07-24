@@ -75,7 +75,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
     concrete_fn = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     concrete_arg = building_blocks.Data('a', tf.int32)
-    arg_tuple = building_blocks.Tuple([concrete_fn, concrete_arg])
+    arg_tuple = building_blocks.Struct([concrete_fn, concrete_arg])
     generated_structure = building_blocks.Block([('arg', arg_tuple)], called_fn)
     lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
         generated_structure)
@@ -113,7 +113,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
   def test_with_multiple_reference_indirection(self):
     identity_lam = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
-    tuple_wrapping_ref = building_blocks.Tuple(
+    tuple_wrapping_ref = building_blocks.Struct(
         [building_blocks.Reference('a', identity_lam.type_signature)])
     selection_from_ref = building_blocks.Selection(
         building_blocks.Reference('b', tuple_wrapping_ref.type_signature),
@@ -136,8 +136,8 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
     dummy = building_blocks.Reference('z', tf.int32)
     lowest_lambda = building_blocks.Lambda(
         'z', tf.int32,
-        building_blocks.Tuple([dummy,
-                               building_blocks.Reference('x', tf.int32)]))
+        building_blocks.Struct(
+            [dummy, building_blocks.Reference('x', tf.int32)]))
     middle_lambda = building_blocks.Lambda('x', tf.int32, lowest_lambda)
     lam_arg = building_blocks.Reference('x', middle_lambda.type_signature)
     rez = building_blocks.Call(lam_arg, data)
@@ -154,7 +154,7 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
 
   def test_raises_wrong_arguments(self):
     good_param = building_blocks.Reference('x', tf.int32)
-    good_body = building_blocks.Tuple(
+    good_body = building_blocks.Struct(
         [building_blocks.Reference('x', tf.int32)])
     good_arg = building_blocks.Data('y', tf.int32)
     with self.assertRaises(TypeError):
@@ -169,7 +169,7 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
 
   def test_raises_arg_does_not_match_param(self):
     good_param = building_blocks.Reference('x', tf.int32)
-    good_body = building_blocks.Tuple(
+    good_body = building_blocks.Struct(
         [building_blocks.Reference('x', tf.int32)])
     bad_arg_type = building_blocks.Data('y', tf.float32)
     with self.assertRaises(TypeError):
@@ -178,7 +178,7 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
 
   def test_constructs_called_tf_block_of_correct_type_signature(self):
     param = building_blocks.Reference('x', tf.int32)
-    body = building_blocks.Tuple([building_blocks.Reference('x', tf.int32)])
+    body = building_blocks.Struct([building_blocks.Reference('x', tf.int32)])
     arg = building_blocks.Reference('y', tf.int32)
     tf_block = transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
         param, body, arg)
@@ -189,8 +189,8 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
 
   def test_preserves_named_type(self):
     param = building_blocks.Reference('x', tf.int32)
-    body = building_blocks.Tuple([('a',
-                                   building_blocks.Reference('x', tf.int32))])
+    body = building_blocks.Struct([('a',
+                                    building_blocks.Reference('x', tf.int32))])
     arg = building_blocks.Reference('y', tf.int32)
     tf_block = transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
         param, body, arg)
@@ -201,7 +201,7 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
 
   def test_generated_tensorflow_executes_correctly_int_parameter(self):
     param = building_blocks.Reference('x', tf.int32)
-    body = building_blocks.Tuple([
+    body = building_blocks.Struct([
         building_blocks.Reference('x', tf.int32),
         building_blocks.Reference('x', tf.int32)
     ])
@@ -217,7 +217,7 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
 
   def test_generated_tensorflow_executes_correctly_tuple_parameter(self):
     param = building_blocks.Reference('x', [tf.int32, tf.float32])
-    body = building_blocks.Tuple([
+    body = building_blocks.Struct([
         building_blocks.Selection(param, index=1),
         building_blocks.Selection(param, index=0)
     ])
@@ -234,7 +234,7 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
   def test_generated_tensorflow_executes_correctly_sequence_parameter(self):
     param = building_blocks.Reference('x',
                                       computation_types.SequenceType(tf.int32))
-    body = building_blocks.Tuple([param])
+    body = building_blocks.Struct([param])
     sequence_ref = building_blocks.Reference(
         'y', computation_types.SequenceType(tf.int32))
     tf_block = transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
@@ -285,7 +285,7 @@ class BlockLocalsTFGraphTest(test.TestCase):
     block_locals = [('call', called_tf_id), ('second_call', second_called)]
     block = building_blocks.Block(
         block_locals,
-        building_blocks.Tuple([ref_to_second_call, ref_to_second_call]))
+        building_blocks.Struct([ref_to_second_call, ref_to_second_call]))
     tf_representing_block, _ = transformations.create_tensorflow_representing_block(
         block)
     self.assertEqual(tf_representing_block.type_signature, block.type_signature)
@@ -312,7 +312,7 @@ class BlockLocalsTFGraphTest(test.TestCase):
     block_locals = [('call', called_tf_id), ('second_call', second_called)]
     block = building_blocks.Block(
         block_locals,
-        building_blocks.Tuple([ref_to_second_call, ref_to_second_call]))
+        building_blocks.Struct([ref_to_second_call, ref_to_second_call]))
     tf_representing_block, _ = transformations.create_tensorflow_representing_block(
         block)
     result_ones = test_utils.run_tensorflow(
@@ -340,7 +340,7 @@ class BlockLocalsTFGraphTest(test.TestCase):
     block_locals = [('call', called_tf_id), ('second_call', second_called)]
     block = building_blocks.Block(
         block_locals,
-        building_blocks.Tuple([ref_to_second_call, ref_to_second_call]))
+        building_blocks.Struct([ref_to_second_call, ref_to_second_call]))
     tf_representing_block, _ = transformations.create_tensorflow_representing_block(
         block)
     self.assertEqual(tf_representing_block.type_signature, block.type_signature)
@@ -367,7 +367,7 @@ class BlockLocalsTFGraphTest(test.TestCase):
     block_locals = [('call', called_tf_id), ('second_call', second_called)]
     block = building_blocks.Block(
         block_locals,
-        building_blocks.Tuple([ref_to_second_call, ref_to_second_call]))
+        building_blocks.Struct([ref_to_second_call, ref_to_second_call]))
     tf_representing_block, _ = transformations.create_tensorflow_representing_block(
         block)
     result = test_utils.run_tensorflow(tf_representing_block.function.proto)
@@ -458,8 +458,8 @@ class BlockLocalsTFGraphTest(test.TestCase):
                                               called_tf_id.type_signature)
       block_locals = [('call', called_tf_id)]
       block = building_blocks.Block(
-          block_locals, building_blocks.Tuple([ref_to_call, ref_to_call]))
-      inlined_tuple = building_blocks.Tuple([called_tf_id, called_tf_id])
+          block_locals, building_blocks.Struct([ref_to_call, ref_to_call]))
+      inlined_tuple = building_blocks.Struct([called_tf_id, called_tf_id])
       return block, inlined_tuple
 
     block_with_5_ids, inlined_tuple_with_5_ids = _construct_block_and_inlined_tuple(
@@ -524,7 +524,7 @@ class DeduplicateCalledGraphsTest(test.TestCase):
   def test_returns_tf_computation_with_functional_type(self):
     param = building_blocks.Reference('x', [('a', tf.int32), ('b', tf.float32)])
     sel = building_blocks.Selection(source=param, index=0)
-    tup = building_blocks.Tuple([sel, sel, sel])
+    tup = building_blocks.Struct([sel, sel, sel])
     lam = building_blocks.Lambda(param.name, param.type_signature, tup)
     transformed, modified_indicator = transformations.remove_duplicate_called_graphs(
         lam)
@@ -537,7 +537,7 @@ class DeduplicateCalledGraphsTest(test.TestCase):
     constant_tuple = building_block_factory.create_tensorflow_constant(
         constant_tuple_type, 1)
     sel = building_blocks.Selection(source=constant_tuple, index=0)
-    tup = building_blocks.Tuple([sel, sel, sel])
+    tup = building_blocks.Struct([sel, sel, sel])
     transformed, modified_indicator = transformations.remove_duplicate_called_graphs(
         tup)
     self.assertTrue(modified_indicator)
@@ -556,12 +556,12 @@ class DeduplicateCalledGraphsTest(test.TestCase):
       first_tf_fn = building_block_factory.create_tensorflow_binary_operator(
           concrete_int.type_signature, tf.add)
       call = building_blocks.Call(
-          first_tf_fn, building_blocks.Tuple([concrete_int, concrete_int]))
+          first_tf_fn, building_blocks.Struct([concrete_int, concrete_int]))
       for _ in range(k):
         # Simulating large TF computation
         call = building_blocks.Call(first_tf_fn,
-                                    building_blocks.Tuple([call, call]))
-      return building_blocks.Tuple([call, call])
+                                    building_blocks.Struct([call, call]))
+      return building_blocks.Struct([call, call])
 
     def _count_ops_parameterized_by_layers(k):
       inlined_tuple_with_k_layers = _construct_inlined_tuple(k)
@@ -606,7 +606,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         parameter_name='a', parameter_type=tf.int32)
     called_intrinsic2 = test_utils.create_dummy_called_federated_map(
         parameter_name='a', parameter_type=tf.float32)
-    calls = building_blocks.Tuple((called_intrinsic1, called_intrinsic2))
+    calls = building_blocks.Struct((called_intrinsic1, called_intrinsic2))
     comp = calls
 
     deduped_and_merged_comp, deduped_modified = transformations.dedupe_and_merge_tuple_intrinsics(
@@ -624,7 +624,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         parameter_name='a', parameter_type=tf.int32)
     called_intrinsic2 = test_utils.create_dummy_called_federated_apply(
         parameter_name='a', parameter_type=tf.float32)
-    calls = building_blocks.Tuple((called_intrinsic1, called_intrinsic2))
+    calls = building_blocks.Struct((called_intrinsic1, called_intrinsic2))
     comp = calls
 
     deduped_and_merged_comp, deduped_modified = transformations.dedupe_and_merge_tuple_intrinsics(
@@ -639,7 +639,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
 
   def test_constructs_broadcast_of_tuple_with_one_element(self):
     called_intrinsic = test_utils.create_dummy_called_federated_broadcast()
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = transformations.dedupe_and_merge_tuple_intrinsics(
@@ -689,7 +689,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         tf.int32)
     called_intrinsic2 = test_utils.create_dummy_called_federated_broadcast(
         tf.float32)
-    calls = building_blocks.Tuple((called_intrinsic1, called_intrinsic2))
+    calls = building_blocks.Struct((called_intrinsic1, called_intrinsic2))
     comp = calls
 
     deduped_and_merged_comp, deduped_modified = transformations.dedupe_and_merge_tuple_intrinsics(
@@ -708,7 +708,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = transformations.dedupe_and_merge_tuple_intrinsics(
@@ -797,7 +797,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         merge_parameter_name='y',
         report_parameter_name='z',
         value_type=tf.float32)
-    calls = building_blocks.Tuple((called_intrinsic1, called_intrinsic2))
+    calls = building_blocks.Struct((called_intrinsic1, called_intrinsic2))
     comp = calls
 
     deduped_and_merged_comp, deduped_modified = transformations.dedupe_and_merge_tuple_intrinsics(
@@ -815,7 +815,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
     data = building_blocks.Reference(
         'a',
         computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
-    tup_of_data = building_blocks.Tuple([data, data])
+    tup_of_data = building_blocks.Struct([data, data])
     block_holding_tup = building_blocks.Block([], tup_of_data)
     index_0_from_block = building_blocks.Selection(
         source=block_holding_tup, index=0)
@@ -833,7 +833,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         index_0_from_block, zero, accumulate, merge, report)
     called_intrinsic1 = building_block_factory.create_federated_aggregate(
         index_1_from_block, zero, accumulate, merge, report)
-    calls = building_blocks.Tuple((called_intrinsic0, called_intrinsic1))
+    calls = building_blocks.Struct((called_intrinsic0, called_intrinsic1))
     comp = calls
 
     deduped_and_merged_comp, deduped_modified = transformations.dedupe_and_merge_tuple_intrinsics(
@@ -861,7 +861,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
     data = building_blocks.Reference(
         'a',
         computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
-    tup_of_data = building_blocks.Tuple([('a', data), ('b', data)])
+    tup_of_data = building_blocks.Struct([('a', data), ('b', data)])
     block_holding_tup = building_blocks.Block([], tup_of_data)
     index_0_from_block = building_blocks.Selection(
         source=block_holding_tup, name='a')
@@ -879,7 +879,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         index_0_from_block, zero, accumulate, merge, report)
     called_intrinsic1 = building_block_factory.create_federated_aggregate(
         index_1_from_block, zero, accumulate, merge, report)
-    calls = building_blocks.Tuple((called_intrinsic0, called_intrinsic1))
+    calls = building_blocks.Struct((called_intrinsic0, called_intrinsic1))
     comp = calls
 
     deduped_and_merged_comp, deduped_modified = transformations.dedupe_and_merge_tuple_intrinsics(
@@ -1024,12 +1024,12 @@ class TensorFlowGeneratorTest(test.TestCase):
       first_tf_fn = building_block_factory.create_tensorflow_binary_operator(
           concrete_int.type_signature, tf.add)
       call = building_blocks.Call(
-          first_tf_fn, building_blocks.Tuple([concrete_int, concrete_int]))
+          first_tf_fn, building_blocks.Struct([concrete_int, concrete_int]))
       for _ in range(k):
         # Simulating large TF computation
         call = building_blocks.Call(first_tf_fn,
-                                    building_blocks.Tuple([call, call]))
-      return building_blocks.Tuple([call, call])
+                                    building_blocks.Struct([call, call]))
+      return building_blocks.Struct([call, call])
 
     def _count_ops_parameterized_by_layers(k):
       inlined_tuple_with_k_layers = _construct_inlined_tuple(k)
@@ -1111,7 +1111,7 @@ class TestTransformToCallDominantForm(test.TestCase):
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    tuple_holding_aggregate = building_blocks.Tuple([called_aggregate])
+    tuple_holding_aggregate = building_blocks.Struct([called_aggregate])
     sel_from_tuple = building_blocks.Selection(
         source=tuple_holding_aggregate, index=0)
     lambda_to_sel = building_blocks.Lambda('x', tf.int32, sel_from_tuple)
@@ -1136,7 +1136,7 @@ class TestTransformToCallDominantForm(test.TestCase):
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    tuple_holding_aggregates = building_blocks.Tuple(
+    tuple_holding_aggregates = building_blocks.Struct(
         [called_aggregate1, called_aggregate2])
     lambda_to_tup = building_blocks.Lambda('x', tf.int32,
                                            tuple_holding_aggregates)
@@ -1163,7 +1163,7 @@ class TestTransformToCallDominantForm(test.TestCase):
         merge_parameter_name='b',
         report_parameter_name='c',
         value_type=tf.float32)
-    tuple_holding_aggregates = building_blocks.Tuple(
+    tuple_holding_aggregates = building_blocks.Struct(
         [called_aggregate1, called_aggregate2])
     lambda_to_tuple = building_blocks.Lambda('x', tf.int32,
                                              tuple_holding_aggregates)
@@ -1198,7 +1198,7 @@ class TestTransformToCallDominantForm(test.TestCase):
     lambda_accepting_fn = building_blocks.Lambda(
         ref_to_fn_and_int.name, ref_to_fn_and_int.type_signature, called_fn)
     ref_to_int = building_blocks.Reference('z', tf.int32)
-    arg_tuple = building_blocks.Tuple([int_identity_lambda, ref_to_int])
+    arg_tuple = building_blocks.Struct([int_identity_lambda, ref_to_int])
     called_lambda_with_fn = building_blocks.Call(lambda_accepting_fn, arg_tuple)
     lambda_accepting_int = building_blocks.Lambda(ref_to_int.name,
                                                   ref_to_int.type_signature,

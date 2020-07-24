@@ -282,7 +282,7 @@ def bind_graph_result_as_tuple(comp, name=None):
   """Wraps the result of `comp` in a tuple binding.
 
   `bind_graph_result_as_tuple` is used when a
-  `building_blocks.Tuple` of length 1 containing a called graph is
+  `building_blocks.Struct` of length 1 containing a called graph is
   encountered; this is an equivalent construct to simply calling the graph
   with the same argument, but wrapping the result in as a tuple. This can
   be accomplished purely by manipulating proto bindings, which is the purpose
@@ -1121,7 +1121,7 @@ class StructCalledGraphs(transformation_utils.TransformSpec):
       arg = non_none_arg_list[0]
       return building_blocks.Call(concatenated_tf, arg), True
     else:
-      arg = building_blocks.Tuple(non_none_arg_list)
+      arg = building_blocks.Struct(non_none_arg_list)
     called_tf_on_concatenated_arg = building_blocks.Call(concatenated_tf, arg)
     replicated_arg_check = CalledGraphOnReplicatedArg()
     return replicated_arg_check.transform(

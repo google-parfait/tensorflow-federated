@@ -223,7 +223,7 @@ def _construct_tensorflow_representing_single_local_assignment(
       _replace_references_in_comp_with_selections_from_arg(
           c, arg_ref, name_to_output_index) for c in arg_class
   ]
-  return_tuple = building_blocks.Tuple(pass_through_args + vals_replaced)
+  return_tuple = building_blocks.Struct(pass_through_args + vals_replaced)
 
   comp_called = construct_tensorflow_calling_lambda_on_concrete_arg(
       arg_ref, return_tuple, previous_output)
@@ -301,7 +301,7 @@ def create_tensorflow_representing_block(block):
     block: Instance of `building_blocks.Block`, whose local variables are all
       called instances of `building_blocks.CompiledComputation`, and whose
       result contains only instances of `building_blocks.Reference`,
-      `building_blocks.Selection` or `building_blocks.Tuple`.
+      `building_blocks.Selection` or `building_blocks.Struct`.
 
   Returns:
     A transformed version of `block`, which has pushed references to the called
@@ -329,7 +329,7 @@ def create_tensorflow_representing_block(block):
 
   if top_level_ref:
     first_comps = [x[1] for x in named_comp_classes[0]]
-    tup = building_blocks.Tuple([top_level_ref] + first_comps)
+    tup = building_blocks.Struct([top_level_ref] + first_comps)
     graph_tup = _generate_simple_tensorflow(tup)
     output_comp = construct_tensorflow_calling_lambda_on_concrete_arg(
         top_level_ref, graph_tup, top_level_ref)
@@ -460,7 +460,7 @@ class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
       comp: Instance of `building_blocks.ComputationBuildingBlock` on which to
         apply the transform.
       interim_transform_spec: Instance of `transformation_utils.TransformSpec`
-        whose `transform` method must take a `building_blocks.Tuple` and return
+        whose `transform` method must take a `building_blocks.Struct` and return
         a named tuple type, to be applied after deduplication.
 
     Raises:
@@ -500,7 +500,7 @@ class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
     deduped_tuple, selection_map = self._construct_deduped_tuple_and_selection_map(
         comp)
     transform_applied, _ = self._interim_transform.transform(
-        building_blocks.Tuple(deduped_tuple))
+        building_blocks.Struct(deduped_tuple))
     transform_applied.type_signature.check_struct()
     if len(comp) == len(deduped_tuple):
       # Fall back if no optimization is made.
@@ -511,7 +511,7 @@ class RemoveDuplicatesAndApplyTransform(transformation_utils.TransformSpec):
     for i in selection_map:
       selected = building_blocks.Selection(lam_arg, index=i)
       replacement_tuple.append(selected)
-    tup = building_blocks.Tuple(replacement_tuple)
+    tup = building_blocks.Struct(replacement_tuple)
     lam = building_blocks.Lambda(lam_arg.name, lam_arg.type_signature, tup)
     return building_blocks.Call(lam, transform_applied), True
 

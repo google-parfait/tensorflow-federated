@@ -81,7 +81,7 @@ def transform_postorder(comp, transform):
       elements.append((key, value))
       elements_modified = elements_modified or value_modified
     if elements_modified:
-      comp = building_blocks.Tuple(elements)
+      comp = building_blocks.Struct(elements)
     comp, comp_modified = transform(comp)
     return comp, comp_modified or elements_modified
   elif comp.is_call():
@@ -180,7 +180,7 @@ def transform_preorder(
       elements.append((name, result))
     if not (modified or elements_modified):
       return inner_comp, False
-    return building_blocks.Tuple(elements), True
+    return building_blocks.Struct(elements), True
   elif inner_comp.is_selection():
     transformed_source, source_modified = transform_preorder(
         inner_comp.source, transform)
@@ -324,7 +324,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
       elements.append((key, value))
       elements_modified = elements_modified or value_modified
     if elements_modified:
-      comp = building_blocks.Tuple(elements)
+      comp = building_blocks.Struct(elements)
     comp, comp_modified = transform(comp, context_tree)
     return comp, comp_modified or elements_modified
 

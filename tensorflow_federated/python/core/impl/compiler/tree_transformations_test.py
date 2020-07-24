@@ -84,7 +84,7 @@ def _create_complex_computation():
       compiled, called_federated_broadcast)
   called_federated_mean = building_block_factory.create_federated_mean(
       called_federated_map, None)
-  tup = building_blocks.Tuple([called_federated_mean, called_federated_mean])
+  tup = building_blocks.Struct([called_federated_mean, called_federated_mean])
   return building_blocks.Lambda('b', tf.int32, tup)
 
 
@@ -146,7 +146,7 @@ class ExtractComputationsTest(test.TestCase):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
     data_3 = building_blocks.Data('data', tf.int32)
-    tup = building_blocks.Tuple([data_2, data_3])
+    tup = building_blocks.Struct([data_2, data_3])
     block = building_blocks.Block([('a', data_1)], tup)
     comp = block
 
@@ -198,7 +198,7 @@ class ExtractComputationsTest(test.TestCase):
     fn = test_utils.create_identity_function('a', [tf.int32, tf.int32])
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
-    tup = building_blocks.Tuple([data_1, data_2])
+    tup = building_blocks.Struct([data_1, data_2])
     call = building_blocks.Call(fn, tup)
     comp = call
 
@@ -247,7 +247,7 @@ class ExtractComputationsTest(test.TestCase):
   def test_extracts_from_lambda_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
-    tup = building_blocks.Tuple([data_1, data_2])
+    tup = building_blocks.Struct([data_1, data_2])
     fn = building_blocks.Lambda('a', tf.int32, tup)
     comp = fn
 
@@ -274,7 +274,7 @@ class ExtractComputationsTest(test.TestCase):
 
   def test_extracts_from_selection_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
-    tup = building_blocks.Tuple([data])
+    tup = building_blocks.Struct([data])
     sel = building_blocks.Selection(tup, index=0)
     comp = sel
 
@@ -300,7 +300,7 @@ class ExtractComputationsTest(test.TestCase):
   def test_extracts_from_selection_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
-    tup = building_blocks.Tuple([data_1, data_2])
+    tup = building_blocks.Struct([data_1, data_2])
     sel = building_blocks.Selection(tup, index=0)
     comp = sel
 
@@ -327,7 +327,7 @@ class ExtractComputationsTest(test.TestCase):
 
   def test_extracts_from_tuple_one_comp(self):
     data = building_blocks.Data('data', tf.int32)
-    tup = building_blocks.Tuple([data])
+    tup = building_blocks.Struct([data])
     comp = tup
 
     transformed_comp, modified = tree_transformations.extract_computations(comp)
@@ -341,7 +341,7 @@ class ExtractComputationsTest(test.TestCase):
   def test_extracts_from_tuple_multiple_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
-    tup = building_blocks.Tuple([data_1, data_2])
+    tup = building_blocks.Struct([data_1, data_2])
     comp = tup
 
     transformed_comp, modified = tree_transformations.extract_computations(comp)
@@ -356,7 +356,7 @@ class ExtractComputationsTest(test.TestCase):
   def test_extracts_from_tuple_named_comps(self):
     data_1 = building_blocks.Data('data', tf.int32)
     data_2 = building_blocks.Data('data', tf.int32)
-    tup = building_blocks.Tuple([
+    tup = building_blocks.Struct([
         ('a', data_1),
         ('b', data_2),
     ])
@@ -983,7 +983,7 @@ class ExtractIntrinsicsTest(test.TestCase):
   def test_extracts_from_tuple_one_intrinsic(self):
     called_intrinsic = test_utils.create_dummy_called_intrinsic(
         parameter_name='a')
-    tup = building_blocks.Tuple((called_intrinsic,))
+    tup = building_blocks.Struct((called_intrinsic,))
     comp = tup
 
     transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
@@ -997,7 +997,7 @@ class ExtractIntrinsicsTest(test.TestCase):
   def test_extracts_from_tuple_multiple_intrinsics(self):
     called_intrinsic = test_utils.create_dummy_called_intrinsic(
         parameter_name='a')
-    tup = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    tup = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = tup
 
     transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
@@ -1013,7 +1013,7 @@ class ExtractIntrinsicsTest(test.TestCase):
   def test_extracts_from_tuple_named_intrinsics(self):
     called_intrinsic = test_utils.create_dummy_called_intrinsic(
         parameter_name='a')
-    tup = building_blocks.Tuple((
+    tup = building_blocks.Struct((
         ('b', called_intrinsic),
         ('c', called_intrinsic),
     ))
@@ -1034,7 +1034,7 @@ class ExtractIntrinsicsTest(test.TestCase):
         parameter_name='a')
     ref = building_blocks.Reference('b', called_intrinsic.type_signature)
     block = building_blocks.Block((('b', called_intrinsic),), ref)
-    tup = building_blocks.Tuple((block,))
+    tup = building_blocks.Struct((block,))
     comp = tup
 
     transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
@@ -1054,7 +1054,7 @@ class ExtractIntrinsicsTest(test.TestCase):
         ('b', called_intrinsic),
         ('c', called_intrinsic),
     ), ref)
-    tup = building_blocks.Tuple((block,))
+    tup = building_blocks.Struct((block,))
     comp = tup
 
     transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
@@ -1073,7 +1073,7 @@ class ExtractIntrinsicsTest(test.TestCase):
     block_1 = building_blocks.Block((('b', called_intrinsic),), ref_1)
     ref_2 = building_blocks.Reference('d', called_intrinsic.type_signature)
     block_2 = building_blocks.Block((('d', called_intrinsic),), ref_2)
-    tup = building_blocks.Tuple((block_1, block_2))
+    tup = building_blocks.Struct((block_1, block_2))
     comp = tup
 
     transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
@@ -1099,7 +1099,7 @@ class ExtractIntrinsicsTest(test.TestCase):
         ('d', called_intrinsic),
         ('e', called_intrinsic),
     ), ref_2)
-    tup = building_blocks.Tuple((block_1, block_2))
+    tup = building_blocks.Struct((block_1, block_2))
     comp = tup
 
     transformed_comp, modified = tree_transformations.extract_intrinsics(comp)
@@ -1119,7 +1119,7 @@ class ExtractIntrinsicsTest(test.TestCase):
     data = building_blocks.Data('data', tf.int32)
     called_intrinsic = test_utils.create_dummy_called_intrinsic(
         parameter_name='a')
-    tup = building_blocks.Tuple((called_intrinsic,))
+    tup = building_blocks.Struct((called_intrinsic,))
     sel = building_blocks.Selection(tup, index=0)
     block = building_blocks.Block((('b', data),), sel)
     fn_1 = test_utils.create_identity_function('c', tf.int32)
@@ -1145,7 +1145,7 @@ class ExtractIntrinsicsTest(test.TestCase):
     data = building_blocks.Data('data', tf.int32)
     called_intrinsic = test_utils.create_dummy_called_intrinsic(
         parameter_name='a')
-    tup = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    tup = building_blocks.Struct((called_intrinsic, called_intrinsic))
     sel = building_blocks.Selection(tup, index=0)
     block = building_blocks.Block((
         ('b', data),
@@ -1309,7 +1309,7 @@ class InlineBlockLocalsTest(test.TestCase):
   def test_inlines_two_block_variables(self):
     data = building_blocks.Data('data', tf.int32)
     ref = building_blocks.Reference('a', tf.int32)
-    tup = building_blocks.Tuple((ref, ref))
+    tup = building_blocks.Struct((ref, ref))
     block = building_blocks.Block((('a', data),), tup)
     comp = block
 
@@ -1324,7 +1324,7 @@ class InlineBlockLocalsTest(test.TestCase):
     data = building_blocks.Data('data', tf.int32)
     ref_1 = building_blocks.Reference('a', tf.int32)
     ref_2 = building_blocks.Reference('b', tf.int32)
-    tup = building_blocks.Tuple((ref_1, ref_2))
+    tup = building_blocks.Struct((ref_1, ref_2))
     block = building_blocks.Block((('a', data), ('b', data)), tup)
     comp = block
 
@@ -1414,7 +1414,7 @@ class InlineBlockLocalsTest(test.TestCase):
 class InlineSelectionsFromTuplesTest(test.TestCase):
 
   def test_should_transform_selection_from_tuple(self):
-    tup = building_blocks.Tuple([building_blocks.Data('x', tf.int32)])
+    tup = building_blocks.Struct([building_blocks.Data('x', tf.int32)])
     sel = building_blocks.Selection(tup, index=0)
     selection_inliner = tree_transformations.InlineSelectionsFromTuples()
     symbol_tree = transformation_utils.SymbolTree(
@@ -1422,7 +1422,7 @@ class InlineSelectionsFromTuplesTest(test.TestCase):
     self.assertTrue(selection_inliner.should_transform(sel, symbol_tree))
 
   def test_should_transform_selection_from_reference_to_bound_tuple(self):
-    tup = building_blocks.Tuple([building_blocks.Data('x', tf.int32)])
+    tup = building_blocks.Struct([building_blocks.Data('x', tf.int32)])
     ref = building_blocks.Reference('a', tup.type_signature)
     sel = building_blocks.Selection(ref, index=0)
     symbol_tree = transformation_utils.SymbolTree(
@@ -1432,7 +1432,7 @@ class InlineSelectionsFromTuplesTest(test.TestCase):
     self.assertTrue(selection_inliner.should_transform(sel, symbol_tree))
 
   def test_should_not_transform_selection_from_unbound_reference(self):
-    tup = building_blocks.Tuple([building_blocks.Data('x', tf.int32)])
+    tup = building_blocks.Struct([building_blocks.Data('x', tf.int32)])
     ref = building_blocks.Reference('a', tup.type_signature)
     sel = building_blocks.Selection(ref, index=0)
     symbol_tree = transformation_utils.SymbolTree(
@@ -1443,7 +1443,7 @@ class InlineSelectionsFromTuplesTest(test.TestCase):
 
   def test_reduces_selection_from_direct_tuple_by_index(self):
     data = building_blocks.Data('x', tf.int32)
-    tup = building_blocks.Tuple([data])
+    tup = building_blocks.Struct([data])
     sel = building_blocks.Selection(tup, index=0)
     collapsed, modified = tree_transformations.inline_selections_from_tuple(sel)
     self.assertTrue(modified)
@@ -1452,7 +1452,7 @@ class InlineSelectionsFromTuplesTest(test.TestCase):
 
   def test_reduces_selection_from_direct_tuple_by_name(self):
     data = building_blocks.Data('x', tf.int32)
-    tup = building_blocks.Tuple([('a', data)])
+    tup = building_blocks.Struct([('a', data)])
     sel = building_blocks.Selection(tup, name='a')
     collapsed, modified = tree_transformations.inline_selections_from_tuple(sel)
     self.assertTrue(modified)
@@ -1461,7 +1461,7 @@ class InlineSelectionsFromTuplesTest(test.TestCase):
 
   def test_inlines_selection_from_reference_to_tuple_by_index(self):
     data = building_blocks.Data('x', tf.int32)
-    tup = building_blocks.Tuple([data])
+    tup = building_blocks.Struct([data])
     ref_to_b = building_blocks.Reference('b', tup.type_signature)
     sel = building_blocks.Selection(ref_to_b, index=0)
     blk = building_blocks.Block([('b', tup)], sel)
@@ -1475,7 +1475,7 @@ class InlineSelectionsFromTuplesTest(test.TestCase):
 
   def test_inlines_selection_from_reference_to_tuple_by_name(self):
     data = building_blocks.Data('x', tf.int32)
-    tup = building_blocks.Tuple([('a', data)])
+    tup = building_blocks.Struct([('a', data)])
     ref_to_b = building_blocks.Reference('b', tup.type_signature)
     sel = building_blocks.Selection(ref_to_b, name='a')
     blk = building_blocks.Block([('b', tup)], sel)
@@ -1517,7 +1517,7 @@ class MergeChainedBlocksTest(test.TestCase):
 
   def test_leaves_names(self):
     input1 = building_blocks.Data('input1', tf.int32)
-    result_tuple = building_blocks.Tuple([
+    result_tuple = building_blocks.Struct([
         ('a', building_blocks.Data('result_a', tf.int32)),
         ('b', building_blocks.Data('result_b', tf.int32))
     ])
@@ -1538,7 +1538,7 @@ class MergeChainedBlocksTest(test.TestCase):
     result = building_blocks.Data('result', tf.int32)
     block1 = building_blocks.Block([('x', input1)], result)
     result_block = block1
-    result_tuple = building_blocks.Tuple([result_block])
+    result_tuple = building_blocks.Struct([result_block])
     input2 = building_blocks.Data('input2', tf.int32)
     block2 = building_blocks.Block([('y', input2)], result_tuple)
     self.assertEqual(block2.compact_representation(),
@@ -1860,7 +1860,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
   def test_raises_type_error_with_none_uri(self):
     called_intrinsic = test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
     with self.assertRaises(TypeError):
       tree_transformations.merge_tuple_intrinsics(comp, None)
@@ -1868,7 +1868,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
   def test_raises_value_error(self):
     called_intrinsic = test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
     with self.assertRaises(ValueError):
       tree_transformations.merge_tuple_intrinsics(comp, 'dummy')
@@ -1878,7 +1878,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2022,7 +2022,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
 
     called_intrinsic = building_block_factory.create_federated_aggregate(
         value, zero, accumulate, merge, report)
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2035,7 +2035,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    calls = building_blocks.Tuple(
+    calls = building_blocks.Struct(
         (called_intrinsic, called_intrinsic, called_intrinsic))
     comp = calls
 
@@ -2239,7 +2239,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
   def test_merges_federated_applys(self):
     called_intrinsic = test_utils.create_dummy_called_federated_apply(
         parameter_name='a')
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2289,7 +2289,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
 
   def test_merges_federated_broadcasts(self):
     called_intrinsic = test_utils.create_dummy_called_federated_broadcast()
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2329,7 +2329,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
   def test_merges_federated_maps(self):
     called_intrinsic = test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2383,7 +2383,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
         parameter_name='a')
     called_intrinsic_2 = test_utils.create_dummy_called_federated_map(
         parameter_name='b')
-    calls = building_blocks.Tuple((called_intrinsic_1, called_intrinsic_2))
+    calls = building_blocks.Struct((called_intrinsic_1, called_intrinsic_2))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2437,7 +2437,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
         parameter_name='a', parameter_type=tf.int32)
     called_intrinsic_2 = test_utils.create_dummy_called_federated_map(
         parameter_name='b', parameter_type=tf.float32)
-    calls = building_blocks.Tuple((called_intrinsic_1, called_intrinsic_2))
+    calls = building_blocks.Struct((called_intrinsic_1, called_intrinsic_2))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2490,7 +2490,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
     parameter_type = [('b', tf.int32), ('c', tf.float32)]
     called_intrinsic = test_utils.create_dummy_called_federated_map(
         parameter_name='a', parameter_type=parameter_type)
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
@@ -2545,7 +2545,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
     parameter_type_2 = [('e', tf.bool), ('f', tf.string)]
     called_intrinsic_2 = test_utils.create_dummy_called_federated_map(
         parameter_name='d', parameter_type=parameter_type_2)
-    calls = building_blocks.Tuple((called_intrinsic_1, called_intrinsic_2))
+    calls = building_blocks.Struct((called_intrinsic_1, called_intrinsic_2))
     comp = calls
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
@@ -2600,7 +2600,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
                                                placement_literals.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     called_intrinsic = building_block_factory.create_federated_map(fn, arg)
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2652,7 +2652,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
   def test_merges_named_federated_maps(self):
     called_intrinsic = test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    calls = building_blocks.Tuple(
+    calls = building_blocks.Struct(
         (('b', called_intrinsic), ('c', called_intrinsic)))
     comp = calls
 
@@ -2705,7 +2705,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
   def test_merges_nested_federated_maps(self):
     called_intrinsic = test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     block = test_utils.create_dummy_block(calls, variable_name='a')
     comp = block
 
@@ -2761,7 +2761,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
   def test_merges_multiple_federated_maps(self):
     called_intrinsic = test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    calls = building_blocks.Tuple(
+    calls = building_blocks.Struct(
         (called_intrinsic, called_intrinsic, called_intrinsic))
     comp = calls
 
@@ -2838,7 +2838,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
   def test_merges_one_federated_map(self):
     called_intrinsic = test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    calls = building_blocks.Tuple((called_intrinsic,))
+    calls = building_blocks.Struct((called_intrinsic,))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2888,7 +2888,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
         report_parameter_name='c')
     called_intrinsic_2 = test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    calls = building_blocks.Tuple((called_intrinsic_1, called_intrinsic_2))
+    calls = building_blocks.Struct((called_intrinsic_1, called_intrinsic_2))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2908,7 +2908,7 @@ class MergeTupleIntrinsicsTest(test.TestCase):
   def test_does_not_merge_intrinsics_with_different_uri(self):
     called_intrinsic = test_utils.create_dummy_called_federated_map(
         parameter_name='a')
-    calls = building_blocks.Tuple((called_intrinsic, called_intrinsic))
+    calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
 
     transformed_comp, modified = tree_transformations.merge_tuple_intrinsics(
@@ -2943,7 +2943,7 @@ class RemoveDuplicateBlockLocals(test.TestCase):
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    tup = building_blocks.Tuple([
+    tup = building_blocks.Struct([
         called_intrinsic,
         called_intrinsic,
     ])
@@ -3007,7 +3007,7 @@ class RemoveDuplicateBlockLocals(test.TestCase):
 
   def test_removes_federated_broadcast(self):
     called_intrinsic = test_utils.create_dummy_called_federated_broadcast()
-    tup = building_blocks.Tuple([
+    tup = building_blocks.Struct([
         called_intrinsic,
         called_intrinsic,
     ])
@@ -3090,7 +3090,7 @@ class RemoveDuplicateBlockLocals(test.TestCase):
   def test_removes_chained_references_bound_by_lambda(self):
     ref_1 = building_blocks.Reference('a', tf.int32)
     ref_2 = building_blocks.Reference('b', tf.int32)
-    tup = building_blocks.Tuple([ref_2])
+    tup = building_blocks.Struct([ref_2])
     block = building_blocks.Block([(ref_2.name, ref_1)], tup)
     fn = building_blocks.Lambda(ref_1.name, ref_1.type_signature, block)
     comp = fn
@@ -3130,7 +3130,7 @@ class DeduplicateBuildingBlocksTest(test.TestCase):
     ref_to_a = building_blocks.Reference('a', [tf.int32, tf.float32])
     called_id = building_blocks.Call(id_lam, ref_to_a)
     sel_0 = building_blocks.Selection(called_id, index=0)
-    tup = building_blocks.Tuple([sel_0, sel_0])
+    tup = building_blocks.Struct([sel_0, sel_0])
     fake_lam = building_blocks.Lambda('a', [tf.int32, tf.float32], tup)
     dups_removed, modified = tree_transformations.remove_duplicate_building_blocks(
         fake_lam)
@@ -3485,7 +3485,7 @@ class ReplaceSelectionFromTupleWithElementTest(test.TestCase):
   def test_by_index_grabs_correct_element(self):
     x_data = building_blocks.Data('x', tf.int32)
     y_data = building_blocks.Data('y', [('a', tf.float32)])
-    tup = building_blocks.Tuple([x_data, y_data])
+    tup = building_blocks.Struct([x_data, y_data])
     x_selected = building_blocks.Selection(tup, index=0)
     y_selected = building_blocks.Selection(tup, index=1)
 
@@ -3502,7 +3502,7 @@ class ReplaceSelectionFromTupleWithElementTest(test.TestCase):
   def test_by_name_grabs_correct_element(self):
     x_data = building_blocks.Data('x', tf.int32)
     y_data = building_blocks.Data('y', [('a', tf.float32)])
-    tup = building_blocks.Tuple([('a', x_data), ('b', y_data)])
+    tup = building_blocks.Struct([('a', x_data), ('b', y_data)])
     x_selected = building_blocks.Selection(tup, name='a')
     y_selected = building_blocks.Selection(tup, name='b')
 
@@ -3541,7 +3541,7 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
       tensor_type = computation_types.TensorType(tf.int32)
       compiled = building_block_factory.create_compiled_identity(tensor_type)
       elements.append(compiled)
-    compiled_comps = building_blocks.Tuple(elements)
+    compiled_comps = building_blocks.Struct(elements)
     comp = compiled_comps
 
     transformed_comp, modified = tree_transformations.uniquify_compiled_computation_names(
@@ -3596,7 +3596,7 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     int_identity = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     dummy_int = building_blocks.Data('data', tf.int32)
-    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
+    tup_containing_fn = building_blocks.Struct([int_identity, dummy_int])
     lambda_returning_tup = building_blocks.Lambda('z', tf.int32,
                                                   tup_containing_fn)
     called_tup = building_blocks.Call(lambda_returning_tup, dummy_int)
@@ -3613,7 +3613,7 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     materialize_int = building_blocks.Lambda(
         None, None, building_blocks.Data('x', tf.int32))
     dummy_int = building_blocks.Data('data', tf.int32)
-    tup_containing_fn = building_blocks.Tuple([materialize_int, dummy_int])
+    tup_containing_fn = building_blocks.Struct([materialize_int, dummy_int])
     lambda_returning_tup = building_blocks.Lambda('z', tf.int32,
                                                   tup_containing_fn)
     called_tup = building_blocks.Call(lambda_returning_tup, dummy_int)
@@ -3631,7 +3631,7 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     int_identity = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     dummy_int = building_blocks.Data('data', tf.int32)
-    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
+    tup_containing_fn = building_blocks.Struct([int_identity, dummy_int])
     lambda_returning_tup = building_blocks.Lambda('z', tf.int32,
                                                   tup_containing_fn)
     called_tup = building_blocks.Call(lambda_returning_tup, dummy_int)
@@ -3650,7 +3650,7 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     int_identity = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     dummy_int = building_blocks.Data('data', tf.int32)
-    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
+    tup_containing_fn = building_blocks.Struct([int_identity, dummy_int])
     selected_identity = building_blocks.Selection(
         source=tup_containing_fn, index=0)
     called_id = building_blocks.Call(selected_identity, dummy_int)
@@ -3665,8 +3665,8 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     int_identity = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     dummy_int = building_blocks.Data('data', tf.int32)
-    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
-    nested_tuple = building_blocks.Tuple([tup_containing_fn])
+    tup_containing_fn = building_blocks.Struct([int_identity, dummy_int])
+    nested_tuple = building_blocks.Struct([tup_containing_fn])
     selected_tuple = building_blocks.Selection(source=nested_tuple, index=0)
     selected_identity = building_blocks.Selection(
         source=selected_tuple, index=0)
@@ -3682,7 +3682,7 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     int_identity = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     dummy_int = building_blocks.Data('data', tf.int32)
-    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
+    tup_containing_fn = building_blocks.Struct([int_identity, dummy_int])
     ref_to_y = building_blocks.Reference('y', tup_containing_fn.type_signature)
     selected_identity = building_blocks.Selection(source=ref_to_y, index=0)
     called_id = building_blocks.Call(selected_identity, dummy_int)
@@ -3698,8 +3698,8 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     int_identity = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', tf.int32))
     dummy_int = building_blocks.Data('data', tf.int32)
-    tup_containing_fn = building_blocks.Tuple([int_identity, dummy_int])
-    nested_tuple = building_blocks.Tuple([tup_containing_fn])
+    tup_containing_fn = building_blocks.Struct([int_identity, dummy_int])
+    nested_tuple = building_blocks.Struct([tup_containing_fn])
     ref_to_nested_tuple = building_blocks.Reference('nested_tuple',
                                                     nested_tuple.type_signature)
     selected_tuple = building_blocks.Selection(
@@ -3770,7 +3770,7 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     ref_to_z = building_blocks.Reference('z', tf.int32)
     ref_to_x = building_blocks.Reference('x', tf.int32)
     lowest_lam = building_blocks.Lambda(
-        'z', tf.int32, building_blocks.Tuple([ref_to_z, ref_to_x]))
+        'z', tf.int32, building_blocks.Struct([ref_to_z, ref_to_x]))
     blk = building_blocks.Block([('x', data)], lowest_lam)
     called_blk = building_blocks.Call(blk, data)
 
@@ -3786,9 +3786,9 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     ref_to_z = building_blocks.Reference('z', tf.int32)
     ref_to_x = building_blocks.Reference('x', tf.int32)
     lowest_lam = building_blocks.Lambda(
-        'z', tf.int32, building_blocks.Tuple([ref_to_z, ref_to_x]))
+        'z', tf.int32, building_blocks.Struct([ref_to_z, ref_to_x]))
     blk = building_blocks.Block([('x', data)], lowest_lam)
-    tuple_holding_blk = building_blocks.Tuple([blk])
+    tuple_holding_blk = building_blocks.Struct([blk])
     zeroth_selection_from_tuple = building_blocks.Selection(
         source=tuple_holding_blk, index=0)
     called_sel = building_blocks.Call(zeroth_selection_from_tuple, data)
@@ -3805,7 +3805,7 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     ref_to_z = building_blocks.Reference('z', tf.int32)
     ref_to_x = building_blocks.Reference('x', tf.int32)
     lowest_lam = building_blocks.Lambda(
-        'z', tf.int32, building_blocks.Tuple([ref_to_z, ref_to_x]))
+        'z', tf.int32, building_blocks.Struct([ref_to_z, ref_to_x]))
     blk = building_blocks.Block([('x', data)], lowest_lam)
     ref_to_y = building_blocks.Reference('y', blk.type_signature)
 
@@ -3839,8 +3839,8 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
     ref_to_fn = building_blocks.Reference('function',
                                           int_identity.type_signature)
     dummy_int = building_blocks.Data('data', tf.int32)
-    tup_containing_fn = building_blocks.Tuple([ref_to_fn, dummy_int])
-    nested_tuple = building_blocks.Tuple([tup_containing_fn])
+    tup_containing_fn = building_blocks.Struct([ref_to_fn, dummy_int])
+    nested_tuple = building_blocks.Struct([tup_containing_fn])
     selected_tuple = building_blocks.Selection(source=nested_tuple, index=0)
     selected_identity = building_blocks.Selection(
         source=selected_tuple, index=0)
@@ -3878,7 +3878,7 @@ class ResolveHigherOrderFunctionsTest(test.TestCase):
                                                       capturing_fn)
     called_blk = building_blocks.Call(blk_representing_captures,
                                       building_blocks.Data('arg', tf.int32))
-    tup_holding_blocks = building_blocks.Tuple([called_blk, called_blk])
+    tup_holding_blocks = building_blocks.Struct([called_blk, called_blk])
 
     tup_holding_blocks, _ = tree_transformations.uniquify_reference_names(
         tup_holding_blocks)
@@ -4068,7 +4068,7 @@ class InsertTensorFlowIdentityAtLeavesTest(test.TestCase):
         tree_analysis.count(new_lambda, _is_called_graph_pattern), 1)
 
   def test_transforms_reference_under_tuple(self):
-    one_element_tuple = building_blocks.Tuple(
+    one_element_tuple = building_blocks.Struct(
         [building_blocks.Reference('x', tf.int32)])
     transformed_tuple, _ = tree_transformations.insert_called_tf_identity_at_leaves(
         one_element_tuple)
@@ -4107,7 +4107,7 @@ class InsertTensorFlowIdentityAtLeavesTest(test.TestCase):
 
   def test_transforms_under_tuple(self):
     ref_to_x = building_blocks.Reference('x', tf.int32)
-    tup = building_blocks.Tuple([ref_to_x, ref_to_x])
+    tup = building_blocks.Struct([ref_to_x, ref_to_x])
     lam = building_blocks.Lambda('x', tf.int32, tup)
     new_lambda, modified = tree_transformations.insert_called_tf_identity_at_leaves(
         lam)
@@ -4445,7 +4445,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         int_data, placement_literals.SERVER)
     fed_float = building_block_factory.create_federated_value(
         float_data, placement_literals.SERVER)
-    tup = building_blocks.Tuple([fed_int, fed_float])
+    tup = building_blocks.Struct([fed_int, fed_float])
     zipped = building_block_factory.create_federated_zip(tup)
     placement_unwrapped, modified = tree_transformations.unwrap_placement(
         zipped)
@@ -4473,7 +4473,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         int_data, placement_literals.CLIENTS)
     fed_float = building_block_factory.create_federated_value(
         float_data, placement_literals.CLIENTS)
-    tup = building_blocks.Tuple([fed_int, fed_float])
+    tup = building_blocks.Struct([fed_int, fed_float])
     zipped = building_block_factory.create_federated_zip(tup)
     placement_unwrapped, modified = tree_transformations.unwrap_placement(
         zipped)
@@ -4718,7 +4718,7 @@ class GroupBlockLocalsByDependencyTest(test.TestCase):
     second_data = building_blocks.Data('b', tf.int32)
     ref_to_y = building_blocks.Reference('y', tf.int32)
     block = building_blocks.Block([('x', first_data), ('y', second_data)],
-                                  building_blocks.Tuple([ref_to_y, ref_to_x]))
+                                  building_blocks.Struct([ref_to_y, ref_to_x]))
     transformed_comp, modified = tree_transformations.group_block_locals_by_dependency(
         block)
     self.assertTrue(modified)
@@ -4745,7 +4745,7 @@ class GroupBlockLocalsByDependencyTest(test.TestCase):
     second_data = building_blocks.Data('b', tf.int32)
     block = building_blocks.Block([('x', first_data), ('y', ref_to_x),
                                    ('z', second_data)],
-                                  building_blocks.Tuple([ref_to_x, ref_to_z]))
+                                  building_blocks.Struct([ref_to_x, ref_to_z]))
     transformed_comp, modified = tree_transformations.group_block_locals_by_dependency(
         block)
     self.assertTrue(modified)
@@ -4762,7 +4762,7 @@ class GroupBlockLocalsByDependencyTest(test.TestCase):
     block = building_blocks.Block([('x', first_data), ('u', ref_to_x),
                                    ('v', ref_to_u), ('y', second_data),
                                    ('z', ref_to_y)],
-                                  building_blocks.Tuple([ref_to_x, ref_to_z]))
+                                  building_blocks.Struct([ref_to_x, ref_to_z]))
     transformed_comp, modified = tree_transformations.group_block_locals_by_dependency(
         block)
     self.assertTrue(modified)
@@ -4781,7 +4781,7 @@ class GroupBlockLocalsByDependencyTest(test.TestCase):
     block = building_blocks.Block([('x', first_data), ('u', ref_to_x),
                                    ('v', ref_to_u), ('y', second_data),
                                    ('z', ref_to_y)],
-                                  building_blocks.Tuple([ref_to_x, ref_to_z]))
+                                  building_blocks.Struct([ref_to_x, ref_to_z]))
     transformed_comp, _ = tree_transformations.group_block_locals_by_dependency(
         block)
     second_application_of_transform, _ = tree_transformations.group_block_locals_by_dependency(

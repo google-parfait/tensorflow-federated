@@ -785,7 +785,7 @@ class ReferenceExecutor(context_base.Context):
     return result
 
   def _compute_tuple(self, comp, context):
-    py_typecheck.check_type(comp, building_blocks.Tuple)
+    py_typecheck.check_type(comp, building_blocks.Struct)
     result_elements = []
     result_type_elements = []
     for k, v in anonymous_tuple.iter_elements(comp):

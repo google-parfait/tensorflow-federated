@@ -500,7 +500,7 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(test.TestCase):
         transformations.force_align_and_split_by_intrinsics(
             next_tree, [intrinsic_defs.FEDERATED_SECURE_SUM.uri]))
     self.assertIsInstance(before_aggregate, building_blocks.Lambda)
-    self.assertIsInstance(before_aggregate.result, building_blocks.Tuple)
+    self.assertIsInstance(before_aggregate.result, building_blocks.Struct)
     self.assertLen(before_aggregate.result, 2)
 
     # pyformat: disable
@@ -554,7 +554,7 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(test.TestCase):
         transformations.force_align_and_split_by_intrinsics(
             next_tree, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
     self.assertIsInstance(before_aggregate, building_blocks.Lambda)
-    self.assertIsInstance(before_aggregate.result, building_blocks.Tuple)
+    self.assertIsInstance(before_aggregate.result, building_blocks.Struct)
     self.assertLen(before_aggregate.result, 2)
 
     # trees_equal will fail if computations refer to unbound references, so we
@@ -705,7 +705,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     top_level_param = building_blocks.Reference(next_comp.parameter_name,
                                                 next_comp.parameter_type)
     first_result = building_blocks.Call(next_comp, top_level_param)
-    middle_param = building_blocks.Tuple([
+    middle_param = building_blocks.Struct([
         building_blocks.Selection(first_result, index=0),
         building_blocks.Selection(top_level_param, index=1)
     ])

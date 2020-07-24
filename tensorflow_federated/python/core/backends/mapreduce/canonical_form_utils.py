@@ -225,7 +225,7 @@ def _create_before_and_after_broadcast_for_no_broadcast(tree):
   name_generator = building_block_factory.unique_name_generator(tree)
 
   parameter_name = next(name_generator)
-  empty_tuple = building_blocks.Tuple([])
+  empty_tuple = building_blocks.Struct([])
   value = building_block_factory.create_federated_value(empty_tuple,
                                                         placements.SERVER)
   before_broadcast = building_blocks.Lambda(parameter_name,
@@ -312,18 +312,18 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
     ref_name = next(name_generator)
     ref_type = computation_types.StructType(type_elements)
     ref = building_blocks.Reference(ref_name, ref_type)
-    empty_tuple = building_blocks.Tuple([])
+    empty_tuple = building_blocks.Struct([])
     return building_blocks.Lambda(ref.name, ref.type_signature, empty_tuple)
 
-  empty_tuple = building_blocks.Tuple([])
+  empty_tuple = building_blocks.Struct([])
   value = building_block_factory.create_federated_value(empty_tuple,
                                                         placements.CLIENTS)
   zero = empty_tuple
   accumulate = _create_empty_function([[], []])
   merge = _create_empty_function([[], []])
   report = _create_empty_function([])
-  args = building_blocks.Tuple([value, zero, accumulate, merge, report])
-  result = building_blocks.Tuple([args, before_aggregate.result])
+  args = building_blocks.Struct([value, zero, accumulate, merge, report])
+  result = building_blocks.Struct([args, before_aggregate.result])
   before_aggregate = building_blocks.Lambda(before_aggregate.parameter_name,
                                             before_aggregate.parameter_type,
                                             result)
@@ -339,7 +339,7 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
   sel_arg = building_blocks.Selection(ref, index=0)
   sel = building_blocks.Selection(ref, index=1)
   sel_s4 = building_blocks.Selection(sel, index=1)
-  arg = building_blocks.Tuple([sel_arg, sel_s4])
+  arg = building_blocks.Struct([sel_arg, sel_s4])
   call = building_blocks.Call(after_aggregate, arg)
   after_aggregate = building_blocks.Lambda(ref.name, ref.type_signature, call)
 
@@ -407,12 +407,12 @@ def _create_before_and_after_aggregate_for_no_federated_secure_sum(tree):
       transformations.force_align_and_split_by_intrinsics(
           tree, [intrinsic_defs.FEDERATED_AGGREGATE.uri]))
 
-  empty_tuple = building_blocks.Tuple([])
+  empty_tuple = building_blocks.Struct([])
   value = building_block_factory.create_federated_value(empty_tuple,
                                                         placements.CLIENTS)
   bitwidth = empty_tuple
-  args = building_blocks.Tuple([value, bitwidth])
-  result = building_blocks.Tuple([before_aggregate.result, args])
+  args = building_blocks.Struct([value, bitwidth])
+  result = building_blocks.Struct([before_aggregate.result, args])
   before_aggregate = building_blocks.Lambda(before_aggregate.parameter_name,
                                             before_aggregate.parameter_type,
                                             result)
@@ -430,7 +430,7 @@ def _create_before_and_after_aggregate_for_no_federated_secure_sum(tree):
   sel_arg = building_blocks.Selection(ref, index=0)
   sel = building_blocks.Selection(ref, index=1)
   sel_s3 = building_blocks.Selection(sel, index=0)
-  arg = building_blocks.Tuple([sel_arg, sel_s3])
+  arg = building_blocks.Struct([sel_arg, sel_s3])
   call = building_blocks.Call(after_aggregate, arg)
   after_aggregate = building_blocks.Lambda(ref.name, ref.type_signature, call)
 
@@ -632,7 +632,7 @@ def _extract_update(after_aggregate):
   sel = building_blocks.Selection(pack_ref, index=1)
   sel_s3 = building_blocks.Selection(sel, index=0)
   sel_s4 = building_blocks.Selection(sel, index=1)
-  result = building_blocks.Tuple([sel_s1, sel_s3, sel_s4])
+  result = building_blocks.Struct([sel_s1, sel_s3, sel_s4])
   pack_fn = building_blocks.Lambda(pack_ref.name, pack_ref.type_signature,
                                    result)
   ref_name = next(name_generator)

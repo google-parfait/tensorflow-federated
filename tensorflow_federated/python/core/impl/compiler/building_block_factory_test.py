@@ -523,7 +523,7 @@ class CreateComputationAppendingTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_comp2(self):
     value = building_blocks.Data('x', tf.int32)
-    comp1 = building_blocks.Tuple([value, value])
+    comp1 = building_blocks.Struct([value, value])
     with self.assertRaises(TypeError):
       building_block_factory.create_computation_appending(comp1, None)
 
@@ -535,7 +535,7 @@ class CreateComputationAppendingTest(absltest.TestCase):
 
   def test_returns_comp_unnamed(self):
     value = building_blocks.Data('x', tf.int32)
-    comp1 = building_blocks.Tuple([value, value])
+    comp1 = building_blocks.Struct([value, value])
     comp2 = building_blocks.Data('y', tf.int32)
     comp = building_block_factory.create_computation_appending(comp1, comp2)
     self.assertEqual(
@@ -545,7 +545,7 @@ class CreateComputationAppendingTest(absltest.TestCase):
 
   def test_returns_comp_named(self):
     value = building_blocks.Data('x', tf.int32)
-    comp1 = building_blocks.Tuple((
+    comp1 = building_blocks.Struct((
         ('a', value),
         ('b', value),
     ))
@@ -1213,7 +1213,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
-    tup = building_blocks.Tuple((value,))
+    tup = building_blocks.Struct((value,))
     comp = building_block_factory.create_federated_zip(tup)
     self.assertEqual(comp.compact_representation(),
                      'federated_map(<(arg -> <arg>),<v>[0]>)')
@@ -1233,7 +1233,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
-    tup = building_blocks.Tuple((('a', value),))
+    tup = building_blocks.Struct((('a', value),))
     comp = building_block_factory.create_federated_zip(tup)
     self.assertEqual(comp.compact_representation(),
                      'federated_map(<(arg -> <a=arg>),<a=v>[0]>)')
@@ -1257,7 +1257,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
-    tup = building_blocks.Tuple((value, value))
+    tup = building_blocks.Struct((value, value))
     comp = building_block_factory.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
@@ -1300,7 +1300,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
-    tup = building_blocks.Tuple((('a', value), ('b', value)))
+    tup = building_blocks.Struct((('a', value), ('b', value)))
     comp = building_block_factory.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
@@ -1359,7 +1359,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
-    tup = building_blocks.Tuple((value, value, value))
+    tup = building_blocks.Struct((value, value, value))
     comp = building_block_factory.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
@@ -1433,7 +1433,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
-    tup = building_blocks.Tuple((
+    tup = building_blocks.Struct((
         ('a', value),
         ('b', value),
         ('c', value),
@@ -1520,7 +1520,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type3 = computation_types.FederatedType(tf.bool,
                                                   placement_literals.CLIENTS)
     value3 = building_blocks.Data('v3', value_type3)
-    tup = building_blocks.Tuple((value1, value2, value3))
+    tup = building_blocks.Struct((value1, value2, value3))
     comp = building_block_factory.create_federated_zip(tup)
     # pyformat: disable
     self.assertEqual(
@@ -1555,7 +1555,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
-    tup = building_blocks.Tuple([value] * num_elements, list)
+    tup = building_blocks.Struct([value] * num_elements, list)
     comp = building_block_factory.create_federated_zip(tup)
     self.assertEqual(
         repr(comp.type_signature),
@@ -1569,7 +1569,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.SERVER)
     value = building_blocks.Data('v', value_type)
-    tup = building_blocks.Tuple((value,))
+    tup = building_blocks.Struct((value,))
     comp = building_block_factory.create_federated_zip(tup)
     self.assertEqual(comp.compact_representation(),
                      'federated_apply(<(arg -> <arg>),<v>[0]>)')
@@ -1579,7 +1579,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.FederatedType(tf.int32,
                                                  placement_literals.SERVER)
     value = building_blocks.Data('v', value_type)
-    tup = building_blocks.Tuple((('a', value),))
+    tup = building_blocks.Struct((('a', value),))
     comp = building_block_factory.create_federated_zip(tup)
     self.assertEqual(comp.compact_representation(),
                      'federated_apply(<(arg -> <a=arg>),<a=v>[0]>)')
@@ -2257,8 +2257,8 @@ class CreateZipTest(absltest.TestCase):
     data_1 = building_blocks.Data('a', tf.int32)
     data_2 = building_blocks.Data('b', tf.float32)
     data_3 = building_blocks.Data('c', tf.bool)
-    tup_1 = building_blocks.Tuple((data_1, data_2, data_3))
-    tup_2 = building_blocks.Tuple((tup_1, tup_1))
+    tup_1 = building_blocks.Struct((data_1, data_2, data_3))
+    tup_2 = building_blocks.Struct((tup_1, tup_1))
     comp = tup_2
     new_comp = building_block_factory.create_zip(comp)
     self.assertEqual(comp.compact_representation(), '<<a,b,c>,<a,b,c>>')
@@ -2304,8 +2304,9 @@ class CreateZipTest(absltest.TestCase):
     data_1 = building_blocks.Data('a', tf.int32)
     data_2 = building_blocks.Data('b', tf.float32)
     data_3 = building_blocks.Data('c', tf.bool)
-    tup_1 = building_blocks.Tuple((('d', data_1), ('e', data_2), ('f', data_3)))
-    tup_2 = building_blocks.Tuple((('g', tup_1), ('h', tup_1)))
+    tup_1 = building_blocks.Struct(
+        (('d', data_1), ('e', data_2), ('f', data_3)))
+    tup_2 = building_blocks.Struct((('g', tup_1), ('h', tup_1)))
     comp = tup_2
     new_comp = building_block_factory.create_zip(comp)
     self.assertEqual(comp.compact_representation(),

@@ -145,7 +145,7 @@ def construct_tensorflow_selecting_and_packing_outputs(
   """Constructs TensorFlow selecting and packing elements from its input.
 
   The result of this function can be called on a deduplicated
-  `building_blocks.Tuple` containing called graphs, thus preventing us from
+  `building_blocks.Struct` containing called graphs, thus preventing us from
   embedding the same TensorFlow computation in the generated graphs, and
   reducing the amount of work duplicated in the process of generating
   TensorFlow.
@@ -445,7 +445,7 @@ def create_named_tuple_setattr_lambda(
 
   Returns an instance of `building_blocks.Lambda` which takes an
   argument of type `computation_types.StructType` and returns a
-  `building_blocks.Tuple` which contains all the same elements as
+  `building_blocks.Struct` which contains all the same elements as
   the argument, except the attribute `name` now has value `value_comp`. The
   Lambda constructed is the analogue of Python's `setattr` for the concrete
   type `named_tuple_signature`.
@@ -493,8 +493,8 @@ def create_named_tuple_setattr_lambda(
       elements.append((key, value_comp_placeholder))
     else:
       elements.append((key, building_blocks.Selection(lambda_arg, index=idx)))
-  return_tuple = building_blocks.Tuple(elements,
-                                       named_tuple_signature.python_container)
+  return_tuple = building_blocks.Struct(elements,
+                                        named_tuple_signature.python_container)
   lambda_to_return = building_blocks.Lambda(lambda_arg.name,
                                             named_tuple_signature, return_tuple)
   symbols = ((value_comp_placeholder.name, value_comp),)
@@ -575,7 +575,7 @@ def create_federated_getitem_comp(
     for k in index_range:
       elem_list.append(
           (elems[k][0], building_blocks.Selection(apply_input, index=k)))
-    selected = building_blocks.Tuple(elem_list)
+    selected = building_blocks.Struct(elem_list)
   apply_lambda = building_blocks.Lambda('x', apply_input.type_signature,
                                         selected)
   return apply_lambda
@@ -619,7 +619,7 @@ def create_computation_appending(
     name2, comp2 = comp2
   else:
     raise TypeError('Unexpected tuple element: {}.'.format(comp2))
-  comps = building_blocks.Tuple((comp1, comp2))
+  comps = building_blocks.Struct((comp1, comp2))
   ref = building_blocks.Reference('comps', comps.type_signature)
   sel_0 = building_blocks.Selection(ref, index=0)
   elements = []
@@ -629,7 +629,7 @@ def create_computation_appending(
     elements.append((name, sel))
   sel_1 = building_blocks.Selection(ref, index=1)
   elements.append((name2, sel_1))
-  result = building_blocks.Tuple(elements)
+  result = building_blocks.Struct(elements)
   symbols = ((ref.name, comps),)
   return building_blocks.Block(symbols, result)
 
@@ -687,7 +687,7 @@ def create_federated_aggregate(
   ), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_AGGREGATE.uri,
                                         intrinsic_type)
-  values = building_blocks.Tuple((value, zero, accumulate, merge, report))
+  values = building_blocks.Struct((value, zero, accumulate, merge, report))
   return building_blocks.Call(intrinsic, values)
 
 
@@ -720,7 +720,7 @@ def create_federated_apply(
       (fn.type_signature, arg.type_signature), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_APPLY.uri,
                                         intrinsic_type)
-  values = building_blocks.Tuple((fn, arg))
+  values = building_blocks.Struct((fn, arg))
   return building_blocks.Call(intrinsic, values)
 
 
@@ -848,7 +848,7 @@ def create_federated_map(
       (fn.type_signature, parameter_type), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_MAP.uri,
                                         intrinsic_type)
-  values = building_blocks.Tuple((fn, arg))
+  values = building_blocks.Struct((fn, arg))
   return building_blocks.Call(intrinsic, values)
 
 
@@ -886,7 +886,7 @@ def create_federated_map_all_equal(
       (fn.type_signature, parameter_type), result_type)
   intrinsic = building_blocks.Intrinsic(
       intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri, intrinsic_type)
-  values = building_blocks.Tuple((fn, arg))
+  values = building_blocks.Struct((fn, arg))
   return building_blocks.Call(intrinsic, values)
 
 
@@ -959,7 +959,7 @@ def create_federated_mean(
         result_type)
     intrinsic = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri, intrinsic_type)
-    values = building_blocks.Tuple((value, weight))
+    values = building_blocks.Struct((value, weight))
     return building_blocks.Call(intrinsic, values)
   else:
     intrinsic_type = computation_types.FunctionType(
@@ -1006,7 +1006,7 @@ def create_federated_reduce(
   ), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_REDUCE.uri,
                                         intrinsic_type)
-  values = building_blocks.Tuple((value, zero, op))
+  values = building_blocks.Struct((value, zero, op))
   return building_blocks.Call(intrinsic, values)
 
 
@@ -1040,7 +1040,7 @@ def create_federated_secure_sum(
   ], result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_SECURE_SUM.uri,
                                         intrinsic_type)
-  values = building_blocks.Tuple([value, bitwidth])
+  values = building_blocks.Struct([value, bitwidth])
   return building_blocks.Call(intrinsic, values)
 
 
@@ -1118,8 +1118,8 @@ def create_federated_unzip(
     fn = building_blocks.Lambda(fn_ref.name, fn_ref.type_signature, sel)
     intrinsic = create_federated_map_or_apply(fn, value_ref)
     elements.append((name, intrinsic))
-  result = building_blocks.Tuple(elements,
-                                 value.type_signature.member.python_container)
+  result = building_blocks.Struct(elements,
+                                  value.type_signature.member.python_container)
   symbols = ((value_ref.name, value),)
   return building_blocks.Block(symbols, result)
 
@@ -1199,7 +1199,7 @@ def _create_flat_federated_zip(value):
         first_type_signature.placement))
   if length == 1:
     ref = building_blocks.Reference('arg', first_type_signature.member)
-    values = building_blocks.Tuple(((first_name, ref),), container_type)
+    values = building_blocks.Struct(((first_name, ref),), container_type)
     fn = building_blocks.Lambda(ref.name, ref.type_signature, values)
     sel = building_blocks.Selection(value, index=0)
     return map_fn(fn, sel)
@@ -1211,7 +1211,7 @@ def _create_flat_federated_zip(value):
       named_ref = building_blocks.Reference('named', value.type_signature)
       value = building_blocks.Block(
           [(named_ref.name, value)],
-          building_blocks.Tuple((
+          building_blocks.Struct((
               building_blocks.Selection(named_ref, index=0),
               building_blocks.Selection(named_ref, index=1),
           )))
@@ -1226,7 +1226,7 @@ def _create_flat_federated_zip(value):
     # Select the values out of the tree back into a flat tuple
     zipped_tree_ref = building_blocks.Reference('zipped_tree',
                                                 zipped.type_signature.member)
-    flattened_tree = building_blocks.Tuple(
+    flattened_tree = building_blocks.Struct(
         [_selection_from_path(zipped_tree_ref, path) for path in paths])
     flatten_fn = building_blocks.Lambda(zipped_tree_ref.name,
                                         zipped_tree_ref.type_signature,
@@ -1267,7 +1267,7 @@ def _build_tree_of_zips_and_paths_to_elements(
     # Base case for two elements
     first = building_blocks.Selection(args, index=start_index)
     second = building_blocks.Selection(args, index=end_index)
-    values = building_blocks.Tuple((first, second))
+    values = building_blocks.Struct((first, second))
     tree = create_zip_two_values(values)
     paths = [[0], [1]]
   else:
@@ -1277,7 +1277,7 @@ def _build_tree_of_zips_and_paths_to_elements(
         args, start_index, split_point)
     right_tree, right_paths = _build_tree_of_zips_and_paths_to_elements(
         args, split_point + 1, end_index)
-    values = building_blocks.Tuple((left_tree, right_tree))
+    values = building_blocks.Struct((left_tree, right_tree))
     tree = create_zip_two_values(values)
     _prepend_to_paths(left_paths, 0)
     _prepend_to_paths(right_paths, 1)
@@ -1359,7 +1359,7 @@ def create_federated_zip(
 
   placement = all_placements.pop()
 
-  flat = building_blocks.Tuple(nested_selections)
+  flat = building_blocks.Struct(nested_selections)
   flat_zipped = _create_flat_federated_zip(flat)
 
   # Every building block under the lambda is being constructed below, so it is
@@ -1377,8 +1377,8 @@ def create_federated_zip(
       for name, element_type in elements:
         selection, index = _make_flat_selections(element_type, index)
         return_tuple.append((name, selection))
-      return building_blocks.Tuple(return_tuple,
-                                   type_signature.python_container), index
+      return building_blocks.Struct(return_tuple,
+                                    type_signature.python_container), index
     else:
       # This shouldn't be possible since the structure was already traversed
       # above.
@@ -1454,7 +1454,7 @@ def create_generic_constant(
     for k in range(len(type_spec)):
       elements.append(create_generic_constant(type_spec[k], scalar_value))
     names = [name for name, _ in anonymous_tuple.iter_elements(type_spec)]
-    packed_elements = building_blocks.Tuple(elements)
+    packed_elements = building_blocks.Struct(elements)
     named_tuple = create_named_tuple(packed_elements, names,
                                      type_spec.python_container)
     return named_tuple
@@ -1552,7 +1552,7 @@ def create_sequence_map(
       (fn.type_signature, arg.type_signature), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_MAP.uri,
                                         intrinsic_type)
-  values = building_blocks.Tuple((fn, arg))
+  values = building_blocks.Struct((fn, arg))
   return building_blocks.Call(intrinsic, values)
 
 
@@ -1590,7 +1590,7 @@ def create_sequence_reduce(
   ), op.type_signature.result)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_REDUCE.uri,
                                         intrinsic_type)
-  values = building_blocks.Tuple((value, zero, op))
+  values = building_blocks.Struct((value, zero, op))
   return building_blocks.Call(intrinsic, values)
 
 
@@ -1652,7 +1652,7 @@ def _create_naming_function(tuple_type_to_name, names_to_add, container_type):
     return (names_to_add[i],
             building_blocks.Selection(naming_lambda_arg, index=i))
 
-  named_result = building_blocks.Tuple(
+  named_result = building_blocks.Struct(
       [_create_struct_element(k) for k in range(len(names_to_add))],
       container_type)
   return building_blocks.Lambda('x', naming_lambda_arg.type_signature,
@@ -1800,9 +1800,9 @@ def create_zip(
       sel_row = building_blocks.Selection(ref, index=row)
       sel_column = building_blocks.Selection(sel_row, index=column)
       columns.append(sel_column)
-    tup = building_blocks.Tuple(columns)
+    tup = building_blocks.Struct(columns)
     rows.append(tup)
-  tup = building_blocks.Tuple(rows)
+  tup = building_blocks.Struct(rows)
   if not comp.is_reference():
     return building_blocks.Block(((ref.name, comp),), tup)
   else:

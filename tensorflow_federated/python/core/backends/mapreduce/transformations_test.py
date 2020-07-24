@@ -220,7 +220,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     self.assertEqual(executable_tf(), 0)
 
   def test_reduces_lambda_returning_empty_tuple_to_tf(self):
-    empty_tuple = building_blocks.Tuple([])
+    empty_tuple = building_blocks.Struct([])
     lam = building_blocks.Lambda('x', tf.int32, empty_tuple)
     extracted_tf = transformations.consolidate_and_extract_local_processing(lam)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
@@ -231,7 +231,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
   def test_returns_trees_with_one_federated_broadcast(self):
     federated_broadcast = compiler_test_utils.create_dummy_called_federated_broadcast(
     )
-    called_intrinsics = building_blocks.Tuple([federated_broadcast])
+    called_intrinsics = building_blocks.Struct([federated_broadcast])
     comp = building_blocks.Lambda('a', tf.int32, called_intrinsics)
     uri = [intrinsic_defs.FEDERATED_BROADCAST.uri]
 
@@ -246,7 +246,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
   def test_handles_federated_broadcasts_nested_in_tuple(self):
     first_broadcast = compiler_test_utils.create_dummy_called_federated_broadcast(
     )
-    packed_broadcast = building_blocks.Tuple([
+    packed_broadcast = building_blocks.Struct([
         building_blocks.Data(
             'a',
             computation_types.FederatedType(
@@ -269,7 +269,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
   def test_returns_trees_with_two_federated_broadcast(self):
     federated_broadcast = compiler_test_utils.create_dummy_called_federated_broadcast(
     )
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_broadcast,
         federated_broadcast,
     ])
@@ -289,7 +289,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    called_intrinsics = building_blocks.Tuple([federated_aggregate])
+    called_intrinsics = building_blocks.Struct([federated_aggregate])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
 
@@ -306,7 +306,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_aggregate,
         federated_aggregate,
     ])
@@ -324,7 +324,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
   def test_returns_trees_with_one_federated_secure_sum(self):
     federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
     )
-    called_intrinsics = building_blocks.Tuple([federated_secure_sum])
+    called_intrinsics = building_blocks.Struct([federated_secure_sum])
     comp = building_blocks.Lambda('a', tf.int32, called_intrinsics)
     uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
 
@@ -339,7 +339,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
   def test_returns_trees_with_two_federated_secure_sums(self):
     federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
     )
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_secure_sum,
         federated_secure_sum,
     ])
@@ -362,7 +362,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         report_parameter_name='c')
     federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
     )
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_aggregate,
         federated_secure_sum,
     ])
@@ -385,7 +385,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         report_parameter_name='c')
     federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
     )
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_aggregate,
         federated_secure_sum,
     ])
@@ -408,7 +408,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         report_parameter_name='c')
     federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
     )
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_aggregate,
         federated_secure_sum,
     ])
@@ -434,7 +434,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         report_parameter_name='c')
     federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
     )
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_aggregate,
         federated_secure_sum,
     ])
@@ -460,7 +460,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         report_parameter_name='c')
     federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
     )
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_aggregate,
         federated_aggregate,
         federated_secure_sum,
@@ -487,7 +487,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         report_parameter_name='c')
     federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
     )
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_aggregate,
         federated_secure_sum,
         federated_secure_sum,
@@ -514,7 +514,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         report_parameter_name='c')
     federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
     )
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_secure_sum,
         federated_secure_sum,
         federated_aggregate,
@@ -541,7 +541,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         report_parameter_name='c')
     federated_secure_sum = compiler_test_utils.create_dummy_called_federated_secure_sum(
     )
-    called_intrinsics = building_blocks.Tuple([
+    called_intrinsics = building_blocks.Struct([
         federated_secure_sum,
         federated_aggregate,
         federated_aggregate,
@@ -565,7 +565,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    called_intrinsics = building_blocks.Tuple([federated_aggregate])
+    called_intrinsics = building_blocks.Struct([federated_aggregate])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
@@ -763,7 +763,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
         index=0)
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
-        building_blocks.Tuple([first_selection, second_selection]))
+        building_blocks.Struct([first_selection, second_selection]))
     expected_fn_regex = (r'\(_([a-z]{3})2 -> <federated_map\(<\(_(\1)3 -> '
                          r'_(\1)3\[0\]\),_(\1)2>\),federated_map\(<\(_(\1)4 -> '
                          r'_(\1)4\[1\]\),_(\1)2>\)>\)')
@@ -803,7 +803,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
         index=0)
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
-        building_blocks.Tuple([first_selection, second_selection]))
+        building_blocks.Struct([first_selection, second_selection]))
     deep_zeroth_index_extracted = transformations.zip_selection_as_argument_to_lower_level_lambda(
         lam, [[0, 0], [2, 0]])
     tree_analysis.check_has_unique_names(deep_zeroth_index_extracted)

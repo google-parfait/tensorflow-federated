@@ -296,7 +296,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
         elements.append((name, ref))
       else:
         elements.append((name, element))
-    tup = building_blocks.Tuple(elements)
+    tup = building_blocks.Struct(elements)
     block = building_blocks.Block(variables, tup)
     return self._extract_from_block(block)
 
@@ -637,7 +637,7 @@ class MergeChainedFederatedMapsOrApplys(transformation_utils.TransformSpec):
     Returns:
       A `building_blocks.Block`.
     """
-    functions = building_blocks.Tuple(comps)
+    functions = building_blocks.Struct(comps)
     functions_name = next(self._name_generator)
     functions_ref = building_blocks.Reference(functions_name,
                                               functions.type_signature)
@@ -660,7 +660,7 @@ class MergeChainedFederatedMapsOrApplys(transformation_utils.TransformSpec):
         comp.argument[1].argument[0],
         comp.argument[0],
     ))
-    arg = building_blocks.Tuple([
+    arg = building_blocks.Struct([
         block,
         comp.argument[1].argument[1],
     ])
@@ -824,10 +824,10 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
         computations.
 
     Returns:
-      A `building_blocks.Tuple`.
+      A `building_blocks.Struct`.
     """
     del type_signature  # Unused
-    return building_blocks.Tuple(comps)
+    return building_blocks.Struct(comps)
 
   def _transform_args_with_federated_types(self, comps, type_signature):
     r"""Transforms a Python `list` of computations with federated types.
@@ -845,7 +845,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       A `building_blocks.Block`.
     """
     del type_signature  # Unused
-    values = building_blocks.Tuple(comps)
+    values = building_blocks.Struct(comps)
     return building_block_factory.create_federated_zip(values)
 
   def _transform_args_with_functional_types(self, comps, type_signature):
@@ -871,7 +871,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     Returns:
       A `building_blocks.Block`.
     """
-    functions = building_blocks.Tuple(comps)
+    functions = building_blocks.Struct(comps)
     fn_name = next(self._name_generator)
     fn_ref = building_blocks.Reference(fn_name, functions.type_signature)
     if type_signature.parameter.is_struct():
@@ -895,7 +895,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       sel_arg = building_blocks.Selection(arg, index=index)
       call = building_blocks.Call(sel_fn, sel_arg)
       elements.append(call)
-    calls = building_blocks.Tuple(elements)
+    calls = building_blocks.Struct(elements)
     result = building_blocks.Lambda(arg_ref.name, arg_ref.type_signature, calls)
     return building_blocks.Block(((fn_ref.name, functions),), result)
 
@@ -924,7 +924,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       for args, arg_type in zip(comps, type_signature):
         transformed_arg = self._transform_args_with_type(args, arg_type)
         transformed_args.append(transformed_arg)
-      return building_blocks.Tuple(transformed_args)
+      return building_blocks.Struct(transformed_args)
     else:
       args = []
       for _, call in anonymous_tuple.iter_elements(comp):
@@ -1833,7 +1833,7 @@ def insert_called_tf_identity_at_leaves(comp):
           elems.append((x[0], _decorate(x[1])))
         else:
           elems.append((x[0], x[1]))
-      return building_blocks.Tuple(elems), True
+      return building_blocks.Struct(elems), True
     elif (comp.is_call() and not comp.function.is_compiled_computation() and
           _should_decorate(comp.argument)):
       arg = _decorate(comp.argument)
@@ -2307,12 +2307,12 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
   def _update_old_symbols_to_new_comp(
       self,
       new_symbol: str,
-      new_comp: Union[building_blocks.Tuple,
+      new_comp: Union[building_blocks.Struct,
                       Tuple[str, building_blocks.ComputationBuildingBlock]],
       symbols_to_comp_map: Dict[str, building_blocks.ComputationBuildingBlock],
   ):
     """Creates mapping from old symbol names to replacement computations."""
-    if isinstance(new_comp, building_blocks.Tuple):
+    if isinstance(new_comp, building_blocks.Struct):
       tup_type_spec_names_stripped = computation_types.StructType([
           x[1] for x in anonymous_tuple.iter_elements(new_comp.type_signature)  # pytype: disable=attribute-error
       ])
@@ -2360,7 +2360,7 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
         new_comp = comp_class[0]
       else:
         new_name = next(self._name_generator)
-        new_comp = building_blocks.Tuple(comp_class)
+        new_comp = building_blocks.Struct(comp_class)
       new_symbols.append((new_name, new_comp))
       self._update_old_symbols_to_new_comp(new_name, new_comp,
                                            old_symbols_to_new_comp)
@@ -2373,13 +2373,13 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
       return comp, False
 
     def _strip_old_names_from_new_symbols(new_symbol_bindings: List[Tuple[
-        str, Union[building_blocks.Tuple,
+        str, Union[building_blocks.Struct,
                    Tuple[str, building_blocks.ComputationBuildingBlock]]]]):
       """Remove names from the bound tuples, which refer to the old symbols."""
       names_stripped = []
       for name, tup in new_symbol_bindings:
-        if isinstance(tup, building_blocks.Tuple):
-          tup_to_add = building_blocks.Tuple(
+        if isinstance(tup, building_blocks.Struct):
+          tup_to_add = building_blocks.Struct(
               [e[1] for e in anonymous_tuple.iter_elements(tup)])
           names_stripped.append((name, tup_to_add))
         else:

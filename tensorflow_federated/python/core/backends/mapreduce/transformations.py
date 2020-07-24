@@ -635,7 +635,7 @@ def _extract_intrinsics_to_top_level_lambda(comp, uri):
       if element not in order:
         order[element] = index
     intrinsics = sorted(intrinsics, key=lambda x: order[x.function.uri])
-    extracted_comp = building_blocks.Tuple(intrinsics)
+    extracted_comp = building_blocks.Struct(intrinsics)
   else:
     extracted_comp = intrinsics[0]
   ref_name = next(name_generator)
@@ -722,11 +722,11 @@ def _group_by_intrinsics_in_top_level_lambda(comp):
   name_generator = building_block_factory.unique_name_generator(comp)
 
   name, first_local = comp.result.locals[0]
-  py_typecheck.check_type(first_local, building_blocks.Tuple)
+  py_typecheck.check_type(first_local, building_blocks.Struct)
   for element in first_local:
     if not building_block_analysis.is_called_intrinsic(element):
       raise ValueError(
-          'Expected all the elements of the `building_blocks.Tuple` to be '
+          'Expected all the elements of the `building_blocks.Struct` to be '
           'called intrinsics, but found: \n{}'.format(element))
 
   # Create collections of data describing how to pack and unpack the intrinsics
@@ -764,11 +764,11 @@ def _group_by_intrinsics_in_top_level_lambda(comp):
   packed_elements = []
   for called_intrinsics in packed_groups.values():
     if len(called_intrinsics) > 1:
-      element = building_blocks.Tuple(called_intrinsics)
+      element = building_blocks.Struct(called_intrinsics)
     else:
       element = called_intrinsics[0]
     packed_elements.append(element)
-  packed_comp = building_blocks.Tuple(packed_elements)
+  packed_comp = building_blocks.Struct(packed_elements)
 
   packed_ref_name = next(name_generator)
   packed_ref_type = computation_types.to_type(packed_comp.type_signature)
@@ -784,7 +784,7 @@ def _group_by_intrinsics_in_top_level_lambda(comp):
       intrinsic_index = indexes[1]
       sel = building_blocks.Selection(sel, index=intrinsic_index)
     unpacked_elements.append(sel)
-  unpacked_comp = building_blocks.Tuple(unpacked_elements)
+  unpacked_comp = building_blocks.Struct(unpacked_elements)
 
   variables = comp.result.locals
   variables[0] = (name, unpacked_comp)
@@ -827,13 +827,13 @@ def _split_by_intrinsics_in_top_level_lambda(comp):
     for element in first_local:
       if not building_block_analysis.is_called_intrinsic(element):
         raise ValueError(
-            'Expected all the elements of the `building_blocks.Tuple` to be '
+            'Expected all the elements of the `building_blocks.Struct` to be '
             'called intrinsics, but found: \n{}'.format(element))
       elements.append(element.argument)
-    result = building_blocks.Tuple(elements)
+    result = building_blocks.Struct(elements)
   else:
     raise ValueError(
-        'Expected either a called intrinsic or a `building_blocks.Tuple` of '
+        'Expected either a called intrinsic or a `building_blocks.Struct` of '
         'called intrinsics, but found: \n{}'.format(first_local))
 
   before = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
@@ -1085,7 +1085,7 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
       selected_comp = building_blocks.Selection(selected_comp, index=selection)
     arg_to_lower_level_lambda_list.append(selected_comp)
   zip_arg = building_block_factory.create_federated_zip(
-      building_blocks.Tuple(arg_to_lower_level_lambda_list))
+      building_blocks.Struct(arg_to_lower_level_lambda_list))
 
   zip_type = computation_types.FederatedType([x.member for x in type_list],
                                              placement=placement)
@@ -1199,7 +1199,7 @@ def select_output_from_lambda(comp, indices):
       else:
         selected_output = _create_selected_output(result_tuple, x, tuple_opt)
       elements.append(selected_output)
-    result = building_blocks.Tuple(elements)
+    result = building_blocks.Struct(elements)
   else:
     if tuple_opt:
       result = result_tuple[indices]
@@ -1260,7 +1260,7 @@ def concatenate_function_outputs(first_function, second_function):
 
   concatenated_function = building_blocks.Lambda(
       second_function.parameter_name, second_function.parameter_type,
-      building_blocks.Tuple([first_function.result, second_function.result]))
+      building_blocks.Struct([first_function.result, second_function.result]))
 
   renamed, _ = tree_transformations.uniquify_reference_names(
       concatenated_function)

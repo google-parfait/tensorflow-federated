@@ -410,7 +410,7 @@ def create_nested_syntax_tree():
   data_e = building_blocks.Data('e', tf.float32)
   data_f = building_blocks.Data('f', tf.float32)
   center_leaf = building_blocks.Block([('u', data_e)], data_f)
-  inner_tuple = building_blocks.Tuple([left_most_leaf, center_leaf])
+  inner_tuple = building_blocks.Struct([left_most_leaf, center_leaf])
 
   selected = building_blocks.Selection(inner_tuple, index=0)
   data_g = building_blocks.Data('g', tf.float32)
@@ -423,7 +423,7 @@ def create_nested_syntax_tree():
   data_h = building_blocks.Data('h', tf.int32)
   right_child = building_blocks.Block([('x', data_h)], right_most_endpoint)
 
-  result = building_blocks.Tuple([middle_block, right_child])
+  result = building_blocks.Struct([middle_block, right_child])
   data_a = building_blocks.Data('a', tf.float32)
   data_b = building_blocks.Data('b', tf.float32)
   dummy_outer_block = building_blocks.Block([('y', data_a), ('z', data_b)],

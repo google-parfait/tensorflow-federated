@@ -160,7 +160,7 @@ class ParseTFFToTFTest(test.TestCase):
     tuple_ref = building_blocks.Reference('x', [tf.int32, tf.float32, tf.bool])
     selected_int = building_blocks.Selection(tuple_ref, index=0)
     selected_bool = building_blocks.Selection(tuple_ref, index=2)
-    created_tuple = building_blocks.Tuple([selected_int, selected_bool])
+    created_tuple = building_blocks.Struct([selected_int, selected_bool])
     called_tf_block = building_blocks.Call(identity_tf_block, created_tuple)
     lambda_wrapper = building_blocks.Lambda('x',
                                             [tf.int32, tf.float32, tf.bool],
@@ -192,7 +192,7 @@ class ParseTFFToTFTest(test.TestCase):
                                                 ('c', tf.bool)])
     selected_int = building_blocks.Selection(tuple_ref, index=0)
     selected_bool = building_blocks.Selection(tuple_ref, index=2)
-    created_tuple = building_blocks.Tuple([selected_int, selected_bool])
+    created_tuple = building_blocks.Struct([selected_int, selected_bool])
     called_tf_block = building_blocks.Call(identity_tf_block, created_tuple)
     lambda_wrapper = building_blocks.Lambda('x', [('a', tf.int32),
                                                   ('b', tf.float32),
@@ -239,7 +239,7 @@ class ParseTFFToTFTest(test.TestCase):
                                                selected_int)
     called_float_tf_block = building_blocks.Call(float_identity_tf_block,
                                                  selected_float)
-    tuple_of_called_graphs = building_blocks.Tuple(
+    tuple_of_called_graphs = building_blocks.Struct(
         [called_int_tf_block, called_float_tf_block])
     lambda_wrapper = building_blocks.Lambda('x', [tf.int32, tf.float32],
                                             tuple_of_called_graphs)
@@ -277,9 +277,9 @@ class ParseTFFToTFTest(test.TestCase):
                                                selected_int)
     called_float_tf_block = building_blocks.Call(float_identity_tf_block,
                                                  selected_float)
-    tuple_of_called_graphs = building_blocks.Tuple([('a', called_int_tf_block),
-                                                    ('b', called_float_tf_block)
-                                                   ])
+    tuple_of_called_graphs = building_blocks.Struct([('a', called_int_tf_block),
+                                                     ('b',
+                                                      called_float_tf_block)])
     lambda_wrapper = building_blocks.Lambda('x', [tf.int32, tf.float32],
                                             tuple_of_called_graphs)
 
@@ -337,7 +337,7 @@ class ParseTFFToTFTest(test.TestCase):
     sum_and_add_one = _create_compiled_computation(lambda x: x[0] + x[1] + 1,
                                                    sum_and_add_one_type)
     int_ref = building_blocks.Reference('x', tf.int32)
-    tuple_of_ints = building_blocks.Tuple((int_ref, int_ref))
+    tuple_of_ints = building_blocks.Struct((int_ref, int_ref))
     summed = building_blocks.Call(sum_and_add_one, tuple_of_ints)
     lambda_wrapper = building_blocks.Lambda('x', tf.int32, summed)
 

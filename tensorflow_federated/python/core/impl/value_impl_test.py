@@ -92,7 +92,7 @@ class ValueImplTest(parameterized.TestCase):
     x_comp = building_blocks.Reference('foo', tf.int32)
     y_comp = building_blocks.Reference('bar', tf.bool)
     z = value_impl.ValueImpl(
-        building_blocks.Tuple([x_comp, ('y', y_comp)]),
+        building_blocks.Struct([x_comp, ('y', y_comp)]),
         context_stack_impl.context_stack)
     self.assertIsInstance(z, value_base.Value)
     self.assertEqual(str(z.type_signature), '<int32,y=bool>')

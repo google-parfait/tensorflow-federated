@@ -463,7 +463,7 @@ class IntrinsicFactory(object):
       intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_REDUCE.uri,
                                             intrinsic_type)
       ref = building_blocks.Reference('arg', value_type)
-      tup = building_blocks.Tuple((ref, zero, op))
+      tup = building_blocks.Struct((ref, zero, op))
       call = building_blocks.Call(intrinsic, tup)
       fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
       fn_impl = value_impl.ValueImpl(fn, self._context_stack)

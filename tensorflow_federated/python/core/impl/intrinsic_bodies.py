@@ -75,7 +75,7 @@ def get_intrinsic_bodies(context_stack):
 
     if _only_tuple_or_tensor(x) and _only_tuple_or_tensor(y):
       arg = value_impl.ValueImpl(
-          building_blocks.Tuple([
+          building_blocks.Struct([
               value_impl.ValueImpl.get_comp(x),
               value_impl.ValueImpl.get_comp(y)
           ]), context_stack)
@@ -89,7 +89,7 @@ def get_intrinsic_bodies(context_stack):
             'compatible; see `type_analysis.is_binary_op_with_upcast_compatible_pair` '
             'for more details.'.format(x.type_signature, y.type_signature))
       packed_arg = value_impl.ValueImpl(
-          building_blocks.Tuple([
+          building_blocks.Struct([
               value_impl.ValueImpl.get_comp(x),
               value_impl.ValueImpl.get_comp(y)
           ]), context_stack)
@@ -205,7 +205,7 @@ def get_intrinsic_bodies(context_stack):
           for i in range(len(names))
       ]
       named_divided = building_block_factory.create_named_tuple(
-          building_blocks.Tuple(divided), names)
+          building_blocks.Struct(divided), names)
       return value_impl.ValueImpl(named_divided, context_stack)
     else:
       raise TypeError(
@@ -228,7 +228,7 @@ def get_intrinsic_bodies(context_stack):
           for i in range(len(names))
       ]
       named_multiplied = building_block_factory.create_named_tuple(
-          building_blocks.Tuple(multiplied), names)
+          building_blocks.Struct(multiplied), names)
       return value_impl.ValueImpl(named_multiplied, context_stack)
     else:
       raise TypeError(
@@ -251,7 +251,7 @@ def get_intrinsic_bodies(context_stack):
           for i in range(len(names))
       ]
       named_added = building_block_factory.create_named_tuple(
-          building_blocks.Tuple(added), names)
+          building_blocks.Struct(added), names)
       return value_impl.ValueImpl(named_added, context_stack)
     else:
       raise TypeError('Generic plus encountered unexpected type {}, {}'.format(

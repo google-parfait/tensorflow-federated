@@ -327,7 +327,7 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
 
 
 def _dictlike_items_to_value(items, context_stack, container_type) -> ValueImpl:
-  value = building_blocks.Tuple(
+  value = building_blocks.Struct(
       [(k, ValueImpl.get_comp(to_value(v, None, context_stack)))
        for k, v in items], container_type)
   return ValueImpl(value, context_stack)
@@ -408,7 +408,7 @@ def to_value(
     result = _wrap_sequence_as_value(arg, type_spec.element, context_stack)
   elif isinstance(arg, anonymous_tuple.AnonymousTuple):
     result = ValueImpl(
-        building_blocks.Tuple([
+        building_blocks.Struct([
             (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
             for k, v in anonymous_tuple.iter_elements(arg)
         ]), context_stack)
@@ -427,7 +427,7 @@ def to_value(
     result = _dictlike_items_to_value(items, context_stack, type(arg))
   elif isinstance(arg, (tuple, list)):
     result = ValueImpl(
-        building_blocks.Tuple(
+        building_blocks.Struct(
             [ValueImpl.get_comp(to_value(x, None, context_stack)) for x in arg],
             type(arg)), context_stack)
   elif isinstance(arg, tensorflow_utils.TENSOR_REPRESENTATION_TYPES):
