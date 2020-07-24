@@ -372,10 +372,6 @@ class StructType(structure.Struct, Type):
         for k in range(len(target_elements))))
 
 
-# FIXME(b/161836891) Remove this alias.
-NamedTupleType = StructType
-
-
 class StructWithPythonType(StructType):
   """A representation of a structure paired with a Python container type."""
 
@@ -410,10 +406,6 @@ class StructWithPythonType(StructType):
   @classmethod
   def get_container_type(cls, value):
     return value._container_type  # pylint: disable=protected-access
-
-
-# FIXME(b/161836891) Remove this alias.
-NamedTupleTypeWithPyContainerType = StructWithPythonType
 
 
 class SequenceType(Type):

@@ -20,7 +20,6 @@ from tensorflow_federated.version import __version__  # pylint: disable=g-bad-im
 from tensorflow_federated.python.core.api.computation_base import Computation
 from tensorflow_federated.python.core.api.computation_types import FederatedType
 from tensorflow_federated.python.core.api.computation_types import FunctionType
-from tensorflow_federated.python.core.api.computation_types import NamedTupleType
 from tensorflow_federated.python.core.api.computation_types import SequenceType
 from tensorflow_federated.python.core.api.computation_types import StructType
 from tensorflow_federated.python.core.api.computation_types import StructWithPythonType
