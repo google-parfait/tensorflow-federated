@@ -14,8 +14,8 @@
 """Utilities for deserializing TensorFlow computations.
 
 Note: This is separate from `tensorflow_serialization.py` to avoid a circular
-dependency through `tf_computation_context.py`. The context code depends on
-the deserialization code (to implement invocation), whereas the serialization
+dependency through `tensorflow_computation_context.py`. The context code depends
+on the deserialization code (to implement invocation), whereas the serialization
 code depends on the context code (to invoke the Python function in context).
 """
 
@@ -37,8 +37,8 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
   implementation may rely on different mechanisms. The caller should not be
   concerned with the specifics of the implementation. At this point, the method
   is expected to only be used within the body of another TF computation (within
-  an instance of `tf_computation_context.TensorFlowComputationContext` at the
-  top of the stack), and potentially also in certain types of interpreted
+  an instance of `tensorflow_computation_context.TensorFlowComputationContext`
+  at the top of the stack), and potentially also in certain types of interpreted
   execution contexts (TBD).
 
   Args:

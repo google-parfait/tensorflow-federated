@@ -18,14 +18,13 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.impl import tf_computation_context
-from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation_context
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class TensorFlowComputationContextTest(test.TestCase):
 
-  def test_invoke_federated_computation_fails(self):
+  def test_invoke_raises_value_error_with_federated_computation(self):
 
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placement_literals.SERVER,
@@ -33,13 +32,14 @@ class TensorFlowComputationContextTest(test.TestCase):
     def foo(x):
       return intrinsics.federated_broadcast(x)
 
-    context = tf_computation_context.TensorFlowComputationContext(
+    context = tensorflow_computation_context.TensorFlowComputationContext(
         tf.compat.v1.get_default_graph())
+
     with self.assertRaisesRegex(ValueError,
                                 'Expected a TensorFlow computation.'):
       context.invoke(foo, None)
 
-  def test_invoke_tf_computation(self):
+  def test_invoke_returns_result_with_tf_computation(self):
     make_10 = computations.tf_computation(lambda: tf.constant(10))
     add_one = computations.tf_computation(lambda x: tf.add(x, 1), tf.int32)
 
@@ -55,17 +55,22 @@ class TensorFlowComputationContextTest(test.TestCase):
 
     @computations.tf_computation
     def foo():
-      # Test invoking one tf_computation inside
-      # another.
       zero = tf.Variable(0, name='zero')
       ten = tf.Variable(make_10())
       return (add_one_with_v2(add_one_with_v1(add_one(make_10()))) + zero +
               ten - ten)
 
-    self.assertEqual(str(foo.type_signature), '( -> int32)')
-    self.assertEqual(foo(), 13)
+    graph = tf.compat.v1.Graph()
+    context = tensorflow_computation_context.TensorFlowComputationContext(graph)
 
+    self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
+    x = context.invoke(foo, None)
+
+    with tf.compat.v1.Session(graph=graph) as sess:
+      if context.init_ops:
+        sess.run(context.init_ops)
+      result = sess.run(x)
+    self.assertEqual(result, 13)
 
 if __name__ == '__main__':
-  default_executor.initialize_default_execution_context()
   test.main()

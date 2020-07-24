@@ -27,8 +27,8 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import tf_computation_context
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation_context
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import function_utils
@@ -268,7 +268,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
                 signature.parameters))
       parameter_value = None
       parameter_binding = None
-    context = tf_computation_context.TensorFlowComputationContext(graph)
+    context = tensorflow_computation_context.TensorFlowComputationContext(graph)
     with context_stack.install(context):
       with variable_utils.record_variable_creation_scope() as all_variables:
         if parameter_value is not None:
