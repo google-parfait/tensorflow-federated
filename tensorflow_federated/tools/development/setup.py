@@ -89,7 +89,7 @@ def get_package_name(requirement: str) -> str:
 
 if '--nightly' in sys.argv:
   sys.argv.remove('--nightly')
-  PROJECT_NAME = 'tff_nightly'
+  PROJECT_NAME = 'tensorflow_federated_nightly'
   date = datetime.date.today().strftime('%Y%m%d')
   VERSION = '{}.dev{}'.format(VERSION, date)
   for index, required_package in enumerate(REQUIRED_PACKAGES):
