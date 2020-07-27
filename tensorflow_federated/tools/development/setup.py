@@ -49,6 +49,7 @@ tutorials and try it out yourself!
 """
 # TODO(b/124800187): Keep in sync with the contents of README.
 
+import datetime
 import sys
 import setuptools
 
@@ -71,6 +72,11 @@ REQUIRED_PACKAGES = [
     'tensorflow~=2.2.0',
 ]
 
+with open('tensorflow_federated/version.py') as fp:
+  globals_dict = {}
+  exec(fp.read(), globals_dict)  # pylint: disable=exec-used
+  VERSION = globals_dict['__version__']
+
 
 def get_package_name(requirement: str) -> str:
   allowed_operators = ['~=', '<', '>', '==', '<=', '>=', '!=']
@@ -84,6 +90,8 @@ def get_package_name(requirement: str) -> str:
 if '--nightly' in sys.argv:
   sys.argv.remove('--nightly')
   PROJECT_NAME = 'tff_nightly'
+  date = datetime.date.today().strftime('%Y%m%d')
+  VERSION = '{}.dev{}'.format(VERSION, date)
   for index, required_package in enumerate(REQUIRED_PACKAGES):
     package_name = get_package_name(required_package)
     if package_name == 'tensorflow':
@@ -92,11 +100,6 @@ if '--nightly' in sys.argv:
       REQUIRED_PACKAGES[index] = 'tfa-nightly'
 else:
   PROJECT_NAME = 'tensorflow_federated'
-
-with open('tensorflow_federated/version.py') as fp:
-  globals_dict = {}
-  exec(fp.read(), globals_dict)  # pylint: disable=exec-used
-  VERSION = globals_dict['__version__']
 
 setuptools.setup(
     name=PROJECT_NAME,
