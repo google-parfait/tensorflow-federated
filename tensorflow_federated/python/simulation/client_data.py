@@ -11,14 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Library methods for working with centralized data used in simulation.
-
-N.B. Federated Learning does not use client IDs or perform any tracking of
-clients. However in simulation experiments using centralized test data the
-experimenter may select specific clients to be processed per round. The concept
-of a client ID is only available at the preprocessing stage when preparing input
-data for the simulation and is not part of the TensorFlow Federated core APIs.
-"""
+"""Library methods for working with centralized data used in simulation."""
 
 import abc
 import collections
@@ -33,7 +26,35 @@ from tensorflow_federated.python.tensorflow_libs import version_check
 
 
 class ClientData(object, metaclass=abc.ABCMeta):
-  """Object to hold a dataset and a mapping of clients to examples."""
+  """Object to hold a federated dataset.
+
+  The federated dataset is represented as a list of client ids, and
+  a function to look up the local dataset for each client id.
+
+  Note: Cross-device federated learning does not use client IDs or perform any
+  tracking of clients. However in simulation experiments using centralized test
+  data the experimenter may select specific clients to be processed per round.
+  The concept of a client ID is only available at the preprocessing stage when
+  preparing input data for the simulation and is not part of the TensorFlow
+  Federated core APIs.
+
+  Each client's local dataset is represented as a `tf.data.Dataset`, but
+  generally this class (and the corresponding datasets hosted by TFF) can
+  easily be consumed by any Python-based ML framework as `numpy` arrays:
+
+  ```python
+  import tensorflow as tf
+  import tensorflow_federated as tff
+  import tensorflow_datasets as tfds
+
+  for client_id in sampled_client_ids[:5]:
+    client_local_dataset = tfds.as_numpy(
+        emnist_train.create_tf_dataset_for_client(client_id))
+    # client_local_dataset is an iterable of structures of numpy arrays
+    for example in client_local_dataset:
+      print(example)
+  ```
+  """
 
   @abc.abstractproperty
   def client_ids(self) -> List[str]:

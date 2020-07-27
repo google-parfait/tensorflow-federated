@@ -41,7 +41,13 @@ types of logic.
 TensorFlow federated
 [hosts multiple datasets](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets)
 that are representative of the characteristics of real-world problems that could
-be solved with federated learning. Datasets include:
+be solved with federated learning.
+
+Note: These datasets can also be consumed by any Python-based ML framework as
+Numpy arrays, as documented in the
+[ClientData API](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/ClientData).
+
+Datasets include:
 
 *   [**StackOverflow**.](https://www.tensorflow.org/federated/api_docs/python/tff/simulation/datasets/stackoverflow/load_data)
     A realistic text dataset for language modeling or supervised learning tasks,
