@@ -616,7 +616,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
     expected_type_signature = computation_types.FunctionType(
         [('a', tf.int32), ('b', tf.float32)], [('a', tf.int32)])
 
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     padded_inputs.type_signature.check_equivalent_to(expected_type_signature)
 
   def test_pad_graph_inputs_to_match_type_adds_names_to_unnamed_tuple(self):
@@ -628,7 +628,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
     expected_type_signature = computation_types.FunctionType(
         [('a', tf.int32), ('b', tf.float32)], [tf.int32])
 
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     padded_inputs.type_signature.check_equivalent_to(expected_type_signature)
 
   def test_pad_graph_inputs_to_match_type_preserves_unnamed_type_signature(
@@ -641,7 +641,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
     expected_type_signature = computation_types.FunctionType(
         [tf.int32, tf.float32], [tf.int32])
 
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     padded_inputs.type_signature.check_equivalent_to(expected_type_signature)
 
   def test_pad_graph_inputs_to_match_type_add_single_int_executes_correctly(
@@ -744,7 +744,7 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
     self.assertIsInstance(merged_comp, building_blocks.CompiledComputation)
     concatenated_type = computation_types.FunctionType(None,
                                                        [tf.float32, tf.float32])
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
     actual_result = test_utils.run_tensorflow(merged_comp.proto, None)
     expected_result = anonymous_tuple.AnonymousTuple([(None, 0.0), (None, 1.0)])
@@ -763,7 +763,7 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
     concatenated_type = computation_types.FunctionType(None,
                                                        [('a', tf.float32),
                                                         ('b', tf.float32)])
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
 
   def test_concatenate_tensorflow_blocks_mix_of_arg_and_no_arg(self):
@@ -778,7 +778,7 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
     self.assertIsInstance(merged_comp, building_blocks.CompiledComputation)
     concatenated_type = computation_types.FunctionType(tf.float32,
                                                        [tf.float32, tf.float32])
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
     actual_result = test_utils.run_tensorflow(merged_comp.proto, 0.0)
     expected_result = anonymous_tuple.AnonymousTuple([(None, 0.0), (None, 1.0)])
@@ -796,7 +796,7 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
     self.assertIsInstance(merged_comp, building_blocks.CompiledComputation)
     concatenated_type = computation_types.FunctionType([tf.float32, tf.float32],
                                                        [tf.float32, tf.float32])
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
     actual_result = test_utils.run_tensorflow(merged_comp.proto, [1.0, 0.0])
     expected_result = anonymous_tuple.AnonymousTuple([(None, 1.0), (None, 1.0)])
@@ -820,7 +820,7 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
     concatenated_type = computation_types.FunctionType(
         [[tf.float32, tf.float32], [tf.float32, tf.float32]],
         [[tf.float32, tf.float32], [tf.float32, tf.float32]])
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
     actual_result = test_utils.run_tensorflow(merged_comp.proto,
                                               [[1.0, 0.0], [0.0, 1.0]])
@@ -874,7 +874,7 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
         ])
     concat_reduce_type_signature = computation_types.FunctionType(
         concat_input_type_signature.result, [tf.int64, tf.int64])
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     concat_input_type_signature.check_equivalent_to(
         merged_input_comps.type_signature)
     concat_reduce_type_signature.check_equivalent_to(
@@ -1490,7 +1490,7 @@ class LambdaCallSelectionFromArgTest(test.TestCase, parameterized.TestCase):
     pattern = _create_simple_lambda_call_selection_from_arg()
     logic = compiled_computation_transforms.LambdaCallSelectionFromArg()
     parsed_lambda, mutated = logic.transform(pattern)
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed_lambda.type_signature.check_equivalent_to(pattern.type_signature)
     self.assertTrue(mutated)
 
@@ -1506,7 +1506,7 @@ class LambdaCallSelectionFromArgTest(test.TestCase, parameterized.TestCase):
         'x', tuple_reference.type_signature, called_identity)
     logic = compiled_computation_transforms.LambdaCallSelectionFromArg()
     parsed_lambda, mutated = logic.transform(lambda_wrapping_call)
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed_lambda.type_signature.check_equivalent_to(
         lambda_wrapping_call.type_signature)
     self.assertIsInstance(parsed_lambda, building_blocks.CompiledComputation)
@@ -1544,7 +1544,7 @@ class LambdaCallSelectionFromArgTest(test.TestCase, parameterized.TestCase):
     logic = compiled_computation_transforms.LambdaCallSelectionFromArg()
     parsed, mutated = logic.transform(lambda_wrapping_call)
     self.assertTrue(mutated)
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(
         lambda_wrapping_call.type_signature)
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
@@ -1641,7 +1641,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
     parsed, mutated = logic.transform(pattern)
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(pattern.type_signature)
     self.assertTrue(mutated)
 
@@ -1660,7 +1660,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
     parsed, mutated = logic.transform(lambda_wrapping_call)
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(
         lambda_wrapping_call.type_signature)
     self.assertTrue(mutated)
@@ -1702,7 +1702,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
     parsed, mutated = logic.transform(lambda_wrapping_call)
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(
         lambda_wrapping_call.type_signature)
     self.assertTrue(mutated)
@@ -1747,7 +1747,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
     parsed, mutated = logic.transform(lambda_wrapping_call)
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(
         lambda_wrapping_call.type_signature)
     self.assertTrue(mutated)
@@ -1793,7 +1793,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     logic = compiled_computation_transforms.LambdaToCalledTupleOfSelectionsFromArg(
     )
     parsed, mutated = logic.transform(lambda_wrapping_call)
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(
         lambda_wrapping_call.type_signature)
     self.assertTrue(mutated)
@@ -1925,7 +1925,7 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
         [tf.int32, tf.float32], [tf.int32, tf.float32])
     expected_type_float_int = computation_types.FunctionType(
         [tf.float32, tf.int32], [tf.float32, tf.int32])
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     composed_fn_float_int.type_signature.check_equivalent_to(
         expected_type_float_int)
     composed_fn_int_float.type_signature.check_equivalent_to(
@@ -1968,7 +1968,7 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
     expected_type = computation_types.FunctionType([('a', tf.int32),
                                                     ('b', tf.float32)],
                                                    [tf.int32, tf.float32])
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     composed.type_signature.check_equivalent_to(expected_type)
 
   def test_composes_named_tuple_function_with_unnamed_tuple_function_executes_correctly(
@@ -1999,7 +1999,7 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
                                                     ('b', tf.float32)],
                                                    [('b', tf.float32),
                                                     ('a', tf.int32)])
-    # FIXME(b/157172423) change to assertEqual when Py container is preserved.
+    # TODO(b/157172423): change to assertEqual when Py container is preserved.
     composed.type_signature.check_equivalent_to(expected_type)
 
   def test_composes_named_tuple_functions_executes_correctly(self):

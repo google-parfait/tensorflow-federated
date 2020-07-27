@@ -377,7 +377,7 @@ class StructWithPythonType(StructType):
 
   def __init__(self, elements, container_type):
     py_typecheck.check_type(container_type, type)
-    # FIXME(b/161561250) check the `container_type` for validity.
+    # TODO(b/161561250): check the `container_type` for validity.
     self._container_type = container_type
     super().__init__(elements)
 

@@ -15,7 +15,7 @@
 
 from tensorflow_federated.python.common_libs import structure
 
-# FIXME(b/161836891) Remove this file after moving usages to `struct`.
+# TODO(b/161836891): Remove this file after moving usages to `struct`.
 
 AnonymousTuple = structure.Struct
 name_list = structure.name_list

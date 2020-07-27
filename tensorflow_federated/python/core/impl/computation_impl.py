@@ -32,7 +32,7 @@ class ComputationImpl(function_utils.ConcreteFunction):
     return value._computation_proto  # pylint: disable=protected-access
 
   def to_building_block(self):
-    # FIXME(b/161560999) currently destroys annotated type.
+    # TODO(b/161560999): currently destroys annotated type.
     # This should perhaps be fixed by adding `type_parameter` to `from_proto`.
     return building_blocks.ComputationBuildingBlock.from_proto(
         self._computation_proto)

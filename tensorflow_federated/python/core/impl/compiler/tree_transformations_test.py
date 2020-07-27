@@ -4451,7 +4451,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
         zipped)
     self.assertTrue(modified)
 
-    # FIXME this is destroying a py container but we probably want to fix it
+    # This is destroying a py container but we probably want to fix it
     zipped.type_signature.check_equivalent_to(
         placement_unwrapped.type_signature)
     self.assertEqual(placement_unwrapped.function.uri,

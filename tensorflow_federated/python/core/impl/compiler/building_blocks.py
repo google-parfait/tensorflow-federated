@@ -504,7 +504,7 @@ class Struct(ComputationBuildingBlock, structure.Struct):
         _element_repr(e) for e in structure.iter_elements(self)))
 
 
-# FIXME(b/161836891): Remove this alias.
+# TODO(b/161836891): Remove this alias.
 Tuple = Struct
 
 
