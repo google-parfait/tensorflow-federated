@@ -71,6 +71,16 @@ REQUIRED_PACKAGES = [
     'tensorflow~=2.2.0',
 ]
 
+
+def get_package_name(requirement: str) -> str:
+  allowed_operators = ['~=', '<', '>', '==', '<=', '>=', '!=']
+  separator = allowed_operators[0]
+  for operator in allowed_operators[1:]:
+    requirement = requirement.replace(operator, separator)
+  name, _ = requirement.split(separator, maxsplit=1)
+  return name
+
+
 if '--nightly' in sys.argv:
   sys.argv.remove('--nightly')
   PROJECT_NAME = 'tff_nightly'
@@ -120,12 +130,3 @@ setuptools.setup(
     license='Apache 2.0',
     keywords='tensorflow federated machine learning',
 )
-
-
-def get_package_name(requirement: str) -> str:
-  allowed_operators = ['~=', '<', '>', '==', '<=', '>=', '!=']
-  separator = allowed_operators[0]
-  for operator in allowed_operators[1:]:
-    requirement = requirement.replace(operator, separator)
-  name, _ = requirement.split(separator, maxsplit=1)
-  return name
