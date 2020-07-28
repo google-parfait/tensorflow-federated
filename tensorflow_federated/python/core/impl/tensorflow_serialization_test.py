@@ -170,8 +170,8 @@ class TensorFlowSerializationTest(test.TestCase):
     parameter = tf.data.Dataset.range(5)
 
     graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
-    self.assertGraphDoesNotContainOps(graph_def,
-                                      ['OptimizeDataset', 'ModelDataste'])
+    self.assertGraphDoesNotContainOps(
+        graph_def, ['OptimizeDataset', 'OptimizeDatasetV2', 'ModelDataset'])
     results = tf.compat.v1.Session().run(
         tf.import_graph_def(
             graph_def, {

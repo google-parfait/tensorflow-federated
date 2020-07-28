@@ -370,7 +370,8 @@ def _remove_optimize_dataset_ops(graph_def: tf.compat.v1.GraphDef):
   Args:
     graph_def: the proto message to mutate in place.
   """
-  ops_to_remove = ['OptimizeDataset', 'ModelDataset']
+  optimize_dataset_ops = ['OptimizeDataset', 'OptimizeDatasetV2']
+  ops_to_remove = optimize_dataset_ops + ['ModelDataset']
 
   def is_control_dep(tensor_name: str) -> bool:
     return tensor_name.startswith('^')
@@ -402,7 +403,7 @@ def _remove_optimize_dataset_ops(graph_def: tf.compat.v1.GraphDef):
             n=tensor_name, nn=node_name))
     if node.op not in ops_to_remove:
       return tensor_name
-    if node.op == 'OptimizeDataset':
+    if node.op in optimize_dataset_ops:
       # The dataset is the first input to OptimizeDataset, so return to replace
       # the dependency on OptimizeDataset.
       return node.input[0]
@@ -412,9 +413,11 @@ def _remove_optimize_dataset_ops(graph_def: tf.compat.v1.GraphDef):
       # that instead.
       input_node_name = normalized_tensor_name(node.input[0])
       input_node = names_to_nodes.get(input_node_name)
-      if input_node is None or input_node.op != 'OptimizeDataset':
-        raise ValueError('Input to ModelDataset node was not OptimizeDataset, '
-                         'unknown graph structure, aborting.')
+      if input_node is None or input_node.op not in optimize_dataset_ops:
+        raise ValueError(
+            'Input to ModelDataset node was {o}, expected OptimizeDataset or '
+            'OptimizeDatasetV2. Unknown graph structure, aborting.'.format(
+                o=input_node.op if input_node is not None else 'None'))
       return input_node.input[0]
     else:
       raise ValueError('Encoutered node [{n}] which is an op to remove, but '
