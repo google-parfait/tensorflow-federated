@@ -8,19 +8,20 @@ environment where the event loop is already running it’s impossible to run tas
 and wait for the result. Trying to do so will give the error `“RuntimeError:
 This event loop is already running”`.
 
-This issue is present when running the TFF tutorials in Jupyter notebooks.
+This issue is present when running the TFF tutorials in Google Colab or Jupyter
+notebooks.
 
 The fix is to:
 
 1.  Install [nest_asyncio](https://pypi.org/project/nest-asyncio/) by either:
 
-    1.  `pip` install the package from within the notebook.
+    *   `pip` install the package from within the notebook.
 
         ```python
         !pip install --quiet --upgrade --user nest_asyncio
         ```
 
-    1.  `pip` install the package in the same virtual environment that the
+    *   `pip` install the package in the same virtual environment that the
         IPython kernel is installed.
 
         ```python
