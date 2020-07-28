@@ -106,8 +106,8 @@ py_library(
     srcs = ["iterative_process_compositions.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core",
     ],
 )

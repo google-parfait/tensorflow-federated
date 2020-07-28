@@ -15,15 +15,6 @@ py_library(
 )
 
 py_library(
-    name = "anonymous_tuple",
-    srcs = ["anonymous_tuple.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":structure",
-    ],
-)
-
-py_library(
     name = "structure",
     srcs = ["structure.py"],
     srcs_version = "PY3",

@@ -13,8 +13,8 @@
 # limitations under the License.
 """Library of compositional helpers for iterative processes."""
 from tensorflow_federated.python import core as tff
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 
 
 def compose_dataset_computation(
@@ -116,7 +116,7 @@ def compose_dataset_computation(
   new_param_elements = []
 
   for idx, (elem_name, elem_type) in enumerate(
-      anonymous_tuple.iter_elements(next_fn_param_type)):
+      structure.iter_elements(next_fn_param_type)):
     if elem_type.is_federated() and elem_type.member.is_equivalent_to(
         dataset_return_type):
       if dataset_index is not None:
