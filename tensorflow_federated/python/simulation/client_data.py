@@ -21,6 +21,7 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.tensorflow_libs import version_check
 
@@ -70,6 +71,19 @@ class ClientData(object, metaclass=abc.ABCMeta):
 
     Returns:
       A `tf.data.Dataset` object.
+    """
+    pass
+
+  @abc.abstractproperty
+  def dataset_computation(self) -> tff.Computation:
+    """A `tff.Computation` accepting a client ID, returning a dataset.
+
+    Note: the `dataset_computation` property is intended as a TFF-specific
+    performance optimization for distributed execution, and subclasses of
+    `ClientData` may or may not support it.
+
+    `ClientData` implementations that don't support `dataset_computation`
+    should raise `NotImplementedError` if this attribute is accessed.
     """
     pass
 
@@ -161,14 +175,10 @@ class ClientData(object, metaclass=abc.ABCMeta):
 
   def preprocess(
       self, preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]
-  ) -> 'ConcreteClientData':
+  ) -> 'PreprocessClientData':
     """Applies `preprocess_fn` to each client's data."""
     py_typecheck.check_callable(preprocess_fn)
-
-    def get_dataset(client_id: str) -> tf.data.Dataset:
-      return preprocess_fn(self.create_tf_dataset_for_client(client_id))
-
-    return ConcreteClientData(self.client_ids, get_dataset)
+    return PreprocessClientData(self, preprocess_fn)
 
   @classmethod
   def from_clients_and_fn(
@@ -261,6 +271,52 @@ class ClientData(object, metaclass=abc.ABCMeta):
             from_ids(test_client_ids))
 
 
+class PreprocessClientData(ClientData):
+  """Applies a preprocessing function to every dataset it returns.
+
+  This `ClientData` subclass delegates all other aspects of implementation to
+  its underlying `ClientData` object, simply wiring in its `preprocess_fn`
+  where necessary.
+  """
+
+  def __init__(self, underlying_client_data: ClientData,
+               preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]):
+    py_typecheck.check_type(underlying_client_data, ClientData)
+    py_typecheck.check_callable(preprocess_fn)
+    self._underlying_client_data = underlying_client_data
+    self._preprocess_fn = preprocess_fn
+    example_dataset = self._preprocess_fn(
+        self._underlying_client_data.create_tf_dataset_for_client(
+            next(iter(underlying_client_data.client_ids))))
+    self._element_type_structure = example_dataset.element_spec
+    self._dataset_computation = None
+
+  @property
+  def client_ids(self):
+    return self._underlying_client_data.client_ids
+
+  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
+    return self._preprocess_fn(
+        self._underlying_client_data.create_tf_dataset_for_client(client_id))
+
+  @property
+  def dataset_computation(self):
+    if self._dataset_computation is None:
+
+      @tff.tf_computation(tf.string)
+      def dataset_comp(client_id):
+        return self._preprocess_fn(
+            self._underlying_client_data.dataset_computation(client_id))
+
+      self._dataset_computation = dataset_comp
+
+    return self._dataset_computation
+
+  @property
+  def element_type_structure(self):
+    return self._element_type_structure
+
+
 class ConcreteClientData(ClientData):
   """A generic `ClientData` object.
 
@@ -271,18 +327,21 @@ class ConcreteClientData(ClientData):
   used to wrap another `ClientData` with an additional preprocessing function.
   """
 
-  def __init__(self, client_ids: Iterable[str],
-               create_tf_dataset_for_client_fn: Callable[[str],
-                                                         tf.data.Dataset]):
+  def __init__(
+      self,
+      client_ids: Iterable[str],
+      create_tf_dataset_for_client_fn: Callable[[str], tf.data.Dataset],
+  ):
     """Arguments correspond to the corresponding members of `ClientData`.
 
     Args:
-      client_ids: A non-empty list of client_ids.
+      client_ids: A non-empty list of string client_ids.
       create_tf_dataset_for_client_fn: A function that takes a client_id from
         the above list, and returns a `tf.data.Dataset`.
     """
     py_typecheck.check_type(client_ids, collections.Iterable)
     py_typecheck.check_callable(create_tf_dataset_for_client_fn)
+
     if not client_ids:
       raise ValueError('At least one client_id is required.')
 
@@ -302,3 +361,7 @@ class ConcreteClientData(ClientData):
   @property
   def element_type_structure(self):
     return self._element_type_structure
+
+  @property
+  def dataset_computation(self):
+    raise NotImplementedError

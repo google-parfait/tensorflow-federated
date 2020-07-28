@@ -80,3 +80,7 @@ class HDF5ClientData(client_data.ClientData):
   @property
   def element_type_structure(self):
     return self._element_type_structure
+
+  @property
+  def dataset_computation(self):
+    raise NotImplementedError("b/162106885")

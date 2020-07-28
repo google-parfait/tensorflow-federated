@@ -87,3 +87,7 @@ class FilePerUserClientData(client_data.ClientData):
 
     return FilePerUserClientData(
         list(client_ids_to_paths_dict.keys()), create_dataset_for_filename_fn)
+
+  @property
+  def dataset_computation(self):
+    raise NotImplementedError('b/162107475')

@@ -44,12 +44,18 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
         return tf.data.experimental.cardinality(ds).numpy()
 
     for i in client_ids:
-      self.assertEqual(length(client_data.create_tf_dataset_for_client(i)), i)
+      self.assertEqual(
+          length(client_data.create_tf_dataset_for_client(i)), int(i))
 
     # Preprocess to only take the first example from each client
     client_data = client_data.preprocess(lambda d: d.take(1))
     for i in client_ids:
       self.assertEqual(length(client_data.create_tf_dataset_for_client(i)), 1)
+
+    # One example per client, so the whole dataset should be `num_clients` long.
+    num_clients = len(
+        list(iter(client_data.create_tf_dataset_from_all_clients())))
+    self.assertLen(client_ids, num_clients)
 
   def get_test_client_data(self):
 

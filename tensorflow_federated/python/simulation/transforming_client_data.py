@@ -130,3 +130,7 @@ class TransformingClientData(client_data.ClientData):
   @property
   def element_type_structure(self):
     return self._raw_client_data.element_type_structure
+
+  @property
+  def dataset_computation(self):
+    raise NotImplementedError('b/XXXXXXXXXXXX')
