@@ -33,7 +33,7 @@ class TransformingExecutor(executor_base.Executor):
 
     Args:
       transformation_fn: A callable that accepts as single parameter that is an
-        instance of `tff.framework.ComputationBuildingBlock`, and returns a
+        instance of `building_blocks.ComputationBuildingBlock`, and returns a
         result of the same type. This callable is used to transform any kind of
         computations before they are relayed to the target executor.
       target_executor: The target executor to delegate all the execution to.

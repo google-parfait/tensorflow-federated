@@ -92,7 +92,7 @@ def check_extraction_result(before_extraction, extracted):
   if before_extraction.type_signature.is_function():
     if not extracted.is_compiled_computation():
       raise CanonicalFormCompilationError(
-          'We expect to parse down to a `tff.framework.CompiledComputation`, '
+          'We expect to parse down to a `building_blocks.CompiledComputation`, '
           'since we have the functional type {} after unwrapping placement. '
           'Instead we have the computation {} of type {}'.format(
               before_extraction.type_signature, extracted,
@@ -100,7 +100,7 @@ def check_extraction_result(before_extraction, extracted):
   else:
     if not extracted.is_call():
       raise CanonicalFormCompilationError(
-          'We expect to parse down to a `tff.framework.Call`, since we have '
+          'We expect to parse down to a `building_blocks.Call`, since we have '
           'the non-functional type {} after unwrapping placement. Instead we '
           'have the computation {} of type {}'.format(
               before_extraction.type_signature, extracted,
@@ -159,8 +159,8 @@ def consolidate_and_extract_local_processing(comp):
      this helper method.
 
   4. If `comp` is of a functional type, it is either an instance of
-     `tff.framework.CompiledComputation`, in which case there is nothing for us
-     to do here, or a `tff.framework.Lambda`.
+     `building_blocks.CompiledComputation`, in which case there is nothing for
+     us to do here, or a `building_blocks.Lambda`.
 
   5. There is at most one unbound reference under `comp`, and this is only
      allowed in the case that `comp` is not of a functional type.
@@ -210,12 +210,12 @@ def consolidate_and_extract_local_processing(comp):
   `(T -> U)`, where `p` is again a specific placement.
 
   Args:
-    comp: An instance of `tff.framework.ComputationBuildingBlock` that serves as
-      the input to this transformation, as described above.
+    comp: An instance of `building_blocks.ComputationBuildingBlock` that serves
+      as the input to this transformation, as described above.
 
   Returns:
-    An instance of `tff.CompiledComputation` that holds the TensorFlow section
-    produced by this extraction step, as described above.
+    An instance of `building_blocks.CompiledComputation` that holds the
+    TensorFlow section produced by this extraction step, as described above.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   if comp.type_signature.is_function():
@@ -275,16 +275,16 @@ def parse_tff_to_tf(comp):
   """Parses TFF construct `comp` into TensorFlow construct.
 
   Does not change the type signature of `comp`. Therefore may return either
-  a `tff.framework.CompiledComputation` or a `tff.framework.Call` with no
-  argument and function `tff.framework.CompiledComputation`.
+  a `building_blocks.CompiledComputation` or a `building_blocks.Call` with no
+  argument and function `building_blocks.CompiledComputation`.
 
   Args:
-    comp: Instance of `tff.framework.ComputationBuildingBlock` to parse down to
-      a single TF block.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` to parse down
+      to a single TF block.
 
   Returns:
     The result of parsing TFF to TF. If successful, this is either a single
-    `tff.framework.CompiledComputation`, or a call to one. If unsuccessful,
+    `building_blocks.CompiledComputation`, or a call to one. If unsuccessful,
     there may be more TFF constructs still remaining. Notice it is not the job
     of this function, but rather its callers, to check that the result of this
     parse is as expected.
@@ -355,8 +355,8 @@ def force_align_and_split_by_intrinsics(comp, uri):
   been encapsulated into `after`.
 
   Additionally, if the `intrinsic` takes a tuple of arguments, then`before`
-  should also be a `tff.framework.Tuple`. Otherwise, both `before` and `after`
-  are instances of `tff.framework.ComputationBuildingBlock`.
+  should also be a `building_blocks.Struct`. Otherwise, both `before` and
+  `after` are instances of `building_blocks.ComputationBuildingBlock`.
 
   If the original computation `comp` had type `(T -> U)`, then `before` and
   `after` would be `(T -> X)` and `(<T,Y> -> U)`, respectively, where `X` is
@@ -369,13 +369,13 @@ def force_align_and_split_by_intrinsics(comp, uri):
   interest: `federated_broadcast` and `federated_aggregate`.
 
   Args:
-    comp: The instance of `tff.framework.Lambda` that serves as the input to
+    comp: The instance of `building_blocks.Lambda` that serves as the input to
       this transformation, as described above.
     uri: A Python `list` of URI of intrinsics to force align and split.
 
   Returns:
     A pair of the form `(before, after)`, where each of `before` and `after`
-    is a `tff.framework.ComputationBuildingBlock` instance that represents a
+    is a `building_blocks.ComputationBuildingBlock` instance that represents a
     part of the result as specified above.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
@@ -392,7 +392,7 @@ def _check_contains_called_intrinsics(comp, uri):
   """Checks if `comp` contains called intrinsics for the given `uri`.
 
   Args:
-    comp: The `tff.framework.ComputationBuildingBlock` to test.
+    comp: The `building_blocks.ComputationBuildingBlock` to test.
     uri: A Python `list` of URI of intrinsics.
 
   Returns:
@@ -432,7 +432,7 @@ def _force_align_intrinsics_to_top_level_lambda(comp, uri):
   given `uri` that is bound only by the `parameter_name` of `comp`.
 
   Args:
-    comp: The `tff.framework.Lambda` to align.
+    comp: The `building_blocks.Lambda` to align.
     uri: A Python `list` of URI of intrinsics.
 
   Returns:
@@ -471,7 +471,7 @@ def _get_called_intrinsics(comp, uri):
   """Returns a Python `list` of called intrinsics in `comp` for the given `uri`.
 
   Args:
-    comp: The `tff.framework.ComputationBuildingBlock` to search.
+    comp: The `building_blocks.ComputationBuildingBlock` to search.
     uri: A Python `list` of URI of intrinsics.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
@@ -498,8 +498,8 @@ def _can_extract_intrinsics_to_top_level_lambda(comp, uri):
   potentiall the top-level parameter the computation itself declares.
 
   Args:
-    comp: The `tff.framework.Lambda` to test. The names of lambda parameters and
-      block variables in `comp` must be unique.
+    comp: The `building_blocks.Lambda` to test. The names of lambda parameters
+      and block variables in `comp` must be unique.
     uri: A Python `list` of URI of intrinsics.
 
   Returns:
@@ -529,7 +529,7 @@ def _inline_block_variables_required_to_align_intrinsics(comp, uri):
   that unbound references in variables that are inlined, will also be inlined.
 
   Args:
-    comp: The `tff.framework.Lambda` to transform.
+    comp: The `building_blocks.Lambda` to transform.
     uri: A Python `list` of URI of intrinsics.
 
   Returns:
@@ -579,7 +579,7 @@ def _extract_intrinsics_to_top_level_lambda(comp, uri):
   r"""Extracts intrinsics in `comp` for the given `uri`.
 
   This transformation creates an AST such that all the called intrinsics for the
-  given `uri` in body of the `tff.framework.Block` returned by the top level
+  given `uri` in body of the `building_blocks.Block` returned by the top level
   lambda have been extracted to the top level lambda and replaced by selections
   from a reference to the constructed variable.
 
@@ -587,7 +587,7 @@ def _extract_intrinsics_to_top_level_lambda(comp, uri):
                        |
                        Block
                       /     \
-        [x=Tuple, ...]       Comp
+        [x=Struct, ...]       Comp
            |
            [Call,                  Call                   Call]
            /    \                 /    \                 /    \
@@ -600,7 +600,7 @@ def _extract_intrinsics_to_top_level_lambda(comp, uri):
   the lower-level called intrinsics on the way back up the tree.
 
   Args:
-    comp: The `tff.framework.Lambda` to transform. The names of lambda
+    comp: The `building_blocks.Lambda` to transform. The names of lambda
       parameters and block variables in `comp` must be unique.
     uri: A URI of an intrinsic.
 
@@ -665,10 +665,10 @@ def _insert_comp_in_top_level_lambda(comp, name, comp_to_insert):
   """Inserts a computation into `comp` with the given `name`.
 
   Args:
-    comp: The `tff.framework.Lambda` to transform. The names of lambda
+    comp: The `building_blocks.Lambda` to transform. The names of lambda
       parameters and block variables in `comp` must be unique.
     name: The name to use.
-    comp_to_insert: The `tff.framework.ComputationBuildingBlock` to insert.
+    comp_to_insert: The `building_blocks.ComputationBuildingBlock` to insert.
 
   Returns:
     A new computation with the transformation applied or the original `comp`.
@@ -694,7 +694,7 @@ def _group_by_intrinsics_in_top_level_lambda(comp):
   """Groups the intrinsics in the frist block local in the result of `comp`.
 
   This transformation creates an AST by replacing the tuple of called intrinsics
-  found as the first local in the `tff.framework.Block` returned by the top
+  found as the first local in the `building_blocks.Block` returned by the top
   level lambda with two new computations. The first computation is a tuple of
   tuples of called intrinsics, representing the original tuple of called
   intrinscis grouped by URI. The second computation is a tuple of selection from
@@ -703,17 +703,18 @@ def _group_by_intrinsics_in_top_level_lambda(comp):
   It is necessary to group intrinsics before it is possible to merge them.
 
   Args:
-    comp: The `tff.framework.Lambda` to transform.
+    comp: The `building_blocks.Lambda` to transform.
 
   Returns:
-    A `tff.framework.Lamda` that returns a `tff.framework.Block`, the first
-    local variables of the retunred `tff.framework.Block` will be a tuple of
+    A `building_blocks.Lamda` that returns a `building_blocks.Block`, the first
+    local variables of the retunred `building_blocks.Block` will be a tuple of
     tuples of called intrinsics representing the original tuple of called
     intrinscis grouped by URI.
 
   Raises:
-    ValueError: If the first local in the `tff.framework.Block` referenced by
-      the top level lambda is not a `tff.framework.Tuple` of called intrinsics.
+    ValueError: If the first local in the `building_blocks.Block` referenced by
+      the top level lambda is not a `building_blocks.Struct` of called
+      intrinsics.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
   py_typecheck.check_type(comp.result, building_blocks.Block)
@@ -799,19 +800,19 @@ def _split_by_intrinsics_in_top_level_lambda(comp):
 
   This function splits `comp` into two computations `before` and `after` the
   called intrinsic or tuple of called intrinsics found as the first local in the
-  `tff.framework.Block` returned by the top level lambda; and returns a Python
+  `building_blocks.Block` returned by the top level lambda; and returns a Python
   tuple representing the pair of `before` and `after` computations.
 
   Args:
-    comp: The `tff.framework.Lambda` to split.
+    comp: The `building_blocks.Lambda` to split.
 
   Returns:
-    A pair of `tff.framework.ComputationBuildingBlock`s.
+    A pair of `building_blocks.ComputationBuildingBlock`s.
 
   Raises:
-    ValueError: If the first local in the `tff.framework.Block` referenced by
-      the top level lambda is not a called intrincs or a `tff.framework.Tuple`
-      of called intrinsics.
+    ValueError: If the first local in the `building_blocks.Block` referenced by
+      the top level lambda is not a called intrincs or a
+      `building_blocks.Struct` of called intrinsics.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
   py_typecheck.check_type(comp.result, building_blocks.Block)
@@ -859,14 +860,14 @@ def _construct_selection_from_federated_tuple(federated_tuple, selected_index,
   """Selects the index `selected_index` from `federated_tuple`.
 
   Args:
-    federated_tuple: Instance of `tff.framework.ComputationBuildingBlock` of
+    federated_tuple: Instance of `building_blocks.ComputationBuildingBlock` of
       federated named tuple type from which we wish to select one of the tuple's
       elements.
     selected_index: Integer index we wish to select from `federated_tuple`.
     name_generator: `generator` to generate unique names in the construction.
 
   Returns:
-    An instance of `tff.framework.ComputationBuildingBlock` representing index
+    An instance of `building_blocks.ComputationBuildingBlock` representing index
     `selected_index` from `federated_tuple`, still federated at the same
     placement.
   """
@@ -932,18 +933,18 @@ def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):
 
   WARNING: Currently, this function must be called before we insert called
   graphs over references (see
-  `tff.framework.insert_called_tf_identity_at_leaves`), due to the reliance on
-  pattern-matching of selections from references below.
+  `tree_transformations.insert_called_tf_identity_at_leaves`), due to the
+  reliance on pattern-matching of selections from references below.
 
   Args:
-    comp: Instance of `tff.framework.Lambda`, whose parameters we wish to rebind
-      to a different lambda. This lambda must have unique names.
+    comp: Instance of `building_blocks.Lambda`, whose parameters we wish to
+      rebind to a different lambda. This lambda must have unique names.
     index: `int` representing the index to bind as an argument to the
       lower-level lambda.
 
   Returns:
-    An instance of `tff.framework.Lambda`, equivalent to `comp`, satisfying the
-    pattern above.
+    An instance of `building_blocks.Lambda`, equivalent to `comp`, satisfying
+    the pattern above.
 
   Raises:
     ValueError: If a called graph with reference argument is detected in
@@ -993,7 +994,7 @@ def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):
 def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
   r"""Binds selections from the param of `comp` as params to lower-level lambda.
 
-  Notice that `comp` must be a `tff.framework.Lambda`.
+  Notice that `comp` must be a `building_blocks.Lambda`.
 
   The returned pattern is quite important here; given an input lambda `Comp`,
   we will return an equivalent structure of the form:
@@ -1021,18 +1022,18 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
 
   WARNING: Currently, this function must be called before we insert called
   graphs over references (see
-  `tff.framework.insert_called_tf_identity_at_leaves`), due to the reliance on
-  pattern-matching of selections from references below.
+  `tree_transformations.insert_called_tf_identity_at_leaves`), due to the
+  reliance on pattern-matching of selections from references below.
 
   Args:
-    comp: Instance of `tff.framework.Lambda`, whose parameters we wish to rebind
-      to a different lambda.
+    comp: Instance of `building_blocks.Lambda`, whose parameters we wish to
+      rebind to a different lambda.
     selected_index_lists: 2-d list of `int`s, specifying the parameters of
       `comp` which we wish to rebind as the parameter to a lower-level lambda.
 
   Returns:
-    An instance of `tff.framework.Lambda`, equivalent to `comp`, satisfying the
-    pattern above.
+    An instance of `building_blocks.Lambda`, equivalent to `comp`, satisfying
+    the pattern above.
 
   Raises:
     ValueError: If a called graph with reference argument is detected in
@@ -1105,9 +1106,10 @@ def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
     binding.
 
     Args:
-      inner_comp: Instance of `tff.frmaework.ComputationBuildingBlock` in which
-        we wish to replace the selections specified by `selected_index_lists`
-        with the parallel new bindings from `selections_from_zip`.
+      inner_comp: Instance of `building_blocks.ComputationBuildingBlock` in
+        which we wish to replace the selections specified by
+        `selected_index_lists` with the parallel new bindings from
+        `selections_from_zip`.
 
     Returns:
       A possibly transformed version of `inner_comp` with nodes matching the
@@ -1160,7 +1162,7 @@ def select_output_from_lambda(comp, indices):
   """Constructs a new function with result of selecting `indices` from `comp`.
 
   Args:
-    comp: Instance of `tff.framework.Lambda` of result type `tff.StructType`
+    comp: Instance of `building_blocks.Lambda` of result type `tff.StructType`
       from which we wish to select `indices`. Notice that this named tuple type
       must have elements of federated type.
     indices: Instance of `int`, `list`, or `tuple`, specifying the indices we
@@ -1219,17 +1221,17 @@ def concatenate_function_outputs(first_function, second_function):
   these functions in parallel and concatenating the outputs in a tuple.
 
   Args:
-    first_function: Instance of `tff.framework.Lambda` whose result we wish to
-      concatenate with the result of `second_function`.
-    second_function: Instance of `tff.framework.Lambda` whose result we wish to
-      concatenate with the result of `first_function`.
+    first_function: Instance of `building_blocks.Lambda` whose result we wish
+      to concatenate with the result of `second_function`.
+    second_function: Instance of `building_blocks.Lambda` whose result we wish
+      to concatenate with the result of `first_function`.
 
   Returns:
-    A new instance of `tff.framework.Lambda` with unique names representing the
-    computation described above.
+    A new instance of `building_blocks.Lambda` with unique names representing
+    the computation described above.
 
   Raises:
-    TypeError: If the arguments are not instances of `tff.framework.Lambda`,
+    TypeError: If the arguments are not instances of `building_blocks.Lambda`,
     or declare parameters of different types.
   """
 
@@ -1286,7 +1288,7 @@ def normalize_all_equal_bit(comp):
   ask it to create a new `tff.FederatedType` for us.
 
   Args:
-    comp: Instance of `tff.framework.ComputationBuildingBlock` whose placed
+    comp: Instance of `building_blocks.ComputationBuildingBlock` whose placed
       values will have their `all_equal` bits normalized.
 
   Returns:

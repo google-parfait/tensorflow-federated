@@ -371,7 +371,7 @@ def contains_called_intrinsic(tree, uri=None):
   """Tests if `tree` contains a called intrinsic for the given `uri`.
 
   Args:
-    tree: A `tff.framework.ComputationBuildingBlock`.
+    tree: A `building_blocks.ComputationBuildingBlock`.
     uri: An optional URI or list of URIs; the same as what is accepted by
       `building_block_analysis.is_called_intrinsic`.
 
