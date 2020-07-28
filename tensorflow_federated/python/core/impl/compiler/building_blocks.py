@@ -15,7 +15,7 @@
 
 import abc
 import enum
-from typing import Any, Iterable, List, Optional, Tuple as TypingTuple, Type
+from typing import Any, Iterable, List, Optional, Tuple, Type
 import zlib
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -504,10 +504,6 @@ class Struct(ComputationBuildingBlock, structure.Struct):
         _element_repr(e) for e in structure.iter_elements(self)))
 
 
-# TODO(b/161836891): Remove this alias.
-Tuple = Struct
-
-
 class Call(ComputationBuildingBlock):
   """A representation of a function invocation in TFF's internal language.
 
@@ -747,7 +743,7 @@ class Block(ComputationBuildingBlock):
 
   def __init__(
       self,
-      local_symbols: Iterable[TypingTuple[str, ComputationBuildingBlock]],
+      local_symbols: Iterable[Tuple[str, ComputationBuildingBlock]],
       result: ComputationBuildingBlock,
   ):
     """Creates a block of TFF code.
@@ -797,7 +793,7 @@ class Block(ComputationBuildingBlock):
     return True
 
   @property
-  def locals(self) -> List[TypingTuple[str, ComputationBuildingBlock]]:
+  def locals(self) -> List[Tuple[str, ComputationBuildingBlock]]:
     return list(self._locals)
 
   @property

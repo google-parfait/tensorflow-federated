@@ -698,8 +698,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
             'y', tf.int32,
             bb.Call(
                 int32_add,
-                bb.Tuple([(None, bb.Reference('x', tf.int32)),
-                          (None, bb.Reference('y', tf.int32))]))))
+                bb.Struct([(None, bb.Reference('x', tf.int32)),
+                           (None, bb.Reference('y', tf.int32))]))))
 
     make_10 = bb.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
@@ -1420,7 +1420,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     report = bb.Lambda('d', tf.float32, report_result)
     called_intrinsic = building_block_factory.create_federated_aggregate(
         value, zero, accumulate, merge, report)
-    tup = bb.Tuple((called_intrinsic, called_intrinsic))
+    tup = bb.Struct((called_intrinsic, called_intrinsic))
     comp = bb.Lambda(ref.name, ref.type_signature, tup)
     transformed_comp, _ = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
@@ -1441,7 +1441,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     fn = test_utils.create_identity_function('b')
     arg = ref
     called_intrinsic = building_block_factory.create_federated_apply(fn, arg)
-    tup = bb.Tuple((called_intrinsic, called_intrinsic))
+    tup = bb.Struct((called_intrinsic, called_intrinsic))
     comp = bb.Lambda(ref.name, ref.type_signature, tup)
     transformed_comp, _ = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_APPLY.uri)
@@ -1459,7 +1459,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
                                                placement_literals.SERVER)
     ref = bb.Reference('a', ref_type)
     called_intrinsic = building_block_factory.create_federated_broadcast(ref)
-    tup = bb.Tuple((called_intrinsic, called_intrinsic))
+    tup = bb.Struct((called_intrinsic, called_intrinsic))
     comp = bb.Lambda(ref.name, ref.type_signature, tup)
     transformed_comp, _ = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_BROADCAST.uri)
@@ -1478,7 +1478,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     fn = test_utils.create_identity_function('b')
     arg = ref
     called_intrinsic = building_block_factory.create_federated_map(fn, arg)
-    tup = bb.Tuple((called_intrinsic, called_intrinsic))
+    tup = bb.Struct((called_intrinsic, called_intrinsic))
     comp = bb.Lambda(ref.name, ref.type_signature, tup)
     transformed_comp, _ = tree_transformations.merge_tuple_intrinsics(
         comp, intrinsic_defs.FEDERATED_MAP.uri)
