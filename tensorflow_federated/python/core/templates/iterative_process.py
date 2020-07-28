@@ -73,7 +73,8 @@ class IterativeProcess(object):
     initialize_result_type = initialize_fn.type_signature.result
 
     py_typecheck.check_type(next_fn, computation_base.Computation)
-    if next_fn.type_signature.parameter.is_struct():
+    if next_fn.type_signature.parameter.is_struct(
+    ) and next_fn.type_signature.parameter:
       next_first_param_type = next_fn.type_signature.parameter[0]
     else:
       next_first_param_type = next_fn.type_signature.parameter

@@ -46,6 +46,16 @@ def count_int32(current):
   return current + 1
 
 
+@computations.tf_computation
+def initialize_empty_tuple():
+  return []
+
+
+@computations.tf_computation([])
+def next_empty_tuple(x):
+  return x
+
+
 class IterativeProcessTest(test.TestCase):
 
   def test_constructor_with_state_only(self):
@@ -94,6 +104,16 @@ class IterativeProcessTest(test.TestCase):
       state, product = ip.next(state, val)
     self.assertEqual(state, sum(range(iterations)))
     self.assertEqual(product, sum(range(iterations - 1)) * (iterations - 1))
+
+  def test_constructor_with_empty_tuple(self):
+    ip = iterative_process.IterativeProcess(initialize_empty_tuple,
+                                            next_empty_tuple)
+
+    state = ip.initialize()
+    iterations = 2
+    for _ in range(iterations):
+      state = ip.next(state)
+    self.assertEqual(state, [])
 
   def test_constructor_with_initialize_bad_type(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):

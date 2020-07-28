@@ -74,6 +74,7 @@ from tensorflow_federated.python.core.impl.executors.remote_executor import Remo
 from tensorflow_federated.python.core.impl.executors.thread_delegating_executor import ThreadDelegatingExecutor
 from tensorflow_federated.python.core.impl.executors.transforming_executor import TransformingExecutor
 from tensorflow_federated.python.core.impl.tree_to_cc_transformations import TFParser
+from tensorflow_federated.python.core.impl.types.type_analysis import contains as type_contains
 from tensorflow_federated.python.core.impl.types.type_analysis import is_tensorflow_compatible_type
 from tensorflow_federated.python.core.impl.types.type_conversions import type_from_tensors
 from tensorflow_federated.python.core.impl.types.type_conversions import type_to_tf_tensor_specs
