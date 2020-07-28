@@ -167,7 +167,7 @@ def build_dp_aggregate(query, value_type_fn=_default_get_value_type_fn):
   The returned `StatefulAggregateFn` can be called with any nested structure for
   the values being statefully aggregated. However, it's necessary to provide two
   functions as arguments which indicate the properties (the `tff.Type` and the
-  `anonymous_tuple.AnonymousTuple` conversion) of the nested structure that will
+  `structure.Struct` conversion) of the nested structure that will
   be used. If using a `collections.OrderedDict` as the value's nested structure,
   the defaults for the arguments suffice.
 

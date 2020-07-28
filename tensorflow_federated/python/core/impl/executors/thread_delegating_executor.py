@@ -21,8 +21,8 @@ import weakref
 
 import absl.logging as logging
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_base as eb
 from tensorflow_federated.python.core.impl.executors import executor_value_base as evb
@@ -121,10 +121,10 @@ class ThreadDelegatingExecutor(eb.Executor):
 
   @tracing.trace
   async def create_struct(self, elements):
-    elements_as_anonymous_tuple = anonymous_tuple.from_container(elements)
-    elements_iter = anonymous_tuple.iter_elements(elements_as_anonymous_tuple)
+    elements_as_structure = structure.from_container(elements)
+    elements_iter = structure.iter_elements(elements_as_structure)
     pairs = ((n, v.internal_representation) for (n, v) in elements_iter)
-    inner_elements = anonymous_tuple.AnonymousTuple(pairs)
+    inner_elements = structure.Struct(pairs)
     return await self._delegate(
         self._target_executor.create_struct(inner_elements))
 

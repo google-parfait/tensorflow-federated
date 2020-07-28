@@ -15,7 +15,7 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -57,13 +57,9 @@ class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):
     self.assertEqual(
         str(foo.type_signature),
         '({<a=int32,b=float32>}@CLIENTS -> <a=int32,b=float32>@SERVER)')
+    self.assertDictEqual(structure.to_odict(foo([[1, 2.]])), {'a': 1, 'b': 2.})
     self.assertDictEqual(
-        anonymous_tuple.to_odict(foo([[1, 2.]])), {
-            'a': 1,
-            'b': 2.
-        })
-    self.assertDictEqual(
-        anonymous_tuple.to_odict(foo([[1, 2.], [3, 4.]])), {
+        structure.to_odict(foo([[1, 2.], [3, 4.]])), {
             'a': 4,
             'b': 6.
         })
@@ -100,11 +96,10 @@ class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):
     )
 
     self.assertEqual(
-        foo([[[1., 1.], 1.]]),
-        anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
+        foo([[[1., 1.], 1.]]), structure.Struct([('a', 1.), ('b', 1.)]))
     self.assertEqual(
         foo([[[1., 1.], 1.], [[1., 2.], 2.], [[1., 4.], 4.]]),
-        anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 3.)]))
+        structure.Struct([('a', 1.), ('b', 3.)]))
 
   def test_federated_mean_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -135,11 +130,10 @@ class IntrinsicBodiesTest(common_test.TestCase, parameterized.TestCase):
         str(foo.type_signature),
         '({<a=float32,b=float32>}@CLIENTS -> <a=float32,b=float32>@SERVER)')
 
-    self.assertEqual(
-        foo([[1., 1.]]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
+    self.assertEqual(foo([[1., 1.]]), structure.Struct([('a', 1.), ('b', 1.)]))
     self.assertEqual(
         foo([[1., 1.], [1., 2.], [1., 3.]]),
-        anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 2.)]))
+        structure.Struct([('a', 1.), ('b', 2.)]))
 
 
 @executor_test_utils.executors
@@ -162,13 +156,12 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
     )
 
     self.assertEqual(
-        foo([[[1., 1.], 1.]]),
-        [anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)])])
+        foo([[[1., 1.], 1.]]), [structure.Struct([('a', 1.), ('b', 1.)])])
     self.assertEqual(
         foo([[[1., 1.], 1.], [[1., 2.], 2.], [[1., 4.], 4.]]), [
-            anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]),
-            anonymous_tuple.AnonymousTuple([('a', 0.5), ('b', 1.)]),
-            anonymous_tuple.AnonymousTuple([('a', 0.25), ('b', 1.)])
+            structure.Struct([('a', 1.), ('b', 1.)]),
+            structure.Struct([('a', 0.5), ('b', 1.)]),
+            structure.Struct([('a', 0.25), ('b', 1.)])
         ])
 
   def test_generic_divide_with_unplaced_scalars(self):
@@ -198,8 +191,7 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
         str(foo.type_signature),
         '(<a=int32,b=float32> -> <a=float64,b=float32>)')
 
-    self.assertEqual(
-        foo([1, 1.]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
+    self.assertEqual(foo([1, 1.]), structure.Struct([('a', 1.), ('b', 1.)]))
 
   def test_generic_divide_with_unplaced_named_tuple_and_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -216,8 +208,7 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
         '(<<a=float32,b=float32>,float32> -> <a=float32,b=float32>)')
 
     self.assertEqual(
-        foo([[1., 1.], 2.]),
-        anonymous_tuple.AnonymousTuple([('a', .5), ('b', .5)]))
+        foo([[1., 1.], 2.]), structure.Struct([('a', .5), ('b', .5)]))
 
   def test_generic_divide_with_named_tuple_of_federated_types(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -236,8 +227,7 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
     )
 
     self.assertEqual(
-        foo([[1], [1]]),
-        anonymous_tuple.AnonymousTuple([('a', [1.]), ('b', [1.])]))
+        foo([[1], [1]]), structure.Struct([('a', [1.]), ('b', [1.])]))
 
   def test_federated_generic_divide_with_federated_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -253,12 +243,10 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
         str(foo.type_signature),
         '({<a=int32,b=float32>}@CLIENTS -> {<a=float64,b=float32>}@CLIENTS)')
 
-    self.assertEqual(
-        foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)])])
+    self.assertEqual(foo([[1, 1.]]), [structure.Struct([('a', 1.), ('b', 1.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [3, 3.]]),
-        [anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)])] * 3)
+        [structure.Struct([('a', 1.), ('b', 1.)])] * 3)
 
   def test_federated_generic_divide_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -290,11 +278,10 @@ class GenericDivideTest(common_test.TestCase, parameterized.TestCase):
         '({<int32,float32>}@CLIENTS -> {<float64,float32>}@CLIENTS)')
 
     self.assertEqual(
-        foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([(None, 1.), (None, 1.)])])
+        foo([[1, 1.]]), [structure.Struct([(None, 1.), (None, 1.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [3, 3.]]),
-        [anonymous_tuple.AnonymousTuple([(None, 1.), (None, 1.)])] * 3)
+        [structure.Struct([(None, 1.), (None, 1.)])] * 3)
 
 
 @executor_test_utils.executors
@@ -317,13 +304,12 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
     )
 
     self.assertEqual(
-        foo([[[1., 1.], 1.]]),
-        [anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)])])
+        foo([[[1., 1.], 1.]]), [structure.Struct([('a', 1.), ('b', 1.)])])
     self.assertEqual(
         foo([[[1., 1.], 1.], [[1., 2.], 2.], [[1., 4.], 4.]]), [
-            anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]),
-            anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 4.)]),
-            anonymous_tuple.AnonymousTuple([('a', 4.), ('b', 16.)])
+            structure.Struct([('a', 1.), ('b', 1.)]),
+            structure.Struct([('a', 2.), ('b', 4.)]),
+            structure.Struct([('a', 4.), ('b', 16.)])
         ])
 
   def test_generic_multiply_with_unplaced_scalars(self):
@@ -370,8 +356,7 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
         '(<<a=float32,b=float32>,float32> -> <a=float32,b=float32>)')
 
     self.assertEqual(
-        foo([[1., 1.], 2.]),
-        anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)]))
+        foo([[1., 1.], 2.]), structure.Struct([('a', 2.), ('b', 2.)]))
 
   def test_federated_generic_multiply_with_unnamed_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -388,13 +373,12 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
         '({<int32,float32>}@CLIENTS -> {<int32,float32>}@CLIENTS)')
 
     self.assertEqual(
-        foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([(None, 1), (None, 1.)])])
+        foo([[1, 1.]]), [structure.Struct([(None, 1), (None, 1.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
-            anonymous_tuple.AnonymousTuple([(None, 1), (None, 1.)]),
-            anonymous_tuple.AnonymousTuple([(None, 1), (None, 4.)]),
-            anonymous_tuple.AnonymousTuple([(None, 1), (None, 9.)])
+            structure.Struct([(None, 1), (None, 1.)]),
+            structure.Struct([(None, 1), (None, 4.)]),
+            structure.Struct([(None, 1), (None, 9.)])
         ])
 
   def test_federated_generic_multiply_with_named_tuples(self):
@@ -411,13 +395,12 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
         str(foo.type_signature),
         '({<a=int32,b=float32>}@CLIENTS -> {<a=int32,b=float32>}@CLIENTS)')
 
-    self.assertEqual(
-        foo([[1, 1.]]), [anonymous_tuple.AnonymousTuple([('a', 1), ('b', 1.)])])
+    self.assertEqual(foo([[1, 1.]]), [structure.Struct([('a', 1), ('b', 1.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
-            anonymous_tuple.AnonymousTuple([('a', 1), ('b', 1.)]),
-            anonymous_tuple.AnonymousTuple([('a', 1), ('b', 4.)]),
-            anonymous_tuple.AnonymousTuple([('a', 1), ('b', 9.)])
+            structure.Struct([('a', 1), ('b', 1.)]),
+            structure.Struct([('a', 1), ('b', 4.)]),
+            structure.Struct([('a', 1), ('b', 9.)])
         ])
 
   def test_generic_multiply_with_named_tuple_of_federated_types(self):
@@ -437,8 +420,7 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
     )
 
     self.assertEqual(
-        foo([[1], [1]]), anonymous_tuple.AnonymousTuple([('a', [1]),
-                                                         ('b', [1])]))
+        foo([[1], [1]]), structure.Struct([('a', [1]), ('b', [1])]))
 
   def test_generic_multiply_with_unplaced_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -453,8 +435,7 @@ class GenericMultiplyTest(common_test.TestCase, parameterized.TestCase):
         str(foo.type_signature),
         '(<a=float32,b=float32> -> <a=float32,b=float32>)')
 
-    self.assertEqual(
-        foo([1., 1.]), anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 1.)]))
+    self.assertEqual(foo([1., 1.]), structure.Struct([('a', 1.), ('b', 1.)]))
 
 
 @executor_test_utils.executors
@@ -490,13 +471,12 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
         '({<int32,float32>}@CLIENTS -> {<int32,float32>}@CLIENTS)')
 
     self.assertEqual(
-        foo([[1, 1.]]),
-        [anonymous_tuple.AnonymousTuple([(None, 2), (None, 2.)])])
+        foo([[1, 1.]]), [structure.Struct([(None, 2), (None, 2.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
-            anonymous_tuple.AnonymousTuple([(None, 2), (None, 2.)]),
-            anonymous_tuple.AnonymousTuple([(None, 2), (None, 4.)]),
-            anonymous_tuple.AnonymousTuple([(None, 2), (None, 6.)])
+            structure.Struct([(None, 2), (None, 2.)]),
+            structure.Struct([(None, 2), (None, 4.)]),
+            structure.Struct([(None, 2), (None, 6.)])
         ])
 
   def test_federated_generic_add_with_named_tuples(self):
@@ -513,13 +493,12 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
         str(foo.type_signature),
         '({<a=int32,b=float32>}@CLIENTS -> {<a=int32,b=float32>}@CLIENTS)')
 
-    self.assertEqual(
-        foo([[1, 1.]]), [anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)])])
+    self.assertEqual(foo([[1, 1.]]), [structure.Struct([('a', 2), ('b', 2.)])])
     self.assertEqual(
         foo([[1, 1.], [1, 2.], [1, 3.]]), [
-            anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)]),
-            anonymous_tuple.AnonymousTuple([('a', 2), ('b', 4.)]),
-            anonymous_tuple.AnonymousTuple([('a', 2), ('b', 6.)])
+            structure.Struct([('a', 2), ('b', 2.)]),
+            structure.Struct([('a', 2), ('b', 4.)]),
+            structure.Struct([('a', 2), ('b', 6.)])
         ])
 
   def test_generic_add_with_named_tuple_of_federated_types(self):
@@ -540,8 +519,7 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
 
     self.assertEqual(
         foo([[1], [1]]),
-        anonymous_tuple.AnonymousTuple([('a', tf.constant([2.])),
-                                        ('b', tf.constant([2.]))]))
+        structure.Struct([('a', tf.constant([2.])), ('b', tf.constant([2.]))]))
 
   def test_generic_add_with_unplaced_named_tuples(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -555,8 +533,7 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
     self.assertEqual(
         str(foo.type_signature), '(<a=int32,b=float32> -> <a=int32,b=float32>)')
 
-    self.assertEqual(
-        foo([1, 1.]), anonymous_tuple.AnonymousTuple([('a', 2), ('b', 2.)]))
+    self.assertEqual(foo([1, 1.]), structure.Struct([('a', 2), ('b', 2.)]))
 
   def test_generic_add_with_unplaced_named_tuple_and_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -573,8 +550,7 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
         '(<<a=float32,b=float32>,float32> -> <a=float32,b=float32>)')
 
     self.assertEqual(
-        foo([[1., 1.], 1.]),
-        anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)]))
+        foo([[1., 1.], 1.]), structure.Struct([('a', 2.), ('b', 2.)]))
 
   def test_generic_add_federated_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -593,13 +569,12 @@ class GenericAddTest(common_test.TestCase, parameterized.TestCase):
     )
 
     self.assertEqual(
-        foo([[[1., 1.], 1.]]),
-        [anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)])])
+        foo([[[1., 1.], 1.]]), [structure.Struct([('a', 2.), ('b', 2.)])])
     self.assertEqual(
         foo([[[1., 1.], 1.], [[1., 2.], 2.], [[1., 4.], 4.]]), [
-            anonymous_tuple.AnonymousTuple([('a', 2.), ('b', 2.)]),
-            anonymous_tuple.AnonymousTuple([('a', 3.), ('b', 4.)]),
-            anonymous_tuple.AnonymousTuple([('a', 5.), ('b', 8.)])
+            structure.Struct([('a', 2.), ('b', 2.)]),
+            structure.Struct([('a', 3.), ('b', 4.)]),
+            structure.Struct([('a', 5.), ('b', 8.)])
         ])
 
 

@@ -19,7 +19,7 @@ import attr
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
@@ -139,9 +139,9 @@ class InferTypeTest(parameterized.TestCase):
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, list)
 
-  def test_with_anonymous_tuple(self):
+  def test_with_structure(self):
     t = type_conversions.infer_type(
-        anonymous_tuple.AnonymousTuple([
+        structure.Struct([
             ('a', 10),
             (None, False),
         ]))
@@ -149,11 +149,11 @@ class InferTypeTest(parameterized.TestCase):
     self.assertIsInstance(t, computation_types.StructType)
     self.assertNotIsInstance(t, computation_types.StructWithPythonType)
 
-  def test_with_nested_anonymous_tuple(self):
+  def test_with_nested_structure(self):
     t = type_conversions.infer_type(
-        anonymous_tuple.AnonymousTuple([
+        structure.Struct([
             ('a', 10),
-            (None, anonymous_tuple.AnonymousTuple([
+            (None, structure.Struct([
                 (None, True),
                 (None, 0.5),
             ])),
@@ -461,14 +461,14 @@ class TypeToPyContainerTest(test.TestCase):
     self.assertEqual(result, value)
 
   def test_anon_tuple_return(self):
-    anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2.0)])
+    anon_tuple = structure.Struct([(None, 1), (None, 2.0)])
     self.assertEqual(
         type_conversions.type_to_py_container(
             anon_tuple, computation_types.StructType([tf.int32, tf.float32])),
         anon_tuple)
 
   def test_anon_tuple_without_names_to_container_without_names(self):
-    anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2.0)])
+    anon_tuple = structure.Struct([(None, 1), (None, 2.0)])
     types = [tf.int32, tf.float32]
     self.assertSequenceEqual(
         type_conversions.type_to_py_container(
@@ -480,7 +480,7 @@ class TypeToPyContainerTest(test.TestCase):
         (1, 2.0))
 
   def test_succeeds_with_federated_namedtupletype(self):
-    anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2.0)])
+    anon_tuple = structure.Struct([(None, 1), (None, 2.0)])
     types = [tf.int32, tf.float32]
     self.assertSequenceEqual(
         type_conversions.type_to_py_container(
@@ -496,19 +496,19 @@ class TypeToPyContainerTest(test.TestCase):
                 placement_literals.SERVER)), (1, 2.0))
 
   def test_anon_tuple_with_names_to_container_without_names_fails(self):
-    anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), ('a', 2.0)])
+    anon_tuple = structure.Struct([(None, 1), ('a', 2.0)])
     types = [tf.int32, tf.float32]
     with self.assertRaisesRegex(ValueError,
                                 'contains a mix of named and unnamed elements'):
       type_conversions.type_to_py_container(
           anon_tuple, computation_types.StructWithPythonType(types, tuple))
-    anon_tuple = anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2.0)])
+    anon_tuple = structure.Struct([('a', 1), ('b', 2.0)])
     with self.assertRaisesRegex(ValueError, 'which does not support names'):
       type_conversions.type_to_py_container(
           anon_tuple, computation_types.StructWithPythonType(types, list))
 
   def test_anon_tuple_with_names_to_container_with_names(self):
-    anon_tuple = anonymous_tuple.AnonymousTuple([('a', 1), ('b', 2.0)])
+    anon_tuple = structure.Struct([('a', 1), ('b', 2.0)])
     types = [('a', tf.int32), ('b', tf.float32)]
     self.assertDictEqual(
         type_conversions.type_to_py_container(
@@ -540,7 +540,7 @@ class TypeToPyContainerTest(test.TestCase):
         TestFoo(a=1, b=2.0))
 
   def test_anon_tuple_without_names_to_container_with_names_fails(self):
-    anon_tuple = anonymous_tuple.AnonymousTuple([(None, 1), (None, 2.0)])
+    anon_tuple = structure.Struct([(None, 1), (None, 2.0)])
     types = [('a', tf.int32), ('b', tf.float32)]
     with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
       type_conversions.type_to_py_container(
@@ -568,13 +568,11 @@ class TypeToPyContainerTest(test.TestCase):
           anon_tuple, computation_types.StructWithPythonType(types, TestFoo))
 
   def test_nested_py_containers(self):
-    anon_tuple = anonymous_tuple.AnonymousTuple([
+    anon_tuple = structure.Struct([
         (None, 1), (None, 2.0),
         ('dict_key',
-         anonymous_tuple.AnonymousTuple([
-             ('a', 3),
-             ('b', anonymous_tuple.AnonymousTuple([(None, 4), (None, 5)]))
-         ]))
+         structure.Struct([('a', 3),
+                           ('b', structure.Struct([(None, 4), (None, 5)]))]))
     ])
 
     dict_subtype = computation_types.StructWithPythonType(
@@ -586,7 +584,7 @@ class TypeToPyContainerTest(test.TestCase):
                                               (None, tf.float32),
                                               ('dict_key', dict_subtype)])
 
-    expected_nested_structure = anonymous_tuple.AnonymousTuple([
+    expected_nested_structure = structure.Struct([
         (None, 1),
         (None, 2.0),
         ('dict_key', {

@@ -16,7 +16,7 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -405,7 +405,7 @@ class IsValidBitwidthTypeForValueType(parameterized.TestCase):
 class IsAnonTupleWithPyContainerTest(absltest.TestCase):
 
   def test_returns_true(self):
-    value = anonymous_tuple.AnonymousTuple([('a', 0.0)])
+    value = structure.Struct([('a', 0.0)])
     type_spec = computation_types.StructWithPythonType([('a', tf.float32)],
                                                        dict)
     self.assertTrue(type_analysis.is_struct_with_py_container(value, type_spec))
@@ -418,7 +418,7 @@ class IsAnonTupleWithPyContainerTest(absltest.TestCase):
         type_analysis.is_struct_with_py_container(value, type_spec))
 
   def test_returns_false_with_named_tuple_type_spec(self):
-    value = anonymous_tuple.AnonymousTuple([('a', 0.0)])
+    value = structure.Struct([('a', 0.0)])
     type_spec = computation_types.StructType([('a', tf.float32)])
     self.assertFalse(
         type_analysis.is_struct_with_py_container(value, type_spec))

@@ -19,9 +19,9 @@ import cachetools
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
@@ -165,7 +165,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
 
   param_fns = []
   if param_type is not None:
-    for spec in anonymous_tuple.flatten(type_spec.parameter):
+    for spec in structure.flatten(type_spec.parameter):
       if spec.is_tensor():
         param_fns.append(lambda x: x)
       else:
@@ -173,22 +173,22 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
         param_fns.append(tf.data.experimental.to_variant)
 
   result_fns = []
-  for spec in anonymous_tuple.flatten(result_type):
+  for spec in structure.flatten(result_type):
     if spec.is_tensor():
       result_fns.append(lambda x: x)
     else:
       py_typecheck.check_type(spec, computation_types.SequenceType)
-      structure = type_conversions.type_to_tf_structure(spec.element)
+      tf_structure = type_conversions.type_to_tf_structure(spec.element)
 
-      def fn(x, structure=structure):
-        return tf.data.experimental.from_variant(x, structure)
+      def fn(x, tf_structure=tf_structure):
+        return tf.data.experimental.from_variant(x, tf_structure)
 
       result_fns.append(fn)
 
   def _fn_to_return(arg, param_fns, wrapped_fn):  # pylint:disable=missing-docstring
     param_elements = []
     if arg is not None:
-      arg_parts = anonymous_tuple.flatten(arg)
+      arg_parts = structure.flatten(arg)
       if len(arg_parts) != len(param_fns):
         raise RuntimeError('Expected {} arguments, found {}.'.format(
             len(param_fns), len(arg_parts)))
@@ -213,7 +213,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     result_elements = []
     for result_part, result_fn in zip(result_parts, result_fns):
       result_elements.append(result_fn(result_part))
-    return anonymous_tuple.pack_sequence_as(result_type, result_elements)
+    return structure.pack_sequence_as(result_type, result_elements)
 
   fn_to_return = lambda arg, p=param_fns, w=wrapped_fn: _fn_to_return(arg, p, w)
 
@@ -288,9 +288,8 @@ def to_representation_for_type(
     tf_function_cache[key] = embedded_fn
     return embedded_fn
   elif type_spec.is_struct():
-    type_elem = anonymous_tuple.to_elements(type_spec)
-    value_elem = (
-        anonymous_tuple.to_elements(anonymous_tuple.from_container(value)))
+    type_elem = structure.to_elements(type_spec)
+    value_elem = (structure.to_elements(structure.from_container(value)))
     result_elem = []
     if len(type_elem) != len(value_elem):
       raise TypeError('Expected a {}-element tuple, found {} elements.'.format(
@@ -303,7 +302,7 @@ def to_representation_for_type(
       el_repr = to_representation_for_type(el_val, tf_function_cache, el_type,
                                            device)
       result_elem.append((t_name, el_repr))
-    return anonymous_tuple.AnonymousTuple(result_elem)
+    return structure.Struct(result_elem)
   elif device is not None:
     py_typecheck.check_type(device, tf.config.LogicalDevice)
     with tf.device(device.name):
@@ -349,7 +348,7 @@ class EagerValue(executor_value_base.ExecutorValue):
 
     Args:
       value: Depending on `type_spec`, either a `tf.Tensor`, `tf.data.Dataset`,
-        or a nested structure of these stored in an `AnonymousTuple`.
+        or a nested structure of these stored in an `Struct`.
       tf_function_cache: A cache obeying `dict` semantics that can be used to
         look up previously embedded TensorFlow functions.
       type_spec: An instance of `tff.Type` that represents a tensor, a dataset,
@@ -506,8 +505,7 @@ class EagerTFExecutor(executor_base.Executor):
     Returns:
       An instance of `EagerValue` that represents the constructed tuple.
     """
-    elements = anonymous_tuple.to_elements(
-        anonymous_tuple.from_container(elements))
+    elements = structure.to_elements(structure.from_container(elements))
     val_elements = []
     type_elements = []
     for k, v in elements:
@@ -515,7 +513,7 @@ class EagerTFExecutor(executor_base.Executor):
       val_elements.append((k, v.internal_representation))
       type_elements.append((k, v.type_signature))
     return EagerValue(
-        anonymous_tuple.AnonymousTuple(val_elements), self._tf_function_cache,
+        structure.Struct(val_elements), self._tf_function_cache,
         computation_types.StructType([
             (k, v) if k is not None else v for k, v in type_elements
         ]))
@@ -538,8 +536,7 @@ class EagerTFExecutor(executor_base.Executor):
     """
     py_typecheck.check_type(source, EagerValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
-    py_typecheck.check_type(source.internal_representation,
-                            anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(source.internal_representation, structure.Struct)
     if index is not None:
       py_typecheck.check_type(index, int)
       if name is not None:

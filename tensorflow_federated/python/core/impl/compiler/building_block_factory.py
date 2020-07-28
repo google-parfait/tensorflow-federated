@@ -20,9 +20,9 @@ from typing import Any, Callable, Iterator, List, Sequence, Optional, Tuple, Uni
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -140,8 +140,7 @@ def _extract_selections(parameter_value, output_spec):
 
 def construct_tensorflow_selecting_and_packing_outputs(
     parameter_type: computation_types.StructType,
-    output_structure: anonymous_tuple.AnonymousTuple
-) -> building_blocks.CompiledComputation:
+    output_structure: structure.Struct) -> building_blocks.CompiledComputation:
   """Constructs TensorFlow selecting and packing elements from its input.
 
   The result of this function can be called on a deduplicated
@@ -163,8 +162,8 @@ def construct_tensorflow_selecting_and_packing_outputs(
   Args:
     parameter_type: A `computation_types.StructType` of the argument on
       which the constructed function will be called.
-    output_structure: `anonymous_tuple.AnonymousTuple` with `SelectionSpec` or
-      `anonymous_tupl.AnonymousTuple` elements, mapping from elements of the
+    output_structure: `structure.Struct` with `SelectionSpec` or
+      `anonymous_tupl.Struct` elements, mapping from elements of the
       nested argument tuple to the desired result of the generated computation.
       `output_structure` must contain all the names desired on the output of the
       computation.
@@ -181,10 +180,10 @@ def construct_tensorflow_selecting_and_packing_outputs(
       `computation_types.TensorType`.
   """
   py_typecheck.check_type(parameter_type, computation_types.StructType)
-  py_typecheck.check_type(output_structure, anonymous_tuple.AnonymousTuple)
+  py_typecheck.check_type(output_structure, structure.Struct)
 
   def _check_output_structure(elem):
-    if isinstance(elem, anonymous_tuple.AnonymousTuple):
+    if isinstance(elem, structure.Struct):
       for x in elem:
         _check_output_structure(x)
     elif not isinstance(elem, SelectionSpec):
@@ -193,14 +192,14 @@ def construct_tensorflow_selecting_and_packing_outputs(
                       'of type {}.'.format(elem, type(elem)))
 
   _check_output_structure(output_structure)
-  output_spec = anonymous_tuple.flatten(output_structure)
+  output_spec = structure.flatten(output_structure)
   type_analysis.check_tensorflow_compatible_type(parameter_type)
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', parameter_type, graph)
   results = _extract_selections(parameter_value, output_spec)
 
-  repacked_result = anonymous_tuple.pack_sequence_as(output_structure, results)
+  repacked_result = structure.pack_sequence_as(output_structure, results)
   result_type, result_binding = tensorflow_utils.capture_result_from_graph(
       repacked_result, graph)
 
@@ -484,7 +483,7 @@ def create_named_tuple_setattr_lambda(
         'tuple containing this attribute.'.format(name=name))
   elements = []
   for idx, (key, element_type) in enumerate(
-      anonymous_tuple.to_elements(named_tuple_signature)):
+      structure.to_elements(named_tuple_signature)):
     if key == name:
       if not element_type.is_assignable_from(value_comp.type_signature):
         raise TypeError(
@@ -526,7 +525,7 @@ def create_federated_getattr_comp(
                           computation_types.StructType)
   py_typecheck.check_type(name, str)
   element_names = [
-      x for x, _ in anonymous_tuple.iter_elements(comp.type_signature.member)
+      x for x, _ in structure.iter_elements(comp.type_signature.member)
   ]
   if name not in element_names:
     raise ValueError(
@@ -569,7 +568,7 @@ def create_federated_getitem_comp(
   if isinstance(key, int):
     selected = building_blocks.Selection(apply_input, index=key)
   else:
-    elems = anonymous_tuple.to_elements(comp.type_signature.member)
+    elems = structure.to_elements(comp.type_signature.member)
     index_range = range(*key.indices(len(elems)))
     elem_list = []
     for k in index_range:
@@ -601,7 +600,7 @@ def create_computation_appending(
       of type `computation_type.StructType`.
     comp2: A `building_blocks.ComputationBuildingBlock` or a named computation
       (a tuple pair of name, computation) representing a single element of an
-      `anonymous_tuple.AnonymousTuple`.
+      `structure.Struct`.
 
   Returns:
     A `building_blocks.Block`.
@@ -623,7 +622,7 @@ def create_computation_appending(
   ref = building_blocks.Reference('comps', comps.type_signature)
   sel_0 = building_blocks.Selection(ref, index=0)
   elements = []
-  named_type_signatures = anonymous_tuple.to_elements(comp1.type_signature)
+  named_type_signatures = structure.to_elements(comp1.type_signature)
   for index, (name, _) in enumerate(named_type_signatures):
     sel = building_blocks.Selection(sel_0, index=index)
     elements.append((name, sel))
@@ -1105,8 +1104,7 @@ def create_federated_unzip(
     ValueError: If `value` does not contain any elements.
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  named_type_signatures = anonymous_tuple.to_elements(
-      value.type_signature.member)
+  named_type_signatures = structure.to_elements(value.type_signature.member)
   length = len(named_type_signatures)
   if length == 0:
     raise ValueError('federated_zip is only supported on non-empty tuples.')
@@ -1183,7 +1181,7 @@ def _create_flat_federated_zip(value):
     ValueError: If `value` does not contain any elements.
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
+  named_type_signatures = structure.to_elements(value.type_signature)
   container_type = value.type_signature.python_container
   names_to_add = [name for name, _ in named_type_signatures]
   length = len(named_type_signatures)
@@ -1326,7 +1324,7 @@ def create_federated_zip(
   py_typecheck.check_type(value.type_signature, computation_types.StructType)
 
   # If the type signature is flat, just call _create_flat_federated_zip.
-  elements = anonymous_tuple.to_elements(value.type_signature)
+  elements = structure.to_elements(value.type_signature)
   if all(type_sig.is_federated() for (_, type_sig) in elements):
     return _create_flat_federated_zip(value)
 
@@ -1372,7 +1370,7 @@ def create_federated_zip(
     if type_signature.is_federated():
       return building_blocks.Selection(ref, index=index), index + 1
     elif type_signature.is_struct():
-      elements = anonymous_tuple.to_elements(type_signature)
+      elements = structure.to_elements(type_signature)
       return_tuple = []
       for name, element_type in elements:
         selection, index = _make_flat_selections(element_type, index)
@@ -1453,7 +1451,7 @@ def create_generic_constant(
     elements = []
     for k in range(len(type_spec)):
       elements.append(create_generic_constant(type_spec[k], scalar_value))
-    names = [name for name, _ in anonymous_tuple.iter_elements(type_spec)]
+    names = [name for name, _ in structure.iter_elements(type_spec)]
     packed_elements = building_blocks.Struct(elements)
     named_tuple = create_named_tuple(packed_elements, names,
                                      type_spec.python_container)
@@ -1495,7 +1493,7 @@ def create_zip_two_values(
     ValueError: If `value` does not contain exactly two elements.
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  named_type_signatures = anonymous_tuple.to_elements(value.type_signature)
+  named_type_signatures = structure.to_elements(value.type_signature)
   length = len(named_type_signatures)
   if length != 2:
     raise ValueError(
@@ -1701,8 +1699,9 @@ def create_named_federated_tuple(
                           building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(tuple_to_name.type_signature,
                           computation_types.FederatedType)
-  existing_names = (name for name, _ in anonymous_tuple.to_elements(
-      tuple_to_name.type_signature.member))
+  existing_names = (
+      name
+      for name, _ in structure.to_elements(tuple_to_name.type_signature.member))
   if (all(
       (existing_name == name_to_add
        for existing_name, name_to_add in zip(existing_names, names_to_add))) and
@@ -1777,7 +1776,7 @@ def create_zip(
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(comp.type_signature, computation_types.StructType)
-  named_type_signatures = anonymous_tuple.to_elements(comp.type_signature)
+  named_type_signatures = structure.to_elements(comp.type_signature)
   _, first_type_signature = named_type_signatures[0]
   py_typecheck.check_type(first_type_signature, computation_types.StructType)
   length = len(first_type_signature)

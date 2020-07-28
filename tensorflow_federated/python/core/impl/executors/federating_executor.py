@@ -53,8 +53,8 @@ import abc
 from typing import Any, Callable, List, Optional
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
@@ -466,15 +466,15 @@ class FederatingExecutor(executor_base.Executor):
     """
     element_values = []
     element_types = []
-    for name, value in anonymous_tuple.iter_elements(
-        anonymous_tuple.from_container(elements)):
+    for name, value in structure.iter_elements(
+        structure.from_container(elements)):
       py_typecheck.check_type(value, executor_value_base.ExecutorValue)
       element_values.append((name, value.internal_representation))
       if name is not None:
         element_types.append((name, value.type_signature))
       else:
         element_types.append(value.type_signature)
-    value = anonymous_tuple.AnonymousTuple(element_values)
+    value = structure.Struct(element_values)
     type_signature = computation_types.StructType(element_types)
     return self._strategy.ingest_value(value, type_signature)
 
@@ -489,7 +489,7 @@ class FederatingExecutor(executor_base.Executor):
     The kinds of supported `source`s are:
 
     * An embedded value.
-    * An instance of `anonymous_tuple.AnonymousTuple`.
+    * An instance of `structure.Struct`.
 
     Args:
       source: An embedded computation with a tuple type signature representing
@@ -518,8 +518,7 @@ class FederatingExecutor(executor_base.Executor):
       result = await self._unplaced_executor.create_selection(
           source.internal_representation, index=index, name=name)
       return self._strategy.ingest_value(result, result.type_signature)
-    elif isinstance(source.internal_representation,
-                    anonymous_tuple.AnonymousTuple):
+    elif isinstance(source.internal_representation, structure.Struct):
       if name is not None:
         value = source.internal_representation[name]
         type_signature = source.type_signature[name]
@@ -530,5 +529,5 @@ class FederatingExecutor(executor_base.Executor):
     else:
       raise ValueError(
           'Unexpected internal representation while creating selection. '
-          'Expected one of `AnonymousTuple` or value embedded in target '
+          'Expected one of `Struct` or value embedded in target '
           'executor, received {}'.format(source.internal_representation))

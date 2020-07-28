@@ -8,7 +8,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/research/utils:adapters",
     ],
 )

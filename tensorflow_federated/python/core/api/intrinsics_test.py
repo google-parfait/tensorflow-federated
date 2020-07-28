@@ -20,7 +20,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -648,8 +648,7 @@ class IntrinsicsTest(parameterized.TestCase):
 
     @computations.federated_computation([fed_type] * n)
     def bar(x):
-      arg = anonymous_tuple.AnonymousTuple(
-          _make_test_tuple(x, k) for k in range(n))
+      arg = structure.Struct(_make_test_tuple(x, k) for k in range(n))
       val = intrinsics.federated_zip(arg)
       self.assertIsInstance(val, value_base.Value)
       return val

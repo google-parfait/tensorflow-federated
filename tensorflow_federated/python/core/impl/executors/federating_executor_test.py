@@ -19,7 +19,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -443,14 +443,14 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_clients(),
        [executor_test_utils.create_dummy_value_at_clients(),
         executor_test_utils.create_dummy_value_at_clients()],
-       [anonymous_tuple.AnonymousTuple([(None, 10.0), (None, 10.0)]),
-        anonymous_tuple.AnonymousTuple([(None, 11.0), (None, 11.0)]),
-        anonymous_tuple.AnonymousTuple([(None, 12.0), (None, 12.0)])]),
+       [structure.Struct([(None, 10.0), (None, 10.0)]),
+        structure.Struct([(None, 11.0), (None, 11.0)]),
+        structure.Struct([(None, 12.0), (None, 12.0)])]),
       ('intrinsic_def_federated_zip_at_server',
        *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_server(),
        [executor_test_utils.create_dummy_value_at_server(),
         executor_test_utils.create_dummy_value_at_server()],
-       anonymous_tuple.AnonymousTuple([(None, 10.0), (None, 10.0)])),
+       structure.Struct([(None, 10.0), (None, 10.0)])),
       ('computation_intrinsic',
        *executor_test_utils.create_dummy_computation_intrinsic(),
        [executor_test_utils.create_dummy_computation_tensorflow_constant()],
@@ -736,7 +736,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     expected_result = self.run_sync(source.compute())[0]
     self.assertEqual(actual_result, expected_result)
 
-  def test_returns_value_with_source_and_index_anonymous_tuple(self):
+  def test_returns_value_with_source_and_index_structure(self):
     executor = create_test_executor()
     element, element_type = executor_test_utils.create_dummy_value_unplaced()
 
@@ -769,13 +769,13 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     expected_result = self.run_sync(source.compute())['a']
     self.assertEqual(actual_result, expected_result)
 
-  def test_returns_value_with_source_and_name_anonymous_tuple(self):
+  def test_returns_value_with_source_and_name_structure(self):
     executor = create_test_executor()
     element, element_type = executor_test_utils.create_dummy_value_unplaced()
 
     names = ['a', 'b', 'c']
     element = self.run_sync(executor.create_value(element, element_type))
-    elements = anonymous_tuple.AnonymousTuple((n, element) for n in names)
+    elements = structure.Struct((n, element) for n in names)
     type_signature = computation_types.StructType(
         (n, element_type) for n in names)
     source = self.run_sync(executor.create_struct(elements))

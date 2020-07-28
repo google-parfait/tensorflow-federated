@@ -19,8 +19,8 @@ import attr
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 
@@ -64,10 +64,10 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
   elif isinstance(arg, TF_DATASET_REPRESENTATION_TYPES):
     element_type = computation_types.to_type(arg.element_spec)
     return computation_types.SequenceType(element_type)
-  elif isinstance(arg, anonymous_tuple.AnonymousTuple):
+  elif isinstance(arg, structure.Struct):
     return computation_types.StructType([
         (k, infer_type(v)) if k else infer_type(v)
-        for k, v in anonymous_tuple.iter_elements(arg)
+        for k, v in structure.iter_elements(arg)
     ])
   elif py_typecheck.is_attrs(arg):
     items = attr.asdict(
@@ -148,7 +148,7 @@ def type_to_tf_dtypes_and_shapes(type_spec: computation_types.Type):
   if type_spec.is_tensor():
     return (type_spec.dtype, type_spec.shape)
   elif type_spec.is_struct():
-    elements = anonymous_tuple.to_elements(type_spec)
+    elements = structure.to_elements(type_spec)
     if not elements:
       output_dtypes = []
       output_shapes = []
@@ -249,7 +249,7 @@ def type_to_tf_structure(type_spec: computation_types.Type):
   if type_spec.is_tensor():
     return tf.TensorSpec(type_spec.shape, type_spec.dtype)
   elif type_spec.is_struct():
-    elements = anonymous_tuple.to_elements(type_spec)
+    elements = structure.to_elements(type_spec)
     if not elements:
       raise ValueError('Empty tuples are unsupported.')
     element_outputs = [(k, type_to_tf_structure(v)) for k, v in elements]
@@ -292,18 +292,18 @@ def type_from_tensors(tensors):
       x = tf.convert_to_tensor(x)
     return computation_types.TensorType(x.dtype.base_dtype, x.shape)
 
-  if isinstance(tensors, anonymous_tuple.AnonymousTuple):
-    type_spec = anonymous_tuple.map_structure(_mapping_fn, tensors)
+  if isinstance(tensors, structure.Struct):
+    type_spec = structure.map_structure(_mapping_fn, tensors)
   else:
     type_spec = tf.nest.map_structure(_mapping_fn, tensors)
   return computation_types.to_type(type_spec)
 
 
 def type_to_py_container(value, type_spec):
-  """Recursively convert `anonymous_tuple.AnonymousTuple`s to Python containers.
+  """Recursively convert `structure.Struct`s to Python containers.
 
   This is in some sense the inverse operation to
-  `anonymous_tuple.from_container`.
+  `structure.from_container`.
 
   Args:
     value: A structure of anonymous tuples of values corresponding to
@@ -329,7 +329,7 @@ def type_to_py_container(value, type_spec):
     if isinstance(value, list):
       return [type_to_py_container(element, element_type) for element in value]
     if isinstance(value, tf.data.Dataset):
-      # `tf.data.Dataset` does not understand `AnonymousTuple`, so the dataset
+      # `tf.data.Dataset` does not understand `Struct`, so the dataset
       # in `value` must already be yielding Python containers. This is because
       # when TFF is constructing datasets it always uses the proper Python
       # container, so we simply return `value` here without modification.
@@ -340,7 +340,7 @@ def type_to_py_container(value, type_spec):
   if not structure_type_spec.is_struct():
     return value
 
-  if not isinstance(value, anonymous_tuple.AnonymousTuple):
+  if not isinstance(value, structure.Struct):
     # NOTE: When encountering non-anonymous tuples, we assume that
     # this means that we're attempting to re-convert a value that
     # already has the proper containers, and we short-circuit to
@@ -358,10 +358,10 @@ def type_to_py_container(value, type_spec):
             issubclass(container_type, dict))
 
   # TODO(b/133228705): Consider requiring StructWithPythonType.
-  container_type = structure_type_spec.python_container or anonymous_tuple.AnonymousTuple
+  container_type = structure_type_spec.python_container or structure.Struct
   container_is_anon_tuple = structure_type_spec.python_container is None
 
-  # Avoid projecting the `anonymous_tuple.AnonymousTuple` into a Python
+  # Avoid projecting the `structure.Struct` into a Python
   # container that is not supported.
   if not container_is_anon_tuple:
     num_named_elements = len(dir(anon_tuple))
@@ -386,7 +386,7 @@ def type_to_py_container(value, type_spec):
 
   elements = []
   for index, (elem_name, elem_type) in enumerate(
-      anonymous_tuple.iter_elements(structure_type_spec)):
+      structure.iter_elements(structure_type_spec)):
     value = type_to_py_container(anon_tuple[index], elem_type)
 
     if elem_name is None and not container_is_anon_tuple:
@@ -403,7 +403,7 @@ def type_to_py_container(value, type_spec):
     return container_type(**dict(elements))
   else:
     # E.g., tuple and list when elements only has values, but also `dict`,
-    # `collections.OrderedDict`, or `anonymous_tuple.AnonymousTuple` when
+    # `collections.OrderedDict`, or `structure.Struct` when
     # elements has (name, value) tuples.
     return container_type(elements)
 

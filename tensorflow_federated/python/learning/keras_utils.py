@@ -19,8 +19,8 @@ from typing import Sequence, Union
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 
@@ -54,10 +54,10 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
       `tf.keras.models.Model` instance.
   """
   # TODO(b/123092620): Simplify this.
-  py_typecheck.check_type(
-      tff_weights, (anonymous_tuple.AnonymousTuple, model_utils.ModelWeights))
+  py_typecheck.check_type(tff_weights,
+                          (structure.Struct, model_utils.ModelWeights))
   py_typecheck.check_type(keras_model, tf.keras.models.Model)
-  if isinstance(tff_weights, anonymous_tuple.AnonymousTuple):
+  if isinstance(tff_weights, structure.Struct):
     weights_to_assign = model_utils.ModelWeights.from_tff_result(tff_weights)
   else:
     weights_to_assign = tff_weights
@@ -184,9 +184,9 @@ def federated_aggregate_keras_metric(
   @tff.tf_computation
   def zeros_fn():
     # `member_type` is a (potentially nested) `tff.StructType`, which is an
-    # `anonymous_tuple.AnonymousTuple`.
-    return anonymous_tuple.map_structure(
-        lambda v: tf.zeros(v.shape, dtype=v.dtype), member_types)
+    # `structure.Struct`.
+    return structure.map_structure(lambda v: tf.zeros(v.shape, dtype=v.dtype),
+                                   member_types)
 
   zeros = zeros_fn()
 

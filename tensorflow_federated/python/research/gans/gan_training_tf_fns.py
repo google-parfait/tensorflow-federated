@@ -15,7 +15,7 @@
 
 This code is intended to only use vanilla TensorFlow (no TFF dependency); it is
 wired together into a federated computation in gan_training_tff_fns.py. The one
-exception is some handling for conversion from AnonymousTuple, which should go
+exception is some handling for conversion from Struct, which should go
 away when b/130724878 is fixed.
 """
 
@@ -27,11 +27,11 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 def assert_no_anon_tuples(x):
-  """Checks that a nested structure has no AnonymousTuples at the leaves."""
+  """Checks that a nested structure has no Structs at the leaves."""
 
   def check_anon(t):
-    if 'AnonymousTuple' in str(type(t)):
-      raise ValueError('Found AnonymousTuple:\n', t)
+    if 'Struct' in str(type(t)):
+      raise ValueError('Found Struct:\n', t)
     return None
 
   tf.nest.map_structure(check_anon, x)

@@ -49,8 +49,8 @@ from typing import Any, List
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -99,13 +99,13 @@ class FederatedComposingStrategyValue(executor_value_base.ExecutorValue):
     """
     if isinstance(self._value, executor_value_base.ExecutorValue):
       return await self._value.compute()
-    elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
+    elif isinstance(self._value, structure.Struct):
       results = await asyncio.gather(*[
           FederatedComposingStrategyValue(v, t).compute()
           for v, t in zip(self._value, self._type_signature)
       ])
-      element_types = anonymous_tuple.iter_elements(self._type_signature)
-      return anonymous_tuple.AnonymousTuple(
+      element_types = structure.iter_elements(self._type_signature)
+      return structure.Struct(
           (n, v) for (n, _), v in zip(element_types, results))
     elif isinstance(self._value, list):
       py_typecheck.check_type(self._type_signature,
@@ -267,8 +267,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     value_type, zero_type, accumulate_type, merge_type, report_type = (
         executor_utils.parse_federated_aggregate_argument_types(
             arg.type_signature))
-    py_typecheck.check_type(arg.internal_representation,
-                            anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(arg.internal_representation, structure.Struct)
     py_typecheck.check_len(arg.internal_representation, 5)
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
@@ -318,8 +317,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
   async def compute_federated_apply(
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
-    py_typecheck.check_type(arg.internal_representation,
-                            anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(arg.internal_representation, structure.Struct)
     py_typecheck.check_len(arg.internal_representation, 2)
     fn_type = arg.type_signature[0]
     py_typecheck.check_type(fn_type, computation_types.FunctionType)
@@ -398,8 +396,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def _map(self, arg, all_equal=None):
-    py_typecheck.check_type(arg.internal_representation,
-                            anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(arg.internal_representation, structure.Struct)
     py_typecheck.check_len(arg.internal_representation, 2)
     fn_type = arg.type_signature[0]
     py_typecheck.check_type(fn_type, computation_types.FunctionType)
@@ -537,10 +534,9 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     py_typecheck.check_len(arg.type_signature, 2)
-    py_typecheck.check_type(arg.internal_representation,
-                            anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(arg.internal_representation, structure.Struct)
     py_typecheck.check_len(arg.internal_representation, 2)
-    keys = [k for k, _ in anonymous_tuple.to_elements(arg.type_signature)]
+    keys = [k for k, _ in structure.to_elements(arg.type_signature)]
     vals = [arg.internal_representation[n] for n in [0, 1]]
     types = [arg.type_signature[n] for n in [0, 1]]
     for n in [0, 1]:
@@ -565,8 +561,8 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       py_typecheck.check_type(x, executor_value_base.ExecutorValue)
       py_typecheck.check_type(y, executor_value_base.ExecutorValue)
       return await ex.create_call(
-          await ex.create_value(zip_comp, zip_type), await ex.create_struct(
-              anonymous_tuple.AnonymousTuple([(keys[0], x), (keys[1], y)])))
+          await ex.create_value(zip_comp, zip_type), await
+          ex.create_struct(structure.Struct([(keys[0], x), (keys[1], y)])))
 
     result = await asyncio.gather(*[
         _child_fn(c, x, y)
@@ -580,8 +576,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     py_typecheck.check_len(arg.type_signature, 2)
-    py_typecheck.check_type(arg.internal_representation,
-                            anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(arg.internal_representation, structure.Struct)
     py_typecheck.check_len(arg.internal_representation, 2)
     for n in [0, 1]:
       type_analysis.check_federated_type(

@@ -20,7 +20,7 @@ from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
@@ -90,14 +90,14 @@ def bar():
 
 class GetHashableKeyTest(absltest.TestCase):
 
-  def test_get_key_for_identical_anonymous_tuples_tuple_type(self):
+  def test_get_key_for_identical_structures_tuple_type(self):
     tuple_type = computation_types.StructType([tf.int32, tf.float32])
-    anon_tuple = anonymous_tuple.AnonymousTuple([(
+    anon_tuple = structure.Struct([(
         None,
         0,
     ), (None, 1.)])
     first_key = caching_executor._get_hashable_key(anon_tuple, tuple_type)
-    second_anon_tuple = anonymous_tuple.AnonymousTuple([(
+    second_anon_tuple = structure.Struct([(
         None,
         0,
     ), (None, 1.)])
@@ -105,14 +105,14 @@ class GetHashableKeyTest(absltest.TestCase):
                                                     tuple_type)
     self.assertEqual(hash(first_key), hash(second_key))
 
-  def test_get_key_for_different_anonymous_tuples_tuple_type(self):
+  def test_get_key_for_different_structures_tuple_type(self):
     tuple_type = computation_types.StructType([tf.int32, tf.float32])
-    anon_tuple = anonymous_tuple.AnonymousTuple([(
+    anon_tuple = structure.Struct([(
         None,
         0,
     ), (None, 1.)])
     first_key = caching_executor._get_hashable_key(anon_tuple, tuple_type)
-    second_anon_tuple = anonymous_tuple.AnonymousTuple([(
+    second_anon_tuple = structure.Struct([(
         None,
         0,
     ), (None, 2.)])
@@ -301,8 +301,8 @@ class CachingExecutorTest(absltest.TestCase):
       _ = loop.run_until_complete(cached_executor.create_struct(value_tuple))
     # Ensure create_struct was called twice on the mock (not cached and only
     # called once).
-    anon_tuple_value = anonymous_tuple.AnonymousTuple([(None, TEST_VALUE),
-                                                       (None, TEST_VALUE)])
+    anon_tuple_value = structure.Struct([(None, TEST_VALUE),
+                                         (None, TEST_VALUE)])
     mock_executor.create_struct.assert_has_calls(
         [mock.call(anon_tuple_value),
          mock.call(anon_tuple_value)])
@@ -323,8 +323,7 @@ class CachingExecutorTest(absltest.TestCase):
     # inner executor future into the cache. However we expect two errors to be
     # returned.
     mock_executor.create_struct.assert_called_once_with(
-        anonymous_tuple.AnonymousTuple([(None, TEST_VALUE),
-                                        (None, TEST_VALUE)]))
+        structure.Struct([(None, TEST_VALUE), (None, TEST_VALUE)]))
     self.assertLen(results, 2)
     self.assertIsInstance(results[0], TestError)
     self.assertIsInstance(results[1], TestError)
@@ -474,7 +473,7 @@ class CachingExecutorTest(absltest.TestCase):
     self.assertIs(v4, v3)
     c4 = loop.run_until_complete(v4.compute())
     self.assertEqual(
-        str(anonymous_tuple.map_structure(lambda x: x.numpy(), c4)), '<10,11>')
+        str(structure.map_structure(lambda x: x.numpy(), c4)), '<10,11>')
 
   def test_with_tuple_of_named_elements(self):
     ex, _ = _make_executor_and_tracer_for_test()
@@ -492,8 +491,7 @@ class CachingExecutorTest(absltest.TestCase):
     self.assertIs(v4, v3)
     c4 = loop.run_until_complete(v4.compute())
     self.assertEqual(
-        str(anonymous_tuple.map_structure(lambda x: x.numpy(), c4)),
-        '<P=10,Q=11>')
+        str(structure.map_structure(lambda x: x.numpy(), c4)), '<P=10,Q=11>')
 
   def test_with_selection_by_index(self):
     ex, _ = _make_executor_and_tracer_for_test()

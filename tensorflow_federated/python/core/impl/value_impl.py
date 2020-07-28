@@ -20,8 +20,8 @@ from typing import Any, Union
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
@@ -406,11 +406,11 @@ def to_value(
     result = ValueImpl(arg.to_compiled_building_block(), context_stack)
   elif type_spec is not None and type_spec.is_sequence():
     result = _wrap_sequence_as_value(arg, type_spec.element, context_stack)
-  elif isinstance(arg, anonymous_tuple.AnonymousTuple):
+  elif isinstance(arg, structure.Struct):
     result = ValueImpl(
         building_blocks.Struct([
             (k, ValueImpl.get_comp(to_value(v, None, context_stack)))
-            for k, v in anonymous_tuple.iter_elements(arg)
+            for k, v in structure.iter_elements(arg)
         ]), context_stack)
   elif py_typecheck.is_named_tuple(arg):
     items = arg._asdict().items()  # pytype: disable=attribute-error

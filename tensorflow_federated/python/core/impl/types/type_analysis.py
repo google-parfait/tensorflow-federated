@@ -18,8 +18,8 @@ import attr
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -305,7 +305,7 @@ def check_all_abstract_types_are_bound(type_spec):
     elif type_spec.is_struct():
       return set().union(*[
           _check_or_get_unbound_abstract_type_labels(v, bound_labels, check)
-          for _, v in anonymous_tuple.iter_elements(type_spec)
+          for _, v in structure.iter_elements(type_spec)
       ])
     elif type_spec.is_abstract():
       if type_spec.label in bound_labels:
@@ -359,8 +359,7 @@ def is_sum_compatible(type_spec: computation_types.Type) -> bool:
     return is_numeric_dtype(type_spec.dtype)
   elif type_spec.is_struct():
     return all(
-        is_sum_compatible(v)
-        for _, v in anonymous_tuple.iter_elements(type_spec))
+        is_sum_compatible(v) for _, v in structure.iter_elements(type_spec))
   elif type_spec.is_federated():
     return is_sum_compatible(type_spec.member)
   else:
@@ -390,7 +389,7 @@ def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
   elif type_spec.is_struct():
     return all(
         is_structure_of_integers(v)
-        for _, v in anonymous_tuple.iter_elements(type_spec))
+        for _, v in structure.iter_elements(type_spec))
   elif type_spec.is_federated():
     return is_structure_of_integers(type_spec.member)
   else:
@@ -421,8 +420,8 @@ def is_valid_bitwidth_type_for_value_type(
     return bitwidth_type.dtype.is_integer and (
         bitwidth_type.shape.num_elements() == 1)
   elif value_type.is_struct() and bitwidth_type.is_struct():
-    bitwidth_name_and_types = list(anonymous_tuple.iter_elements(bitwidth_type))
-    value_name_and_types = list(anonymous_tuple.iter_elements(value_type))
+    bitwidth_name_and_types = list(structure.iter_elements(bitwidth_type))
+    value_name_and_types = list(structure.iter_elements(value_type))
     if len(bitwidth_name_and_types) != len(value_name_and_types):
       return False
     for (inner_bitwidth_name,
@@ -492,8 +491,7 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
     return type_spec.dtype.is_floating or type_spec.dtype.is_complex
   elif type_spec.is_struct():
     return all(
-        is_average_compatible(v)
-        for _, v in anonymous_tuple.iter_elements(type_spec))
+        is_average_compatible(v) for _, v in structure.iter_elements(type_spec))
   elif type_spec.is_federated():
     return is_average_compatible(type_spec.member)
   else:
@@ -502,7 +500,7 @@ def is_average_compatible(type_spec: computation_types.Type) -> bool:
 
 def is_struct_with_py_container(value, type_spec):
   return (type_spec.is_struct_with_python() and
-          isinstance(value, anonymous_tuple.AnonymousTuple))
+          isinstance(value, structure.Struct))
 
 
 def is_concrete_instance_of(type_with_concrete_elements,
@@ -568,8 +566,8 @@ def is_concrete_instance_of(type_with_concrete_elements,
     elif abstract_type_spec.is_struct():
       if not concrete_type_spec.is_struct():
         raise TypeError(type_error_string)
-      abstract_elements = anonymous_tuple.to_elements(abstract_type_spec)
-      concrete_elements = anonymous_tuple.to_elements(concrete_type_spec)
+      abstract_elements = structure.to_elements(abstract_type_spec)
+      concrete_elements = structure.to_elements(concrete_type_spec)
       if len(abstract_elements) != len(concrete_elements):
         raise TypeError(type_error_string)
       concretized_tuple_elements = []
@@ -636,7 +634,7 @@ def check_valid_federated_weighted_mean_argument_tuple_type(
   py_typecheck.check_type(type_spec, computation_types.StructType)
   if len(type_spec) != 2:
     raise TypeError('Expected a 2-tuple, found {}.'.format(type_spec))
-  for _, v in anonymous_tuple.iter_elements(type_spec):
+  for _, v in structure.iter_elements(type_spec):
     check_federated_type(v, None, placement_literals.CLIENTS, False)
     if not is_average_compatible(v.member):
       raise TypeError(

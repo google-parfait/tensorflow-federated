@@ -18,7 +18,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import test_utils
@@ -79,15 +79,15 @@ class CreateConstantTest(parameterized.TestCase):
        [10.0] * 3),
       ('unnamed_tuple', 10,
        computation_types.StructType([tf.int32] * 3),
-       anonymous_tuple.AnonymousTuple([(None, 10)] * 3)),
+       structure.Struct([(None, 10)] * 3)),
       ('named_tuple', 10,
        computation_types.StructType(
            [('a', tf.int32), ('b', tf.int32), ('c', tf.int32)]),
-       anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10), ('c', 10)])),
+       structure.Struct([('a', 10), ('b', 10), ('c', 10)])),
       ('nested_tuple', 10,
        computation_types.StructType([[tf.int32] * 3] * 3),
-       anonymous_tuple.AnonymousTuple(
-           [(None, anonymous_tuple.AnonymousTuple([(None, 10)] * 3))] * 3)),
+       structure.Struct(
+           [(None, structure.Struct([(None, 10)] * 3))] * 3)),
   )
   # pyformat: enable
   def test_returns_computation(self, value, type_signature, expected_result):
@@ -129,11 +129,11 @@ class CreateBinaryOperatorTest(parameterized.TestCase):
       ('add_unnamed_tuple', tf.math.add,
        computation_types.StructType([tf.int32, tf.float32]),
        [[1, 1.0], [2, 2.25]],
-       anonymous_tuple.AnonymousTuple([(None, 3), (None, 3.25)])),
+       structure.Struct([(None, 3), (None, 3.25)])),
       ('add_named_tuple', tf.math.add,
        computation_types.StructType([('a', tf.int32), ('b', tf.float32)]),
        [[1, 1.0], [2, 2.25]],
-       anonymous_tuple.AnonymousTuple([('a', 3), ('b', 3.25)])),
+       structure.Struct([('a', 3), ('b', 3.25)])),
       ('multiply_int', tf.math.multiply,
        computation_types.TensorType(tf.int32),
        [2, 2], 4),
@@ -204,7 +204,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
            computation_types.TensorType(tf.int32),
        ]),
        [[tf.constant(1, shape=[1])], 2],
-       anonymous_tuple.AnonymousTuple([(None, 3)])),
+       structure.Struct([(None, 3)])),
       ('multiply_int_same_shape', tf.math.multiply,
        computation_types.StructType([
            computation_types.TensorType(tf.int32),
@@ -224,7 +224,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
            computation_types.TensorType(tf.int32)
        ]),
        [[tf.constant(1, shape=[1])], 2],
-       anonymous_tuple.AnonymousTuple([(None, 2)])),
+       structure.Struct([(None, 2)])),
       ('divide_int_same_shape', tf.math.divide,
        computation_types.StructType([
            computation_types.TensorType(tf.int32),
@@ -244,7 +244,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
            computation_types.TensorType(tf.int32),
        ]),
        [[tf.constant(1, shape=[1])], 2],
-       anonymous_tuple.AnonymousTuple([(None, 0.5)])),
+       structure.Struct([(None, 0.5)])),
   )
   # pyformat: enable
   def test_returns_computation(self, operator, type_signature, operands,
@@ -274,7 +274,7 @@ class CreateEmptyTupleTest(absltest.TestCase):
     expected_type = computation_types.FunctionType(None, [])
     expected_type.check_assignable_from(actual_type)
     actual_result = test_utils.run_tensorflow(proto)
-    expected_result = anonymous_tuple.AnonymousTuple([])
+    expected_result = structure.Struct([])
     self.assertEqual(actual_result, expected_result)
 
 
@@ -285,10 +285,10 @@ class CreateIdentityTest(parameterized.TestCase):
       ('int', computation_types.TensorType(tf.int32), 10),
       ('unnamed_tuple',
        computation_types.StructType([tf.int32, tf.float32]),
-       anonymous_tuple.AnonymousTuple([(None, 10), (None, 10.0)])),
+       structure.Struct([(None, 10), (None, 10.0)])),
       ('named_tuple',
        computation_types.StructType([('a', tf.int32), ('b', tf.float32)]),
-       anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10.0)])),
+       structure.Struct([('a', 10), ('b', 10.0)])),
       ('sequence', computation_types.SequenceType(tf.int32), [10] * 3),
   )
   # pyformat: enable
@@ -317,11 +317,11 @@ class CreateReplicateInputTest(parameterized.TestCase):
       ('int', computation_types.TensorType(tf.int32), 3, 10),
       ('float', computation_types.TensorType(tf.float32), 3, 10.0),
       ('unnamed_tuple', computation_types.StructType([tf.int32, tf.float32]), 3,
-       anonymous_tuple.AnonymousTuple([(None, 10), (None, 10.0)])),
+       structure.Struct([(None, 10), (None, 10.0)])),
       ('named_tuple',
        computation_types.StructType([
            ('a', tf.int32), ('b', tf.float32)
-       ]), 3, anonymous_tuple.AnonymousTuple([('a', 10), ('b', 10.0)])),
+       ]), 3, structure.Struct([('a', 10), ('b', 10.0)])),
       ('sequence', computation_types.SequenceType(tf.int32), 3, [10] * 3),
   )
   def test_returns_computation(self, type_signature, count, value):
@@ -334,7 +334,7 @@ class CreateReplicateInputTest(parameterized.TestCase):
                                                    [type_signature] * count)
     expected_type.check_assignable_from(actual_type)
     actual_result = test_utils.run_tensorflow(proto, value)
-    expected_result = anonymous_tuple.AnonymousTuple([(None, value)] * count)
+    expected_result = structure.Struct([(None, value)] * count)
     self.assertEqual(actual_result, expected_result)
 
   @parameterized.named_parameters(

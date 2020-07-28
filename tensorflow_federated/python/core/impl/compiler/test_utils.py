@@ -16,8 +16,8 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -445,7 +445,7 @@ def _stamp_value_into_graph(value, type_signature, graph):
 
   Returns:
     A Python object made of tensors stamped into `graph`, `tf.data.Dataset`s,
-    and `anonymous_tuple.AnonymousTuple`s that structurally corresponds to the
+    and `structure.Struct`s that structurally corresponds to the
     value passed at input.
   """
   py_typecheck.check_type(type_signature, computation_types.Type)
@@ -465,13 +465,13 @@ def _stamp_value_into_graph(value, type_signature, graph):
             value, dtype=type_signature.dtype, shape=type_signature.shape)
   elif type_signature.is_struct():
     if isinstance(value, (list, dict)):
-      value = anonymous_tuple.from_container(value)
+      value = structure.from_container(value)
     stamped_elements = []
-    named_type_signatures = anonymous_tuple.to_elements(type_signature)
+    named_type_signatures = structure.to_elements(type_signature)
     for (name, type_signature), element in zip(named_type_signatures, value):
       stamped_element = _stamp_value_into_graph(element, type_signature, graph)
       stamped_elements.append((name, stamped_element))
-    return anonymous_tuple.AnonymousTuple(stamped_elements)
+    return structure.Struct(stamped_elements)
   elif type_signature.is_sequence():
     return tensorflow_utils.make_data_set_from_elements(graph, value,
                                                         type_signature.element)

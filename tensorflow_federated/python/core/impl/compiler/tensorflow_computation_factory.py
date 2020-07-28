@@ -19,9 +19,9 @@ from typing import Any, Callable, Optional
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -128,7 +128,7 @@ def create_constant(scalar_value,
           scalar_value, dtype=type_spec.dtype, shape=type_spec.shape)
     else:
       elements = []
-      for _, type_element in anonymous_tuple.iter_elements(type_spec):
+      for _, type_element in structure.iter_elements(type_spec):
         elements.append(_create_result_tensor(type_element, scalar_value))
       result = elements
     return result
@@ -191,8 +191,8 @@ def create_binary_operator(
       if operand_type.is_tensor():
         result_value = operator(operand_1_value, operand_2_value)
       elif operand_type.is_struct():
-        result_value = anonymous_tuple.map_structure(operator, operand_1_value,
-                                                     operand_2_value)
+        result_value = structure.map_structure(operator, operand_1_value,
+                                               operand_2_value)
     else:
       raise TypeError(
           'Operand type {} cannot be used in generic operations. The call to '
@@ -249,11 +249,9 @@ def create_binary_operator_with_upcast(
   def _pack_into_type(to_pack, type_spec):
     """Pack Tensor value `to_pack` into the nested structure `type_spec`."""
     if type_spec.is_struct():
-      elem_iter = anonymous_tuple.iter_elements(type_spec)
-      return anonymous_tuple.AnonymousTuple([
-          (elem_name, _pack_into_type(to_pack, elem_type))
-          for elem_name, elem_type in elem_iter
-      ])
+      elem_iter = structure.iter_elements(type_spec)
+      return structure.Struct([(elem_name, _pack_into_type(to_pack, elem_type))
+                               for elem_name, elem_type in elem_iter])
     elif type_spec.is_tensor():
       return tf.broadcast_to(to_pack, type_spec.shape)
 
@@ -270,8 +268,7 @@ def create_binary_operator_with_upcast(
     if type_signature[0].is_tensor():
       result_value = operator(first_arg, second_arg)
     elif type_signature[0].is_struct():
-      result_value = anonymous_tuple.map_structure(operator, first_arg,
-                                                   second_arg)
+      result_value = structure.map_structure(operator, first_arg, second_arg)
     else:
       raise TypeError('Encountered unexpected type {t}; can only handle Tensor '
                       'and StructTypes.'.format(t=type_signature[0]))

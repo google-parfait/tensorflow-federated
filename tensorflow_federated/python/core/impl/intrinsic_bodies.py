@@ -17,8 +17,8 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl import value_impl
@@ -199,7 +199,7 @@ def get_intrinsic_bodies(context_stack):
       return _apply_generic_op(tf.divide, x, y)
     elif x.type_signature.is_struct():
       # This case is needed if federated types are nested deeply.
-      names = [t[0] for t in anonymous_tuple.iter_elements(x.type_signature)]
+      names = [t[0] for t in structure.iter_elements(x.type_signature)]
       divided = [
           value_impl.ValueImpl.get_comp(generic_divide([x[i], y[i]]))
           for i in range(len(names))
@@ -222,7 +222,7 @@ def get_intrinsic_bodies(context_stack):
       return _apply_generic_op(tf.multiply, x, y)
     elif x.type_signature.is_struct():
       # This case is needed if federated types are nested deeply.
-      names = [t[0] for t in anonymous_tuple.iter_elements(x.type_signature)]
+      names = [t[0] for t in structure.iter_elements(x.type_signature)]
       multiplied = [
           value_impl.ValueImpl.get_comp(generic_multiply([x[i], y[i]]))
           for i in range(len(names))
@@ -245,7 +245,7 @@ def get_intrinsic_bodies(context_stack):
     # TODO(b/136587334): Push this logic down a level
     elif x.type_signature.is_struct():
       # This case is needed if federated types are nested deeply.
-      names = [t[0] for t in anonymous_tuple.iter_elements(x.type_signature)]
+      names = [t[0] for t in structure.iter_elements(x.type_signature)]
       added = [
           value_impl.ValueImpl.get_comp(generic_plus([x[i], y[i]]))
           for i in range(len(names))

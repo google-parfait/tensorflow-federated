@@ -18,7 +18,7 @@ from absl.testing import absltest
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 
@@ -133,7 +133,7 @@ class StructTypeTest(absltest.TestCase):
   def test_elements(self):
     self.assertEqual(
         repr(
-            anonymous_tuple.to_elements(
+            structure.to_elements(
                 computation_types.StructType([tf.int32, ('a', tf.bool)]))),
         '[(None, TensorType(tf.int32)), (\'a\', TensorType(tf.bool))]')
 
@@ -490,7 +490,7 @@ class ToTypeTest(absltest.TestCase):
     t = computation_types.to_type(elems)
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, list)
-    for k in anonymous_tuple.iter_elements(t):
+    for k in structure.iter_elements(t):
       self.assertLen(k, 2)
 
   def test_namedtuples_addressable_by_name(self):

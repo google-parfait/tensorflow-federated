@@ -16,9 +16,9 @@
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -35,9 +35,7 @@ from tensorflow_federated.python.tensorflow_libs import graph_spec
 def _index_from_name(type_signature, name):
   if name is None:
     raise ValueError
-  source_names_list = [
-      x[0] for x in anonymous_tuple.iter_elements(type_signature)
-  ]
+  source_names_list = [x[0] for x in structure.iter_elements(type_signature)]
   return source_names_list.index(name)
 
 
@@ -185,8 +183,7 @@ def permute_graph_inputs(comp, input_permutation):
         'struct; you have attempted a permutation with a CompiledComputation '
         'with parameter type {}'.format(binding_oneof))
 
-  original_parameter_type_elements = anonymous_tuple.to_elements(
-      proto_type.parameter)
+  original_parameter_type_elements = structure.to_elements(proto_type.parameter)
   original_parameter_bindings = [
       x for x in graph_parameter_binding.struct.element
   ]
@@ -400,8 +397,8 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
   # This line provides protection against an improperly serialized proto
   py_typecheck.check_type(proto_type.parameter, computation_types.StructType)
   parameter_bindings = [x for x in graph_parameter_binding.struct.element]
-  parameter_type_elements = anonymous_tuple.to_elements(proto_type.parameter)
-  type_signature_elements = anonymous_tuple.to_elements(type_signature)
+  parameter_type_elements = structure.to_elements(proto_type.parameter)
+  type_signature_elements = structure.to_elements(type_signature)
   if len(parameter_bindings) > len(type_signature):
     raise ValueError('We can only pad graph input bindings, never mask them. '
                      'This means that a proposed type signature passed to '
@@ -425,7 +422,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
     tf.graph_util.import_graph_def(
         serialization_utils.unpack_graph_def(graph_def), name='')
 
-  elems_to_stamp = anonymous_tuple.to_elements(
+  elems_to_stamp = structure.to_elements(
       type_signature)[len(parameter_bindings):]
   for name, type_spec in elems_to_stamp:
     if name is None:
@@ -1105,9 +1102,7 @@ class StructCalledGraphs(transformation_utils.TransformSpec):
       return building_block_factory.create_compiled_empty_tuple(), True
     compiled_computation_list = []
     arg_list = []
-    name_list = [
-        x[0] for x in anonymous_tuple.iter_elements(comp.type_signature)
-    ]
+    name_list = [x[0] for x in structure.iter_elements(comp.type_signature)]
     for k in range(len(comp.type_signature)):
       compiled_computation_list.append(comp[k].function)
       arg_list.append(comp[k].argument)
@@ -1148,7 +1143,7 @@ def _construct_padding(list_of_indices, tuple_type):
     order from `tuple_type`, with the remaining elements being the remaining
     elements of `tuple_type` in order.
   """
-  type_elements = anonymous_tuple.to_elements(tuple_type)
+  type_elements = structure.to_elements(tuple_type)
   existing_type = []
   for i in list_of_indices:
     existing_type.append(type_elements[i])
@@ -1179,7 +1174,7 @@ def _construct_permutation(list_of_indices, tuple_type):
     one-line notation such that applying `how_to_permute` to the type
     `how_to_pad` will result in `tuple_type`.
   """
-  type_elements = anonymous_tuple.to_elements(tuple_type)
+  type_elements = structure.to_elements(tuple_type)
   length_of_type = len(type_elements)
   index_positions_after_padding = list(range(length_of_type))
   for idx, type_index in enumerate(list_of_indices):
@@ -1316,7 +1311,7 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
   def transform(self, comp):
     if not self.should_transform(comp):
       return comp, False
-    parameter_type_elements = anonymous_tuple.to_elements(comp.parameter_type)
+    parameter_type_elements = structure.to_elements(comp.parameter_type)
     if comp.result.argument.name is None:
       index_of_selection = comp.result.argument.index
     else:
@@ -1393,7 +1388,7 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
                            len(comp.result.argument.type_signature),
                            len(comp.parameter_type)))
     parameter_names = [
-        x[0] for x in anonymous_tuple.iter_elements(comp.parameter_type)
+        x[0] for x in structure.iter_elements(comp.parameter_type)
     ]
     parameter_map = []
     for sel in comp.result.argument:

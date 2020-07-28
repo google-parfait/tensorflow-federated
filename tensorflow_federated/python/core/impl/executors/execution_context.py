@@ -20,8 +20,8 @@ from typing import Any, Callable, Optional
 import retrying
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
@@ -46,9 +46,9 @@ def _is_retryable_error(exception):
 def _unwrap(value):
   if isinstance(value, tf.Tensor):
     return value.numpy()
-  elif isinstance(value, anonymous_tuple.AnonymousTuple):
-    return anonymous_tuple.AnonymousTuple(
-        (k, _unwrap(v)) for k, v in anonymous_tuple.iter_elements(value))
+  elif isinstance(value, structure.Struct):
+    return structure.Struct(
+        (k, _unwrap(v)) for k, v in structure.iter_elements(value))
   else:
     return value
 
@@ -86,11 +86,10 @@ async def _ingest(executor, val, type_spec):
   """
   if isinstance(val, executor_value_base.ExecutorValue):
     return val
-  elif (isinstance(val, anonymous_tuple.AnonymousTuple) and
-        not type_spec.is_federated()):
+  elif (isinstance(val, structure.Struct) and not type_spec.is_federated()):
     type_spec.check_struct()
-    v_elem = anonymous_tuple.to_elements(val)
-    t_elem = anonymous_tuple.to_elements(type_spec)
+    v_elem = structure.to_elements(val)
+    t_elem = structure.to_elements(type_spec)
     if ([k for k, _ in v_elem] != [k for k, _ in t_elem]):
       raise TypeError('Value {} does not match type {}.'.format(val, type_spec))
     ingested = []
@@ -98,7 +97,7 @@ async def _ingest(executor, val, type_spec):
       ingested.append(_ingest(executor, v, t))
     ingested = await asyncio.gather(*ingested)
     return await executor.create_struct(
-        anonymous_tuple.AnonymousTuple(
+        structure.Struct(
             (name, val) for (name, _), val in zip(t_elem, ingested)))
   else:
     return await executor.create_value(val, type_spec)
@@ -128,11 +127,10 @@ async def _invoke(executor, comp, arg, result_type: computation_types.Type):
 
 def _unwrap_execution_context_value(val):
   """Recursively removes wrapping from `val` under anonymous tuples."""
-  if isinstance(val, anonymous_tuple.AnonymousTuple):
-    value_elements_iter = anonymous_tuple.iter_elements(val)
-    return anonymous_tuple.AnonymousTuple(
-        (name, _unwrap_execution_context_value(elem))
-        for name, elem in value_elements_iter)
+  if isinstance(val, structure.Struct):
+    value_elements_iter = structure.iter_elements(val)
+    return structure.Struct((name, _unwrap_execution_context_value(elem))
+                            for name, elem in value_elements_iter)
   elif isinstance(val, ExecutionContextValue):
     return _unwrap_execution_context_value(val.value)
   else:

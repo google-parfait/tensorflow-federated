@@ -16,8 +16,8 @@
 import typing
 from typing import Dict, List, Tuple, Sequence, Set, Union
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -288,7 +288,7 @@ class ExtractComputation(transformation_utils.TransformSpec):
     """Returns a new computation with all intrinsics extracted."""
     variables = []
     elements = []
-    for name, element in anonymous_tuple.iter_elements(comp):
+    for name, element in structure.iter_elements(comp):
       if self._passes_test_or_block(element):
         variable_name = next(self._name_generator)
         variables.append((variable_name, element))
@@ -877,7 +877,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     if type_signature.parameter.is_struct():
       arg_type = [[] for _ in range(len(type_signature.parameter))]
       for functional_comp in comps:
-        named_type_signatures = anonymous_tuple.to_elements(
+        named_type_signatures = structure.to_elements(
             functional_comp.type_signature.parameter)
         for index, (_, concrete_type) in enumerate(named_type_signatures):
           arg_type[index].append(concrete_type)
@@ -917,7 +917,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     """
     if type_signature.is_struct():
       comps = [[] for _ in range(len(type_signature))]
-      for _, call in anonymous_tuple.iter_elements(comp):
+      for _, call in structure.iter_elements(comp):
         for index, arg in enumerate(call.argument):
           comps[index].append(arg)
       transformed_args = []
@@ -927,7 +927,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       return building_blocks.Struct(transformed_args)
     else:
       args = []
-      for _, call in anonymous_tuple.iter_elements(comp):
+      for _, call in structure.iter_elements(comp):
         args.append(call.argument)
       return self._transform_args_with_type(args, type_signature)
 
@@ -966,8 +966,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     if type_signature.parameter.is_struct():
       parameter_types = [[] for _ in range(len(type_signature.parameter))]
       for functional_type in param_types:
-        named_type_signatures = anonymous_tuple.to_elements(
-            functional_type.parameter)
+        named_type_signatures = structure.to_elements(functional_type.parameter)
         for index, (_, concrete_type) in enumerate(named_type_signatures):
           parameter_types[index].append(concrete_type)
     else:
@@ -1003,7 +1002,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     """
     if type_signature.is_struct():
       packed_param_types = [[] for _ in range(len(type_signature))]
-      for _, call in anonymous_tuple.iter_elements(comp):
+      for _, call in structure.iter_elements(comp):
         for index, parameter_type in enumerate(
             call.function.type_signature.parameter):
           packed_param_types[index].append(parameter_type)
@@ -1016,7 +1015,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
       return computation_types.StructType(param_types)
     else:
       packed_param_types = []
-      for _, call in anonymous_tuple.iter_elements(comp):
+      for _, call in structure.iter_elements(comp):
         packed_param_types.append(call.function.type_signature.parameter)
       return self._create_merged_parameter_for_type(packed_param_types,
                                                     type_signature)
@@ -1028,7 +1027,7 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(self._uri)
     merged_parameter_type = self._create_merged_parameter_type(
         comp, intrinsic_def.type_signature.parameter)
-    named_comps = anonymous_tuple.to_elements(comp)
+    named_comps = structure.to_elements(comp)
     type_signature = [call.type_signature.member for _, call in named_comps]
     result_type = computation_types.FederatedType(
         type_signature, intrinsic_def.type_signature.result.placement,
@@ -1316,7 +1315,7 @@ class ReplaceSelectionFromTuple(transformation_utils.TransformSpec):
     return comp.is_selection() and comp.source.is_struct()
 
   def _get_index_from_name(self, selection_name, tuple_type_signature):
-    named_type_signatures = anonymous_tuple.to_elements(tuple_type_signature)
+    named_type_signatures = structure.to_elements(tuple_type_signature)
     return [x[0] for x in named_type_signatures].index(selection_name)
 
   def transform(self, comp):
@@ -1828,7 +1827,7 @@ def insert_called_tf_identity_at_leaves(comp):
     """Decorates references under `comp` if necessary."""
     if (comp.is_struct() and any(_should_decorate(x) for x in comp)):
       elems = []
-      for x in anonymous_tuple.iter_elements(comp):
+      for x in structure.iter_elements(comp):
         if _should_decorate(x[1]):
           elems.append((x[0], _decorate(x[1])))
         else:
@@ -2314,11 +2313,11 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
     """Creates mapping from old symbol names to replacement computations."""
     if isinstance(new_comp, building_blocks.Struct):
       tup_type_spec_names_stripped = computation_types.StructType([
-          x[1] for x in anonymous_tuple.iter_elements(new_comp.type_signature)  # pytype: disable=attribute-error
+          x[1] for x in structure.iter_elements(new_comp.type_signature)  # pytype: disable=attribute-error
       ])
       ref_to_tuple = building_blocks.Reference(new_symbol,
                                                tup_type_spec_names_stripped)
-      elem_iterable = enumerate(anonymous_tuple.iter_elements(new_comp))
+      elem_iterable = enumerate(structure.iter_elements(new_comp))
       for idx, (old_symbol, _) in elem_iterable:
         symbols_to_comp_map[old_symbol] = building_blocks.Selection(
             source=ref_to_tuple, index=idx)
@@ -2380,7 +2379,7 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
       for name, tup in new_symbol_bindings:
         if isinstance(tup, building_blocks.Struct):
           tup_to_add = building_blocks.Struct(
-              [e[1] for e in anonymous_tuple.iter_elements(tup)])
+              [e[1] for e in structure.iter_elements(tup)])
           names_stripped.append((name, tup_to_add))
         else:
           names_stripped.append((name, tup[1]))

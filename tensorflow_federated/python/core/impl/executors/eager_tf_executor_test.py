@@ -19,8 +19,8 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -104,8 +104,8 @@ class EagerTFExecutorTest(tf.test.TestCase):
         computation_impl.ComputationImpl.get_proto(comp))
     p = tf.constant(10)
     q = tf.constant(20)
-    result = fn(anonymous_tuple.AnonymousTuple([('a', p), ('b', q)]))
-    self.assertIsInstance(result, anonymous_tuple.AnonymousTuple)
+    result = fn(structure.Struct([('a', p), ('b', q)]))
+    self.assertIsInstance(result, structure.Struct)
     self.assertCountEqual(dir(result), ['sum'])
     self.assertIsInstance(result.sum, tf.Tensor)
     self.assertEqual(result.sum.numpy(), 30)
@@ -224,12 +224,10 @@ class EagerTFExecutorTest(tf.test.TestCase):
         }], [tf.int32, collections.OrderedDict([('a', tf.int32)])]))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '<int32,<a=int32>>')
-    self.assertIsInstance(val.internal_representation,
-                          anonymous_tuple.AnonymousTuple)
+    self.assertIsInstance(val.internal_representation, structure.Struct)
     self.assertLen(val.internal_representation, 2)
     self.assertIsInstance(val.internal_representation[0], tf.Tensor)
-    self.assertIsInstance(val.internal_representation[1],
-                          anonymous_tuple.AnonymousTuple)
+    self.assertIsInstance(val.internal_representation[1], structure.Struct)
     self.assertLen(val.internal_representation[1], 1)
     self.assertEqual(dir(val.internal_representation[1]), ['a'])
     self.assertIsInstance(val.internal_representation[1][0], tf.Tensor)
@@ -269,8 +267,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
     self.assertEqual(str(val.type_signature), '(<int32,int32> -> int32)')
     self.assertTrue(callable(val.internal_representation))
-    arg = anonymous_tuple.AnonymousTuple([('a', tf.constant(10)),
-                                          ('b', tf.constant(10))])
+    arg = structure.Struct([('a', tf.constant(10)), ('b', tf.constant(10))])
     result = val.internal_representation(arg)
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result.numpy(), 20)
@@ -376,8 +373,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
     result = loop.run_until_complete(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), '<a=int32,b=int32>')
-    self.assertIsInstance(result.internal_representation,
-                          anonymous_tuple.AnonymousTuple)
+    self.assertIsInstance(result.internal_representation, structure.Struct)
     self.assertCountEqual(dir(result.internal_representation), ['a', 'b'])
     self.assertIsInstance(result.internal_representation.a, tf.Tensor)
     self.assertIsInstance(result.internal_representation.b, tf.Tensor)
@@ -393,8 +389,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
     v3 = loop.run_until_complete(
         ex.create_struct(collections.OrderedDict([('a', v1), ('b', v2)])))
     self.assertIsInstance(v3, eager_tf_executor.EagerValue)
-    self.assertIsInstance(v3.internal_representation,
-                          anonymous_tuple.AnonymousTuple)
+    self.assertIsInstance(v3.internal_representation, structure.Struct)
     self.assertLen(v3.internal_representation, 2)
     self.assertCountEqual(dir(v3.internal_representation), ['a', 'b'])
     self.assertIsInstance(v3.internal_representation[0], tf.Tensor)

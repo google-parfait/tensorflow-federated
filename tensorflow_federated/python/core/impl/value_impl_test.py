@@ -19,7 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import value_base
@@ -236,7 +236,7 @@ class ValueImplTest(parameterized.TestCase):
     self.assertIsInstance(v, value_base.Value)
     self.assertEqual(str(v), '<a=foo,b=bar>')
 
-  def test_to_value_for_anonymous_tuple(self):
+  def test_to_value_for_structure(self):
     x = value_impl.ValueImpl(
         building_blocks.Reference('foo', tf.int32),
         context_stack_impl.context_stack)
@@ -244,7 +244,7 @@ class ValueImplTest(parameterized.TestCase):
         building_blocks.Reference('bar', tf.bool),
         context_stack_impl.context_stack)
     v = value_impl.to_value(
-        anonymous_tuple.AnonymousTuple([('a', x), ('b', y)]), None,
+        structure.Struct([('a', x), ('b', y)]), None,
         context_stack_impl.context_stack)
     self.assertIsInstance(v, value_base.Value)
     self.assertEqual(str(v), '<a=foo,b=bar>')
@@ -689,8 +689,7 @@ class ValueImplTest(parameterized.TestCase):
     with context_stack_impl.context_stack.install(
         reference_executor.ReferenceExecutor()):
       self.assertEqual(
-          foo([5, True]),
-          anonymous_tuple.AnonymousTuple([('a', 10), ('b', True)]))
+          foo([5, True]), structure.Struct([('a', 10), ('b', True)]))
 
   def test_setattr_federated_named_tuple_int(self):
 
@@ -705,9 +704,9 @@ class ValueImplTest(parameterized.TestCase):
         reference_executor.ReferenceExecutor()):
       self.assertEqual(
           foo([[5, True], [0, False], [-5, True]]), [
-              anonymous_tuple.AnonymousTuple([('a', 10), ('b', True)]),
-              anonymous_tuple.AnonymousTuple([('a', 10), ('b', False)]),
-              anonymous_tuple.AnonymousTuple([('a', 10), ('b', True)])
+              structure.Struct([('a', 10), ('b', True)]),
+              structure.Struct([('a', 10), ('b', False)]),
+              structure.Struct([('a', 10), ('b', True)])
           ])
 
   def test_setattr_federated_named_tuple_type_bool(self):
@@ -723,9 +722,9 @@ class ValueImplTest(parameterized.TestCase):
         reference_executor.ReferenceExecutor()):
       self.assertEqual(
           foo([[5, True], [0, False], [-5, True]]), [
-              anonymous_tuple.AnonymousTuple([('a', 5), ('b', False)]),
-              anonymous_tuple.AnonymousTuple([('a', 0), ('b', False)]),
-              anonymous_tuple.AnonymousTuple([('a', -5), ('b', False)])
+              structure.Struct([('a', 5), ('b', False)]),
+              structure.Struct([('a', 0), ('b', False)]),
+              structure.Struct([('a', -5), ('b', False)])
           ])
 
   def test_setattr_federated_named_tuple_type_with_unnamed_element(self):
@@ -742,17 +741,17 @@ class ValueImplTest(parameterized.TestCase):
         reference_executor.ReferenceExecutor()):
       self.assertEqual(
           foo([[5, 1.0, True], [0, 2.0, True], [-5, 3.0, False]]), [
-              anonymous_tuple.AnonymousTuple([
+              structure.Struct([
                   ('a', 5),
                   (None, 1.0),
                   ('b', False),
               ]),
-              anonymous_tuple.AnonymousTuple([
+              structure.Struct([
                   ('a', 0),
                   (None, 2.0),
                   ('b', False),
               ]),
-              anonymous_tuple.AnonymousTuple([
+              structure.Struct([
                   ('a', -5),
                   (None, 3.0),
                   ('b', False),

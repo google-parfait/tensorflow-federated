@@ -18,7 +18,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -63,13 +63,13 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
       reference_executor.to_representation_for_type([], tf.int32)
 
   def test_to_representation_for_type_with_named_tuple_type(self):
-    foo = anonymous_tuple.AnonymousTuple([('x', 10), ('y', 20)])
+    foo = structure.Struct([('x', 10), ('y', 20)])
     self.assertEqual(
         reference_executor.to_representation_for_type(foo, [('x', tf.int32),
                                                             ('y', tf.int32)]),
         foo)
-    foo = anonymous_tuple.AnonymousTuple([
-        ('x', anonymous_tuple.AnonymousTuple([(None, 10), (None, 20)])),
+    foo = structure.Struct([
+        ('x', structure.Struct([(None, 10), (None, 20)])),
         ('y', 30),
     ])
     self.assertEqual(
@@ -77,12 +77,10 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
             foo, [('x', [tf.int32, tf.int32]), ('y', tf.int32)]), foo)
     self.assertEqual(
         reference_executor.to_representation_for_type(
-            anonymous_tuple.AnonymousTuple([('x', [10, 20]), ('y', 30)]),
+            structure.Struct([('x', [10, 20]), ('y', 30)]),
             [('x', [tf.int32, tf.int32]), ('y', tf.int32)]),
-        anonymous_tuple.AnonymousTuple([
-            ('x', anonymous_tuple.AnonymousTuple([(None, 10), (None, 20)])),
-            ('y', 30)
-        ]))
+        structure.Struct([('x', structure.Struct([(None, 10), (None, 20)])),
+                          ('y', 30)]))
     with self.assertRaises(TypeError):
       reference_executor.to_representation_for_type(10, [tf.int32, tf.int32])
 
@@ -188,9 +186,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertTrue(np.array_equal(v_result, np.array([1, 2, 3])))
 
   def test_stamp_computed_value_into_graph_with_tuples_of_tensors(self):
-    v_val = anonymous_tuple.AnonymousTuple([
-        ('x', 10), ('y', anonymous_tuple.AnonymousTuple([('z', 0.6)]))
-    ])
+    v_val = structure.Struct([('x', 10), ('y', structure.Struct([('z', 0.6)]))])
     v_type = [('x', tf.int32), ('y', [('z', tf.float32)])]
     v = reference_executor.ComputedValue(
         reference_executor.to_representation_for_type(v_val, v_type), v_type)
@@ -199,10 +195,10 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
       with tf.compat.v1.Session(graph=graph) as sess:
         stampped_v_val = tensorflow_utils.fetch_value_in_session(
             sess, stamped_v)
-    elements = anonymous_tuple.to_elements(stampped_v_val)
+    elements = structure.to_elements(stampped_v_val)
     self.assertEqual(elements[0], ('x', 10))
     self.assertEqual(elements[1][0], 'y')
-    nested_elements = anonymous_tuple.to_elements(elements[1][1])
+    nested_elements = structure.to_elements(elements[1][1])
     self.assertEqual(nested_elements[0][0], 'z')
     self.assertAlmostEqual(nested_elements[0][1], 0.6)
 
@@ -670,15 +666,15 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
         str(
             reference_executor.multiply_by_scalar(
                 reference_executor.ComputedValue(
-                    anonymous_tuple.AnonymousTuple([
+                    structure.Struct([
                         ('A', 10.0),
-                        ('B', anonymous_tuple.AnonymousTuple([('C', 20.0)])),
+                        ('B', structure.Struct([('C', 20.0)])),
                     ]), [('A', tf.float32), ('B', [('C', tf.float32)])]),
                 0.5).value), '<A=5.0,B=<C=10.0>>')
 
   def test_fit_argument(self):
     old_arg = reference_executor.ComputedValue(
-        anonymous_tuple.AnonymousTuple([('A', 10)]),
+        structure.Struct([('A', 10)]),
         [('A', type_factory.at_clients(tf.int32, all_equal=True))])
     new_arg = reference_executor.fit_argument(
         old_arg, [('A', type_factory.at_clients(tf.int32))],
@@ -978,7 +974,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
         str(foo.type_signature),
         '(<<A=int32,B=float32>,<A=int32,B=float32>> -> <A=int32,B=float32>)')
     foo_result = foo([2, 0.1], [3, 0.2])
-    self.assertIsInstance(foo_result, anonymous_tuple.AnonymousTuple)
+    self.assertIsInstance(foo_result, structure.Struct)
     self.assertSameElements(dir(foo_result), ['A', 'B'])
     self.assertEqual(foo_result.A, 5)
     self.assertAlmostEqual(foo_result.B, 0.3, places=2)

@@ -21,8 +21,8 @@ from typing import Mapping
 
 from absl import logging
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -534,8 +534,7 @@ def dedupe_and_merge_tuple_intrinsics(comp, uri):
         comp.source.result.is_struct()):
       if comp.index is None:
         names = [
-            x[0]
-            for x in anonymous_tuple.iter_elements(comp.source.type_signature)
+            x[0] for x in structure.iter_elements(comp.source.type_signature)
         ]
         index = names.index(comp.name)
       else:

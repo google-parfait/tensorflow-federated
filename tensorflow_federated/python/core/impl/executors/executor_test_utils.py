@@ -20,9 +20,9 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.compiler import computation_factory
@@ -202,13 +202,12 @@ class TracingExecutor(executor_base.Executor):
 
   async def create_struct(self, elements):
     target_val = await self._target.create_struct(
-        anonymous_tuple.map_structure(lambda x: x.value, elements))
+        structure.map_structure(lambda x: x.value, elements))
     wrapped_val = TracingExecutorValue(self, self._get_new_value_index(),
                                        target_val)
     self._trace.append(
-        ('create_struct',
-         anonymous_tuple.map_structure(lambda x: x.index,
-                                       elements), wrapped_val.index))
+        ('create_struct', structure.map_structure(lambda x: x.index,
+                                                  elements), wrapped_val.index))
     return wrapped_val
 
   def close(self):
@@ -559,8 +558,7 @@ def create_dummy_computation_tensorflow_tuple():
 
   with tf.Graph().as_default() as graph:
     names = ['a', 'b', 'c']
-    result = anonymous_tuple.AnonymousTuple(
-        (n, tf.constant(value)) for n in names)
+    result = structure.Struct((n, tf.constant(value)) for n in names)
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 

@@ -53,7 +53,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":function_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",

@@ -37,7 +37,7 @@ def to_value(val, type_spec=None):
   * Numpy arrays (`np.ndarray` objects), also mapped to TFF tensors.
 
   * Dictionaries (`collections.OrderedDict` and unordered `dict`), `list`s,
-    `tuple`s, `namedtuple`s, and `AnonymousTuple`s, all of which are mapped to
+    `tuple`s, `namedtuple`s, and `Struct`s, all of which are mapped to
     TFF tuple type.
 
   * Computations (constructed with either the `tff.tf_computation` or with the

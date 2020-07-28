@@ -17,7 +17,7 @@ import collections
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import type_utils
@@ -62,7 +62,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
         type_utils.to_canonical_value([{
             'a': 1,
             'b': 0.1,
-        }]), [anonymous_tuple.AnonymousTuple([
+        }]), [structure.Struct([
             ('a', 1),
             ('b', 0.1),
         ])])
@@ -73,7 +73,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
             [collections.OrderedDict([
                 ('a', 1),
                 ('b', 0.1),
-            ])]), [anonymous_tuple.AnonymousTuple([
+            ])]), [structure.Struct([
                 ('a', 1),
                 ('b', 0.1),
             ])])
@@ -83,7 +83,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
         type_utils.to_canonical_value({
             'a': 1,
             'b': 0.1,
-        }), anonymous_tuple.AnonymousTuple([
+        }), structure.Struct([
             ('a', 1),
             ('b', 0.1),
         ]))
@@ -91,7 +91,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
         type_utils.to_canonical_value({
             'b': 0.1,
             'a': 1,
-        }), anonymous_tuple.AnonymousTuple([
+        }), structure.Struct([
             ('a', 1),
             ('b', 0.1),
         ]))
@@ -102,7 +102,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
             collections.OrderedDict([
                 ('a', 1),
                 ('b', 0.1),
-            ])), anonymous_tuple.AnonymousTuple([
+            ])), structure.Struct([
                 ('a', 1),
                 ('b', 0.1),
             ]))
@@ -111,7 +111,7 @@ class TypeUtilsTest(test.TestCase, parameterized.TestCase):
             collections.OrderedDict([
                 ('b', 0.1),
                 ('a', 1),
-            ])), anonymous_tuple.AnonymousTuple([
+            ])), structure.Struct([
                 ('b', 0.1),
                 ('a', 1),
             ]))

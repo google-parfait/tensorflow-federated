@@ -51,7 +51,7 @@ py_test(
     deps = [
         ":computation_types",
         ":placements",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:structure",
     ],
 )
 
@@ -107,7 +107,7 @@ py_test(
         ":intrinsics",
         ":placements",
         ":value_base",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/executors:default_executor",

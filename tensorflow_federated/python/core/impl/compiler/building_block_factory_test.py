@@ -17,7 +17,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -2393,10 +2393,9 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
         tuple_index=0, selection_sequence=[0])
     with self.assertRaises(TypeError):
       building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
-          parameter_type,
-          anonymous_tuple.AnonymousTuple([(None, selection_spec)]))
+          parameter_type, structure.Struct([(None, selection_spec)]))
 
-  def test_raises_non_anonymous_tuple(self):
+  def test_raises_non_structure(self):
     parameter_type = computation_types.StructType([tf.int32])
     selection_spec = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[0])
@@ -2404,20 +2403,20 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
       building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
           parameter_type, [selection_spec])
 
-  def test_raises_nested_non_anonymous_tuple(self):
+  def test_raises_nested_non_structure(self):
     parameter_type = computation_types.StructType([tf.int32])
     selection_spec = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[0])
     with self.assertRaises(TypeError):
       building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
           parameter_type,
-          anonymous_tuple.from_container([[selection_spec]], recursive=False))
+          structure.from_container([[selection_spec]], recursive=False))
 
   def test_construct_selection_from_tuple_with_empty_list_type_signature(self):
     ntt = computation_types.StructType
     parameter_type = ntt([tf.int32, tf.float32])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
-        parameter_type, anonymous_tuple.from_container([]))
+        parameter_type, structure.from_container([]))
     self.assertIsInstance(constructed_tf, building_blocks.CompiledComputation)
     self.assertEqual(
         constructed_tf.type_signature,
@@ -2430,7 +2429,7 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
         tuple_index=0, selection_sequence=[])
     selection_spec_2 = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[])
-    output_structure = anonymous_tuple.from_container(
+    output_structure = structure.from_container(
         [selection_spec_1, selection_spec_2])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
@@ -2445,7 +2444,7 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
     parameter_type = computation_types.StructType([tf.int32, tf.float32])
     selection_spec = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[])
-    output_structure = anonymous_tuple.from_container([selection_spec])
+    output_structure = structure.from_container([selection_spec])
     ntt = computation_types.StructType
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
@@ -2461,7 +2460,7 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
         tuple_index=0, selection_sequence=[])
     selection_spec_2 = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[])
-    output_structure = anonymous_tuple.from_container(
+    output_structure = structure.from_container(
         [selection_spec_1, selection_spec_2])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
@@ -2481,8 +2480,8 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
         tuple_index=0, selection_sequence=[])
     selection_spec_2 = building_block_factory.SelectionSpec(
         tuple_index=1, selection_sequence=[])
-    output_structure = anonymous_tuple.AnonymousTuple([('a', selection_spec_1),
-                                                       ('b', selection_spec_2)])
+    output_structure = structure.Struct([('a', selection_spec_1),
+                                         ('b', selection_spec_2)])
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
     self.assertEqual(
@@ -2497,10 +2496,10 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
         tuple_index=0, selection_sequence=[])
     selection_spec_2 = building_block_factory.SelectionSpec(
         tuple_index=1, selection_sequence=[])
-    output_structure = anonymous_tuple.AnonymousTuple([
+    output_structure = structure.Struct([
         ('c',
-         anonymous_tuple.from_container([selection_spec_1, selection_spec_2],
-                                        recursive=True))
+         structure.from_container([selection_spec_1, selection_spec_2],
+                                  recursive=True))
     ])
     ntt = computation_types.StructType
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
@@ -2515,8 +2514,8 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
     parameter_type = computation_types.StructType([[[tf.int32]], tf.float32])
     selection_spec = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[0, 0])
-    output_structure = anonymous_tuple.from_container([selection_spec],
-                                                      recursive=True)
+    output_structure = structure.from_container([selection_spec],
+                                                recursive=True)
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
     result = test_utils.run_tensorflow(constructed_tf.proto, [[[0]], 1.])
@@ -2527,8 +2526,8 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
     parameter_type = computation_types.StructType([[[tf.int32]], tf.float32])
     selection_spec = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[0, 0])
-    output_structure = anonymous_tuple.from_container([[[selection_spec]]],
-                                                      recursive=True)
+    output_structure = structure.from_container([[[selection_spec]]],
+                                                recursive=True)
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
     result = test_utils.run_tensorflow(constructed_tf.proto, [[[0]], 1.])
@@ -2541,11 +2540,9 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
         tuple_index=0, selection_sequence=[])
     selection_spec_2 = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[])
-    output_structure = anonymous_tuple.from_container([
-        anonymous_tuple.AnonymousTuple([('a', selection_spec_1)]),
-        selection_spec_2
-    ],
-                                                      recursive=True)
+    output_structure = structure.from_container(
+        [structure.Struct([('a', selection_spec_1)]), selection_spec_2],
+        recursive=True)
     ntt = computation_types.StructType
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
@@ -2561,7 +2558,7 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
         tuple_index=0, selection_sequence=[])
     selection_spec_2 = building_block_factory.SelectionSpec(
         tuple_index=0, selection_sequence=[])
-    output_structure = anonymous_tuple.from_container(
+    output_structure = structure.from_container(
         [[selection_spec_1], selection_spec_2], recursive=True)
     constructed_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         parameter_type, output_structure=output_structure)
@@ -2577,7 +2574,7 @@ class ConstructTensorFlowSelectingOutputsTest(absltest.TestCase):
     self.assertEqual(result[1], 1)
     flipped_parameter_type = computation_types.StructType(
         [tf.int32, tf.float32])
-    flipped_output_structure = anonymous_tuple.from_container(
+    flipped_output_structure = structure.from_container(
         [selection_spec_1, [selection_spec_2]], recursive=True)
     flipped_packing_tf = building_block_factory.construct_tensorflow_selecting_and_packing_outputs(
         flipped_parameter_type, output_structure=flipped_output_structure)

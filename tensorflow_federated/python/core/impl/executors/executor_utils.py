@@ -17,8 +17,8 @@ import asyncio
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -42,7 +42,7 @@ async def delegate_entirely_to_executor(arg, arg_type, executor):
   The supported types of `arg` and the manner in which they are handled:
 
   * For instances of `pb.Computation`, calls `create_value()`.
-  * For instances of `anonymous_tuple.AnonymousTuple`, calls `create_struct()`.
+  * For instances of `structure.Struct`, calls `create_struct()`.
   * Otherwise, must be `executor_value_base.ExecutorValue`, and assumed to
     already be owned by the target executor.
 
@@ -62,14 +62,14 @@ async def delegate_entirely_to_executor(arg, arg_type, executor):
   py_typecheck.check_type(arg_type, computation_types.Type)
   if isinstance(arg, pb.Computation):
     return await executor.create_value(arg, arg_type)
-  elif isinstance(arg, anonymous_tuple.AnonymousTuple):
+  elif isinstance(arg, structure.Struct):
     vals = await asyncio.gather(*[
         delegate_entirely_to_executor(value, type_spec, executor)
         for value, type_spec in zip(arg, arg_type)
     ])
     return await executor.create_struct(
-        anonymous_tuple.AnonymousTuple(
-            zip((k for k, _ in anonymous_tuple.iter_elements(arg_type)), vals)))
+        structure.Struct(
+            zip((k for k, _ in structure.iter_elements(arg_type)), vals)))
   else:
     py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
     return arg

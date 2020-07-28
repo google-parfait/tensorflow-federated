@@ -13,8 +13,8 @@
 # limitations under the License.
 """Utilities file for functions with TFF `Value`s as inputs and outputs."""
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import value_impl
@@ -42,7 +42,7 @@ def get_curried(fn):
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
   py_typecheck.check_type(fn.type_signature.parameter,
                           computation_types.StructType)
-  param_elements = anonymous_tuple.to_elements(fn.type_signature.parameter)
+  param_elements = structure.to_elements(fn.type_signature.parameter)
   references = []
   for idx, (_, elem_type) in enumerate(param_elements):
     references.append(building_blocks.Reference('arg{}'.format(idx), elem_type))

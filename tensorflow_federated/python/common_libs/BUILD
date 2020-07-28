@@ -52,8 +52,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":anonymous_tuple",
         ":py_typecheck",
+        ":structure",
     ],
 )
 

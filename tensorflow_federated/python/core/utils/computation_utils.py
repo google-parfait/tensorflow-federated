@@ -35,7 +35,7 @@ def update_state(state, **kwargs):
     KeyError: if kwargs contains a field that is not in state.
     TypeError: if state is not a structure with named fields.
   """
-  # TODO(b/129569441): Support AnonymousTuple as well.
+  # TODO(b/129569441): Support Struct as well.
   if not (py_typecheck.is_named_tuple(state) or py_typecheck.is_attrs(state) or
           isinstance(state, collections.Mapping)):
     raise TypeError('state must be a structure with named fields (e.g. '

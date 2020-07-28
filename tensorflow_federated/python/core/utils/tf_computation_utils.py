@@ -15,8 +15,8 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 
 
@@ -60,8 +60,8 @@ def create_variables(name, type_spec, **kwargs):
       else:
         return var_name
 
-    type_elements_iter = anonymous_tuple.iter_elements(type_spec)
-    return anonymous_tuple.AnonymousTuple(
+    type_elements_iter = structure.iter_elements(type_spec)
+    return structure.Struct(
         (k, create_variables(_scoped_name(k, i), v, **kwargs))
         for i, (k, v) in enumerate(type_elements_iter))
   else:
@@ -80,7 +80,7 @@ def assign(target, source):
   Args:
     target: A nested structure composed of variables embedded in containers that
       are compatible with `tf.nest`, or instances of
-      `anonymous_tuple.AnonymousTuple`.
+      `structure.Struct`.
     source: A nsested structure composed of tensors, matching that of `target`.
 
   Returns:
@@ -90,10 +90,9 @@ def assign(target, source):
     TypeError: If types mismatch.
   """
   # TODO(b/113112108): Extend this to containers of mixed types.
-  if isinstance(target, anonymous_tuple.AnonymousTuple):
-    return tf.group(*anonymous_tuple.flatten(
-        anonymous_tuple.map_structure(lambda a, b: a.assign(b), target, source))
-                   )
+  if isinstance(target, structure.Struct):
+    return tf.group(*structure.flatten(
+        structure.map_structure(lambda a, b: a.assign(b), target, source)))
   else:
     return tf.group(*tf.nest.flatten(
         tf.nest.map_structure(lambda a, b: a.assign(b), target, source)))
@@ -110,7 +109,7 @@ def identity(source):
   Args:
     source: A nested structure composed of tensors or variables embedded in
       containers that are compatible with `tf.nest`, or instances of
-      `anonymous_tuple.AnonymousTuple`. Elements that represent variables have
+      `structure.Struct`. Elements that represent variables have
       their content extracted prior to identity mapping by first invoking
       `tf.Variable.read_value`.
 
@@ -131,7 +130,7 @@ def identity(source):
     return tf.identity(x)
 
   # TODO(b/113112108): Extend this to containers of mixed types.
-  if isinstance(source, anonymous_tuple.AnonymousTuple):
-    return anonymous_tuple.map_structure(_mapping_fn, source)
+  if isinstance(source, structure.Struct):
+    return structure.map_structure(_mapping_fn, source)
   else:
     return tf.nest.map_structure(_mapping_fn, source)

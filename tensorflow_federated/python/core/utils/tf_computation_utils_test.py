@@ -14,7 +14,7 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.utils import tf_computation_utils
 
@@ -38,7 +38,7 @@ class TfComputationUtilsTest(test.TestCase):
     x = tf_computation_utils.create_variables('foo',
                                               [('x', tf.int32),
                                                ('y', tf.string), tf.bool])
-    self.assertIsInstance(x, anonymous_tuple.AnonymousTuple)
+    self.assertIsInstance(x, structure.Struct)
     self.assertLen(x, 3)
     self.assertEqual(dir(x), ['x', 'y'])
     self._assertMatchesVariable(x[0], 'foo/x:0', (), tf.int32)
@@ -58,12 +58,12 @@ class TfComputationUtilsTest(test.TestCase):
       result = sess.run(v)
     self.assertEqual(result, 10)
 
-  def test_assign_with_anonymous_tuple(self):
+  def test_assign_with_structure(self):
     with tf.Graph().as_default() as graph:
       v = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
       c = tf.constant(10, dtype=tf.int32, shape=[])
-      v_tuple = anonymous_tuple.AnonymousTuple([('bar', v)])
-      c_tuple = anonymous_tuple.AnonymousTuple([('bar', c)])
+      v_tuple = structure.Struct([('bar', v)])
+      c_tuple = structure.Struct([('bar', c)])
       op = tf_computation_utils.assign(v_tuple, c_tuple)
     with tf.compat.v1.Session(graph=graph) as sess:
       sess.run(v.initializer)
@@ -91,11 +91,10 @@ class TfComputationUtilsTest(test.TestCase):
       result = sess.run(c2['foo'])
     self.assertEqual(result, 10)
 
-  def test_identity_with_anonymous_tuple(self):
+  def test_identity_with_structure(self):
     with tf.Graph().as_default() as graph:
-      c1 = anonymous_tuple.AnonymousTuple([
-          ('foo', tf.constant(10, dtype=tf.int32, shape=[]))
-      ])
+      c1 = structure.Struct([('foo', tf.constant(10, dtype=tf.int32,
+                                                 shape=[]))])
       c2 = tf_computation_utils.identity(c1)
     self.assertIsNot(c2, c1)
     with tf.compat.v1.Session(graph=graph) as sess:

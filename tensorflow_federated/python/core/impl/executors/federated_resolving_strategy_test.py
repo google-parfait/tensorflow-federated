@@ -15,7 +15,7 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -70,11 +70,11 @@ class FederatedResolvingStrategyValueComputeTest(
 
     self.assertEqual(result, 10.0)
 
-  def test_returns_value_with_anonymous_tuple_value(self):
+  def test_returns_value_with_structure_value(self):
     element = eager_tf_executor.EagerValue(10.0, None, tf.float32)
     element_type = computation_types.TensorType(tf.float32)
     names = ['a', 'b', 'c']
-    value = anonymous_tuple.AnonymousTuple((n, element) for n in names)
+    value = structure.Struct((n, element) for n in names)
     type_signature = computation_types.StructType(
         (n, element_type) for n in names)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
@@ -82,7 +82,7 @@ class FederatedResolvingStrategyValueComputeTest(
 
     result = self.run_sync(value.compute())
 
-    expected_result = anonymous_tuple.AnonymousTuple((n, 10.0) for n in names)
+    expected_result = structure.Struct((n, 10.0) for n in names)
     self.assertEqual(result, expected_result)
 
   def test_raises_type_error_with_unembedded_federated_type(self):

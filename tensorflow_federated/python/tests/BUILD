@@ -10,7 +10,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:test",
     ],
 )

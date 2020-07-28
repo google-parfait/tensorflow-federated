@@ -13,7 +13,7 @@
 # limitations under the License.
 """Define a template for a stateful process that produces metrics."""
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.templates import iterative_process
 
@@ -81,7 +81,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
               t=type(next_fn.type_signature.result),
               s=next_fn.type_signature.result))
     result_field_names = [
-        name for (name, _) in anonymous_tuple.iter_elements(next_result_type)
+        name for (name, _) in structure.iter_elements(next_result_type)
     ]
     if result_field_names != _RESULT_FIELD_NAMES:
       raise TypeError('The return type of next_fn must match type signature '

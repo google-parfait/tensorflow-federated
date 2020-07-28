@@ -15,7 +15,7 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
@@ -107,14 +107,12 @@ class InferCardinalitiesTest(absltest.TestCase):
     self.assertEqual(mixed_cardinalities[placement_literals.CLIENTS], 10)
     self.assertEqual(mixed_cardinalities[new_placement], 5)
 
-  def test_infer_cardinalities_success_anonymous_tuple(self):
+  def test_infer_cardinalities_success_structure(self):
     foo = cardinalities_utils.infer_cardinalities(
-        anonymous_tuple.AnonymousTuple([
-            ('A', [1, 2, 3]),
-            ('B',
-             anonymous_tuple.AnonymousTuple([('C', [[1, 2], [3, 4], [5, 6]]),
-                                             ('D', [True, False, True])]))
-        ]),
+        structure.Struct([('A', [1, 2, 3]),
+                          ('B',
+                           structure.Struct([('C', [[1, 2], [3, 4], [5, 6]]),
+                                             ('D', [True, False, True])]))]),
         computation_types.StructType([
             ('A',
              computation_types.FederatedType(tf.int32,
@@ -130,10 +128,10 @@ class InferCardinalitiesTest(absltest.TestCase):
         ]))
     self.assertDictEqual(foo, {placement_literals.CLIENTS: 3})
 
-  def test_infer_cardinalities_anonymous_tuple_failure(self):
+  def test_infer_cardinalities_structure_failure(self):
     with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
       cardinalities_utils.infer_cardinalities(
-          anonymous_tuple.AnonymousTuple([('A', [1, 2, 3]), ('B', [1, 2])]),
+          structure.Struct([('A', [1, 2, 3]), ('B', [1, 2])]),
           computation_types.StructType([
               ('A',
                computation_types.FederatedType(tf.int32,

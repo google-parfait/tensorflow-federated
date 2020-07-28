@@ -120,8 +120,8 @@ py_library(
     deps = [
         ":model",
         ":model_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core",
     ],
 )
@@ -176,8 +176,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":model",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core",
     ],
 )

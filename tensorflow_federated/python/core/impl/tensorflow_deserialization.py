@@ -54,7 +54,7 @@ def deserialize_and_call_tf_computation(computation_proto, arg, graph):
        result: The results to be fetched from TensorFlow. Depending on
            the type of the result, this can be `tf.Tensor` or `tf.data.Dataset`
            instances, or a nested structure (such as an
-           `anonymous_tuple.AnonymousTuple`).
+           `structure.Struct`).
 
   Raises:
     TypeError: If the arguments are of the wrong types.

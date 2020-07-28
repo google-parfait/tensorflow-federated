@@ -48,8 +48,8 @@ import absl.logging as logging
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.executors import executor_base
@@ -96,13 +96,13 @@ class FederatedResolvingStrategyValue(executor_value_base.ExecutorValue):
     """
     if isinstance(self._value, executor_value_base.ExecutorValue):
       return await self._value.compute()
-    elif isinstance(self._value, anonymous_tuple.AnonymousTuple):
+    elif isinstance(self._value, structure.Struct):
       results = await asyncio.gather(*[
           FederatedResolvingStrategyValue(v, t).compute()
           for v, t in zip(self._value, self._type_signature)
       ])
-      element_types = anonymous_tuple.iter_elements(self._type_signature)
-      return anonymous_tuple.AnonymousTuple(
+      element_types = structure.iter_elements(self._type_signature)
+      return structure.Struct(
           (n, v) for (n, _), v in zip(element_types, results))
     elif isinstance(self._value, list):
       py_typecheck.check_type(self._type_signature,
@@ -189,10 +189,9 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
         logging.debug('Closing child executor for placement: %s', p)
         e.close()
 
-  def _check_arg_is_anonymous_tuple(self, arg):
+  def _check_arg_is_structure(self, arg):
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
-    py_typecheck.check_type(arg.internal_representation,
-                            anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(arg.internal_representation, structure.Struct)
 
   def _check_strategy_compatible_with_placement(self, placement):
     """Tests that this executor is compatible with the given `placement`.
@@ -297,7 +296,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def _map(self, arg, all_equal=None):
-    self._check_arg_is_anonymous_tuple(arg)
+    self._check_arg_is_structure(arg)
     py_typecheck.check_len(arg.internal_representation, 2)
     fn_type = arg.type_signature[0]
     py_typecheck.check_type(fn_type, computation_types.FunctionType)
@@ -327,12 +326,12 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
 
   @tracing.trace
   async def _zip(self, arg, placement, all_equal):
-    self._check_arg_is_anonymous_tuple(arg)
+    self._check_arg_is_structure(arg)
     py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
     self._check_strategy_compatible_with_placement(placement)
     children = self._target_executors[placement]
     cardinality = len(children)
-    elements = anonymous_tuple.to_elements(arg.internal_representation)
+    elements = structure.to_elements(arg.internal_representation)
     for _, v in elements:
       py_typecheck.check_type(v, list)
       if len(v) != cardinality:
@@ -340,16 +339,15 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
             cardinality, len(v)))
     new_vals = []
     for idx in range(cardinality):
-      new_vals.append(
-          anonymous_tuple.AnonymousTuple([(k, v[idx]) for k, v in elements]))
+      new_vals.append(structure.Struct([(k, v[idx]) for k, v in elements]))
     new_vals = await asyncio.gather(
         *[c.create_struct(x) for c, x in zip(children, new_vals)])
     return FederatedResolvingStrategyValue(
         new_vals,
         computation_types.FederatedType(
-            computation_types.StructType((
-                (k, v.member) if k else v.member
-                for k, v in anonymous_tuple.iter_elements(arg.type_signature))),
+            computation_types.StructType(
+                ((k, v.member) if k else v.member
+                 for k, v in structure.iter_elements(arg.type_signature))),
             placement,
             all_equal=all_equal))
 
@@ -360,8 +358,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     val_type, zero_type, accumulate_type, _, report_type = (
         executor_utils.parse_federated_aggregate_argument_types(
             arg.type_signature))
-    py_typecheck.check_type(arg.internal_representation,
-                            anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(arg.internal_representation, structure.Struct)
     py_typecheck.check_len(arg.internal_representation, 5)
 
     # Note: This is a simple initial implementation that simply forwards this
@@ -377,8 +374,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     accumulate = arg.internal_representation[2]
     pre_report = await self.compute_federated_reduce(
         FederatedResolvingStrategyValue(
-            anonymous_tuple.AnonymousTuple([(None, val), (None, zero),
-                                            (None, accumulate)]),
+            structure.Struct([(None, val), (None, zero), (None, accumulate)]),
             computation_types.StructType(
                 (val_type, zero_type, accumulate_type))))
 
@@ -389,9 +385,8 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     report = arg.internal_representation[4]
     return await self.compute_federated_apply(
         FederatedResolvingStrategyValue(
-            anonymous_tuple.AnonymousTuple([
-                (None, report), (None, pre_report.internal_representation)
-            ]),
+            structure.Struct([(None, report),
+                              (None, pre_report.internal_representation)]),
             computation_types.StructType(
                 (report_type, pre_report.type_signature))))
 
@@ -474,9 +469,8 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
         executor_utils.embed_tf_binary_operator(child, member_type,
                                                 tf.multiply))
     multiply_arg = await child.create_struct(
-        anonymous_tuple.AnonymousTuple([(None,
-                                         arg_sum.internal_representation[0]),
-                                        (None, factor)]))
+        structure.Struct([(None, arg_sum.internal_representation[0]),
+                          (None, factor)]))
     result = await child.create_call(multiply, multiply_arg)
     return FederatedResolvingStrategyValue([result], arg_sum.type_signature)
 
@@ -484,7 +478,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
   async def compute_federated_reduce(
       self,
       arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
-    self._check_arg_is_anonymous_tuple(arg)
+    self._check_arg_is_structure(arg)
     if len(arg.internal_representation) != 3:
       raise ValueError(
           'Expected 3 elements in the `federated_reduce()` argument tuple, '
@@ -514,8 +508,8 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     result = zero
     for item in items:
       result = await child.create_call(
-          op, await child.create_struct(
-              anonymous_tuple.AnonymousTuple([(None, result), (None, item)])))
+          op, await
+          child.create_struct(structure.Struct([(None, result), (None, item)])))
     return FederatedResolvingStrategyValue([result],
                                            computation_types.FederatedType(
                                                result.type_signature,
@@ -541,11 +535,9 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
                                                 tf.add))
     return await self.compute_federated_reduce(
         FederatedResolvingStrategyValue(
-            anonymous_tuple.AnonymousTuple([
-                (None, arg.internal_representation),
-                (None, zero.internal_representation),
-                (None, plus.internal_representation)
-            ]),
+            structure.Struct([(None, arg.internal_representation),
+                              (None, zero.internal_representation),
+                              (None, plus.internal_representation)]),
             computation_types.StructType(
                 (arg.type_signature, zero.type_signature, plus.type_signature)))
     )

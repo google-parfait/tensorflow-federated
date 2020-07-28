@@ -24,8 +24,8 @@ import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import executor_service_utils
@@ -309,10 +309,10 @@ class RemoteExecutor(executor_base.Executor):
 
   @tracing.trace(span=True)
   async def create_struct(self, elements):
-    constructed_anon_tuple = anonymous_tuple.from_container(elements)
+    constructed_anon_tuple = structure.from_container(elements)
     proto_elem = []
     type_elem = []
-    for k, v in anonymous_tuple.iter_elements(constructed_anon_tuple):
+    for k, v in structure.iter_elements(constructed_anon_tuple):
       py_typecheck.check_type(v, RemoteValue)
       proto_elem.append(
           executor_pb2.CreateStructRequest.Element(

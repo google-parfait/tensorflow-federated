@@ -58,7 +58,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":iterative_process",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
 )

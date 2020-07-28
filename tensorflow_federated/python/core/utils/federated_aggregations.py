@@ -17,8 +17,8 @@ import collections
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -64,14 +64,14 @@ def _federated_reduce_with_func(value, tf_func, zeros):
                                value.type_signature.member)
   def accumulate(current, value):
     if member_type.is_struct():
-      return anonymous_tuple.map_structure(tf_func, current, value)
+      return structure.map_structure(tf_func, current, value)
     return tf.nest.map_structure(tf_func, current, value)
 
   @computations.tf_computation(value.type_signature.member,
                                value.type_signature.member)
   def merge(a, b):
     if member_type.is_struct():
-      return anonymous_tuple.map_structure(tf_func, a, b)
+      return structure.map_structure(tf_func, a, b)
     return tf.nest.map_structure(tf_func, a, b)
 
   @computations.tf_computation(value.type_signature.member)
@@ -97,9 +97,9 @@ def _initial_values(initial_value_fn, member_type):
   @computations.tf_computation
   def zeros_fn():
     if member_type.is_struct():
-      anonymous_tuple.map_structure(
-          lambda v: _validate_dtype_is_numeric(v.dtype), member_type)
-      return anonymous_tuple.map_structure(
+      structure.map_structure(lambda v: _validate_dtype_is_numeric(v.dtype),
+                              member_type)
+      return structure.map_structure(
           lambda v: tf.fill(v.shape, value=initial_value_fn(v)), member_type)
     _validate_dtype_is_numeric(member_type.dtype)
     return tf.fill(member_type.shape, value=initial_value_fn(member_type))
@@ -170,10 +170,9 @@ def _zeros_for_sample(member_type):
     """Gets the type for the accumulators."""
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
     if member_type.is_struct():
-      a = anonymous_tuple.map_structure(
+      a = structure.map_structure(
           lambda v: tf.zeros([0] + v.shape.dims, v.dtype), member_type)
-      return _Samples(
-          anonymous_tuple.to_odict(a, True), tf.zeros([0], tf.float32))
+      return _Samples(structure.to_odict(a, True), tf.zeros([0], tf.float32))
     if member_type.shape:
       s = [0] + member_type.shape.dims
     return _Samples(tf.zeros(s, member_type.dtype), tf.zeros([0], tf.float32))
@@ -196,13 +195,13 @@ def _get_accumulator_type(member_type):
   """
   # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
   if member_type.is_struct():
-    a = anonymous_tuple.map_structure(
+    a = structure.map_structure(
         lambda v: computation_types.TensorType(v.dtype, [None] + v.shape.dims),
         member_type)
     return computation_types.StructType(
         collections.OrderedDict({
             'accumulators':
-                computation_types.StructType(anonymous_tuple.to_odict(a, True)),
+                computation_types.StructType(structure.to_odict(a, True)),
             'rands':
                 computation_types.TensorType(tf.float32, shape=[None]),
         }))
@@ -260,9 +259,8 @@ def federated_sample(value, max_num_samples=100):
     indices = tf.math.top_k(rands, k=k).indices
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
     if member_type.is_struct():
-      return anonymous_tuple.map_structure(lambda v: fed_gather(v, indices),
-                                           accumulators), fed_gather(
-                                               rands, indices)
+      return structure.map_structure(lambda v: fed_gather(v, indices),
+                                     accumulators), fed_gather(rands, indices)
     return fed_gather(accumulators, indices), fed_gather(rands, indices)
 
   @computations.tf_computation(accumulator_type, value.type_signature.member)
@@ -271,9 +269,9 @@ def federated_sample(value, max_num_samples=100):
     rands = fed_concat_expand_dims(current.rands, tf.random.uniform(shape=()))
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
     if member_type.is_struct():
-      accumulators = anonymous_tuple.map_structure(
-          fed_concat_expand_dims, _ensure_anonymous_tuple(current.accumulators),
-          _ensure_anonymous_tuple(value))
+      accumulators = structure.map_structure(
+          fed_concat_expand_dims, _ensure_structure(current.accumulators),
+          _ensure_structure(value))
     else:
       accumulators = fed_concat_expand_dims(current.accumulators, value)
 
@@ -285,9 +283,8 @@ def federated_sample(value, max_num_samples=100):
     """Merges accumulators through concatenation."""
     # TODO(b/121288403): Special-casing anonymous tuple shouldn't be needed.
     if accumulator_type.is_struct():
-      samples = anonymous_tuple.map_structure(fed_concat,
-                                              _ensure_anonymous_tuple(a),
-                                              _ensure_anonymous_tuple(b))
+      samples = structure.map_structure(fed_concat, _ensure_structure(a),
+                                        _ensure_structure(b))
     else:
       samples = fed_concat(a, b)
     accumulators, rands = apply_sampling(samples.accumulators, samples.rands)
@@ -300,5 +297,5 @@ def federated_sample(value, max_num_samples=100):
   return intrinsics.federated_aggregate(value, zeros, accumulate, merge, report)
 
 
-def _ensure_anonymous_tuple(obj):
-  return anonymous_tuple.from_container(obj, True)
+def _ensure_structure(obj):
+  return structure.from_container(obj, True)

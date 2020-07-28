@@ -26,8 +26,8 @@ from typing import Any, Dict, Optional
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
@@ -96,7 +96,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
   *   For TFF tensor types listed in
       `tensorflow_utils.TENSOR_REPRESENTATION_TYPES`.
 
-  *   For TFF named tuple types, instances of `anonymous_tuple.AnonymousTuple`.
+  *   For TFF named tuple types, instances of `structure.Struct`.
 
   *   For TFF sequences, Python lists.
 
@@ -161,7 +161,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
           'the type spec {}.'.format(inferred_type_spec, type_spec))
     return value
   elif type_spec.is_struct():
-    type_spec_elements = anonymous_tuple.to_elements(type_spec)
+    type_spec_elements = structure.to_elements(type_spec)
     # Special-casing unodered dictionaries to allow their elements to be fed in
     # the order in which they're defined in the named tuple type.
     if (isinstance(value, dict) and
@@ -169,8 +169,8 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       value = collections.OrderedDict([
           (k, value[k]) for k, _ in type_spec_elements
       ])
-    value = anonymous_tuple.from_container(value)
-    value_elements = anonymous_tuple.to_elements(value)
+    value = structure.from_container(value)
+    value_elements = structure.to_elements(value)
     if len(value_elements) != len(type_spec_elements):
       raise TypeError(
           'The number of elements {} in the value tuple {} does not match the '
@@ -187,7 +187,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       converted_value_elem = to_representation_for_type(value_elem, type_elem,
                                                         callable_handler)
       result_elements.append((type_elem_name, converted_value_elem))
-    return anonymous_tuple.AnonymousTuple(result_elements)
+    return structure.Struct(result_elements)
   elif type_spec.is_sequence():
     if isinstance(value, tf.data.Dataset):
       inferred_type_spec = computation_types.SequenceType(
@@ -260,7 +260,7 @@ def stamp_computed_value_into_graph(
 
   Returns:
     A Python object made of tensors stamped into `graph`, `tf.data.Dataset`s,
-    and `anonymous_tuple.AnonymousTuple`s that structurally corresponds to the
+    and `structure.Struct`s that structurally corresponds to the
     value passed at input.
   """
   if value is None:
@@ -286,14 +286,14 @@ def stamp_computed_value_into_graph(
               dtype=value.type_signature.dtype,
               shape=value.type_signature.shape)
     elif value.type_signature.is_struct():
-      elements = anonymous_tuple.to_elements(value.value)
-      type_elements = anonymous_tuple.to_elements(value.type_signature)
+      elements = structure.to_elements(value.value)
+      type_elements = structure.to_elements(value.type_signature)
       stamped_elements = []
       for idx, (k, v) in enumerate(elements):
         computed_v = ComputedValue(v, type_elements[idx][1])
         stamped_v = stamp_computed_value_into_graph(computed_v, graph)
         stamped_elements.append((k, stamped_v))
-      return anonymous_tuple.AnonymousTuple(stamped_elements)
+      return structure.Struct(stamped_elements)
     elif value.type_signature.is_sequence():
       return tensorflow_utils.make_data_set_from_elements(
           graph, value.value, value.type_signature.element)
@@ -308,7 +308,7 @@ def capture_computed_value_from_graph(value, type_spec):
 
   Args:
     value: A Python object made of tensors in `graph`, `tf.data.Dataset`s,
-      `anonymous_tuple.AnonymousTuple`s and other structures, to be captured as
+      `structure.Struct`s and other structures, to be captured as
       an instance of `ComputedValue`.
     type_spec: The type of the value to be captured.
 
@@ -400,15 +400,15 @@ def multiply_by_scalar(value, multiplier):
                             value.type_signature.shape)
     return ComputedValue(result_val, value.type_signature)
   elif value.type_signature.is_struct():
-    elements = anonymous_tuple.to_elements(value.value)
-    type_elements = anonymous_tuple.to_elements(value.type_signature)
+    elements = structure.to_elements(value.value)
+    type_elements = structure.to_elements(value.type_signature)
     result_elements = []
     for idx, (k, v) in enumerate(elements):
       multiplied_v = multiply_by_scalar(
           ComputedValue(v, type_elements[idx][1]), multiplier).value
       result_elements.append((k, multiplied_v))
     return ComputedValue(
-        anonymous_tuple.AnonymousTuple(result_elements), value.type_signature)
+        structure.Struct(result_elements), value.type_signature)
   else:
     raise NotImplementedError(
         'Multiplying vlues of type {} by a scalar is unsupported.'.format(
@@ -520,16 +520,15 @@ def fit_argument(arg: ComputedValue, type_spec,
   if arg.type_signature == type_spec:
     return arg
   elif type_spec.is_struct():
-    py_typecheck.check_type(arg.value, anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(arg.value, structure.Struct)
     result_elements = []
     for idx, (elem_name,
-              elem_type) in enumerate(anonymous_tuple.to_elements(type_spec)):
+              elem_type) in enumerate(structure.to_elements(type_spec)):
       elem_val = ComputedValue(arg.value[idx], arg.type_signature[idx])
       if elem_val != elem_type:
         elem_val = fit_argument(elem_val, elem_type, context)
       result_elements.append((elem_name, elem_val.value))
-    return ComputedValue(
-        anonymous_tuple.AnonymousTuple(result_elements), type_spec)
+    return ComputedValue(structure.Struct(result_elements), type_spec)
   elif type_spec.is_federated():
     type_analysis.check_federated_type(
         arg.type_signature, placement=type_spec.placement)
@@ -788,13 +787,13 @@ class ReferenceExecutor(context_base.Context):
     py_typecheck.check_type(comp, building_blocks.Struct)
     result_elements = []
     result_type_elements = []
-    for k, v in anonymous_tuple.iter_elements(comp):
+    for k, v in structure.iter_elements(comp):
       computed_v = self._compute(v, context)
       v.type_signature.check_assignable_from(computed_v.type_signature)
       result_elements.append((k, computed_v.value))
       result_type_elements.append((k, computed_v.type_signature))
     return ComputedValue(
-        anonymous_tuple.AnonymousTuple(result_elements),
+        structure.Struct(result_elements),
         computation_types.StructType([
             (k, v) if k else v for k, v in result_type_elements
         ]))
@@ -803,7 +802,7 @@ class ReferenceExecutor(context_base.Context):
     py_typecheck.check_type(comp, building_blocks.Selection)
     source = self._compute(comp.source, context)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
-    py_typecheck.check_type(source.value, anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(source.value, structure.Struct)
     if comp.name is not None:
       result_value = getattr(source.value, comp.name)
       result_type = getattr(source.type_signature, comp.name)
@@ -885,7 +884,7 @@ class ReferenceExecutor(context_base.Context):
     for v in arg.value:
       total = self._generic_plus(
           ComputedValue(
-              anonymous_tuple.AnonymousTuple([(None, total.value), (None, v)]),
+              structure.Struct([(None, total.value), (None, v)]),
               [arg.type_signature.element, arg.type_signature.element]))
     return total
 
@@ -986,7 +985,7 @@ class ReferenceExecutor(context_base.Context):
     type_analysis.check_federated_type(arg.type_signature, None,
                                        placement_literals.CLIENTS, False)
     collected_val = self._federated_collect(arg, context)
-    federated_apply_arg = anonymous_tuple.from_container(
+    federated_apply_arg = structure.from_container(
         (lambda arg: self._sequence_sum(arg, context), collected_val.value))
     apply_fn_type = computation_types.FunctionType(
         computation_types.SequenceType(arg.type_signature.member),
@@ -1019,9 +1018,9 @@ class ReferenceExecutor(context_base.Context):
           zeros_val = sess.run(zeros)
       return ComputedValue(zeros_val, type_spec)
     elif type_spec.is_struct():
-      type_elements_iter = anonymous_tuple.iter_elements(type_spec)
+      type_elements_iter = structure.iter_elements(type_spec)
       return ComputedValue(
-          anonymous_tuple.AnonymousTuple(
+          structure.Struct(
               (k, self._generic_zero(v).value) for k, v in type_elements_iter),
           type_spec)
     elif (type_spec.is_sequence() or type_spec.is_function() or
@@ -1059,19 +1058,18 @@ class ReferenceExecutor(context_base.Context):
                        element_type.shape)
       return ComputedValue(val, element_type)
     elif element_type.is_struct():
-      py_typecheck.check_type(arg.value[0], anonymous_tuple.AnonymousTuple)
-      py_typecheck.check_type(arg.value[1], anonymous_tuple.AnonymousTuple)
+      py_typecheck.check_type(arg.value[0], structure.Struct)
+      py_typecheck.check_type(arg.value[1], structure.Struct)
       result_val_elements = []
-      for idx, (name, elem_type) in enumerate(
-          anonymous_tuple.to_elements(element_type)):
+      for idx, (name,
+                elem_type) in enumerate(structure.to_elements(element_type)):
         to_add = ComputedValue(
-            anonymous_tuple.AnonymousTuple([(None, arg.value[0][idx]),
-                                            (None, arg.value[1][idx])]),
+            structure.Struct([(None, arg.value[0][idx]),
+                              (None, arg.value[1][idx])]),
             [elem_type, elem_type])
         add_result = self._generic_plus(to_add)
         result_val_elements.append((name, add_result.value))
-      return ComputedValue(
-          anonymous_tuple.AnonymousTuple(result_val_elements), element_type)
+      return ComputedValue(structure.Struct(result_val_elements), element_type)
     else:
       # TODO(b/113116813): Implement the remaining cases, e.g. federated
       # types like int32@SERVER.
@@ -1109,7 +1107,7 @@ class ReferenceExecutor(context_base.Context):
     for v in arg.value[0]:
       total = reduce_fn(
           ComputedValue(
-              anonymous_tuple.AnonymousTuple([(None, total.value), (None, v)]),
+              structure.Struct([(None, total.value), (None, v)]),
               op_type.parameter))
     return total
 
@@ -1128,7 +1126,7 @@ class ReferenceExecutor(context_base.Context):
     for v in arg.value[0]:
       total = reduce_fn(
           ComputedValue(
-              anonymous_tuple.AnonymousTuple([(None, total.value), (None, v)]),
+              structure.Struct([(None, total.value), (None, v)]),
               op_type.parameter))
     return self._federated_value_at_server(total, context)
 
@@ -1154,13 +1152,13 @@ class ReferenceExecutor(context_base.Context):
         type_factory.at_server(
             computation_types.StructType([
                 (k, v.member) if k else v.member
-                for k, v in anonymous_tuple.iter_elements(arg.type_signature)
+                for k, v in structure.iter_elements(arg.type_signature)
             ])))
 
   def _federated_zip_at_clients(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
-    py_typecheck.check_type(arg.value, anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(arg.value, structure.Struct)
     zip_args = []
     zip_arg_types = []
     for idx in range(len(arg.type_signature)):
@@ -1171,7 +1169,7 @@ class ReferenceExecutor(context_base.Context):
       type_analysis.check_federated_type(val_type, None,
                                          placement_literals.CLIENTS, False)
       zip_arg_types.append(val_type.member)
-    zipped_val = [anonymous_tuple.from_container(x) for x in zip(*zip_args)]
+    zipped_val = [structure.from_container(x) for x in zip(*zip_args)]
     return ComputedValue(
         zipped_val,
         type_factory.at_clients(computation_types.StructType(zip_arg_types)))
@@ -1183,7 +1181,7 @@ class ReferenceExecutor(context_base.Context):
           arg.type_signature))
     root_accumulator = self._federated_reduce(
         ComputedValue(
-            anonymous_tuple.from_container([arg.value[k] for k in range(3)]),
+            structure.from_container([arg.value[k] for k in range(3)]),
             [arg.type_signature[k] for k in range(3)]), context)
     return self._federated_apply(
         ComputedValue([arg.value[4], root_accumulator.value],

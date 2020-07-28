@@ -21,8 +21,8 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import type_utils
@@ -58,18 +58,18 @@ def _get_hashable_key(value, type_spec):
     TypeError: If there is no hashable key for this type of a value.
   """
   if type_spec.is_struct():
-    if not isinstance(value, anonymous_tuple.AnonymousTuple):
+    if not isinstance(value, structure.Struct):
       try:
-        value = anonymous_tuple.from_container(value)
+        value = structure.from_container(value)
       except Exception as e:
         raise TypeError(
-            'Failed to convert value with type_spec {} to `AnonymousTuple`'
-            .format(repr(type_spec))) from e
-    type_specs = anonymous_tuple.iter_elements(type_spec)
+            'Failed to convert value with type_spec {} to `Struct`'.format(
+                repr(type_spec))) from e
+    type_specs = structure.iter_elements(type_spec)
     r_elem = []
     for v, (field_name, field_type) in zip(value, type_specs):
       r_elem.append((field_name, _get_hashable_key(v, field_type)))
-    return anonymous_tuple.AnonymousTuple(r_elem)
+    return structure.Struct(r_elem)
   elif type_spec.is_federated():
     if type_spec.all_equal:
       return _get_hashable_key(value, type_spec.member)
@@ -290,10 +290,10 @@ class CachingExecutor(executor_base.Executor):
     return cached_value
 
   async def create_struct(self, elements):
-    if not isinstance(elements, anonymous_tuple.AnonymousTuple):
-      elements = anonymous_tuple.from_container(elements)
+    if not isinstance(elements, structure.Struct):
+      elements = structure.from_container(elements)
     element_strings = []
-    element_kv_pairs = anonymous_tuple.to_elements(elements)
+    element_kv_pairs = structure.to_elements(elements)
     to_gather = []
     type_elements = []
     for k, v in element_kv_pairs:
@@ -314,7 +314,7 @@ class CachingExecutor(executor_base.Executor):
     except KeyError:
       target_future = asyncio.ensure_future(
           self._target_executor.create_struct(
-              anonymous_tuple.AnonymousTuple(
+              structure.Struct(
                   (k, v) for (k, _), v in zip(element_kv_pairs, gathered))))
       cached_value = CachedValue(identifier, None, type_spec, target_future)
       self._cache[identifier] = cached_value

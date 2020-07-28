@@ -20,8 +20,8 @@ import operator
 import typing
 from typing import Callable, Dict, Set, Tuple
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
@@ -76,7 +76,7 @@ def transform_postorder(comp, transform):
   elif comp.is_struct():
     elements = []
     elements_modified = False
-    for key, value in anonymous_tuple.iter_elements(comp):
+    for key, value in structure.iter_elements(comp):
       value, value_modified = transform_postorder(value, transform)
       elements.append((key, value))
       elements_modified = elements_modified or value_modified
@@ -174,7 +174,7 @@ def transform_preorder(
   elif inner_comp.is_struct():
     elements_modified = False
     elements = []
-    for name, val in anonymous_tuple.iter_elements(inner_comp):
+    for name, val in structure.iter_elements(inner_comp):
       result, result_modified = transform_preorder(val, transform)
       elements_modified = elements_modified or result_modified
       elements.append((name, result))
@@ -318,7 +318,7 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     _ = next(identifier_seq)
     elements = []
     elements_modified = False
-    for key, value in anonymous_tuple.iter_elements(comp):
+    for key, value in structure.iter_elements(comp):
       value, value_modified = _transform_postorder_with_symbol_bindings_switch(
           value, transform, context_tree, identifier_seq)
       elements.append((key, value))

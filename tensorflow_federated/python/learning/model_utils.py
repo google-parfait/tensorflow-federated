@@ -20,8 +20,8 @@ import attr
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff_core
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.learning import model as model_lib
 
 
@@ -53,13 +53,11 @@ class ModelWeights(object):
 
   @classmethod
   def from_tff_result(cls, anon_tuple):
-    py_typecheck.check_type(anon_tuple, anonymous_tuple.AnonymousTuple)
+    py_typecheck.check_type(anon_tuple, structure.Struct)
     return cls([
-        value
-        for _, value in anonymous_tuple.iter_elements(anon_tuple.trainable)
+        value for _, value in structure.iter_elements(anon_tuple.trainable)
     ], [
-        value
-        for _, value in anonymous_tuple.iter_elements(anon_tuple.non_trainable)
+        value for _, value in structure.iter_elements(anon_tuple.non_trainable)
     ])
 
   def assign_weights_to(self, model):

@@ -15,8 +15,8 @@
 
 import collections
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.types import placement_literals
 
@@ -75,14 +75,12 @@ def infer_cardinalities(value, type_spec):
     py_typecheck.check_type(value, collections.Sized)
     return {type_spec.placement: len(value)}
   elif type_spec.is_struct():
-    anonymous_tuple_value = anonymous_tuple.from_container(
-        value, recursive=False)
+    structure_value = structure.from_container(value, recursive=False)
     cardinality_dict = {}
-    for idx, (_,
-              elem_type) in enumerate(anonymous_tuple.to_elements(type_spec)):
+    for idx, (_, elem_type) in enumerate(structure.to_elements(type_spec)):
       cardinality_dict = merge_cardinalities(
-          cardinality_dict,
-          infer_cardinalities(anonymous_tuple_value[idx], elem_type))
+          cardinality_dict, infer_cardinalities(structure_value[idx],
+                                                elem_type))
     return cardinality_dict
   else:
     return {}

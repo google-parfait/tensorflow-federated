@@ -19,7 +19,7 @@ import itertools
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.context_stack import context_base
@@ -218,19 +218,19 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
       ([tf.int32, ('b', tf.int32)], True),
       ([('a', tf.int32), ('b', tf.int32)], True),
       ([('a', tf.int32), tf.int32], False),
-      (anonymous_tuple.AnonymousTuple([(None, 1), ('a', 2)]), True),
-      (anonymous_tuple.AnonymousTuple([('a', 1), (None, 2)]), False))
+      (structure.Struct([(None, 1), ('a', 2)]), True),
+      (structure.Struct([('a', 1), (None, 2)]), False))
   # pyformat: enable
   def test_is_argument_struct(self, arg, expected_result):
     self.assertEqual(function_utils.is_argument_struct(arg), expected_result)
 
   # pyformat: disable
   @parameterized.parameters(
-      (anonymous_tuple.AnonymousTuple([(None, 1)]), [1], {}),
-      (anonymous_tuple.AnonymousTuple([(None, 1), ('a', 2)]), [1], {'a': 2}))
+      (structure.Struct([(None, 1)]), [1], {}),
+      (structure.Struct([(None, 1), ('a', 2)]), [1], {'a': 2}))
   # pyformat: enable
-  def test_unpack_args_from_anonymous_tuple(self, tuple_with_args,
-                                            expected_args, expected_kwargs):
+  def test_unpack_args_from_structure(self, tuple_with_args, expected_args,
+                                      expected_kwargs):
     self.assertEqual(
         function_utils.unpack_args_from_struct(tuple_with_args),
         (expected_args, expected_kwargs))
@@ -258,19 +258,19 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
   def test_pack_args_into_struct_without_type_spec(self):
     self.assertEqual(
         function_utils.pack_args_into_struct([1], {'a': 10}),
-        anonymous_tuple.AnonymousTuple([(None, 1), ('a', 10)]))
+        structure.Struct([(None, 1), ('a', 10)]))
     self.assertIn(
         function_utils.pack_args_into_struct([1, 2], {
             'a': 10,
             'b': 20
         }), [
-            anonymous_tuple.AnonymousTuple([
+            structure.Struct([
                 (None, 1),
                 (None, 2),
                 ('a', 10),
                 ('b', 20),
             ]),
-            anonymous_tuple.AnonymousTuple([
+            structure.Struct([
                 (None, 1),
                 (None, 2),
                 ('b', 20),
@@ -282,12 +282,12 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
             'a': 10,
             'b': 20
         }), [
-            anonymous_tuple.AnonymousTuple([('a', 10), ('b', 20)]),
-            anonymous_tuple.AnonymousTuple([('b', 20), ('a', 10)])
+            structure.Struct([('a', 10), ('b', 20)]),
+            structure.Struct([('b', 20), ('a', 10)])
         ])
     self.assertEqual(
         function_utils.pack_args_into_struct([1], {}),
-        anonymous_tuple.AnonymousTuple([(None, 1)]))
+        structure.Struct([(None, 1)]))
 
   # pyformat: disable
   @parameterized.parameters(
@@ -308,7 +308,7 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(
         function_utils.pack_args_into_struct(args, kwargs, type_spec,
                                              NoopIngestContextForTest()),
-        anonymous_tuple.AnonymousTuple(elements))
+        structure.Struct(elements))
 
   # pyformat: disable
   @parameterized.parameters(
@@ -329,7 +329,7 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
       ([('x', tf.int32), ('y', tf.bool)], [1, True], {}, '<x=1,y=True>'),
       ([('x', tf.int32), ('y', tf.bool)], [1], {'y': True}, '<x=1,y=True>'),
       ([tf.int32, tf.bool],
-       [anonymous_tuple.AnonymousTuple([(None, 1), (None, True)])], {},
+       [structure.Struct([(None, 1), (None, True)])], {},
        '<1,True>'))
   # pyformat: enable
   def test_pack_args(self, parameter_type, args, kwargs, expected_value_string):
@@ -345,14 +345,14 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
       (2, lambda x=1: x + 10, None, None, None, 11),
       (3, lambda x=1: x + 10, tf.int32, None, 20, 30),
       (4, lambda x, y: x + y, [tf.int32, tf.int32], None,
-       anonymous_tuple.AnonymousTuple([('x', 5), ('y', 6)]), 11),
+       structure.Struct([('x', 5), ('y', 6)]), 11),
       (5, lambda *args: str(args), [tf.int32, tf.int32], True,
-       anonymous_tuple.AnonymousTuple([(None, 5), (None, 6)]), '(5, 6)'),
+       structure.Struct([(None, 5), (None, 6)]), '(5, 6)'),
       (6, lambda *args: str(args), [('x', tf.int32), ('y', tf.int32)], False,
-       anonymous_tuple.AnonymousTuple([('x', 5), ('y', 6)]),
+       structure.Struct([('x', 5), ('y', 6)]),
        '(Struct([(\'x\', 5), (\'y\', 6)]),)'),
       (7, lambda x: str(x),  # pylint: disable=unnecessary-lambda
-       [tf.int32], None, anonymous_tuple.AnonymousTuple([(None, 10)]), '[10]'))
+       [tf.int32], None, structure.Struct([(None, 10)]), '[10]'))
   # pyformat: enable
   def test_wrap_as_zero_or_one_arg_callable(self, unused_index, fn,
                                             parameter_type, unpack, arg,

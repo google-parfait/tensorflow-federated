@@ -18,7 +18,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test
 
 
@@ -126,25 +126,22 @@ class CanonicalFormTest(test.TestCase):
     client_data = [sample_batch]
     state_1 = ip_1.initialize()
     server_state_1, server_output_1 = ip_1.next(state_1, [client_data])
-    server_state_1 = anonymous_tuple.from_container(
-        server_state_1, recursive=True)
-    server_output_1 = anonymous_tuple.from_container(
-        server_output_1, recursive=True)
-    server_state_1_arrays = anonymous_tuple.flatten(server_state_1)
-    server_output_1_arrays = anonymous_tuple.flatten(server_output_1)
+    server_state_1 = structure.from_container(server_state_1, recursive=True)
+    server_output_1 = structure.from_container(server_output_1, recursive=True)
+    server_state_1_arrays = structure.flatten(server_state_1)
+    server_output_1_arrays = structure.flatten(server_output_1)
     state_2 = ip_2.initialize()
     server_state_2, server_output_2 = ip_2.next(state_2, [client_data])
-    server_state_2_arrays = anonymous_tuple.flatten(server_state_2)
-    server_output_2_arrays = anonymous_tuple.flatten(server_output_2)
+    server_state_2_arrays = structure.flatten(server_state_2)
+    server_output_2_arrays = structure.flatten(server_output_2)
 
     self.assertEmpty(server_state_1.delta_aggregate_state)
     self.assertEmpty(server_state_1.model_broadcast_state)
     # Note that we cannot simply use assertEqual because the values may differ
     # due to floating point issues.
+    self.assertTrue(structure.is_same_structure(server_state_1, server_state_2))
     self.assertTrue(
-        anonymous_tuple.is_same_structure(server_state_1, server_state_2))
-    self.assertTrue(
-        anonymous_tuple.is_same_structure(server_output_1, server_output_2))
+        structure.is_same_structure(server_output_1, server_output_2))
     self.assertAllClose(server_state_1_arrays, server_state_2_arrays)
     self.assertAllClose(server_output_1_arrays[:2], server_output_2_arrays[:2])
 

@@ -19,7 +19,7 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -190,9 +190,9 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
     executor, num_clients = _create_test_executor()
     result = _invoke(executor, comp)
-    excepted_result = anonymous_tuple.AnonymousTuple([
+    excepted_result = structure.Struct([
         ('a',
-         anonymous_tuple.AnonymousTuple([
+         structure.Struct([
              (None, 10 * num_clients + 5),
              (None, 2.0 * num_clients + 3.0),
          ])),
@@ -277,7 +277,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
                      '( -> <int32,int32>@SERVER)')
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
-    excepted_result = anonymous_tuple.AnonymousTuple([(None, 10), (None, 20)])
+    excepted_result = structure.Struct([(None, 10), (None, 20)])
     self.assertEqual(result, excepted_result)
 
   def test_federated_zip_at_server_named(self):
@@ -294,7 +294,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
                      '( -> <A=int32,B=int32>@SERVER)')
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
-    excepted_result = anonymous_tuple.AnonymousTuple([('A', 10), ('B', 20)])
+    excepted_result = structure.Struct([('A', 10), ('B', 20)])
     self.assertEqual(result, excepted_result)
 
   def test_federated_zip_at_clients_unnamed(self):
@@ -311,7 +311,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
     for value in result:
-      excepted_value = anonymous_tuple.AnonymousTuple([(None, 10), (None, 20)])
+      excepted_value = structure.Struct([(None, 10), (None, 20)])
       self.assertEqual(value, excepted_value)
 
   def test_federated_zip_at_clients_named(self):
@@ -329,7 +329,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
     for value in result:
-      excepted_value = anonymous_tuple.AnonymousTuple([('A', 10), ('B', 20)])
+      excepted_value = structure.Struct([('A', 10), ('B', 20)])
       self.assertEqual(value, excepted_value)
 
   def test_federated_sum(self):

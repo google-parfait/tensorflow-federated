@@ -18,8 +18,8 @@ from typing import List, Tuple
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
@@ -66,8 +66,8 @@ def get_type_information(value, type_spec):
   elif type_spec.is_struct():
     type_info = []
     if isinstance(value, collections.OrderedDict):
-      value = anonymous_tuple.from_container(value, recursive=False)
-    assert isinstance(value, (anonymous_tuple.AnonymousTuple, list, tuple))
+      value = structure.from_container(value, recursive=False)
+    assert isinstance(value, (structure.Struct, list, tuple))
     for nested_value, nested_type in zip(value, type_spec):
       type_info += get_type_information(nested_value, nested_type)
     return type_info
@@ -119,7 +119,7 @@ class SizingExecutor(executor_base.Executor):
 
   async def create_struct(self, elements):
     target_val = await self._target.create_struct(
-        anonymous_tuple.map_structure(lambda x: x.value, elements))
+        structure.map_structure(lambda x: x.value, elements))
     wrapped_val = SizingExecutorValue(self, target_val)
     return wrapped_val
 

@@ -15,8 +15,8 @@
 import collections
 from typing import Any, Optional
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 
@@ -37,8 +37,7 @@ def to_canonical_value(value):
       items = value.items()
     else:
       items = sorted(value.items())
-    return anonymous_tuple.AnonymousTuple(
-        (k, to_canonical_value(v)) for k, v in items)
+    return structure.Struct((k, to_canonical_value(v)) for k, v in items)
   elif isinstance(value, (tuple, list)):
     return [to_canonical_value(e) for e in value]
   return value

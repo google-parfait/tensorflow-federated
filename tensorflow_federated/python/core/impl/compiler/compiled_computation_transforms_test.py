@@ -18,8 +18,8 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import serialization_utils
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -380,20 +380,19 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
     flipped_inputs = compiled_computation_transforms.permute_graph_inputs(
         foo, [1, 0, 2])
 
-    expected_result = anonymous_tuple.AnonymousTuple([
+    expected_result = structure.Struct([
         ('a', 0),
         ('b', 1.0),
         ('c', True),
     ])
-    anonymous_tuple_input = anonymous_tuple.AnonymousTuple([
+    structure_input = structure.Struct([
         ('b', 1.0),
         ('a', 0),
         ('c', True),
     ])
     result = test_utils.run_tensorflow(flipped_inputs.proto, [1.0, 0, True])
     self.assertEqual(result, expected_result)
-    result = test_utils.run_tensorflow(flipped_inputs.proto,
-                                       anonymous_tuple_input)
+    result = test_utils.run_tensorflow(flipped_inputs.proto, structure_input)
     self.assertEqual(result, expected_result)
     with self.assertRaises(TypeError):
       test_utils.run_tensorflow(flipped_inputs.proto, [0, 1.0, True])
@@ -652,7 +651,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
         foo, computation_types.StructType([tf.int32, tf.float32]))
 
-    expected_result = anonymous_tuple.AnonymousTuple([(None, 1)])
+    expected_result = structure.Struct([(None, 1)])
     actual_result = test_utils.run_tensorflow(padded_inputs.proto, [1, 0.0])
     self.assertEqual(actual_result, expected_result)
     actual_result = test_utils.run_tensorflow(padded_inputs.proto, [1, 10.0])
@@ -666,7 +665,7 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
     padded_inputs = compiled_computation_transforms.pad_graph_inputs_to_match_type(
         foo, computation_types.StructType([('a', tf.int32), ('b', tf.float32)]))
 
-    expected_result = anonymous_tuple.AnonymousTuple([(None, 1)])
+    expected_result = structure.Struct([(None, 1)])
     actual_result = test_utils.run_tensorflow(padded_inputs.proto, {
         'a': 1,
         'b': 0.0,
@@ -747,7 +746,7 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
     actual_result = test_utils.run_tensorflow(merged_comp.proto, None)
-    expected_result = anonymous_tuple.AnonymousTuple([(None, 0.0), (None, 1.0)])
+    expected_result = structure.Struct([(None, 0.0), (None, 1.0)])
     self.assertAlmostEqual(actual_result, expected_result)
 
   def test_concatenate_tensorflow_blocks_named_outputs_type_preserved(self):
@@ -781,7 +780,7 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
     actual_result = test_utils.run_tensorflow(merged_comp.proto, 0.0)
-    expected_result = anonymous_tuple.AnonymousTuple([(None, 0.0), (None, 1.0)])
+    expected_result = structure.Struct([(None, 0.0), (None, 1.0)])
     self.assertAlmostEqual(actual_result, expected_result)
 
   def test_concatenate_tensorflow_blocks_tensor_args(self):
@@ -799,10 +798,10 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
     actual_result = test_utils.run_tensorflow(merged_comp.proto, [1.0, 0.0])
-    expected_result = anonymous_tuple.AnonymousTuple([(None, 1.0), (None, 1.0)])
+    expected_result = structure.Struct([(None, 1.0), (None, 1.0)])
     self.assertAlmostEqual(actual_result, expected_result)
     actual_result = test_utils.run_tensorflow(merged_comp.proto, [2.0, 2.0])
-    expected_result = anonymous_tuple.AnonymousTuple([(None, 2.0), (None, 3.0)])
+    expected_result = structure.Struct([(None, 2.0), (None, 3.0)])
     self.assertAlmostEqual(actual_result, expected_result)
 
   def test_concatenate_tensorflow_blocks_unnamed_tuple_args(self):
@@ -824,11 +823,11 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
     actual_result = test_utils.run_tensorflow(merged_comp.proto,
                                               [[1.0, 0.0], [0.0, 1.0]])
-    expected_result = anonymous_tuple.AnonymousTuple([(None, 1.0), (None, 1.0)])
+    expected_result = structure.Struct([(None, 1.0), (None, 1.0)])
     self.assertEqual(actual_result[0], expected_result)
     actual_result = test_utils.run_tensorflow(merged_comp.proto,
                                               [[1.0, 0.0], [0.0, 1.0]])
-    expected_result = anonymous_tuple.AnonymousTuple([(None, 1.0), (None, 2.0)])
+    expected_result = structure.Struct([(None, 1.0), (None, 2.0)])
     self.assertEqual(actual_result[1], expected_result)
 
   def test_concatenate_tensorflow_blocks_named_tuple_args(self):
@@ -851,9 +850,9 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(str(merged_comp.type_signature), str(concatenated_type))
     actual_result = test_utils.run_tensorflow(merged_comp.proto,
                                               [[1.0, 0.0], [0.0, 1.0]])
-    expected_result = anonymous_tuple.AnonymousTuple([('a', 1.), ('b', 0.)])
+    expected_result = structure.Struct([('a', 1.), ('b', 0.)])
     self.assertEqual(actual_result[0], expected_result)
-    expected_result = anonymous_tuple.AnonymousTuple([('c', 0.), ('d', 1.)])
+    expected_result = structure.Struct([('c', 0.), ('d', 1.)])
     self.assertEqual(actual_result[1], expected_result)
 
   def test_concatenate_tensorflow_blocks_sequence_parameters_and_results(self):
@@ -1290,7 +1289,7 @@ class StructCalledGraphsTest(test.TestCase, parameterized.TestCase):
 
 
 def _simulate_permutation_behavior(tuple_type, permutation):
-  type_elements = anonymous_tuple.to_elements(tuple_type)
+  type_elements = structure.to_elements(tuple_type)
   constructed_type_elements = []
   for k in permutation:
     constructed_type_elements.append(type_elements[k])
@@ -2306,14 +2305,11 @@ class CalledGraphOnReplicatedArgTest(test.TestCase):
     parsed, _ = logic.transform(pattern)
 
     result = test_utils.run_tensorflow(parsed.function.proto, 0)
-    self.assertEqual(result,
-                     anonymous_tuple.AnonymousTuple([(None, 0), (None, 0)]))
+    self.assertEqual(result, structure.Struct([(None, 0), (None, 0)]))
     result = test_utils.run_tensorflow(parsed.function.proto, 1)
-    self.assertEqual(result,
-                     anonymous_tuple.AnonymousTuple([(None, 1), (None, 1)]))
+    self.assertEqual(result, structure.Struct([(None, 1), (None, 1)]))
     result = test_utils.run_tensorflow(parsed.function.proto, 2)
-    self.assertEqual(result,
-                     anonymous_tuple.AnonymousTuple([(None, 2), (None, 2)]))
+    self.assertEqual(result, structure.Struct([(None, 2), (None, 2)]))
 
   def test_executes_correctly_several_replicates(self):
     pattern = _create_simple_called_graph_on_replicated_arg(n_replicates=5)

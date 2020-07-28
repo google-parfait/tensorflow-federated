@@ -26,8 +26,8 @@ import attr
 import tensorflow as tf
 import tree
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -640,9 +640,9 @@ def _validate_value_type_and_encoders(value_type, encoders, encoder_type):
     if not isinstance(value_type, computation_types.StructType):
       raise TypeError('`value_type` is not compatible with the expected input '
                       'of the `encoders`.')
-    anonymous_tuple.map_structure(
-        lambda e, v: _validate_encoder(e, v, encoder_type),
-        anonymous_tuple.from_container(encoders, recursive=True), value_type)
+    structure.map_structure(lambda e, v: _validate_encoder(e, v, encoder_type),
+                            structure.from_container(encoders, recursive=True),
+                            value_type)
 
 
 def _accmulate_state_update_tensor(a, b, mode):

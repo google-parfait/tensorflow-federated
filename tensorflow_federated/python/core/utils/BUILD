@@ -124,8 +124,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":computation_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -158,8 +158,8 @@ py_library(
     srcs = ["federated_aggregations.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -189,8 +189,8 @@ py_library(
     srcs = ["tf_computation_utils.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
@@ -203,7 +203,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":tf_computation_utils",
-        "//tensorflow_federated/python/common_libs:anonymous_tuple",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:test",
     ],
 )

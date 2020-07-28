@@ -14,8 +14,8 @@
 
 from typing import Any, Callable, Tuple, TypeVar
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 
 T = TypeVar('T')
@@ -77,7 +77,7 @@ def transform_type_postorder(
   elif type_signature.is_struct():
     elements = []
     elements_mutated = False
-    for element in anonymous_tuple.iter_elements(type_signature):
+    for element in structure.iter_elements(type_signature):
       transformed_element, element_mutated = transform_type_postorder(
           element[1], transform_fn)
       elements_mutated = elements_mutated or element_mutated

@@ -17,8 +17,8 @@ import collections
 from absl.testing import absltest
 import attr
 
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 
 
 class PyTypeCheckTest(absltest.TestCase):
@@ -114,8 +114,7 @@ class PyTypeCheckTest(absltest.TestCase):
 
     # Not named tuples
     self.assertFalse(
-        py_typecheck.is_named_tuple(
-            anonymous_tuple.AnonymousTuple([(None, 10)])))
+        py_typecheck.is_named_tuple(structure.Struct([(None, 10)])))
     self.assertFalse(py_typecheck.is_named_tuple([]))
     self.assertFalse(py_typecheck.is_named_tuple(tuple()))
 
