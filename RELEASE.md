@@ -1,3 +1,13 @@
+# Release 0.16.0
+
+## Major Features and Improvements
+
+*   Mirrored user-provided types and minimize usage of `AnonymousTuple`.
+
+## Breaking Changes
+
+*   Renamed `AnonymousTuple` to `Struct`.
+
 # Release 0.15.0
 
 ## Major Features and Improvements
