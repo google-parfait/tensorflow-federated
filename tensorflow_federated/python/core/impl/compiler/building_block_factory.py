@@ -15,7 +15,7 @@
 
 import random
 import string
-from typing import Any, Callable, Iterator, List, Sequence, Optional, Tuple, Union
+from typing import AbstractSet, Any, Callable, Iterator, List, Sequence, Optional, Tuple, Union
 
 import tensorflow as tf
 
@@ -1294,6 +1294,20 @@ def _selection_from_path(
   return selected
 
 
+def _check_placements(
+    placements: AbstractSet[placement_literals.PlacementLiteral]):
+  """Checks if the placements of the values being zipped are compatible."""
+  if not placements:
+    raise TypeError('federated_zip is only supported on nested structures '
+                    'containing at least one FederatedType, but none were '
+                    'found.')
+  elif len(placements) > 1:
+    placement_list = ', '.join(placement.name for placement in placements)
+    raise TypeError('federated_zip requires all nested FederatedTypes to '
+                    'have the same placement, but values placed at '
+                    f'{placement_list} were found.')
+
+
 def create_federated_zip(
     value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated zip.
@@ -1326,6 +1340,7 @@ def create_federated_zip(
   # If the type signature is flat, just call _create_flat_federated_zip.
   elements = structure.to_elements(value.type_signature)
   if all(type_sig.is_federated() for (_, type_sig) in elements):
+    _check_placements(set(type_sig.placement for (_, type_sig) in elements))
     return _create_flat_federated_zip(value)
 
   all_placements = set()
@@ -1347,13 +1362,7 @@ def create_federated_zip(
               nested.type_signature))
 
   _make_nested_selections(value)
-
-  if not all_placements:
-    raise TypeError('federated_zip is only supported on nested tuples '
-                    'containing at least one FederatedType.')
-  elif len(all_placements) > 1:
-    raise TypeError('federated_zip requires all nested FederatedTypes to '
-                    'have the same placement')
+  _check_placements(all_placements)
 
   placement = all_placements.pop()
 

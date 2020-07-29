@@ -1190,13 +1190,13 @@ class CreateFederatedValueTest(absltest.TestCase):
 class CreateFederatedZipTest(parameterized.TestCase):
 
   def test_raises_type_error_with_none_value(self):
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(TypeError, 'found NoneType'):
       building_block_factory.create_federated_zip(None)
 
-  def test_raises_value_error_with_empty_value(self):
+  def test_raises_type_error_with_empty_value(self):
     value_type = computation_types.StructType([])
     value = building_blocks.Data('v', value_type)
-    with self.assertRaises(ValueError):
+    with self.assertRaisesRegex(TypeError, 'at least one FederatedType'):
       building_block_factory.create_federated_zip(value)
 
   def test_returns_federated_map_with_one_value_unnamed(self):
@@ -1789,7 +1789,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value = building_blocks.Data('v', value_type)
     self.assertEqual(value.type_signature.compact_representation(),
                      '<a=int32@CLIENTS,b=int32@SERVER>')
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(TypeError, 'same placement'):
       building_block_factory.create_federated_zip(value)
 
   def test_nested_raises_type_error_with_inconsistent_placement(self):
@@ -1804,7 +1804,7 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value = building_blocks.Data('v', value_type)
     self.assertEqual(value.type_signature.compact_representation(),
                      '<a=int32@CLIENTS,b=<c=int32@SERVER,d=int32@SERVER>>')
-    with self.assertRaises(TypeError):
+    with self.assertRaisesRegex(TypeError, 'same placement'):
       building_block_factory.create_federated_zip(value)
 
   def test_flat_raises_type_error_with_unplaced(self):
