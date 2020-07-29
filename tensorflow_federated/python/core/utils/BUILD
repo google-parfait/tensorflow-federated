@@ -172,6 +172,7 @@ py_test(
     name = "federated_aggregations_test",
     size = "small",
     srcs = ["federated_aggregations_test.py"],
+    flaky = 1,  # TODO(b/162455851): fix flakiness.
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
