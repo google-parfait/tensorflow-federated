@@ -23,12 +23,12 @@ from tensorflow_federated.python.research.triehh import triehh_tf
 class TriehhTfTest(tf.test.TestCase):
 
   def test_accumulate_client_votes_works_as_expected(self):
-    possible_prefix_extensions = tf.constant(['a', 'b', 'c', 'd', '$'],
+    possible_prefix_extensions = tf.constant(['a', 'b', 'c', 'd', 'e', '$'],
                                              dtype=tf.string)
     discovered_prefixes = tf.constant(['a', 'b', 'c', 'd'], dtype=tf.string)
     round_num = tf.constant(1)
     num_sub_rounds = tf.constant(1)
-    example = tf.constant('ab', dtype=tf.string)
+    example1 = tf.constant('ab', dtype=tf.string)
 
     discovered_prefixes_table = tf.lookup.StaticHashTable(
         tf.lookup.KeyValueTensorInitializer(
@@ -51,13 +51,19 @@ class TriehhTfTest(tf.test.TestCase):
          [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
         dtype=tf.int32)
 
-    accumulated_votes = accumulate_client_votes(initial_votes, example)
+    accumulated_votes = accumulate_client_votes(initial_votes, example1)
     expected_accumulated_votes = tf.constant(
         [[1, 3, 1, 0, 0], [1, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
         dtype=tf.int32)
     self.assertAllEqual(accumulated_votes, expected_accumulated_votes)
+
+    # An example that the prefix is not in the discovered prefixes.
+    # The expected result is that the vote is not counted.
+    example2 = tf.constant('ea', dtype=tf.string)
+    accumulated_votes = accumulate_client_votes(initial_votes, example2)
+    self.assertAllEqual(accumulated_votes, initial_votes)
 
   def test_client_update_works_as_expected(self):
     max_num_heavy_hitters = tf.constant(10)

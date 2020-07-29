@@ -109,14 +109,13 @@ def make_accumulate_client_votes_fn(round_num, num_sub_rounds,
       possible_prefix_extensions_index = possible_prefix_extensions_table.lookup(
           tf.strings.substr(example, effective_round_num, 1))
 
-      if tf.math.equal(possible_prefix_extensions_index,
-                       tf.constant(DEFAULT_VALUE)):
+      # If the character extension is not in the alphabet, or the prefix is not
+      # already in the discovered prefixes, do not add client's vote.
+      if tf.math.logical_or(
+          tf.math.equal(possible_prefix_extensions_index,
+                        tf.constant(DEFAULT_VALUE)),
+          tf.math.equal(discovered_prefixes_index, tf.constant(DEFAULT_VALUE))):
         return vote_accumulator
-
-      elif tf.math.equal(discovered_prefixes_index, tf.constant(DEFAULT_VALUE)):
-        indices = [[0, possible_prefix_extensions_index]]
-        updates = tf.constant([1])
-        return tf.tensor_scatter_nd_add(vote_accumulator, indices, updates)
 
       else:
         indices = [[
