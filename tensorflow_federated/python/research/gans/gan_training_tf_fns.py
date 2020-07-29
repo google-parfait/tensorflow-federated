@@ -137,12 +137,8 @@ def client_computation(
     num_examples += train_discriminator_fn(generator, discriminator, gen_inputs,
                                            real_data)
 
-  # TODO(b/142341957): This control_dependency should not be needed, but is
-  # currently necessary to work around a TF bug with how tf.function handles
-  # tf.data.Datasets.
-  with tf.control_dependencies([num_examples]):
-    weights_delta = tf.nest.map_structure(tf.subtract, discriminator.weights,
-                                          from_server.discriminator_weights)
+  weights_delta = tf.nest.map_structure(tf.subtract, discriminator.weights,
+                                        from_server.discriminator_weights)
   weights_delta, has_non_finite_delta = (
       tensor_utils.zero_all_if_any_non_finite(weights_delta))
   update_weight = tf.cast(num_examples, tf.float32)
@@ -232,14 +228,10 @@ def server_computation(
     gen_examples_this_round += train_generator_fn(generator, discriminator,
                                                   gen_inputs)
 
-  # TODO(b/142341957): This control_dependency should not be needed, but is
-  # currently necessary to work around a TF bug with how tf.function handles
-  # tf.data.Datasets.
-  with tf.control_dependencies([gen_examples_this_round]):
-    server_state.counters[
-        'num_generator_train_examples'] += gen_examples_this_round
-    server_state.generator_weights = _weights(generator)
-    server_state.discriminator_weights = _weights(discriminator)
+  server_state.counters[
+      'num_generator_train_examples'] += gen_examples_this_round
+  server_state.generator_weights = _weights(generator)
+  server_state.discriminator_weights = _weights(discriminator)
   server_state.counters['num_rounds'] += 1
   return server_state
 
