@@ -1,3 +1,9 @@
+# Release 0.16.1
+
+## Bug Fixes
+
+*   Fixed issue preventing Python `list`s from being `all_equal` values.
+
 # Release 0.16.0
 
 ## Major Features and Improvements
