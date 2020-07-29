@@ -27,6 +27,7 @@ from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.simulation import file_per_user_client_data
 
 # A fake columnar dataset of (user id, value 1, value 2, value 3), roughly
@@ -103,8 +104,7 @@ class FakeUserData(object):
       writer.close()
     self._client_data_file_dict = client_file_dict
 
-  def create_test_dataset_fn(self, client_id):
-    client_path = self._client_data_file_dict[client_id]
+  def create_test_dataset_fn(self, client_path):
     features = {
         '0': tf.io.FixedLenFeature(shape=[], dtype=tf.int64),
         '1': tf.io.FixedLenFeature(shape=[], dtype=tf.float32),
@@ -118,8 +118,8 @@ class FakeUserData(object):
     return tf.data.TFRecordDataset(client_path).map(parse_example)
 
   @property
-  def client_ids(self):
-    return list(self._client_data_file_dict.keys())
+  def client_data_file_dict(self):
+    return self._client_data_file_dict
 
 
 class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
@@ -139,20 +139,24 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
   def _create_fake_client_data(self):
     fake_user_data = FilePerUserClientDataTest.fake_user_data
     return file_per_user_client_data.FilePerUserClientData(
-        client_ids=fake_user_data.client_ids,
-        create_tf_dataset_fn=fake_user_data.create_test_dataset_fn)
+        fake_user_data.client_data_file_dict,
+        fake_user_data.create_test_dataset_fn,
+    )
 
   def test_construct_with_non_callable(self):
+    fake_user_data = FilePerUserClientDataTest.fake_user_data
     with self.assertRaisesRegex(TypeError, r'found non-callable'):
       file_per_user_client_data.FilePerUserClientData(
-          client_ids=FilePerUserClientDataTest.fake_user_data.client_ids,
-          create_tf_dataset_fn=None)
+          client_ids_to_files=fake_user_data.client_data_file_dict,
+          dataset_fn=None,
+      )
 
-  def test_construct_with_non_list(self):
-    with self.assertRaisesRegex(TypeError, r'Expected list, found dict'):
+  def test_construct_with_non_dict(self):
+    with self.assertRaisesRegex(TypeError, r'Expected collections.abc.Mapping'):
       file_per_user_client_data.FilePerUserClientData(
-          client_ids={},  # Not a list.
-          create_tf_dataset_fn=tf.data.TFRecordDataset)
+          client_ids_to_files=[],  # Not a dict.
+          dataset_fn=tf.data.TFRecordDataset,
+      )
 
   def test_client_ids_property(self):
     data = self._create_fake_client_data()
@@ -195,6 +199,36 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
             self.assertAlmostEqual(actual[i], e, places=4)
       self.assertEmpty(expected_examples)
 
+  def test_dataset_computation(self):
+    data = self._create_fake_client_data()
+    self.assertIsInstance(data.dataset_computation, tff.Computation)
+    # Iterate over each client, ensuring we received a tf.data.Dataset with the
+    # correct data.
+    client_id_counters = collections.Counter(
+        example[0] for example in FAKE_TEST_DATA)
+    for client_id, expected_num_examples in client_id_counters.items():
+      tf_dataset = data.dataset_computation(client_id)
+      self.assertIsInstance(tf_dataset, tf.data.Dataset)
+
+      actual_num_examples = tf_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+      self.assertEqual(
+          self.evaluate(actual_num_examples), expected_num_examples)
+
+      # Assert the actual examples provided are the same.
+      expected_examples = [
+          example[1:] for example in FAKE_TEST_DATA if example[0] == client_id
+      ]
+      for actual in tf_dataset:
+        expected = expected_examples.pop(0)
+        actual = self.evaluate(actual)
+        self.assertLen(actual, len(expected))
+        for i, e in enumerate(expected):
+          if isinstance(e, list):
+            self.assertSequenceAlmostEqual(actual[i], e, places=4)
+          else:
+            self.assertAlmostEqual(actual[i], e, places=4)
+      self.assertEmpty(expected_examples)
+
   def test_build_client_file_dict(self):
     temp_dir = FilePerUserClientDataTest.temp_dir
     data = file_per_user_client_data.FilePerUserClientData.create_from_dir(
@@ -208,7 +242,6 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
         path=temp_dir)
     expected_client_ids = set(example[0] for example in FAKE_TEST_DATA)
     self.assertLen(data.client_ids, len(expected_client_ids))
-
 
 if __name__ == '__main__':
   tf.test.main()

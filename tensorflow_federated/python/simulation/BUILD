@@ -49,6 +49,7 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
@@ -59,7 +60,10 @@ py_test(
     srcs = ["file_per_user_client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":file_per_user_client_data"],
+    deps = [
+        ":file_per_user_client_data",
+        "//tensorflow_federated/python/core",
+    ],
 )
 
 py_library(

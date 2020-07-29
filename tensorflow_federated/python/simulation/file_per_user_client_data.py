@@ -13,10 +13,13 @@
 # limitations under the License.
 """Implementations of the ClientData abstract base class."""
 
+import collections
 import os.path
+from typing import Callable, Mapping
 
 import tensorflow as tf
 
+from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation import client_data
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -28,20 +31,37 @@ class FilePerUserClientData(client_data.ClientData):
   This mapping is restricted to one file per user.
   """
 
-  def __init__(self, client_ids, create_tf_dataset_fn):
+  def __init__(self, client_ids_to_files: Mapping[str, str],
+               dataset_fn: Callable[[str], tf.data.Dataset]):
     """Constructs a `tf.simulation.ClientData` object.
 
     Args:
-      client_ids: A list of `client_id`s.
-      create_tf_dataset_fn: A callable that takes a `client_id` and returns a
-        `tf.data.Dataset` object.
+      client_ids_to_files: A mapping from string client IDs to filepaths
+        containing the user's data.
+      dataset_fn: A factory function that takes a filepath (must accept
+        both strings and tensors) and returns a `tf.data.Dataset` corresponding
+        to this path.
     """
-    py_typecheck.check_type(client_ids, list)
-    if not client_ids:
+    py_typecheck.check_type(client_ids_to_files, collections.abc.Mapping)
+    if not client_ids_to_files:
       raise ValueError('`client_ids` must have at least one client ID')
-    py_typecheck.check_callable(create_tf_dataset_fn)
-    self._client_ids = sorted(client_ids)
-    self._create_tf_dataset_fn = create_tf_dataset_fn
+    py_typecheck.check_callable(dataset_fn)
+    self._client_ids = sorted(client_ids_to_files.keys())
+
+    def create_dataset_for_filename_fn(client_id):
+      return dataset_fn(client_ids_to_files[client_id])
+
+    @tff.tf_computation(tf.string)
+    def dataset_computation(client_id):
+      client_ids_to_path = tf.lookup.StaticHashTable(
+          tf.lookup.KeyValueTensorInitializer(
+              list(client_ids_to_files.keys()),
+              list(client_ids_to_files.values())), '')
+      client_path = client_ids_to_path.lookup(client_id)
+      return dataset_fn(client_path)
+
+    self._create_tf_dataset_fn = create_dataset_for_filename_fn
+    self._dataset_computation = dataset_computation
 
     g = tf.Graph()
     with g.as_default():
@@ -82,12 +102,8 @@ class FilePerUserClientData(client_data.ClientData):
         for filename in tf.io.gfile.listdir(path)
     }
 
-    def create_dataset_for_filename_fn(client_id):
-      return create_tf_dataset_fn(client_ids_to_paths_dict[client_id])
-
-    return FilePerUserClientData(
-        list(client_ids_to_paths_dict.keys()), create_dataset_for_filename_fn)
+    return FilePerUserClientData(client_ids_to_paths_dict, create_tf_dataset_fn)
 
   @property
   def dataset_computation(self):
-    raise NotImplementedError('b/162107475')
+    return self._dataset_computation
