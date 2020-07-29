@@ -88,7 +88,7 @@ def tokenize(ds, dataset_name):
     if dataset_name == 'shakespeare':
       return tf.expand_dims(example['snippets'], 0)
     elif dataset_name == 'stackoverflow':
-      return example['tokens']
+      return tf.expand_dims(example['tokens'], 0)
     else:
       raise app.UsageError('Dataset not supported: ', dataset_name)
 
@@ -145,7 +145,10 @@ def precision(ground_truth, signal, k):
   top_k_ground_truth = set(top_k(ground_truth, k).keys())
   top_k_signal = set(top_k(signal, k).keys())
   true_positives = len(top_k_signal.intersection(top_k_ground_truth))
-  return float(true_positives) / len(top_k_signal)
+  if top_k_signal:
+    return float(true_positives) / len(top_k_signal)
+  else:
+    return 0.0
 
 
 def recall(ground_truth, signal, k):
@@ -162,7 +165,10 @@ def recall(ground_truth, signal, k):
   top_k_ground_truth = set(top_k(ground_truth, k).keys())
   top_k_signal = set(top_k(signal, k).keys())
   true_positives = len(top_k_signal.intersection(top_k_ground_truth))
-  return float(true_positives) / len(top_k_ground_truth)
+  if top_k_ground_truth:
+    return float(true_positives) / len(top_k_ground_truth)
+  else:
+    return 0.0
 
 
 def f1_score(ground_truth, signal, k):
@@ -226,7 +232,7 @@ def get_top_words(datasets, num_words_per_dataset=None):
   total_words = []
   for dataset in datasets:
     words = [word.numpy().decode('utf-8') for word in dataset]
-    if num_words_per_dataset is None:
+    if num_words_per_dataset is not None:
       words = collections.Counter(words).most_common(num_words_per_dataset)
       words = [word_pair[0] for word_pair in words]
     total_words += list(set(words))
