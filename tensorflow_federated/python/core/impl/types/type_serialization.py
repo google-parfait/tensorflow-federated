@@ -14,6 +14,7 @@
 """A library of (de)serialization functions for computation types."""
 
 from typing import Optional
+import weakref
 
 import tensorflow as tf
 
@@ -47,6 +48,12 @@ def _to_tensor_shape(tensor_type_proto: pb.TensorType) -> tf.TensorShape:
   return tf.TensorShape(dims)
 
 
+# Manual cache used rather than `cachetools.cached` due to incompatibility
+# with `WeakKeyDictionary`. We want to use a `WeakKeyDictionary` so that
+# cache entries are destroyed once the types they index no longer exist.
+_type_serialization_cache = weakref.WeakKeyDictionary({})
+
+
 def serialize_type(
     type_spec: Optional[computation_types.Type]) -> Optional[pb.Type]:
   """Serializes 'type_spec' as a pb.Type.
@@ -68,26 +75,29 @@ def serialize_type(
   """
   if type_spec is None:
     return None
+  cached_proto = _type_serialization_cache.get(type_spec, None)
+  if cached_proto is not None:
+    return cached_proto
   if type_spec.is_tensor():
-    return pb.Type(tensor=_to_tensor_type_proto(type_spec))
+    proto = pb.Type(tensor=_to_tensor_type_proto(type_spec))
   elif type_spec.is_sequence():
-    return pb.Type(
+    proto = pb.Type(
         sequence=pb.SequenceType(element=serialize_type(type_spec.element)))
   elif type_spec.is_struct():
-    return pb.Type(
+    proto = pb.Type(
         struct=pb.StructType(element=[
             pb.StructType.Element(name=e[0], value=serialize_type(e[1]))
             for e in structure.iter_elements(type_spec)
         ]))
   elif type_spec.is_function():
-    return pb.Type(
+    proto = pb.Type(
         function=pb.FunctionType(
             parameter=serialize_type(type_spec.parameter),
             result=serialize_type(type_spec.result)))
   elif type_spec.is_placement():
-    return pb.Type(placement=pb.PlacementType())
+    proto = pb.Type(placement=pb.PlacementType())
   elif type_spec.is_federated():
-    return pb.Type(
+    proto = pb.Type(
         federated=pb.FederatedType(
             member=serialize_type(type_spec.member),
             placement=pb.PlacementSpec(
@@ -95,6 +105,9 @@ def serialize_type(
             all_equal=type_spec.all_equal))
   else:
     raise NotImplementedError
+
+  _type_serialization_cache[type_spec] = proto
+  return proto
 
 
 def deserialize_type(

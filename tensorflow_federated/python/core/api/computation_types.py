@@ -16,7 +16,8 @@
 import abc
 import collections
 import typing
-from typing import Any, Optional, Type as TypingType, TypeVar
+from typing import Any, Dict, Optional, Type as TypingType, TypeVar
+import weakref
 
 import attr
 import tensorflow as tf
@@ -184,12 +185,109 @@ class Type(object, metaclass=abc.ABCMeta):
     return self.is_assignable_from(other) and other.is_assignable_from(self)
 
 
+class _ValueWithHash():
+  """A wrapper for a value which combines it with a hashcode."""
+
+  def __init__(self, value, hashcode):
+    self._value = value
+    self._hashcode = hashcode
+
+  def __eq__(self, other):
+    return self._value == other._value
+
+  def __hash__(self):
+    return self._hashcode
+
+
+# A per-`typing.Type` map from `__init__` arguments to object instances.
+#
+# This is used by the `_Intern` metaclass to allow reuse of object instances
+# when new objects are requested with the same `__init__` arguments as
+# existing object instances.
+#
+# A `WeakValueDictionary` is used here so that interned instances are not
+# stored for any longer than their usual lifetimes.
+#
+# Implementation note: this double-map is used rather than a single map
+# stored as a field of each class because some class objects themselves would
+# begin destruction before the map fields of other classes, causing errors
+# during destruction.
+_intern_pool: Dict[typing.Type[Any], Dict[Any, Any]] = (
+    collections.defaultdict(lambda: weakref.WeakValueDictionary({})))
+
+
+class _Intern(abc.ABCMeta):
+  """A metaclass which interns instances.
+
+  This is used to create classes where the following predicate holds:
+  `MyClass(some_args) is MyClass(some_args)`
+
+  That is, objects of the class with the same constructor parameters result
+  in values with the same object identity. This can make comparison of deep
+  structures much cheaper, since a shallow equality check can short-circuit
+  comparison.
+
+  Classes which set `_Intern` as a metaclass must have a
+  `_normalize_init_args` static method which takes in the arguments passed
+  to `Your_InternedClass(...)` and returns a tuple of arguments to be passed
+  to the `__init__` method. Note that keyword arguments must be flattened.
+
+  If any of the normalized `__init__` arguments are unhashable, the class
+  must implement a static method `_hash_normalized_args`.
+
+  Note also that this must only be used with *immutable* values, as mutation
+  would cause all similarly-constructed instances to be mutated together.
+
+  Inherits from `abc.ABCMeta` to prevent subclass conflicts.
+  """
+
+  @staticmethod
+  def _hash_normalized_args(*args):
+    """Default implementation of `_hash_normalized_args`."""
+    return hash(args)
+
+  def __call__(cls, *args, **kwargs):
+    normalized_args = cls._normalize_init_args(*args, **kwargs)  # pytype: disable=attribute-error
+    hashable_args = _ValueWithHash(normalized_args,
+                                   cls._hash_normalized_args(*normalized_args))
+    intern_pool_for_cls = _intern_pool[cls]
+    interned = intern_pool_for_cls.get(hashable_args, None)
+    if interned is None:
+      new_instance = super().__call__(*normalized_args)
+      intern_pool_for_cls[hashable_args] = new_instance
+      return new_instance
+    else:
+      return interned
+
+
 def _hash_dtype_and_shape(dtype: tf.DType, shape: tf.TensorShape) -> int:
   return hash((dtype.name, tuple(shape.as_list())))
 
 
-class TensorType(Type):
+class TensorType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
+
+  @staticmethod
+  def _normalize_init_args(dtype, shape=None):
+    """Checks init arguments and converts to a normalized representation."""
+    py_typecheck.check_type(dtype, tf.DType)
+    # TODO(b/123764922): If we are passed a shape of `TensorShape(None)`, which
+    # does happen along some codepaths, we have slightly violated the
+    # assumptions of `TensorType` (see the special casing in `repr` and `str`
+    # below. This is related to compatibility checking,
+    # and there are a few options. For now, simply adding a case in
+    # `is_assignable_from` to catch. We could alternatively
+    # treat this case the same as if we have been passed a shape of `None` in
+    # this constructor.
+    if shape is None:
+      shape = tf.TensorShape([])
+    elif not isinstance(shape, tf.TensorShape):
+      shape = tf.TensorShape(shape)
+    return (dtype, shape)
+
+  @staticmethod
+  def _hash_normalized_args(dtype, shape):
+    return _hash_dtype_and_shape(dtype, shape)
 
   def __init__(self, dtype, shape=None):
     """Constructs a new instance from the given `dtype` and `shape`.
@@ -204,22 +302,8 @@ class TensorType(Type):
     Raises:
       TypeError: if arguments are of the wrong types.
     """
-    py_typecheck.check_type(dtype, tf.DType)
     self._dtype = dtype
-    # TODO(b/123764922): If we are passed a shape of `TensorShape(None)`, which
-    # does happen along some codepaths, we have slightly violated the
-    # assumptions of `TensorType` (see the special casing in `repr` and `str`
-    # below. This is related to compatibility checking,
-    # and there are a few options. For now, simply adding a case in
-    # `is_assignable_from` to catch. We could alternatively
-    # treat this case the same as if we have been passed a shape of `None` in
-    # this constructor.
-    if shape is None:
-      self._shape = tf.TensorShape([])
-    elif isinstance(shape, tf.TensorShape):
-      self._shape = shape
-    else:
-      self._shape = tf.TensorShape(shape)
+    self._shape = shape
     self._hash = None
 
   def children(self):
@@ -292,27 +376,15 @@ def _format_struct_type_members(struct_type: 'StructType') -> str:
       _element_repr(e) for e in structure.iter_elements(struct_type))
 
 
-class StructType(structure.Struct, Type):
+class StructType(structure.Struct, Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing structural types in TFF.
 
   Elements initialized by name can be accessed as `foo.name`, and otherwise by
   index, `foo[index]`.
   """
 
-  def __init__(self, elements, convert=True):
-    """Constructs a new instance from the given element types.
-
-    Args:
-      elements: An iterable of element specifications. Each element
-        specification is either a type spec (an instance of `tff.Type` or
-        something convertible to it via `tff.to_type`) for the element, or a
-        (name, spec) for elements that have defined names. Alternatively, one
-        can supply here an instance of `collections.OrderedDict` mapping element
-        names to their types (or things that are convertible to types).
-      convert: Whether to attempt to convert the elements of this iterator.
-        Defaults to `True`. If `False`, all members of `elements` must be of
-        type `Tuple[Optional[str], tff.Type]`.
-    """
+  @staticmethod
+  def _normalize_init_args(elements, convert=True):
     py_typecheck.check_type(elements, collections.Iterable)
     if convert:
       if py_typecheck.is_named_tuple(elements):
@@ -335,8 +407,24 @@ class StructType(structure.Struct, Type):
       if _is_full_element_spec(elements):
         elements = [(elements[0], to_type(elements[1]))]
       else:
-        elements = (_map_element(e) for e in elements)
+        elements = [_map_element(e) for e in elements]
+    return (elements,)
 
+  @staticmethod
+  def _hash_normalized_args(elements):
+    return hash(tuple(elements))
+
+  def __init__(self, elements):
+    """Constructs a new instance from the given element types.
+
+    Args:
+      elements: An iterable of element specifications. Each element
+        specification is either a type spec (an instance of `tff.Type` or
+        something convertible to it via `tff.to_type`) for the element, or a
+        (name, spec) for elements that have defined names. Alternatively, one
+        can supply here an instance of `collections.OrderedDict` mapping element
+        names to their types (or things that are convertible to types).
+    """
     structure.Struct.__init__(self, elements)
 
   def children(self):
@@ -372,14 +460,23 @@ class StructType(structure.Struct, Type):
         for k in range(len(target_elements))))
 
 
-class StructWithPythonType(StructType):
+class StructWithPythonType(StructType, metaclass=_Intern):
   """A representation of a structure paired with a Python container type."""
 
-  def __init__(self, elements, container_type):
+  @staticmethod
+  def _normalize_init_args(elements, container_type):
     py_typecheck.check_type(container_type, type)
     # TODO(b/161561250): check the `container_type` for validity.
-    self._container_type = container_type
+    elements = StructType._normalize_init_args(elements)[0]
+    return (elements, container_type)
+
+  @staticmethod
+  def _hash_normalized_args(elements, container_type):
+    return hash((tuple(elements), container_type))
+
+  def __init__(self, elements, container_type):
     super().__init__(elements)
+    self._container_type = container_type
 
   def is_struct_with_python(self):
     return True
@@ -408,8 +505,12 @@ class StructWithPythonType(StructType):
     return value._container_type  # pylint: disable=protected-access
 
 
-class SequenceType(Type):
+class SequenceType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of sequences in TFF."""
+
+  @staticmethod
+  def _normalize_init_args(element):
+    return (to_type(element),)
 
   def __init__(self, element):
     """Constructs a new instance from the given `element` type.
@@ -418,7 +519,7 @@ class SequenceType(Type):
       element: A specification of the element type, either an instance of
         `tff.Type` or something convertible to it by `tff.to_type`.
     """
-    self._element = to_type(element)
+    self._element = element
 
   def children(self):
     yield self._element
@@ -445,8 +546,12 @@ class SequenceType(Type):
              self.element.is_assignable_from(source_type.element)))
 
 
-class FunctionType(Type):
+class FunctionType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing functional types in TFF."""
+
+  @staticmethod
+  def _normalize_init_args(parameter, result):
+    return (to_type(parameter), to_type(result))
 
   def __init__(self, parameter, result):
     """Constructs a new instance from the given `parameter` and `result` types.
@@ -458,8 +563,8 @@ class FunctionType(Type):
       result: A specification of the result type, either an instance of
         `tff.Type` or something convertible to it by `tff.to_type`.
     """
-    self._parameter = to_type(parameter)
-    self._result = to_type(result)
+    self._parameter = parameter
+    self._result = result
 
   def children(self):
     if self._parameter is not None:
@@ -499,8 +604,13 @@ class FunctionType(Type):
     return self.result.is_assignable_from(source_type.result)
 
 
-class AbstractType(Type):
+class AbstractType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing abstract types in TFF."""
+
+  @staticmethod
+  def _normalize_init_args(label):
+    py_typecheck.check_type(label, str)
+    return (str(label),)
 
   def __init__(self, label):
     """Constructs a new instance from the given string `label`.
@@ -509,8 +619,7 @@ class AbstractType(Type):
       label: A string label of an abstract type. All occurences of the label
         within a computation's type signature refer to the same concrete type.
     """
-    py_typecheck.check_type(label, str)
-    self._label = str(label)
+    self._label = label
 
   def children(self):
     return iter(())
@@ -538,13 +647,17 @@ class AbstractType(Type):
     raise TypeError('Abstract types are not comparable.')
 
 
-class PlacementType(Type):
+class PlacementType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing the placement type in TFF.
 
   There is only one placement type, a TFF built-in, just as there is only one
   `int` or `str` type in Python. All instances of this class represent the same
   built-in TFF placement type.
   """
+
+  @staticmethod
+  def _normalize_init_args():
+    return ()
 
   def children(self):
     return iter(())
@@ -565,8 +678,16 @@ class PlacementType(Type):
     return isinstance(source_type, PlacementType)
 
 
-class FederatedType(Type):
+class FederatedType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing federated types in TFF."""
+
+  @staticmethod
+  def _normalize_init_args(member, placement, all_equal=None):
+    py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+    member = to_type(member)
+    if all_equal is None:
+      all_equal = placement.default_all_equal
+    return (member, placement, all_equal)
 
   def __init__(self, member, placement, all_equal=None):
     """Constructs a new federated type instance.
@@ -586,13 +707,8 @@ class FederatedType(Type):
         If `all_equal` is `None`, the value is selected as the default for the
         placement, e.g., `True` for `tff.SERVER` and `False` for `tff.CLIENTS`.
     """
-    py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
-    self._member = to_type(member)
+    self._member = member
     self._placement = placement
-    if all_equal is None:
-      all_equal = placement.default_all_equal
-
-    py_typecheck.check_type(all_equal, bool)
     self._all_equal = all_equal
 
   # TODO(b/113112108): Extend this to support federated types parameterized

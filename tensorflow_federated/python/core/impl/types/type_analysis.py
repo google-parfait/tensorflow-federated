@@ -14,6 +14,8 @@
 """A library of static analysis functions for computation types."""
 
 from typing import Any, Callable, Optional
+import weakref
+
 import attr
 
 import tensorflow as tf
@@ -79,6 +81,12 @@ class _Disallowed:
   sequence: Optional[str]
 
 
+# Manual cache used rather than `cachetools.cached` due to incompatibility
+# with `WeakKeyDictionary`. We want to use a `WeakKeyDictionary` so that
+# cache entries are destroyed once the types they index no longer exist.
+_well_formedness_cache = weakref.WeakKeyDictionary({})
+
+
 def check_well_formed(type_signature: computation_types.Type):
   """Checks that `type_spec` represents a well-formed type.
 
@@ -99,6 +107,8 @@ def check_well_formed(type_signature: computation_types.Type):
   """
   # TODO(b/113112885): Reinstate a call to `check_all_abstract_types_are_bound`
   # after revising the definition of well-formedness.
+  if _well_formedness_cache.get(type_signature, False):
+    return
   py_typecheck.check_type(type_signature, computation_types.Type)
 
   def _check_for_disallowed_type(type_to_check, disallowed_types: _Disallowed):
@@ -138,6 +148,7 @@ def check_well_formed(type_signature: computation_types.Type):
   type_transformations.visit_preorder(type_signature,
                                       _check_for_disallowed_type,
                                       _Disallowed(None, None, None))
+  _well_formedness_cache[type_signature] = True
 
 
 def check_type(value: Any, type_spec: computation_types.Type):

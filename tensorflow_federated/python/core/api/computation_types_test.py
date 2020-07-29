@@ -72,6 +72,11 @@ class TensorTypeTest(absltest.TestCase):
     self.assertEqual(t3, t4)
     self.assertNotEqual(t1, t3)
 
+  def test_identity(self):
+    t1 = computation_types.TensorType(tf.int32, [10])
+    t2 = computation_types.TensorType(tf.int32, [10])
+    self.assertIs(t1, t2)
+
   def test_is_assignable_from(self):
     t = computation_types.TensorType(tf.int32, [10])
     self.assertFalse(
@@ -154,6 +159,12 @@ class StructTypeTest(absltest.TestCase):
     self.assertNotEqual(t4, t5)
     self.assertNotEqual(t4, t6)
 
+  def test_identity(self):
+    shape = [('a', tf.int32), ('b', tf.bool)]
+    t1 = computation_types.StructType(shape)
+    t2 = computation_types.StructType(shape)
+    self.assertIs(t1, t2)
+
   def test_is_assignable_from(self):
     t1 = computation_types.StructType([tf.int32, ('a', tf.bool)])
     t2 = computation_types.StructType([tf.int32, ('a', tf.bool)])
@@ -209,6 +220,11 @@ class StructWithPythonTypeTest(absltest.TestCase):
     self.assertEqual(
         repr(t), 'StructType([(\'a\', TensorType(tf.int32))]) as TestFoo')
 
+  def test_identity(self):
+    t1 = computation_types.StructWithPythonType([('a', tf.int32)], dict)
+    t2 = computation_types.StructWithPythonType([('a', tf.int32)], dict)
+    self.assertIs(t1, t2)
+
 
 class SequenceTypeTest(absltest.TestCase):
 
@@ -239,6 +255,11 @@ class SequenceTypeTest(absltest.TestCase):
     t3 = computation_types.SequenceType(tf.bool)
     self.assertEqual(t1, t2)
     self.assertNotEqual(t1, t3)
+
+  def test_identity(self):
+    t1 = computation_types.SequenceType(tf.int32)
+    t2 = computation_types.SequenceType(tf.int32)
+    self.assertIs(t1, t2)
 
   def test_is_assignable_from(self):
     self.assertTrue(
@@ -280,6 +301,11 @@ class FunctionTypeTest(absltest.TestCase):
     self.assertNotEqual(t1, t3)
     self.assertNotEqual(t1, t4)
 
+  def test_identity(self):
+    t1 = computation_types.FunctionType(tf.int32, tf.bool)
+    t2 = computation_types.FunctionType(tf.int32, tf.bool)
+    self.assertIs(t1, t2)
+
   def test_is_assignable_from(self):
     t1 = computation_types.FunctionType(tf.int32, tf.bool)
     t2 = computation_types.FunctionType(tf.int32, tf.bool)
@@ -307,6 +333,11 @@ class AbstractTypeTest(absltest.TestCase):
     self.assertEqual(t1, t2)
     self.assertNotEqual(t1, t3)
 
+  def test_identity(self):
+    t1 = computation_types.AbstractType('T')
+    t2 = computation_types.AbstractType('T')
+    self.assertIs(t1, t2)
+
   def test_is_assignable_from(self):
     t1 = computation_types.AbstractType('T1')
     t2 = computation_types.AbstractType('T2')
@@ -325,6 +356,11 @@ class PlacementTypeTest(absltest.TestCase):
     t1 = computation_types.PlacementType()
     t2 = computation_types.PlacementType()
     self.assertEqual(t1, t2)
+
+  def test_identity(self):
+    t1 = computation_types.AbstractType('T')
+    t2 = computation_types.AbstractType('T')
+    self.assertIs(t1, t2)
 
   def test_is_assignable_from(self):
     t1 = computation_types.PlacementType()
@@ -358,6 +394,11 @@ class FederatedTypeTest(absltest.TestCase):
     self.assertNotEqual(t1, t3)
     self.assertNotEqual(t1, t4)
     self.assertNotEqual(t1, t5)
+
+  def test_identity(self):
+    t1 = computation_types.FederatedType(tf.int32, placements.CLIENTS, False)
+    t2 = computation_types.FederatedType(tf.int32, placements.CLIENTS, False)
+    self.assertIs(t1, t2)
 
   def test_with_federated_type(self):
     t1 = computation_types.FederatedType(tf.int32, placements.CLIENTS)
