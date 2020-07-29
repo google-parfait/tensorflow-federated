@@ -229,12 +229,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     Raises:
       ValueError: If `value` is not compatible.
     """
-    if all_equal:
-      if isinstance(value, list):
-        raise ValueError(
-            'Expected a single value when \'all_equal\' is \'True\', found a '
-            'list.')
-    else:
+    if not all_equal:
       py_typecheck.check_type(value, (list, tuple, set, frozenset))
       children = self._target_executors.get(placement)
       if len(value) != len(children):

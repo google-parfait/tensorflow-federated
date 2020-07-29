@@ -358,13 +358,13 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
 
-  def test_raises_value_error_with_unexpected_federated_type_at_clients_all_equal(
+  def test_raises_type_error_with_unexpected_federated_type_at_clients_all_equal(
       self):
     executor = create_test_executor()
     value = [10] * 3
     type_signature = type_factory.at_clients(tf.int32, all_equal=True)
 
-    with self.assertRaises(ValueError):
+    with self.assertRaises(TypeError):
       self.run_sync(executor.create_value(value, type_signature))
 
 
