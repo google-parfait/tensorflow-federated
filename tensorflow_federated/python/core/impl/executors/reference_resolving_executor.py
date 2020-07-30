@@ -77,7 +77,7 @@ class ReferenceResolvingExecutorScope:
 
     Args:
       symbols: A dict of symbols available in this scope, with keys being
-        strings, and values being instances of
+        strings, and values being futures that resolve to instances of
         `ReferenceResolvingExecutorValue`.
       parent: The parent scope, or `None` if this is the root.
     """
@@ -85,13 +85,13 @@ class ReferenceResolvingExecutorScope:
     py_typecheck.check_type(symbols, dict)
     for k, v in symbols.items():
       py_typecheck.check_type(k, str)
-      py_typecheck.check_type(v, ReferenceResolvingExecutorValue)
+      assert asyncio.isfuture(v)
     if parent is not None:
       py_typecheck.check_type(parent, ReferenceResolvingExecutorScope)
     self._parent = parent
     self._symbols = {k: v for k, v in symbols.items()}
 
-  def resolve_reference(self, name):
+  async def resolve_reference(self, name):
     """Resolves the given reference `name` in this scope.
 
     Args:
@@ -107,9 +107,9 @@ class ReferenceResolvingExecutorScope:
     py_typecheck.check_type(name, str)
     value = self._symbols.get(str(name))
     if value is not None:
-      return value
+      return await value
     elif self._parent is not None:
-      return self._parent.resolve_reference(name)
+      return await self._parent.resolve_reference(name)
     else:
       raise ValueError(
           'The name \'{}\' is not defined in this scope.'.format(name))
@@ -148,10 +148,16 @@ class ScopedLambda():
       executor: 'ReferenceResolvingExecutor',
       parameter_value: 'ReferenceResolvingExecutorValue',
   ) -> 'ReferenceResolvingExecutorValue':
+    """Evaluates the lambda with the provided parameter."""
     scope = self._scope
     comp_lambda = getattr(self._comp, 'lambda')
-    new_scope = scope if parameter_value is None else ReferenceResolvingExecutorScope(
-        {comp_lambda.parameter_name: parameter_value}, scope)
+    if parameter_value is None:
+      new_scope = scope
+    else:
+      parameter_value_future = asyncio.Future()
+      parameter_value_future.set_result(parameter_value)
+      new_binding = {comp_lambda.parameter_name: parameter_value_future}
+      new_scope = ReferenceResolvingExecutorScope(new_binding, scope)
     return await executor._evaluate(comp_lambda.result, new_scope)  # pylint: disable=protected-access
 
 
@@ -426,7 +432,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       comp: pb.Computation,
       scope: ReferenceResolvingExecutorScope,
   ) -> ReferenceResolvingExecutorValue:
-    return scope.resolve_reference(comp.reference.name)
+    return await scope.resolve_reference(comp.reference.name)
 
   @tracing.trace(stats=False)
   async def _evaluate_call(
@@ -474,7 +480,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       scope: ReferenceResolvingExecutorScope,
   ) -> ReferenceResolvingExecutorValue:
     for loc in comp.block.local:
-      value = await self._evaluate(loc.value, scope)
+      value = asyncio.ensure_future(self._evaluate(loc.value, scope))
       scope = ReferenceResolvingExecutorScope({loc.name: value}, scope)
     return await self._evaluate(comp.block.result, scope)
 
