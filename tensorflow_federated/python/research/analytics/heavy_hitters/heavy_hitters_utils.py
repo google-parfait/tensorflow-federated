@@ -21,6 +21,7 @@ from absl import app
 from absl import logging
 
 import tensorflow as tf
+import tensorflow_federated as tff
 import tensorflow_text as tf_text
 
 
@@ -105,6 +106,26 @@ def tokenize(ds, dataset_name):
   ds = ds.map(tf_text.case_fold_utf8)
   ds = ds.filter(mask_all_symbolic_words)
   return ds
+
+
+def get_federated_tokenize_fn(dataset_name, dataset_element_type_structure):
+  """Get a federated tokenizer function."""
+
+  @tff.tf_computation(tff.SequenceType(dataset_element_type_structure))
+  def tokenize_dataset(dataset):
+    """The TF computation to tokenize a dataset."""
+    dataset = tokenize(dataset, dataset_name)
+    return dataset
+
+  @tff.federated_computation(
+      tff.FederatedType(
+          tff.SequenceType(dataset_element_type_structure), tff.CLIENTS))
+  def tokenize_datasets(datasets):
+    """The TFF computation to compute tokenized datasets."""
+    tokenized_datasets = tff.federated_map(tokenize_dataset, datasets)
+    return tokenized_datasets
+
+  return tokenize_datasets
 
 
 def distance_l1(ground_truth, signal, correction=1.0):
@@ -254,3 +275,23 @@ def calculate_ground_truth(data, dataset_name):
   ground_truth_results = get_top_words(all_datasets)
   logging.info('Obtained ground truth in %.2f seconds', time.time() - start)
   return ground_truth_results
+
+
+@tff.tf_computation(tff.SequenceType(tf.string))
+def compute_lossless_result_per_user(dataset):
+  words = listify(dataset)
+  k_words = get_top_elements(words, 10)
+  return k_words
+
+
+@tff.federated_computation(
+    tff.FederatedType(tff.SequenceType(tf.string), tff.CLIENTS))
+def compute_lossless_results_federated(datasets):
+  words = tff.federated_map(compute_lossless_result_per_user, datasets)
+  return words
+
+
+def compute_lossless_results(datasets):
+  all_words = tf.concat(compute_lossless_results_federated(datasets), axis=0)
+  word, _, count = tf.unique_with_counts(all_words)
+  return dict(zip(word.numpy(), count.numpy()))

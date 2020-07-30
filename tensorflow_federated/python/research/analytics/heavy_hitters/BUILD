@@ -7,6 +7,7 @@ py_library(
     srcs = ["heavy_hitters_utils.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/research"],
+    deps = ["//tensorflow_federated"],
 )
 
 py_test(
