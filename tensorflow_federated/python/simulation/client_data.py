@@ -182,8 +182,9 @@ class ClientData(object, metaclass=abc.ABCMeta):
 
   @classmethod
   def from_clients_and_fn(
-      cls, client_ids: Iterable[str],
-      create_tf_dataset_for_client_fn: Callable[[str], tf.data.Dataset]
+      cls,
+      client_ids: Iterable[str],
+      create_tf_dataset_for_client_fn: Callable[[str], tf.data.Dataset],
   ) -> 'ConcreteClientData':
     """Constructs a `ClientData` based on the given function.
 
@@ -191,8 +192,10 @@ class ClientData(object, metaclass=abc.ABCMeta):
       client_ids: A non-empty list of client_ids which are valid inputs to the
         create_tf_dataset_for_client_fn.
       create_tf_dataset_for_client_fn: A function that takes a client_id from
-        the above list, and returns a `tf.data.Dataset`.
-
+        the above list, and returns a `tf.data.Dataset`. If this function is
+        additionally a `tff.Computation`, the constructed `ClientData`
+        will expose a `dataset_computation` attribute which can be used for
+        high-performance distributed simulations.
     Returns:
       A `ClientData`.
     """
@@ -337,7 +340,10 @@ class ConcreteClientData(ClientData):
     Args:
       client_ids: A non-empty list of string client_ids.
       create_tf_dataset_for_client_fn: A function that takes a client_id from
-        the above list, and returns a `tf.data.Dataset`.
+        the above list, and returns a `tf.data.Dataset`. If this function is
+        additionally a `tff.Computation`, the constructed `ConcreteClientData`
+        will expose a `dataset_computation` attribute which can be used for
+        high-performance distributed simulations.
     """
     py_typecheck.check_type(client_ids, collections.Iterable)
     py_typecheck.check_callable(create_tf_dataset_for_client_fn)
@@ -347,6 +353,11 @@ class ConcreteClientData(ClientData):
 
     self._client_ids = list(client_ids)
     self._create_tf_dataset_for_client_fn = create_tf_dataset_for_client_fn
+
+    if isinstance(self._create_tf_dataset_for_client_fn, tff.Computation):
+      self._dataset_computation = self._create_tf_dataset_for_client_fn
+    else:
+      self._dataset_computation = None
 
     example_dataset = create_tf_dataset_for_client_fn(next(iter(client_ids)))
     self._element_type_structure = example_dataset.element_spec
@@ -364,4 +375,6 @@ class ConcreteClientData(ClientData):
 
   @property
   def dataset_computation(self):
+    if self._dataset_computation is not None:
+      return self._dataset_computation
     raise NotImplementedError
