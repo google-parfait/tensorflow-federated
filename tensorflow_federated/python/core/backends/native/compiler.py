@@ -18,7 +18,6 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformations
-from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
@@ -47,12 +46,10 @@ def transform_to_native_form(
     logging.debug('Compiling TFF computation.')
     call_dominant_form, _ = transformations.transform_to_call_dominant(
         computation_building_block)
-    locals_rearranged, _ = tree_transformations.group_block_locals_by_dependency(
-        call_dominant_form)
     logging.debug('Computation compiled to:')
-    logging.debug(locals_rearranged.formatted_representation())
+    logging.debug(call_dominant_form.formatted_representation())
     return computation_wrapper_instances.building_block_to_computation(
-        locals_rearranged)
+        call_dominant_form)
   except ValueError as e:
     logging.debug('Compilation for native runtime failed with error %s', e)
     logging.debug('computation: %s',
