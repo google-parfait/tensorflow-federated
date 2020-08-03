@@ -297,19 +297,14 @@ class _KerasModel(model_lib.Model):
 
       def update_state(self, y_true, y_pred, sample_weight=None):
         if len(self._loss_fns) == 1:
-          batch_size = tf.cast(tf.shape(y_pred)[0], self._dtype)
-          y_true = tf.cast(y_true, self._dtype)
-          y_pred = tf.cast(y_pred, self._dtype)
+          batch_size = tf.shape(y_pred)[0]
           batch_loss = self._loss_fns[0](y_true, y_pred)
-
         else:
+          batch_size = tf.shape(y_pred[0])[0]
           batch_loss = tf.zeros(())
           for i in range(len(self._loss_fns)):
-            y_t = tf.cast(y_true[i], self._dtype)
-            y_p = tf.cast(y_pred[i], self._dtype)
-            batch_loss += self._loss_weights[i] * self._loss_fns[i](y_t, y_p)
-
-          batch_size = tf.cast(tf.shape(y_pred[0])[0], self._dtype)
+            batch_loss += self._loss_weights[i] * self._loss_fns[i](y_true[i],
+                                                                    y_pred[i])
 
         return super().update_state(batch_loss, batch_size)
 

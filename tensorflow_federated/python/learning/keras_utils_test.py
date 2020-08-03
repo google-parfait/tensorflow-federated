@@ -260,6 +260,39 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertGreater(metrics['loss'][0], 0)
     self.assertEqual(metrics['loss'][1], 2)
 
+  def test_tff_model_from_keras_model_with_custom_loss_with_integer_label(self):
+
+    class _CustomLossRequiringLabelBeInteger(tf.keras.losses.Loss):
+
+      def __init__(self):
+        super().__init__(name='custom_loss_requiring_label_be_integer')
+
+      def call(self, y_true, y_pred):
+        # Note that this TF function requires that the label `y_true` be of an
+        # integer dtype; a TypeError is thrown if `y_true` isn't int32 or int64.
+        return tf.nn.sparse_softmax_cross_entropy_with_logits(y_true, y_pred)
+
+    keras_model = tf.keras.Sequential(
+        [tf.keras.Input(shape=(2,)),
+         tf.keras.layers.Dense(units=10)])
+
+    input_spec = [
+        tf.TensorSpec(shape=[1, 2], dtype=tf.float32),
+        tf.TensorSpec(shape=[1], dtype=tf.int64)
+    ]
+
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        loss=_CustomLossRequiringLabelBeInteger(),
+        input_spec=input_spec)
+
+    batch = collections.OrderedDict(
+        x=tf.convert_to_tensor(np.ones((1, 2)), dtype=tf.float32),
+        y=tf.convert_to_tensor([0], dtype=tf.int64))
+
+    # Expect this call to .forward_pass to succeed (no Errors raised).
+    tff_model.forward_pass(batch)
+
   def test_tff_model_type_spec_from_keras_model_unspecified_sequence_len(self):
     keras_model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(None,)),
