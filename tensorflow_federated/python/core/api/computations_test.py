@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import test as core_test
-from tensorflow_federated.python.core.impl.context_stack import set_default_context
+from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -120,29 +120,28 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
     factory = executor_stacks.sizing_executor_factory(num_clients=num_clients)
     context = execution_context.ExecutionContext(factory)
-    set_default_context.set_default_context(context)
+    with get_context_stack.get_context_stack().install(context):
+      to_float = lambda x: tf.cast(x, tf.float32)
+      temperatures = [tf.data.Dataset.range(10).map(to_float)] * num_clients
+      threshold = 15.0
+      comp(temperatures, threshold)
 
-    to_float = lambda x: tf.cast(x, tf.float32)
-    temperatures = [tf.data.Dataset.range(10).map(to_float)] * num_clients
-    threshold = 15.0
-    comp(temperatures, threshold)
+      # Each client receives a tf.float32 and uploads two tf.float32 values.
+      expected_broadcast_bits = [num_clients * 32]
+      expected_aggregate_bits = [num_clients * 32 * 2]
+      expected_broadcast_history = {
+          (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients
+      }
+      expected_aggregate_history = {
+          (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients * 2
+      }
 
-    # Each client receives a tf.float32 and uploads two tf.float32 values.
-    expected_broadcast_bits = [num_clients * 32]
-    expected_aggregate_bits = [num_clients * 32 * 2]
-    expected_broadcast_history = {
-        (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients
-    }
-    expected_aggregate_history = {
-        (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients * 2
-    }
+      size_info = factory.get_size_info()
 
-    size_info = factory.get_size_info()
-
-    self.assertEqual(expected_broadcast_history, size_info.broadcast_history)
-    self.assertEqual(expected_aggregate_history, size_info.aggregate_history)
-    self.assertEqual(expected_broadcast_bits, size_info.broadcast_bits)
-    self.assertEqual(expected_aggregate_bits, size_info.aggregate_bits)
+      self.assertEqual(expected_broadcast_history, size_info.broadcast_history)
+      self.assertEqual(expected_aggregate_history, size_info.aggregate_history)
+      self.assertEqual(expected_broadcast_bits, size_info.broadcast_bits)
+      self.assertEqual(expected_aggregate_bits, size_info.aggregate_bits)
 
   @executor_test_utils.executors
   def test_computation_with_no_args_returns_value(self):
