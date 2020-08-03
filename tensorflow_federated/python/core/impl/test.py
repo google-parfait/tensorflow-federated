@@ -13,6 +13,8 @@
 # limitations under the License.
 """General purpose test utilities for TFF."""
 
+import functools
+
 from absl import logging
 
 from tensorflow_federated.python.core.api import computations
@@ -30,6 +32,7 @@ def tf1_and_tf2(fn):
     A decorated function, which executes `fn` using both decorators.
   """
 
+  @functools.wraps(fn)
   def wrapped_fn(self):
     logging.info('Testing under tff.tf2_computation')
     fn(self, computations.tf2_computation)
@@ -42,6 +45,7 @@ def tf1_and_tf2(fn):
 def tf1(fn):
   """A decorator for testing the `tff.tf_computation` decorator."""
 
+  @functools.wraps(fn)
   def wrapped_fn(self):
     fn(self, computations.tf_computation)
 
@@ -51,6 +55,7 @@ def tf1(fn):
 def tf2(fn):
   """A decorator for testing the `tff.tf2_computation` decorator."""
 
+  @functools.wraps(fn)
   def wrapped_fn(self):
     fn(self, computations.tf2_computation)
 

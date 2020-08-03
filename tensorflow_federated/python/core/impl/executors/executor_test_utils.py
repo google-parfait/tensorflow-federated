@@ -14,6 +14,7 @@
 """Utils for testing executors."""
 
 import asyncio
+import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -107,6 +108,7 @@ def executors(*args):
 
   def decorator(fn, *named_executors):
     """Construct a custom `parameterized.named_parameter` decorator for `fn`."""
+    wraps_decorator = functools.wraps(fn)
     if not named_executors:
       named_executors = [
           ('reference', reference_executor.ReferenceExecutor()),
@@ -116,6 +118,7 @@ def executors(*args):
         *named_executors)
     fn = executor_decorator(fn)
     fn = named_parameters_decorator(fn)
+    fn = wraps_decorator(fn)
     return fn
 
   if len(args) == 1 and callable(args[0]):

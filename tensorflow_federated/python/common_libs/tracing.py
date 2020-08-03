@@ -187,6 +187,7 @@ def trace(fn=None, **trace_kwargs):
   # underlying function in order to cover both the sync and async cases.
   if inspect.iscoroutinefunction(fn):
 
+    @functools.wraps(fn)
     async def async_trace(*fn_args, **fn_kwargs):
       # Produce the span generator
       span_gen = _span_generator(
@@ -217,6 +218,7 @@ def trace(fn=None, **trace_kwargs):
     return async_trace
   else:
 
+    @functools.wraps(fn)
     def sync_trace(*fn_args, **fn_kwargs):
       span_gen = _span_generator(
           scope, sub_scope, trace_kwargs, fn_args=fn_args, fn_kwargs=fn_kwargs)

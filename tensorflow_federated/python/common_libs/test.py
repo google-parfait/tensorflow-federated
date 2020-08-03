@@ -13,6 +13,8 @@
 # limitations under the License.
 """General purpose test utils for TFF."""
 
+import functools
+
 from absl.testing import absltest
 import tensorflow as tf
 
@@ -49,6 +51,7 @@ def graph_mode_test(test_fn):
     The decorated test_fn.
   """
 
+  @functools.wraps(test_fn)
   def wrapped_test_fn(*args, **kwargs):
     with tf.Graph().as_default():
       test_fn(*args, **kwargs)
@@ -88,6 +91,7 @@ def skip_test_for_gpu(test_fn):
     The decorated test_fn.
   """
 
+  @functools.wraps(test_fn)
   def wrapped_test_fn(self):
     gpu_devices = tf.config.list_logical_devices('GPU')
     if gpu_devices:
