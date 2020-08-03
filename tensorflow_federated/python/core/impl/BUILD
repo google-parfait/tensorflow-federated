@@ -105,7 +105,7 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/executors:default_executor",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
 )
 
@@ -427,12 +427,12 @@ py_test(
         ":tree_to_cc_transformations",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
-        "//tensorflow_federated/python/core/impl/executors:default_executor",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )

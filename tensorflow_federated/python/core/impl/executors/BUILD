@@ -141,35 +141,6 @@ py_test(
 )
 
 py_library(
-    name = "default_executor",
-    srcs = ["default_executor.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":execution_context",
-        ":executor_factory",
-        ":executor_stacks",
-        "//tensorflow_federated/python/core/impl:reference_executor",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-    ],
-)
-
-py_test(
-    name = "default_executor_test",
-    size = "small",
-    srcs = ["default_executor_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":default_executor",
-        ":execution_context",
-        ":executor_factory",
-        "//tensorflow_federated/python/core/impl:reference_executor",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_test_utils",
-    ],
-)
-
-py_library(
     name = "federated_resolving_strategy",
     srcs = ["federated_resolving_strategy.py"],
     srcs_version = "PY3",
@@ -361,7 +332,6 @@ py_library(
     deps = [
         ":caching_executor",
         ":eager_tf_executor",
-        ":execution_context",
         ":executor_base",
         ":executor_factory",
         ":federated_composing_strategy",
@@ -371,7 +341,6 @@ py_library(
         ":sizing_executor",
         ":thread_delegating_executor",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )

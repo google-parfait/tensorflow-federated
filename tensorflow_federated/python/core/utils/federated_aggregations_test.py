@@ -21,7 +21,7 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.utils import federated_aggregations
 
 
@@ -293,5 +293,5 @@ class FederatedSampleTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_execution_context()
+  execution_contexts.set_local_execution_context()
   test.main()

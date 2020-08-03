@@ -1,6 +1,9 @@
 package(default_visibility = [
     # Subpackages
     "//tensorflow_federated/python/core/backends/native:__subpackages__",
+    # Temporary to allow use of `set_local_execution_context` in core/impl
+    # integration tests. Remove once these tests have been moved.
+    "//tensorflow_federated/python/core:__subpackages__",
 ])
 
 licenses(["notice"])

@@ -54,8 +54,6 @@ from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core import utils
 # pylint: enable=g-bad-import-order
 
-from tensorflow_federated.python.core.impl.executors import default_executor
-
-# Initialize a default executor; which is implicitly executed once the first
-# time a module in the `core` package is imported.
-default_executor.initialize_default_execution_context()
+# Initialize a default execution context. This is implicitly executed the
+# first time a module in the `core` package is imported.
+backends.native.set_local_execution_context()

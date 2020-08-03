@@ -27,8 +27,8 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
@@ -873,5 +873,5 @@ class IntrinsicsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_execution_context()
+  execution_contexts.set_local_execution_context()
   common_test.main()

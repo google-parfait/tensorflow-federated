@@ -31,9 +31,9 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl import test as core_test
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
-from tensorflow_federated.python.core.impl.executors import default_executor
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -667,5 +667,5 @@ class ComputationsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_execution_context()
+  execution_contexts.set_local_execution_context()
   common_test.main()

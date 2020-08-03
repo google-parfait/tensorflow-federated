@@ -23,7 +23,7 @@ import tensorflow_privacy
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.impl.executors import default_executor
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.utils import adaptive_zeroing
 
@@ -238,5 +238,5 @@ class AdaptiveZeroingTest(test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  default_executor.initialize_default_execution_context()
+  execution_contexts.set_local_execution_context()
   test.main()
