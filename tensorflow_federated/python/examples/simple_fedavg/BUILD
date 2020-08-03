@@ -41,5 +41,6 @@ py_test(
         ":simple_fedavg_tf",
         ":simple_fedavg_tff",
         "//tensorflow_federated",
+        "//tensorflow_federated/python/common_libs:test",
     ],
 )

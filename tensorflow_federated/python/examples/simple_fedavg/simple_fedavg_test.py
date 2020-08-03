@@ -21,6 +21,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tf
 from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tff
 
@@ -219,10 +220,9 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
   def test_simple_training(self, model_fn):
     it_process = simple_fedavg_tff.build_federated_averaging_process(model_fn)
     server_state = it_process.initialize()
-    Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
 
     def deterministic_batch():
-      return Batch(
+      return collections.OrderedDict(
           x=np.ones([1, 28, 28, 1], dtype=np.float32),
           y=np.ones([1], dtype=np.int32))
 
@@ -347,6 +347,78 @@ class ClientTest(tf.test.TestCase):
 
     self.assertAllEqual(int(outputs.client_weight.numpy()), 2)
     self.assertLess(losses[1], losses[0])
+
+
+def _create_test_rnn_model(vocab_size: int = 6,
+                           sequence_length: int = 5,
+                           mask_zero: bool = True) -> tf.keras.Model:
+  """A simple RNN model for test."""
+  model = tf.keras.Sequential()
+  model.add(
+      tf.keras.layers.Embedding(
+          input_dim=vocab_size,
+          input_length=sequence_length,
+          output_dim=8,
+          mask_zero=mask_zero))
+  model.add(
+      tf.keras.layers.LSTM(
+          units=16,
+          kernel_initializer='he_normal',
+          return_sequences=True,
+          stateful=False))
+  model.add(tf.keras.layers.Dense(vocab_size))
+  return model
+
+
+def _rnn_model_fn() -> tff.learning.Model:
+  keras_model = _create_test_rnn_model()
+  loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+  input_spec = collections.OrderedDict(
+      x=tf.TensorSpec([None, 5], tf.int32),
+      y=tf.TensorSpec([None, 5], tf.int32))
+  return tff.learning.from_keras_model(
+      keras_model=keras_model, input_spec=input_spec, loss=loss)
+
+
+class RNNTest(tf.test.TestCase, parameterized.TestCase):
+
+  def test_build_fedavg_process(self):
+    it_process = simple_fedavg_tff.build_federated_averaging_process(
+        _rnn_model_fn)
+    self.assertIsInstance(it_process, tff.templates.IterativeProcess)
+    federated_type = it_process.next.type_signature.parameter
+    model_type = tff.learning.framework.weights_type_from_model(_rnn_model_fn)
+    self.assertEqual(
+        str(federated_type[0]),
+        '<model_weights={},optimizer_state=<int64>,round_num=int32>@SERVER'
+        .format(model_type))
+    self.assertEqual(
+        str(federated_type[1]), '{<x=int32[?,5],y=int32[?,5]>*}@CLIENTS')
+
+  # TODO(b/139707270): enable GPU tests after Keras fix GPU kernel for
+  # sparse ops in optimizers.
+  @common_test.skip_test_for_gpu
+  def test_client_adagrad_train(self):
+    it_process = simple_fedavg_tff.build_federated_averaging_process(
+        _rnn_model_fn,
+        client_optimizer_fn=functools.partial(
+            tf.keras.optimizers.Adagrad, learning_rate=0.01))
+    server_state = it_process.initialize()
+
+    def deterministic_batch():
+      return collections.OrderedDict(
+          x=np.array([[0, 1, 2, 3, 4]], dtype=np.int32),
+          y=np.array([[1, 2, 3, 4, 0]], dtype=np.int32))
+
+    batch = tff.tf_computation(deterministic_batch)()
+    federated_data = [[batch]]
+
+    loss_list = []
+    for _ in range(3):
+      server_state, loss = it_process.next(server_state, federated_data)
+      loss_list.append(loss)
+
+    self.assertLess(np.mean(loss_list[1:]), loss_list[0])
 
 
 if __name__ == '__main__':
