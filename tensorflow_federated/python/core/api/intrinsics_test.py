@@ -38,6 +38,11 @@ class IntrinsicsTest(parameterized.TestCase):
   def assert_type(self, value, type_string):
     self.assertEqual(value.type_signature.compact_representation(), type_string)
 
+  def test_constant_to_value_raises_outside_decorator(self):
+
+    with self.assertRaises(context_base.ContextError):
+      intrinsics.federated_value(2, placements.SERVER)
+
   def test_intrinsic_construction_raises_context_error_outside_decorator(self):
 
     @computations.tf_computation()
@@ -733,7 +738,10 @@ class IntrinsicsTest(parameterized.TestCase):
     with self.assertRaisesRegex(
         TypeError, 'TensorFlow construct (.*) has been '
         'encountered in a federated context.'):
-      _ = intrinsics.federated_value(v, placements.SERVER)
+
+      @computations.federated_computation()
+      def _():
+        return intrinsics.federated_value(v, placements.SERVER)
 
   def test_federated_value_with_bool_on_server(self):
 

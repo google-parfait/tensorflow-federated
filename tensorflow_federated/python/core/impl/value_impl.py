@@ -378,6 +378,7 @@ def to_value(
       federated context.
   """
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+  _check_symbol_binding_context(context_stack.current)
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
     type_analysis.check_well_formed(type_spec)
