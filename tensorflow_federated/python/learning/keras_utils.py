@@ -14,7 +14,7 @@
 """Utility methods for working with Keras in TensorFlow Federated."""
 
 import collections
-from typing import Sequence, Union
+from typing import List, Optional, Sequence, Union
 
 import tensorflow as tf
 
@@ -64,23 +64,22 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
   weights_to_assign.assign_weights_to(keras_model)
 
 
-def from_keras_model(keras_model,
-                     loss,
-                     input_spec,
-                     loss_weights=None,
-                     metrics=None):
-  """Builds a `tff.learning.Model` for a given input type.
+Loss = Union[tf.keras.losses.Loss, List[tf.keras.losses.Loss]]
 
-  `from_keras_model` validates its arguments, normalizes them as appropriate and
-  instantiates a `tff.learning.Model` backed by `keras_model` for the forward
-  pass and autodifferentiation steps. This function needs three pieces of
-  information in order to accomplish this goal: a `tf.keras.Model` to use for
-  its forward pass; a loss function (or group of loss functions) `loss`; and a
-  way to infer the TFF type signatures for the `tff.Computation` in which this
-  model will appear, the `input_spec`.
 
-  Notice that since TFF couples the `tf.keras.Model` and
-  `loss`, TFF needs a slightly different notion of "fully specified type" than
+def from_keras_model(
+    keras_model: tf.keras.Model,
+    loss: Loss,
+    input_spec,
+    loss_weights: Optional[List[float]] = None,
+    metrics: Optional[List[tf.keras.metrics.Metric]] = None) -> model_lib.Model:
+  """Builds a `tff.learning.Model` from a `tf.keras.Model`.
+
+  The `tff.learning.Model` returned by this function uses `keras_model` for
+  its forward pass and autodifferentiation steps.
+
+  Notice that since TFF couples the `tf.keras.Model` and `loss`,
+  TFF needs a slightly different notion of "fully specified type" than
   pure Keras does. That is, the model `M` takes inputs of type `x` and
   produces predictions of type `p`; the loss function `L` takes inputs of type
   `<p, y>` and produces a scalar. Therefore in order to fully specify the type
@@ -89,24 +88,17 @@ def from_keras_model(keras_model,
 
   Args:
     keras_model: A `tf.keras.Model` object that is not compiled.
-    loss: A `tf.keras.losses.Loss` that takes two batched tensor parameters,
-      `y_true` and `y_pred`, and returns the loss. If the model has multiple
-      outputs, you can  use a different loss on each output by passing a
-      dictionary or a list of losses. The loss value that will be minimized by
-      the model will then be the sum of all individual losses, each weighted by
-      `loss_weights`.
-    input_spec: A value convertible to `tff.Type` specifying the type of
-      arguments the model expects. Notice this must be a compound structure of
-      two elements, specifying both the data fed into the model to generate
+    loss: A `tf.keras.losses.Loss`, or a list of losses-per-output if the model
+      has multiple outputs. If multiple outputs are present, the model will
+      attempt to minimize the sum of all individual losses (optionally weighted
+      using the `loss_weights` argument).
+    input_spec: A structure of `tf.TensorSpec`s specifying the type of arguments
+      the model expects. Notice this must be a compound structure of two
+      elements, specifying both the data fed into the model to generate
       predictions, as its first element, as well as the expected type of the
       ground truth as its second.
-    loss_weights: (Optional) a list or dictionary specifying scalar coefficients
-      (Python floats) to weight the loss contributions of different model
-      outputs. The loss value that will be minimized by the model will then be
-      the *weighted sum* of all individual losses, weighted by the
-      `loss_weights` coefficients. If a list, it is expected to have a 1:1
-        mapping to the model's outputs. If a tensor, it is expected to map
-        output names (strings) to scalar coefficients.
+    loss_weights: (Optional) A list of Python floats used to weight the loss
+      contribution of each model output.
     metrics: (Optional) a list of `tf.keras.metrics.Metric` objects.
 
   Returns:
@@ -119,43 +111,63 @@ def from_keras_model(keras_model,
     KeyError: If `loss` is a `dict` and does not have the same keys as
       `keras_model.outputs`.
   """
+  # Validate `keras_model`
   py_typecheck.check_type(keras_model, tf.keras.Model)
-  py_typecheck.check_type(loss, (tf.keras.losses.Loss, collections.Sequence))
-  if len(input_spec) != 2:
-    raise ValueError('The top-level structure in `input_spec` must contain '
-                     'exactly two elements, as it must specify type '
-                     'information for both inputs to and predictions from the '
-                     'model. You passed input spec {}.'.format(input_spec))
-  if loss_weights is not None:
-    py_typecheck.check_type(loss, collections.Sequence)
-  if isinstance(loss, collections.Sequence):
+  if keras_model._is_compiled:  # pylint: disable=protected-access
+    raise ValueError('`keras_model` must not be compiled')
+
+  # Validate and normalize `loss` and `loss_weights`
+  if len(keras_model.outputs) == 1:
+    py_typecheck.check_type(loss, tf.keras.losses.Loss)
+    if loss_weights is not None:
+      raise ValueError('`loss_weights` cannot be used if `keras_model` has '
+                       'only one output.')
+    loss = [loss]
+    loss_weights = [1.0]
+  else:
+    py_typecheck.check_type(loss, list)
     if len(loss) != len(keras_model.outputs):
       raise ValueError('`keras_model` must have equal number of '
                        'outputs and losses.\nloss: {}\nof length: {}.'
                        '\noutputs: {}\nof length: {}.'.format(
                            loss, len(loss), keras_model.outputs,
                            len(keras_model.outputs)))
-    if loss_weights is not None and len(loss) != len(loss_weights):
-      raise ValueError('`keras_model` must have equal number of '
-                       'losses and loss_weights.\nloss: {}\nof length: {}.'
-                       '\nloss_weights: {}\nof length: {}.'.format(
-                           loss, len(loss), loss_weights, len(loss_weights)))
     for loss_fn in loss:
       py_typecheck.check_type(loss_fn, tf.keras.losses.Loss)
 
-  if keras_model._is_compiled:  # pylint: disable=protected-access
-    raise ValueError('`keras_model` must not be compiled')
+    if loss_weights is None:
+      loss_weights = [1.0] * len(loss)
+    else:
+      if len(loss) != len(loss_weights):
+        raise ValueError(
+            '`keras_model` must have equal number of losses and loss_weights.'
+            '\nloss: {}\nof length: {}.'
+            '\nloss_weights: {}\nof length: {}.'.format(loss, len(loss),
+                                                        loss_weights,
+                                                        len(loss_weights)))
+      for loss_weight in loss_weights:
+        py_typecheck.check_type(loss_weight, float)
 
-  if isinstance(loss, collections.Sequence):
-    loss_functions = loss
+  if len(input_spec) != 2:
+    raise ValueError('The top-level structure in `input_spec` must contain '
+                     'exactly two top-level elements, as it must specify type '
+                     'information for both inputs to and predictions from the '
+                     'model. You passed input spec {}.'.format(input_spec))
+  for input_spec_member in tf.nest.flatten(input_spec):
+    py_typecheck.check_type(input_spec_member, tf.TensorSpec)
+
+  if metrics is None:
+    metrics = []
   else:
-    loss_functions = [loss]
+    py_typecheck.check_type(metrics, list)
+    for metric in metrics:
+      py_typecheck.check_type(metric, tf.keras.metrics.Metric)
 
   return model_utils.enhance(
       _KerasModel(
           keras_model,
           input_spec=input_spec,
-          loss_fns=loss_functions,
+          loss_fns=loss,
           loss_weights=loss_weights,
           metrics=metrics))
 
@@ -245,46 +257,14 @@ def federated_aggregate_keras_metric(
 class _KerasModel(model_lib.Model):
   """Internal wrapper class for tf.keras.Model objects."""
 
-  def __init__(self,
-               inner_model,
-               input_spec,
-               loss_fns,
-               loss_weights=None,
-               metrics=None):
+  def __init__(self, keras_model: tf.keras.Model, input_spec,
+               loss_fns: List[tf.keras.losses.Loss], loss_weights: List[float],
+               metrics: List[tf.keras.metrics.Metric]):
+    self._keras_model = keras_model
     self._input_spec = input_spec
-
-    if not loss_fns:
-      raise ValueError(
-          'Must specify at least one loss_fns, got: {l}'.format(l=loss_fns))
-    if (len(tf.nest.flatten(loss_fns)) != len(
-        tf.nest.flatten(inner_model.output))):
-      raise ValueError('Must specify the same number of loss_fns as model '
-                       'outputs.\nloss_fns: {l}\nmodel outputs: {o}'.format(
-                           l=loss_fns, o=inner_model.output))
     self._loss_fns = loss_fns
-
-    if loss_weights is None:
-      loss_weights = [1.0] * len(loss_fns)
-    else:
-      py_typecheck.check_type(loss_weights, collections.Sequence)
-      if len(loss_weights) != len(loss_fns):
-        raise ValueError('Must specify the same number of '
-                         'loss_weights (got {llw}) as loss_fns (got {llf}).\n'
-                         'loss_weights: {lw}\nloss_fns: {lf}'.format(
-                             lw=loss_weights,
-                             llw=len(loss_weights),
-                             lf=loss_fns,
-                             llf=len(loss_fns)))
     self._loss_weights = loss_weights
-
-    # Ensure Keras model isn't compiled, possibly with a different loss or
-    # optimizer.
-    if inner_model._is_compiled:  # pylint: disable=protected-access
-      raise ValueError('Keras model must be uncompiled, but got compiled Keras '
-                       'model.')
-    self._keras_model = inner_model
-
-    self._metrics = metrics if metrics is not None else []
+    self._metrics = metrics
 
     # This is defined here so that it closes over the `loss_fn`.
     class _WeightedMeanLossMetric(tf.keras.metrics.Mean):

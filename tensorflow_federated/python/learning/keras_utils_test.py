@@ -308,7 +308,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
         loss=tf.keras.losses.MeanSquaredError(),
         input_spec=input_spec)
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
-    self.assertAllEqual(tff_model.input_spec, input_spec)
+    self.assertEqual(tff_model.input_spec, input_spec)
 
     batch = collections.OrderedDict(x=np.ones([2, 5], np.int64), y=[0.0, 1.0])
     output = tff_model.forward_pass(batch)
@@ -772,12 +772,6 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[NumBatchesCounter(),
                    NumExamplesCounter()])
-
-    with self.assertRaisesRegex(ValueError, 'compile'):
-      keras_utils._KerasModel(
-          keras_model,
-          input_spec=_create_dummy_types(feature_dims),
-          loss_fns=[tf.keras.losses.MeanSquaredError()])
 
 
 if __name__ == '__main__':
