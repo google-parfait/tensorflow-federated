@@ -1,4 +1,28 @@
-package(default_visibility = ["//tensorflow_federated:__subpackages__"])
+package_group(
+    name = "default_visibility",
+    includes = ["//tensorflow_federated/python/core:core_visibility"],
+    packages = [
+        # Subpackages
+        "//tensorflow_federated/python/core/api/...",
+
+        # Core Dependencies
+        "//tensorflow_federated/python/core/backends/...",
+        "//tensorflow_federated/python/core/templates/...",
+        "//tensorflow_federated/python/core/utils/...",
+        "//tensorflow_federated/python/core/test/...",
+
+        # Namespace Dependencies
+        "//tensorflow_federated/python/core",
+        "//tensorflow_federated",
+
+        # TODO(b/143772942): This visibility is circular, it would be clearer if
+        # the `api` package could depend on the `impl` package but not the other
+        # way around.
+        "//tensorflow_federated/python/core/impl/...",
+    ],
+)
+
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

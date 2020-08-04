@@ -1,12 +1,17 @@
-package(default_visibility = [
-    # Subpackages
-    "//tensorflow_federated/python/core/templates:__subpackages__",
+package_group(
+    name = "default_visibility",
+    includes = ["//tensorflow_federated/python/core:core_visibility"],
+    packages = [
+        # Subpackages
+        "//tensorflow_federated/python/core/templates/...",
 
-    # Core Dependencies
-    "//tensorflow_federated/python/core/backends:__subpackages__",
-    "//tensorflow_federated/python/core/framework:__subpackages__",
-    "//tensorflow_federated/python/core/utils:__subpackages__",
-])
+        # Core Dependencies
+        "//tensorflow_federated/python/core/backends/...",
+        "//tensorflow_federated/python/core/utils/...",
+    ],
+)
+
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

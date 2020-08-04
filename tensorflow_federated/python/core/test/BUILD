@@ -1,7 +1,13 @@
-package(default_visibility = [
-    # Subpackages
-    "//tensorflow_federated/python/core/testing:__subpackages__",
-])
+package_group(
+    name = "default_visibility",
+    includes = ["//tensorflow_federated/python/core:core_visibility"],
+    packages = [
+        # Subpackages
+        "//tensorflow_federated/python/core/test/...",
+    ],
+)
+
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

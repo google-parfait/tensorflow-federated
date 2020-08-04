@@ -1,6 +1,7 @@
 package_group(
     name = "core_visibility",
     packages = [
+        # TFF Dependencies
         "//tensorflow_federated/python/learning/...",
         "//tensorflow_federated/python/simulation/...",
     ],
