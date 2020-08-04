@@ -376,7 +376,7 @@ class ValueImplTest(parameterized.TestCase):
     v = value_impl.to_value(
         np.ones([10, 10, 10], dtype=np.float32), None,
         context_stack_impl.context_stack)
-    with self.assertRaisesRegex(TypeError, 'only supported for named tuples'):
+    with self.assertRaisesRegex(TypeError, 'only supported for structure'):
       _ = v[:1]
 
   def test_slicing_support_non_tuple_underlying_comp(self):
@@ -669,7 +669,7 @@ class ValueImplTest(parameterized.TestCase):
         return x
 
   def test_setattr_fails_tensor_type(self):
-    with self.assertRaises(TypeError):
+    with self.assertRaises(AttributeError):
 
       @computations.federated_computation(tf.int32)
       def _(x):
@@ -777,6 +777,11 @@ class ValueImplTest(parameterized.TestCase):
     self.assertIsInstance(result, list)
     self.assertNotEmpty(result)
     self.assertIn('type_signature', result)
+
+  def test_value_impl_help(self):
+    x_comp = building_blocks.Reference('foo', tf.int32)
+    x = value_impl.ValueImpl(x_comp, context_stack_impl.context_stack)
+    help(x)
 
 
 if __name__ == '__main__':

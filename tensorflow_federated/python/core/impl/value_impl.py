@@ -39,25 +39,31 @@ from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
+def _unfederated(type_signature):
+  if type_signature.is_federated():
+    return type_signature.member
+  return type_signature
+
+
 # Note: not a `ValueImpl` method because of the `__setattr__` override
 def _is_federated_named_tuple(vimpl: 'ValueImpl') -> bool:
-  comp_ty = vimpl._comp.type_signature  # pylint: disable=protected-access
+  comp_ty = vimpl.type_signature
   return comp_ty.is_federated() and comp_ty.member.is_struct()
 
 
 # Note: not a `ValueImpl` method because of the `__setattr__` override
 def _is_named_tuple(vimpl: 'ValueImpl') -> bool:
-  return vimpl._comp.type_signature.is_struct()  # pylint: disable=protected-access
+  return vimpl.type_signature.is_struct()  # pylint: disable=protected-access
 
 
-def _check_is_optionally_federated_named_tuple(
+def _check_struct_or_federated_struct(
     vimpl: 'ValueImpl',
-    context_name: str,
+    attribute: str,
 ):
   if not (_is_named_tuple(vimpl) or _is_federated_named_tuple(vimpl)):
-    raise TypeError('{} is only supported for named tuples, but the '
-                    'object on which it has been invoked is of type {}.'.format(
-                        context_name, vimpl._comp.type_signature))  # pylint: disable=protected-access
+    raise AttributeError(
+        f'`tff.Value` of non-structural type {vimpl.type_signature} has no '
+        f'attribute {attribute}')
 
 
 def _check_symbol_binding_context(context: context_base.Context):
@@ -127,22 +133,22 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
 
   def __dir__(self):
     attributes = ['type_signature']
-    if self._comp.type_signature.is_struct():
-      attributes.extend(dir(self._comp.type_signature))
+    type_signature = _unfederated(self.type_signature)
+    if type_signature.is_struct():
+      attributes.extend(dir(type_signature))
     return attributes
 
   def __getattr__(self, name):
     py_typecheck.check_type(name, str)
-    _check_is_optionally_federated_named_tuple(self,
-                                               "__getattr__('{}')".format(name))
+    _check_struct_or_federated_struct(self, name)
     if _is_federated_named_tuple(self):
       return ValueImpl(
           building_block_factory.create_federated_getattr_call(
               self._comp, name), self._context_stack)
-    if name not in dir(self._comp.type_signature):
+    if name not in dir(self.type_signature):
       raise AttributeError(
           'There is no such attribute \'{}\' in this tuple. Valid attributes: ({})'
-          .format(name, ', '.join(dir(self._comp.type_signature))))
+          .format(name, ', '.join(dir(self.type_signature))))
     if self._comp.is_struct():
       return ValueImpl(getattr(self._comp, name), self._context_stack)
     return ValueImpl(
@@ -150,8 +156,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
 
   def __setattr__(self, name, value):
     py_typecheck.check_type(name, str)
-    _check_is_optionally_federated_named_tuple(
-        self, "__setattr__('{}', {})".format(name, value))
+    _check_struct_or_federated_struct(self, name)
     value_comp = ValueImpl.get_comp(to_value(value, None, self._context_stack))
     if _is_federated_named_tuple(self):
       new_comp = building_block_factory.create_federated_setattr_call(
@@ -159,7 +164,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
       super().__setattr__('_comp', new_comp)
       return
     named_tuple_setattr_lambda = building_block_factory.create_named_tuple_setattr_lambda(
-        self._comp.type_signature, name, value_comp)
+        self.type_signature, name, value_comp)
     new_comp = building_blocks.Call(named_tuple_setattr_lambda, self._comp)
     fc_context = self._context_stack.current
     ref = fc_context.bind_computation_to_reference(new_comp)
@@ -172,14 +177,12 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
         'this logic into a tff.tf_computation.')
 
   def __len__(self):
-    type_signature = self._comp.type_signature
-    if type_signature.is_federated():
-      type_signature = type_signature.member
+    type_signature = _unfederated(self.type_signature)
     if not type_signature.is_struct():
       raise TypeError(
-          'Operator len() is only supported for (possibly federated) named '
-          'tuples, but the object on which it has been invoked is of type {}.'
-          .format(self._comp.type_signature))
+          'Operator len() is only supported for (possibly federated) structure'
+          'types, but the object on which it has been invoked is of type {}.'
+          .format(self.type_signature))
     return len(type_signature)
 
   def __getitem__(self, key: Union[int, str, slice]):
@@ -192,10 +195,10 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
           self._context_stack)
     if not _is_named_tuple(self):
       raise TypeError(
-          'Operator getitem() is only supported for named tuples, but the '
+          'Operator getitem() is only supported for structure types, but the '
           'object on which it has been invoked is of type {}.'.format(
-              self._comp.type_signature))
-    elem_length = len(self._comp.type_signature)
+              self.type_signature))
+    elem_length = len(self.type_signature)
     if isinstance(key, int):
       if key < 0 or key >= elem_length:
         raise IndexError(
@@ -214,29 +217,27 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
       return to_value([self[k] for k in index_range], None, self._context_stack)
 
   def __iter__(self):
-    type_signature = self._comp.type_signature
-    if type_signature.is_federated():
-      type_signature = type_signature.member
+    type_signature = _unfederated(self.type_signature)
     if not type_signature.is_struct():
       raise TypeError(
-          'Operator iter() is only supported for (possibly federated) named '
-          'tuples, but the object on which it has been invoked is of type {}.'
-          .format(self._comp.type_signature))
+          'Operator iter() is only supported for (possibly federated) structure '
+          'types, but the object on which it has been invoked is of type {}.'
+          .format(self.type_signature))
     for index in range(len(type_signature)):
       yield self[index]
 
   def __call__(self, *args, **kwargs):
-    if not self._comp.type_signature.is_function():
+    if not self.type_signature.is_function():
       raise SyntaxError(
           'Function-like invocation is only supported for values of functional '
           'types, but the value being invoked is of type {} that does not '
-          'support invocation.'.format(self._comp.type_signature))
+          'support invocation.'.format(self.type_signature))
     if args or kwargs:
       args = [to_value(x, None, self._context_stack) for x in args]
       kwargs = {
           k: to_value(v, None, self._context_stack) for k, v in kwargs.items()
       }
-      arg = function_utils.pack_args(self._comp.type_signature.parameter, args,
+      arg = function_utils.pack_args(self.type_signature.parameter, args,
                                      kwargs, self._context_stack.current)
       arg = ValueImpl.get_comp(to_value(arg, None, self._context_stack))
     else:
@@ -344,7 +345,7 @@ def to_value(
   The types of non-`tff.Value` arguments that are currently convertible to
   `tff.Value` include the following:
 
-  * Lists, tuples, anonymous tuples, named tuples, and dictionaries, all
+  * Lists, tuples, `structure.Struct`s, named tuples, and dictionaries, all
     of which are converted into instances of `tff.Tuple`.
   * Placement literals, converted into instances of `tff.Placement`.
   * Computations.
