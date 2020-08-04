@@ -14,9 +14,6 @@
 """A library of static analysis functions for computation types."""
 
 from typing import Any, Callable, Optional
-import weakref
-
-import attr
 
 import tensorflow as tf
 
@@ -71,84 +68,6 @@ def contains_only(
 ) -> bool:
   """Checks if `type_signature` contains only types that pass `predicate`."""
   return not contains(type_signature, lambda t: not predicate(t))
-
-
-@attr.s(auto_attribs=True, slots=True)
-class _Disallowed:
-  """A set of possibly disallowed types with a string describing why."""
-  federated: Optional[str]
-  function: Optional[str]
-  sequence: Optional[str]
-
-
-# Manual cache used rather than `cachetools.cached` due to incompatibility
-# with `WeakKeyDictionary`. We want to use a `WeakKeyDictionary` so that
-# cache entries are destroyed once the types they index no longer exist.
-_well_formedness_cache = weakref.WeakKeyDictionary({})
-
-
-def check_well_formed(type_signature: computation_types.Type):
-  """Checks that `type_spec` represents a well-formed type.
-
-  Performs the following checks of well-formedness for `type_spec`:
-    1. If `type_spec` contains a  `computation_types.FederatedType`, checks
-    that its `member` contains nowhere in its structure intances
-    of `computation_types.FunctionType` or `computation_types.FederatedType`.
-    2. If `type_spec` contains a `computation_types.SequenceType`, checks that
-    its `element` contains nowhere in its structure instances of
-    `computation_types.SequenceType`,  `computation_types.FederatedType`
-    or `computation_types.FunctionType`.
-
-  Args:
-    type_signature: A `computation_types.Type`, the type specification to check.
-
-  Raises:
-    TypeError: if `type_spec` is not a well-formed TFF type.
-  """
-  # TODO(b/113112885): Reinstate a call to `check_all_abstract_types_are_bound`
-  # after revising the definition of well-formedness.
-  if _well_formedness_cache.get(type_signature, False):
-    return
-  py_typecheck.check_type(type_signature, computation_types.Type)
-
-  def _check_for_disallowed_type(type_to_check, disallowed_types: _Disallowed):
-    """Checks subtree of `type_to_check` for `disallowed_types`."""
-
-    def _check_disallowed_against(disallowed, context):
-      if context is None:
-        return
-      raise TypeError('{} has been encountered in the type signature {}. '
-                      '{} is disallowed inside of {}.'.format(
-                          type_to_check,
-                          type_signature,
-                          disallowed,
-                          context,
-                      ))
-
-    if type_to_check.is_federated():
-      _check_disallowed_against('tff.FederatedType', disallowed_types.federated)
-      context = 'federated types (types placed @CLIENT or @SERVER)'
-      return attr.evolve(
-          disallowed_types,
-          federated=context,
-          function=context,
-      )
-    if type_to_check.is_sequence():
-      _check_disallowed_against('tff.SequenceType', disallowed_types.sequence)
-      context = 'sequence types'
-      return attr.evolve(
-          disallowed_types,
-          federated=context,
-          sequence=context,
-      )
-    if type_to_check.is_function():
-      _check_disallowed_against('tff.FunctionType', disallowed_types.function)
-    return disallowed_types
-
-  type_transformations.visit_preorder(type_signature,
-                                      _check_for_disallowed_type,
-                                      _Disallowed(None, None, None))
-  _well_formedness_cache[type_signature] = True
 
 
 def check_type(value: Any, type_spec: computation_types.Type):

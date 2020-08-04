@@ -222,10 +222,7 @@ py_test(
     srcs = ["intrinsic_defs_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":intrinsic_defs",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-    ],
+    deps = [":intrinsic_defs"],
 )
 
 py_library(

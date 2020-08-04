@@ -305,6 +305,7 @@ class TensorType(Type, metaclass=_Intern):
     self._dtype = dtype
     self._shape = shape
     self._hash = None
+    _check_well_formed(self)
 
   def children(self):
     return iter(())
@@ -414,7 +415,7 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
   def _hash_normalized_args(elements):
     return hash(tuple(elements))
 
-  def __init__(self, elements):
+  def __init__(self, elements, enable_wf_check=True):
     """Constructs a new instance from the given element types.
 
     Args:
@@ -424,8 +425,13 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
         (name, spec) for elements that have defined names. Alternatively, one
         can supply here an instance of `collections.OrderedDict` mapping element
         names to their types (or things that are convertible to types).
+      enable_wf_check: This flag exists only so that `StructWithPythonType` can
+        disable the well-formedness check, as the type won't be well-formed
+        until the subclass has finished its own initialization.
     """
     structure.Struct.__init__(self, elements)
+    if enable_wf_check:
+      _check_well_formed(self)
 
   def children(self):
     return (element for _, element in structure.iter_elements(self))
@@ -475,8 +481,11 @@ class StructWithPythonType(StructType, metaclass=_Intern):
     return hash((tuple(elements), container_type))
 
   def __init__(self, elements, container_type):
-    super().__init__(elements)
+    # We don't want to check our type for well-formedness until after we've
+    # set `_container_type`.
+    super().__init__(elements, enable_wf_check=False)
     self._container_type = container_type
+    _check_well_formed(self)
 
   def is_struct_with_python(self):
     return True
@@ -520,6 +529,7 @@ class SequenceType(Type, metaclass=_Intern):
         `tff.Type` or something convertible to it by `tff.to_type`.
     """
     self._element = element
+    _check_well_formed(self)
 
   def children(self):
     yield self._element
@@ -565,6 +575,7 @@ class FunctionType(Type, metaclass=_Intern):
     """
     self._parameter = parameter
     self._result = result
+    _check_well_formed(self)
 
   def children(self):
     if self._parameter is not None:
@@ -620,6 +631,7 @@ class AbstractType(Type, metaclass=_Intern):
         within a computation's type signature refer to the same concrete type.
     """
     self._label = label
+    _check_well_formed(self)
 
   def children(self):
     return iter(())
@@ -658,6 +670,9 @@ class PlacementType(Type, metaclass=_Intern):
   @staticmethod
   def _normalize_init_args():
     return ()
+
+  def __init__(self):
+    _check_well_formed(self)
 
   def children(self):
     return iter(())
@@ -710,6 +725,7 @@ class FederatedType(Type, metaclass=_Intern):
     self._member = member
     self._placement = placement
     self._all_equal = all_equal
+    _check_well_formed(self)
 
   # TODO(b/113112108): Extend this to support federated types parameterized
   # by abstract placement labels, such as those used in generic types of
@@ -852,6 +868,79 @@ def _to_type_from_attrs(spec) -> Type:
     the_type = type(spec)
 
   return StructWithPythonType(elements, the_type)
+
+
+@attr.s(auto_attribs=True, slots=True)
+class _PossiblyDisallowedChildren:
+  """A set of possibly disallowed types contained within a type.
+
+  These kinds of types may be banned in one or more contexts, so
+  `_possibly_disallowed_members` and its cache record which of these type kinds
+  appears inside a type, allowing for quick well-formedness checks.
+  """
+  federated: Optional[Type]
+  function: Optional[Type]
+  sequence: Optional[Type]
+
+
+# Manual cache used rather than `cachetools.cached` due to incompatibility
+# with `WeakKeyDictionary`. We want to use a `WeakKeyDictionary` so that
+# cache entries are destroyed once the types they index no longer exist.
+_possibly_disallowed_children_cache = weakref.WeakKeyDictionary({})
+
+
+def _possibly_disallowed_children(
+    type_signature: Type,) -> _PossiblyDisallowedChildren:
+  """Returns possibly disallowed child types appearing in `type_signature`."""
+  cached = _possibly_disallowed_children_cache.get(type_signature, None)
+  if cached:
+    return cached
+  disallowed = _PossiblyDisallowedChildren(None, None, None)
+  for child_type in type_signature.children():
+    if child_type.is_federated():
+      disallowed = attr.evolve(disallowed, federated=child_type)
+    elif child_type.is_function():
+      disallowed = attr.evolve(disallowed, function=child_type)
+    elif child_type.is_sequence():
+      disallowed = attr.evolve(disallowed, sequence=child_type)
+    from_grandchildren = _possibly_disallowed_children(child_type)
+    disallowed = _PossiblyDisallowedChildren(
+        federated=disallowed.federated or from_grandchildren.federated,
+        function=disallowed.function or from_grandchildren.function,
+        sequence=disallowed.sequence or from_grandchildren.sequence,
+    )
+  _possibly_disallowed_children_cache[type_signature] = disallowed
+  return disallowed
+
+
+_FEDERATED_TYPES = 'federated types (types placed @CLIENT or @SERVER)'
+_FUNCTION_TYPES = 'function types'
+_SEQUENCE_TYPES = 'sequence types'
+
+
+def _check_well_formed(type_signature: Type):
+  """Checks `type_signature`'s validity. Assumes that child types are valid."""
+
+  def _check_disallowed(disallowed_type, disallowed_kind, context):
+    if disallowed_type is None:
+      return
+    raise TypeError(
+        f'{disallowed_type} has been encountered in the type {type_signature}. '
+        f'{disallowed_kind} are disallowed inside of {context}.')
+
+  children = _possibly_disallowed_children(type_signature)
+
+  if type_signature.is_federated():
+    # Federated types cannot have federated or functional children.
+    for (child_type, kind) in ((children.federated, _FEDERATED_TYPES),
+                               (children.function, _FUNCTION_TYPES)):
+      _check_disallowed(child_type, kind, _FEDERATED_TYPES)
+  elif type_signature.is_sequence():
+    # Sequence types cannot have federated, functional, or sequence children.
+    for (child_type, kind) in ((children.federated, _FEDERATED_TYPES),
+                               (children.function, _FUNCTION_TYPES),
+                               (children.sequence, _SEQUENCE_TYPES)):
+      _check_disallowed(child_type, kind, _SEQUENCE_TYPES)
 
 
 def _string_representation(type_spec, formatted: bool) -> str:

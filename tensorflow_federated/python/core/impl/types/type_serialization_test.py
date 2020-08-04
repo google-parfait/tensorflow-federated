@@ -141,9 +141,6 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
         computation_types.SequenceType(tf.int32),
         computation_types.SequenceType(
             computation_types.StructType((tf.int32, tf.bool))),
-        computation_types.SequenceType(
-            computation_types.StructType(
-                (tf.int32, computation_types.SequenceType(tf.bool)))),
     ])
 
   def test_serialize_deserialize_named_tuple_types(self):

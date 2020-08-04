@@ -33,7 +33,6 @@ from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.context_stack import symbol_binding_context
 from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -382,7 +381,6 @@ def to_value(
   _check_symbol_binding_context(context_stack.current)
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
-    type_analysis.check_well_formed(type_spec)
   if isinstance(arg, ValueImpl):
     result = arg
   elif isinstance(arg, building_blocks.ComputationBuildingBlock):
@@ -402,7 +400,6 @@ def to_value(
             'this should be supported, consider providing `parameter_type_hint` '
             'as an argument to the encompassing `to_value` conversion.')
       parameter_type_hint = computation_types.to_type(parameter_type_hint)
-      type_analysis.check_well_formed(parameter_type_hint)
       arg = arg.fn_for_argument_type(parameter_type_hint)
     py_typecheck.check_type(arg, computation_base.Computation)
     result = ValueImpl(arg.to_compiled_building_block(), context_stack)

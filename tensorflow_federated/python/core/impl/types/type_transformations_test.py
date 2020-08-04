@@ -291,14 +291,6 @@ class VisitPreorderTest(parameterized.TestCase):
   # pyformat: disable
   @parameterized.named_parameters([
       ('abstract_type', computation_types.AbstractType('T'), 1),
-      ('nested_federated_type',
-       computation_types.FederatedType(
-           computation_types.FederatedType(
-               computation_types.FederatedType(
-                   tf.int32, placement_literals.CLIENTS),
-               placement_literals.CLIENTS),
-           placement_literals.CLIENTS),
-       4),
       ('nested_function_type',
        computation_types.FunctionType(
            computation_types.FunctionType(
@@ -306,11 +298,6 @@ class VisitPreorderTest(parameterized.TestCase):
                tf.int32),
            tf.int32),
        7),
-      ('nested_sequence_type',
-       computation_types.SequenceType(
-           computation_types.SequenceType(
-               computation_types.SequenceType(tf.int32))),
-       4),
       ('named_tuple_type',
        computation_types.StructType([
            tf.int32,
