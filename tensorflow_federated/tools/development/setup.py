@@ -67,7 +67,7 @@ REQUIRED_PACKAGES = [
     'retrying~=1.3.3',
     'semantic-version~=2.8.5',
     'tensorflow-addons~=0.10.0',
-    'tensorflow-model-optimization~=0.3.0',
+    'tensorflow-model-optimization~=0.4.0',
     'tensorflow-privacy~=0.4.0',
     'tensorflow~=2.2.0',
 ]
