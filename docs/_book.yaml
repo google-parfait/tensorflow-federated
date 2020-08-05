@@ -13,34 +13,34 @@ upper_tabs:
     other:
     - name: Tutorials
       contents:
-      - title: Federated Learning for Image Classification
+      - title: "Federated Learning for Image Classification"
         path: /federated/tutorials/federated_learning_for_image_classification
-      - title: Federated Learning for Text Generation
+      - title: "Federated Learning for Text Generation"
         path: /federated/tutorials/federated_learning_for_text_generation
-      - title: Custom Federated Algorithms Part 1 - Introduction to the Federated Core
+      - title: "Custom Federated Algorithms Part 1 - Introduction to the Federated Core"
         path: /federated/tutorials/custom_federated_algorithms_1
-      - title: Custom Federated Algorithms Part 2 - Implementing Federated Averaging
+      - title: "Custom Federated Algorithms Part 2 - Implementing Federated Averaging"
         path: /federated/tutorials/custom_federated_algorithms_2
-      - title: High-performance simulations with TFF
+      - title: "High-performance simulations with TFF"
         path: /federated/tutorials/simulations
-      - title: TFF for Federated Learning Research: Model and Update Compression
+      - title: "TFF for Federated Learning Research: Model and Update Compression"
         path: /federated/tutorials/tff_for_federated_learning_research_compression
     - name: Guide
       contents:
       # The first item serves as the landing page and transitively leads to all the remaining
       # content on the website. The `get_started.md` also serves as the canonical entry point
       # to all the developer documentation contained in the directory structure on GitHub.
-      - title: Overview
+      - title: "Overview"
         path: /federated/get_started
-      - title: Installation
+      - title: "Installation"
         path: /federated/install
-      - title: GCP Setup
+      - title: "GCP Setup"
         path: /federated/gcp_setup
-      - title: Federated Learning
+      - title: "Federated Learning"
         path: /federated/federated_learning
-      - title: Federated Core
+      - title: "Federated Core"
         path: /federated/federated_core
-      - title: TFF for Federated Learning Reserach
+      - title: "TFF for Federated Learning Reserach"
         path: /federated/tff_for_research
     - name: API
       skip_translation: true
