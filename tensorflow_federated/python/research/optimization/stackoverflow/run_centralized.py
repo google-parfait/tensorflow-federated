@@ -38,6 +38,8 @@ with utils_impl.record_new_flags() as hparam_flags:
 
   # Modeling flags
   flags.DEFINE_integer('vocab_size', 10000, 'Size of vocab to use.')
+  flags.DEFINE_integer('num_oov_buckets', 1,
+                       'Number of out of vocabulary buckets.')
   flags.DEFINE_integer('embedding_size', 96,
                        'Dimension of word embedding to use.')
   flags.DEFINE_integer('latent_size', 670,
@@ -69,14 +71,23 @@ FLAGS = flags.FLAGS
 def run_experiment():
   """Runs the training experiment."""
   _, validation_dataset, test_dataset = stackoverflow_dataset.construct_word_level_datasets(
-      FLAGS.vocab_size, FLAGS.batch_size, 1, FLAGS.sequence_length, -1,
-      FLAGS.num_validation_examples)
+      vocab_size=FLAGS.vocab_size,
+      client_batch_size=FLAGS.batch_size,
+      client_epochs_per_round=1,
+      max_seq_len=FLAGS.sequence_length,
+      max_training_elements_per_user=-1,
+      num_validation_examples=FLAGS.num_validation_examples,
+      num_oov_buckets=FLAGS.num_oov_buckets)
   train_dataset = stackoverflow_dataset.get_centralized_train_dataset(
-      FLAGS.vocab_size, FLAGS.batch_size, FLAGS.sequence_length,
-      FLAGS.shuffle_buffer_size)
+      vocab_size=FLAGS.vocab_size,
+      num_oov_buckets=FLAGS.num_oov_buckets,
+      batch_size=FLAGS.batch_size,
+      max_seq_len=FLAGS.sequence_length,
+      shuffle_buffer_size=FLAGS.shuffle_buffer_size)
 
   model = stackoverflow_models.create_recurrent_model(
       vocab_size=FLAGS.vocab_size,
+      num_oov_buckets=FLAGS.num_oov_buckets,
       name='stackoverflow-lstm',
       embedding_size=FLAGS.embedding_size,
       latent_size=FLAGS.latent_size,
@@ -85,20 +96,23 @@ def run_experiment():
 
   logging.info('Training model: %s', model.summary())
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
-  pad_token, oov_token, _, eos_token = stackoverflow_dataset.get_special_tokens(
-      FLAGS.vocab_size)
+  special_tokens = stackoverflow_dataset.get_special_tokens(
+      vocab_size=FLAGS.vocab_size, num_oov_buckets=FLAGS.num_oov_buckets)
+  pad_token = special_tokens.pad
+  oov_tokens = special_tokens.oov
+  eos_token = special_tokens.eos
+
   model.compile(
       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
       optimizer=optimizer,
       metrics=[
-          # Plus 4 for pad, oov, bos, eos
           keras_metrics.MaskedCategoricalAccuracy(
               name='accuracy_with_oov', masked_tokens=[pad_token]),
           keras_metrics.MaskedCategoricalAccuracy(
-              name='accuracy_no_oov', masked_tokens=[pad_token, oov_token]),
+              name='accuracy_no_oov', masked_tokens=[pad_token] + oov_tokens),
           keras_metrics.MaskedCategoricalAccuracy(
               name='accuracy_no_oov_or_eos',
-              masked_tokens=[pad_token, oov_token, eos_token]),
+              masked_tokens=[pad_token, eos_token] + oov_tokens),
       ])
 
   train_results_path = os.path.join(FLAGS.root_output_dir, 'train_results',

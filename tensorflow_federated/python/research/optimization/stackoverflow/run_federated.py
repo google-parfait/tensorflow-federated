@@ -51,6 +51,8 @@ with utils_impl.record_new_flags() as hparam_flags:
 
   # Modeling flags
   flags.DEFINE_integer('vocab_size', 10000, 'Size of vocab to use.')
+  flags.DEFINE_integer('num_oov_buckets', 1,
+                       'Number of out of vocabulary buckets.')
   flags.DEFINE_integer('embedding_size', 96,
                        'Dimension of word embedding to use.')
   flags.DEFINE_integer('latent_size', 670,
@@ -72,6 +74,7 @@ def main(argv):
   model_builder = functools.partial(
       stackoverflow_models.create_recurrent_model,
       vocab_size=FLAGS.vocab_size,
+      num_oov_buckets=FLAGS.num_oov_buckets,
       embedding_size=FLAGS.embedding_size,
       latent_size=FLAGS.latent_size,
       num_layers=FLAGS.num_layers,
@@ -80,19 +83,22 @@ def main(argv):
   loss_builder = functools.partial(
       tf.keras.losses.SparseCategoricalCrossentropy, from_logits=True)
 
-  pad_token, oov_token, _, eos_token = stackoverflow_dataset.get_special_tokens(
-      FLAGS.vocab_size)
+  special_tokens = stackoverflow_dataset.get_special_tokens(
+      FLAGS.vocab_size, FLAGS.num_oov_buckets)
+  pad_token = special_tokens.pad
+  oov_tokens = special_tokens.oov
+  eos_token = special_tokens.eos
 
   def metrics_builder():
     return [
         keras_metrics.MaskedCategoricalAccuracy(
             name='accuracy_with_oov', masked_tokens=[pad_token]),
         keras_metrics.MaskedCategoricalAccuracy(
-            name='accuracy_no_oov', masked_tokens=[pad_token, oov_token]),
+            name='accuracy_no_oov', masked_tokens=[pad_token] + oov_tokens),
         # Notice BOS never appears in ground truth.
         keras_metrics.MaskedCategoricalAccuracy(
             name='accuracy_no_oov_or_eos',
-            masked_tokens=[pad_token, oov_token, eos_token]),
+            masked_tokens=[pad_token, eos_token] + oov_tokens),
         keras_metrics.NumBatchesCounter(),
         keras_metrics.NumTokensCounter(masked_tokens=[pad_token])
     ]
@@ -109,7 +115,9 @@ def main(argv):
   # evaluation.
   base_test_dataset = test_clientdata.create_tf_dataset_from_all_clients()
   preprocess_val_and_test = stackoverflow_dataset.create_test_dataset_preprocess_fn(
-      dataset_vocab, FLAGS.sequence_length)
+      vocab=dataset_vocab,
+      num_oov_buckets=FLAGS.num_oov_buckets,
+      max_seq_len=FLAGS.sequence_length)
   test_set = preprocess_val_and_test(
       base_test_dataset.skip(FLAGS.num_validation_examples))
   validation_set = preprocess_val_and_test(
@@ -117,6 +125,7 @@ def main(argv):
 
   train_dataset_preprocess_comp = stackoverflow_dataset.create_train_dataset_preprocess_fn(
       vocab=stackoverflow_dataset.create_vocab(FLAGS.vocab_size),
+      num_oov_buckets=FLAGS.num_oov_buckets,
       client_batch_size=FLAGS.client_batch_size,
       client_epochs_per_round=FLAGS.client_epochs_per_round,
       max_seq_len=FLAGS.sequence_length,

@@ -47,7 +47,7 @@ class DatasetTest(tf.test.TestCase):
   def test_build_to_ids_fn_truncates(self):
     vocab = ['A', 'B', 'C']
     max_seq_len = 1
-    _, _, bos, _ = stackoverflow_dataset.get_special_tokens(len(vocab))
+    bos = stackoverflow_dataset.get_special_tokens(len(vocab)).bos
     to_ids_fn = stackoverflow_dataset.build_to_ids_fn(vocab, max_seq_len)
     data = {'tokens': 'A B C'}
     processed = to_ids_fn(data)
@@ -56,7 +56,9 @@ class DatasetTest(tf.test.TestCase):
   def test_build_to_ids_fn_embeds_all_vocab(self):
     vocab = ['A', 'B', 'C']
     max_seq_len = 5
-    _, _, bos, eos = stackoverflow_dataset.get_special_tokens(len(vocab))
+    special_tokens = stackoverflow_dataset.get_special_tokens(len(vocab))
+    bos = special_tokens.bos
+    eos = special_tokens.eos
     to_ids_fn = stackoverflow_dataset.build_to_ids_fn(vocab, max_seq_len)
     data = {'tokens': 'A B C'}
     processed = to_ids_fn(data)
@@ -66,7 +68,8 @@ class DatasetTest(tf.test.TestCase):
     vocab = ['A', 'B', 'C']
     max_seq_len = 5
     to_ids_fn = stackoverflow_dataset.build_to_ids_fn(vocab, max_seq_len)
-    pad, _, bos, eos = stackoverflow_dataset.get_special_tokens(len(vocab))
+    special_tokens = stackoverflow_dataset.get_special_tokens(len(vocab))
+    pad, bos, eos = special_tokens.pad, special_tokens.bos, special_tokens.eos
     data = {'tokens': 'A B C'}
     processed = to_ids_fn(data)
     batched_ds = tf.data.Dataset.from_tensor_slices([processed]).padded_batch(
@@ -77,11 +80,15 @@ class DatasetTest(tf.test.TestCase):
   def test_oov_token_correct(self):
     vocab = ['A', 'B', 'C']
     max_seq_len = 5
-    to_ids_fn = stackoverflow_dataset.build_to_ids_fn(vocab, max_seq_len)
-    _, oov_token, _, _ = stackoverflow_dataset.get_special_tokens(len(vocab))
+    num_oov_buckets = 2
+    to_ids_fn = stackoverflow_dataset.build_to_ids_fn(
+        vocab, max_seq_len, num_oov_buckets=num_oov_buckets)
+    oov_tokens = stackoverflow_dataset.get_special_tokens(
+        len(vocab), num_oov_buckets=num_oov_buckets).oov
     data = {'tokens': 'A B D'}
     processed = to_ids_fn(data)
-    self.assertEqual(self.evaluate(processed)[3], oov_token)
+    self.assertLen(oov_tokens, num_oov_buckets)
+    self.assertIn(self.evaluate(processed)[3], oov_tokens)
 
 
 class BatchAndSplitTest(tf.test.TestCase):
@@ -119,7 +126,8 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
         client_epochs_per_round=1,
         max_seq_len=10,
         max_training_elements_per_user=100,
-        vocab=['one', 'must'])
+        vocab=['one', 'must'],
+        num_oov_buckets=1)
     train_preprocessed_ds = train_preprocess_fn(ds)
     self.assertEqual(train_preprocessed_ds.element_spec,
                      (tf.TensorSpec(shape=[None, 10], dtype=tf.int64),
@@ -128,7 +136,30 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
   def test_test_preprocess_fn_return_dataset_element_spec(self):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
     test_preprocess_fn = stackoverflow_dataset.create_test_dataset_preprocess_fn(
-        max_seq_len=10, vocab=['one', 'must'])
+        max_seq_len=10, vocab=['one', 'must'], num_oov_buckets=1)
+    test_preprocessed_ds = test_preprocess_fn(ds)
+    self.assertEqual(test_preprocessed_ds.element_spec,
+                     (tf.TensorSpec(shape=[None, 10], dtype=tf.int64),
+                      tf.TensorSpec(shape=[None, 10], dtype=tf.int64)))
+
+  def test_train_preprocess_fn_return_dataset_element_spec_oov_buckets(self):
+    ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
+    train_preprocess_fn = stackoverflow_dataset.create_train_dataset_preprocess_fn(
+        client_batch_size=32,
+        client_epochs_per_round=1,
+        max_seq_len=10,
+        max_training_elements_per_user=100,
+        vocab=['one', 'must'],
+        num_oov_buckets=10)
+    train_preprocessed_ds = train_preprocess_fn(ds)
+    self.assertEqual(train_preprocessed_ds.element_spec,
+                     (tf.TensorSpec(shape=[None, 10], dtype=tf.int64),
+                      tf.TensorSpec(shape=[None, 10], dtype=tf.int64)))
+
+  def test_test_preprocess_fn_return_dataset_element_spec_oov_buckets(self):
+    ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
+    test_preprocess_fn = stackoverflow_dataset.create_test_dataset_preprocess_fn(
+        max_seq_len=10, vocab=['one', 'must'], num_oov_buckets=10)
     test_preprocessed_ds = test_preprocess_fn(ds)
     self.assertEqual(test_preprocessed_ds.element_spec,
                      (tf.TensorSpec(shape=[None, 10], dtype=tf.int64),
@@ -141,7 +172,8 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
         client_epochs_per_round=1,
         max_seq_len=6,
         max_training_elements_per_user=100,
-        vocab=['one', 'must'])
+        vocab=['one', 'must'],
+        num_oov_buckets=1)
     train_preprocessed_ds = train_preprocess_fn(ds)
     element = next(iter(train_preprocessed_ds))
     # BOS is len(vocab)+2, EOS is len(vocab)+3, pad is 0, OOV is len(vocab)+1
@@ -158,6 +190,45 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
     self.assertAllEqual(
         self.evaluate(element[0]), np.array([[4, 1, 2, 3, 5, 0]]))
 
+  def test_train_preprocess_fn_returns_correct_sequence_oov_buckets(self):
+    ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
+    train_preprocess_fn = stackoverflow_dataset.create_train_dataset_preprocess_fn(
+        client_batch_size=32,
+        client_epochs_per_round=1,
+        max_seq_len=6,
+        max_training_elements_per_user=100,
+        vocab=['one', 'must'],
+        num_oov_buckets=3)
+    train_preprocessed_ds = train_preprocess_fn(ds)
+    element = next(iter(train_preprocessed_ds))
+    # BOS is len(vocab)+3+1
+    self.assertEqual(self.evaluate(element[0])[0][0], 6)
+    self.assertEqual(self.evaluate(element[0])[0][1], 1)
+    self.assertEqual(self.evaluate(element[0])[0][2], 2)
+    # OOV is [len(vocab)+1, len(vocab)+2, len(vocab)+3]
+    self.assertIn(self.evaluate(element[0])[0][3], [3, 4, 5])
+    # EOS is len(vocab)+3+2
+    self.assertEqual(self.evaluate(element[0])[0][4], 7)
+    # pad is 0
+    self.assertEqual(self.evaluate(element[0])[0][5], 0)
+
+  def test_test_preprocess_fn_returns_correct_sequence_oov_buckets(self):
+    ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
+    test_preprocess_fn = stackoverflow_dataset.create_test_dataset_preprocess_fn(
+        max_seq_len=6, vocab=['one', 'must'], num_oov_buckets=3)
+    test_preprocessed_ds = test_preprocess_fn(ds)
+    element = next(iter(test_preprocessed_ds))
+    # BOS is len(vocab)+3+1
+    self.assertEqual(self.evaluate(element[0])[0][0], 6)
+    self.assertEqual(self.evaluate(element[0])[0][1], 1)
+    self.assertEqual(self.evaluate(element[0])[0][2], 2)
+    # OOV is [len(vocab)+1, len(vocab)+2, len(vocab)+3]
+    self.assertIn(self.evaluate(element[0])[0][3], [3, 4, 5])
+    # EOS is len(vocab)+3+2
+    self.assertEqual(self.evaluate(element[0])[0][4], 7)
+    # pad is 0
+    self.assertEqual(self.evaluate(element[0])[0][5], 0)
+
   @test.skip_test_for_gpu
   def test_take_with_repeat(self):
     so_train, _, _ = stackoverflow_dataset.construct_word_level_datasets(
@@ -167,7 +238,8 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
         max_batches_per_user=8,
         max_seq_len=20,
         max_training_elements_per_user=128,
-        num_validation_examples=500)
+        num_validation_examples=500,
+        num_oov_buckets=1)
     for i in range(10):
       client_ds = so_train.create_tf_dataset_for_client(so_train.client_ids[i])
       self.assertEqual(_compute_length_of_dataset(client_ds), 8)
@@ -183,7 +255,8 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
           max_batches_per_user=-1,
           max_seq_len=20,
           max_training_elements_per_user=128,
-          num_validation_examples=500)
+          num_validation_examples=500,
+          num_oov_buckets=1)
 
 
 if __name__ == '__main__':

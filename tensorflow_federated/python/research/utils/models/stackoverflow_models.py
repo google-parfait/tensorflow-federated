@@ -28,6 +28,7 @@ class TransposableEmbedding(tf.keras.layers.Embedding):
 
 
 def create_recurrent_model(vocab_size=10000,
+                           num_oov_buckets=1,
                            embedding_size=96,
                            latent_size=670,
                            num_layers=1,
@@ -37,6 +38,7 @@ def create_recurrent_model(vocab_size=10000,
 
   Args:
       vocab_size: Size of vocabulary to use.
+      num_oov_buckets: Number of out of vocabulary buckets.
       embedding_size: The size of the embedding.
       latent_size: The size of the recurrent state.
       num_layers: The number of layers.
@@ -47,7 +49,7 @@ def create_recurrent_model(vocab_size=10000,
   Returns:
     `tf.keras.Model`.
   """
-  extended_vocab_size = vocab_size + 4  # For pad/bos/eos/oov.
+  extended_vocab_size = vocab_size + 3 + num_oov_buckets  # For pad/bos/eos/oov.
   inputs = tf.keras.layers.Input(shape=(None,))
   input_embedding = TransposableEmbedding(
       input_dim=extended_vocab_size, output_dim=embedding_size, mask_zero=True)

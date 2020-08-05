@@ -90,19 +90,22 @@ def main(argv):
   loss_builder = functools.partial(
       tf.keras.losses.SparseCategoricalCrossentropy, from_logits=True)
 
-  pad_token, oov_token, _, eos_token = stackoverflow_dataset.get_special_tokens(
-      FLAGS.vocab_size)
+  special_tokens = stackoverflow_dataset.get_special_tokens(FLAGS.vocab_size)
+
+  pad_token = special_tokens.pad
+  oov_tokens = special_tokens.oov
+  eos_token = special_tokens.eos
 
   def metrics_builder():
     return [
         keras_metrics.MaskedCategoricalAccuracy(
             name='accuracy_with_oov', masked_tokens=[pad_token]),
         keras_metrics.MaskedCategoricalAccuracy(
-            name='accuracy_no_oov', masked_tokens=[pad_token, oov_token]),
+            name='accuracy_no_oov', masked_tokens=[pad_token] + oov_tokens),
         # Notice BOS never appears in ground truth.
         keras_metrics.MaskedCategoricalAccuracy(
             name='accuracy_no_oov_or_eos',
-            masked_tokens=[pad_token, oov_token, eos_token]),
+            masked_tokens=[pad_token, eos_token] + oov_tokens),
         keras_metrics.NumBatchesCounter(),
         keras_metrics.NumTokensCounter(masked_tokens=[pad_token])
     ]
