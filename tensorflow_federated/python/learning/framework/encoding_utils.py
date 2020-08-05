@@ -24,8 +24,11 @@ import warnings
 
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.core.utils import computation_utils
+from tensorflow_federated.python.core.utils import encoding_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding
@@ -50,7 +53,7 @@ def _weights_from_model_fn(
 # TODO(b/159836417): Depracate this function as part of the migration.
 def build_encoded_broadcast_from_model(
     model_fn: _ModelConstructor,
-    encoder_fn: _EncoderConstructor) -> tff.utils.StatefulBroadcastFn:
+    encoder_fn: _EncoderConstructor) -> computation_utils.StatefulBroadcastFn:
   """Builds `StatefulBroadcastFn` for weights of model returned by `model_fn`.
 
   This method creates a `SimpleEncoder` for every weight of model created by
@@ -82,13 +85,13 @@ def build_encoded_broadcast_from_model(
   py_typecheck.check_callable(encoder_fn)
   weights = _weights_from_model_fn(model_fn)
   encoders = tf.nest.map_structure(encoder_fn, weights)
-  return tff.utils.build_encoded_broadcast(weights, encoders)
+  return encoding_utils.build_encoded_broadcast(weights, encoders)
 
 
 # TODO(b/138081552): Move to tff.learning when ready.
 def build_encoded_broadcast_process_from_model(
     model_fn: _ModelConstructor,
-    encoder_fn: _EncoderConstructor) -> tff.templates.MeasuredProcess:
+    encoder_fn: _EncoderConstructor) -> measured_process.MeasuredProcess:
   """Builds `MeasuredProcess` for weights of model returned by `model_fn`.
 
   This method creates a `SimpleEncoder` for every weight of model created by
@@ -113,14 +116,14 @@ def build_encoded_broadcast_process_from_model(
   py_typecheck.check_callable(encoder_fn)
   weights = _weights_from_model_fn(model_fn)
   encoders = tf.nest.map_structure(encoder_fn, weights)
-  weight_type = tff.framework.type_from_tensors(weights)
-  return tff.utils.build_encoded_broadcast_process(weight_type, encoders)
+  weight_type = type_conversions.type_from_tensors(weights)
+  return encoding_utils.build_encoded_broadcast_process(weight_type, encoders)
 
 
 # TODO(b/159836417): Depracate this function as part of the migration.
 def build_encoded_sum_from_model(
     model_fn: _ModelConstructor,
-    encoder_fn: _EncoderConstructor) -> tff.utils.StatefulAggregateFn:
+    encoder_fn: _EncoderConstructor) -> computation_utils.StatefulAggregateFn:
   """Builds `StatefulAggregateFn` for weights of model returned by `model_fn`.
 
   This method creates a `GatherEncoder` for every trainable weight of model
@@ -151,13 +154,13 @@ def build_encoded_sum_from_model(
   py_typecheck.check_callable(encoder_fn)
   trainable_weights = _weights_from_model_fn(model_fn).trainable
   encoders = tf.nest.map_structure(encoder_fn, trainable_weights)
-  return tff.utils.build_encoded_sum(trainable_weights, encoders)
+  return encoding_utils.build_encoded_sum(trainable_weights, encoders)
 
 
 # TODO(b/138081552): Move to tff.learning when ready.
 def build_encoded_sum_process_from_model(
     model_fn: _ModelConstructor,
-    encoder_fn: _EncoderConstructor) -> tff.utils.StatefulAggregateFn:
+    encoder_fn: _EncoderConstructor) -> measured_process.MeasuredProcess:
   """Builds `MeasuredProcess` for weights of model returned by `model_fn`.
 
   This method creates a `GatherEncoder` for every trainable weight of model
@@ -182,14 +185,14 @@ def build_encoded_sum_process_from_model(
   py_typecheck.check_callable(encoder_fn)
   trainable_weights = _weights_from_model_fn(model_fn).trainable
   encoders = tf.nest.map_structure(encoder_fn, trainable_weights)
-  weight_type = tff.framework.type_from_tensors(trainable_weights)
-  return tff.utils.build_encoded_sum_process(weight_type, encoders)
+  weight_type = type_conversions.type_from_tensors(trainable_weights)
+  return encoding_utils.build_encoded_sum_process(weight_type, encoders)
 
 
 # TODO(b/159836417): Depracate this function as part of the migration.
 def build_encoded_mean_from_model(
     model_fn: _ModelConstructor,
-    encoder_fn: _EncoderConstructor) -> tff.utils.StatefulAggregateFn:
+    encoder_fn: _EncoderConstructor) -> computation_utils.StatefulAggregateFn:
   """Builds `StatefulAggregateFn` for weights of model returned by `model_fn`.
 
   This method creates a `GatherEncoder` for every trainable weight of model
@@ -220,13 +223,13 @@ def build_encoded_mean_from_model(
   py_typecheck.check_callable(encoder_fn)
   trainable_weights = _weights_from_model_fn(model_fn).trainable
   encoders = tf.nest.map_structure(encoder_fn, trainable_weights)
-  return tff.utils.build_encoded_mean(trainable_weights, encoders)
+  return encoding_utils.build_encoded_mean(trainable_weights, encoders)
 
 
 # TODO(b/138081552): Move to tff.learning when ready.
 def build_encoded_mean_process_from_model(
     model_fn: _ModelConstructor,
-    encoder_fn: _EncoderConstructor) -> tff.utils.StatefulAggregateFn:
+    encoder_fn: _EncoderConstructor) -> measured_process.MeasuredProcess:
   """Builds `MeasuredProcess` for weights of model returned by `model_fn`.
 
   This method creates a `GatherEncoder` for every trainable weight of model
@@ -251,5 +254,5 @@ def build_encoded_mean_process_from_model(
   py_typecheck.check_callable(encoder_fn)
   trainable_weights = _weights_from_model_fn(model_fn).trainable
   encoders = tf.nest.map_structure(encoder_fn, trainable_weights)
-  weight_type = tff.framework.type_from_tensors(trainable_weights)
-  return tff.utils.build_encoded_mean_process(weight_type, encoders)
+  weight_type = type_conversions.type_from_tensors(trainable_weights)
+  return encoding_utils.build_encoded_mean_process(weight_type, encoders)

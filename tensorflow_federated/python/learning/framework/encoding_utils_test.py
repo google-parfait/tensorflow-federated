@@ -19,8 +19,9 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.framework import encoding_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
@@ -39,13 +40,13 @@ class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
           model_fn, _test_encoder_fn('gather'))
       self.assertLen(w, 2)
 
-    self.assertIsInstance(gather_fn, tff.utils.StatefulAggregateFn)
+    self.assertIsInstance(gather_fn, computation_utils.StatefulAggregateFn)
 
   def test_mean_process_from_model(self):
     model_fn = model_examples.LinearRegression
     gather_process = encoding_utils.build_encoded_mean_process_from_model(
         model_fn, _test_encoder_fn('gather'))
-    self.assertIsInstance(gather_process, tff.templates.MeasuredProcess)
+    self.assertIsInstance(gather_process, measured_process.MeasuredProcess)
 
   def test_sum_from_model(self):
     model_fn = model_examples.LinearRegression
@@ -56,13 +57,13 @@ class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
           model_fn, _test_encoder_fn('gather'))
       self.assertLen(w, 2)
 
-    self.assertIsInstance(gather_fn, tff.utils.StatefulAggregateFn)
+    self.assertIsInstance(gather_fn, computation_utils.StatefulAggregateFn)
 
   def test_sum_process_from_model(self):
     model_fn = model_examples.LinearRegression
     gather_process = encoding_utils.build_encoded_sum_process_from_model(
         model_fn, _test_encoder_fn('gather'))
-    self.assertIsInstance(gather_process, tff.templates.MeasuredProcess)
+    self.assertIsInstance(gather_process, measured_process.MeasuredProcess)
 
   def test_broadcast_from_model(self):
     model_fn = model_examples.LinearRegression
@@ -73,14 +74,14 @@ class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
           model_fn, _test_encoder_fn('simple'))
       self.assertLen(w, 2)
 
-    self.assertIsInstance(broadcast_fn, tff.utils.StatefulBroadcastFn)
+    self.assertIsInstance(broadcast_fn, computation_utils.StatefulBroadcastFn)
 
   def test_broadcast_process_from_model(self):
     model_fn = model_examples.LinearRegression
     broadcast_process = (
         encoding_utils.build_encoded_broadcast_process_from_model(
             model_fn, _test_encoder_fn('simple')))
-    self.assertIsInstance(broadcast_process, tff.templates.MeasuredProcess)
+    self.assertIsInstance(broadcast_process, measured_process.MeasuredProcess)
 
 
 class IterativeProcessTest(test.TestCase, parameterized.TestCase):

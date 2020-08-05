@@ -21,8 +21,16 @@ import attr
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -164,7 +172,7 @@ def state_with_new_model_weights(
   assert_weight_lists_match(server_state.model.trainable, trainable_weights)
   assert_weight_lists_match(server_state.model.non_trainable,
                             non_trainable_weights)
-  new_server_state = tff.utils.update_state(
+  new_server_state = computation_utils.update_state(
       server_state,
       model=model_utils.ModelWeights(
           trainable=trainable_weights, non_trainable=non_trainable_weights))
@@ -223,9 +231,9 @@ def _build_initialize_computation(
     *,
     model_fn: _ModelConstructor,
     server_optimizer_fn: _OptimizerConstructor,
-    broadcast_process: tff.templates.MeasuredProcess,
-    aggregation_process: tff.templates.MeasuredProcess,
-) -> tff.Computation:
+    broadcast_process: measured_process.MeasuredProcess,
+    aggregation_process: measured_process.MeasuredProcess,
+) -> computation_base.Computation:
   """Builds the `initialize` computation for a model delta averaging process.
 
   Args:
@@ -247,7 +255,7 @@ def _build_initialize_computation(
     with `tff.SERVER` placement.
   """
 
-  @tff.tf_computation
+  @computations.tf_computation
   def server_init() -> Tuple[model_utils.ModelWeights, List[tf.Variable]]:
     """Returns initial `tff.learning.framework.ServerState`.
 
@@ -262,12 +270,12 @@ def _build_initialize_computation(
         model=model, optimizer=optimizer)
     return model_utils.ModelWeights.from_model(model), optimizer_vars,
 
-  @tff.federated_computation()
+  @computations.federated_computation()
   def initialize_computation():
     """Orchestration logic for server model initialization."""
-    initial_global_model, initial_global_optimizer_state = tff.federated_eval(
-        server_init, tff.SERVER)
-    return tff.federated_zip(
+    initial_global_model, initial_global_optimizer_state = intrinsics.federated_eval(
+        server_init, placements.SERVER)
+    return intrinsics.federated_zip(
         ServerState(
             model=initial_global_model,
             optimizer_state=initial_global_optimizer_state,
@@ -283,9 +291,9 @@ def _build_one_round_computation(
     server_optimizer_fn: _OptimizerConstructor,
     model_to_client_delta_fn: Callable[[Callable[[], model_lib.Model]],
                                        ClientDeltaFn],
-    broadcast_process: tff.templates.MeasuredProcess,
-    aggregation_process: tff.templates.MeasuredProcess,
-) -> tff.Computation:
+    broadcast_process: measured_process.MeasuredProcess,
+    aggregation_process: measured_process.MeasuredProcess,
+) -> computation_base.Computation:
   """Builds the `next` computation for a model delta averaging process.
 
   Args:
@@ -324,11 +332,11 @@ def _build_one_round_computation(
     # We must force variable creation for momentum and adaptive optimizers.
     _eagerly_create_optimizer_variables(
         model=dummy_model_for_metadata, optimizer=dummy_optimizer)
-    optimizer_variable_type = tff.framework.type_from_tensors(
+    optimizer_variable_type = type_conversions.type_from_tensors(
         dummy_optimizer.variables())
 
-  @tff.tf_computation(model_weights_type, model_weights_type.trainable,
-                      optimizer_variable_type)
+  @computations.tf_computation(model_weights_type, model_weights_type.trainable,
+                               optimizer_variable_type)
   def server_update(global_model, model_delta, optimizer_state):
     """Converts args to correct python types and calls server_update_model."""
     # Construct variables first.
@@ -361,9 +369,10 @@ def _build_one_round_computation(
 
     return update_model_inner(model_delta)
 
-  dataset_type = tff.SequenceType(dummy_model_for_metadata.input_spec)
+  dataset_type = computation_types.SequenceType(
+      dummy_model_for_metadata.input_spec)
 
-  @tff.tf_computation(dataset_type, model_weights_type)
+  @computations.tf_computation(dataset_type, model_weights_type)
   def _compute_local_training_and_client_delta(dataset, initial_model_weights):
     """Performs client local model optimization.
 
@@ -388,9 +397,9 @@ def _build_one_round_computation(
       delta_aggregate_state=aggregation_state,
       model_broadcast_state=broadcast_state)
 
-  @tff.federated_computation(
-      tff.FederatedType(server_state_type, tff.SERVER),
-      tff.FederatedType(dataset_type, tff.CLIENTS))
+  @computations.federated_computation(
+      computation_types.FederatedType(server_state_type, placements.SERVER),
+      computation_types.FederatedType(dataset_type, placements.CLIENTS))
   def one_round_computation(server_state, federated_dataset):
     """Orchestration logic for one round of optimization.
 
@@ -405,21 +414,21 @@ def _build_one_round_computation(
     """
     broadcast_output = broadcast_process.next(
         server_state.model_broadcast_state, server_state.model)
-    client_outputs = tff.federated_map(
+    client_outputs = intrinsics.federated_map(
         _compute_local_training_and_client_delta,
         (federated_dataset, broadcast_output.result))
     aggregation_output = aggregation_process.next(
         server_state.delta_aggregate_state, client_outputs.weights_delta,
         client_outputs.weights_delta_weight)
-    new_global_model, new_optimizer_state = tff.federated_map(
+    new_global_model, new_optimizer_state = intrinsics.federated_map(
         server_update, (server_state.model, aggregation_output.result,
                         server_state.optimizer_state))
-    new_server_state = tff.federated_zip(
+    new_server_state = intrinsics.federated_zip(
         ServerState(new_global_model, new_optimizer_state,
                     aggregation_output.state, broadcast_output.state))
     aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
         client_outputs.model_output)
-    measurements = tff.federated_zip(
+    measurements = intrinsics.federated_zip(
         collections.OrderedDict(
             broadcast=broadcast_output.measurements,
             aggregation=aggregation_output.measurements,
@@ -429,7 +438,8 @@ def _build_one_round_computation(
   return one_round_computation
 
 
-def _is_valid_stateful_process(process: tff.templates.MeasuredProcess) -> bool:
+def _is_valid_stateful_process(
+    process: measured_process.MeasuredProcess) -> bool:
   """Validates whether a `MeasuredProcess` is valid for model delta processes.
 
   Valid processes must have `state` and `measurements` placed on the server.
@@ -444,13 +454,14 @@ def _is_valid_stateful_process(process: tff.templates.MeasuredProcess) -> bool:
   """
   init_type = process.initialize.type_signature
   next_type = process.next.type_signature
-  return (init_type.result.placement is tff.SERVER and
-          next_type.parameter[0].placement is tff.SERVER and
-          next_type.result.state.placement is tff.SERVER and
-          next_type.result.measurements.placement is tff.SERVER)
+  return (init_type.result.placement is placements.SERVER and
+          next_type.parameter[0].placement is placements.SERVER and
+          next_type.result.state.placement is placements.SERVER and
+          next_type.result.measurements.placement is placements.SERVER)
 
 
-def _is_valid_broadcast_process(process: tff.templates.MeasuredProcess) -> bool:
+def _is_valid_broadcast_process(
+    process: measured_process.MeasuredProcess) -> bool:
   """Validates a `MeasuredProcess` adheres to the broadcast signature.
 
   A valid broadcast process is one whose argument is placed at `SERVER` and
@@ -463,14 +474,14 @@ def _is_valid_broadcast_process(process: tff.templates.MeasuredProcess) -> bool:
     `True` iff the process is a validate broadcast process, otherwise `False`.
   """
   next_type = process.next.type_signature
-  return (isinstance(process, tff.templates.MeasuredProcess) and
+  return (isinstance(process, measured_process.MeasuredProcess) and
           _is_valid_stateful_process(process) and
-          next_type.parameter[1].placement is tff.SERVER and
-          next_type.result.result.placement is tff.CLIENTS)
+          next_type.parameter[1].placement is placements.SERVER and
+          next_type.result.result.placement is placements.CLIENTS)
 
 
 def _is_valid_aggregation_process(
-    process: tff.templates.MeasuredProcess) -> bool:
+    process: measured_process.MeasuredProcess) -> bool:
   """Validates a `MeasuredProcess` adheres to the aggregation signature.
 
   A valid aggregation process is one whose argument is placed at `SERVER` and
@@ -483,105 +494,112 @@ def _is_valid_aggregation_process(
     `True` iff the process is a validate aggregation process, otherwise `False`.
   """
   next_type = process.next.type_signature
-  return (isinstance(process, tff.templates.MeasuredProcess) and
+  return (isinstance(process, measured_process.MeasuredProcess) and
           _is_valid_stateful_process(process) and
-          next_type.parameter[1].placement is tff.CLIENTS and
-          next_type.result.result.placement is tff.SERVER)
+          next_type.parameter[1].placement is placements.CLIENTS and
+          next_type.result.result.placement is placements.SERVER)
 
 
 # ============================================================================
 
-NONE_SERVER_TYPE = tff.FederatedType((), tff.SERVER)
+NONE_SERVER_TYPE = computation_types.FederatedType((), placements.SERVER)
 
 
 def _wrap_in_measured_process(
-    stateful_fn: Union[tff.utils.StatefulBroadcastFn,
-                       tff.utils.StatefulAggregateFn],
-    input_type: tff.Type) -> tff.templates.MeasuredProcess:
-  """Converts a `tff.utils.StatefulFn` to a `tff.templates.MeasuredProcess`."""
-  py_typecheck.check_type(
-      stateful_fn,
-      (tff.utils.StatefulBroadcastFn, tff.utils.StatefulAggregateFn))
+    stateful_fn: Union[computation_utils.StatefulBroadcastFn,
+                       computation_utils.StatefulAggregateFn],
+    input_type: computation_types.Type) -> measured_process.MeasuredProcess:
+  """Converts a `computation_utils.StatefulFn` to a `tff.templates.MeasuredProcess`."""
+  py_typecheck.check_type(stateful_fn, (computation_utils.StatefulBroadcastFn,
+                                        computation_utils.StatefulAggregateFn))
 
-  @tff.federated_computation()
+  @computations.federated_computation()
   def initialize_comp():
-    if not isinstance(stateful_fn.initialize, tff.Computation):
-      initialize = tff.tf_computation(stateful_fn.initialize)
+    if not isinstance(stateful_fn.initialize, computation_base.Computation):
+      initialize = computations.tf_computation(stateful_fn.initialize)
     else:
       initialize = stateful_fn.initialize
-    return tff.federated_eval(initialize, tff.SERVER)
+    return intrinsics.federated_eval(initialize, placements.SERVER)
 
   state_type = initialize_comp.type_signature.result
 
-  if isinstance(stateful_fn, tff.utils.StatefulBroadcastFn):
+  if isinstance(stateful_fn, computation_utils.StatefulBroadcastFn):
 
-    @tff.federated_computation(state_type,
-                               tff.FederatedType(input_type, tff.SERVER))
+    @computations.federated_computation(
+        state_type,
+        computation_types.FederatedType(input_type, placements.SERVER),
+    )
     def next_comp(state, value):
-      empty_metrics = tff.federated_value((), tff.SERVER)
+      empty_metrics = intrinsics.federated_value((), placements.SERVER)
       state, result = stateful_fn(state, value)
       return collections.OrderedDict(
           state=state, result=result, measurements=empty_metrics)
 
-  elif isinstance(stateful_fn, tff.utils.StatefulAggregateFn):
+  elif isinstance(stateful_fn, computation_utils.StatefulAggregateFn):
 
-    @tff.federated_computation(state_type,
-                               tff.FederatedType(input_type, tff.CLIENTS),
-                               tff.FederatedType(tf.float32, tff.CLIENTS))
+    @computations.federated_computation(
+        state_type,
+        computation_types.FederatedType(input_type, placements.CLIENTS),
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def next_comp(state, value, weight):
-      empty_metrics = tff.federated_value((), tff.SERVER)
+      empty_metrics = intrinsics.federated_value((), placements.SERVER)
       state, result = stateful_fn(state, value, weight)
       return collections.OrderedDict(
           state=state, result=result, measurements=empty_metrics)
 
   else:
     raise TypeError(
-        'Received a {t}, expected either a tff.utils.StatefulAggregateFn or a '
-        'tff.utils.StatefulBroadcastFn.'.format(t=type(stateful_fn)))
+        'Received a {t}, expected either a computation_utils.StatefulAggregateFn or a '
+        'computation_utils.StatefulBroadcastFn.'.format(t=type(stateful_fn)))
 
-  return tff.templates.MeasuredProcess(
+  return measured_process.MeasuredProcess(
       initialize_fn=initialize_comp, next_fn=next_comp)
 
 
-@tff.federated_computation()
+@computations.federated_computation()
 def _empty_server_initialization():
-  return tff.federated_value((), tff.SERVER)
+  return intrinsics.federated_value((), placements.SERVER)
 
 
 def build_stateless_mean(
-    *, model_delta_type: Union[tff.StructType, tff.TensorType]
-) -> tff.templates.MeasuredProcess:
+    *, model_delta_type: Union[computation_types.StructType,
+                               computation_types.TensorType]
+) -> measured_process.MeasuredProcess:
   """Builds a `MeasuredProcess` that wraps` tff.federated_mean`."""
 
-  @tff.federated_computation(NONE_SERVER_TYPE,
-                             tff.FederatedType(model_delta_type, tff.CLIENTS),
-                             tff.FederatedType(tf.float32, tff.CLIENTS))
+  @computations.federated_computation(
+      NONE_SERVER_TYPE,
+      computation_types.FederatedType(model_delta_type, placements.CLIENTS),
+      computation_types.FederatedType(tf.float32, placements.CLIENTS))
   def stateless_mean(state, value, weight):
-    empty_metrics = tff.federated_value((), tff.SERVER)
+    empty_metrics = intrinsics.federated_value((), placements.SERVER)
     return collections.OrderedDict(
         state=state,
-        result=tff.federated_mean(value, weight=weight),
+        result=intrinsics.federated_mean(value, weight=weight),
         measurements=empty_metrics)
 
-  return tff.templates.MeasuredProcess(
+  return measured_process.MeasuredProcess(
       initialize_fn=_empty_server_initialization, next_fn=stateless_mean)
 
 
 def build_stateless_broadcaster(
-    *, model_weights_type: Union[tff.StructType, tff.TensorType]
-) -> tff.templates.MeasuredProcess:
+    *, model_weights_type: Union[computation_types.StructType,
+                                 computation_types.TensorType]
+) -> measured_process.MeasuredProcess:
   """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
 
-  @tff.federated_computation(NONE_SERVER_TYPE,
-                             tff.FederatedType(model_weights_type, tff.SERVER))
+  @computations.federated_computation(
+      NONE_SERVER_TYPE,
+      computation_types.FederatedType(model_weights_type, placements.SERVER),
+  )
   def stateless_broadcast(state, value):
-    empty_metrics = tff.federated_value((), tff.SERVER)
+    empty_metrics = intrinsics.federated_value((), placements.SERVER)
     return collections.OrderedDict(
         state=state,
-        result=tff.federated_broadcast(value),
+        result=intrinsics.federated_broadcast(value),
         measurements=empty_metrics)
 
-  return tff.templates.MeasuredProcess(
+  return measured_process.MeasuredProcess(
       initialize_fn=_empty_server_initialization, next_fn=stateless_broadcast)
 
 
@@ -589,12 +607,14 @@ def build_model_delta_optimizer_process(
     model_fn: _ModelConstructor,
     model_to_client_delta_fn: Callable[[model_lib.Model], ClientDeltaFn],
     server_optimizer_fn: _OptimizerConstructor,
-    stateful_delta_aggregate_fn: Optional[tff.utils.StatefulAggregateFn] = None,
-    stateful_model_broadcast_fn: Optional[tff.utils.StatefulBroadcastFn] = None,
+    stateful_delta_aggregate_fn: Optional[
+        computation_utils.StatefulAggregateFn] = None,
+    stateful_model_broadcast_fn: Optional[
+        computation_utils.StatefulBroadcastFn] = None,
     *,
-    broadcast_process: Optional[tff.templates.MeasuredProcess] = None,
-    aggregation_process: Optional[tff.templates.MeasuredProcess] = None,
-) -> tff.templates.IterativeProcess:
+    broadcast_process: Optional[measured_process.MeasuredProcess] = None,
+    aggregation_process: Optional[measured_process.MeasuredProcess] = None,
+) -> iterative_process.IterativeProcess:
   """Constructs `tff.templates.IterativeProcess` for Federated Averaging or SGD.
 
   This provides the TFF orchestration logic connecting the common server logic
@@ -646,11 +666,12 @@ def build_model_delta_optimizer_process(
   # TODO(b/159138779): remove the StatefulFn arguments and these validation
   # functions once all callers are migrated.
   def validate_disjoint_optional_arguments(
-      stateful_fn: Optional[Union[tff.utils.StatefulBroadcastFn,
-                                  tff.utils.StatefulAggregateFn]],
-      process: Optional[tff.templates.MeasuredProcess],
-      process_input_type: Union[tff.StructType, tff.TensorType],
-  ) -> Optional[tff.templates.MeasuredProcess]:
+      stateful_fn: Optional[Union[computation_utils.StatefulBroadcastFn,
+                                  computation_utils.StatefulAggregateFn]],
+      process: Optional[measured_process.MeasuredProcess],
+      process_input_type: Union[computation_types.StructType,
+                                computation_types.TensorType],
+  ) -> Optional[measured_process.MeasuredProcess]:
     """Validate that only one of two arguments is specified.
 
     This validates that only the `tff.templates.MeasuredProcess` or the
@@ -673,9 +694,9 @@ def build_model_delta_optimizer_process(
       DisjointArgumentError: if both `stateful_fn` and `process` are not `None`.
     """
     if stateful_fn is not None:
-      py_typecheck.check_type(
-          stateful_fn,
-          (tff.utils.StatefulBroadcastFn, tff.utils.StatefulAggregateFn))
+      py_typecheck.check_type(stateful_fn,
+                              (computation_utils.StatefulBroadcastFn,
+                               computation_utils.StatefulAggregateFn))
       if process is not None:
         raise DisjointArgumentError(
             'Specifying both arguments is an error. Only one may be used')
@@ -731,5 +752,5 @@ def build_model_delta_optimizer_process(
       broadcast_process=broadcast_process,
       aggregation_process=aggregation_process)
 
-  return tff.templates.IterativeProcess(
+  return iterative_process.IterativeProcess(
       initialize_fn=initialize_computation, next_fn=run_one_round_computation)
