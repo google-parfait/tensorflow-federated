@@ -54,6 +54,8 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
       `tf.keras.models.Model` instance.
   """
   # TODO(b/123092620): Simplify this.
+  if not isinstance(tff_weights, (structure.Struct, model_utils.ModelWeights)):
+    tff_weights = model_utils.ModelWeights.from_python_structure(tff_weights)
   py_typecheck.check_type(tff_weights,
                           (structure.Struct, model_utils.ModelWeights))
   py_typecheck.check_type(keras_model, tf.keras.models.Model)

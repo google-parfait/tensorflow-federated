@@ -52,13 +52,16 @@ class ModelWeights(object):
     return cls(model.trainable_variables, model.non_trainable_variables)
 
   @classmethod
-  def from_tff_result(cls, anon_tuple):
-    py_typecheck.check_type(anon_tuple, structure.Struct)
-    return cls([
-        value for _, value in structure.iter_elements(anon_tuple.trainable)
-    ], [
-        value for _, value in structure.iter_elements(anon_tuple.non_trainable)
-    ])
+  def from_tff_result(cls, struct):
+    py_typecheck.check_type(struct, structure.Struct)
+    return cls(
+        [value for _, value in structure.iter_elements(struct.trainable)],
+        [value for _, value in structure.iter_elements(struct.non_trainable)])
+
+  @classmethod
+  def from_python_structure(cls, python_structure):
+    tff_struct = structure.from_container(python_structure, recursive=True)
+    return cls.from_tff_result(tff_struct)
 
   def assign_weights_to(self, model):
     """Assign these TFF model weights to the weights of a model.

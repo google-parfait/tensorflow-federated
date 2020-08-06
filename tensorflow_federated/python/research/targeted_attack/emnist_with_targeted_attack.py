@@ -299,8 +299,9 @@ def main(argv):
         'Training round {:2d}, train_metrics={}'.format(cur_round,
                                                         train_metrics))
 
-    log_tfboard('train_acc', train_metrics[0], global_step)
-    log_tfboard('train_loss', train_metrics[1], global_step)
+    log_tfboard('train_acc', train_metrics['sparse_categorical_accuracy'],
+                global_step)
+    log_tfboard('train_loss', train_metrics['loss'], global_step)
 
     # evaluate current model on test data and malicious data
     if cur_round % FLAGS.evaluate_per_rounds == 0:

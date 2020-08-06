@@ -202,6 +202,7 @@ py_test(
         ":model",
         ":model_examples",
         ":model_utils",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core",
     ],

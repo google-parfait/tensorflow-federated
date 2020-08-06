@@ -88,6 +88,21 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
           input_spec=_create_dummy_types(1),
           loss=tf.keras.losses.MeanSquaredError())
 
+  def test_assign_weights_from_odict(self):
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=1)
+    weight_odict = collections.OrderedDict(
+        trainable=keras_model.trainable_weights,
+        non_trainable=keras_model.non_trainable_weights)
+    weight_odict_plus_1 = tf.nest.map_structure(lambda x: x + 1, weight_odict)
+    keras_utils.assign_weights_to_keras_model(keras_model, weight_odict_plus_1)
+    self.assertAllClose(
+        self.evaluate(keras_model.trainable_weights),
+        weight_odict_plus_1['trainable'])
+    self.assertAllClose(
+        self.evaluate(keras_model.non_trainable_weights),
+        weight_odict_plus_1['non_trainable'])
+
   # Test class for batches using namedtuple.
   _make_test_batch = collections.namedtuple('TestBatch', ['x', 'y'])
 
