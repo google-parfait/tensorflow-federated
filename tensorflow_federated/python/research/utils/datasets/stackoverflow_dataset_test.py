@@ -183,7 +183,7 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
   def test_test_preprocess_fn_returns_correct_sequence(self):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
     test_preprocess_fn = stackoverflow_dataset.create_test_dataset_preprocess_fn(
-        max_seq_len=6, vocab=['one', 'must'])
+        max_seq_len=6, vocab=['one', 'must'], num_oov_buckets=1)
     test_preprocessed_ds = test_preprocess_fn(ds)
     element = next(iter(test_preprocessed_ds))
     # BOS is len(vocab)+2, EOS is len(vocab)+3, pad is 0, OOV is len(vocab)+1
@@ -228,6 +228,9 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
     self.assertEqual(self.evaluate(element[0])[0][4], 7)
     # pad is 0
     self.assertEqual(self.evaluate(element[0])[0][5], 0)
+
+
+class ConstructWordLevelDatasetsTest(tf.test.TestCase):
 
   @test.skip_test_for_gpu
   def test_take_with_repeat(self):
