@@ -1373,30 +1373,6 @@ def resolve_higher_order_functions(
     above.
   """
   tree_analysis.check_has_unique_names(comp)
-  unbound_refs = transformation_utils.get_map_of_unbound_references(comp)[comp]
-
-  # TODO(b/161803017): Remove this extra check when we strengthen the
-  # guarantees of `uniquify_reference_names` and the checks in
-  # `check_has_unique_names`.
-  def _check_does_not_rebind_unbound_ref(inner_comp):
-    if inner_comp.is_lambda() and inner_comp.parameter_name in unbound_refs:
-      raise ValueError('Encountered a rebinding of a variable {} which is '
-                       'unbound in the parent computation {}. This is '
-                       'disallowed. Please uniquify the reference names in '
-                       'the computation which binds this reference.'.format(
-                           inner_comp.parameter_name, comp))
-    elif inner_comp.is_block():
-      for name, _ in inner_comp.locals:
-        if name in unbound_refs:
-          raise ValueError('Encountered a rebinding of a variable {} which is '
-                           'unbound in the parent computation {}. This is '
-                           'disallowed. Please uniquify the reference names in '
-                           'the computation which binds this reference.'.format(
-                               name, comp))
-    return inner_comp, False
-
-  transformation_utils.transform_postorder(comp,
-                                           _check_does_not_rebind_unbound_ref)
 
   functional_bindings = {}
 
