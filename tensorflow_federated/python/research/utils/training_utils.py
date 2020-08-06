@@ -139,7 +139,7 @@ def build_sample_fn(
       congruential generator (aka Lehmer generator, see 'The Art of Computer
       Programming, Vol. 3' by Donald Knuth for reference). This does not affect
       model initialization, shuffling, or other such aspects of the federated
-      training process. Note that this will alter the global numpy random seed.
+      training process.
 
   Returns:
     A function which returns a list of elements from the input iterator at a
@@ -147,8 +147,7 @@ def build_sample_fn(
   """
 
   if isinstance(random_seed, int):
-    np.random.seed(random_seed)
-    mlcg_start = np.random.randint(1, MLCG_MODULUS - 1)
+    mlcg_start = np.random.RandomState(random_seed).randint(1, MLCG_MODULUS - 1)
 
     def get_pseudo_random_int(round_num):
       return pow(MLCG_MULTIPLIER, round_num,
@@ -156,8 +155,10 @@ def build_sample_fn(
 
   def sample(round_num, random_seed):
     if isinstance(random_seed, int):
-      np.random.seed(get_pseudo_random_int(round_num))
-    return np.random.choice(a, size=size, replace=replace)
+      random_state = np.random.RandomState(get_pseudo_random_int(round_num))
+    else:
+      random_state = np.random.RandomState()
+    return random_state.choice(a, size=size, replace=replace)
 
   return functools.partial(sample, random_seed=random_seed)
 
