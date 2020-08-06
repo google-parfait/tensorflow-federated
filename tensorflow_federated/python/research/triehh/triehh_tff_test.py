@@ -17,27 +17,28 @@ import string
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.python.research.analytics.heavy_hitters import heavy_hitters_testcase as hh_test
 from tensorflow_federated.python.research.triehh import triehh_tf
 from tensorflow_federated.python.research.triehh import triehh_tff
 
 
-class TriehhTffTest(tf.test.TestCase):
+class TriehhTffTest(hh_test.HeavyHittersTest):
 
   def test_build_triehh_process_works_as_expeted(self):
     clients = 3
     num_sub_rounds = 4
-    max_rounds = 6
-    max_num_heavy_hitters = 3
+    max_rounds = 10
+    max_num_prefixes = 3
+    threshold = 1
     max_user_contribution = 100
-    roots = (
-        string.ascii_lowercase + string.digits + "'@#-;*:./" +
-        triehh_tf.DEFAULT_TERMINATOR)
+    roots = string.ascii_lowercase + string.digits + "'@#-;*:./"
     possible_prefix_extensions = list(roots)
 
     iterative_process = triehh_tff.build_triehh_process(
         possible_prefix_extensions,
         num_sub_rounds,
-        max_num_heavy_hitters,
+        max_num_prefixes,
+        threshold,
         max_user_contribution,
         default_terminator=triehh_tf.DEFAULT_TERMINATOR)
 
@@ -46,14 +47,14 @@ class TriehhTffTest(tf.test.TestCase):
     expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
     expected_accumulated_votes = tf.zeros(
         dtype=tf.int32,
-        shape=[max_num_heavy_hitters,
+        shape=[max_num_prefixes,
                len(possible_prefix_extensions)])
     expected_round_num = tf.constant(0, dtype=tf.int32)
 
-    self.assertAllEqual(server_state.discovered_prefixes,
-                        expected_discovered_prefixes)
-    self.assertAllEqual(server_state.discovered_heavy_hitters,
-                        expected_discovered_heavy_hitters)
+    self.assertSetAllEqual(server_state.discovered_prefixes,
+                           expected_discovered_prefixes)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
     self.assertAllEqual(server_state.round_num, expected_round_num)
@@ -80,17 +81,16 @@ class TriehhTffTest(tf.test.TestCase):
       server_state, _ = iterative_process.next(server_state, sampled_datasets)
 
       if (round_num + 1) % num_sub_rounds == 0:
-        if (max_num_heavy_hitters - len(server_state.discovered_heavy_hitters) <
-            1) or (server_state.discovered_prefixes.size == 0):
+        if tf.math.equal(tf.size(server_state.discovered_prefixes), 0):
           # Training is done.
-          # All max_num_heavy_hitters have been discovered.
+          # No new prefixes have been discovered.
           break
 
     expected_discovered_heavy_hitters = tf.constant(['hi', 'hey', 'hello'],
                                                     dtype=tf.string)
 
-    self.assertAllEqual(server_state.discovered_heavy_hitters,
-                        expected_discovered_heavy_hitters)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
 
 
 if __name__ == '__main__':

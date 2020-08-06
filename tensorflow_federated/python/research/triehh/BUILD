@@ -32,6 +32,7 @@ py_test(
         ":triehh_tf",
         ":triehh_tff",
         "//tensorflow_federated",
+        "//tensorflow_federated/python/research/analytics/heavy_hitters:heavy_hitters_testcase",
     ],
 )
 
@@ -44,5 +45,6 @@ py_test(
     deps = [
         ":triehh_tf",
         "//tensorflow_federated",
+        "//tensorflow_federated/python/research/analytics/heavy_hitters:heavy_hitters_testcase",
     ],
 )

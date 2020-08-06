@@ -52,15 +52,12 @@ class ServerState(object):
   `discovered_heavy_hitters`: A tf.string containing discovered heavy
   hitters.
   `discovered_prefixes`: A tf.tstring containing candidate prefixes.
-  `possible_prefix_extensions`: A tf.tstring containing possible prefix
-  extensions.
   `round_num`: A tf.constant dictating the algorithm's round number.
   `accumulated_votes`: A tf.constant that holds the votes accumulated over
   sub-rounds.
   """
   discovered_heavy_hitters = attr.ib()
   discovered_prefixes = attr.ib()
-  possible_prefix_extensions = attr.ib()
   round_num = attr.ib()
   accumulated_votes = attr.ib()
 
@@ -129,7 +126,7 @@ def make_accumulate_client_votes_fn(round_num, num_sub_rounds,
 
 @tf.function
 def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
-                  round_num, num_sub_rounds, max_num_heavy_hitters,
+                  round_num, num_sub_rounds, max_num_prefixes,
                   max_user_contribution):
   """Creates a ClientOutput object that holds the client's votes.
 
@@ -138,7 +135,7 @@ def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
   a `ClientOutput` object that holds the client's votes on chracter extensions
   to `discovered_prefixes`. The allowed character extensions are found in
   `possible_prefix_extensions`. `round_num` and `num_sub_round` are needed to
-  compute the length of the prefix to be extended. `max_num_heavy_hitters` is
+  compute the length of the prefix to be extended. `max_num_prefixes` is
   needed to set the shape of the tensor holding the client votes.
 
   Args:
@@ -149,8 +146,8 @@ def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
     round_num: A tf.constant dictating the algorithm's round number.
     num_sub_rounds: A tf.constant containing the number of sub rounds in a
       round.
-    max_num_heavy_hitters: A tf.constant dictating the maximum number of heavy
-      hitters to discover.
+    max_num_prefixes: A tf.constant dictating the maximum number of prefixes we
+      can keep in the trie.
     max_user_contribution: A tf.constant dictating the maximum number of
       examples a client can contribute.
 
@@ -160,116 +157,33 @@ def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
   # Create all zero client vote tensor.
   client_votes = tf.zeros(
       dtype=tf.int32,
-      shape=[max_num_heavy_hitters,
+      shape=[max_num_prefixes,
              tf.shape(possible_prefix_extensions)[0]])
 
-  discovered_prefixes_table = tf.lookup.StaticHashTable(
-      tf.lookup.KeyValueTensorInitializer(
-          discovered_prefixes, tf.range(tf.shape(discovered_prefixes)[0])),
-      DEFAULT_VALUE)
-
-  possible_prefix_extensions_table = tf.lookup.StaticHashTable(
-      tf.lookup.KeyValueTensorInitializer(
-          possible_prefix_extensions,
-          tf.range(tf.shape(possible_prefix_extensions)[0])), DEFAULT_VALUE)
-
-  accumulate_client_votes_fn = make_accumulate_client_votes_fn(
-      round_num, num_sub_rounds, discovered_prefixes_table,
-      possible_prefix_extensions_table)
-
-  sampled_data = tf.data.Dataset.from_tensor_slices(
-      hh_utils.get_top_elements(
-          hh_utils.listify(dataset), max_user_contribution))
-
-  return ClientOutput(
-      sampled_data.reduce(client_votes, accumulate_client_votes_fn))
-
-
-@tf.function()
-def extend_prefixes(prefixes_to_extend, possible_prefix_extensions):
-  """Extends prefixes in `prefixes_to_extend` by `possible_prefix_extensions`.
-
-  Args:
-    prefixes_to_extend: A 1D tf.string containing prefixes to be extended.
-    possible_prefix_extensions: A 1D tf.string containing all possible prefix
-      extensions.
-
-  Returns:
-    A 1D tf.string containing all the extended prefixes.
-  """
-  num_new_prefixes = tf.shape(prefixes_to_extend)[0] * tf.shape(
-      possible_prefix_extensions)[0]
-  extended_prefixes = tf.TensorArray(dtype=tf.string, size=num_new_prefixes)
-  position = tf.constant(0, dtype=tf.int32)
-  for prefix in prefixes_to_extend:
-    for possible_extension in possible_prefix_extensions:
-      # [-1] is passed to tf.reshape to flatten the extended prefix. This is
-      # important to ensure consistency of shapes.
-      extended_prefix = tf.reshape(
-          tf.strings.reduce_join([prefix, possible_extension]), [-1])
-      extended_prefixes = extended_prefixes.write(position, extended_prefix)
-      position += 1
-  return extended_prefixes.concat()
-
-
-@tf.function()
-def extend_prefixes_and_discover_new_heavy_hitters(discovered_prefixes,
-                                                   possible_prefix_extensions,
-                                                   discovered_prefixes_indices,
-                                                   prefix_extensions_indices,
-                                                   default_terminator):
-  """Extends prefixes and discovers new heavy hitters.
-
-  Args:
-    discovered_prefixes: A 1D tf.string containing prefixes to be extended.
-    possible_prefix_extensions: A 1D tf.string containing all possible prefix
-      extensions.
-    discovered_prefixes_indices: A 1D tf.int32 tensor cotaining the indices of
-      the prefixes to be extended.
-    prefix_extensions_indices: A 1D tf.int32 tensor cotaining the indices of the
-      prefix extensions. For example, discovered_prefixes at
-      discovered_prefixes_indices[0] will be extended by
-      possible_prefix_extensions at prefix_extensions_indices[0].
-    default_terminator: A 0D tf.string tensor holding the end of word symbol.
-
-  Returns:
-    extended_prefixes: A 1D tf.string containing the extended prefixes.
-    new_heavy_hitters: A 1D tf.string containing the discovered heavy hitters.
-  """
-  remaining_num_of_heavy_hitters = tf.shape(prefix_extensions_indices)[0]
-  extended_prefixes = tf.TensorArray(
-      dtype=tf.string, size=remaining_num_of_heavy_hitters, element_shape=(1,))
-  new_heavy_hitters = tf.TensorArray(
-      dtype=tf.string, size=remaining_num_of_heavy_hitters, element_shape=(1,))
-
-  num_new_heavy_hitters = tf.constant(0, dtype=tf.int32)
-  num_extended_prefixes = tf.constant(0, dtype=tf.int32)
-
-  for i in tf.range(remaining_num_of_heavy_hitters):
-    extension = possible_prefix_extensions[prefix_extensions_indices[i]]
-    prefix = discovered_prefixes[discovered_prefixes_indices[i]]
-    if tf.equal(extension, default_terminator):
-      new_heavy_hitters = new_heavy_hitters.write(num_new_heavy_hitters,
-                                                  tf.reshape(prefix, [1]))
-      num_new_heavy_hitters += 1
-    else:
-      extended_prefix = tf.reshape(
-          tf.strings.reduce_join([prefix, extension]), [1])
-      extended_prefixes = extended_prefixes.write(num_extended_prefixes,
-                                                  extended_prefix)
-      num_extended_prefixes += 1
-
-  if num_new_heavy_hitters == 0:
-    new_heavy_hitters = tf.zeros((0,), dtype=tf.string)
+  # If discovered_prefixes is emtpy (training is done), skip the voting.
+  if tf.math.equal(tf.size(discovered_prefixes), 0):
+    return ClientOutput(client_votes)
   else:
-    new_heavy_hitters = new_heavy_hitters.concat()[:num_new_heavy_hitters]
+    discovered_prefixes_table = tf.lookup.StaticHashTable(
+        tf.lookup.KeyValueTensorInitializer(
+            discovered_prefixes, tf.range(tf.shape(discovered_prefixes)[0])),
+        DEFAULT_VALUE)
 
-  if num_extended_prefixes == 0:
-    extended_prefixes = tf.zeros((0,), dtype=tf.string)
-  else:
-    extended_prefixes = extended_prefixes.concat()[:num_extended_prefixes]
+    possible_prefix_extensions_table = tf.lookup.StaticHashTable(
+        tf.lookup.KeyValueTensorInitializer(
+            possible_prefix_extensions,
+            tf.range(tf.shape(possible_prefix_extensions)[0])), DEFAULT_VALUE)
 
-  return extended_prefixes, new_heavy_hitters
+    accumulate_client_votes_fn = make_accumulate_client_votes_fn(
+        round_num, num_sub_rounds, discovered_prefixes_table,
+        possible_prefix_extensions_table)
+
+    sampled_data = tf.data.Dataset.from_tensor_slices(
+        hh_utils.get_top_elements(
+            hh_utils.listify(dataset), max_user_contribution))
+
+    return ClientOutput(
+        sampled_data.reduce(client_votes, accumulate_client_votes_fn))
 
 
 @tf.function()
@@ -282,122 +196,200 @@ def accumulate_server_votes(server_state, sub_round_votes):
 
 
 @tf.function()
-def accumulate_server_votes_and_decode(server_state, sub_round_votes,
-                                       max_num_heavy_hitters,
-                                       default_terminator):
+def get_extended_prefix_candidates(discovered_prefixes,
+                                   extensions_wo_terminator):
+  """Extend all discovered_prefixes with all possible extensions.
+
+  Args:
+    discovered_prefixes: A 1D tf.string containing discovered prefixes.
+    extensions_wo_terminator: A 1D tf.string containing containing all possible
+      extensions except `default_terminator`.
+
+  Returns:
+    A 1D tf.string tensor containing all combinations of each item in
+    `discovered_prefixes` extended by each item in `extensions_wo_terminator`.
+    Shape: (len(`discovered_prefixes`) * len(`extensions_wo_terminator`), ).
+  """
+  extended_prefixes = tf.TensorArray(
+      dtype=tf.string,
+      size=tf.shape(discovered_prefixes)[0] *
+      tf.shape(extensions_wo_terminator)[0])
+  position = tf.constant(0, dtype=tf.int32)
+  for prefix in discovered_prefixes:
+    for possible_extension in extensions_wo_terminator:
+      # [-1] is passed to tf.reshape to flatten the extended prefix. This is
+      # important to ensure consistency of shapes.
+      extended_prefix = tf.reshape(
+          tf.strings.reduce_join([prefix, possible_extension]), [-1])
+      extended_prefixes = extended_prefixes.write(position, extended_prefix)
+      position += 1
+  return extended_prefixes.concat()
+
+
+@tf.function()
+def extend_prefixes(prefixes_votes, discovered_prefixes,
+                    extensions_wo_terminator, max_num_prefixes, threshold):
+  """Extends prefixes in `discovered_prefixes` by `extensions_wo_terminator`.
+
+  For any prefix in `discovered_prefixes` with an extension in
+  `extensions_wo_terminator`, we only save this extension if the number of votes
+  for it is at least `threshold` and it is in the highest `max_num_prefixes`
+  votes.
+
+  Args:
+    prefixes_votes: A 1D tf.int32 containing flattern votes of all candidates
+      for extended prefixes.
+    discovered_prefixes: A 1D tf.string containing prefixes to be extended.
+    extensions_wo_terminator: A 1D tf.string containing all possible prefix
+      extensions except `default_terminator`.
+    max_num_prefixes: A tf.constant dictating the maximum number of prefixes we
+      can keep in the trie.
+    threshold: The threshold for heavy hitters and discovered prefixes. Only
+      those get at least `threshold` votes are discovered.
+
+  Returns:
+    A 1D tf.string containing all the extended prefixes.
+  """
+  extended_prefix_candiates = get_extended_prefix_candidates(
+      discovered_prefixes, extensions_wo_terminator)
+  extended_prefix_candiates_num = tf.shape(extended_prefix_candiates)[0]
+
+  prefixes_mask = tf.math.greater_equal(prefixes_votes, threshold)
+
+  # If the number of candidates for extended prefixes <= max_num_prefixes, we
+  # only need to filter the votes by the threshold. Otherwise, the votes needs
+  # to be both >= threhold and in top `max_num_prefixes`.
+  if tf.shape(prefixes_votes)[0] > max_num_prefixes:
+    _, top_indices = tf.math.top_k(prefixes_votes, max_num_prefixes)
+
+    # Create a 1-D tensor filled with tf.bool True of shape (max_num_prefixes,)
+    top_indices = tf.cast(top_indices, dtype=tf.int64)
+    top_indices = tf.sort(top_indices)
+    top_indices = tf.reshape(top_indices, (tf.shape(top_indices)[0], 1))
+    top_indices_mask_values = tf.cast(
+        tf.ones(shape=(max_num_prefixes,)), dtype=tf.bool)
+
+    # Create a mask tensor that only the indices of the top `max_num_prefixes`
+    # candidates are set to True.
+    top_indices_mask = tf.sparse.SparseTensor(
+        indices=top_indices,
+        values=top_indices_mask_values,
+        dense_shape=[extended_prefix_candiates_num])
+    top_indices_mask = tf.sparse.to_dense(top_indices_mask)
+    prefixes_mask = tf.math.logical_and(prefixes_mask, top_indices_mask)
+
+  extended_prefixes = tf.boolean_mask(extended_prefix_candiates, prefixes_mask)
+  return extended_prefixes
+
+
+@tf.function()
+def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
+                                       sub_round_votes, max_num_prefixes,
+                                       threshold):
   """Accumulates server votes and executes a decoding round.
 
   Args:
     server_state: A `ServerState`, the state to be updated.
-    sub_round_votes: A tensor of shape = (max_num_heavy_hitters,
+    possible_prefix_extensions: A 1D tf.string containing all possible prefix
+      extensions.
+    sub_round_votes: A tensor of shape = (max_num_prefixes,
       len(possible_prefix_extensions)) containing aggregated client votes.
-    max_num_heavy_hitters: The total number of heavy hitters to be discovered.
-    default_terminator: The end of sequence symbol.
+    max_num_prefixes: A tf.constant dictating the maximum number of prefixes we
+      can keep in the trie.
+    threshold: The threshold for heavy hitters and discovered prefixes. Only
+      those get at least `threshold` votes are discovered.
 
   Returns:
     An updated `ServerState`.
   """
-  # Compute the remaining number of heavy hitters to be discovered.
-  remaining_num_of_heavy_hitters = max_num_heavy_hitters - tf.shape(
-      server_state.discovered_heavy_hitters)[0]
+  possible_extensions_num = tf.shape(possible_prefix_extensions)[0]
 
-  # Calculate the total number of possible extensions.
-  num_possible_extensions = tf.shape(
-      server_state.discovered_prefixes)[0] * tf.shape(
-          server_state.possible_prefix_extensions)[0]
+  # Get a list of possible extensions without `default_terminator` (the last
+  # item in `possible_prefix_extensions`)
+  extensions_wo_terminator_num = possible_extensions_num - 1
+  extensions_wo_terminator = tf.slice(possible_prefix_extensions, [0],
+                                      [extensions_wo_terminator_num])
 
-  # If num_possible_extensions <= remaining_num_of_heavy_hitters, extend all.
-  if num_possible_extensions <= remaining_num_of_heavy_hitters:
-    extended_prefixes = extend_prefixes(server_state.discovered_prefixes,
-                                        server_state.possible_prefix_extensions)
+  accumulated_votes = server_state.accumulated_votes + sub_round_votes
 
-    # Reinitialize the vote tensor.
-    accumulated_votes = tf.zeros(
-        dtype=tf.int32,
-        shape=[
-            max_num_heavy_hitters,
-            tf.shape(server_state.possible_prefix_extensions)[0]
-        ])
-    round_num = server_state.round_num + 1
+  # The last column of `accumulated_votes` are those ending with
+  # 'default_terminator`, which are full length heavy hitters.
+  heavy_hitters_votes = tf.slice(
+      accumulated_votes, [0, extensions_wo_terminator_num],
+      [tf.shape(server_state.discovered_prefixes)[0], 1])
+  heavy_hitters_votes = tf.reshape(heavy_hitters_votes, [-1])
 
-    # Update discovered_prefixes and round_num.
-    return tff.utils.update_state(
-        server_state,
-        round_num=round_num,
-        discovered_prefixes=extended_prefixes,
-        accumulated_votes=accumulated_votes)
-  else:
-    # Accumulate votes.
-    accumulated_votes = server_state.accumulated_votes + sub_round_votes
+  heavy_hitters_mask = tf.math.greater_equal(heavy_hitters_votes, threshold)
 
-    # Get top `remaining_num_of_heavy_hitters` candidates.
-    relevant_votes = tf.slice(
-        accumulated_votes, [0, 0],
-        [tf.shape(server_state.discovered_prefixes)[0], -1])
-    relevant_votes = tf.reshape(relevant_votes, [
-        tf.shape(server_state.discovered_prefixes)[0] *
-        tf.shape(server_state.possible_prefix_extensions)[0]
-    ])
-    _, flattened_indices = tf.math.top_k(relevant_votes,
-                                         remaining_num_of_heavy_hitters)
-    prefix_extensions_indices = tf.math.mod(
-        flattened_indices,
-        tf.shape(server_state.possible_prefix_extensions)[0])
-    discovered_prefixes_indices = tf.math.floordiv(
-        flattened_indices,
-        tf.shape(server_state.possible_prefix_extensions)[0])
+  # The candidates of heavy hitters are `discovered_prefixes` ending with
+  # `default_terminator`. We don't attach `default_terminator` here because it
+  # is supposed to be removed after the full length heavy hitters are
+  # discovered.
+  heavy_hitters_candidates = server_state.discovered_prefixes
+  new_heavy_hitters = tf.boolean_mask(heavy_hitters_candidates,
+                                      heavy_hitters_mask)
 
-    # TODO(b/150705615): Keep only candidates with positive votes.
+  # All but the last column of `accumulated_votes` are votes of prefixes.
+  prefixes_votes = tf.slice(accumulated_votes, [0, 0], [
+      tf.shape(server_state.discovered_prefixes)[0],
+      extensions_wo_terminator_num
+  ])
+  prefixes_votes = tf.reshape(prefixes_votes, [-1])
 
-    # Extend prefixes and save newly discovered heavy hitters.
-    extended_prefixes, new_heavy_hitters = extend_prefixes_and_discover_new_heavy_hitters(
-        server_state.discovered_prefixes,
-        server_state.possible_prefix_extensions, discovered_prefixes_indices,
-        prefix_extensions_indices, default_terminator)
+  extended_prefixes = extend_prefixes(prefixes_votes,
+                                      server_state.discovered_prefixes,
+                                      extensions_wo_terminator,
+                                      max_num_prefixes, threshold)
 
-    discovered_heavy_hitters = tf.concat(
-        [server_state.discovered_heavy_hitters, new_heavy_hitters], 0)
+  discovered_heavy_hitters = tf.concat(
+      [server_state.discovered_heavy_hitters, new_heavy_hitters], 0)
 
-    # Reinitialize the server's vote tensor.
-    accumulated_votes = tf.zeros(
-        dtype=tf.int32,
-        shape=[
-            max_num_heavy_hitters,
-            tf.shape(server_state.possible_prefix_extensions)[0]
-        ])
+  # Reinitialize the server's vote tensor.
+  accumulated_votes = tf.zeros(
+      dtype=tf.int32, shape=[max_num_prefixes, possible_extensions_num])
 
-    # Increment the server's round_num.
-    round_num = server_state.round_num + 1
+  # Increment the server's round_num.
+  round_num = server_state.round_num + 1
 
-    # Return an udpated server state.
-    return tff.utils.update_state(
-        server_state,
-        discovered_heavy_hitters=discovered_heavy_hitters,
-        round_num=round_num,
-        discovered_prefixes=extended_prefixes,
-        accumulated_votes=accumulated_votes)
+  # Return an udpated server state.
+  return tff.utils.update_state(
+      server_state,
+      discovered_heavy_hitters=discovered_heavy_hitters,
+      round_num=round_num,
+      discovered_prefixes=extended_prefixes,
+      accumulated_votes=accumulated_votes)
 
 
 @tf.function
-def server_update(server_state, sub_round_votes, num_sub_rounds,
-                  max_num_heavy_hitters, default_terminator):
+def server_update(server_state, possible_prefix_extensions, sub_round_votes,
+                  num_sub_rounds, max_num_prefixes, threshold):
   """Updates `server_state` based on `client_votes`.
 
   Args:
     server_state: A `ServerState`, the state to be updated.
-    sub_round_votes: A tensor of shape = (max_num_heavy_hitters,
+    possible_prefix_extensions: A 1D tf.string containing all possible prefix
+      extensions.
+    sub_round_votes: A tensor of shape = (max_num_prefixes,
       len(possible_prefix_extensions)) containing aggregated client votes.
     num_sub_rounds: The total number of sub rounds to be executed before
       decoding aggregated votes.
-    max_num_heavy_hitters: The total number of heavy hitters to be discovered.
-    default_terminator: The end of sequence symbol.
+    max_num_prefixes: A tf.constant dictating the maximum number of prefixes we
+      can keep in the trie.
+    threshold: The threshold for heavy hitters and discovered prefixes. Only
+      those get at least `threshold` votes are discovered.
 
   Returns:
     An updated `ServerState`.
   """
+
+  # If discovered_prefixes is emtpy (training is done), skip the voting.
+  if tf.math.equal(tf.size(server_state.discovered_prefixes), 0):
+    return server_state
+
   if tf.math.equal((server_state.round_num + 1) % num_sub_rounds, 0):
-    return accumulate_server_votes_and_decode(server_state, sub_round_votes,
-                                              max_num_heavy_hitters,
-                                              default_terminator)
+    return accumulate_server_votes_and_decode(server_state,
+                                              possible_prefix_extensions,
+                                              sub_round_votes, max_num_prefixes,
+                                              threshold)
   else:
     return accumulate_server_votes(server_state, sub_round_votes)

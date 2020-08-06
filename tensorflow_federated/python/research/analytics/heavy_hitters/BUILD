@@ -10,6 +10,14 @@ py_library(
     deps = ["//tensorflow_federated"],
 )
 
+py_library(
+    name = "heavy_hitters_testcase",
+    testonly = True,
+    srcs = ["heavy_hitters_testcase.py"],
+    srcs_version = "PY3",
+    visibility = ["//tensorflow_federated/python/research"],
+)
+
 py_test(
     name = "heavy_hitters_utils_test",
     srcs = ["heavy_hitters_utils_test.py"],

@@ -17,14 +17,16 @@ import string
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.python.research.analytics.heavy_hitters import heavy_hitters_testcase as hh_test
 from tensorflow_federated.python.research.triehh import triehh_tf
 
 
-class TriehhTfTest(tf.test.TestCase):
+class TriehhTfTest(hh_test.HeavyHittersTest):
 
   def test_accumulate_client_votes_works_as_expected(self):
-    possible_prefix_extensions = tf.constant(['a', 'b', 'c', 'd', 'e', '$'],
-                                             dtype=tf.string)
+    possible_prefix_extensions = tf.constant(
+        ['a', 'b', 'c', 'd', 'e', triehh_tf.DEFAULT_TERMINATOR],
+        dtype=tf.string)
     discovered_prefixes = tf.constant(['a', 'b', 'c', 'd'], dtype=tf.string)
     round_num = tf.constant(1)
     num_sub_rounds = tf.constant(1)
@@ -66,10 +68,11 @@ class TriehhTfTest(tf.test.TestCase):
     self.assertAllEqual(accumulated_votes, initial_votes)
 
   def test_client_update_works_as_expected(self):
-    max_num_heavy_hitters = tf.constant(10)
+    max_num_prefixes = tf.constant(10)
     max_user_contribution = tf.constant(10)
-    possible_prefix_extensions = tf.constant(['a', 'b', 'c', 'd', 'e'],
-                                             dtype=tf.string)
+    possible_prefix_extensions = tf.constant(
+        ['a', 'b', 'c', 'd', 'e', triehh_tf.DEFAULT_TERMINATOR],
+        dtype=tf.string)
     discovered_prefixes = tf.constant(['a', 'b', 'c', 'd', 'e'],
                                       dtype=tf.string)
     round_num = tf.constant(1)
@@ -79,21 +82,25 @@ class TriehhTfTest(tf.test.TestCase):
     client_output = triehh_tf.client_update(sample_data, discovered_prefixes,
                                             possible_prefix_extensions,
                                             round_num, num_sub_rounds,
-                                            max_num_heavy_hitters,
+                                            max_num_prefixes,
                                             max_user_contribution)
 
+    # Each string is attached with triehh_tf.DEFAULT_TERMINATOR before the
+    # client votes, so 'a$' get a vote here.
     expected_client_votes = tf.constant(
-        [[1, 2, 1, 0, 0], [1, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
+        [[1, 2, 1, 0, 0, 1], [1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
         dtype=tf.int32)
     self.assertAllEqual(client_output.client_votes, expected_client_votes)
 
   def test_client_update_works_on_empty_local_datasets(self):
-    max_num_heavy_hitters = tf.constant(10)
+    max_num_prefixes = tf.constant(10)
     max_user_contribution = tf.constant(10)
-    possible_prefix_extensions = tf.constant(['a', 'b', 'c', 'd', 'e'],
-                                             dtype=tf.string)
+    possible_prefix_extensions = tf.constant(
+        ['a', 'b', 'c', 'd', 'e', triehh_tf.DEFAULT_TERMINATOR],
+        dtype=tf.string)
     discovered_prefixes = tf.constant(['a', 'b', 'c', 'd', 'e'],
                                       dtype=tf.string)
     round_num = tf.constant(1)
@@ -102,51 +109,88 @@ class TriehhTfTest(tf.test.TestCase):
     client_output = triehh_tf.client_update(sample_data, discovered_prefixes,
                                             possible_prefix_extensions,
                                             round_num, num_sub_rounds,
-                                            max_num_heavy_hitters,
+                                            max_num_prefixes,
                                             max_user_contribution)
 
     expected_client_votes = tf.constant(
-        [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
+        [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
         dtype=tf.int32)
     self.assertAllEqual(client_output.client_votes, expected_client_votes)
 
-  def test_extend_prefixes_works_as_expected(self):
-    possible_prefix_extensions = tf.constant(['a', 'b', 'c', 'd', '$'],
-                                             dtype=tf.string)
-    prefixes_to_extend = tf.constant(['a', 'b', 'c', 'd', 'e'], dtype=tf.string)
-    extended_prefixes = triehh_tf.extend_prefixes(prefixes_to_extend,
-                                                  possible_prefix_extensions)
-    expected_extended_prefixes = tf.constant([
-        'aa', 'ab', 'ac', 'ad', 'a$', 'ba', 'bb', 'bc', 'bd', 'b$', 'ca', 'cb',
-        'cc', 'cd', 'c$', 'da', 'db', 'dc', 'dd', 'd$', 'ea', 'eb', 'ec', 'ed',
-        'e$'
+  def test_client_update_works_on_empty_discovered_prefixes(self):
+    max_num_prefixes = tf.constant(10)
+    max_user_contribution = tf.constant(10)
+    possible_prefix_extensions = tf.constant(
+        ['a', 'b', 'c', 'd', 'e', triehh_tf.DEFAULT_TERMINATOR],
+        dtype=tf.string)
+    discovered_prefixes = tf.constant([], dtype=tf.string)
+    round_num = tf.constant(1)
+    num_sub_rounds = tf.constant(1)
+    sample_data = tf.data.Dataset.from_tensor_slices(
+        ['a', '', 'abc', 'bac', 'abb', 'aaa', 'acc', 'hi'])
+    client_output = triehh_tf.client_update(sample_data, discovered_prefixes,
+                                            possible_prefix_extensions,
+                                            round_num, num_sub_rounds,
+                                            max_num_prefixes,
+                                            max_user_contribution)
+
+    expected_client_votes = tf.constant(
+        [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
+        dtype=tf.int32)
+    self.assertAllEqual(client_output.client_votes, expected_client_votes)
+
+  def test_get_extended_prefix_candidates_works_as_expected(self):
+    extensions_wo_terminator = tf.constant(['a', 'b', 'c', 'd'],
+                                           dtype=tf.string)
+    discovered_prefixes = tf.constant(['a', 'b', 'c'], dtype=tf.string)
+    extended_prefix_candidates = triehh_tf.get_extended_prefix_candidates(
+        discovered_prefixes, extensions_wo_terminator)
+    expected_extended_prefix_candidates = tf.constant([
+        'aa', 'ab', 'ac', 'ad', 'ba', 'bb', 'bc', 'bd', 'ca', 'cb', 'cc', 'cd'
     ],
+                                                      dtype=tf.string)
+    self.assertSetAllEqual(extended_prefix_candidates,
+                           expected_extended_prefix_candidates)
+
+  def test_extend_prefixes_works_as_expected(self):
+    extensions_wo_terminator = tf.constant(['a', 'b', 'c', 'd'],
+                                           dtype=tf.string)
+    discovered_prefixes = tf.constant(['a', 'b', 'c'], dtype=tf.string)
+    threshold = threshold = tf.constant(1)
+    max_num_prefixes = tf.constant(3)
+    prefixes_votes = tf.constant([4, 2, 3, 0, 7, 1, 0, 0, 0, 0, 0, 8],
+                                 dtype=tf.int32)
+    extended_prefixes = triehh_tf.extend_prefixes(prefixes_votes,
+                                                  discovered_prefixes,
+                                                  extensions_wo_terminator,
+                                                  max_num_prefixes, threshold)
+    expected_extended_prefixes = tf.constant(['cd', 'ba', 'aa'],
                                              dtype=tf.string)
-    self.assertAllEqual(extended_prefixes, expected_extended_prefixes)
+    self.assertSetAllEqual(extended_prefixes, expected_extended_prefixes)
 
-  def test_extend_prefixes_and_discover_new_heavy_hitters_works_as_expected(
-      self):
-    discovered_prefixes = tf.constant(['sta', 'sun', 'moo'], dtype=tf.string)
-    possible_prefix_extensions = tf.constant(['r', 'n', '$'], dtype=tf.string)
-    discovered_prefixes_indices = tf.constant([0, 1, 2], dtype=tf.int32)
-    prefix_extensions_indices = tf.constant([0, 2, 1], dtype=tf.int32)
-    default_terminator = tf.constant('$', dtype=tf.string)
-
-    extended_prefixes, new_heavy_hitters = triehh_tf.extend_prefixes_and_discover_new_heavy_hitters(
-        discovered_prefixes, possible_prefix_extensions,
-        discovered_prefixes_indices, prefix_extensions_indices,
-        default_terminator)
-
-    expected_extended_prefixes = tf.constant(['star', 'moon'], dtype=tf.string)
-    expected_new_heavy_hitters = tf.constant(['sun'], dtype=tf.string)
-
-    self.assertAllEqual(extended_prefixes, expected_extended_prefixes)
-    self.assertAllEqual(new_heavy_hitters, expected_new_heavy_hitters)
+  def test_extend_prefixes_with_threshold_works_as_expected(self):
+    extensions_wo_terminator = tf.constant(['a', 'b', 'c', 'd'],
+                                           dtype=tf.string)
+    discovered_prefixes = tf.constant(['a', 'b', 'c'], dtype=tf.string)
+    threshold = threshold = tf.constant(3)
+    max_num_prefixes = tf.constant(20)
+    prefixes_votes = tf.constant([4, 2, 3, 0, 7, 1, 0, 0, 0, 0, 0, 8],
+                                 dtype=tf.int32)
+    extended_prefixes = triehh_tf.extend_prefixes(prefixes_votes,
+                                                  discovered_prefixes,
+                                                  extensions_wo_terminator,
+                                                  max_num_prefixes, threshold)
+    expected_extended_prefixes = tf.constant(['aa', 'ac', 'ba', 'cd'],
+                                             dtype=tf.string)
+    self.assertSetAllEqual(extended_prefixes, expected_extended_prefixes)
 
   def test_accumulate_server_votes_works_as_expected(self):
-    possible_prefix_extensions = ['a', 'b', 'c', 'd', 'e']
     discovered_prefixes = ['a', 'b']
     discovered_heavy_hitters = []
     initial_votes = tf.constant(
@@ -159,8 +203,6 @@ class TriehhTfTest(tf.test.TestCase):
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
-        possible_prefix_extensions=tf.constant(
-            possible_prefix_extensions, dtype=tf.string),
         round_num=tf.constant(0, dtype=tf.int32),
         accumulated_votes=initial_votes)
 
@@ -182,34 +224,37 @@ class TriehhTfTest(tf.test.TestCase):
                         expected_accumulated_votes)
 
   def test_accumulate_server_votes_and_decode_works_as_expected(self):
-    max_num_heavy_hitters = tf.constant(4)
-    default_terminator = tf.constant('$', tf.string)
-    possible_prefix_extensions = ['a', 'n', 's', 't', 'u']
+    max_num_prefixes = tf.constant(4)
+    threshold = tf.constant(1)
+    possible_prefix_extensions = [
+        'a', 'n', 's', 't', 'u', triehh_tf.DEFAULT_TERMINATOR
+    ]
+    possible_prefix_extensions = tf.constant(
+        possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = ['su', 'st']
     discovered_heavy_hitters = []
-    initial_votes = tf.constant(
-        [[1, 2, 1, 0, 0], [1, 2, 1, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
-        dtype=tf.int32)
+    initial_votes = tf.constant([[1, 2, 1, 0, 0, 0], [1, 2, 1, 0, 0, 0],
+                                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]],
+                                dtype=tf.int32)
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
-        possible_prefix_extensions=tf.constant(
-            possible_prefix_extensions, dtype=tf.string),
         round_num=tf.constant(3, dtype=tf.int32),
         accumulated_votes=initial_votes)
 
-    sub_round_votes = tf.constant(
-        [[3, 3, 1, 0, 0], [5, 1, 1, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
-        dtype=tf.int32)
+    sub_round_votes = tf.constant([[3, 3, 1, 0, 0, 0], [5, 1, 1, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]],
+                                  dtype=tf.int32)
 
     server_state = triehh_tf.accumulate_server_votes_and_decode(
-        server_state, sub_round_votes, max_num_heavy_hitters,
-        default_terminator)
+        server_state, possible_prefix_extensions, sub_round_votes,
+        max_num_prefixes, threshold)
 
     expected_accumulated_votes = tf.constant(
-        [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
+        [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
         dtype=tf.int32)
     expected_discovered_prefixes = tf.constant(['sta', 'sun', 'sua', 'stn'],
                                                dtype=tf.string)
@@ -217,16 +262,63 @@ class TriehhTfTest(tf.test.TestCase):
 
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
-    self.assertAllEqual(server_state.discovered_prefixes,
-                        expected_discovered_prefixes)
-    self.assertAllEqual(server_state.discovered_heavy_hitters,
-                        expected_discovered_heavy_hitters)
+    self.assertSetAllEqual(server_state.discovered_prefixes,
+                           expected_discovered_prefixes)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
+
+  def test_accumulate_server_votes_and_decode_threhold_works_as_expected(self):
+    max_num_prefixes = tf.constant(4)
+    threshold = tf.constant(5)
+    possible_prefix_extensions = [
+        'a', 'n', 's', 't', 'u', triehh_tf.DEFAULT_TERMINATOR
+    ]
+    possible_prefix_extensions = tf.constant(
+        possible_prefix_extensions, dtype=tf.string)
+    discovered_prefixes = ['su', 'st']
+    discovered_heavy_hitters = []
+    initial_votes = tf.constant([[1, 2, 1, 0, 0, 0], [1, 2, 1, 0, 0, 0],
+                                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]],
+                                dtype=tf.int32)
+
+    server_state = triehh_tf.ServerState(
+        discovered_heavy_hitters=tf.constant(
+            discovered_heavy_hitters, dtype=tf.string),
+        discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
+        round_num=tf.constant(3, dtype=tf.int32),
+        accumulated_votes=initial_votes)
+
+    sub_round_votes = tf.constant([[3, 3, 1, 0, 0, 0], [5, 1, 1, 0, 0, 0],
+                                   [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]],
+                                  dtype=tf.int32)
+
+    server_state = triehh_tf.accumulate_server_votes_and_decode(
+        server_state, possible_prefix_extensions, sub_round_votes,
+        max_num_prefixes, threshold)
+
+    expected_accumulated_votes = tf.constant(
+        [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
+        dtype=tf.int32)
+    expected_discovered_prefixes = tf.constant(['sta', 'sun'], dtype=tf.string)
+    expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
+
+    self.assertAllEqual(server_state.accumulated_votes,
+                        expected_accumulated_votes)
+    self.assertSetAllEqual(server_state.discovered_prefixes,
+                           expected_discovered_prefixes)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
 
   def test_server_update_works_as_expected(self):
-    max_num_heavy_hitters = tf.constant(10)
-    default_terminator = tf.constant('$', tf.string)
+    max_num_prefixes = tf.constant(10)
+    threshold = tf.constant(1)
     num_sub_rounds = tf.constant(1, dtype=tf.int32)
-    possible_prefix_extensions = ['a', 'b', 'c', 'd', 'e']
+    possible_prefix_extensions = [
+        'a', 'b', 'c', 'd', 'e', triehh_tf.DEFAULT_TERMINATOR
+    ]
+    possible_prefix_extensions = tf.constant(
+        possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = ['a', 'b', 'c', 'd', 'e']
     discovered_heavy_hitters = []
 
@@ -234,73 +326,222 @@ class TriehhTfTest(tf.test.TestCase):
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
-        possible_prefix_extensions=tf.constant(
-            possible_prefix_extensions, dtype=tf.string),
         round_num=tf.constant(1, dtype=tf.int32),
         accumulated_votes=tf.zeros(
             dtype=tf.int32,
-            shape=[max_num_heavy_hitters,
+            shape=[max_num_prefixes,
                    len(possible_prefix_extensions)]))
 
     sub_round_votes = tf.constant(
-        [[10, 9, 8, 7, 6], [5, 4, 3, 2, 1], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
+        [[10, 9, 8, 7, 6, 0], [5, 4, 3, 2, 1, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
         dtype=tf.int32)
 
-    server_state = triehh_tf.server_update(server_state, sub_round_votes,
-                                           num_sub_rounds,
-                                           max_num_heavy_hitters,
-                                           default_terminator)
+    server_state = triehh_tf.server_update(server_state,
+                                           possible_prefix_extensions,
+                                           sub_round_votes, num_sub_rounds,
+                                           max_num_prefixes, threshold)
     expected_discovered_prefixes = tf.constant(
         ['aa', 'ab', 'ac', 'ad', 'ae', 'ba', 'bb', 'bc', 'bd', 'be'],
         dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
     expected_accumulated_votes = tf.constant(
-        [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
+        [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
         dtype=tf.int32)
 
-    self.assertAllEqual(server_state.discovered_prefixes,
-                        expected_discovered_prefixes)
-    self.assertAllEqual(server_state.discovered_heavy_hitters,
-                        expected_discovered_heavy_hitters)
+    self.assertSetAllEqual(server_state.discovered_prefixes,
+                           expected_discovered_prefixes)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
 
-  def test_server_update_finds_heavy_hitters(self):
-    max_num_heavy_hitters = tf.constant(10)
-    default_terminator = tf.constant('$', tf.string)
+  def test_server_update_works_on_empty_discovered_prefixes(self):
+    max_num_prefixes = tf.constant(10)
+    threshold = tf.constant(1)
     num_sub_rounds = tf.constant(1, dtype=tf.int32)
-    possible_prefix_extensions = ['a', 'b', 'c', 'd', '$']
-    discovered_prefixes = ['a', 'b', 'c', 'd', '$']
+    possible_prefix_extensions = [
+        'a', 'b', 'c', 'd', 'e', triehh_tf.DEFAULT_TERMINATOR
+    ]
+    possible_prefix_extensions = tf.constant(
+        possible_prefix_extensions, dtype=tf.string)
+    discovered_prefixes = []
     discovered_heavy_hitters = []
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
-        possible_prefix_extensions=tf.constant(
-            possible_prefix_extensions, dtype=tf.string),
         round_num=tf.constant(1, dtype=tf.int32),
         accumulated_votes=tf.zeros(
             dtype=tf.int32,
-            shape=[max_num_heavy_hitters,
+            shape=[max_num_prefixes,
                    len(possible_prefix_extensions)]))
 
     sub_round_votes = tf.constant(
-        [[10, 9, 8, 7, 6], [5, 4, 3, 0, 0], [2, 1, 0, 0, 0], [0, 0, 0, 0, 0],
+        [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
+        dtype=tf.int32)
+
+    server_state = triehh_tf.server_update(server_state,
+                                           possible_prefix_extensions,
+                                           sub_round_votes, num_sub_rounds,
+                                           max_num_prefixes, threshold)
+    expected_discovered_prefixes = tf.constant([], dtype=tf.string)
+    expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
+    expected_accumulated_votes = tf.constant(
+        [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
+        dtype=tf.int32)
+
+    self.assertSetAllEqual(server_state.discovered_prefixes,
+                           expected_discovered_prefixes)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
+    self.assertAllEqual(server_state.accumulated_votes,
+                        expected_accumulated_votes)
+
+  def test_server_update_threshold_works_as_expected(self):
+    max_num_prefixes = tf.constant(10)
+    threshold = tf.constant(5)
+    num_sub_rounds = tf.constant(1, dtype=tf.int32)
+    possible_prefix_extensions = [
+        'a', 'b', 'c', 'd', 'e', triehh_tf.DEFAULT_TERMINATOR
+    ]
+    possible_prefix_extensions = tf.constant(
+        possible_prefix_extensions, dtype=tf.string)
+    discovered_prefixes = ['a', 'b', 'c', 'd', 'e']
+    discovered_heavy_hitters = []
+
+    server_state = triehh_tf.ServerState(
+        discovered_heavy_hitters=tf.constant(
+            discovered_heavy_hitters, dtype=tf.string),
+        discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
+        round_num=tf.constant(1, dtype=tf.int32),
+        accumulated_votes=tf.zeros(
+            dtype=tf.int32,
+            shape=[max_num_prefixes,
+                   len(possible_prefix_extensions)]))
+
+    sub_round_votes = tf.constant(
+        [[10, 9, 8, 7, 6, 0], [5, 4, 3, 2, 1, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
+        dtype=tf.int32)
+
+    server_state = triehh_tf.server_update(server_state,
+                                           possible_prefix_extensions,
+                                           sub_round_votes, num_sub_rounds,
+                                           max_num_prefixes, threshold)
+    expected_discovered_prefixes = tf.constant(
+        ['aa', 'ab', 'ac', 'ad', 'ae', 'ba'], dtype=tf.string)
+    expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
+    expected_accumulated_votes = tf.constant(
+        [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
+        dtype=tf.int32)
+
+    self.assertSetAllEqual(server_state.discovered_prefixes,
+                           expected_discovered_prefixes)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
+    self.assertAllEqual(server_state.accumulated_votes,
+                        expected_accumulated_votes)
+
+  def test_server_update_finds_heavy_hitters(self):
+    max_num_prefixes = tf.constant(10)
+    threshold = tf.constant(1)
+    num_sub_rounds = tf.constant(1, dtype=tf.int32)
+    possible_prefix_extensions = [
+        'a', 'b', 'c', 'd', triehh_tf.DEFAULT_TERMINATOR
+    ]
+    possible_prefix_extensions = tf.constant(
+        possible_prefix_extensions, dtype=tf.string)
+    discovered_prefixes = ['a', 'b', 'c', 'd', triehh_tf.DEFAULT_TERMINATOR]
+    discovered_heavy_hitters = []
+
+    server_state = triehh_tf.ServerState(
+        discovered_heavy_hitters=tf.constant(
+            discovered_heavy_hitters, dtype=tf.string),
+        discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
+        round_num=tf.constant(1, dtype=tf.int32),
+        accumulated_votes=tf.zeros(
+            dtype=tf.int32,
+            shape=[max_num_prefixes,
+                   len(possible_prefix_extensions)]))
+
+    sub_round_votes = tf.constant(
+        [[10, 9, 8, 7, 6], [5, 4, 3, 0, 4], [2, 1, 0, 0, 0], [0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
         dtype=tf.int32)
 
-    server_state = triehh_tf.server_update(server_state, sub_round_votes,
-                                           num_sub_rounds,
-                                           max_num_heavy_hitters,
-                                           default_terminator)
+    server_state = triehh_tf.server_update(server_state,
+                                           possible_prefix_extensions,
+                                           sub_round_votes, num_sub_rounds,
+                                           max_num_prefixes, threshold)
     expected_discovered_prefixes = tf.constant(
         ['aa', 'ab', 'ac', 'ad', 'ba', 'bb', 'bc', 'ca', 'cb'], dtype=tf.string)
+    expected_discovered_heavy_hitters = tf.constant(['a', 'b'], dtype=tf.string)
+    expected_accumulated_votes = tf.constant(
+        [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
+        dtype=tf.int32)
+
+    self.assertSetAllEqual(server_state.discovered_prefixes,
+                           expected_discovered_prefixes)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
+    self.assertAllEqual(server_state.accumulated_votes,
+                        expected_accumulated_votes)
+
+  def test_server_update_finds_heavy_hitters_with_threshold(self):
+    max_num_prefixes = tf.constant(10)
+    threshold = tf.constant(5)
+    num_sub_rounds = tf.constant(1, dtype=tf.int32)
+    possible_prefix_extensions = [
+        'a', 'b', 'c', 'd', triehh_tf.DEFAULT_TERMINATOR
+    ]
+    possible_prefix_extensions = tf.constant(
+        possible_prefix_extensions, dtype=tf.string)
+    discovered_prefixes = ['a', 'b', 'c', 'd', triehh_tf.DEFAULT_TERMINATOR]
+    discovered_heavy_hitters = []
+
+    server_state = triehh_tf.ServerState(
+        discovered_heavy_hitters=tf.constant(
+            discovered_heavy_hitters, dtype=tf.string),
+        discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
+        round_num=tf.constant(1, dtype=tf.int32),
+        accumulated_votes=tf.zeros(
+            dtype=tf.int32,
+            shape=[max_num_prefixes,
+                   len(possible_prefix_extensions)]))
+
+    sub_round_votes = tf.constant(
+        [[10, 9, 8, 7, 6], [5, 4, 3, 0, 4], [2, 1, 0, 0, 0], [0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
+        dtype=tf.int32)
+
+    server_state = triehh_tf.server_update(server_state,
+                                           possible_prefix_extensions,
+                                           sub_round_votes, num_sub_rounds,
+                                           max_num_prefixes, threshold)
+    expected_discovered_prefixes = tf.constant(['aa', 'ab', 'ac', 'ad', 'ba'],
+                                               dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant(['a'], dtype=tf.string)
     expected_accumulated_votes = tf.constant(
         [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
@@ -308,18 +549,22 @@ class TriehhTfTest(tf.test.TestCase):
          [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
         dtype=tf.int32)
 
-    self.assertAllEqual(server_state.discovered_prefixes,
-                        expected_discovered_prefixes)
-    self.assertAllEqual(server_state.discovered_heavy_hitters,
-                        expected_discovered_heavy_hitters)
+    self.assertSetAllEqual(server_state.discovered_prefixes,
+                           expected_discovered_prefixes)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
 
   def test_server_update_does_not_decode_in_a_subround(self):
-    max_num_heavy_hitters = tf.constant(10)
-    default_terminator = tf.constant('$', tf.string)
+    max_num_prefixes = tf.constant(10)
+    threshold = tf.constant(1)
     num_sub_rounds = tf.constant(2, dtype=tf.int32)
-    possible_prefix_extensions = ['a', 'b', 'c', 'd', 'e']
+    possible_prefix_extensions = [
+        'a', 'b', 'c', 'd', 'e', triehh_tf.DEFAULT_TERMINATOR
+    ]
+    possible_prefix_extensions = tf.constant(
+        possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = ['']
     discovered_heavy_hitters = []
 
@@ -327,32 +572,31 @@ class TriehhTfTest(tf.test.TestCase):
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
-        possible_prefix_extensions=tf.constant(
-            possible_prefix_extensions, dtype=tf.string),
         round_num=tf.constant(0, dtype=tf.int32),
         accumulated_votes=tf.zeros(
             dtype=tf.int32,
-            shape=[max_num_heavy_hitters,
+            shape=[max_num_prefixes,
                    len(possible_prefix_extensions)]))
 
     sub_round_votes = tf.constant(
-        [[1, 2, 1, 2, 0], [2, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
-         [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]],
+        [[1, 2, 1, 2, 0, 0], [2, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0]],
         dtype=tf.int32)
 
-    server_state = triehh_tf.server_update(server_state, sub_round_votes,
-                                           num_sub_rounds,
-                                           max_num_heavy_hitters,
-                                           default_terminator)
+    server_state = triehh_tf.server_update(server_state,
+                                           possible_prefix_extensions,
+                                           sub_round_votes, num_sub_rounds,
+                                           max_num_prefixes, threshold)
     expected_discovered_prefixes = tf.constant([''], dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
     expected_accumulated_votes = sub_round_votes
 
-    self.assertAllEqual(server_state.discovered_prefixes,
-                        expected_discovered_prefixes)
-    self.assertAllEqual(server_state.discovered_heavy_hitters,
-                        expected_discovered_heavy_hitters)
+    self.assertSetAllEqual(server_state.discovered_prefixes,
+                           expected_discovered_prefixes)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
 
@@ -360,23 +604,24 @@ class TriehhTfTest(tf.test.TestCase):
     clients = 3
     num_sub_rounds = 4
     max_rounds = 6
-    max_num_heavy_hitters = 3
+    max_num_prefixes = 3
+    threshold = 1
     max_user_contribution = 100
     roots = (
         string.ascii_lowercase + string.digits + "'@#-;*:./" +
         triehh_tf.DEFAULT_TERMINATOR)
     possible_prefix_extensions = list(roots)
+    possible_prefix_extensions_num = len(possible_prefix_extensions)
+    possible_prefix_extensions = tf.constant(
+        possible_prefix_extensions, dtype=tf.string)
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant([], dtype=tf.string),
         discovered_prefixes=tf.constant([''], dtype=tf.string),
-        possible_prefix_extensions=tf.constant(
-            possible_prefix_extensions, dtype=tf.string),
         round_num=tf.constant(0, dtype=tf.int32),
         accumulated_votes=tf.zeros(
             dtype=tf.int32,
-            shape=[max_num_heavy_hitters,
-                   len(possible_prefix_extensions)]))
+            shape=[max_num_prefixes, possible_prefix_extensions_num]))
 
     def create_dataset_fn(client_id):
       del client_id
@@ -396,8 +641,7 @@ class TriehhTfTest(tf.test.TestCase):
       ]
       accumulated_votes = tf.zeros(
           dtype=tf.int32,
-          shape=[max_num_heavy_hitters,
-                 len(possible_prefix_extensions)])
+          shape=[max_num_prefixes, possible_prefix_extensions_num])
 
       # This is a workaround to clear the graph cache in the `tf.function`; this
       # is necessary because we need to construct a new lookup table every round
@@ -407,23 +651,92 @@ class TriehhTfTest(tf.test.TestCase):
       for dataset in sampled_datasets:
         client_output = client_update(
             dataset, server_state.discovered_prefixes,
-            server_state.possible_prefix_extensions, round_num,
-            tf.constant(num_sub_rounds),
-            tf.constant(max_num_heavy_hitters, dtype=tf.int32),
+            possible_prefix_extensions, round_num, tf.constant(num_sub_rounds),
+            tf.constant(max_num_prefixes, dtype=tf.int32),
             tf.constant(max_user_contribution, dtype=tf.int32))
         accumulated_votes += client_output.client_votes
 
       server_state = triehh_tf.server_update(
-          server_state, accumulated_votes,
+          server_state, possible_prefix_extensions, accumulated_votes,
           tf.constant(num_sub_rounds, dtype=tf.int32),
-          tf.constant(max_num_heavy_hitters, dtype=tf.int32),
-          tf.constant(triehh_tf.DEFAULT_TERMINATOR, dtype=tf.string))
+          tf.constant(max_num_prefixes, dtype=tf.int32),
+          tf.constant(threshold, dtype=tf.int32))
 
     expected_discovered_heavy_hitters = tf.constant(['hi', 'hey', 'hello'],
                                                     dtype=tf.string)
 
-    self.assertAllEqual(server_state.discovered_heavy_hitters,
-                        expected_discovered_heavy_hitters)
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
+
+  def test_all_tf_functions_work_together_high_threshold(self):
+    clients = 3
+    num_sub_rounds = 4
+    max_rounds = 6
+    max_num_prefixes = 3
+    threshold = 100
+    max_user_contribution = 100
+    roots = (
+        string.ascii_lowercase + string.digits + "'@#-;*:./" +
+        triehh_tf.DEFAULT_TERMINATOR)
+    possible_prefix_extensions = list(roots)
+    possible_prefix_extensions_num = len(possible_prefix_extensions)
+    possible_prefix_extensions = tf.constant(
+        possible_prefix_extensions, dtype=tf.string)
+
+    server_state = triehh_tf.ServerState(
+        discovered_heavy_hitters=tf.constant([], dtype=tf.string),
+        discovered_prefixes=tf.constant([''], dtype=tf.string),
+        round_num=tf.constant(0, dtype=tf.int32),
+        accumulated_votes=tf.zeros(
+            dtype=tf.int32,
+            shape=[max_num_prefixes, possible_prefix_extensions_num]))
+
+    def create_dataset_fn(client_id):
+      del client_id
+      return tf.data.Dataset.from_tensor_slices(['hello', 'hey', 'hi'])
+
+    client_ids = list(range(100))
+
+    client_data = tff.simulation.ClientData.from_clients_and_fn(
+        client_ids=client_ids,
+        create_tf_dataset_for_client_fn=create_dataset_fn)
+
+    for round_num in range(max_rounds * num_sub_rounds):
+      sampled_clients = list(range(clients))
+      sampled_datasets = [
+          client_data.create_tf_dataset_for_client(client_id)
+          for client_id in sampled_clients
+      ]
+      accumulated_votes = tf.zeros(
+          dtype=tf.int32,
+          shape=[max_num_prefixes, possible_prefix_extensions_num])
+
+      # This is a workaround to clear the graph cache in the `tf.function`; this
+      # is necessary because we need to construct a new lookup table every round
+      # based on new prefixes.
+      client_update = tf.function(triehh_tf.client_update.python_function)
+
+      for dataset in sampled_datasets:
+        client_output = client_update(
+            dataset, server_state.discovered_prefixes,
+            possible_prefix_extensions, round_num, tf.constant(num_sub_rounds),
+            tf.constant(max_num_prefixes, dtype=tf.int32),
+            tf.constant(max_user_contribution, dtype=tf.int32))
+        accumulated_votes += client_output.client_votes
+
+      server_state = triehh_tf.server_update(
+          server_state, possible_prefix_extensions, accumulated_votes,
+          tf.constant(num_sub_rounds, dtype=tf.int32),
+          tf.constant(max_num_prefixes, dtype=tf.int32),
+          tf.constant(threshold, dtype=tf.int32))
+
+    expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
+    expected_discovered_prefixes = tf.constant([], dtype=tf.string)
+
+    self.assertSetAllEqual(server_state.discovered_heavy_hitters,
+                           expected_discovered_heavy_hitters)
+    self.assertSetAllEqual(server_state.discovered_prefixes,
+                           expected_discovered_prefixes)
 
 
 if __name__ == '__main__':
