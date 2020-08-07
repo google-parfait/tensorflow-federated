@@ -265,10 +265,9 @@ class ServerTest(tf.test.TestCase):
     train_vars = model_vars.trainable
     # weights are initialized with all-zeros, weights_delta is all ones,
     # SGD learning rate is 0.1. Updating server for 2 steps.
-    values = list(train_vars.values())
     self.assertAllClose(
-        values, [np.ones_like(values[0]) * 0.2,
-                 np.ones_like(values[1]) * 0.2])
+        train_vars,
+        tf.nest.map_structure(lambda t: tf.fill(tf.shape(t), 0.2), train_vars))
 
   def test_self_contained_example_keras_model(self):
     self._assert_server_update_with_all_ones(_model_fn)

@@ -31,8 +31,6 @@ How To Back door Federated Learning
     https://arxiv.org/abs/1807.00459
 """
 
-import collections
-
 import attr
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -86,11 +84,7 @@ def _create_optimizer_vars(model, optimizer):
 
 
 def _get_weights(model):
-  model_weights = collections.namedtuple('ModelWeights',
-                                         'trainable non_trainable')
-  return model_weights(
-      trainable=tensor_utils.to_var_dict(model.trainable_variables),
-      non_trainable=tensor_utils.to_var_dict(model.non_trainable_variables))
+  return tff.learning.framework.ModelWeights.from_model(model)
 
 
 def _get_norm(weights):
@@ -211,13 +205,9 @@ class ClientExplicitBoosting:
                                                       model_weights.trainable,
                                                       initial_weights.trainable)
 
-      nested_boost_factor = collections.OrderedDict([
-          (key, self.boost_factor) for key in weights_delta_malicious.keys()
-      ])
-
       weights_delta = tf.nest.map_structure(
           tf.add, weights_delta_benign,
-          tf.nest.map_structure(tf.multiply, nested_boost_factor,
+          tf.nest.map_structure(lambda delta: delta * self.boost_factor,
                                 weights_delta_malicious))
 
       return weights_delta, aggregated_outputs, num_examples_sum
@@ -505,18 +495,14 @@ class ClientProjectBoost:
     @tf.function
     def clip_by_norm(gradient, norm):
       """Clip the gradient by its l2 norm."""
-
+      norm = tf.cast(norm, tf.float32)
       delta_norm = _get_norm(gradient)
 
-      if delta_norm < tf.cast(norm, tf.float32):
+      if delta_norm < norm:
         return gradient
       else:
-        delta_mul_factor = tf.math.divide_no_nan(
-            tf.cast(norm, tf.float32), delta_norm)
-        nested_mul_factor = collections.OrderedDict([
-            (key, delta_mul_factor) for key in gradient.keys()
-        ])
-        return tf.nest.map_structure(tf.multiply, nested_mul_factor, gradient)
+        delta_mul_factor = tf.math.divide_no_nan(norm, delta_norm)
+        return tf.nest.map_structure(lambda g: g * delta_mul_factor, gradient)
 
     @tf.function
     def project_weights(weights, initial_weights, norm):
@@ -576,13 +562,8 @@ class ClientProjectBoost:
       weights_delta_malicious = tf.nest.map_structure(lambda a, b: a - b,
                                                       model_weights.trainable,
                                                       initial_weights.trainable)
-
-      nested_boost_factor = collections.OrderedDict([
-          (key, self.boost_factor) for key in weights_delta_malicious.keys()
-      ])
-
-      weights_delta = tf.nest.map_structure(tf.multiply, nested_boost_factor,
-                                            weights_delta_malicious)
+      weights_delta = tf.nest.map_structure(
+          lambda update: self.boost_factor * update, weights_delta_malicious)
 
       return weights_delta, aggregated_outputs, num_examples_sum
 

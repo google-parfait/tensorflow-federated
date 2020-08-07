@@ -58,11 +58,6 @@ class ModelWeights(object):
         [value for _, value in structure.iter_elements(struct.trainable)],
         [value for _, value in structure.iter_elements(struct.non_trainable)])
 
-  @classmethod
-  def from_python_structure(cls, python_structure):
-    tff_struct = structure.from_container(python_structure, recursive=True)
-    return cls.from_tff_result(tff_struct)
-
   def assign_weights_to(self, model):
     """Assign these TFF model weights to the weights of a model.
 

@@ -173,7 +173,7 @@ def evaluate(state, x, y, target_x, target_y, batch_size=100):
   keras_model.compile(
       loss=tf.keras.losses.SparseCategoricalCrossentropy(),
       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-  tff.learning.assign_weights_to_keras_model(keras_model, state.model)
+  state.model.assign_weights_to(keras_model)
   test_metrics = keras_model.evaluate(x, y, batch_size=batch_size)
   test_metrics_target = keras_model.evaluate(
       target_x, target_y, batch_size=batch_size)

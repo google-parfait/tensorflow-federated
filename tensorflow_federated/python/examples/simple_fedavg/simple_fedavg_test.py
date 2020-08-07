@@ -271,8 +271,8 @@ class SimpleFedAvgTest(tf.test.TestCase, parameterized.TestCase):
             y=np.ones([1], dtype=np.int32))
     ]
     keras_model = _create_test_cnn_model()
-    tff.learning.assign_weights_to_keras_model(keras_model,
-                                               server_state.model_weights)
+    server_state.model_weights.assign_weights_to(keras_model)
+
     sample_data = [
         collections.OrderedDict(
             x=np.ones([1, 28, 28, 1], dtype=np.float32),

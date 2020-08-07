@@ -15,6 +15,7 @@
 
 import collections
 from typing import List, Optional, Sequence, Union
+import warnings
 
 import tensorflow as tf
 
@@ -27,6 +28,9 @@ from tensorflow_federated.python.learning import model_utils
 
 def assign_weights_to_keras_model(keras_model, tff_weights):
   """Assigns a nested structure of TFF weights to a Keras model.
+
+  **DEPRECATED**: use
+  `tff.learning.framework.ModelWeights.assign_to_keras_model`.
 
   This function may be used to retrieve the model parameters trained by the
   federated averaging process for use in an existing `tf.keras.models.Model`,
@@ -53,9 +57,9 @@ def assign_weights_to_keras_model(keras_model, tff_weights):
     TypeError: if `tff_weights` is not a TFF value, or `keras_model` is not a
       `tf.keras.models.Model` instance.
   """
+  warnings.warn('`assign_weights_to_keras_model` is deprecated. Update code '
+                'to use the ModelWeights.assign_weights_to` method.')
   # TODO(b/123092620): Simplify this.
-  if not isinstance(tff_weights, (structure.Struct, model_utils.ModelWeights)):
-    tff_weights = model_utils.ModelWeights.from_python_structure(tff_weights)
   py_typecheck.check_type(tff_weights,
                           (structure.Struct, model_utils.ModelWeights))
   py_typecheck.check_type(keras_model, tf.keras.models.Model)

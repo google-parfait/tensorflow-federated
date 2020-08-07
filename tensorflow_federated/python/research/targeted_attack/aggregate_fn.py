@@ -13,8 +13,6 @@
 # limitations under the License.
 """Implement Various Defense Methods against Targeted Attack."""
 
-import collections
-
 import tensorflow as tf
 import tensorflow_federated as tff
 import tensorflow_privacy
@@ -37,7 +35,7 @@ def build_aggregate_and_clip(norm_bound):
     round_model_delta = tff.federated_mean(value, weight)
     value_type = value.type_signature.member
 
-    @tff.tf_computation(value_type._asdict())
+    @tff.tf_computation(value_type)
     @tf.function
     def clip_by_norm(gradient, norm=norm_bound):
       """Clip the gradient by a certain l_2 norm."""
@@ -49,10 +47,7 @@ def build_aggregate_and_clip(norm_bound):
       else:
         delta_mul_factor = tf.math.divide_no_nan(
             tf.cast(norm, tf.float32), delta_norm)
-        nested_mul_factor = collections.OrderedDict([
-            (key, delta_mul_factor) for key in gradient.keys()
-        ])
-        return tf.nest.map_structure(tf.multiply, nested_mul_factor, gradient)
+        return tf.nest.map_structure(lambda g: g * delta_mul_factor, gradient)
 
     return global_state, tff.federated_map(clip_by_norm, round_model_delta)
 

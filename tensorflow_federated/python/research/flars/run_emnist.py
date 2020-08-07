@@ -363,8 +363,7 @@ def _run_experiment():
 
   def evaluate_fn(state):
     compiled_keras_model = compiled_eval_keras_model()
-    tff.learning.assign_weights_to_keras_model(compiled_keras_model,
-                                               state.model)
+    state.model.assign_weights_to(compiled_keras_model)
     eval_metrics = compiled_keras_model.evaluate(emnist_test, verbose=0)
     return {
         'loss': eval_metrics[0],

@@ -15,12 +15,10 @@
 
 These tests also serve as examples for users who are familiar with Keras.
 """
-import collections
 
 import tensorflow as tf
 
 from tensorflow_federated.python import core as tff_core
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
@@ -149,36 +147,6 @@ class WeightsTypeFromModelTest(test.TestCase):
               tff_core.StructWithPythonType([
                   tff_core.TensorType(tf.int32),
               ], list))], model_utils.ModelWeights), weights_type)
-
-  def test_model_weights_from_python_structure(self):
-    trainable_weights = [tf.constant([1., 1.])]
-    non_trainable_weights = [tf.constant(1)]
-    model_weights = model_utils.ModelWeights(
-        trainable=trainable_weights, non_trainable=non_trainable_weights)
-    python_weights_structure = collections.OrderedDict(
-        trainable=trainable_weights, non_trainable=non_trainable_weights)
-    model_weights_from_python_structure = model_utils.ModelWeights.from_python_structure(
-        python_weights_structure)
-    self.assertEqual(model_weights.trainable,
-                     model_weights_from_python_structure.trainable)
-    self.assertEqual(model_weights.non_trainable,
-                     model_weights_from_python_structure.non_trainable)
-
-  def test_model_weights_from_tff_struct(self):
-    trainable_weights = [tf.constant([1., 1.])]
-    non_trainable_weights = [tf.constant(1)]
-    model_weights = model_utils.ModelWeights(
-        trainable=trainable_weights, non_trainable=non_trainable_weights)
-    tff_struct = structure.Struct([
-        ('trainable', structure.from_container(trainable_weights)),
-        ('non_trainable', structure.from_container(non_trainable_weights))
-    ])
-    model_weights_from_tff_struct = model_utils.ModelWeights.from_tff_result(
-        tff_struct)
-    self.assertEqual(model_weights.trainable,
-                     model_weights_from_tff_struct.trainable)
-    self.assertEqual(model_weights.non_trainable,
-                     model_weights_from_tff_struct.non_trainable)
 
 
 if __name__ == '__main__':
