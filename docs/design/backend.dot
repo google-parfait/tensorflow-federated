@@ -1,4 +1,4 @@
-digraph backend {
+digraph G {
   graph [style="dotted,rounded", size="7.1 100"]
   node [shape="box", style="rounded,filled"]
   edge [color="#616161"]
