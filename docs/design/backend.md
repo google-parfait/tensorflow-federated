@@ -22,7 +22,7 @@ is *not* implemented as an execution stack, then the backend will need to
 construct a [Context](context.md#context) and is integrating with TFF using the
 low-level abstraction.
 
-![Alt text](https://g.gravizo.com/source/svg?https://github.com/tensorflow/federated/blob/test_322607425/docs/design/backend.dot)
+![Alt text](https://g.gravizo.com/source/svg?https://raw.githubusercontent.com/tensorflow/federated/test_322607425/docs/design/backend.dot)
 
 ```dot
 <!--#include file="backend.dot"-->
