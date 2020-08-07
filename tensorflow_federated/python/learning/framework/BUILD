@@ -2,7 +2,8 @@ package_group(
     name = "default_visibility",
     packages = [
         # Subpackages
-        "//tensorflow_federated/python/learning/...",
+        "//tensorflow_federated/python/learning/framework/...",
+
         # TODO(b/151441025): This package is temporary and can be removed once the
         # dependencies between `tff.learning` and `tff.learning.framework` are
         # cleaned up.
