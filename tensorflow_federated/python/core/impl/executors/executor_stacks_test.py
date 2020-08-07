@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import math
 from unittest import mock
 
 from absl.testing import absltest
@@ -59,13 +60,13 @@ def _temperature_sensor_example_next_fn():
 def _create_concurrent_maxthread_tuples():
   tuples = []
   for concurrency in range(1, 5):
-    local_ex_string = 'local_executor_{}_client_thread'.format(concurrency)
+    local_ex_string = 'local_executor_{}_clients_per_thread'.format(concurrency)
     ex_factory = executor_stacks.local_executor_factory(
-        num_client_executors=concurrency)
+        clients_per_thread=concurrency)
     tuples.append((local_ex_string, ex_factory, concurrency))
     sizing_ex_string = 'sizing_executor_{}_client_thread'.format(concurrency)
     ex_factory = executor_stacks.sizing_executor_factory(
-        num_client_executors=concurrency)
+        clients_per_thread=concurrency)
     tuples.append((sizing_ex_string, ex_factory, concurrency))
   return tuples
 
@@ -173,8 +174,9 @@ class ExecutorStacksTest(parameterized.TestCase):
       'tensorflow_federated.python.core.impl.executors.eager_tf_executor.EagerTFExecutor',
       return_value=ExecutorMock())
   def test_limiting_concurrency_constructs_one_eager_executor(
-      self, ex_factory, concurrency_level, tf_executor_mock):
+      self, ex_factory, clients_per_thread, tf_executor_mock):
     ex_factory.create_executor({placement_literals.CLIENTS: 10})
+    concurrency_level = math.ceil(10 / clients_per_thread)
     args_list = tf_executor_mock.call_args_list
     # One for server, one for `None`-placed, concurrency_level for clients.
     self.assertLen(args_list, concurrency_level + 2)
@@ -272,20 +274,20 @@ class FederatingExecutorFactoryTest(absltest.TestCase):
   def test_constructs_executor_factory(self):
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(use_caching=True)
     federating_factory = executor_stacks.FederatingExecutorFactory(
-        num_client_executors=1, unplaced_ex_factory=unplaced_factory)
+        clients_per_thread=1, unplaced_ex_factory=unplaced_factory)
     self.assertIsInstance(federating_factory, executor_factory.ExecutorFactory)
 
   def test_raises_on_access_of_nonexistent_sizing_executors(self):
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(use_caching=True)
     federating_factory = executor_stacks.FederatingExecutorFactory(
-        num_client_executors=1, unplaced_ex_factory=unplaced_factory)
+        clients_per_thread=1, unplaced_ex_factory=unplaced_factory)
     with self.assertRaisesRegex(ValueError, 'not configured'):
       _ = federating_factory.sizing_executors
 
   def test_returns_empty_list_of_sizing_executors_if_configured(self):
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(use_caching=True)
     federating_factory = executor_stacks.FederatingExecutorFactory(
-        num_client_executors=1,
+        clients_per_thread=1,
         unplaced_ex_factory=unplaced_factory,
         use_sizing=True)
     sizing_ex_list = federating_factory.sizing_executors
@@ -295,7 +297,7 @@ class FederatingExecutorFactoryTest(absltest.TestCase):
   def test_constructs_as_many_sizing_executors_as_client_executors(self):
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(use_caching=True)
     federating_factory = executor_stacks.FederatingExecutorFactory(
-        num_client_executors=5,
+        clients_per_thread=2,
         unplaced_ex_factory=unplaced_factory,
         use_sizing=True)
     federating_factory.create_executor(
@@ -307,22 +309,22 @@ class FederatingExecutorFactoryTest(absltest.TestCase):
   def test_reinvocation_of_create_executor_extends_sizing_executors(self):
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(use_caching=True)
     federating_factory = executor_stacks.FederatingExecutorFactory(
-        num_client_executors=5,
+        clients_per_thread=2,
         unplaced_ex_factory=unplaced_factory,
         use_sizing=True)
     federating_factory.create_executor(
         cardinalities={placement_literals.CLIENTS: 10})
     federating_factory.create_executor(
-        cardinalities={placement_literals.CLIENTS: 15})
+        cardinalities={placement_literals.CLIENTS: 12})
     sizing_ex_list = federating_factory.sizing_executors
     self.assertIsInstance(sizing_ex_list, list)
-    self.assertLen(sizing_ex_list, 10)
+    self.assertLen(sizing_ex_list, 5 + 6)
 
   def test_create_executor_raises_mismatched_num_clients(self):
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(use_caching=True)
     federating_factory = executor_stacks.FederatingExecutorFactory(
         num_clients=3,
-        num_client_executors=1,
+        clients_per_thread=1,
         unplaced_ex_factory=unplaced_factory,
         use_sizing=True)
     with self.assertRaisesRegex(ValueError, 'configured to return 3 clients'):

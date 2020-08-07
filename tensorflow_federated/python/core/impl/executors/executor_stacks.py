@@ -13,6 +13,7 @@
 # limitations under the License.
 """A collection of constructors for basic types of executor stacks."""
 
+import math
 from typing import List, Callable, Optional, Sequence
 
 import tensorflow as tf
@@ -123,13 +124,13 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
 
   def __init__(self,
                *,
-               num_client_executors: int,
+               clients_per_thread: int,
                unplaced_ex_factory: UnplacedExecutorFactory,
                num_clients: Optional[int] = None,
                use_sizing: bool = False):
-    py_typecheck.check_type(num_client_executors, int)
+    py_typecheck.check_type(clients_per_thread, int)
     py_typecheck.check_type(unplaced_ex_factory, UnplacedExecutorFactory)
-    self._num_client_executors = num_client_executors
+    self._clients_per_thread = clients_per_thread
     self._unplaced_executor_factory = unplaced_ex_factory
     if num_clients is not None:
       py_typecheck.check_type(num_clients, int)
@@ -174,10 +175,11 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
   ) -> executor_base.Executor:
     """Constructs a federated executor with requested cardinalities."""
     num_clients = self._validate_requested_clients(cardinalities)
+    num_client_executors = math.ceil(num_clients / self._clients_per_thread)
     client_stacks = [
         self._unplaced_executor_factory.create_executor(
             cardinalities={}, placement=placement_literals.CLIENTS)
-        for _ in range(self._num_client_executors)
+        for _ in range(num_client_executors)
     ]
     if self._use_sizing:
       client_stacks = [
@@ -307,7 +309,7 @@ def _create_full_stack(
 def local_executor_factory(
     num_clients=None,
     max_fanout=100,
-    num_client_executors=32,
+    clients_per_thread=1,
     server_tf_device=None,
     client_tf_devices=tuple()
 ) -> executor_factory.ExecutorFactory:
@@ -326,10 +328,11 @@ def local_executor_factory(
       `num_clients > max_fanout`, the constructed executor stack will consist of
       multiple levels of aggregators. The height of the stack will be on the
       order of `log(num_clients) / log(max_fanout)`.
-    num_client_executors: The number of distinct client executors to run
-      concurrently; executing more clients than this number results in multiple
-      clients having their work pinned on a single executor in a synchronous
-      fashion.
+    clients_per_thread: Integer number of clients for each of TFF's threads to
+      run in sequence. Increasing `clients_per_thread` therefore reduces the
+      concurrency of the TFF runtime, which can be useful if client work is
+      very lightweight or models are very large and multiple copies cannot fit
+      in memory.
     server_tf_device: A `tf.config.LogicalDevice` to place server and other
       computation without explicit TFF placement.
     client_tf_devices: List/tuple of `tf.config.LogicalDevice` to place clients
@@ -347,7 +350,7 @@ def local_executor_factory(
     py_typecheck.check_type(server_tf_device, tf.config.LogicalDevice)
   py_typecheck.check_type(client_tf_devices, (tuple, list))
   py_typecheck.check_type(max_fanout, int)
-  py_typecheck.check_type(num_client_executors, int)
+  py_typecheck.check_type(clients_per_thread, int)
   if num_clients is not None:
     py_typecheck.check_type(num_clients, int)
   if max_fanout < 2:
@@ -357,7 +360,7 @@ def local_executor_factory(
       server_device=server_tf_device,
       client_devices=client_tf_devices)
   federating_executor_factory = FederatingExecutorFactory(
-      num_client_executors=num_client_executors,
+      clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
       num_clients=num_clients,
       use_sizing=False)
@@ -377,7 +380,7 @@ def local_executor_factory(
 def sizing_executor_factory(
     num_clients: int = None,
     max_fanout: int = 100,
-    num_client_executors: int = 1) -> executor_factory.ExecutorFactory:
+    clients_per_thread: int = 1) -> executor_factory.ExecutorFactory:
   """Constructs an executor to execute computations on the local machine with sizing.
 
   Args:
@@ -390,10 +393,11 @@ def sizing_executor_factory(
       `num_clients > max_fanout`, the constructed executor stack will consist of
       multiple levels of aggregators. The height of the stack will be on the
       order of `log(num_clients) / log(max_fanout)`.
-    num_client_executors: The number of distinct client executors to run
-      concurrently; executing more clients than this number results in multiple
-      clients having their work pinned on a single executor in a synchronous
-      fashion.
+    clients_per_thread: Integer number of clients for each of TFF's threads to
+      run in sequence. Increasing `clients_per_thread` therefore reduces the
+      concurrency of the TFF runtime, which can be useful if client work is
+      very lightweight or models are very large and multiple copies cannot fit
+      in memory.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -403,14 +407,14 @@ def sizing_executor_factory(
     ValueError: If the number of clients is specified and not one or larger.
   """
   py_typecheck.check_type(max_fanout, int)
-  py_typecheck.check_type(num_client_executors, int)
+  py_typecheck.check_type(clients_per_thread, int)
   if num_clients is not None:
     py_typecheck.check_type(num_clients, int)
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   unplaced_ex_factory = UnplacedExecutorFactory(use_caching=True)
   federating_executor_factory = FederatingExecutorFactory(
-      num_client_executors=num_client_executors,
+      clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
       num_clients=num_clients,
       use_sizing=True)

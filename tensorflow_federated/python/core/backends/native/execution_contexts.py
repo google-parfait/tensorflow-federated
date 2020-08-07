@@ -21,14 +21,14 @@ from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 def set_local_execution_context(num_clients=None,
                                 max_fanout=100,
-                                num_client_executors=32,
+                                clients_per_thread=1,
                                 server_tf_device=None,
                                 client_tf_devices=tuple()):
   """Sets an execution context that executes computations locally."""
   factory = executor_stacks.local_executor_factory(
       num_clients=num_clients,
       max_fanout=max_fanout,
-      num_client_executors=num_client_executors,
+      clients_per_thread=clients_per_thread,
       server_tf_device=server_tf_device,
       client_tf_devices=client_tf_devices)
   context = execution_context.ExecutionContext(
