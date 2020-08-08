@@ -8,6 +8,7 @@ exports_files([
     "federated_learning_for_image_classification.ipynb",
     "federated_learning_for_text_generation.ipynb",
     "simulations.ipynb",
+    "tff_for_federated_learning_research_compression.ipynb",
 ])
 
 # This exists for the API doc generator. The doc generator tool looks for API
