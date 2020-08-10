@@ -58,20 +58,14 @@ def _federated_reduce_with_func(value, tf_func, zeros):
   Returns:
     A representation on the `tff.SERVER` of the result of aggregating `value`.
   """
-  member_type = value.type_signature.member
-
   @computations.tf_computation(value.type_signature.member,
                                value.type_signature.member)
   def accumulate(current, value):
-    if member_type.is_struct():
-      return structure.map_structure(tf_func, current, value)
     return tf.nest.map_structure(tf_func, current, value)
 
   @computations.tf_computation(value.type_signature.member,
                                value.type_signature.member)
   def merge(a, b):
-    if member_type.is_struct():
-      return structure.map_structure(tf_func, a, b)
     return tf.nest.map_structure(tf_func, a, b)
 
   @computations.tf_computation(value.type_signature.member)

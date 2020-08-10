@@ -38,7 +38,7 @@ class FederatedMinTest(test.TestCase):
     self.assertEqual(value, 1.0)
 
   def test_federated_min_on_nested_scalars(self):
-    tuple_type = computation_types.StructType([
+    tuple_type = collections.OrderedDict([
         ('x', tf.float32),
         ('y', tf.float32),
     ])
@@ -53,7 +53,8 @@ class FederatedMinTest(test.TestCase):
         [test_type(0.0, 1.0),
          test_type(-1.0, 5.0),
          test_type(2.0, -10.0)])
-    self.assertDictEqual(value._asdict(), {'x': -1.0, 'y': -10.0})
+    self.assertEqual(value, collections.OrderedDict([('x', -1.0),
+                                                     ('y', -10.0)]))
 
   def test_federated_min_wrong_type(self):
     with self.assertRaisesRegex(TypeError,
@@ -114,7 +115,7 @@ class FederatedMaxTest(test.TestCase):
       call_federated_max([True, False])
 
   def test_federated_max_on_nested_scalars(self):
-    tuple_type = computation_types.StructType([
+    tuple_type = collections.OrderedDict([
         ('a', tf.int32),
         ('b', tf.int32),
     ])
@@ -128,10 +129,10 @@ class FederatedMaxTest(test.TestCase):
     value = call_federated_max(
         [test_type(1, 5), test_type(2, 3),
          test_type(1, 8)])
-    self.assertDictEqual(value._asdict(), {'a': 2, 'b': 8})
+    self.assertEqual(value, collections.OrderedDict([('a', 2), ('b', 8)]))
 
   def test_federated_max_nested_tensor_value(self):
-    tuple_type = computation_types.StructType([
+    tuple_type = collections.OrderedDict([
         ('a', (tf.int32, [2])),
         ('b', (tf.int32, [3])),
     ])
@@ -147,8 +148,8 @@ class FederatedMaxTest(test.TestCase):
     client2 = test_type(
         np.array([9, 0], dtype=np.int32), np.array([5, 1, -2], dtype=np.int32))
     value = call_federated_max([client1, client2])
-    self.assertCountEqual(value[0], [9, 5])
-    self.assertCountEqual(value[1], [5, 1, 3])
+    self.assertCountEqual(value['a'], [9, 5])
+    self.assertCountEqual(value['b'], [5, 1, 3])
 
   def test_federated_max_wrong_placement(self):
     with self.assertRaisesRegex(
@@ -175,7 +176,7 @@ class FederatedSampleTest(tf.test.TestCase):
     self.assertCountEqual(value, [1.0, 2.0, 5.0])
 
   def test_federated_sample_on_nested_scalars(self):
-    tuple_type = computation_types.StructType([
+    tuple_type = collections.OrderedDict([
         ('x', tf.float32),
         ('y', tf.float32),
     ])
@@ -267,13 +268,12 @@ class FederatedSampleTest(tf.test.TestCase):
 
   def test_federated_sample_nested_named_tuples(self):
     tuple_test_type = (
-        computation_types.StructType([('x', tf.float32), ('y', tf.float32)]))
+        collections.OrderedDict([('x', tf.float32), ('y', tf.float32)]))
     dict_test_type = (
         computation_types.to_type(
             collections.OrderedDict([('a', tf.float32), ('b', tf.float32)])))
-    nested_tuple_type = computation_types.StructType([
-        ('tuple_1', tuple_test_type), ('tuple_2', dict_test_type)
-    ])
+    nested_tuple_type = collections.OrderedDict([('tuple_1', tuple_test_type),
+                                                 ('tuple_2', dict_test_type)])
     nested_test_type = collections.namedtuple('Nested', ['tuple_1', 'tuple_2'])
 
     @computations.federated_computation(
