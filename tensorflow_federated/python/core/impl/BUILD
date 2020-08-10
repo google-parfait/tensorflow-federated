@@ -1,8 +1,10 @@
+# Direct and indirect packages that have visibility into the `impl` package.
 package_group(
     name = "impl_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
+    includes = [
+        "//tensorflow_federated/python/core:core_visibility",
+    ],
     packages = [
-        # Core Dependencies
         "//tensorflow_federated/python/core/api/...",
         "//tensorflow_federated/python/core/backends/...",
         "//tensorflow_federated/python/core/framework/...",

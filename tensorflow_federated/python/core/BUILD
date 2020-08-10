@@ -1,5 +1,9 @@
+# Direct and indirect packages that have visibility into the `core` package.
 package_group(
     name = "core_visibility",
+    includes = [
+        "//tensorflow_federated/python/simulation:simulation_visibility",
+    ],
     packages = [
         # TFF Dependencies
         "//tensorflow_federated/python/learning/...",

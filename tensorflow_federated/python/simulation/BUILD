@@ -1,11 +1,23 @@
-package(default_visibility = ["//tensorflow_federated:__subpackages__"])
+# Direct and indirect packages that have visibility into the `simulation` package.
+package_group(name = "simulation_visibility")
+
+package_group(
+    name = "default_visibility",
+    includes = [":simulation_visibility"],
+    packages = [
+        # Subpackages
+        "//tensorflow_federated/python/simulation/...",
+    ],
+)
+
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 
 py_library(
     name = "simulation",
     srcs = ["__init__.py"],
-    visibility = ["//visibility:public"],
+    visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":client_data",
         ":file_per_user_client_data",
