@@ -1,4 +1,5 @@
-# Direct and indirect packages that have visibility into the `simulation` package.
+# Direct and indirect packages that have visibility into the `simulation`
+# package.
 package_group(name = "simulation_visibility")
 
 package_group(
@@ -37,7 +38,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/tensorflow_libs:version_check",
     ],
 )
@@ -61,7 +63,7 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
@@ -74,7 +76,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":file_per_user_client_data",
-        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
 )
 
@@ -124,7 +127,13 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/templates:iterative_process",
     ],
 )
 
@@ -136,7 +145,11 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":iterative_process_compositions",
-        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/templates:iterative_process",
     ],
 )
 
@@ -146,7 +159,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/core/impl/executors:executor_base",
+        "//tensorflow_federated/python/core/impl/executors:executor_service",
     ],
 )
 
@@ -163,7 +177,7 @@ py_test(
     deps = [
         ":server_utils",
         "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core",
+        "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
     ],
 )
 

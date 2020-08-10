@@ -19,8 +19,9 @@ import time
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
-from tensorflow_federated.python import core as tff_core
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_service
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -44,7 +45,7 @@ def run_server(executor, num_threads, port, credentials=None, options=None):
   Raises:
     ValueError: If `num_threads` or `port` are invalid.
   """
-  py_typecheck.check_type(executor, tff_core.framework.Executor)
+  py_typecheck.check_type(executor, executor_base.Executor)
   py_typecheck.check_type(num_threads, int)
   py_typecheck.check_type(port, int)
   if credentials is not None:
@@ -53,7 +54,7 @@ def run_server(executor, num_threads, port, credentials=None, options=None):
     raise ValueError('The number of threads must be a positive integer.')
   if port < 1:
     raise ValueError('The server port must be a positive integer.')
-  service = tff_core.framework.ExecutorService(executor)
+  service = executor_service.ExecutorService(executor)
   server_kwargs = {}
   if options is not None:
     server_kwargs['options'] = options

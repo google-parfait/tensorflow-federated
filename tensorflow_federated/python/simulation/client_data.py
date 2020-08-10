@@ -21,8 +21,9 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.tensorflow_libs import version_check
 
 
@@ -75,7 +76,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
     pass
 
   @abc.abstractproperty
-  def dataset_computation(self) -> tff.Computation:
+  def dataset_computation(self) -> computation_base.Computation:
     """A `tff.Computation` accepting a client ID, returning a dataset.
 
     Note: the `dataset_computation` property is intended as a TFF-specific
@@ -306,7 +307,7 @@ class PreprocessClientData(ClientData):
   def dataset_computation(self):
     if self._dataset_computation is None:
 
-      @tff.tf_computation(tf.string)
+      @computations.tf_computation(tf.string)
       def dataset_comp(client_id):
         return self._preprocess_fn(
             self._underlying_client_data.dataset_computation(client_id))
@@ -354,7 +355,8 @@ class ConcreteClientData(ClientData):
     self._client_ids = list(client_ids)
     self._create_tf_dataset_for_client_fn = create_tf_dataset_for_client_fn
 
-    if isinstance(self._create_tf_dataset_for_client_fn, tff.Computation):
+    if isinstance(self._create_tf_dataset_for_client_fn,
+                  computation_base.Computation):
       self._dataset_computation = self._create_tf_dataset_for_client_fn
     else:
       self._dataset_computation = None

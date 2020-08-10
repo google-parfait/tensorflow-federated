@@ -16,15 +16,15 @@ import multiprocessing
 import signal
 import time
 
-from tensorflow_federated.python import core as tff_core
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.simulation import server_utils
 
 
 class ServerUtilsTest(test.TestCase):
 
   def test_server_runs(self):
-    ex = tff_core.framework.EagerTFExecutor()
+    ex = eager_tf_executor.EagerTFExecutor()
 
     def noarg_run_server():
       server_utils.run_server(ex, 1, 8888)

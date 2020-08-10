@@ -12,15 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Library of compositional helpers for iterative processes."""
-from tensorflow_federated.python import core as tff
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.templates import iterative_process
 
 
 def compose_dataset_computation(
-    dataset_computation: tff.Computation,
-    process: tff.templates.IterativeProcess,
-) -> tff.templates.IterativeProcess:
+    dataset_computation: computation_base.Computation,
+    process: iterative_process.IterativeProcess,
+) -> iterative_process.IterativeProcess:
   """Builds a new iterative process which constructs datasets on clients.
 
   Given a `tff.Computation` that returns a `tf.data.Dataset`, and a
@@ -75,12 +82,12 @@ def compose_dataset_computation(
     TypeError: If the arguments are of the wrong types, or their TFF type
     signatures are incompatible with the specification of this function.
   """
-  py_typecheck.check_type(dataset_computation, tff.Computation)
-  py_typecheck.check_type(process, tff.templates.IterativeProcess)
+  py_typecheck.check_type(dataset_computation, computation_base.Computation)
+  py_typecheck.check_type(process, iterative_process.IterativeProcess)
 
   dataset_return_type = dataset_computation.type_signature.result
-  federated_param_type = tff.FederatedType(
-      dataset_computation.type_signature.parameter, tff.CLIENTS)
+  federated_param_type = computation_types.FederatedType(
+      dataset_computation.type_signature.parameter, placement_literals.CLIENTS)
 
   if not dataset_return_type.is_sequence():
     raise TypeError(
@@ -95,8 +102,8 @@ def compose_dataset_computation(
 
   init_fn = process.initialize
 
-  if tff.framework.type_contains(init_fn.type_signature.result,
-                                 lambda x: x.is_sequence()):
+  if type_analysis.contains(init_fn.type_signature.result,
+                            lambda x: x.is_sequence()):
     raise TypeError('Cannot construct a new iterative process if a dataset is '
                     'returned by `initialize`; initialize has result type '
                     '{}.'.format(init_fn.type_signature.result))
@@ -106,8 +113,7 @@ def compose_dataset_computation(
   # If there is a dataset in the parameter, and `init_fn` does not return a
   # dataset, we know the parameter of next must be a tuple. So we assume that
   # from here on out.
-  if not tff.framework.type_contains(next_fn_param_type,
-                                     lambda x: x.is_sequence()):
+  if not type_analysis.contains(next_fn_param_type, lambda x: x.is_sequence()):
     raise TypeError('IterativeProcess\' next must accept a parameter which '
                     'contains a dataset; the parameter {} contains no '
                     'dataset.'.format(next_fn_param_type))
@@ -133,12 +139,12 @@ def compose_dataset_computation(
     raise TypeError('No sequence parameter found in iterative process next '
                     'function. Type signature: {}.'.format(next_fn_param_type))
 
-  new_param_type = tff.StructType(new_param_elements)
+  new_param_type = computation_types.StructType(new_param_elements)
 
-  @tff.federated_computation(new_param_type)
+  @computations.federated_computation(new_param_type)
   def next_fn_taking_client_ids(param):
-    datasets_on_clients = tff.federated_map(dataset_computation,
-                                            param[dataset_index])
+    datasets_on_clients = intrinsics.federated_map(dataset_computation,
+                                                   param[dataset_index])
     original_param = []
     for idx, elem in enumerate(param):
       if idx != dataset_index:
@@ -147,5 +153,5 @@ def compose_dataset_computation(
         original_param.append(datasets_on_clients)
     return process.next(original_param)
 
-  return tff.templates.IterativeProcess(
+  return iterative_process.IterativeProcess(
       initialize_fn=init_fn, next_fn=next_fn_taking_client_ids)

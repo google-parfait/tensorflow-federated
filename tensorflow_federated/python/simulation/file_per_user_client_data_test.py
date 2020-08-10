@@ -27,7 +27,8 @@ from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
+from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation import file_per_user_client_data
 
 # A fake columnar dataset of (user id, value 1, value 2, value 3), roughly
@@ -201,7 +202,8 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   def test_dataset_computation(self):
     data = self._create_fake_client_data()
-    self.assertIsInstance(data.dataset_computation, tff.Computation)
+    self.assertIsInstance(data.dataset_computation,
+                          computation_base.Computation)
     # Iterate over each client, ensuring we received a tf.data.Dataset with the
     # correct data.
     client_id_counters = collections.Counter(
@@ -244,4 +246,5 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
     self.assertLen(data.client_ids, len(expected_client_ids))
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   tf.test.main()

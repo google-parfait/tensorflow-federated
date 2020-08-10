@@ -16,77 +16,83 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.simulation import iterative_process_compositions
 
 
 def _create_dummy_iterative_process():
 
-  @tff.tf_computation()
+  @computations.tf_computation()
   def init():
     return []
 
-  @tff.tf_computation(init.type_signature.result)
+  @computations.tf_computation(init.type_signature.result)
   def next_fn(x):
     return x
 
-  return tff.templates.IterativeProcess(initialize_fn=init, next_fn=next_fn)
+  return iterative_process.IterativeProcess(initialize_fn=init, next_fn=next_fn)
 
 
 def _create_federated_int_dataset_identity_iterative_process():
 
-  @tff.tf_computation()
+  @computations.tf_computation()
   def create_dataset():
     return tf.data.Dataset.range(5)
 
-  @tff.federated_computation()
+  @computations.federated_computation()
   def init():
-    return tff.federated_eval(create_dataset, tff.CLIENTS)
+    return intrinsics.federated_eval(create_dataset, placement_literals.CLIENTS)
 
-  @tff.federated_computation(init.type_signature.result)
+  @computations.federated_computation(init.type_signature.result)
   def next_fn(x):
     return x
 
-  return tff.templates.IterativeProcess(initialize_fn=init, next_fn=next_fn)
+  return iterative_process.IterativeProcess(initialize_fn=init, next_fn=next_fn)
 
 
 def _create_stateless_int_dataset_reduction_iterative_process():
 
-  @tff.tf_computation()
+  @computations.tf_computation()
   def make_zero():
     return tf.cast(0, tf.int64)
 
-  @tff.federated_computation()
+  @computations.federated_computation()
   def init():
-    return tff.federated_eval(make_zero, tff.SERVER)
+    return intrinsics.federated_eval(make_zero, placement_literals.SERVER)
 
-  @tff.tf_computation(tff.SequenceType(tf.int64))
+  @computations.tf_computation(computation_types.SequenceType(tf.int64))
   def reduce_dataset(x):
     return x.reduce(tf.cast(0, tf.int64), lambda x, y: x + y)
 
-  @tff.federated_computation(
+  @computations.federated_computation(
       (init.type_signature.result,
-       tff.FederatedType(tff.SequenceType(tf.int64), tff.CLIENTS)))
+       computation_types.FederatedType(
+           computation_types.SequenceType(tf.int64),
+           placement_literals.CLIENTS)))
   def next_fn(empty_tup, x):
     del empty_tup  # Unused
-    return tff.federated_sum(tff.federated_map(reduce_dataset, x))
+    return intrinsics.federated_sum(intrinsics.federated_map(reduce_dataset, x))
 
-  return tff.templates.IterativeProcess(initialize_fn=init, next_fn=next_fn)
+  return iterative_process.IterativeProcess(initialize_fn=init, next_fn=next_fn)
 
 
-@tff.tf_computation(tf.string)
+@computations.tf_computation(tf.string)
 def int_dataset_computation(x):
   del x  # Unused
   return tf.data.Dataset.range(5)
 
 
-@tff.tf_computation(tf.string)
+@computations.tf_computation(tf.string)
 def float_dataset_computation(x):
   del x  # Unused
   return tf.data.Dataset.range(5, output_type=tf.float32)
 
 
-@tff.tf_computation(tf.int32)
+@computations.tf_computation(tf.int32)
 def int_identity(x):
   return x
 
@@ -139,10 +145,10 @@ class ConstructDatasetsOnClientsTest(absltest.TestCase):
 
   def test_mutates_iterproc_accepting_dataset_in_second_index_of_next(self):
     iterproc = _create_stateless_int_dataset_reduction_iterative_process()
-    expected_new_next_type_signature = tff.FunctionType([
-        tff.FederatedType(tf.int64, tff.SERVER),
-        tff.FederatedType(tf.string, tff.CLIENTS)
-    ], tff.FederatedType(tf.int64, tff.SERVER))
+    expected_new_next_type_signature = computation_types.FunctionType([
+        computation_types.FederatedType(tf.int64, placement_literals.SERVER),
+        computation_types.FederatedType(tf.string, placement_literals.CLIENTS)
+    ], computation_types.FederatedType(tf.int64, placement_literals.SERVER))
 
     new_iterproc = iterative_process_compositions.compose_dataset_computation(
         int_dataset_computation, iterproc)
@@ -158,16 +164,18 @@ class ConstructDatasetsOnClientsTest(absltest.TestCase):
 
     new_param_elements = [old_param_type[0], tf.int32, old_param_type[1]]
 
-    @tff.federated_computation(tff.StructType(new_param_elements))
+    @computations.federated_computation(
+        computation_types.StructType(new_param_elements))
     def new_next(param):
       return iterproc.next([param[0], param[2]])
 
-    iterproc_with_dataset_as_third_elem = tff.templates.IterativeProcess(
+    iterproc_with_dataset_as_third_elem = iterative_process.IterativeProcess(
         iterproc.initialize, new_next)
-    expected_new_next_type_signature = tff.FunctionType([
-        tff.FederatedType(tf.int64, tff.SERVER), tf.int32,
-        tff.FederatedType(tf.string, tff.CLIENTS)
-    ], tff.FederatedType(tf.int64, tff.SERVER))
+    expected_new_next_type_signature = computation_types.FunctionType([
+        computation_types.FederatedType(tf.int64, placement_literals.SERVER),
+        tf.int32,
+        computation_types.FederatedType(tf.string, placement_literals.CLIENTS)
+    ], computation_types.FederatedType(tf.int64, placement_literals.SERVER))
 
     new_iterproc = iterative_process_compositions.compose_dataset_computation(
         int_dataset_computation, iterproc_with_dataset_as_third_elem)

@@ -19,8 +19,8 @@ from typing import Callable, Mapping
 
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.simulation import client_data
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
@@ -51,7 +51,7 @@ class FilePerUserClientData(client_data.ClientData):
     def create_dataset_for_filename_fn(client_id):
       return dataset_fn(client_ids_to_files[client_id])
 
-    @tff.tf_computation(tf.string)
+    @computations.tf_computation(tf.string)
     def dataset_computation(client_id):
       client_ids_to_path = tf.lookup.StaticHashTable(
           tf.lookup.KeyValueTensorInitializer(
