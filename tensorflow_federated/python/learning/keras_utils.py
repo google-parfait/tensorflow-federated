@@ -101,11 +101,11 @@ def from_keras_model(
       has multiple outputs. If multiple outputs are present, the model will
       attempt to minimize the sum of all individual losses (optionally weighted
       using the `loss_weights` argument).
-    input_spec: A structure of `tf.TensorSpec`s specifying the type of arguments
-      the model expects. Notice this must be a compound structure of two
-      elements, specifying both the data fed into the model to generate
-      predictions, as its first element, as well as the expected type of the
-      ground truth as its second.
+    input_spec: A structure of `tf.TensorSpec`s or `tff.Type` specifying the
+      type of arguments the model expects. Notice this must be a compound
+      structure of two elements, specifying both the data fed into the model to
+      generate predictions, as its first element, as well as the expected type
+      of the ground truth as its second.
     loss_weights: (Optional) A list of Python floats used to weight the loss
       contribution of each model output.
     metrics: (Optional) a list of `tf.keras.metrics.Metric` objects.
@@ -162,8 +162,12 @@ def from_keras_model(
                      'exactly two top-level elements, as it must specify type '
                      'information for both inputs to and predictions from the '
                      'model. You passed input spec {}.'.format(input_spec))
-  for input_spec_member in tf.nest.flatten(input_spec):
-    py_typecheck.check_type(input_spec_member, tf.TensorSpec)
+  if not isinstance(input_spec, computation_types.Type):
+    for input_spec_member in tf.nest.flatten(input_spec):
+      py_typecheck.check_type(input_spec_member, tf.TensorSpec)
+  else:
+    for type_elem in input_spec:
+      py_typecheck.check_type(type_elem, computation_types.TensorType)
 
   if metrics is None:
     metrics = []

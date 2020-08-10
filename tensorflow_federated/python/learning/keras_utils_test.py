@@ -23,6 +23,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning import keras_utils
@@ -101,6 +102,11 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
        _make_test_batch(
            x=tf.TensorSpec(shape=[1, 1], dtype=tf.float32),
            y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))),
+      ('tff_type',
+       computation_types.to_type(
+           collections.OrderedDict(
+               [('x', tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
+                ('y', tf.TensorSpec(shape=[None, 1], dtype=tf.float32))]))),
   )
   def test_input_spec_batch_types(self, input_spec):
     keras_model = model_examples.build_linear_regression_keras_functional_model(
