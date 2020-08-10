@@ -157,6 +157,9 @@ py_test(
     flaky = 1,  # TODO(b/163128447): Fix flaky test: server_utils_test.
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "manual",  # TODO(b/163128447): Fix flaky test: server_utils_test.
+    ],
     deps = [
         ":server_utils",
         "//tensorflow_federated/python/common_libs:test",
