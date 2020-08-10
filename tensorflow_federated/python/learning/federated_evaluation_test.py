@@ -17,8 +17,10 @@ import collections
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning import federated_evaluation
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
@@ -72,8 +74,12 @@ class TestModel(model.Model):
 
   @property
   def federated_output_computation(self):
-    return tff.federated_computation(
-        lambda metrics: {'num_over': tff.federated_sum(metrics.num_over)})
+
+    def aggregate_metrics(client_metrics):
+      return collections.OrderedDict(
+          num_over=intrinsics.federated_sum(client_metrics.num_over))
+
+    return computations.federated_computation(aggregate_metrics)
 
 
 class FederatedEvaluationTest(test.TestCase):
@@ -98,7 +104,7 @@ class FederatedEvaluationTest(test.TestCase):
             [_temp_dict([9.0, 12.0, 13.0])],
             [_temp_dict([1.0]), _temp_dict([22.0, 23.0])],
         ])
-    self.assertEqual(str(result), "{'num_over': 9.0}")
+    self.assertEqual(result, collections.OrderedDict(num_over=9.0))
 
   def test_federated_evaluation_with_keras(self):
 
@@ -144,4 +150,5 @@ class FederatedEvaluationTest(test.TestCase):
 
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   test.main()

@@ -17,8 +17,13 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.utils import federated_aggregations
+from tensorflow_federated.python.core.utils import tf_computation_utils
 from tensorflow_federated.python.learning import model_utils
 
 
@@ -113,16 +118,15 @@ def build_personalization_eval(model_fn,
   # strategy (i.e., by functions in `personalize_fn_dict`), the client-side
   # input should contain unbatched elements.
   element_type = _remove_batch_dim(batch_type)
-  client_input_type = collections.OrderedDict([
-      ('train_data', tff.SequenceType(element_type)),
-      ('test_data', tff.SequenceType(element_type))
-  ])
+  client_input_type = collections.OrderedDict(
+      train_data=computation_types.SequenceType(element_type),
+      test_data=computation_types.SequenceType(element_type))
   if context_tff_type is not None:
-    py_typecheck.check_type(context_tff_type, tff.Type)
+    py_typecheck.check_type(context_tff_type, computation_types.Type)
     client_input_type['context'] = context_tff_type
-  client_input_type = tff.to_type(client_input_type)
+  client_input_type = computation_types.to_type(client_input_type)
 
-  @tff.tf_computation(model_weights_type, client_input_type)
+  @computations.tf_computation(model_weights_type, client_input_type)
   def _client_computation(initial_model_weights, client_input):
     """TFF computation that runs on each client."""
     train_data = client_input['train_data']
@@ -153,19 +157,20 @@ def build_personalization_eval(model_fn,
   if max_num_samples <= 0:
     raise ValueError('max_num_samples must be a positive integer.')
 
-  @tff.federated_computation(
-      tff.FederatedType(model_weights_type, tff.SERVER),
-      tff.FederatedType(client_input_type, tff.CLIENTS))
+  @computations.federated_computation(
+      computation_types.FederatedType(model_weights_type, placements.SERVER),
+      computation_types.FederatedType(client_input_type, placements.CLIENTS))
   def personalization_eval(server_model_weights, federated_client_input):
     """TFF orchestration logic."""
-    client_init_weights = tff.federated_broadcast(server_model_weights)
-    client_final_metrics = tff.federated_map(
+    client_init_weights = intrinsics.federated_broadcast(server_model_weights)
+    client_final_metrics = intrinsics.federated_map(
         _client_computation, (client_init_weights, federated_client_input))
 
     # WARNING: Collecting information from clients can be risky. Users have to
     # make sure that it is proper to collect those metrics from clients.
     # TODO(b/147889283): Add a link to the TFF doc once it exists.
-    results = tff.utils.federated_sample(client_final_metrics, max_num_samples)
+    results = federated_aggregations.federated_sample(client_final_metrics,
+                                                      max_num_samples)
     return results
 
   return personalization_eval
@@ -206,7 +211,7 @@ def _compute_baseline_metrics(model_fn, initial_model_weights, test_data,
 
   @tf.function
   def assign_and_compute():
-    tff.utils.assign(model_weights, initial_model_weights)
+    tf_computation_utils.assign(model_weights, initial_model_weights)
     py_typecheck.check_callable(baseline_evaluate_fn)
     return baseline_evaluate_fn(model, test_data)
 
@@ -235,7 +240,7 @@ def _compute_p13n_metrics(model_fn, initial_model_weights, train_data,
   def loop_and_compute():
     p13n_metrics = collections.OrderedDict()
     for name, personalize_fn in personalize_fns.items():
-      tff.utils.assign(model_weights, initial_model_weights)
+      tf_computation_utils.assign(model_weights, initial_model_weights)
       py_typecheck.check_callable(personalize_fn)
       p13n_metrics[name] = personalize_fn(model, train_data, test_data, context)
     return p13n_metrics

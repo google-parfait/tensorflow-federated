@@ -20,6 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import model_examples
@@ -177,4 +178,5 @@ def _test_encoder_fn(top_level_encoder):
 
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   test.main()

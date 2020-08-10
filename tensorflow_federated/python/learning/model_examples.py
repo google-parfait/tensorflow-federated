@@ -18,7 +18,8 @@ import functools
 
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.learning import model
 
 
@@ -104,14 +105,14 @@ class LinearRegression(model.Model):
   @property
   def federated_output_computation(self):
 
-    @tff.federated_computation
+    @computations.federated_computation
     def fed_output(local_outputs):
       # TODO(b/124070381): Remove need for using num_examples_float here.
       return {
           'num_examples':
-              tff.federated_sum(local_outputs.num_examples),
+              intrinsics.federated_sum(local_outputs.num_examples),
           'loss':
-              tff.federated_mean(
+              intrinsics.federated_mean(
                   local_outputs.loss, weight=local_outputs.num_examples_float),
       }
 

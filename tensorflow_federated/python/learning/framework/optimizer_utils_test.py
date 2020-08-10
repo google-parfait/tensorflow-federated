@@ -23,6 +23,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import model_examples
@@ -475,4 +476,5 @@ class ModelDeltaOptimizerTest(test.TestCase):
 
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   test.main()

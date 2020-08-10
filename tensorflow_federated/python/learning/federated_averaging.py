@@ -26,8 +26,10 @@ from typing import Any, Callable, Optional
 
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
@@ -123,12 +125,14 @@ def build_federated_averaging_process(
     server_optimizer_fn: Callable[
         [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
     client_weight_fn: Callable[[Any], tf.Tensor] = None,
-    stateful_delta_aggregate_fn: Optional[tff.utils.StatefulAggregateFn] = None,
-    stateful_model_broadcast_fn: Optional[tff.utils.StatefulBroadcastFn] = None,
+    stateful_delta_aggregate_fn: Optional[
+        computation_utils.StatefulAggregateFn] = None,
+    stateful_model_broadcast_fn: Optional[
+        computation_utils.StatefulBroadcastFn] = None,
     *,
-    broadcast_process: Optional[tff.templates.MeasuredProcess] = None,
-    aggregation_process: Optional[tff.templates.MeasuredProcess] = None,
-) -> tff.templates.IterativeProcess:
+    broadcast_process: Optional[measured_process.MeasuredProcess] = None,
+    aggregation_process: Optional[measured_process.MeasuredProcess] = None,
+) -> iterative_process.IterativeProcess:
   """Builds an iterative process that performs federated averaging.
 
   This function creates a `tff.templates.IterativeProcess` that performs

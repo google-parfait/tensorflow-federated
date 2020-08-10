@@ -22,8 +22,9 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
@@ -467,7 +468,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
           metrics=[NumBatchesCounter(),
                    NumExamplesCounter()])
 
-    @tff.tf_computation()
+    @computations.tf_computation()
     def _train():
       # Create variables outside the tf.function.
       tff_model = _model_fn()
@@ -775,4 +776,5 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   test.main()

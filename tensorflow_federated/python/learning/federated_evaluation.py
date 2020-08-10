@@ -17,7 +17,11 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.utils import tf_computation_utils
 from tensorflow_federated.python.learning import model_utils
 
 
@@ -42,19 +46,18 @@ def build_federated_evaluation(model_fn):
   with tf.Graph().as_default():
     model = model_fn()
     model_weights_type = model_utils.weights_type_from_model(model)
-    batch_type = tff.to_type(model.input_spec)
+    batch_type = computation_types.to_type(model.input_spec)
 
-  @tff.tf_computation(model_weights_type, tff.SequenceType(batch_type))
+  @computations.tf_computation(model_weights_type,
+                               computation_types.SequenceType(batch_type))
   def client_eval(incoming_model_weights, dataset):
     """Returns local outputs after evaluting `model_weights` on `dataset`."""
-
     model = model_utils.enhance(model_fn())
 
     @tf.function
     def _tf_client_eval(incoming_model_weights, dataset):
       """Evaluation TF work."""
-
-      tff.utils.assign(model.weights, incoming_model_weights)
+      tf_computation_utils.assign(model.weights, incoming_model_weights)
 
       def reduce_fn(prev_loss, batch):
         model_output = model.forward_pass(batch, training=False)
@@ -67,13 +70,14 @@ def build_federated_evaluation(model_fn):
 
     return _tf_client_eval(incoming_model_weights, dataset)
 
-  @tff.federated_computation(
-      tff.FederatedType(model_weights_type, tff.SERVER),
-      tff.FederatedType(tff.SequenceType(batch_type), tff.CLIENTS))
+  @computations.federated_computation(
+      computation_types.FederatedType(model_weights_type, placements.SERVER),
+      computation_types.FederatedType(
+          computation_types.SequenceType(batch_type), placements.CLIENTS))
   def server_eval(server_model_weights, federated_dataset):
-    client_outputs = tff.federated_map(
-        client_eval,
-        [tff.federated_broadcast(server_model_weights), federated_dataset])
+    client_outputs = intrinsics.federated_map(client_eval, [
+        intrinsics.federated_broadcast(server_model_weights), federated_dataset
+    ])
     return model.federated_output_computation(client_outputs.local_outputs)
 
   return server_eval

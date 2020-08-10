@@ -18,8 +18,10 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
@@ -136,10 +138,10 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
       federated_averaging.build_federated_averaging_process(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=tf.keras.optimizers.SGD,
-          stateful_model_broadcast_fn=tff.utils.StatefulBroadcastFn(
+          stateful_model_broadcast_fn=computation_utils.StatefulBroadcastFn(
               initialize_fn=lambda: (),
               next_fn=lambda state, weights:  # pylint: disable=g-long-lambda
-              (state, tff.federated_broadcast(weights))),
+              (state, intrinsics.federated_broadcast(weights))),
           broadcast_process=optimizer_utils.build_stateless_broadcaster(
               model_weights_type=model_weights_type))
 
@@ -150,10 +152,10 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
       federated_averaging.build_federated_averaging_process(
           model_fn=model_examples.LinearRegression,
           client_optimizer_fn=tf.keras.optimizers.SGD,
-          stateful_delta_aggregate_fn=tff.utils.StatefulAggregateFn(
+          stateful_delta_aggregate_fn=computation_utils.StatefulAggregateFn(
               initialize_fn=lambda: (),
               next_fn=lambda state, value, weight=None:  # pylint: disable=g-long-lambda
-              (state, tff.federated_mean(value, weight))),
+              (state, intrinsics.federated_mean(value, weight))),
           aggregation_process=optimizer_utils.build_stateless_mean(
               model_delta_type=model_weights_type.trainable))
 
@@ -251,4 +253,5 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   test.main()

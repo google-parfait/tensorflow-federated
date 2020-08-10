@@ -19,9 +19,10 @@ from typing import Callable, Union
 import attr
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff_core
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
 
 
@@ -80,7 +81,7 @@ class ModelWeights(object):
 
 def weights_type_from_model(
     model: Union[model_lib.Model, Callable[[], model_lib.Model]]
-) -> tff_core.StructType:
+) -> computation_types.StructType:
   """Creates a `tff.Type` from a `tff.learning.Model` or callable that constructs a model.
 
   Args:
@@ -97,7 +98,7 @@ def weights_type_from_model(
     with tf.Graph().as_default():
       model = model()
   py_typecheck.check_type(model, model_lib.Model)
-  return tff_core.framework.type_from_tensors(ModelWeights.from_model(model))
+  return type_conversions.type_from_tensors(ModelWeights.from_model(model))
 
 
 def enhance(model):

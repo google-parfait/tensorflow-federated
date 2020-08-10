@@ -19,9 +19,12 @@ import warnings
 
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 
@@ -199,7 +202,7 @@ def federated_aggregate_keras_metric(
   member_types = tf.nest.map_structure(lambda t: t.type_signature.member,
                                        federated_values)
 
-  @tff.tf_computation
+  @computations.tf_computation
   def zeros_fn():
     # `member_type` is a (potentially nested) `tff.StructType`, which is an
     # `structure.Struct`.
@@ -208,15 +211,15 @@ def federated_aggregate_keras_metric(
 
   zeros = zeros_fn()
 
-  @tff.tf_computation(member_types, member_types)
+  @computations.tf_computation(member_types, member_types)
   def accumulate(accumulators, variables):
     return tf.nest.map_structure(tf.add, accumulators, variables)
 
-  @tff.tf_computation(member_types, member_types)
+  @computations.tf_computation(member_types, member_types)
   def merge(a, b):
     return tf.nest.map_structure(tf.add, a, b)
 
-  @tff.tf_computation(member_types)
+  @computations.tf_computation(member_types)
   def report(accumulators):
     """Insert `accumulators` back into the keras metric to obtain result."""
 
@@ -256,8 +259,8 @@ def federated_aggregate_keras_metric(
           for metric, (name, values) in zip(metrics, accumulators.items())
       ])
 
-  return tff.federated_aggregate(federated_values, zeros, accumulate, merge,
-                                 report)
+  return intrinsics.federated_aggregate(federated_values, zeros, accumulate,
+                                        merge, report)
 
 
 class _KerasModel(model_lib.Model):
@@ -298,13 +301,13 @@ class _KerasModel(model_lib.Model):
 
     metric_variable_type_dict = tf.nest.map_structure(
         tf.TensorSpec.from_tensor, self.report_local_outputs())
-    federated_local_outputs_type = tff.FederatedType(metric_variable_type_dict,
-                                                     tff.CLIENTS)
+    federated_local_outputs_type = computation_types.FederatedType(
+        metric_variable_type_dict, placements.CLIENTS)
 
     def federated_output(local_outputs):
       return federated_aggregate_keras_metric(self.get_metrics(), local_outputs)
 
-    self._federated_output_computation = tff.federated_computation(
+    self._federated_output_computation = computations.federated_computation(
         federated_output, federated_local_outputs_type)
 
   @property

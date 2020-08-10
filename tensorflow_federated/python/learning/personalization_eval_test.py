@@ -17,8 +17,9 @@ import collections
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
@@ -350,7 +351,7 @@ class PersonalizationEvalTest(test.TestCase):
 
     with self.assertRaises(TypeError):
       # `context_tff_type` is provided but `context` is not provided.
-      context_tff_type = tff.to_type(tf.int32)
+      context_tff_type = computation_types.to_type(tf.int32)
       federated_p13n_eval = p13n_eval.build_personalization_eval(
           model_fn,
           p13n_fn_dict,
@@ -370,7 +371,7 @@ class PersonalizationEvalTest(test.TestCase):
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
 
     # Build the p13n eval with an extra `context` argument.
-    context_tff_type = tff.to_type(tf.int32)
+    context_tff_type = computation_types.to_type(tf.int32)
     federated_p13n_eval = p13n_eval.build_personalization_eval(
         model_fn, p13n_fn_dict, _evaluate_fn, context_tff_type=context_tff_type)
 
@@ -435,4 +436,5 @@ class PersonalizationEvalTest(test.TestCase):
 
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   test.main()

@@ -18,8 +18,9 @@ These tests also serve as examples for users who are familiar with Keras.
 
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff_core
 from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
@@ -95,9 +96,9 @@ class TestModel(model_lib.Model):
 
   @property
   def input_spec(self):
-    return tff_core.StructType((
-        tff_core.TensorSpec(tf.float32, [3]),
-        tff_core.TensorSpec(tf.float32, [1]),
+    return computation_types.StructType((
+        computation_types.TensorSpec(tf.float32, [3]),
+        computation_types.TensorSpec(tf.float32, [1]),
     ))
 
   def forward_pass(self, batch_input, training=True):
@@ -108,7 +109,7 @@ class TestModel(model_lib.Model):
 
   @property
   def federated_output_computation(self):
-    return tff_core.federated_computation(lambda x: x)
+    return computations.federated_computation(lambda x: x)
 
 
 class WeightsTypeFromModelTest(test.TestCase):
@@ -123,29 +124,29 @@ class WeightsTypeFromModelTest(test.TestCase):
     model = TestModel()
     weights_type = model_utils.weights_type_from_model(model)
     self.assertEqual(
-        tff_core.StructWithPythonType(
+        computation_types.StructWithPythonType(
             [('trainable',
-              tff_core.StructWithPythonType([
-                  tff_core.TensorType(tf.float32, [3]),
-                  tff_core.TensorType(tf.float32, [1]),
+              computation_types.StructWithPythonType([
+                  computation_types.TensorType(tf.float32, [3]),
+                  computation_types.TensorType(tf.float32, [1]),
               ], list)),
              ('non_trainable',
-              tff_core.StructWithPythonType([
-                  tff_core.TensorType(tf.int32),
+              computation_types.StructWithPythonType([
+                  computation_types.TensorType(tf.int32),
               ], list))], model_utils.ModelWeights), weights_type)
 
   def test_returns_model_weights_for_model_callable(self):
     weights_type = model_utils.weights_type_from_model(TestModel)
     self.assertEqual(
-        tff_core.StructWithPythonType(
+        computation_types.StructWithPythonType(
             [('trainable',
-              tff_core.StructWithPythonType([
-                  tff_core.TensorType(tf.float32, [3]),
-                  tff_core.TensorType(tf.float32, [1]),
+              computation_types.StructWithPythonType([
+                  computation_types.TensorType(tf.float32, [3]),
+                  computation_types.TensorType(tf.float32, [1]),
               ], list)),
              ('non_trainable',
-              tff_core.StructWithPythonType([
-                  tff_core.TensorType(tf.int32),
+              computation_types.StructWithPythonType([
+                  computation_types.TensorType(tf.int32),
               ], list))], model_utils.ModelWeights), weights_type)
 
 
