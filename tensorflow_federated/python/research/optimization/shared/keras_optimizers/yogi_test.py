@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2019 The TensorFlow Federated Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License');
 # you may not use this file except in compliance with the License.
@@ -11,15 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Tests for Yogi optimizer."""
 
 from absl.testing import parameterized
 
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.shared import yogi
+from tensorflow_federated.python.research.optimization.shared.keras_optimizers import yogi
 
 
 def yogi_update_numpy(param,

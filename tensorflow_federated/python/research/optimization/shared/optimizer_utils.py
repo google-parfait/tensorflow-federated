@@ -21,7 +21,8 @@ from absl import logging
 import tensorflow as tf
 import tensorflow_addons.optimizers as tfao
 
-from tensorflow_federated.python.research.optimization.shared import yogi
+from tensorflow_federated.python.research.optimization.shared.keras_optimizers import lars
+from tensorflow_federated.python.research.optimization.shared.keras_optimizers import yogi
 
 
 def _optimizer_canonical_name(optimizer_cls):
@@ -33,7 +34,7 @@ def _optimizer_canonical_name(optimizer_cls):
 _SUPPORTED_OPTIMIZERS = {
     _optimizer_canonical_name(cls): cls for cls in [
         tf.keras.optimizers.SGD, tf.keras.optimizers.Adagrad,
-        tf.keras.optimizers.Adam, yogi.Yogi, tfao.lamb.LAMB
+        tf.keras.optimizers.Adam, yogi.Yogi, lars.LARS, tfao.lamb.LAMB
     ]
 }
 

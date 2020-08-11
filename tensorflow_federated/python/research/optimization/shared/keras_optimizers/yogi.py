@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2019 The TensorFlow Federated Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,14 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Yogi: Extension of yogi adaptive nonconvex optimizer in Keras.
+"""Keras implementation of the Yogi adaptive optimizer.
 
-Implementation of Additive Averaging.
+Implementation of Yogi is based on additive updates, as opposed to
+multiplicative updates (as in Adam). The updates are governed by:
 m_t+1 = beta1*m_t + (1-beta1)*g_t
 v_t+1 = v_t + sign(g_t-v_t)(g_t^2)
 Experiments show better performance across NLP and Vision tasks.
-Paper:
+
+Original paper:
 https://papers.nips.cc/paper/8186-adaptive-methods-for-nonconvex-optimization.pdf
 """
 
