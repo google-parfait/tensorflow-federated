@@ -17,7 +17,6 @@ py_library(
     srcs_version = "PY3",
     visibility = [
         "//tensorflow_federated:__pkg__",
-        "//tensorflow_federated/python/core:__pkg__",
     ],
     deps = [
         ":adaptive_zeroing",

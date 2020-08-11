@@ -17,6 +17,13 @@ import sys
 
 from tensorflow_federated.version import __version__  # pylint: disable=g-bad-import-order
 
+from tensorflow_federated.python import learning
+from tensorflow_federated.python import simulation
+from tensorflow_federated.python.core import backends
+from tensorflow_federated.python.core import framework
+from tensorflow_federated.python.core import templates
+from tensorflow_federated.python.core import test
+from tensorflow_federated.python.core import utils
 from tensorflow_federated.python.core.api.computation_base import Computation
 from tensorflow_federated.python.core.api.computation_types import FederatedType
 from tensorflow_federated.python.core.api.computation_types import FunctionType
@@ -49,20 +56,9 @@ from tensorflow_federated.python.core.api.typed_object import TypedObject
 from tensorflow_federated.python.core.api.value_base import Value
 from tensorflow_federated.python.core.api.values import to_value
 
-# Note: These imports must happen after the API imports.
-# pylint: disable=g-bad-import-order
-from tensorflow_federated.python.core import backends
-from tensorflow_federated.python.core import framework
-from tensorflow_federated.python.core import templates
-from tensorflow_federated.python.core import test
-from tensorflow_federated.python.core import utils
-# pylint: enable=g-bad-import-order
-
-# Note: These imports must happen after the Core imports.
-# pylint: disable=g-bad-import-order
-from tensorflow_federated.python import learning
-from tensorflow_federated.python import simulation
-# pylint: enable=g-bad-import-order
-
 if sys.version_info[0] < 3 or sys.version_info[1] < 6:
   raise Exception('TFF only supports Python versions 3.6 or later.')
+
+# Initialize a default execution context. This is implicitly executed the
+# first time a module in the `core` package is imported.
+backends.native.set_local_execution_context()

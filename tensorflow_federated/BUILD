@@ -26,8 +26,6 @@ py_library(
         "//tensorflow_federated/python/core/utils",
         "//tensorflow_federated/python/learning",
         "//tensorflow_federated/python/simulation",
-        # Required to initialize a default execution context.
-        "//tensorflow_federated/python/core",  # build_cleaner: keep;
     ],
 )
 

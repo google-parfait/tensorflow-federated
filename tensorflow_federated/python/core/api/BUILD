@@ -12,7 +12,6 @@ package_group(
         "//tensorflow_federated/python/core/test/...",
 
         # Namespace Dependencies
-        "//tensorflow_federated/python/core",
         "//tensorflow_federated",
 
         # TODO(b/143772942): This visibility is circular, it would be clearer if
@@ -32,18 +31,7 @@ py_library(
     srcs_version = "PY3",
     visibility = [
         "//tensorflow_federated:__pkg__",
-        "//tensorflow_federated/python/core:__pkg__",
         "//tensorflow_federated/tools:__subpackages__",
-    ],
-    deps = [
-        ":computation_base",
-        ":computation_types",
-        ":computations",
-        ":intrinsics",
-        ":placements",
-        ":typed_object",
-        ":value_base",
-        ":values",
     ],
 )
 
