@@ -71,5 +71,23 @@ class HeavyHittersUtilsTest(tf.test.TestCase):
         hh_utils.f1_score(ground_truth, signal, 3), 0.85714285)
 
 
+class GetTopElementsTest(tf.test.TestCase):
+
+  def test_empty_dataset(self):
+    ds = tf.data.Dataset.from_tensor_slices([])
+    top_elements = hh_utils.get_top_elements(ds, max_user_contribution=10)
+    self.assertEmpty(top_elements)
+
+  def test_under_max_contribution(self):
+    ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'b', 'c'])
+    top_elements = hh_utils.get_top_elements(ds, max_user_contribution=10)
+    self.assertCountEqual(top_elements.numpy(), [b'a', b'b', b'c'])
+
+  def test_over_max_contribution(self):
+    ds = tf.data.Dataset.from_tensor_slices(['a', 'b', 'a', 'c', 'b', 'c', 'c'])
+    top_elements = hh_utils.get_top_elements(ds, max_user_contribution=2)
+    self.assertCountEqual(top_elements.numpy(), [b'a', b'c'])
+
+
 if __name__ == '__main__':
   tf.test.main()
