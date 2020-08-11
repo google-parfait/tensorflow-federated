@@ -7,7 +7,6 @@ package_group(
 
         # Impl Dependencies
         "//tensorflow_federated/python/core/impl/compiler/...",
-        "//tensorflow_federated/python/core/impl/context_stack/...",
 
         # TODO(b/143772942): This package is temporary and can be removed once
         # all the appropriate modules have been moved out of the `impl` package.
