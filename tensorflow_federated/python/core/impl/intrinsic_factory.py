@@ -347,7 +347,7 @@ class IntrinsicFactory(object):
     """Implements `federated_value` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)
     if type_analysis.contains(value.type_signature, lambda t: t.is_federated()):
-      raise TypeError('Cannt place value {} containing federated types at '
+      raise TypeError('Cannot place value {} containing federated types at '
                       'another placement; requested to be placed at {}.'.format(
                           value, placement))
 
