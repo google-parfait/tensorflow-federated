@@ -179,8 +179,7 @@ def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
         possible_prefix_extensions_table)
 
     sampled_data = tf.data.Dataset.from_tensor_slices(
-        hh_utils.get_top_elements(
-            hh_utils.listify(dataset), max_user_contribution))
+        hh_utils.get_top_elements(dataset, max_user_contribution))
 
     return ClientOutput(
         sampled_data.reduce(client_votes, accumulate_client_votes_fn))

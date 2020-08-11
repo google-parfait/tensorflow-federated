@@ -26,13 +26,13 @@ import tensorflow_text as tf_text
 
 
 @tf.function
-def get_top_elements(list_of_elements, max_user_contribution):
+def get_top_elements(dataset, max_user_contribution):
   """Gets the top max_user_contribution words from the input list.
 
   Note that the returned set of top words will not necessarily be sorted.
 
   Args:
-    list_of_elements: A tensor containing a list of elements.
+    dataset: A `tf.data.Dataset` to extract top elements from.
     max_user_contribution: The maximum number of elements to keep.
 
   Returns:
@@ -40,7 +40,28 @@ def get_top_elements(list_of_elements, max_user_contribution):
     If the total number of unique words is less than or equal to
     max_user_contribution, returns the set of unique words.
   """
-  words, _, counts = tf.unique_with_counts(list_of_elements)
+  # Create a tuple of parallel elements and counts. This will be appended to and
+  # updated as we iterate over the dataset.
+  element_type = dataset.element_spec.dtype
+  initial_histogram = (tf.constant([], dtype=element_type),
+                       tf.constant([], dtype=tf.int64))
+
+  def count_word(histogram, new_element):
+    elements, counts = histogram
+    mask = tf.equal(elements, new_element)
+    # If the element doesn't match any we've already seen, expand the list of
+    # elements we are tracking and add one for the count.
+    if not tf.reduce_any(mask):
+      elements = tf.concat(
+          [elements, tf.expand_dims(new_element, axis=0)], axis=0)
+      counts = tf.concat([counts, tf.constant([1], dtype=tf.int64)], axis=0)
+    else:
+      # Otherwise add one to the index that was `True`.
+      counts += tf.cast(mask, tf.int64)
+    return elements, counts
+
+  words, counts = dataset.reduce(
+      initial_state=initial_histogram, reduce_func=count_word)
   if tf.size(words) > max_user_contribution:
     # This logic is influenced by the focus on global heavy hitters and
     # thus implements clipping by chopping the tail of the distribution
@@ -68,6 +89,8 @@ def get_random_elements(list_of_elements, max_user_contribution):
   return tf.random.shuffle(list_of_elements)[:max_user_contribution]
 
 
+# TODO(b/163569319): move all usages of `listify` to streaming approaches and
+# delete this method.
 @tf.function()
 def listify(dataset):
   """Turns a stream of strings into a 1D tensor of strings."""
@@ -279,8 +302,7 @@ def calculate_ground_truth(data, dataset_name):
 
 @tff.tf_computation(tff.SequenceType(tf.string))
 def compute_lossless_result_per_user(dataset):
-  words = listify(dataset)
-  k_words = get_top_elements(words, 10)
+  k_words = get_top_elements(dataset, 10)
   return k_words
 
 
