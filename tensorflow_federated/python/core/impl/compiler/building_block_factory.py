@@ -13,6 +13,7 @@
 # limitations under the License.
 """A library of contruction functions for building block structures."""
 
+import functools
 import random
 import string
 from typing import AbstractSet, Any, Callable, Iterator, List, Sequence, Optional, Tuple, Union
@@ -58,6 +59,7 @@ def unique_name_generator(comp: building_blocks.ComputationBuildingBlock,
     index += 1
 
 
+@functools.lru_cache()
 def create_compiled_empty_tuple() -> building_blocks.Call:
   """Returns called graph representing the empty tuple.
 
@@ -72,6 +74,7 @@ def create_compiled_empty_tuple() -> building_blocks.Call:
   return building_blocks.Call(compiled, None)
 
 
+@functools.lru_cache()
 def create_compiled_identity(
     type_signature: computation_types.Type,
     name: Optional[str] = None) -> building_blocks.CompiledComputation:
@@ -141,6 +144,7 @@ def _extract_selections(parameter_value, output_spec):
   return results
 
 
+@functools.lru_cache()
 def construct_tensorflow_selecting_and_packing_outputs(
     parameter_type: computation_types.StructType,
     output_structure: structure.Struct) -> building_blocks.CompiledComputation:
@@ -218,6 +222,7 @@ def construct_tensorflow_selecting_and_packing_outputs(
       proto, type_signature=function_type)
 
 
+@functools.lru_cache()
 def create_tensorflow_constant(type_spec: computation_types.Type,
                                scalar_value: Union[int, float, str],
                                name=None) -> building_blocks.Call:
@@ -249,6 +254,7 @@ def create_tensorflow_constant(type_spec: computation_types.Type,
   return building_blocks.Call(compiled, None)
 
 
+@functools.lru_cache()
 def create_compiled_input_replication(
     type_signature: computation_types.Type,
     n_replicas: int) -> building_blocks.CompiledComputation:
@@ -302,6 +308,7 @@ def create_tensorflow_to_broadcast_scalar(
       proto, type_signature=type_signature)
 
 
+@functools.lru_cache()
 def create_tensorflow_binary_operator(
     operand_type: computation_types.Type,
     operator: Callable[[Any, Any], Any]) -> building_blocks.CompiledComputation:
@@ -441,6 +448,7 @@ def create_federated_setattr_call(
   return create_federated_map_or_apply(setattr_lambda, federated_comp)
 
 
+@functools.lru_cache()
 def create_named_tuple_setattr_lambda(
     named_tuple_signature: computation_types.StructType, name: str,
     value_comp: building_blocks.ComputationBuildingBlock
@@ -1407,6 +1415,7 @@ def create_federated_zip(
     raise TypeError('Unsupported placement {}.'.format(placement))
 
 
+@functools.lru_cache()
 def create_generic_constant(
     type_spec: Optional[computation_types.Type],
     scalar_value: Union[int,
@@ -1841,6 +1850,7 @@ def _check_generic_operator_type(type_spec):
         'more details.'.format(type_spec))
 
 
+@functools.lru_cache()
 def create_tensorflow_binary_operator_with_upcast(
     type_signature: computation_types.Type,
     operator: Callable[[Any, Any], Any]) -> building_blocks.CompiledComputation:
