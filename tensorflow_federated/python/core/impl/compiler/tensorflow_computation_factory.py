@@ -387,7 +387,7 @@ def create_computation_for_py_fn(
 
   Args:
     fn: A Python function.
-    parameter_type: A `computation_types.Type`.
+    parameter_type: A `computation_types.Type` or `None`.
   """
   py_typecheck.check_type(fn, types.FunctionType)
   if parameter_type is not None:

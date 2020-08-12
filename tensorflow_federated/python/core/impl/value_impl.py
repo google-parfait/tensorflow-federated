@@ -20,15 +20,16 @@ from typing import Any, Union
 import attr
 import tensorflow as tf
 
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.context_stack import symbol_binding_context
@@ -263,6 +264,27 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     return ValueImpl(ref, self._context_stack)
 
 
+def _wrap_computation_as_value(
+    proto: pb.Computation,
+    context_stack: context_stack_base.ContextStack) -> value_base.Value:
+  """Wraps the given computation as a `tff.Value`.
+
+  Args:
+    proto: A pb.Computation.
+    context_stack: The context stack to use.
+
+  Returns:
+    A `value_base.Value`.
+  """
+  py_typecheck.check_type(proto, pb.Computation)
+  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
+  compiled = building_blocks.CompiledComputation(proto)
+  call = building_blocks.Call(compiled)
+  federated_computation_context = context_stack.current
+  ref = federated_computation_context.bind_computation_to_reference(call)
+  return ValueImpl(ref, context_stack)
+
+
 def _wrap_constant_as_value(const, context_stack):
   """Wraps the given Python constant as a `tff.Value`.
 
@@ -274,14 +296,9 @@ def _wrap_constant_as_value(const, context_stack):
   Returns:
     An instance of `value_base.Value`.
   """
-  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-  tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-      lambda: tf.constant(const), None, context_stack)
-  compiled_comp = building_blocks.CompiledComputation(tf_comp)
-  called_comp = building_blocks.Call(compiled_comp)
-  fc_context = context_stack.current
-  ref = fc_context.bind_computation_to_reference(called_comp)
-  return ValueImpl(ref, context_stack)
+  tf_comp, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+      fn=lambda: tf.constant(const), parameter_type=None)
+  return _wrap_computation_as_value(tf_comp, context_stack)
 
 
 def _wrap_sequence_as_value(elements, element_type, context_stack):
@@ -302,28 +319,20 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
   # TODO(b/113116813): Add support for other representations of sequences.
   py_typecheck.check_type(elements, list)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-
-  # Checks that the types of all the individual elements are compatible with the
-  # requested type of the sequence as a while.
-  for elem in elements:
-    elem_type = type_conversions.infer_type(elem)
-    if not element_type.is_assignable_from(elem_type):
+  for element in elements:
+    inferred_type = type_conversions.infer_type(element)
+    if not element_type.is_assignable_from(inferred_type):
       raise TypeError(
           'Expected all sequence elements to be {}, found {}.'.format(
-              element_type, elem_type))
+              element_type, inferred_type))
 
-  # Defines a no-arg function that builds a `tf.data.Dataset` from the elements.
   def _create_dataset_from_elements():
     return tensorflow_utils.make_data_set_from_elements(
         tf.compat.v1.get_default_graph(), elements, element_type)
 
-  # Wraps the dataset as a value backed by a no-argument TensorFlow computation.
-  tf_comp, _ = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-      _create_dataset_from_elements, None, context_stack)
-  call = building_blocks.Call(building_blocks.CompiledComputation(tf_comp))
-  fc_context = context_stack.current
-  ref = fc_context.bind_computation_to_reference(call)
-  return ValueImpl(ref, context_stack)
+  proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
+      fn=_create_dataset_from_elements, parameter_type=None)
+  return _wrap_computation_as_value(proto, context_stack)
 
 
 def _dictlike_items_to_value(items, context_stack, container_type) -> ValueImpl:
