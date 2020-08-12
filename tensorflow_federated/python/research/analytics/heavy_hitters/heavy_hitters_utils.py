@@ -89,21 +89,6 @@ def get_random_elements(list_of_elements, max_user_contribution):
   return tf.random.shuffle(list_of_elements)[:max_user_contribution]
 
 
-# TODO(b/163569319): move all usages of `listify` to streaming approaches and
-# delete this method.
-@tf.function()
-def listify(dataset):
-  """Turns a stream of strings into a 1D tensor of strings."""
-  data = tf.constant([], dtype=tf.string)
-  for item in dataset:
-    # Empty datasets return a zero tf.float32 tensor for some reason.
-    # so we need to protect against that.
-    if item.dtype == tf.string:
-      items = tf.expand_dims(item, 0)
-      data = tf.concat([data, items], axis=0)
-  return data
-
-
 @tf.function
 def tokenize(ds, dataset_name):
   """Tokenizes a line into words with alphanum characters."""
