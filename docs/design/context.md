@@ -30,7 +30,7 @@ this level.
 ### `FederatedComputationContext`
 
 A
-[federated_computation_context.FederatedComputationContext](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/federated_computation_context.py)
+[federated_computation_context.FederatedComputationContext](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/federated_context/federated_computation_context.py)
 is a
 [context_base.Context](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/context_stack/context_base.py)
 that constructs federated computations. This context is used trace Python

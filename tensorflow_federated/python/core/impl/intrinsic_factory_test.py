@@ -16,8 +16,8 @@ from absl.testing import absltest
 import numpy as np
 
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 

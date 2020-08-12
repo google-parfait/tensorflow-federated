@@ -7,6 +7,7 @@ package_group(
 
         # Impl Dependencies
         "//tensorflow_federated/python/core/impl/executors/...",
+        "//tensorflow_federated/python/core/impl/federated_context/...",
         "//tensorflow_federated/python/core/impl/tensorflow_context/...",
         "//tensorflow_federated/python/core/impl/utils/...",
         "//tensorflow_federated/python/core/impl/wrappers/...",

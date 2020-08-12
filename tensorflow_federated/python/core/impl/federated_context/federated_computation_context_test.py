@@ -17,9 +17,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 
 
 class FederatedComputationContextTest(absltest.TestCase):

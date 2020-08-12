@@ -16,8 +16,8 @@ from absl.testing import absltest
 
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.api import values
-from tensorflow_federated.python.core.impl import federated_computation_context
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 
 
 class ValuesTest(absltest.TestCase):
