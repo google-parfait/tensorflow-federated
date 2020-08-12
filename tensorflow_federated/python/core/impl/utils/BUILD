@@ -8,6 +8,7 @@ package_group(
         # Impl Dependencies
         "//tensorflow_federated/python/core/impl/compiler/...",
         "//tensorflow_federated/python/core/impl/executors/...",
+        "//tensorflow_federated/python/core/impl/federated_context/...",
         "//tensorflow_federated/python/core/impl/wrappers/...",
 
         # TODO(b/143772942): This package is temporary and can be removed once
