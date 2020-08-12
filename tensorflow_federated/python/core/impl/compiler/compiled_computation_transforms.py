@@ -101,10 +101,10 @@ def select_graph_output(comp, name=None, index=None):
     index = _index_from_name(proto_type.result, name)
   result = graph_result_binding.struct.element[index]
   result_type = proto_type.result[index]
-  serialized_type = type_serialization.serialize_type(
-      computation_types.FunctionType(proto_type.parameter, result_type))
+  type_signature = computation_types.FunctionType(proto_type.parameter,
+                                                  result_type)
   selected_proto = pb.Computation(
-      type=serialized_type,
+      type=type_serialization.serialize_type(type_signature),
       tensorflow=pb.TensorFlow(
           graph_def=proto.tensorflow.graph_def,
           initialize_op=proto.tensorflow.initialize_op,
@@ -112,7 +112,8 @@ def select_graph_output(comp, name=None, index=None):
           result=result))
   proto_pruned = tensorflow_computation_transformations.prune_tensorflow_proto(
       selected_proto)
-  return building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(
+      proto_pruned, type_signature=type_signature)
 
 
 def permute_graph_inputs(comp, input_permutation):
@@ -206,12 +207,11 @@ def permute_graph_inputs(comp, input_permutation):
   new_parameter_type_elements = [
       original_parameter_type_elements[k] for k in input_permutation
   ]
-
-  serialized_type = type_serialization.serialize_type(
-      computation_types.FunctionType(new_parameter_type_elements,
-                                     proto_type.result))
+  new_parameter_type = computation_types.StructType(new_parameter_type_elements)
+  type_signature = computation_types.FunctionType(new_parameter_type,
+                                                  proto_type.result)
   permuted_proto = pb.Computation(
-      type=serialized_type,
+      type=type_serialization.serialize_type(type_signature),
       tensorflow=pb.TensorFlow(
           graph_def=proto.tensorflow.graph_def,
           initialize_op=proto.tensorflow.initialize_op,
@@ -221,7 +221,8 @@ def permute_graph_inputs(comp, input_permutation):
           result=proto.tensorflow.result))
   proto_pruned = tensorflow_computation_transformations.prune_tensorflow_proto(
       permuted_proto)
-  return building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(
+      proto_pruned, type_signature=type_signature)
 
 
 def bind_graph_parameter_as_tuple(comp, name=None):
@@ -255,14 +256,13 @@ def bind_graph_parameter_as_tuple(comp, name=None):
   proto_type = type_serialization.deserialize_type(proto.type)
 
   parameter_binding = [proto.tensorflow.parameter]
-  parameter_type_list = [(name, proto_type.parameter)]
+  parameter_type = computation_types.StructType([(name, proto_type.parameter)])
   new_parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(element=parameter_binding))
 
-  new_function_type = computation_types.FunctionType(parameter_type_list,
+  new_function_type = computation_types.FunctionType(parameter_type,
                                                      proto_type.result)
   serialized_type = type_serialization.serialize_type(new_function_type)
-
   input_padded_proto = pb.Computation(
       type=serialized_type,
       tensorflow=pb.TensorFlow(
@@ -272,7 +272,8 @@ def bind_graph_parameter_as_tuple(comp, name=None):
           result=proto.tensorflow.result))
   proto_pruned = tensorflow_computation_transformations.prune_tensorflow_proto(
       input_padded_proto)
-  return building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(
+      proto_pruned, type_signature=new_function_type)
 
 
 def bind_graph_result_as_tuple(comp, name=None):
@@ -303,19 +304,18 @@ def bind_graph_result_as_tuple(comp, name=None):
   if name is not None:
     py_typecheck.check_type(name, str)
   proto = comp.proto
-  proto_type = type_serialization.deserialize_type(proto.type)
 
   result_binding = [proto.tensorflow.result]
-  result_type_list = [(name, proto_type.result)]
+  result_type = computation_types.StructType([(name, comp.type_signature.result)
+                                             ])
   new_result_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(element=result_binding))
 
-  new_function_type = computation_types.FunctionType(proto_type.parameter,
-                                                     result_type_list)
-  serialized_type = type_serialization.serialize_type(new_function_type)
+  new_function_type = computation_types.FunctionType(
+      comp.type_signature.parameter, result_type)
 
   result_as_tuple_proto = pb.Computation(
-      type=serialized_type,
+      type=type_serialization.serialize_type(new_function_type),
       tensorflow=pb.TensorFlow(
           graph_def=proto.tensorflow.graph_def,
           initialize_op=proto.tensorflow.initialize_op,
@@ -323,7 +323,8 @@ def bind_graph_result_as_tuple(comp, name=None):
           result=new_result_binding))
   proto_pruned = tensorflow_computation_transformations.prune_tensorflow_proto(
       result_as_tuple_proto)
-  return building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(
+      proto_pruned, type_signature=new_function_type)
 
 
 def pad_graph_inputs_to_match_type(comp, type_signature):
@@ -364,8 +365,8 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
   Args:
     comp: Instance of `building_blocks.CompiledComputation` representing the
       graph whose inputs we want to pad to match `type_signature`.
-    type_signature: Instance of `computation_types.StructType` representing
-      the type signature we wish to pad `comp` to accept as a parameter.
+    type_signature: Instance of `computation_types.StructType` representing the
+      type signature we wish to pad `comp` to accept as a parameter.
 
   Returns:
     A transformed version of `comp`, instance of
@@ -438,7 +439,8 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
       struct=pb.TensorFlow.StructBinding(element=parameter_bindings))
   new_graph_def = g.as_graph_def()
 
-  new_function_type = computation_types.FunctionType(type_signature_elements,
+  new_parameter_type = computation_types.StructType(type_signature_elements)
+  new_function_type = computation_types.FunctionType(new_parameter_type,
                                                      proto_type.result)
   serialized_type = type_serialization.serialize_type(new_function_type)
 
@@ -451,7 +453,8 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
           result=proto.tensorflow.result))
   proto_pruned = tensorflow_computation_transformations.prune_tensorflow_proto(
       input_padded_proto)
-  return building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(
+      proto_pruned, type_signature=new_function_type)
 
 
 def _unpack_proto_into_graph_spec(tf_block_proto):
@@ -691,8 +694,10 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
 
   parameter_type = _construct_concatenated_type(
       [x.type_signature.parameter for x in tf_comp_list])
-  return_type = [(output_name_list[i], x.type_signature.result)
-                 for i, x in enumerate(tf_comp_list)]
+  return_type = computation_types.StructType([
+      (output_name_list[i], x.type_signature.result)
+      for i, x in enumerate(tf_comp_list)
+  ])
   function_type = computation_types.FunctionType(parameter_type, return_type)
   serialized_function_type = type_serialization.serialize_type(function_type)
 
@@ -700,7 +705,8 @@ def concatenate_tensorflow_blocks(tf_comp_list, output_name_list):
       type=serialized_function_type, tensorflow=tf_result_proto)
   proto_pruned = tensorflow_computation_transformations.prune_tensorflow_proto(
       constructed_proto)
-  return building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(
+      proto_pruned, type_signature=function_type)
 
 
 def optimize_tensorflow_comp(tf_computation, config_proto):
@@ -732,7 +738,8 @@ def optimize_tensorflow_comp(tf_computation, config_proto):
       result=tf_proto.tensorflow.result)
   optimized_proto = pb.Computation(
       type=tf_proto.type, tensorflow=tf_result_proto)
-  return building_blocks.CompiledComputation(optimized_proto)
+  return building_blocks.CompiledComputation(
+      optimized_proto, type_signature=tf_computation.type_signature)
 
 
 def compose_tensorflow_blocks(tf_comps):
@@ -770,7 +777,7 @@ def compose_tensorflow_blocks(tf_comps):
   for comp in tf_comps:
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     if previous_param_type is not None:
-      if previous_param_type != comp.type_signature.result:
+      if not previous_param_type.is_assignable_from(comp.type_signature.result):
         raise TypeError('The result type of computation k should match the '
                         'parameter type of computation k-1 in `tf_comps`, '
                         'as we are attempting to compose; we have encountered '
@@ -817,7 +824,8 @@ def compose_tensorflow_blocks(tf_comps):
       type=serialized_function_type, tensorflow=tf_result_proto)
   proto_pruned = tensorflow_computation_transformations.prune_tensorflow_proto(
       constructed_proto)
-  return building_blocks.CompiledComputation(proto_pruned)
+  return building_blocks.CompiledComputation(
+      proto_pruned, type_signature=function_type)
 
 
 class LambdaWrappingNoArgGraph(transformation_utils.TransformSpec):
@@ -882,7 +890,8 @@ class LambdaWrappingNoArgGraph(transformation_utils.TransformSpec):
         type=serialized_function_type, tensorflow=tf_result_proto)
     proto_pruned = tensorflow_computation_transformations.prune_tensorflow_proto(
         constructed_proto)
-    return building_blocks.CompiledComputation(proto_pruned), True
+    return building_blocks.CompiledComputation(
+        proto_pruned, type_signature=function_type), True
 
 
 class CalledCompositionOfTensorFlowBlocks(transformation_utils.TransformSpec):
@@ -978,9 +987,12 @@ class SelectionFromCalledTensorFlowBlock(transformation_utils.TransformSpec):
       return comp, False
     selected = select_graph_output(
         comp.source.function, index=comp.index, name=comp.name)
+    function_type = computation_types.FunctionType(
+        comp.source.function.type_signature.parameter, comp.type_signature)
     pruned = building_blocks.CompiledComputation(
         tensorflow_computation_transformations.prune_tensorflow_proto(
-            selected.proto))
+            selected.proto),
+        type_signature=function_type)
     return building_blocks.Call(pruned, comp.source.argument), True
 
 
@@ -1099,6 +1111,7 @@ class StructCalledGraphs(transformation_utils.TransformSpec):
     if not self.should_transform(comp):
       return comp, False
     if len(comp) == 0:  # pylint: disable=g-explicit-length-test
+      # FIXME(b/157172423): this destroys the container type.
       return building_block_factory.create_compiled_empty_tuple(), True
     compiled_computation_list = []
     arg_list = []
@@ -1116,7 +1129,9 @@ class StructCalledGraphs(transformation_utils.TransformSpec):
       arg = non_none_arg_list[0]
       return building_blocks.Call(concatenated_tf, arg), True
     else:
-      arg = building_blocks.Struct(non_none_arg_list)
+      arg = building_blocks.Struct(
+          non_none_arg_list,
+          container_type=comp.type_signature.python_container)
     called_tf_on_concatenated_arg = building_blocks.Call(concatenated_tf, arg)
     replicated_arg_check = CalledGraphOnReplicatedArg()
     return replicated_arg_check.transform(
@@ -1134,8 +1149,8 @@ def _construct_padding(list_of_indices, tuple_type):
   Args:
     list_of_indices: Python `list` containing integers between 0 and the length
       of `tuple_type`.
-    tuple_type: Instance of `computation_types.StructType` as described in
-      the docstring of `_remap_graph_inputs`.
+    tuple_type: Instance of `computation_types.StructType` as described in the
+      docstring of `_remap_graph_inputs`.
 
   Returns:
     An instance of `computation_types.StructType` containing
@@ -1166,8 +1181,8 @@ def _construct_permutation(list_of_indices, tuple_type):
   Args:
     list_of_indices: Python `list` containing integers between 0 and the length
       of `tuple_type`.
-    tuple_type: Instance of `computation_types.StructType` as described in
-      the docstring of `_remap_graph_inputs`.
+    tuple_type: Instance of `computation_types.StructType` as described in the
+      docstring of `_remap_graph_inputs`.
 
   Returns:
     A permutation of the integers in `range(len(tuple_type))` in
@@ -1241,8 +1256,7 @@ def _remap_graph_inputs(graph, list_of_indices, tuple_type):
       type we are trying to match with `tuple_type` if possible.
     list_of_indices: Python `list` containing integers between 0 and the length
       of `tuple_type`.
-    tuple_type: Instance of `computation_types.StructType` as described
-      above.
+    tuple_type: Instance of `computation_types.StructType` as described above.
 
   Returns:
     An instance of `building_blocks.CompiledComputation` which
@@ -1326,7 +1340,8 @@ class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
                                    [index_of_selection], comp.parameter_type)
     pruned = building_blocks.CompiledComputation(
         tensorflow_computation_transformations.prune_tensorflow_proto(
-            remapped.proto))
+            remapped.proto),
+        type_signature=comp.type_signature)
     return pruned, True
 
 
@@ -1400,7 +1415,8 @@ class LambdaToCalledTupleOfSelectionsFromArg(transformation_utils.TransformSpec
                                         comp.parameter_type)
     pruned = building_blocks.CompiledComputation(
         tensorflow_computation_transformations.prune_tensorflow_proto(
-            inputs_mapped.proto))
+            inputs_mapped.proto),
+        type_signature=comp.type_signature)
     return pruned, True
 
 

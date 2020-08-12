@@ -34,9 +34,10 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 def _create_compiled_computation(py_fn, parameter_type):
-  proto = tensorflow_computation_factory.create_computation_for_py_fn(
+  proto, type_signature = tensorflow_computation_factory.create_computation_for_py_fn(
       py_fn, parameter_type)
-  return building_blocks.CompiledComputation(proto)
+  return building_blocks.CompiledComputation(
+      proto, type_signature=type_signature)
 
 
 class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
@@ -419,9 +420,10 @@ class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
     wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo)
 
+    parameter_type = computation_types.StructType(
+        [foo.type_signature.parameter])
     expected_type_signature = computation_types.FunctionType(
-        computation_types.StructType((foo.type_signature.parameter,)),
-        foo.type_signature.result)
+        parameter_type, foo.type_signature.result)
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
     actual_result = test_utils.run_tensorflow(wrapped_inputs.proto, [[1]])
     expected_result = test_utils.run_tensorflow(foo.proto, [1])
@@ -447,9 +449,10 @@ class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
     wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo)
 
+    parameter_type = computation_types.StructType(
+        [foo.type_signature.parameter])
     expected_type_signature = computation_types.FunctionType(
-        computation_types.StructType((foo.type_signature.parameter,)),
-        foo.type_signature.result)
+        parameter_type, foo.type_signature.result)
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
     actual_result = test_utils.run_tensorflow(wrapped_inputs.proto, [[1]])
     expected_result = test_utils.run_tensorflow(foo.proto, [1])
@@ -462,9 +465,10 @@ class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
     wrapped_inputs = compiled_computation_transforms.bind_graph_parameter_as_tuple(
         foo)
 
+    parameter_type = computation_types.StructType(
+        [foo.type_signature.parameter])
     expected_type_signature = computation_types.FunctionType(
-        computation_types.StructType((foo.type_signature.parameter,)),
-        foo.type_signature.result)
+        parameter_type, foo.type_signature.result)
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
     actual_result = test_utils.run_tensorflow(wrapped_inputs.proto, [1])
     expected_result = test_utils.run_tensorflow(foo.proto, 1)
@@ -509,7 +513,7 @@ class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
 
     expected_type_signature = computation_types.FunctionType(
         foo.type_signature.parameter,
-        computation_types.StructType((foo.type_signature.result,)))
+        computation_types.StructType([foo.type_signature.result]))
     self.assertEqual(wrapped_output.type_signature, expected_type_signature)
     actual_result = test_utils.run_tensorflow(wrapped_output.proto, [1])
     expected_result = test_utils.run_tensorflow(foo.proto, [1])
@@ -524,7 +528,7 @@ class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
 
     expected_type_signature = computation_types.FunctionType(
         foo.type_signature.parameter,
-        computation_types.StructType((foo.type_signature.result,)))
+        computation_types.StructType([foo.type_signature.result]))
     self.assertEqual(wrapped_output.type_signature, expected_type_signature)
     actual_result = test_utils.run_tensorflow(wrapped_output.proto, [1])
     expected_result = test_utils.run_tensorflow(foo.proto, [1])
@@ -539,7 +543,7 @@ class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
 
     expected_type_signature = computation_types.FunctionType(
         foo.type_signature.parameter,
-        computation_types.StructType((foo.type_signature.result,)))
+        computation_types.StructType([foo.type_signature.result]))
     self.assertEqual(wrapped_output.type_signature, expected_type_signature)
     actual_result = test_utils.run_tensorflow(wrapped_output.proto, [1])
     expected_result = test_utils.run_tensorflow(foo.proto, [1])

@@ -972,7 +972,8 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     else:
       parameter_types = [t.parameter for t in param_types]
     result_types = computation_types.StructType([x.result for x in param_types])
-    return computation_types.FunctionType(parameter_types, result_types)
+    return computation_types.FunctionType(
+        computation_types.StructType(parameter_types), result_types)
 
   def _create_merged_parameter_type(self, comp, type_signature):
     """Computes parameter types for merged intrinsic.
@@ -1028,7 +1029,8 @@ class MergeTupleIntrinsics(transformation_utils.TransformSpec):
     merged_parameter_type = self._create_merged_parameter_type(
         comp, intrinsic_def.type_signature.parameter)
     named_comps = structure.to_elements(comp)
-    type_signature = [call.type_signature.member for _, call in named_comps]
+    type_signature = computation_types.StructType(
+        [call.type_signature.member for _, call in named_comps])
     result_type = computation_types.FederatedType(
         type_signature, intrinsic_def.type_signature.result.placement,
         intrinsic_def.type_signature.result.all_equal)

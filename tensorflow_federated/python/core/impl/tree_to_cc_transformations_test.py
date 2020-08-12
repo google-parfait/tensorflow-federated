@@ -27,9 +27,10 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 
 
 def _create_compiled_computation(py_fn, parameter_type):
-  proto = tensorflow_computation_factory.create_computation_for_py_fn(
+  proto, type_signature = tensorflow_computation_factory.create_computation_for_py_fn(
       py_fn, parameter_type)
-  return building_blocks.CompiledComputation(proto)
+  return building_blocks.CompiledComputation(
+      proto, type_signature=type_signature)
 
 
 def parse_tff_to_tf(comp):

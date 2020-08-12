@@ -951,9 +951,7 @@ class TensorFlowGeneratorTest(test.TestCase):
 
   def test_generates_tf_with_sequence_type(self):
     ref_to_x = building_blocks.Reference(
-        'x',
-        computation_types.SequenceType(
-            computation_types.StructType([tf.int32, tf.float32])))
+        'x', computation_types.SequenceType([tf.int32, tf.float32]))
     identity_lambda = building_blocks.Lambda(ref_to_x.name,
                                              ref_to_x.type_signature, ref_to_x)
 

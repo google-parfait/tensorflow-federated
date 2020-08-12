@@ -272,8 +272,8 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
     py_typecheck.check_len(val, len(self._target_executors))
-    identity_report = tensorflow_computation_factory.create_identity(zero_type)
-    identity_report_type = type_factory.unary_op(zero_type)
+    identity_report, identity_report_type = tensorflow_computation_factory.create_identity(
+        zero_type)
     aggr_type = computation_types.FunctionType(
         computation_types.StructType([
             value_type, zero_type, accumulate_type, merge_type,
@@ -487,16 +487,15 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     type_analysis.check_federated_type(
         arg.type_signature, placement=placement_literals.CLIENTS)
+    id_comp, id_type = tensorflow_computation_factory.create_identity(
+        arg.type_signature.member)
     zero, plus, identity = await asyncio.gather(
         executor_utils.embed_tf_scalar_constant(self._executor,
                                                 arg.type_signature.member, 0),
         executor_utils.embed_tf_binary_operator(self._executor,
                                                 arg.type_signature.member,
                                                 tf.add),
-        self._executor.create_value(
-            tensorflow_computation_factory.create_identity(
-                arg.type_signature.member),
-            type_factory.unary_op(arg.type_signature.member)))
+        self._executor.create_value(id_comp, id_type))
     aggregate_args = await self._executor.create_struct(
         [arg, zero, plus, plus, identity])
     return await self.compute_federated_aggregate(aggregate_args)

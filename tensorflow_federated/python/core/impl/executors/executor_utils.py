@@ -114,8 +114,8 @@ async def embed_tf_scalar_constant(executor, type_spec, value):
     An instance of `tff.framework.ExecutorValue` containing an embedded value.
   """
   py_typecheck.check_type(executor, executor_base.Executor)
-  proto = tensorflow_computation_factory.create_constant(value, type_spec)
-  type_signature = type_serialization.deserialize_type(proto.type)
+  proto, type_signature = tensorflow_computation_factory.create_constant(
+      value, type_spec)
   result = await executor.create_value(proto, type_signature)
   return await executor.create_call(result)
 
@@ -134,8 +134,8 @@ async def embed_tf_binary_operator(executor, type_spec, op):
     An instance of `tff.framework.ExecutorValue` representing the operator in
     a form embedded into the executor.
   """
-  proto = tensorflow_computation_factory.create_binary_operator(op, type_spec)
-  type_signature = type_serialization.deserialize_type(proto.type)
+  proto, type_signature = tensorflow_computation_factory.create_binary_operator(
+      op, type_spec)
   return await executor.create_value(proto, type_signature)
 
 

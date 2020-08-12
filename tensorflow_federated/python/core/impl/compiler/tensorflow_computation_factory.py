@@ -14,7 +14,7 @@
 """A library of contruction functions for tensorflow computation structures."""
 
 import types
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 import tensorflow as tf
 
@@ -29,9 +29,20 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
+ProtoAndType = Tuple[pb.Computation, computation_types.Type]
+
+
+def _tensorflow_comp(
+    tensorflow_proto: pb.TensorFlow,
+    type_signature: computation_types.Type,
+) -> ProtoAndType:
+  serialized_type = type_serialization.serialize_type(type_signature)
+  comp = pb.Computation(type=serialized_type, tensorflow=tensorflow_proto)
+  return (comp, type_signature)
+
 
 def create_broadcast_scalar_to_shape(scalar_type: tf.DType,
-                                     shape: tf.TensorShape) -> pb.Computation:
+                                     shape: tf.TensorShape) -> ProtoAndType:
   """Returns a tensorflow computation returning the result of `tf.broadcast_to`.
 
   The returned computation has the type signature `(T -> U)`, where
@@ -64,13 +75,11 @@ def create_broadcast_scalar_to_shape(scalar_type: tf.DType,
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding)
-  return pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
+  return _tensorflow_comp(tensorflow, type_signature)
 
 
 def create_constant(scalar_value,
-                    type_spec: computation_types.Type) -> pb.Computation:
+                    type_spec: computation_types.Type) -> ProtoAndType:
   """Returns a tensorflow computation returning a constant `scalar_value`.
 
   The returned computation has the type signature `( -> T)`, where `T` is
@@ -143,13 +152,11 @@ def create_constant(scalar_value,
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=None,
       result=result_binding)
-  return pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
+  return _tensorflow_comp(tensorflow, type_signature)
 
 
 def create_binary_operator(
-    operator, operand_type: computation_types.Type) -> pb.Computation:
+    operator, operand_type: computation_types.Type) -> ProtoAndType:
   """Returns a tensorflow computation computing a binary operation.
 
   The returned computation has the type signature `(<T,T> -> U)`, where `T` is
@@ -210,21 +217,19 @@ def create_binary_operator(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding)
-  return pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
+  return _tensorflow_comp(tensorflow, type_signature)
 
 
 def create_binary_operator_with_upcast(
     type_signature: computation_types.StructType,
-    operator: Callable[[Any, Any], Any]) -> pb.Computation:
+    operator: Callable[[Any, Any], Any]) -> ProtoAndType:
   """Creates TF computation upcasting its argument and applying `operator`.
 
   Args:
-    type_signature: A `computation_types.StructType` with two elements, both
-      of the same type or the second able to be upcast to the first, as
-      explained in `apply_binary_operator_with_upcast`, and both containing only
-      tuples and tensors in their type tree.
+    type_signature: A `computation_types.StructType` with two elements, both of
+      the same type or the second able to be upcast to the first, as explained
+      in `apply_binary_operator_with_upcast`, and both containing only tuples
+      and tensors in their type tree.
     operator: Callable defining the operator.
 
   Returns:
@@ -284,12 +289,10 @@ def create_binary_operator_with_upcast(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding)
-  return pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
+  return _tensorflow_comp(tensorflow, type_signature)
 
 
-def create_empty_tuple() -> pb.Computation:
+def create_empty_tuple() -> ProtoAndType:
   """Returns a tensorflow computation returning an empty tuple.
 
   The returned computation has the type signature `( -> <>)`.
@@ -297,23 +300,23 @@ def create_empty_tuple() -> pb.Computation:
 
   with tf.Graph().as_default() as graph:
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        [], graph)
+        structure.Struct([]), graph)
 
   type_signature = computation_types.FunctionType(None, result_type)
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=None,
       result=result_binding)
-  return pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
+  return _tensorflow_comp(tensorflow, type_signature)
 
 
-def create_identity(type_signature: computation_types.Type) -> pb.Computation:
+def create_identity(type_signature: computation_types.Type) -> ProtoAndType:
   """Returns a tensorflow computation representing an identity function.
 
   The returned computation has the type signature `(T -> T)`, where `T` is
-  `type_signature`.
+  `type_signature`. NOTE: if `T` contains `computation_types.StructType`s
+  without an associated container type, they will be given the container type
+  `tuple` by this function.
 
   Args:
     type_signature: A `computation_types.Type` to use as the parameter type and
@@ -337,13 +340,11 @@ def create_identity(type_signature: computation_types.Type) -> pb.Computation:
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding)
-  return pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
+  return _tensorflow_comp(tensorflow, type_signature)
 
 
 def create_replicate_input(type_signature: computation_types.Type,
-                           count: int) -> pb.Computation:
+                           count: int) -> ProtoAndType:
   """Returns a tensorflow computation returning `count` copies of its argument.
 
   The returned computation has the type signature `(T -> <T, T, T, ...>)`, where
@@ -373,14 +374,12 @@ def create_replicate_input(type_signature: computation_types.Type,
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding)
-  return pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
+  return _tensorflow_comp(tensorflow, type_signature)
 
 
 def create_computation_for_py_fn(
     fn: types.FunctionType,
-    parameter_type: Optional[computation_types.Type]) -> pb.Computation:
+    parameter_type: Optional[computation_types.Type]) -> ProtoAndType:
   """Returns a tensorflow computation returning the result of `fn`.
 
   The returned computation has the type signature `(T -> U)`, where `T` is
@@ -410,6 +409,4 @@ def create_computation_for_py_fn(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,
       result=result_binding)
-  return pb.Computation(
-      type=type_serialization.serialize_type(type_signature),
-      tensorflow=tensorflow)
+  return _tensorflow_comp(tensorflow, type_signature)
