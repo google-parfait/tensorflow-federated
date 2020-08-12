@@ -10,10 +10,10 @@ Please fill out either the individual or corporate Contributor License Agreement
 
 *   If you are an individual writing original source code and you're sure you
     own the intellectual property, then you'll need to sign an
-    [individual CLA](http://code.google.com/legal/individual-cla-v1.0.html).
+    [individual CLA](https://code.google.com/legal/individual-cla-v1.0.html).
 *   If you work for a company that wants to allow you to contribute your work,
     then you'll need to sign a
-    [corporate CLA](http://code.google.com/legal/corporate-cla-v1.0.html).
+    [corporate CLA](https://code.google.com/legal/corporate-cla-v1.0.html).
 
 Follow either of the two links above to access the appropriate CLA and
 instructions for how to sign and return it. Once we receive it, we'll be able to
@@ -34,12 +34,27 @@ use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
 
-## Code Style, Guidelines, and Best Practices
+## Guidelines
 
-### General Guidelines
+### General Guidelines and Philosophy
+
+*   Include unit tests when you contribute new features or fix a bug, this:
+
+    *   proves that your code works correctly
+    *   guards against breaking changes
+    *   lowers the maintenance cost
+
+*   Keep compatibility and cohesiveness mind when contributing a change that
+    will impact the public API.
+
+*   Tests should follow the
+    [testing best practices](https://www.tensorflow.org/community/contribute/tests)
+    guide.
 
 *   Python code should adhere to the
     [Google Python Style Guide](http://google.github.io/styleguide/pyguide.html).
+
+### Coding Style
 
 *   Fromat your changes.
 
@@ -65,13 +80,13 @@ information on using pull requests.
       | xargs pylint
     ```
 
-*   Python code must support Python 3 usage.
+### License
 
-*   Include a license at the top of new files.
+Include a license at the top of new files.
 
-    *   [Python license example](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/__init__.py#L1)
+*   [Python license example](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/__init__.py#L1)
 
-### TensorFlow-specific Guidelines.
+### TensorFlow Guidelines.
 
 *   TensorFlow code should follow the
     [TensorFlow Style Guide](https://www.tensorflow.org/community/style_guide).
@@ -101,9 +116,3 @@ information on using pull requests.
     non-determinism can lead to Checkpoint-incompatible graphs. Furthermore, TFF
     type signatures constructed from unordered dictionaries may also mismatch as
     their entries are permuted.
-
-### TFF-Learning-specific Guidelines
-
-*   While not a requirement, in our examples we use the conventions that metrics
-    and counters associated with a `tff.learning.Model` are named using
-    `lower_with_under` style, as with Python identifiers.

@@ -78,7 +78,7 @@ There are a number of ways to contribute depending on what you're interested in:
 
 Please be sure to review the
 [contribution guidelines](CONTRIBUTING.md#code-style-guidelines-and-best-practices)
-for guidelines on the coding style, best practices, etc.
+for guidelines on how to contribute.
 
 ## Compatibility
 
