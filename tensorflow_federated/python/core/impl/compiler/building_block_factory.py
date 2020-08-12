@@ -280,35 +280,6 @@ def create_compiled_input_replication(
   return building_blocks.CompiledComputation(proto, type_signature=comp_type)
 
 
-def create_tensorflow_to_broadcast_scalar(
-    scalar_type: tf.dtypes.DType,
-    new_shape: tf.TensorShape) -> building_blocks.CompiledComputation:
-  """Creates TF function broadcasting scalar to shape `new_shape`.
-
-  Args:
-    scalar_type: Instance of `tf.DType`, the type of the scalar we are looking
-      to broadcast.
-    new_shape: Instance of `tf.TensorShape`, the shape we wish to broadcast to.
-      Must be fully defined.
-
-  Returns:
-    Instance of `building_blocks.CompiledComputation` representing
-    a function declaring a scalar parameter of dtype `scalar_type`, and
-    returning a tensor of this same dtype and shape `new_shape`, with the same
-    value in each entry as its scalar argument.
-
-  Raises:
-    TypeError: If the types of the arguments do not match the declared arg
-    types.
-    ValueError: If `new_shape` is not fully defined.
-  """
-  proto, type_signature = tensorflow_computation_factory.create_broadcast_scalar_to_shape(
-      scalar_type, new_shape)
-  return building_blocks.CompiledComputation(
-      proto, type_signature=type_signature)
-
-
-@functools.lru_cache()
 def create_tensorflow_binary_operator(
     operand_type: computation_types.Type,
     operator: Callable[[Any, Any], Any]) -> building_blocks.CompiledComputation:

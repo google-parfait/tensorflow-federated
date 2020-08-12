@@ -26,47 +26,6 @@ from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-class CreateBroadcastScalarToShapeTest(parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ('int_empty_shape', tf.int32, tf.TensorShape([]), 10, 10),
-      ('int', tf.int32, tf.TensorShape([3]), 10, [10, 10, 10]),
-      ('float', tf.float32, tf.TensorShape([3]), 10.0, [10.0, 10.0, 10.0]),
-  )
-  def test_returns_computation(self, type_signature, shape, value,
-                               expected_result):
-    proto, _ = tensorflow_computation_factory.create_broadcast_scalar_to_shape(
-        type_signature, shape)
-
-    self.assertIsInstance(proto, pb.Computation)
-    actual_type = type_serialization.deserialize_type(proto.type)
-    result_type = computation_types.TensorType(type_signature, shape=shape)
-    expected_type = computation_types.FunctionType(type_signature, result_type)
-    self.assertEqual(actual_type, expected_type)
-    actual_result = test_utils.run_tensorflow(proto, value)
-    if isinstance(expected_result, list):
-      self.assertCountEqual(actual_result, expected_result)
-    else:
-      self.assertEqual(actual_result, expected_result)
-
-  @parameterized.named_parameters(
-      ('int_type', int, tf.TensorShape([])),
-      ('list_shape', tf.int32, [1, 1]),
-  )
-  def test_raises_type_error(self, type_signature, shape):
-    with self.assertRaises(TypeError):
-      tensorflow_computation_factory.create_broadcast_scalar_to_shape(
-          type_signature, shape)
-
-  def test_raises_value_error_with_partially_defined_shape(self):
-    type_signature = tf.int32
-    shape = tf.TensorShape([None, 1])
-
-    with self.assertRaises(ValueError):
-      tensorflow_computation_factory.create_broadcast_scalar_to_shape(
-          type_signature, shape)
-
-
 class CreateConstantTest(parameterized.TestCase):
 
   # pyformat: disable

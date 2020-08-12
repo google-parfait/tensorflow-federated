@@ -41,43 +41,6 @@ def _tensorflow_comp(
   return (comp, type_signature)
 
 
-def create_broadcast_scalar_to_shape(scalar_type: tf.DType,
-                                     shape: tf.TensorShape) -> ProtoAndType:
-  """Returns a tensorflow computation returning the result of `tf.broadcast_to`.
-
-  The returned computation has the type signature `(T -> U)`, where
-  `T` is `scalar_type` and the `U` is a `tff.TensorType` with a dtype of
-  `scalar_type` and a `shape`.
-
-  Args:
-    scalar_type: A `tf.DType`, the type of the scalar to broadcast.
-    shape: A `tf.TensorShape` to broadcast to. Must be fully defined.
-
-  Raises:
-    TypeError: If `scalar_type` is not a `tf.DType` or if `shape` is not a
-      `tf.TensorShape`.
-    ValueError: If `shape` is not fully defined.
-  """
-  py_typecheck.check_type(scalar_type, tf.DType)
-  py_typecheck.check_type(shape, tf.TensorShape)
-  shape.assert_is_fully_defined()
-  parameter_type = computation_types.TensorType(scalar_type, shape=())
-
-  with tf.Graph().as_default() as graph:
-    parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-        'x', parameter_type, graph)
-    result = tf.broadcast_to(parameter_value, shape)
-    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-        result, graph)
-
-  type_signature = computation_types.FunctionType(parameter_type, result_type)
-  tensorflow = pb.TensorFlow(
-      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-      parameter=parameter_binding,
-      result=result_binding)
-  return _tensorflow_comp(tensorflow, type_signature)
-
-
 def create_constant(scalar_value,
                     type_spec: computation_types.Type) -> ProtoAndType:
   """Returns a tensorflow computation returning a constant `scalar_value`.
