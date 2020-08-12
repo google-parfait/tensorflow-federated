@@ -1,4 +1,5 @@
-package(default_visibility = ["//tensorflow_federated:__subpackages__"])
+# TODO(b/163856734): Fix visibility.
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
