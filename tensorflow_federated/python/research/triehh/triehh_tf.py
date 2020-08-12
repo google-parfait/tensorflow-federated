@@ -24,6 +24,7 @@ Federated Heavy Hitters Discovery with Differential Privacy
     https://arxiv.org/pdf/1902.08534.pdf
 """
 
+from absl import logging
 import attr
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -40,8 +41,12 @@ class ClientOutput(object):
 
   Fields:
     `client_votes`: A tensor containing the client's votes.
+    `client_weight`: A tensor containing the capped number of words the
+      client holds: client_weight = min(num_words_in_client,
+      max_user_contribution)
   """
   client_votes = attr.ib()
+  client_weight = attr.ib()
 
 
 @attr.s(cmp=False, frozen=True)
@@ -51,15 +56,23 @@ class ServerState(object):
   Fields:
   `discovered_heavy_hitters`: A tf.string containing discovered heavy
   hitters.
+  `heavy_hitter_frequencies`: A tf.float64 containing the frequency of the heavy
+  hitter in the round it is discovered.
   `discovered_prefixes`: A tf.tstring containing candidate prefixes.
   `round_num`: A tf.constant dictating the algorithm's round number.
   `accumulated_votes`: A tf.constant that holds the votes accumulated over
   sub-rounds.
+  `accumulated_weights`: A tf.constant that holds the total number of
+    capped contributions from all clients over sub-rounds. In other words, this
+    is the sum of `client_weight` from all clients selected over
+    sub-rounds.
   """
   discovered_heavy_hitters = attr.ib()
+  heavy_hitter_frequencies = attr.ib()
   discovered_prefixes = attr.ib()
   round_num = attr.ib()
   accumulated_votes = attr.ib()
+  accumulated_weights = attr.ib()
 
 
 def make_accumulate_client_votes_fn(round_num, num_sub_rounds,
@@ -159,10 +172,11 @@ def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
       dtype=tf.int32,
       shape=[max_num_prefixes,
              tf.shape(possible_prefix_extensions)[0]])
+  client_weight = tf.constant(0)
 
   # If discovered_prefixes is emtpy (training is done), skip the voting.
   if tf.math.equal(tf.size(discovered_prefixes), 0):
-    return ClientOutput(client_votes)
+    return ClientOutput(client_votes, client_weight)
   else:
     discovered_prefixes_table = tf.lookup.StaticHashTable(
         tf.lookup.KeyValueTensorInitializer(
@@ -178,20 +192,27 @@ def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
         round_num, num_sub_rounds, discovered_prefixes_table,
         possible_prefix_extensions_table)
 
-    sampled_data = tf.data.Dataset.from_tensor_slices(
-        hh_utils.get_top_elements(dataset, max_user_contribution))
+    sampled_data_list = hh_utils.get_top_elements(dataset,
+                                                  max_user_contribution)
+    sampled_data = tf.data.Dataset.from_tensor_slices(sampled_data_list)
+    client_weight = tf.size(sampled_data_list)
 
     return ClientOutput(
-        sampled_data.reduce(client_votes, accumulate_client_votes_fn))
+        sampled_data.reduce(client_votes, accumulate_client_votes_fn),
+        client_weight)
 
 
 @tf.function()
-def accumulate_server_votes(server_state, sub_round_votes):
+def accumulate_server_votes(server_state, sub_round_votes, sub_round_weight):
   """Accumulates votes and returns an updated server state."""
   accumulated_votes = server_state.accumulated_votes + sub_round_votes
+  accumulated_weights = server_state.accumulated_weights + sub_round_weight
   round_num = server_state.round_num + 1
   return tff.utils.update_state(
-      server_state, accumulated_votes=accumulated_votes, round_num=round_num)
+      server_state,
+      accumulated_votes=accumulated_votes,
+      accumulated_weights=accumulated_weights,
+      round_num=round_num)
 
 
 @tf.function()
@@ -283,8 +304,8 @@ def extend_prefixes(prefixes_votes, discovered_prefixes,
 
 @tf.function()
 def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
-                                       sub_round_votes, max_num_prefixes,
-                                       threshold):
+                                       sub_round_votes, sub_round_weight,
+                                       max_num_prefixes, threshold):
   """Accumulates server votes and executes a decoding round.
 
   Args:
@@ -293,6 +314,7 @@ def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
       extensions.
     sub_round_votes: A tensor of shape = (max_num_prefixes,
       len(possible_prefix_extensions)) containing aggregated client votes.
+    sub_round_weight: A scalar tensor of containing aggregated client weights.
     max_num_prefixes: A tf.constant dictating the maximum number of prefixes we
       can keep in the trie.
     threshold: The threshold for heavy hitters and discovered prefixes. Only
@@ -310,6 +332,7 @@ def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
                                       [extensions_wo_terminator_num])
 
   accumulated_votes = server_state.accumulated_votes + sub_round_votes
+  accumulated_weights = server_state.accumulated_weights + sub_round_weight
 
   # The last column of `accumulated_votes` are those ending with
   # 'default_terminator`, which are full length heavy hitters.
@@ -328,6 +351,18 @@ def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
   new_heavy_hitters = tf.boolean_mask(heavy_hitters_candidates,
                                       heavy_hitters_mask)
 
+  # Normalize the votes by `accumulated_weights`, which is the capped
+  # number of words from all clients participated in this round. Other possible
+  # ways includes normalizing the count by the total number of votes or by the
+  # number of clients in this round.
+  if accumulated_weights == 0:
+    logging.warning('All participating clients have empty data.')
+    heavy_hitter_frequencies = tf.cast(heavy_hitters_votes, tf.float64)
+  else:
+    heavy_hitter_frequencies = heavy_hitters_votes / accumulated_weights
+  new_heavy_hitter_frequencies = tf.boolean_mask(heavy_hitter_frequencies,
+                                                 heavy_hitters_mask)
+
   # All but the last column of `accumulated_votes` are votes of prefixes.
   prefixes_votes = tf.slice(accumulated_votes, [0, 0], [
       tf.shape(server_state.discovered_prefixes)[0],
@@ -342,10 +377,13 @@ def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
 
   discovered_heavy_hitters = tf.concat(
       [server_state.discovered_heavy_hitters, new_heavy_hitters], 0)
+  heavy_hitter_frequencies = tf.concat(
+      [server_state.heavy_hitter_frequencies, new_heavy_hitter_frequencies], 0)
 
   # Reinitialize the server's vote tensor.
   accumulated_votes = tf.zeros(
       dtype=tf.int32, shape=[max_num_prefixes, possible_extensions_num])
+  accumulated_weights = tf.constant(0)
 
   # Increment the server's round_num.
   round_num = server_state.round_num + 1
@@ -354,14 +392,17 @@ def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
   return tff.utils.update_state(
       server_state,
       discovered_heavy_hitters=discovered_heavy_hitters,
+      heavy_hitter_frequencies=heavy_hitter_frequencies,
       round_num=round_num,
       discovered_prefixes=extended_prefixes,
-      accumulated_votes=accumulated_votes)
+      accumulated_votes=accumulated_votes,
+      accumulated_weights=accumulated_weights)
 
 
 @tf.function
 def server_update(server_state, possible_prefix_extensions, sub_round_votes,
-                  num_sub_rounds, max_num_prefixes, threshold):
+                  sub_round_weight, num_sub_rounds, max_num_prefixes,
+                  threshold):
   """Updates `server_state` based on `client_votes`.
 
   Args:
@@ -370,6 +411,7 @@ def server_update(server_state, possible_prefix_extensions, sub_round_votes,
       extensions.
     sub_round_votes: A tensor of shape = (max_num_prefixes,
       len(possible_prefix_extensions)) containing aggregated client votes.
+    sub_round_weight: A scalar tensor of containing aggregated client weights.
     num_sub_rounds: The total number of sub rounds to be executed before
       decoding aggregated votes.
     max_num_prefixes: A tf.constant dictating the maximum number of prefixes we
@@ -388,7 +430,8 @@ def server_update(server_state, possible_prefix_extensions, sub_round_votes,
   if tf.math.equal((server_state.round_num + 1) % num_sub_rounds, 0):
     return accumulate_server_votes_and_decode(server_state,
                                               possible_prefix_extensions,
-                                              sub_round_votes, max_num_prefixes,
-                                              threshold)
+                                              sub_round_votes, sub_round_weight,
+                                              max_num_prefixes, threshold)
   else:
-    return accumulate_server_votes(server_state, sub_round_votes)
+    return accumulate_server_votes(server_state, sub_round_votes,
+                                   sub_round_weight)
