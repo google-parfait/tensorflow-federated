@@ -107,43 +107,6 @@ py_test(
 )
 
 py_library(
-    name = "executor_service_utils",
-    srcs = ["executor_service_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":computation_impl",
-        ":type_utils",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:tracing",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-        "@com_google_protobuf//:protobuf_python",
-    ],
-)
-
-py_test(
-    name = "executor_service_utils_test",
-    size = "small",
-    srcs = ["executor_service_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":executor_service_utils",
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/proto/v0:executor_py_pb2",
-        "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
-    ],
-)
-
-py_library(
     name = "intrinsic_bodies",
     srcs = ["intrinsic_bodies.py"],
     srcs_version = "PY3",

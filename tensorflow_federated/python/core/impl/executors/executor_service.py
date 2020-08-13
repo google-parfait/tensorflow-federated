@@ -31,8 +31,8 @@ from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
-from tensorflow_federated.python.core.impl import executor_service_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_service_utils
 
 
 def _set_invalid_arg_err(context: grpc.ServicerContext, err):

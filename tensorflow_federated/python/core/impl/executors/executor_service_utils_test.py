@@ -22,7 +22,7 @@ from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl import executor_service_utils
+from tensorflow_federated.python.core.impl.executors import executor_service_utils
 from tensorflow_federated.python.core.impl.types import type_factory
 
 
