@@ -82,8 +82,8 @@ class LarsTest(tf.test.TestCase, parameterized.TestCase):
     x0_tf = tf.Variable(x0_np)
     x1_tf = tf.Variable(x1_np)
 
-    g0_tf = tf.Variable(g0_np)
-    g1_tf = tf.Variable(g1_np)
+    g0_tf = tf.constant(g0_np)
+    g1_tf = tf.constant(g1_np)
 
     opt = lars.LARS(
         learning_rate=learning_rate,

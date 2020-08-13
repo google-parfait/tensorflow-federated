@@ -102,7 +102,7 @@ class LARS(tf.keras.optimizers.Optimizer):
     m = self.get_slot(var, 'm')
     grad_with_decay = grad
     if self._do_use_weight_decay(var_name):
-      grad_with_decay.assign_add(weight_decay_rate * var)
+      grad_with_decay += weight_decay_rate * var
     scaled_grad_with_decay = grad_with_decay * (1 - momentum)
     m_t = m.assign(
         m * momentum + scaled_grad_with_decay, use_locking=self._use_locking)
@@ -132,7 +132,7 @@ class LARS(tf.keras.optimizers.Optimizer):
     m = self.get_slot(var, 'm')
     grad_with_decay = grad
     if self._do_use_weight_decay(var_name):
-      grad_with_decay.assign_add(weight_decay_rate * var)
+      grad_with_decay += weight_decay_rate * var
     scaled_grad_with_decay = grad_with_decay * (1 - momentum)
     m_t = m.assign(m * momentum, use_locking=self._use_locking)
     with tf.control_dependencies([m_t]):
