@@ -21,7 +21,9 @@ tf_computations, and different executor stacks.
 """
 
 import collections
+import functools
 
+from absl import logging
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -32,12 +34,53 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.impl import test as core_test
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.types import type_factory
+
+
+def tf1_and_tf2(fn):
+  """A decorator for creating test parameterized by TF computation decorators.
+
+  Args:
+    fn: A test function to be decorated. It must accept two arguments: self (a
+      `TestCase`), and tf_computation (either a `tff.tf_computation` or
+      `tff.tf2_computation`).
+
+  Returns:
+    A decorated function, which executes `fn` using both decorators.
+  """
+
+  @functools.wraps(fn)
+  def wrapped_fn(self):
+    logging.info('Testing under tff.tf2_computation')
+    fn(self, computations.tf2_computation)
+    logging.info('Testing under tff.tf_computation')
+    fn(self, computations.tf_computation)
+
+  return wrapped_fn
+
+
+def tf1(fn):
+  """A decorator for testing the `tff.tf_computation` decorator."""
+
+  @functools.wraps(fn)
+  def wrapped_fn(self):
+    fn(self, computations.tf_computation)
+
+  return wrapped_fn
+
+
+def tf2(fn):
+  """A decorator for testing the `tff.tf2_computation` decorator."""
+
+  @functools.wraps(fn)
+  def wrapped_fn(self):
+    fn(self, computations.tf2_computation)
+
+  return wrapped_fn
 
 
 @computations.tf_computation(
@@ -56,7 +99,7 @@ class TensorFlowComputationsV1OnlyTest(common_test.TestCase):
   """Tests that only work with tf_computation (TF1) serialization."""
   # TODO(b/122081673): These should eventually work with tf2_computation.
 
-  @core_test.tf1
+  @tf1
   def test_tf_fn_with_variable(self, tf_computation):
     # N.B. This does not work with TF 2 style serialization,
     # because a variable is created on a non-first call. See the TF2
@@ -73,7 +116,7 @@ class TensorFlowComputationsV1OnlyTest(common_test.TestCase):
 class TensorFlowComputationsV2OnlyTest(common_test.TestCase):
   """Tests that only work with tf2_computation serialization."""
 
-  @core_test.tf2
+  @tf2
   def test_something_that_only_works_with_tf2(self, tf_computation):
     # These variables will be tracked and serialized automatically.
     v1 = tf.Variable(0.0)
@@ -155,7 +198,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
   # TODO(b/147258413): change this back to tf1_and_tf2 after figuring out how to
   # get savedmodel to work here.
-  @core_test.tf1
+  @tf1
   def test_tf_fn_with_empty_tuple_type_trivial_logic(self, tf_computation):
     empty_tuple = ()
     pass_through = tf_computation(lambda x: x, empty_tuple)
@@ -163,14 +206,14 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
   # TODO(b/147258413): change this back to tf1_and_tf2 after figuring out how to
   # get savedmodel to work here.
-  @core_test.tf1
+  @tf1
   def test_tf_fn_with_empty_tuple_type_nontrivial_logic(self, tf_computation):
     empty_tuple = ()
     nontrivial_manipulation = tf_computation(lambda x: (x, x), empty_tuple)
     self.assertEqual(
         nontrivial_manipulation(empty_tuple), (empty_tuple, empty_tuple))
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_tf_comp_first_mode_of_usage_as_non_polymorphic_wrapper(
       self, tf_computation):
     # Wrapping a lambda with a parameter.
@@ -196,7 +239,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     self.assertEqual(str(bak.type_signature), '( -> int32)')
     self.assertEqual(bak(), 10)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_tf_comp_second_mode_of_usage_as_non_polymorphic_decorator(
       self, tf_computation):
     # Decorating a Python function with a parameter.
@@ -219,7 +262,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
     self.assertEqual(bar(), 10)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_tf_comp_third_mode_of_usage_as_polymorphic_callable(
       self, tf_computation):
     # Wrapping a lambda.
@@ -238,7 +281,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     self.assertEqual(bar(1, 0), True)
     self.assertEqual(bar(0, 0), False)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_py_and_tf_args(self, tf_computation):
 
     @tf.function(autograph=False)
@@ -257,7 +300,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     self.assertEqual(tf_poly_add(2., 1.), 3.)
     self.assertEqual(tf_poly_sub(2, 1), 1)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_with_variable(self, tf_computation):
 
     v_slot = []
@@ -273,7 +316,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     tf_comp = tf_computation(foo, tf.int32)
     self.assertEqual(tf_comp(1), 2)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_one_param(self, tf_computation):
 
     @tf.function
@@ -283,7 +326,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     tf_comp = tf_computation(foo, tf.int32)
     self.assertEqual(tf_comp(1), 2)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_no_params_structured_outputs(self, tf_computation):
     # We also test that the correct Python containers are returned.
     MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
@@ -306,7 +349,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     self.assertEqual(result[5], (1,))
     self.assertEqual(type(result[5]), tuple)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_polymorphic(self, tf_computation):
 
     def foo(x, y, z=3):
@@ -322,7 +365,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     self.assertEqual(tf_comp(1.0, 2.0), (3.0, 3))  # With float32
     self.assertEqual(tf_comp(1, 2, z=3), (3, 3))  # With z
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_explicit_tuple_param(self, tf_computation):
     # See also test_polymorphic_tuple_input
     @tf.function
@@ -332,7 +375,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     tf_comp = tf_computation(foo, (tf.int32, tf.int32))
     self.assertEqual(tf_comp((1, 2)), 3)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_polymorphic_tuple_input(self, tf_computation):
 
     def foo(t):
@@ -341,7 +384,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     tf_poly = tf_computation(foo)
     self.assertEqual(tf_poly((1, 2)), 3)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_nested_tuple_input_polymorphic(self, tf_computation):
 
     @tf.function(autograph=False)
@@ -353,7 +396,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     self.assertEqual(tf_poly((1, (2, 3))), 9)
     self.assertEqual(tf_poly((1, (2, 3)), (0, 0)), 6)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_nested_tuple_input_explicit_types(self, tf_computation):
 
     @tf.function(autograph=False)
@@ -364,7 +407,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     tf_comp = tf_computation(foo, tff_type)
     self.assertEqual(tf_comp((1, (2, 3)), (0, 0)), 6)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_namedtuple_param(self, tf_computation):
 
     MyType = collections.namedtuple('MyType', ['x', 'y'])  # pylint: disable=invalid-name
@@ -382,7 +425,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     tf_comp = tf_computation(foo)
     self.assertEqual(tf_comp(MyType(1, 2)), 3)
 
-  @core_test.tf1_and_tf2
+  @tf1_and_tf2
   def test_complex_param(self, tf_computation):
     # See also test_nested_tuple_input
 

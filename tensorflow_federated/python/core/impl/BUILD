@@ -264,14 +264,6 @@ py_test(
 )
 
 py_library(
-    name = "test",
-    testonly = True,
-    srcs = ["test.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/api:computations"],
-)
-
-py_library(
     name = "tree_to_cc_transformations",
     srcs = ["tree_to_cc_transformations.py"],
     srcs_version = "PY3",
