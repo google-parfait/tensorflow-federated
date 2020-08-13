@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """A set of utility methods for `executor_service.py` and its clients."""
+
+import os
+import os.path
+import tempfile
 from typing import Any, Optional, Tuple, Union
+import zipfile
 
 import numpy as np
 import tensorflow as tf
@@ -25,15 +30,24 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl import tensorflow_serialization
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
-
 _SerializeReturnType = Tuple[executor_pb2.Value, computation_types.Type]
 _DeserializeReturnType = Tuple[Any, computation_types.Type]
+
+# The maximum size allowed for serialized sequence values. Sequence that
+# serialize to values larger than this will result in errors being raised.  This
+# likely occurs when the sequence is dependent on, and thus pulling in, many of
+# variables from the graph.
+_DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES = 20 * (1024**2)  # 20 MB
+
+
+class DatasetSerializationError(Exception):
+  """Error raised during Dataset serialization or deserialization."""
+  pass
 
 
 @tracing.trace
@@ -84,6 +98,59 @@ def _serialize_tensor_value(
   return executor_pb2.Value(tensor=any_pb), type_spec
 
 
+def _serialize_dataset(
+    dataset,
+    max_serialized_size_bytes=_DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES):
+  """Serializes a `tf.data.Dataset` value into a `bytes` object.
+
+  Args:
+    dataset: A `tf.data.Dataset`.
+    max_serialized_size_bytes: An `int` size in bytes designating the threshold
+      on when to raise an error if the resulting serialization is too big.
+
+  Returns:
+    A `bytes` object that can be sent to
+  `tensorflow_serialization.deserialize_dataset` to recover the original
+  `tf.data.Dataset`.
+
+  Raises:
+    SerializationError: if there was an error in TensorFlow during
+      serialization.
+  """
+  py_typecheck.check_type(dataset,
+                          type_conversions.TF_DATASET_REPRESENTATION_TYPES)
+  module = tf.Module()
+  module.dataset = dataset
+  module.dataset_fn = tf.function(lambda: module.dataset, input_signature=())
+
+  temp_dir = tempfile.mkdtemp('dataset')
+  fd, temp_zip = tempfile.mkstemp('zip')
+  os.close(fd)
+  try:
+    tf.saved_model.save(module, temp_dir, signatures={})
+    with zipfile.ZipFile(temp_zip, 'w') as z:
+      for topdir, _, filenames in tf.io.gfile.walk(temp_dir):
+        dest_dir = topdir[len(temp_dir):]
+        for filename in filenames:
+          z.write(
+              os.path.join(topdir, filename), os.path.join(dest_dir, filename))
+    with open(temp_zip, 'rb') as z:
+      zip_bytes = z.read()
+  except Exception as e:  # pylint: disable=broad-except
+    raise DatasetSerializationError(
+        'Error serializing tff.Sequence value. Inner error: {!s}'.format(
+            e)) from e
+  finally:
+    tf.io.gfile.rmtree(temp_dir)
+    tf.io.gfile.remove(temp_zip)
+
+  if len(zip_bytes) > max_serialized_size_bytes:
+    raise ValueError('Serialized size of Dataset ({:d} bytes) exceeds maximum '
+                     'allowed ({:d} bytes)'.format(
+                         len(zip_bytes), max_serialized_size_bytes))
+  return zip_bytes
+
+
 @tracing.trace
 def _serialize_sequence_value(
     value: Union[type_conversions.TF_DATASET_REPRESENTATION_TYPES],
@@ -120,7 +187,7 @@ def _serialize_sequence_value(
   element_type = computation_types.to_type(value.element_spec)
   return executor_pb2.Value(
       sequence=executor_pb2.Value.Sequence(
-          zipped_saved_model=tensorflow_serialization.serialize_dataset(value),
+          zipped_saved_model=_serialize_dataset(value),
           element_type=type_serialization.serialize_type(
               element_type))), type_spec
 
@@ -260,6 +327,45 @@ def _deserialize_tensor_value(
   return tensor_value, value_type
 
 
+def _deserialize_dataset(serialized_bytes):
+  """Deserializes a `bytes` object to a `tf.data.Dataset`.
+
+  Args:
+    serialized_bytes: `bytes` object produced by
+      `tensorflow_serialization.serialize_dataset`
+
+  Returns:
+    A `tf.data.Dataset` instance.
+
+  Raises:
+    SerializationError: if there was an error in TensorFlow during
+      serialization.
+  """
+  py_typecheck.check_type(serialized_bytes, bytes)
+  temp_dir = tempfile.mkdtemp('dataset')
+  fd, temp_zip = tempfile.mkstemp('zip')
+  os.close(fd)
+  try:
+    with open(temp_zip, 'wb') as f:
+      f.write(serialized_bytes)
+    with zipfile.ZipFile(temp_zip, 'r') as z:
+      z.extractall(path=temp_dir)
+    loaded = tf.saved_model.load(temp_dir)
+    # TODO(b/156302055): Follow up here when bug is resolved, either remove
+    # if this function call stops failing by default, or leave if this is
+    # working as intended.
+    with tf.device('cpu'):
+      ds = loaded.dataset_fn()
+  except Exception as e:  # pylint: disable=broad-except
+    raise DatasetSerializationError(
+        'Error deserializing tff.Sequence value. Inner error: {!s}'.format(
+            e)) from e
+  finally:
+    tf.io.gfile.rmtree(temp_dir)
+    tf.io.gfile.remove(temp_zip)
+  return ds
+
+
 @tracing.trace
 def _deserialize_sequence_value(
     sequence_value_proto: executor_pb2.Value.Sequence
@@ -274,8 +380,7 @@ def _deserialize_sequence_value(
   """
   which_value = sequence_value_proto.WhichOneof('value')
   if which_value == 'zipped_saved_model':
-    ds = tensorflow_serialization.deserialize_dataset(
-        sequence_value_proto.zipped_saved_model)
+    ds = _deserialize_dataset(sequence_value_proto.zipped_saved_model)
   else:
     raise NotImplementedError(
         'Deserializing Sequences enocded as {!s} has not been implemented'

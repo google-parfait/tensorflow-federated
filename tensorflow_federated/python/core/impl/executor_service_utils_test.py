@@ -83,7 +83,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
     self.assertEqual(str(value_type), 'int64*')
     y, type_spec = executor_service_utils.deserialize_value(value_proto)
     self.assertEqual(str(type_spec), 'int64*')
-    self.assertAllEqual([y_val for y_val in y], [x * 2 for x in range(5)])
+    self.assertAllEqual(list(y), [x * 2 for x in range(5)])
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @test.skip_test_for_gpu
@@ -101,8 +101,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
     y, type_spec = executor_service_utils.deserialize_value(value_proto)
     self.assertEqual(str(type_spec), '<int64,int32,float32>*')
     self.assertAllEqual(
-        self.evaluate([y_val for y_val in y]),
-        [(x * 2, x, x - 1.) for x in range(5)])
+        self.evaluate(list(y)), [(x * 2, x, x - 1.) for x in range(5)])
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @test.skip_test_for_gpu
@@ -128,7 +127,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
 
     y, type_spec = executor_service_utils.deserialize_value(value_proto)
     self.assertEqual(type_spec, sequence_type)
-    actual_values = self.evaluate([y_val for y_val in y])
+    actual_values = self.evaluate(list(y))
     expected_values = [
         test_tuple_type(a=x * 2, b=x, c=x - 1.) for x in range(5)
     ]
@@ -184,7 +183,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
            ])),
       ])
 
-    actual_values = self.evaluate([y_val for y_val in y])
+    actual_values = self.evaluate(list(y))
     expected_values = [_build_expected_structure(x) for x in range(5)]
     for actual, expected in zip(actual_values, expected_values):
       self.assertEqual(type(actual), type(expected))
@@ -251,6 +250,116 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
     y, type_spec = executor_service_utils.deserialize_value(value_proto)
     self.assertEqual(str(type_spec), str(x_type))
     self.assertEqual(y, 10)
+
+
+class DatasetSerializationTest(test.TestCase):
+
+  def test_serialize_sequence_not_a_dataset(self):
+    with self.assertRaisesRegex(TypeError, r'Expected .*Dataset.* found int'):
+      _ = executor_service_utils._serialize_dataset(5)
+
+  def test_serialize_sequence_bytes_too_large(self):
+    with self.assertRaisesRegex(ValueError,
+                                r'Serialized size .* exceeds maximum allowed'):
+      _ = executor_service_utils._serialize_dataset(
+          tf.data.Dataset.range(5), max_serialized_size_bytes=0)
+
+  def test_roundtrip_sequence_of_scalars(self):
+    x = tf.data.Dataset.range(5).map(lambda x: x * 2)
+    serialized_bytes = executor_service_utils._serialize_dataset(x)
+    y = executor_service_utils._deserialize_dataset(serialized_bytes)
+
+    self.assertEqual(x.element_spec, y.element_spec)
+    self.assertAllEqual(list(y), [x * 2 for x in range(5)])
+
+  def test_roundtrip_sequence_of_tuples(self):
+    x = tf.data.Dataset.range(5).map(
+        lambda x: (x * 2, tf.cast(x, tf.int32), tf.cast(x - 1, tf.float32)))
+    serialized_bytes = executor_service_utils._serialize_dataset(x)
+    y = executor_service_utils._deserialize_dataset(serialized_bytes)
+
+    self.assertEqual(x.element_spec, y.element_spec)
+    self.assertAllEqual(
+        self.evaluate(list(y)), [(x * 2, x, x - 1.) for x in range(5)])
+
+  def test_roundtrip_sequence_of_singleton_tuples(self):
+    x = tf.data.Dataset.range(5).map(lambda x: (x,))
+    serialized_bytes = executor_service_utils._serialize_dataset(x)
+    y = executor_service_utils._deserialize_dataset(serialized_bytes)
+
+    self.assertEqual(x.element_spec, y.element_spec)
+    expected_values = [(x,) for x in range(5)]
+    actual_values = self.evaluate(list(y))
+    self.assertAllEqual(expected_values, actual_values)
+
+  def test_roundtrip_sequence_of_namedtuples(self):
+    test_tuple_type = collections.namedtuple('TestTuple', ['a', 'b', 'c'])
+
+    def make_test_tuple(x):
+      return test_tuple_type(
+          a=x * 2, b=tf.cast(x, tf.int32), c=tf.cast(x - 1, tf.float32))
+
+    x = tf.data.Dataset.range(5).map(make_test_tuple)
+    serialized_bytes = executor_service_utils._serialize_dataset(x)
+    y = executor_service_utils._deserialize_dataset(serialized_bytes)
+
+    self.assertEqual(x.element_spec, y.element_spec)
+    self.assertAllEqual(
+        self.evaluate(list(y)),
+        [test_tuple_type(a=x * 2, b=x, c=x - 1.) for x in range(5)])
+
+  def test_roundtrip_sequence_of_nested_structures(self):
+    test_tuple_type = collections.namedtuple('TestTuple', ['u', 'v'])
+
+    def _make_nested_tf_structure(x):
+      return collections.OrderedDict([
+          ('b', tf.cast(x, tf.int32)),
+          ('a',
+           tuple([
+               x,
+               test_tuple_type(x * 2, x * 3),
+               collections.OrderedDict([('x', x**2), ('y', x**3)])
+           ])),
+      ])
+
+    x = tf.data.Dataset.range(5).map(_make_nested_tf_structure)
+    serialzied_bytes = executor_service_utils._serialize_dataset(x)
+    y = executor_service_utils._deserialize_dataset(serialzied_bytes)
+
+    # Note: TF loses the `OrderedDict` during serialization, so the expectation
+    # here is for a `dict` in the result.
+    self.assertEqual(
+        y.element_spec, {
+            'b':
+                tf.TensorSpec([], tf.int32),
+            'a':
+                tuple([
+                    tf.TensorSpec([], tf.int64),
+                    test_tuple_type(
+                        tf.TensorSpec([], tf.int64),
+                        tf.TensorSpec([], tf.int64),
+                    ),
+                    {
+                        'x': tf.TensorSpec([], tf.int64),
+                        'y': tf.TensorSpec([], tf.int64),
+                    },
+                ]),
+        })
+
+    def _build_expected_structure(x):
+      return {
+          'b': x,
+          'a': tuple([x,
+                      test_tuple_type(x * 2, x * 3), {
+                          'x': x**2,
+                          'y': x**3
+                      }])
+      }
+
+    actual_values = self.evaluate(list(y))
+    expected_values = [_build_expected_structure(x) for x in range(5)]
+    for actual, expected in zip(actual_values, expected_values):
+      self.assertAllClose(actual, expected)
 
 
 if __name__ == '__main__':

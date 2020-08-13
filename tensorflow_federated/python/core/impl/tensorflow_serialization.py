@@ -13,13 +13,10 @@
 # limitations under the License.
 """Utilities for serializing TensorFlow computations."""
 
-import os
-import os.path
 import shutil
 import tempfile
 import types
 from typing import Dict, Optional, Set, MutableSequence
-import zipfile
 
 import tensorflow as tf
 
@@ -29,7 +26,6 @@ from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation_context
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -446,107 +442,3 @@ def _remove_optimize_dataset_ops(graph_def: tf.compat.v1.GraphDef):
   filter_nodes(graph_def.node, args=[])
   for function in graph_def.library.function:
     filter_nodes(function.node_def, args=function.signature.input_arg)
-
-
-# The maximum size allowed for serialized sequence values. Sequence that
-# serialize to values larger than this will result in errors being raised.  This
-# likely occurs when the sequence is dependent on, and thus pulling in, many of
-# variables from the graph.
-DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES = 20 * (1024**2)  # 20 MB
-
-
-# TODO(b/137880330): there is likely opportunity here to share implementation
-# with the serialization happening in
-# `tensorflow_serialization.serialize_tf2_as_tf_computation()`. It would be good
-# to sync with TF team about options for ensuring graph-only (variable-less)
-# serializations.
-def serialize_dataset(
-    dataset,
-    max_serialized_size_bytes=DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES):
-  """Serializes a `tf.data.Dataset` value into a `bytes` object.
-
-  Args:
-    dataset: A `tf.data.Dataset`.
-    max_serialized_size_bytes: An `int` size in bytes designating the threshold
-      on when to raise an error if the resulting serialization is too big.
-
-  Returns:
-    A `bytes` object that can be sent to
-  `tensorflow_serialization.deserialize_dataset` to recover the original
-  `tf.data.Dataset`.
-
-  Raises:
-    SerializationError: if there was an error in TensorFlow during
-      serialization.
-  """
-  py_typecheck.check_type(dataset,
-                          type_conversions.TF_DATASET_REPRESENTATION_TYPES)
-  module = tf.Module()
-  module.dataset = dataset
-  module.dataset_fn = tf.function(lambda: module.dataset, input_signature=())
-
-  temp_dir = tempfile.mkdtemp('dataset')
-  fd, temp_zip = tempfile.mkstemp('zip')
-  os.close(fd)
-  try:
-    tf.saved_model.save(module, temp_dir, signatures={})
-    with zipfile.ZipFile(temp_zip, 'w') as z:
-      for topdir, _, filenames in tf.io.gfile.walk(temp_dir):
-        dest_dir = topdir[len(temp_dir):]
-        for filename in filenames:
-          z.write(
-              os.path.join(topdir, filename), os.path.join(dest_dir, filename))
-    with open(temp_zip, 'rb') as z:
-      zip_bytes = z.read()
-  except Exception as e:  # pylint: disable=broad-except
-    raise SerializationError(
-        'Error serializing tff.Sequence value. Inner error: {!s}'.format(
-            e)) from e
-  finally:
-    tf.io.gfile.rmtree(temp_dir)
-    tf.io.gfile.remove(temp_zip)
-
-  if len(zip_bytes) > max_serialized_size_bytes:
-    raise ValueError('Serialized size of Dataset ({:d} bytes) exceeds maximum '
-                     'allowed ({:d} bytes)'.format(
-                         len(zip_bytes), max_serialized_size_bytes))
-  return zip_bytes
-
-
-def deserialize_dataset(serialized_bytes):
-  """Deserializes a `bytes` object to a `tf.data.Dataset`.
-
-  Args:
-    serialized_bytes: `bytes` object produced by
-      `tensorflow_serialization.serialize_dataset`
-
-  Returns:
-    A `tf.data.Dataset` instance.
-
-  Raises:
-    SerializationError: if there was an error in TensorFlow during
-      serialization.
-  """
-  py_typecheck.check_type(serialized_bytes, bytes)
-  temp_dir = tempfile.mkdtemp('dataset')
-  fd, temp_zip = tempfile.mkstemp('zip')
-  os.close(fd)
-  try:
-    with open(temp_zip, 'wb') as f:
-      f.write(serialized_bytes)
-    with zipfile.ZipFile(temp_zip, 'r') as z:
-      z.extractall(path=temp_dir)
-    loaded = tf.saved_model.load(temp_dir)
-    # TODO(b/156302055): Follow up here when bug is resolved, either remove
-    # if this function call stops failing by default, or leave if this is
-    # working as intended.
-    with tf.device('cpu'):
-      ds = loaded.dataset_fn()
-  except Exception as e:  # pylint: disable=broad-except
-    raise SerializationError(
-        'Error deserializing tff.Sequence value. Inner error: {!s}'.format(
-            e)) from e
-  finally:
-    tf.io.gfile.rmtree(temp_dir)
-    tf.io.gfile.remove(temp_zip)
-  return ds

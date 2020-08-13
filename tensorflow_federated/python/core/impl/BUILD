@@ -112,7 +112,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":computation_impl",
-        ":tensorflow_serialization",
         ":type_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
@@ -312,7 +311,6 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_computation_context",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
