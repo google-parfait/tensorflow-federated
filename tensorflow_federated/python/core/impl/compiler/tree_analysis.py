@@ -202,7 +202,19 @@ def extract_nodes_consuming(tree, predicate):
   """
   py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_callable(predicate)
-  dependent_nodes = set()
+
+  class _NodeSet:
+
+    def __init__(self):
+      self.mapping = {}
+
+    def add(self, comp):
+      self.mapping[id(comp)] = comp
+
+    def to_set(self):
+      return set(self.mapping.values())
+
+  dependent_nodes = _NodeSet()
 
   def _are_children_in_dependent_set(comp, symbol_tree):
     """Checks if the dependencies of `comp` are present in `dependent_nodes`."""
@@ -210,16 +222,18 @@ def extract_nodes_consuming(tree, predicate):
         comp.is_compiled_computation()):
       return False
     elif comp.is_lambda():
-      return comp.result in dependent_nodes
+      return id(comp.result) in dependent_nodes.mapping
     elif comp.is_block():
-      return any(x[1] in dependent_nodes
-                 for x in comp.locals) or comp.result in dependent_nodes
+      return any(
+          id(x[1]) in dependent_nodes.mapping for x in comp.locals) or id(
+              comp.result) in dependent_nodes.mapping
     elif comp.is_struct():
-      return any(x in dependent_nodes for x in comp)
+      return any(id(x) in dependent_nodes.mapping for x in comp)
     elif comp.is_selection():
-      return comp.source in dependent_nodes
+      return id(comp.source) in dependent_nodes.mapping
     elif comp.is_call():
-      return comp.function in dependent_nodes or comp.argument in dependent_nodes
+      return id(comp.function) in dependent_nodes.mapping or id(
+          comp.argument) in dependent_nodes.mapping
     elif comp.is_reference():
       return _is_reference_dependent(comp, symbol_tree)
 
@@ -229,7 +243,7 @@ def extract_nodes_consuming(tree, predicate):
       return False
     # The postorder traversal ensures that we process any
     # bindings before we process the reference to those bindings
-    return payload.value in dependent_nodes
+    return id(payload.value) in dependent_nodes.mapping
 
   def _populate_dependent_set(comp, symbol_tree):
     """Populates `dependent_nodes` with all nodes dependent on `predicate`."""
@@ -243,7 +257,7 @@ def extract_nodes_consuming(tree, predicate):
       transformation_utils.ReferenceCounter)
   transformation_utils.transform_postorder_with_symbol_bindings(
       tree, _populate_dependent_set, symbol_tree)
-  return dependent_nodes
+  return dependent_nodes.to_set()
 
 
 def check_broadcast_not_dependent_on_aggregate(tree):

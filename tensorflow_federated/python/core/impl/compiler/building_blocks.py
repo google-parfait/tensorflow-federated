@@ -110,6 +110,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
     """
     type_signature = computation_types.to_type(type_spec)
     self._type_signature = type_signature
+    self._hash = None
 
   @property
   def type_signature(self) -> computation_types.Type:
@@ -233,6 +234,11 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def __str__(self):
     """Returns a concise representation of this computation building block."""
     return self.compact_representation()
+
+  def __hash__(self):
+    if self._hash is None:
+      self._hash = hash(self.proto.SerializeToString(deterministic=True))
+    return self._hash
 
 
 class Reference(ComputationBuildingBlock):
