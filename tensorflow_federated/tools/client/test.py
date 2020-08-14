@@ -36,6 +36,7 @@ def main(argv):
   factory = tff.framework.create_executor_factory(lambda _: ex)
   context = tff.framework.ExecutionContext(factory)
   tff.framework.set_default_context(context)
+
   print(tff.federated_computation(lambda: 'Hello World')())
 
 

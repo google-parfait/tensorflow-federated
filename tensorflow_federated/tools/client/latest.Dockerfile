@@ -11,23 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# This Dockerfile is used to create a Docker image of the TensorFlow Federated
-# (TFF) remote executor service from a locally-built TFF .whl file. It requires
-# a whl named like tensorflow_federated-*.whl to be present in the directory
-# where docker build is run.
-FROM python:3.6-buster
+FROM gcr.io/google_appengine/python
 
 RUN python3 --version
 
-COPY "tensorflow_federated/tools/runtime/remote_executor_service.py" /
-COPY "tensorflow_federated-"*".whl" /
+RUN pip3 install --no-cache-dir --upgrade \
+    pip
 
-RUN pip3 install --no-cache-dir --upgrade pip
-
-RUN pip3 install --no-cache-dir --upgrade "/tensorflow_federated-"*".whl"
+RUN pip3 install --no-cache-dir --upgrade \
+    tensorflow_federated
 RUN pip3 freeze
-
-EXPOSE 8000
-
-CMD ["python3", "/remote_executor_service.py"]

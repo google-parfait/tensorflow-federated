@@ -3,19 +3,19 @@
 There are a few ways to set up your environment to use TensorFlow Federated
 (TFF):
 
-*   The easiest way to learn and use TFF requires no installation—run the
+*   The easiest way to learn and use TFF requires no installation; run the
     TensorFlow Federated tutorials directly in your browser using
     [Google Colaboratory](https://colab.research.google.com/notebooks/welcome.ipynb).
-*   To use TensorFlow Federated on a local machine, install the
-    [TFF package](#install-tensorflow-federated-using-pip) with Python's `pip`
-    package manager.
+*   To use TensorFlow Federated on a local machine,
+    [install the TFF package](#install-tensorflow-federated-using-pip) with
+    Python's `pip` package manager.
 *   If you have a unique machine configuration,
-    [build TensorFlow Federated](#build-the-tensorflow-federated-pip-package)
-    from source.
+    [build the TFF package](#build-the-tensorflow-federated-pip-package) from
+    source.
 
 ## Install TensorFlow Federated using `pip`
 
-#### 1. Install the Python development environment.
+### 1. Install the Python development environment.
 
 On Ubuntu:
 
@@ -35,7 +35,7 @@ On macOS:
 <code class="devsite-terminal">sudo pip3 install --user --upgrade virtualenv</code>
 </pre>
 
-#### 2. Create a virtual environment.
+### 2. Create a virtual environment.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">virtualenv --python python3 "venv"</code>
@@ -45,13 +45,13 @@ On macOS:
 
 Note: To exit the virtual environment, run `deactivate`.
 
-#### 3. Install the TensorFlow Federated Python package.
+### 3. Install the TensorFlow Federated Python package.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal tfo-terminal-venv">pip install --upgrade tensorflow_federated</code>
 </pre>
 
-#### 4. Test Tensorflow Federated.
+### 4. Test Tensorflow Federated.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal tfo-terminal-venv">python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"</code>
@@ -70,7 +70,7 @@ want to:
 *   Use changes that have been submitted to TensorFlow Federated but have not
     been released.
 
-#### 1. Install the Python development environment.
+### 1. Install the Python development environment.
 
 On Ubuntu:
 
@@ -90,19 +90,19 @@ On macOS:
 <code class="devsite-terminal">sudo pip3 install --user --upgrade virtualenv</code>
 </pre>
 
-#### 2. Install Bazel.
+### 2. Install Bazel.
 
 [Install Bazel](https://docs.bazel.build/versions/master/install.html), the
 build tool used to compile Tensorflow Federated.
 
-#### 3. Clone the Tensorflow Federated repository.
+### 3. Clone the Tensorflow Federated repository.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">git clone https://github.com/tensorflow/federated.git</code>
 <code class="devsite-terminal">cd "federated"</code>
 </pre>
 
-#### 4. Build the TensorFlow Federated Python package.
+### 4. Build the TensorFlow Federated Python package.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">mkdir "/tmp/tensorflow_federated"</code>
@@ -111,14 +111,14 @@ build tool used to compile Tensorflow Federated.
     --output_dir "/tmp/tensorflow_federated"</code>
 </pre>
 
-#### 5. Create a new project.
+### 5. Create a new project.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">mkdir "/tmp/project"</code>
 <code class="devsite-terminal">cd "/tmp/project"</code>
 </pre>
 
-#### 6. Create a virtual environment.
+### 6. Create a virtual environment.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal">virtualenv --python python3 "venv"</code>
@@ -128,13 +128,13 @@ build tool used to compile Tensorflow Federated.
 
 Note: To exit the virtual environment run `deactivate`.
 
-#### 7. Install the TensorFlow Federated Python package.
+### 7. Install the TensorFlow Federated Python package.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal tfo-terminal-venv">pip install --upgrade "/tmp/tensorflow_federated/"*".whl"</code>
 </pre>
 
-#### 8. Test Tensorflow Federated.
+### 8. Test Tensorflow Federated.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal tfo-terminal-venv">python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"</code>

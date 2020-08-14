@@ -15,12 +15,15 @@ FROM gcr.io/google_appengine/python
 
 RUN python3 --version
 
-COPY "tensorflow_federated-"*".whl" /
+COPY "tensorflow_federated/tools/runtime/remote_executor_service.py" /
 
 RUN pip3 install --no-cache-dir --upgrade \
-    pip \
-    setuptools
+    pip
 
 RUN pip3 install --no-cache-dir --upgrade \
-    "/tensorflow_federated-"*".whl"
+    tensorflow_federated
 RUN pip3 freeze
+
+EXPOSE 8000
+
+CMD ["python3", "/remote_executor_service.py"]

@@ -1,126 +1,155 @@
-# Setup simulations with TFF on GCP
+# TFF simulations on GCP
 
-This tutorial will describe how to do the steps required for the setup
-high-performance simulations with TFF on GCP.
+This tutorial will describe how to run TFF simulations on GCP.
 
-1.  [Install and initialize the Cloud SDK.](https://cloud.google.com/sdk/docs/quickstarts).
+## Run a simulation on a single runtime container
 
-1.  Run a simulation on a single runtime container.
+### 1. [Install and initialize the Cloud SDK.](https://cloud.google.com/sdk/docs/quickstarts).
 
-    1.  Start a single runtime container.
+### 2. Clone the TensorFlow Federated repository.
 
-        1.  [Create a Compute Engine instance](https://cloud.google.com/endpoints/docs/grpc/get-started-compute-engine-docker#create_vm).
+```shell
+$ git clone https://github.com/tensorflow/federated.git
+$ cd "federated"
+```
 
-            Note: To have Docker pre-installed, selected a "Container-Optimized"
-            boot disk when starting the VM.
+### 3. Run a single runtime container.
 
-        1.  `ssh` into the instance.
+1.  Build a runtime container.
 
-            ```shell
-            $ gcloud compute ssh <instance>
-            ```
+    ```shell
+    $ docker build \
+        --network=host \
+        --tag "<registry>/tff-runtime" \
+        --file "tensorflow_federated/tools/runtime/container/latest.Dockerfile" \
+        .
+    ```
 
-        1.  Run the runtime container in the background.
+1.  Publish the runtime container.
 
-            ```shell
-            $ docker run \
-                --detach \
-                --name=runtime \
-                --publish=8000:8000 \
-                gcr.io/tensorflow-federated/runtime
-            ```
+    ```shell
+    $ docker push <registry>/tff-runtime
+    ```
 
-        1.  Exit the instance.
+1.  Create a Compute Engine instance
 
-            ```shell
-            $ exit
-            ```
+    1.  In the Cloud Console, go to the
+        [VM Instances](https://console.cloud.google.com/compute/instances) page.
 
-        1.  Get the internal IP address of the instance.
+    1.  Click **Create instance**.
 
-            This is used later as a parameter to our test script.
+    1.  In the **Firewall** section, select **Allow HTTP traffic** and **Allow
+        HTTPS traffic**.
 
-            ```shell
-            $ gcloud compute instances describe <instance> \
-                --format='get(networkInterfaces[0].networkIP)'
-            ```
+    1.  Click **Create** to create the instance.
 
-    1.  Start and run a simulation on a client container.
+1.  `ssh` into the instance.
 
-        1.  [Create a Compute Engine instance](https://cloud.google.com/endpoints/docs/grpc/get-started-compute-engine-docker#create_vm).
+    ```shell
+    $ gcloud compute ssh <instance>
+    ```
 
-        1.  Copy your experiement to the Compute Engine instance.
+1.  Run the runtime container in the background.
 
-            ```shell
-            $ gcloud compute scp \
-                "tensorflow_federated/tools/client/test.py" \
-                <instance>:~
-            ```
+    ```shell
+    $ docker run \
+        --detach \
+        --name=tff-runtime \
+        --publish=8000:8000 \
+        <registry>/tff-runtime
+    ```
 
-        1.  `ssh` into the instance.
+1.  Exit the instance.
 
-            ```shell
-            $ gcloud compute ssh <instance>
-            ```
+    ```shell
+    $ exit
+    ```
 
-        1.  Run the client container interactively.
+1.  Get the internal **IP address** of the instance.
 
-            The string "Hello World" should print to the terminal.
+    This is used later as a parameter to our test script.
 
-            ```shell
-            $ docker run \
-                --interactive \
-                --tty \
-                --name=client \
-                --volume ~:/simulation \
-                --workdir /simulation \
-                gcr.io/tensorflow-federated/client \
-                bash
-            ```
+    ```shell
+    $ gcloud compute instances describe <instance> \
+        --format='get(networkInterfaces[0].networkIP)'
+    ```
 
-        1.  Run the Python script.
+### 4. Run a simulation on a client container.
 
-            Using the internal IP address of the instance running the runtime
-            container.
+1.  Build a client container.
 
-            ```shell
-            $ python3 test.py --host '<internal IP address>'
-            ```
+    ```shell
+    $ docker build \
+        --network=host \
+        --tag "<registry>/tff-client" \
+        --file "tensorflow_federated/tools/client/latest.Dockerfile" \
+        .
+    ```
 
-        1.  Exit the container.
+1.  Publish the client container.
 
-            ```shell
-            $ exit
-            ```
+    ```shell
+    $ docker push <registry>/tff-client
+    ```
 
-        1.  Exit the instance.
+1.  Create a Compute Engine instance
 
-            ```shell
-            $ exit
-            ```
+    1.  In the Cloud Console, go to the
+        [VM Instances](https://console.cloud.google.com/compute/instances) page.
 
-1.  Configure runtime and client images from source.
+    1.  Click **Create instance**.
 
-    If you wanted to run a simulation using TFF from source instead of a
-    released version of TFF, you need to: build the runtime and client images
-    from source; publish those images to your own container registry; and
-    finally create the runtime and client containers using those images instead
-    of the released images that we provide. See the
-    [Container Registry documentation](https://cloud.google.com/container-registry/docs/)
-    for more information.
+    1.  In the **Firewall** section, select **Allow HTTP traffic** and **Allow
+        HTTPS traffic**.
 
-    1.  Configure a runtime image.
+    1.  Click **Create** to create the instance.
 
-        ```shell
-        $ bazel run //tensorflow_federated/tools/runtime/gcp:build_image
-        $ bazel run //tensorflow_federated/tools/runtime/gcp:publish_image -- \
-            <runtime registry>
-        ```
+1.  Copy your experiement to the Compute Engine instance.
 
-    1.  Configure a client image.
+    ```shell
+    $ gcloud compute scp \
+        "tensorflow_federated/tools/client/test.py" \
+        <instance>:~
+    ```
 
-        ```shell
-        $ bazel run //tensorflow_federated/tools/client:build_image
-        $ bazel run //tensorflow_federated/tools/client:publish_image -- \
-            <client registry>
-        ```
+1.  `ssh` into the instance.
+
+    ```shell
+    $ gcloud compute ssh <instance>
+    ```
+
+1.  Run the client container interactively.
+
+    The string "Hello World" should print to the terminal.
+
+    ```shell
+    $ docker run \
+        --interactive \
+        --tty \
+        --name=tff-client \
+        --volume ~:/simulation \
+        --workdir /simulation \
+        <registry>/tff-client \
+        bash
+    ```
+
+1.  Run the Python script.
+
+    Using the internal **IP address** of the instance running the runtime
+    container.
+
+    ```shell
+    $ python3 test.py --host '<IP address>'
+    ```
+
+1.  Exit the container.
+
+    ```shell
+    $ exit
+    ```
+
+1.  Exit the instance.
+
+    ```shell
+    $ exit
+    ```
