@@ -33,6 +33,12 @@ class DatasetPreprocessingTest(tf.test.TestCase):
     self.assertAllEqual(tokens,
                         [bos, 25, 5, 64, 46, 14, 26, 64, 46, 25, eos, pad])
 
+  def test_last_id_not_oov(self):
+    _, oov, bos, eos = shakespeare_dataset.get_special_tokens()
+    to_tokens = shakespeare_dataset._build_tokenize_fn(split_length=5)
+    tokens = to_tokens({'snippets': tf.constant('a\r~')})
+    self.assertAllEqual(tokens, [bos, 64, 86, oov, eos])
+
   def test_split_target(self):
     example = self.evaluate(
         shakespeare_dataset._split_target(tf.constant([[1, 2, 3]])))

@@ -61,7 +61,7 @@ def _build_tokenize_fn(split_length=SEQUENCE_LENGTH + 1):
   """
   _, _, bos, eos = get_special_tokens()
 
-  ids = tf.range(1, len(CHAR_VOCAB) + 1, dtype=tf.int64)
+  ids = tf.range(len(CHAR_VOCAB), dtype=tf.int64)
   lookup_table = tf.lookup.StaticVocabularyTable(
       tf.lookup.KeyValueTensorInitializer(CHAR_VOCAB, ids), num_oov_buckets=1)
 
@@ -69,7 +69,7 @@ def _build_tokenize_fn(split_length=SEQUENCE_LENGTH + 1):
   def _to_tokens_and_pad(example: tf.Tensor) -> tf.Tensor:
     """Convert a Shakespeare example to a int64 tensor of token ids, and pad."""
     chars = tf.strings.bytes_split(example['snippets'])
-    tokens = lookup_table.lookup(keys=chars)
+    tokens = lookup_table.lookup(keys=chars) + 1  # Reserve 0 for pad.
     tokens = tf.concat([[bos], tokens, [eos]], 0)
     pad_length = (-tf.shape(tokens)[0]) % split_length
     return tf.concat([tokens, tf.zeros(pad_length, dtype=tf.int64)], 0)
