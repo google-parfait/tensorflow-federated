@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utility classes and functions for integration with MapReduce-like backends.
+"""Libraries for interacting with MapReduce-like backends.
 
-This module contains utility components for interfacing between TFF and backend
-systems that offer MapReduce-like capabilities, i.e., systems that can perform
-parallel processing on a set of clients, and then aggregate the results of such
-processing on the server. Systems of this type do not support the full
-expressiveness of TFF, but they are common enough in practice to warrant a
-dedicated set of utility functions, and many examples of TFF computations,
-including those constructed by `tff.learning`, can be compiled by TFF into a
-form that can be deployed on such systems.
+This package contains libraries for using TFF in backend systems that offer
+MapReduce-like capabilities, i.e., systems that can perform parallel processing
+on a set of clients, and then aggregate the results of such processing on the
+server. Systems of this type do not support the full expressiveness of TFF, but
+they are common enough in practice to warrant a dedicated set of libraries, and
+many examples of TFF computations, including those constructed by
+`tff.learning`, can be compiled by TFF into a form that can be deployed on such
+systems.
 """
 
 # TODO(b/138261370): Cover this in the general set of guidelines for deployment.

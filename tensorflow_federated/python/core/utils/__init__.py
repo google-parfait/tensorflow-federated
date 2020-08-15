@@ -11,13 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utility classes/functions built on top of TensorFlow Federated Core API.
-
-All components that depend on utils should import symbols from this file rather
-than directly importing individual modules. For this reason, the visibility for
-the latter is set to private and should remain such. The code in utils must not
-depend on implementation classes. It should be written against the Core API.
-"""
+"""Libraries for using and developing Federated algorithms."""
 
 from tensorflow_federated.python.core.utils.adaptive_zeroing import build_adaptive_zeroing_mean_process
 from tensorflow_federated.python.core.utils.computation_utils import StatefulAggregateFn

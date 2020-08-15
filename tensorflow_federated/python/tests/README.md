@@ -1,4 +1,4 @@
-# TensorFlow Federated End-To-End Tests
+# TensorFlow Federated Tests
 
 This directory contains end-to-end tests of the TFF Python package.
 

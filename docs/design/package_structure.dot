@@ -1,0 +1,173 @@
+digraph {
+  graph [style="dotted,rounded", size="9 100"]
+  node [shape="box", style="rounded,filled", fillcolor="#efefef", color="#bdbdbd"]
+  edge [color="#616161"]
+  newrank=true
+
+  // Using TFF
+  research -> tff
+  examples -> tff
+  tests -> tff
+
+  research [href="#research" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+  examples [href="#examples" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+  tests [href="#tests" target="_parent", fillcolor="#E2F3EB", color="#57BB8A"]
+
+  // TFF
+  tff -> simulation
+  tff -> learning
+  tff -> core
+
+  tff [href="#tff" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+
+  // TFF Simulation
+  simulation -> simulation_datasets
+  simulation -> simulation_models
+  simulation_datasets -> core [arrowhead="none", style="invisible"]
+  simulation_models -> core [arrowhead="none", style="invisible"]
+
+  subgraph cluster_simulation {
+    graph [label="Simulation", href="#tff-simulation" target="_parent"]
+    simulation [href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    simulation_datasets [label="datasets", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    simulation_models [label="models", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+  }
+
+  // TFF Learning
+  learning -> learning_framework
+  learning_framework -> core [arrowhead="none", style="invisible"]
+
+  subgraph cluster_learning {
+    graph [label="Learning", href="#tff-learning" target="_parent"]
+    learning [href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    learning_framework [label="framework", href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+  }
+
+  // TFF Core
+  core -> core_backends
+  core -> core_utils
+  core -> core_templates
+  core -> core_test
+  core -> core_api
+  core -> core_framework
+  core_backends -> impl [arrowhead="none", style="invisible"]
+  core_backends -> core_backends_mapreduce
+  core_backends -> core_backends_native
+  core_backends -> core_backends_iree
+  core_backends -> core_utils
+  core_backends -> core_api
+  core_backends_mapreduce -> core_templates
+  core_backends_mapreduce -> impl [arrowhead="none", style="invisible"]
+  core_backends_native -> impl [arrowhead="none", style="invisible"]
+  core_backends_iree -> impl [arrowhead="none", style="invisible"]
+  // core_utils -> core_api
+  core_utils -> core_templates
+  core_utils -> core_test
+  core_utils -> impl [arrowhead="none", style="invisible"]
+  core_templates -> core_api
+  core_templates -> impl [arrowhead="none", style="invisible"]
+  core_test -> core_api
+  core_test -> impl [arrowhead="none", style="invisible"]
+  core_api -> impl
+  core_framework -> impl [arrowhead="none", style="invisible"]
+
+  subgraph cluster_core {
+    graph [label="Core", href="#tff-core" target="_parent"]
+    core [href="#tff-core" target="_parent"]
+    core_backends [label="backends", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_backends_mapreduce [label="mapreduce", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_backends_native [label="native", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_backends_iree [label="iree", href="#tff-core" target="_parent"]
+    core_utils [label="utils", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_templates [label="templates", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_test [label="test", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_api [label="api", href="#tff-core" target="_parent"]
+    core_framework [label="framework", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+  }
+
+  // TFF Impl
+  impl -> core_api
+  impl -> impl_wrappers
+  impl_wrappers -> impl_executors
+  impl_wrappers -> impl_tensorflow_context
+  impl_wrappers -> impl_federated_context
+  impl_wrappers -> impl_computation
+  impl_wrappers -> impl_compiler
+  // impl_wrappers -> impl_utils
+  impl_wrappers -> impl_context_stack
+  impl_wrappers -> impl_types
+  impl_executors -> impl_tensorflow_context
+  impl_executors -> impl_federated_context
+  impl_executors -> impl_computation
+  impl_executors -> impl_compiler
+  // impl_executors -> impl_utils
+  impl_executors -> impl_context_stack
+  impl_executors -> impl_types
+  impl_tensorflow_context -> impl_computation
+  // impl_tensorflow_context -> impl_utils
+  impl_tensorflow_context -> impl_context_stack
+  impl_tensorflow_context -> impl_types
+  impl_federated_context -> impl_computation
+  impl_federated_context -> impl_compiler
+  // impl_federated_context -> impl_utils
+  impl_federated_context -> impl_context_stack
+  impl_federated_context -> impl_types
+  impl_computation -> impl_compiler
+  // impl_computation -> impl_utils
+  impl_computation -> impl_context_stack
+  impl_computation -> impl_types
+  impl_compiler -> impl_types
+  // impl_compiler -> impl_utils
+  // impl_utils -> tensorflow_libs
+  // impl_utils -> impl_context_stack
+  // impl_utils -> impl_types
+  impl_context_stack -> impl_types
+  impl_types -> proto [arrowhead="none", style="invisible"]
+  impl_types -> tensorflow_libs [arrowhead="none", style="invisible"]
+  impl_types -> common_libs [arrowhead="none", style="invisible"]
+
+  subgraph cluster_impl {
+    graph [label="Impl", href="#tff-impl" target="_parent"]
+    impl [href="#tff-impl" target="_parent"]
+    impl_wrappers [label="wrappers", href="#tff-impl" target="_parent"]
+    impl_executors [label="executors", href="#tff-impl" target="_parent"]
+    impl_tensorflow_context [label="tensorflow_context", href="#tff-impl" target="_parent"]
+    impl_federated_context [label="federated_context", href="#tff-impl" target="_parent"]
+    impl_computation [label="computation", href="#tff-impl" target="_parent"]
+    impl_compiler [label="compiler", href="#tff-impl" target="_parent"]
+    impl_context_stack [label="context_stack", href="#tff-impl" target="_parent"]
+    // impl_utils [label="utils", href="#tff-impl" target="_parent"]
+    impl_types [label="types", href="#tff-impl" target="_parent"]
+  }
+
+  // TFF Proto
+  proto -> proto_v0
+
+  subgraph cluster_proto {
+    graph [label="Proto", href="#tff-proto" target="_parent"]
+    proto [href="#tff-proto" target="_parent"]
+    proto_v0 [label="v0" href="#tff-proto" target="_parent"]
+  }
+
+  // Other
+  tensorflow_libs [href="#tff-tensorflow-libs" target="_parent"]
+  common_libs [href="#tff-common-libs" target="_parent"]
+  tensorflow_libs -> common_libs
+
+  // Layout
+  {rank=same; examples, tests, research}
+  {rank=same; tff}
+  {rank=same; learning, simulation}
+  {rank=same; learning_framework, simulation_datasets, simulation_models}
+  {rank=same; core}
+  {rank=same; core_backends, core_utils}
+  {rank=same; core_backends_mapreduce, core_backends_native, core_backends_iree}
+  {rank=same; core_templates}
+  {rank=same; core_test}
+  {rank=same; core_api, core_framework}
+  // {rank=same; impl}
+  // {rank=same; impl_wrappers}
+  // {rank=same; impl_tensorflow_context, impl_federated_context, impl_executors}
+  // {rank=same; impl_compiler}
+  {rank=same; proto, tensorflow_libs, common_libs}
+}

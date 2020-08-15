@@ -1,3 +1,3 @@
 # TensorFlow Federated Examples
 
-This directory contains canonical examples of how to use TFF.
+This directory contains examples of how to use TFF.

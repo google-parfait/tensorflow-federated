@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities for interacting with a native backend."""
+"""Libraries for interacting with native backends."""
 
 from tensorflow_federated.python.core.backends.native.compiler import transform_to_native_form
 from tensorflow_federated.python.core.backends.native.execution_contexts import set_local_execution_context

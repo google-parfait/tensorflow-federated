@@ -11,6 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Models for running Federated Learning experiments in simulation."""
+"""Models for running Federated Learning simulations."""
 
 from tensorflow_federated.python.simulation.models import mnist

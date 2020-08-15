@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""The public API for model developers using federated learning algorithms."""
+"""Libraries for using Federated Learning algorithms."""
 
 from tensorflow_federated.python.learning import framework
 from tensorflow_federated.python.learning.federated_averaging import build_federated_averaging_process

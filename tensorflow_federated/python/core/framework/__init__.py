@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Interfaces for extensions, selectively lifted out of `impl`."""
+"""Libraries for extending the TensorFlow Federated core library."""
 
 from tensorflow_federated.python.core.impl.computation_serialization import deserialize_computation
 from tensorflow_federated.python.core.impl.computation_serialization import serialize_computation

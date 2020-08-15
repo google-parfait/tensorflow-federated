@@ -8,12 +8,6 @@ package contains data structures defining the Python representation of the
 [AST](#ast), core [transformation](#transformation) functions, and
 [compiler](#compiler) related functionality.
 
-TODO(b/148163833): Some of the modules have not yet been moved from the
-[impl](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl) package
-to the
-[compiler](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/compiler)
-package.
-
 ## AST
 
 An abstract syntax tree (AST) in TFF describes the structure of a federated

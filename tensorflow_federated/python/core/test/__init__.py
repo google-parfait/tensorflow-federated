@@ -11,11 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test classes/functions for testing usage of TFF.
-
-This package contains functions and utilities that can make testing usage of TFF
-easier or more convenient and parallels the `tf.test` package.
-"""
+"""Libraries for testing TensorFlow Federated."""
 
 from tensorflow_federated.python.core.impl.reference_executor import ReferenceExecutor
 from tensorflow_federated.python.core.test.static_assert import assert_contains_secure_aggregation

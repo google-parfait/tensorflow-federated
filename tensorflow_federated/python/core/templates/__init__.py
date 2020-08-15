@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This directory contains frequently used computation templates."""
+"""Templates for commonly used computations."""
 
 from tensorflow_federated.python.core.templates.iterative_process import IterativeProcess
 from tensorflow_federated.python.core.templates.measured_process import MeasuredProcess

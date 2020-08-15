@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Datasets for running Federated Learning experiments in simulation."""
+"""Datasets for running Federated Learning simulations."""
 
 from tensorflow_federated.python.simulation.datasets import cifar100
 from tensorflow_federated.python.simulation.datasets import emnist
