@@ -56,8 +56,8 @@ class ServerState(object):
   Fields:
   `discovered_heavy_hitters`: A tf.string containing discovered heavy
   hitters.
-  `heavy_hitter_frequencies`: A tf.float64 containing the frequency of the heavy
-  hitter in the round it is discovered.
+  `heavy_hitters_frequencies`: A tf.float64 containing the frequency of the
+  heavy hitter in the round it is discovered.
   `discovered_prefixes`: A tf.tstring containing candidate prefixes.
   `round_num`: A tf.constant dictating the algorithm's round number.
   `accumulated_votes`: A tf.constant that holds the votes accumulated over
@@ -68,7 +68,7 @@ class ServerState(object):
     sub-rounds.
   """
   discovered_heavy_hitters = attr.ib()
-  heavy_hitter_frequencies = attr.ib()
+  heavy_hitters_frequencies = attr.ib()
   discovered_prefixes = attr.ib()
   round_num = attr.ib()
   accumulated_votes = attr.ib()
@@ -357,11 +357,11 @@ def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
   # number of clients in this round.
   if accumulated_weights == 0:
     logging.warning('All participating clients have empty data.')
-    heavy_hitter_frequencies = tf.cast(heavy_hitters_votes, tf.float64)
+    heavy_hitters_frequencies = tf.cast(heavy_hitters_votes, tf.float64)
   else:
-    heavy_hitter_frequencies = heavy_hitters_votes / accumulated_weights
-  new_heavy_hitter_frequencies = tf.boolean_mask(heavy_hitter_frequencies,
-                                                 heavy_hitters_mask)
+    heavy_hitters_frequencies = heavy_hitters_votes / accumulated_weights
+  new_heavy_hitters_frequencies = tf.boolean_mask(heavy_hitters_frequencies,
+                                                  heavy_hitters_mask)
 
   # All but the last column of `accumulated_votes` are votes of prefixes.
   prefixes_votes = tf.slice(accumulated_votes, [0, 0], [
@@ -377,8 +377,9 @@ def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
 
   discovered_heavy_hitters = tf.concat(
       [server_state.discovered_heavy_hitters, new_heavy_hitters], 0)
-  heavy_hitter_frequencies = tf.concat(
-      [server_state.heavy_hitter_frequencies, new_heavy_hitter_frequencies], 0)
+  heavy_hitters_frequencies = tf.concat(
+      [server_state.heavy_hitters_frequencies, new_heavy_hitters_frequencies],
+      0)
 
   # Reinitialize the server's vote tensor.
   accumulated_votes = tf.zeros(
@@ -392,7 +393,7 @@ def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
   return tff.utils.update_state(
       server_state,
       discovered_heavy_hitters=discovered_heavy_hitters,
-      heavy_hitter_frequencies=heavy_hitter_frequencies,
+      heavy_hitters_frequencies=heavy_hitters_frequencies,
       round_num=round_num,
       discovered_prefixes=extended_prefixes,
       accumulated_votes=accumulated_votes,

@@ -198,7 +198,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
   def test_accumulate_server_votes_works_as_expected(self):
     discovered_prefixes = ['a', 'b']
     discovered_heavy_hitters = []
-    heavy_hitter_frequencies = []
+    heavy_hitters_frequencies = []
     initial_votes = tf.constant(
         [[1, 2, 1, 0, 0], [1, 2, 1, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
@@ -209,8 +209,8 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant(
-            heavy_hitter_frequencies, dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant(
+            heavy_hitters_frequencies, dtype=tf.float64),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
         round_num=tf.constant(0, dtype=tf.int32),
         accumulated_votes=initial_votes,
@@ -248,7 +248,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
         possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = ['su', 'st']
     discovered_heavy_hitters = []
-    heavy_hitter_frequencies = []
+    heavy_hitters_frequencies = []
     initial_votes = tf.constant([[1, 2, 1, 0, 0, 0], [1, 2, 1, 0, 0, 0],
                                  [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]],
                                 dtype=tf.int32)
@@ -257,8 +257,8 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant(
-            heavy_hitter_frequencies, dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant(
+            heavy_hitters_frequencies, dtype=tf.float64),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
         round_num=tf.constant(3, dtype=tf.int32),
         accumulated_votes=initial_votes,
@@ -281,7 +281,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     expected_discovered_prefixes = tf.constant(['sta', 'sun', 'sua', 'stn'],
                                                dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
-    expected_heavy_hitter_frequencies = tf.constant([], dtype=tf.float64)
+    expected_heavy_hitters_frequencies = tf.constant([], dtype=tf.float64)
 
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
@@ -292,9 +292,9 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
     self.assertHistogramsEqual(server_state.discovered_heavy_hitters,
-                               server_state.heavy_hitter_frequencies,
+                               server_state.heavy_hitters_frequencies,
                                expected_discovered_heavy_hitters,
-                               expected_heavy_hitter_frequencies)
+                               expected_heavy_hitters_frequencies)
 
   def test_accumulate_server_votes_and_decode_threhold_works_as_expected(self):
     max_num_prefixes = tf.constant(4)
@@ -306,7 +306,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
         possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = ['su', 'st']
     discovered_heavy_hitters = []
-    heavy_hitter_frequencies = []
+    heavy_hitters_frequencies = []
     initial_votes = tf.constant([[1, 2, 1, 0, 0, 0], [1, 2, 1, 0, 0, 0],
                                  [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]],
                                 dtype=tf.int32)
@@ -314,8 +314,8 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant(
-            heavy_hitter_frequencies, dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant(
+            heavy_hitters_frequencies, dtype=tf.float64),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
         round_num=tf.constant(3, dtype=tf.int32),
         accumulated_votes=initial_votes,
@@ -337,7 +337,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     expected_accumulated_weights = tf.constant(0, dtype=tf.int32)
     expected_discovered_prefixes = tf.constant(['sta', 'sun'], dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
-    expected_heavy_hitter_frequencies = tf.constant([], dtype=tf.float64)
+    expected_heavy_hitters_frequencies = tf.constant([], dtype=tf.float64)
 
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
@@ -348,9 +348,9 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
     self.assertHistogramsEqual(server_state.discovered_heavy_hitters,
-                               server_state.heavy_hitter_frequencies,
+                               server_state.heavy_hitters_frequencies,
                                expected_discovered_heavy_hitters,
-                               expected_heavy_hitter_frequencies)
+                               expected_heavy_hitters_frequencies)
 
   def test_server_update_works_as_expected(self):
     max_num_prefixes = tf.constant(10)
@@ -363,13 +363,13 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
         possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = ['a', 'b', 'c', 'd', 'e']
     discovered_heavy_hitters = []
-    heavy_hitter_frequencies = []
+    heavy_hitters_frequencies = []
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant(
-            heavy_hitter_frequencies, dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant(
+            heavy_hitters_frequencies, dtype=tf.float64),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
         round_num=tf.constant(1, dtype=tf.int32),
         accumulated_votes=tf.zeros(
@@ -394,7 +394,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
         ['aa', 'ab', 'ac', 'ad', 'ae', 'ba', 'bb', 'bc', 'bd', 'be'],
         dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
-    expected_heavy_hitter_frequencies = tf.constant([], dtype=tf.float64)
+    expected_heavy_hitters_frequencies = tf.constant([], dtype=tf.float64)
     expected_accumulated_votes = tf.constant(
         [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
@@ -408,9 +408,9 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
     self.assertHistogramsEqual(server_state.discovered_heavy_hitters,
-                               server_state.heavy_hitter_frequencies,
+                               server_state.heavy_hitters_frequencies,
                                expected_discovered_heavy_hitters,
-                               expected_heavy_hitter_frequencies)
+                               expected_heavy_hitters_frequencies)
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
     self.assertEqual(server_state.accumulated_weights,
@@ -427,13 +427,13 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
         possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = []
     discovered_heavy_hitters = []
-    heavy_hitter_frequencies = []
+    heavy_hitters_frequencies = []
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant(
-            heavy_hitter_frequencies, dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant(
+            heavy_hitters_frequencies, dtype=tf.float64),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
         round_num=tf.constant(1, dtype=tf.int32),
         accumulated_votes=tf.zeros(
@@ -457,7 +457,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
                                            threshold)
     expected_discovered_prefixes = tf.constant([], dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
-    expected_heavy_hitter_frequencies = tf.constant([], dtype=tf.float64)
+    expected_heavy_hitters_frequencies = tf.constant([], dtype=tf.float64)
     expected_accumulated_votes = tf.constant(
         [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
@@ -471,9 +471,9 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
     self.assertHistogramsEqual(server_state.discovered_heavy_hitters,
-                               server_state.heavy_hitter_frequencies,
+                               server_state.heavy_hitters_frequencies,
                                expected_discovered_heavy_hitters,
-                               expected_heavy_hitter_frequencies)
+                               expected_heavy_hitters_frequencies)
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
     self.assertEqual(server_state.accumulated_weights,
@@ -490,13 +490,13 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
         possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = ['a', 'b', 'c', 'd', 'e']
     discovered_heavy_hitters = []
-    heavy_hitter_frequencies = []
+    heavy_hitters_frequencies = []
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant(
-            heavy_hitter_frequencies, dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant(
+            heavy_hitters_frequencies, dtype=tf.float64),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
         round_num=tf.constant(1, dtype=tf.int32),
         accumulated_votes=tf.zeros(
@@ -521,7 +521,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     expected_discovered_prefixes = tf.constant(
         ['aa', 'ab', 'ac', 'ad', 'ae', 'ba'], dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
-    expected_heavy_hitter_frequencies = tf.constant([], dtype=tf.float64)
+    expected_heavy_hitters_frequencies = tf.constant([], dtype=tf.float64)
     expected_accumulated_votes = tf.constant(
         [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
@@ -535,9 +535,9 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
     self.assertHistogramsEqual(server_state.discovered_heavy_hitters,
-                               server_state.heavy_hitter_frequencies,
+                               server_state.heavy_hitters_frequencies,
                                expected_discovered_heavy_hitters,
-                               expected_heavy_hitter_frequencies)
+                               expected_heavy_hitters_frequencies)
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
     self.assertEqual(server_state.accumulated_weights,
@@ -554,13 +554,13 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
         possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = ['a', 'b', 'c', 'd', triehh_tf.DEFAULT_TERMINATOR]
     discovered_heavy_hitters = []
-    heavy_hitter_frequencies = []
+    heavy_hitters_frequencies = []
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant(
-            heavy_hitter_frequencies, dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant(
+            heavy_hitters_frequencies, dtype=tf.float64),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
         round_num=tf.constant(1, dtype=tf.int32),
         accumulated_votes=tf.zeros(
@@ -584,8 +584,8 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     expected_discovered_prefixes = tf.constant(
         ['aa', 'ab', 'ac', 'ad', 'ba', 'bb', 'bc', 'ca', 'cb'], dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant(['a', 'b'], dtype=tf.string)
-    expected_heavy_hitter_frequencies = tf.constant([6.0 / 70, 4.0 / 70],
-                                                    dtype=tf.float64)
+    expected_heavy_hitters_frequencies = tf.constant([6.0 / 70, 4.0 / 70],
+                                                     dtype=tf.float64)
     expected_accumulated_votes = tf.constant(
         [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
@@ -598,9 +598,9 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
     self.assertHistogramsEqual(server_state.discovered_heavy_hitters,
-                               server_state.heavy_hitter_frequencies,
+                               server_state.heavy_hitters_frequencies,
                                expected_discovered_heavy_hitters,
-                               expected_heavy_hitter_frequencies)
+                               expected_heavy_hitters_frequencies)
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
     self.assertEqual(server_state.accumulated_weights,
@@ -617,13 +617,13 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
         possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = ['a', 'b', 'c', 'd', triehh_tf.DEFAULT_TERMINATOR]
     discovered_heavy_hitters = []
-    heavy_hitter_frequencies = []
+    heavy_hitters_frequencies = []
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant(
-            heavy_hitter_frequencies, dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant(
+            heavy_hitters_frequencies, dtype=tf.float64),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
         round_num=tf.constant(1, dtype=tf.int32),
         accumulated_votes=tf.zeros(
@@ -647,8 +647,8 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     expected_discovered_prefixes = tf.constant(['aa', 'ab', 'ac', 'ad', 'ba'],
                                                dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant(['a'], dtype=tf.string)
-    expected_heavy_hitter_frequencies = tf.constant([6.0 / 70],
-                                                    dtype=tf.float64)
+    expected_heavy_hitters_frequencies = tf.constant([6.0 / 70],
+                                                     dtype=tf.float64)
     expected_accumulated_votes = tf.constant(
         [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
          [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
@@ -661,9 +661,9 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
     self.assertHistogramsEqual(server_state.discovered_heavy_hitters,
-                               server_state.heavy_hitter_frequencies,
+                               server_state.heavy_hitters_frequencies,
                                expected_discovered_heavy_hitters,
-                               expected_heavy_hitter_frequencies)
+                               expected_heavy_hitters_frequencies)
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
     self.assertEqual(server_state.accumulated_weights,
@@ -680,13 +680,13 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
         possible_prefix_extensions, dtype=tf.string)
     discovered_prefixes = ['']
     discovered_heavy_hitters = []
-    heavy_hitter_frequencies = []
+    heavy_hitters_frequencies = []
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant(
             discovered_heavy_hitters, dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant(
-            heavy_hitter_frequencies, dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant(
+            heavy_hitters_frequencies, dtype=tf.float64),
         discovered_prefixes=tf.constant(discovered_prefixes, dtype=tf.string),
         round_num=tf.constant(0, dtype=tf.int32),
         accumulated_votes=tf.zeros(
@@ -710,7 +710,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
                                            threshold)
     expected_discovered_prefixes = tf.constant([''], dtype=tf.string)
     expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
-    expected_heavy_hitter_frequencies = tf.constant([], dtype=tf.float64)
+    expected_heavy_hitters_frequencies = tf.constant([], dtype=tf.float64)
     expected_accumulated_votes = sub_round_votes
     expected_accumulated_weights = sub_round_weight
 
@@ -719,9 +719,9 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
     self.assertHistogramsEqual(server_state.discovered_heavy_hitters,
-                               server_state.heavy_hitter_frequencies,
+                               server_state.heavy_hitters_frequencies,
                                expected_discovered_heavy_hitters,
-                               expected_heavy_hitter_frequencies)
+                               expected_heavy_hitters_frequencies)
     self.assertAllEqual(server_state.accumulated_votes,
                         expected_accumulated_votes)
     self.assertEqual(server_state.accumulated_weights,
@@ -744,7 +744,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant([], dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant([], dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant([], dtype=tf.float64),
         discovered_prefixes=tf.constant([''], dtype=tf.string),
         round_num=tf.constant(0, dtype=tf.int32),
         accumulated_votes=tf.zeros(
@@ -795,14 +795,14 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
 
     expected_discovered_heavy_hitters = tf.constant(['hi', 'hey', 'hello'],
                                                     dtype=tf.string)
-    expected_heavy_hitter_frequencies = tf.constant([1.0 / 3, 1.0 / 3, 1.0 / 3],
-                                                    dtype=tf.float64)
+    expected_heavy_hitters_frequencies = tf.constant(
+        [1.0 / 3, 1.0 / 3, 1.0 / 3], dtype=tf.float64)
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
     self.assertHistogramsEqual(server_state.discovered_heavy_hitters,
-                               server_state.heavy_hitter_frequencies,
+                               server_state.heavy_hitters_frequencies,
                                expected_discovered_heavy_hitters,
-                               expected_heavy_hitter_frequencies)
+                               expected_heavy_hitters_frequencies)
 
   def test_all_tf_functions_work_together_high_threshold(self):
     clients = 3
@@ -821,7 +821,7 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
 
     server_state = triehh_tf.ServerState(
         discovered_heavy_hitters=tf.constant([], dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant([], dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant([], dtype=tf.float64),
         discovered_prefixes=tf.constant([''], dtype=tf.string),
         round_num=tf.constant(0, dtype=tf.int32),
         accumulated_votes=tf.zeros(
@@ -871,15 +871,15 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
           tf.constant(threshold, dtype=tf.int32))
 
     expected_discovered_heavy_hitters = tf.constant([], dtype=tf.string)
-    expected_heavy_hitter_frequencies = tf.constant([], dtype=tf.float64)
+    expected_heavy_hitters_frequencies = tf.constant([], dtype=tf.float64)
     expected_discovered_prefixes = tf.constant([], dtype=tf.string)
 
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
     self.assertHistogramsEqual(server_state.discovered_heavy_hitters,
-                               server_state.heavy_hitter_frequencies,
+                               server_state.heavy_hitters_frequencies,
                                expected_discovered_heavy_hitters,
-                               expected_heavy_hitter_frequencies)
+                               expected_heavy_hitters_frequencies)
     self.assertSetAllEqual(server_state.discovered_prefixes,
                            expected_discovered_prefixes)
 

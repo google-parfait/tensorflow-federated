@@ -89,7 +89,7 @@ def build_triehh_process(
   def server_init_tf():
     return ServerState(
         discovered_heavy_hitters=tf.constant([], dtype=tf.string),
-        heavy_hitter_frequencies=tf.constant([], dtype=tf.float64),
+        heavy_hitters_frequencies=tf.constant([], dtype=tf.float64),
         discovered_prefixes=tf.constant([''], dtype=tf.string),
         round_num=tf.constant(0, dtype=tf.int32),
         accumulated_votes=tf.zeros(
@@ -106,7 +106,7 @@ def build_triehh_process(
           ServerState(
               discovered_heavy_hitters=tff.TensorType(
                   dtype=tf.string, shape=[None]),
-              heavy_hitter_frequencies=tff.TensorType(
+              heavy_hitters_frequencies=tff.TensorType(
                   dtype=tf.float64, shape=[None]),
               discovered_prefixes=tff.TensorType(dtype=tf.string, shape=[None]),
               round_num=tff.TensorType(dtype=tf.int32, shape=[]),

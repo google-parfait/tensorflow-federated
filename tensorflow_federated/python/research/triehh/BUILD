@@ -1,4 +1,4 @@
-package(default_visibility = ["//tensorflow_federated/python/research/triehh:__subpackages__"])
+package(default_visibility = ["//tensorflow_federated/python/research"])
 
 licenses(["notice"])
 
