@@ -578,6 +578,53 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
       transformations.force_align_and_split_by_intrinsics(comp, uri)
 
 
+class BindSingleSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
+
+  def test_binds_single_argument_to_lower_lambda(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType(
+        [fed_at_clients, fed_at_server])
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), index=0))
+    zeroth_index_extracted = transformations.bind_single_selection_as_argument_to_lower_level_lambda(
+        lam, 0)
+    self.assertEqual(zeroth_index_extracted.type_signature, lam.type_signature)
+    self.assertIsInstance(zeroth_index_extracted, building_blocks.Lambda)
+    self.assertIsInstance(zeroth_index_extracted.result, building_blocks.Call)
+    self.assertIsInstance(zeroth_index_extracted.result.function,
+                          building_blocks.Lambda)
+    self.assertRegex(
+        str(zeroth_index_extracted.result.function), r'\((.{4})1 -> (\1)1\)')
+    self.assertEqual(str(zeroth_index_extracted.result.argument), '_var1[0]')
+
+  def test_binds_single_argument_to_lower_lambda_with_selection_by_name(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType([
+        (None, fed_at_server),
+        ('a', fed_at_clients),
+    ])
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), name='a'))
+    zeroth_index_extracted = transformations.bind_single_selection_as_argument_to_lower_level_lambda(
+        lam, 1)
+    self.assertEqual(zeroth_index_extracted.type_signature, lam.type_signature)
+    self.assertIsInstance(zeroth_index_extracted, building_blocks.Lambda)
+    self.assertIsInstance(zeroth_index_extracted.result, building_blocks.Call)
+    self.assertIsInstance(zeroth_index_extracted.result.function,
+                          building_blocks.Lambda)
+    self.assertRegex(
+        str(zeroth_index_extracted.result.function), r'\((.{4})1 -> (\1)1\)')
+    self.assertEqual(str(zeroth_index_extracted.result.argument), '_var1[1]')
+
+
 class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
 
   def test_raises_on_none(self):
@@ -643,7 +690,7 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
       transformations.zip_selection_as_argument_to_lower_level_lambda(
           lam, [[0], [1]])
 
-  def test_binds_single_element_tuple_to_lower_lambda(self):
+  def test_zips_single_element_tuple_to_lower_lambda(self):
     fed_at_clients = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
@@ -674,26 +721,37 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
         zeroth_index_extracted.result.argument.compact_representation(),
         [expected_arg_regex])
 
-  def test_binds_single_argument_to_lower_lambda(self):
+  def test_zips_single_element_tuple_to_lower_lambda_selection_by_name(self):
     fed_at_clients = computation_types.FederatedType(tf.int32,
                                                      placements.CLIENTS)
     fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
-    tuple_of_federated_types = computation_types.StructType(
-        [fed_at_clients, fed_at_server])
+    tuple_of_federated_types = computation_types.StructType([
+        ('a', fed_at_clients), ('b', fed_at_server)
+    ])
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
         building_blocks.Selection(
-            building_blocks.Reference('x', tuple_of_federated_types), index=0))
-    zeroth_index_extracted = transformations.bind_single_selection_as_argument_to_lower_level_lambda(
-        lam, 0)
+            building_blocks.Reference('x', tuple_of_federated_types), name='a'))
+    expected_fn_regex = (r'\(_([a-z]{3})2 -> federated_map\(<\(_(\1)3 -> '
+                         r'_(\1)3\[0\]\),_(\1)2>\)\)')
+    expected_arg_regex = (r'federated_map\(<\(_([a-z]{3})4 -> '
+                          r'<_(\1)4>\),<_(\1)1\[0\]>\[0\]>\)')
+
+    zeroth_index_extracted = (
+        transformations.zip_selection_as_argument_to_lower_level_lambda(
+            lam, [[0]]))
+
     self.assertEqual(zeroth_index_extracted.type_signature, lam.type_signature)
     self.assertIsInstance(zeroth_index_extracted, building_blocks.Lambda)
     self.assertIsInstance(zeroth_index_extracted.result, building_blocks.Call)
     self.assertIsInstance(zeroth_index_extracted.result.function,
                           building_blocks.Lambda)
-    self.assertRegex(
-        str(zeroth_index_extracted.result.function), r'\((.{4})1 -> (\1)1\)')
-    self.assertEqual(str(zeroth_index_extracted.result.argument), '_var1[0]')
+    self.assertRegexMatch(
+        zeroth_index_extracted.result.function.compact_representation(),
+        [expected_fn_regex])
+    self.assertRegexMatch(
+        zeroth_index_extracted.result.argument.compact_representation(),
+        [expected_arg_regex])
 
   def test_binding_single_arg_leaves_no_unbound_references(self):
     fed_at_clients = computation_types.FederatedType(tf.int32,
@@ -763,6 +821,48 @@ class ZipSelectionAsArgumentToLowerLevelLambdaTest(absltest.TestCase):
         building_blocks.Selection(
             building_blocks.Reference('x', tuple_of_federated_types), index=2),
         index=0)
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Struct([first_selection, second_selection]))
+    expected_fn_regex = (r'\(_([a-z]{3})2 -> <federated_map\(<\(_(\1)3 -> '
+                         r'_(\1)3\[0\]\),_(\1)2>\),federated_map\(<\(_(\1)4 -> '
+                         r'_(\1)4\[1\]\),_(\1)2>\)>\)')
+    expected_arg_regex = r'federated_zip_at_clients\(<_([a-z]{3})1\[0\]\[0\],_(\1)1\[2\]\[0\]>\)'
+
+    deep_zeroth_index_extracted = transformations.zip_selection_as_argument_to_lower_level_lambda(
+        lam, [[0, 0], [2, 0]])
+
+    self.assertEqual(deep_zeroth_index_extracted.type_signature,
+                     lam.type_signature)
+    self.assertIsInstance(deep_zeroth_index_extracted, building_blocks.Lambda)
+    self.assertIsInstance(deep_zeroth_index_extracted.result,
+                          building_blocks.Call)
+    self.assertIsInstance(deep_zeroth_index_extracted.result.function,
+                          building_blocks.Lambda)
+    self.assertRegexMatch(
+        deep_zeroth_index_extracted.result.function.compact_representation(),
+        [expected_fn_regex])
+    self.assertRegexMatch(
+        deep_zeroth_index_extracted.result.argument.compact_representation(),
+        [expected_arg_regex])
+
+  def test_binds_multiple_args_deep_in_type_tree_to_lower_lambda_selected_by_name(
+      self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType([
+        ('a', [('a', fed_at_clients)]), ('b', fed_at_server),
+        ('c', [('c', fed_at_clients)])
+    ])
+    first_selection = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), name='a'),
+        name='a')
+    second_selection = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), name='c'),
+        name='c')
     lam = building_blocks.Lambda(
         'x', tuple_of_federated_types,
         building_blocks.Struct([first_selection, second_selection]))
