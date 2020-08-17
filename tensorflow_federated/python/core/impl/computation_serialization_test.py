@@ -18,7 +18,6 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_serialization
-from tensorflow_federated.python.core.impl import do_not_use_compiler
 
 
 @computations.tf_computation(tf.int32, tf.int32)
@@ -29,12 +28,12 @@ def add_int32(current, val):
 class ComputationSerializationTest(test.TestCase):
 
   def test_serialize_deserialize_round_trip(self):
-    comp_proto = computation_serialization.serialize_computation(add_int32)
-    comp = computation_serialization.deserialize_computation(comp_proto)
-    self.assertIsInstance(comp, computation_base.Computation)
-    self.assertEqual(comp(1, 2), 3)
+    serialized_comp = computation_serialization.serialize_computation(add_int32)
+    deserialize_comp = computation_serialization.deserialize_computation(
+        serialized_comp)
+    self.assertIsInstance(deserialize_comp, computation_base.Computation)
+    self.assertEqual(deserialize_comp, add_int32)
 
 
 if __name__ == '__main__':
-  do_not_use_compiler._do_not_use_set_local_execution_context()
   test.main()

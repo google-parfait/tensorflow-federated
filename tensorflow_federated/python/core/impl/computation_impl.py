@@ -73,5 +73,12 @@ class ComputationImpl(function_utils.ConcreteFunction):
     super().__init__(type_spec, context_stack)
     self._computation_proto = computation_proto
 
+  def __eq__(self, other):
+    if self is other:
+      return True
+    elif not isinstance(other, ComputationImpl):
+      return NotImplemented
+    return self._computation_proto == other._computation_proto
+
   def __hash__(self) -> int:
     return hash(self._computation_proto.SerializeToString(deterministic=True))

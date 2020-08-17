@@ -99,7 +99,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_serialization",
-        ":do_not_use_compiler",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
