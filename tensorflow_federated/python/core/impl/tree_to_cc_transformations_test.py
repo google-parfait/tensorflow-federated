@@ -16,7 +16,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl import do_not_use_compiler
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -357,5 +357,5 @@ class ParseTFFToTFTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_local_execution_context()
+  do_not_use_compiler._do_not_use_set_local_execution_context()
   test.main()

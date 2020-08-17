@@ -4,11 +4,6 @@ package_group(
     packages = [
         # Subpackages
         "//tensorflow_federated/python/core/backends/native/...",
-
-        # TODO(b/143772942): Temporary to allow use of
-        # `set_local_execution_context` in core/impl integration tests. Remove
-        # once these tests have been moved.
-        "//tensorflow_federated/python/core/...",
     ],
 )
 
@@ -33,10 +28,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/impl:computation_impl",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:transformations",
-        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
+        "//tensorflow_federated/python/core/impl:do_not_use_compiler",
     ],
 )
 

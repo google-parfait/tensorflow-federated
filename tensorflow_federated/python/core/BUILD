@@ -8,6 +8,9 @@ package_group(
         # TFF Dependencies
         "//tensorflow_federated/python/learning/...",
         "//tensorflow_federated/python/simulation/...",
+
+        # Other non-learning federated algorithm dependencies
+        "//tensorflow_federated/python/core/utils/...",
     ],
 )
 

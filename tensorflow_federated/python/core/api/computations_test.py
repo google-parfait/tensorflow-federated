@@ -33,7 +33,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl import do_not_use_compiler
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -161,9 +161,10 @@ class TensorFlowComputationsTest(parameterized.TestCase):
       count_map = intrinsics.federated_map(count_total, temperatures)
       return intrinsics.federated_mean(result_map, count_map)
 
-    factory = executor_stacks.sizing_executor_factory(num_clients=num_clients)
-    context = execution_context.ExecutionContext(factory)
-    with get_context_stack.get_context_stack().install(context):
+    sizing_factory = executor_stacks.sizing_executor_factory(
+        num_clients=num_clients)
+    sizing_context = execution_context.ExecutionContext(sizing_factory)
+    with get_context_stack.get_context_stack().install(sizing_context):
       to_float = lambda x: tf.cast(x, tf.float32)
       temperatures = [tf.data.Dataset.range(10).map(to_float)] * num_clients
       threshold = 15.0
@@ -179,7 +180,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
           (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients * 2
       }
 
-      size_info = factory.get_size_info()
+      size_info = sizing_factory.get_size_info()
 
       self.assertEqual(expected_broadcast_history, size_info.broadcast_history)
       self.assertEqual(expected_aggregate_history, size_info.aggregate_history)
@@ -710,5 +711,5 @@ class ComputationsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_local_execution_context()
+  do_not_use_compiler._do_not_use_set_local_execution_context()
   common_test.main()

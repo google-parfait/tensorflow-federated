@@ -21,13 +21,15 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations
-from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.context_stack import set_default_context
+from tensorflow_federated.python.core.impl.executors import execution_context
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
@@ -1049,5 +1051,7 @@ class NormalizedBitTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  execution_contexts.set_local_execution_context()
+  factory = executor_stacks.local_executor_factory()
+  context = execution_context.ExecutionContext(executor_fn=factory)
+  set_default_context.set_default_context(context)
   absltest.main()

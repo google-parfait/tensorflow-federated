@@ -99,10 +99,31 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_serialization",
+        ":do_not_use_compiler",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+    ],
+)
+
+py_library(
+    name = "do_not_use_compiler",
+    srcs = ["do_not_use_compiler.py"],
+    srcs_version = "PY3",
+    visibility = [
+        "//tensorflow_federated/python/core:__pkg__",
+        "//tensorflow_federated/python/core/api:__pkg__",
+        "//tensorflow_federated/python/core/backends/native:__pkg__",
+        "//tensorflow_federated/python/core/impl/wrappers:__pkg__",
+    ],
+    deps = [
+        "//tensorflow_federated/python/core/impl:computation_impl",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:transformations",
+        "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
+        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )
 
@@ -281,10 +302,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":do_not_use_compiler",
         ":tree_to_cc_transformations",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
