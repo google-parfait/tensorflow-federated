@@ -509,7 +509,7 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertGreater(aggregated_outputs['loss'], 0.0)
 
     keras_model = _make_keras_model()
-    keras_utils.assign_weights_to_keras_model(keras_model, tff_weights)
+    tff_weights.assign_weights_to(keras_model)
 
   def test_keras_model_multiple_outputs(self):
     keras_model = model_examples.build_multiple_outputs_keras_model()

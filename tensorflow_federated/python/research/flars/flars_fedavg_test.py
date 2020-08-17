@@ -88,7 +88,7 @@ class FlarsFedAvgTest(tf.test.TestCase):
     federated_data = [[batch]]
 
     def keras_evaluate(state):
-      tff.learning.assign_weights_to_keras_model(keras_model, state.model)
+      state.model.assign_weights_to(keras_model)
       # N.B. The loss computed here won't match the loss computed by TFF because
       # of the Dropout layer.
       keras_model.test_on_batch(**batch)
