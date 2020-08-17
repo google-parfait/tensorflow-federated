@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import collections
+from unittest import mock
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_federated as tff
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.research.utils.datasets import stackoverflow_dataset
@@ -230,25 +232,58 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
     self.assertEqual(self.evaluate(element[0])[0][5], 0)
 
 
+STACKOVERFLOW_MODULE = 'tensorflow_federated.simulation.datasets.stackoverflow'
+
+
 class ConstructWordLevelDatasetsTest(tf.test.TestCase):
 
   @test.skip_test_for_gpu
-  def test_take_with_repeat(self):
-    so_train, _, _ = stackoverflow_dataset.construct_word_level_datasets(
+  @mock.patch(STACKOVERFLOW_MODULE + '.load_word_counts')
+  @mock.patch(STACKOVERFLOW_MODULE + '.load_data')
+  def test_preprocess_applied(self, mock_load_data, mock_load_word_counts):
+    # Mock out the actual data loading from disk. Assert that the preprocessing
+    # function is applied to the client data, and that only the ClientData
+    # objects we desired are used.
+    #
+    # The correctness of the preprocessing function is tested in other tests.
+    mock_train = mock.create_autospec(tff.simulation.ClientData)
+    mock_validation = mock.create_autospec(tff.simulation.ClientData)
+    mock_test = mock.create_autospec(tff.simulation.ClientData)
+    mock_test_dataset = mock.Mock()
+    mock_test.create_tf_dataset_from_all_clients = mock.Mock(
+        return_value=mock_test_dataset)
+    mock_load_data.return_value = (mock_train, mock_validation, mock_test)
+    # Return a factor word dictionary.
+    mock_load_word_counts.return_value = collections.OrderedDict(a=1)
+
+    _, _, _ = stackoverflow_dataset.construct_word_level_datasets(
         vocab_size=1000,
         client_batch_size=10,
-        client_epochs_per_round=-1,
-        max_batches_per_user=8,
+        client_epochs_per_round=1,
+        max_batches_per_user=128,
         max_seq_len=20,
         max_training_elements_per_user=128,
         num_validation_examples=500,
         num_oov_buckets=1)
-    for i in range(10):
-      client_ds = so_train.create_tf_dataset_for_client(so_train.client_ids[i])
-      self.assertEqual(_compute_length_of_dataset(client_ds), 8)
+
+    # Assert the validation ClientData isn't used, and the test ClientData
+    # is a single dataset over all the users.
+    mock_load_data.assert_called_once()
+    self.assertEmpty(mock_validation.mock_calls)
+    self.assertEqual(mock_test.mock_calls,
+                     mock.call.create_tf_dataset_from_all_clients().call_list())
+    self.assertEqual(mock_train.mock_calls,
+                     mock.call.preprocess(mock.ANY).call_list())
+
+    # Assert the word counts were loaded once to apply to each dataset.
+    mock_load_word_counts.assert_called_once()
 
   @test.skip_test_for_gpu
-  def test_raises_no_repeat_and_no_take(self):
+  @mock.patch(STACKOVERFLOW_MODULE + '.load_word_counts')
+  @mock.patch(STACKOVERFLOW_MODULE + '.load_data')
+  def test_raises_no_repeat_and_no_take(self, mock_load_data,
+                                        mock_load_word_counts):
+    mock_load_data.return_value = (mock.Mock(), mock.Mock(), mock.Mock())
     with self.assertRaisesRegex(
         ValueError, 'Argument client_epochs_per_round is set to -1'):
       stackoverflow_dataset.construct_word_level_datasets(

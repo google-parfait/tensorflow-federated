@@ -87,16 +87,13 @@ py_library(
 
 py_test(
     name = "stackoverflow_dataset_test",
-    size = "large",
+    size = "medium",
     srcs = ["stackoverflow_dataset_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "manual",
-        "nopresubmit",
-    ],
     deps = [
         ":stackoverflow_dataset",
+        "//tensorflow_federated",
         "//tensorflow_federated/python/common_libs:test",
     ],
 )
