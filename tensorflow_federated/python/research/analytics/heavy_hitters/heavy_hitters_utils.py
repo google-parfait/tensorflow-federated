@@ -25,6 +25,36 @@ import tensorflow_federated as tff
 import tensorflow_text as tf_text
 
 
+# These are keys in the shakespeare dataset, so need to be kept in sync.
+SELECTED_CLIENTS = [
+    'THE_FIRST_PART_OF_KING_HENRY_THE_FOURTH_FRANCIS',
+    'PERICLES__PRINCE_OF_TYRE_PRIEST',
+    'THE_TAMING_OF_THE_SHREW_CERES',
+    'PERICLES__PRINCE_OF_TYRE_MARSHAL',
+    'ALL_S_WELL_THAT_ENDS_WELL_LOVE',
+    'THE_TRAGEDY_OF_KING_LEAR_MRS',
+    'THE_TAMING_OF_THE_SHREW_IRIS',
+    'THE_TRAGEDY_OF_KING_LEAR_MARIANA',
+    'PERICLES__PRINCE_OF_TYRE_ROSS',
+    'ALL_S_WELL_THAT_ENDS_WELL_SECOND_CITIZEN',
+]
+
+
+def shakespeare_deterministic_sampler(data):
+  """Returns a deterministic sample.
+
+  Args:
+    data: a tff.simulation.ClientData object.
+
+  Returns:
+    list of tf.data.Datasets.
+  """
+  return [
+      tokenize(data.create_tf_dataset_for_client(client_id), 'shakespeare')
+      for client_id in SELECTED_CLIENTS
+  ]
+
+
 @tf.function
 def get_top_elements(dataset, max_user_contribution):
   """Gets the top max_user_contribution words from the input list.
