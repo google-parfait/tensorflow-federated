@@ -155,24 +155,22 @@ def main(argv):
         per_vector_clipping=FLAGS.per_vector_clipping,
         model=model_fn())
 
-    dp_aggregate_fn, _ = tff.utils.build_dp_aggregate(dp_query)
+    weights_type = tff.learning.framework.weights_type_from_model(model_fn)
+    aggregation_process = tff.utils.build_dp_aggregate_process(
+        weights_type.trainable, dp_query)
   else:
-    dp_aggregate_fn = None
+    aggregation_process = None
 
   server_optimizer_fn = optimizer_utils.create_optimizer_fn_from_flags('server')
   client_optimizer_fn = optimizer_utils.create_optimizer_fn_from_flags('client')
-  training_process = (
+
+  training_process = dp_utils.DPFedAvgProcessAdapter(
       tff.learning.federated_averaging.build_federated_averaging_process(
           model_fn=model_fn,
           server_optimizer_fn=server_optimizer_fn,
           client_weight_fn=client_weight_fn,
           client_optimizer_fn=client_optimizer_fn,
-          stateful_delta_aggregate_fn=dp_aggregate_fn))
-
-  adaptive_clipping = (FLAGS.adaptive_clip_learning_rate > 0)
-  training_process = dp_utils.DPFedAvgProcessAdapter(training_process,
-                                                     FLAGS.per_vector_clipping,
-                                                     adaptive_clipping)
+          aggregation_process=aggregation_process))
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
       train_dataset, FLAGS.clients_per_round)

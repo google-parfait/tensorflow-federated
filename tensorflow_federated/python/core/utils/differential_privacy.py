@@ -39,6 +39,16 @@ from tensorflow_federated.python.core.utils import computation_utils
 # should be updated.
 
 
+def _distribute_clip(clip, vectors):
+
+  def dim(v):
+    return math.exp(sum([math.log(d.value) for d in v.shape.dims]))
+
+  dims = tf.nest.map_structure(dim, vectors)
+  total_dim = sum(tf.nest.flatten(dims))
+  return tf.nest.map_structure(lambda d: clip * np.sqrt(d / total_dim), dims)
+
+
 def build_dp_query(clip,
                    noise_multiplier,
                    expected_total_weight,
@@ -62,8 +72,8 @@ def build_dp_query(clip,
     expected_total_weight: The expected total weight of all clients, used as the
       denominator for the average computation.
     adaptive_clip_learning_rate: Learning rate for quantile-based adaptive
-      clipping. If 0, fixed clipping is used. If `per_vector_clipping=True` and
-      `geometric_clip_update=False`, the learning rate of each vector is
+      clipping. If 0, fixed clipping is used. If per-vector clipping is enabled,
+      (but not geometric_clip_update) the learning rate of each vector is
       proportional to that vector's initial clip.
     target_unclipped_quantile: Target unclipped quantile for adaptive clipping.
     clipped_count_budget_allocation: The fraction of privacy budget to use for
@@ -80,8 +90,9 @@ def build_dp_query(clip,
       Required only if per_vector_clipping is True.
 
   Returns:
-    A `DPQuery` suitable for use in a call to `build_dp_aggregate` to perform
-      Federated Averaging with differential privacy.
+    A `DPQuery` suitable for use in a call to `build_dp_aggregate` and
+    `build_dp_aggregate_process` to perform Federated Averaging with
+    differential privacy.
   """
   py_typecheck.check_type(clip, numbers.Number, 'clip')
   py_typecheck.check_type(noise_multiplier, numbers.Number, 'noise_multiplier')
@@ -106,8 +117,12 @@ def build_dp_query(clip,
     py_typecheck.check_type(expected_num_clients, numbers.Number,
                             'expected_num_clients')
     p = clipped_count_budget_allocation
-    clipped_count_stddev = 0.5 * noise_multiplier * (p / num_vectors)**(-0.5)
-    noise_multiplier = noise_multiplier * ((1 - p) / num_vectors)**(-0.5)
+    nm = noise_multiplier
+    vectors_noise_multiplier = nm * ((1 - p) / num_vectors)**(-0.5)
+    clipped_count_noise_multiplier = nm * (p / num_vectors)**(-0.5)
+
+    # Clipped count sensitivity is 0.5.
+    clipped_count_stddev = 0.5 * clipped_count_noise_multiplier
 
   def make_single_vector_query(vector_clip):
     """Makes a `DPQuery` for a single vector."""
@@ -129,7 +144,7 @@ def build_dp_query(clip,
         learning_rate = adaptive_clip_learning_rate * vector_clip / clip
       return tensorflow_privacy.QuantileAdaptiveClipAverageQuery(
           initial_l2_norm_clip=vector_clip,
-          noise_multiplier=noise_multiplier,
+          noise_multiplier=vectors_noise_multiplier,
           target_unclipped_quantile=target_unclipped_quantile,
           learning_rate=learning_rate,
           clipped_count_stddev=clipped_count_stddev,
@@ -138,14 +153,7 @@ def build_dp_query(clip,
           denominator=expected_total_weight)
 
   if per_vector_clipping:
-
-    def dim(v):
-      return math.exp(sum([math.log(d.value) for d in v.shape.dims]))
-
-    dims = tf.nest.map_structure(dim, vectors)
-    total_dim = sum(tf.nest.flatten(dims))
-    clips = tf.nest.map_structure(lambda dim: clip * np.sqrt(dim / total_dim),
-                                  dims)
+    clips = _distribute_clip(clip, vectors)
     subqueries = tf.nest.map_structure(make_single_vector_query, clips)
     return tensorflow_privacy.NestedQuery(subqueries)
   else:
@@ -349,6 +357,10 @@ def build_dp_aggregate_process(value_type, query):
                                                        global_state)
     return new_global_state, result
 
+  @computations.tf_computation(global_state_type)
+  def derive_metrics(global_state):
+    return query.derive_metrics(global_state)
+
   @computations.federated_computation(
       initial_state_comp.type_signature.result,
       computation_types.FederatedType(value_type, placements.CLIENTS),
@@ -371,10 +383,10 @@ def build_dp_aggregate_process(value_type, query):
     updated_state, result = intrinsics.federated_map(post_process,
                                                      (agg_result, global_state))
 
-    empty_metrics = intrinsics.federated_value((), placements.SERVER)
+    metrics = intrinsics.federated_map(derive_metrics, updated_state)
 
     return collections.OrderedDict(
-        state=updated_state, result=result, measurements=empty_metrics)
+        state=updated_state, result=result, measurements=metrics)
 
   return measured_process.MeasuredProcess(
       initialize_fn=initial_state_comp, next_fn=next_fn)

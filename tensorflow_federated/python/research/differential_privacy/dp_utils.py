@@ -25,27 +25,14 @@ class DPFedAvgProcessAdapter(adapters.IterativeProcessPythonAdapter):
   clips as metrics.
   """
 
-  def __init__(self, iterative_process, per_vector_clipping, adaptive_clipping):
+  def __init__(self, iterative_process):
     self._iterative_process = iterative_process
-    self._per_vector_clipping = per_vector_clipping
-    self._adaptive_clipping = adaptive_clipping
-
-  def _get_clip(self, state):
-    return state.numerator_state.sum_state.l2_norm_clip
 
   def initialize(self):
     return self._iterative_process.initialize()
 
   def next(self, state, data):
     state, metrics = self._iterative_process.next(state, data)
-    if self._adaptive_clipping:
-      if self._per_vector_clipping:
-        metrics.update({
-            ('clip_' + str(i)): self._get_clip(vector_state)
-            for i, vector_state in enumerate(state.delta_aggregate_state)
-        })
-      else:
-        metrics.update({'clip': self._get_clip(state.delta_aggregate_state)})
 
     outputs = None
     return adapters.IterationResult(state, metrics, outputs)

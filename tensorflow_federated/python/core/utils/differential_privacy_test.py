@@ -246,13 +246,16 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
     dp_aggregate_process = differential_privacy.build_dp_aggregate_process(
         value_type, query)
 
+    global_state = query.initial_global_state()
     server_state_type = computation_types.FederatedType(
-        type_conversions.type_from_tensors(query.initial_global_state()),
-        placements.SERVER)
+        type_conversions.type_from_tensors(global_state), placements.SERVER)
     self.assertEqual(
         dp_aggregate_process.initialize.type_signature,
         computation_types.FunctionType(
             parameter=None, result=server_state_type))
+
+    metrics_type = type_conversions.type_from_tensors(
+        query.derive_metrics(global_state))
 
     client_value_type = computation_types.FederatedType(value_type,
                                                         placements.CLIENTS)
@@ -260,7 +263,8 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
         tf.float32, placements.CLIENTS)
     server_result_type = computation_types.FederatedType(
         value_type, placements.SERVER)
-    server_metrics_type = computation_types.FederatedType((), placements.SERVER)
+    server_metrics_type = computation_types.FederatedType(
+        metrics_type, placements.SERVER)
     self.assertEqual(
         dp_aggregate_process.next.type_signature,
         computation_types.FunctionType(
