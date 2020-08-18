@@ -14,7 +14,7 @@
 """Container for structures with named and/or unnamed fields."""
 
 import collections
-from typing import Any, Callable, Optional, Iterable, Iterator, List, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Iterable, Iterator, List, Tuple, Union
 
 import attr
 import tensorflow as tf
@@ -533,3 +533,16 @@ def has_field(structure: Struct, field: str) -> bool:
   py_typecheck.check_type(structure, Struct)
   names = structure._name_array  # pylint: disable=protected-access
   return field in names
+
+
+def name_to_index_map(structure: Struct) -> Dict[str, int]:
+  """Returns map from names in `structure` to their indices.
+
+  Args:
+    structure: An instance of `Struct`.
+
+  Returns:
+    Mapping from names in `structure` to their indices.
+  """
+  py_typecheck.check_type(structure, Struct)
+  return structure._name_to_index  # pylint: disable=protected-access

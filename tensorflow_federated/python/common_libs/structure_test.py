@@ -469,6 +469,24 @@ class StructTest(absltest.TestCase):
     with self.assertRaises(TypeError):
       structure.from_container(3)
 
+  def test_name_to_index_map_empty_unnamed_struct(self):
+    unnamed_struct = structure.Struct([(None, 10), (None, 20)])
+    self.assertEmpty(structure.name_to_index_map(unnamed_struct))
+
+  def test_name_to_index_map_partially_named_struct(self):
+    partially_named_struct = structure.Struct([(None, 10), ('a', 20)])
+
+    name_to_index_dict = structure.name_to_index_map(partially_named_struct)
+    expected_name_to_index_map = {'a': 1}
+    self.assertEqual(name_to_index_dict, expected_name_to_index_map)
+
+  def test_name_to_index_map_fully_named_struct(self):
+    partially_named_struct = structure.Struct([('b', 10), ('a', 20)])
+
+    name_to_index_dict = structure.name_to_index_map(partially_named_struct)
+    expected_name_to_index_map = {'b': 0, 'a': 1}
+    self.assertEqual(name_to_index_dict, expected_name_to_index_map)
+
 
 if __name__ == '__main__':
   absltest.main()
