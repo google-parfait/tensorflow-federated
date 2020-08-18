@@ -40,8 +40,13 @@ flags.DEFINE_integer('num_total_rounds', 10,
 flags.DEFINE_integer(
     'num_rounds_per_p13n_eval', 5,
     'Number of FedAvg training rounds between two p13n evals.')
+flags.DEFINE_bool(
+    'shuffle_clients_before_split', True,
+    'Whether to shuffle the clients before splitting into training and p13n.')
 
 FLAGS = flags.FLAGS
+
+SEED = 42  # Seed used when splitting the clients into training and p13n.
 
 
 def _get_emnist_datasets():
@@ -67,17 +72,24 @@ def _get_emnist_datasets():
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
       only_digits=False)  # EMNIST has 3400 clients.
 
-  # The frist 2500 clients are used for training a global model.
+  if FLAGS.shuffle_clients_before_split:
+    # Shuffle the client ids before splitting into training and personalization.
+    client_ids = list(
+        np.random.RandomState(SEED).permutation(emnist_train.client_ids))
+  else:
+    client_ids = emnist_train.client_ids
+
+  # The first 2500 clients are used for training a global model.
   federated_train_data = [
       preprocess_train_data(emnist_train.create_tf_dataset_for_client(c))
-      for c in emnist_train.client_ids[:2500]
+      for c in client_ids[:2500]
   ]
 
   # The remaining 900 clients are used for training and evaluating personalized
   # models. Each client's input is an `OrdereDict` with at least two keys:
   # `train_data` and `test_data`, and each key is mapped to a `tf.data.Dataset`.
   federated_p13n_data = []
-  for c in emnist_train.client_ids[2500:]:
+  for c in client_ids[2500:]:
     federated_p13n_data.append(
         collections.OrderedDict([
             ('train_data',
@@ -191,7 +203,7 @@ def main(argv):
       # Users can save `p13n_metrics` to file for further analysis. For
       # simplcity, we extract and print two values here:
       # 1. mean accuracy of the initial global model;
-      # 2. mean accuracy of the personalized models.
+      # 2. mean accuracy of the personalized models obtained at Epoch 1.
       print('Current Round {}'.format(round_idx))
 
       global_model_accuracies = np.array(
@@ -200,8 +212,8 @@ def main(argv):
           np.mean(global_model_accuracies).item()))
 
       personalized_models_accuracies = np.array(
-          p13n_metrics['sgd']['final_model']['sparse_categorical_accuracy'])
-      print('Mean accuracy of the personalized models: {}'.format(
+          p13n_metrics['sgd']['epoch_1']['sparse_categorical_accuracy'])
+      print('Mean accuracy of the personalized models at Epoch 1: {}'.format(
           np.mean(personalized_models_accuracies).item()))
 
 
