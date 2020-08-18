@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
@@ -42,7 +43,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   def __init__(self,
                model: model_lib.Model,
                optimizer: tf.keras.optimizers.Optimizer,
-               client_weight_fn: Optional[Callable[[Any], tf.Tensor]] = None):
+               client_weight_fn: Optional[Callable[[Any], tf.Tensor]] = None,
+               use_experimental_simulation_loop: bool = False):
     """Creates the client computation for Federated Averaging.
 
     Args:
@@ -52,6 +54,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
         `model.report_local_outputs` and returns a tensor that provides the
         weight in the federated average of model deltas. If not provided, the
         default is the total number of examples processed on device.
+      use_experimental_simulation_loop: Controls the reduce loop function for
+        input dataset. An experimental reduce loop is used for simulation.
     """
     py_typecheck.check_type(model, model_lib.Model)
     self._model = model_utils.enhance(model)
@@ -63,6 +67,9 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
       self._client_weight_fn = client_weight_fn
     else:
       self._client_weight_fn = None
+
+    self._dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
+        use_experimental_simulation_loop)
 
   @property
   def variables(self):
@@ -89,8 +96,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
       else:
         return num_examples_sum + output.num_examples
 
-    num_examples_sum = dataset.reduce(
-        initial_state=tf.constant(0), reduce_func=reduce_fn)
+    num_examples_sum = self._dataset_reduce_fn(reduce_fn, dataset)
 
     weights_delta = tf.nest.map_structure(tf.subtract, model.weights.trainable,
                                           initial_weights.trainable)
@@ -132,6 +138,7 @@ def build_federated_averaging_process(
     *,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
+    use_experimental_simulation_loop: bool = False
 ) -> iterative_process.IterativeProcess:
   """Builds an iterative process that performs federated averaging.
 
@@ -204,13 +211,16 @@ def build_federated_averaging_process(
       model updates on the clients back to the server. It must support the
       signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
       `None` if `stateful_delta_aggregate_fn` is not `None`.
+    use_experimental_simulation_loop: Controls the reduce loop function for
+        input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A `tff.templates.IterativeProcess`.
   """
 
   def client_fed_avg(model_fn):
-    return ClientFedAvg(model_fn(), client_optimizer_fn(), client_weight_fn)
+    return ClientFedAvg(model_fn(), client_optimizer_fn(), client_weight_fn,
+                        use_experimental_simulation_loop)
 
   return optimizer_utils.build_model_delta_optimizer_process(
       model_fn,

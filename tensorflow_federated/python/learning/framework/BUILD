@@ -98,3 +98,17 @@ py_test(
         "//tensorflow_federated/python/learning:model_utils",
     ],
 )
+
+py_library(
+    name = "dataset_reduce",
+    srcs = ["dataset_reduce.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "dataset_reduce_test",
+    srcs = ["dataset_reduce_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":dataset_reduce"],
+)
