@@ -92,6 +92,7 @@ def get_top_elements(dataset, max_user_contribution):
 
   words, counts = dataset.reduce(
       initial_state=initial_histogram, reduce_func=count_word)
+
   if tf.size(words) > max_user_contribution:
     # This logic is influenced by the focus on global heavy hitters and
     # thus implements clipping by chopping the tail of the distribution
@@ -247,20 +248,29 @@ def f1_score(ground_truth, signal, k):
 
 
 def top_k(signal, k):
-  """Computes the top_k cut of a {'string': frequency} dict."""
-  counter = collections.Counter(signal)
-  ranks = collections.defaultdict(list)
-  for key, value in counter.most_common():
-    ranks[value].append(key)
-  results = {}
-  counter = 0
-  for freq, values in ranks.items():
-    for v in values:
-      results[v] = freq
-      counter += 1
-    if counter >= k:
-      break
-  return results
+  """Computes the top k cut of a {'string': frequency} dict.
+
+  Args:
+    signal: A dictionary of heavy hitters with counts.
+    k: The number of top items to return.
+
+  Returns:
+    A dictionary of size k, containing the heavy hitters with the highest k
+    counts. Note that the keys are sorted alphabetically for items with tied
+    values, so the returned results are always consistent for the same input
+    dictionary.
+  """
+  # The key might be None.
+  if None in signal:
+    del signal[None]
+
+  if len(signal) <= k:
+    return signal
+
+  # Sort the dictionary decreasingly by counts, then increasingly by order in
+  # the alphabet.
+  sorted_signal = sorted(signal.items(), key=lambda x: (-x[1], x[0]))
+  return dict(sorted_signal[:k])
 
 
 def compute_loss(results,
@@ -287,37 +297,34 @@ def enough_variation(new_results, old_results, min_variation):
   return len(intersection) >= min_variation
 
 
-def get_top_words(datasets, num_words_per_dataset=None):
+def get_all_words_counts(datasets):
   total_words = []
   for dataset in datasets:
     words = [word.numpy().decode('utf-8') for word in dataset]
-    if num_words_per_dataset is not None:
-      words = collections.Counter(words).most_common(num_words_per_dataset)
-      words = [word_pair[0] for word_pair in words]
     total_words += list(set(words))
-  return total_words
+  return dict(collections.Counter(total_words))
 
 
 def compute_expected_results(datasets, limit):
-  return top_k(get_top_words(datasets), limit)
+  return top_k(get_all_words_counts(datasets), limit)
 
 
 def calculate_ground_truth(data, dataset_name):
   """Gets all the words in the entire dataset."""
+  start = time.time()
   all_datasets = [
       tokenize(data.create_tf_dataset_for_client(client_id), dataset_name)
       for client_id in data.client_ids
   ]
-
-  start = time.time()
-  ground_truth_results = get_top_words(all_datasets)
+  ground_truth_results = get_all_words_counts(all_datasets)
   logging.info('Obtained ground truth in %.2f seconds', time.time() - start)
   return ground_truth_results
 
 
 @tff.tf_computation(tff.SequenceType(tf.string))
 def compute_lossless_result_per_user(dataset):
-  k_words = get_top_elements(dataset, 10)
+  # Do not have limit on each client's contribution in this case.
+  k_words = get_top_elements(dataset, tf.constant(tf.int32.max))
   return k_words
 
 
