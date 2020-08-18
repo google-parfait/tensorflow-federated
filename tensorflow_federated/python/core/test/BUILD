@@ -4,8 +4,6 @@ package_group(
     packages = [
         # Subpackages
         "//tensorflow_federated/python/core/test/...",
-        # Core Dependencies
-        "//tensorflow_federated/python/core/utils/...",
     ],
 )
 
