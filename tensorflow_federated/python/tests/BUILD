@@ -3,6 +3,14 @@ package(default_visibility = ["//visibility:private"])
 licenses(["notice"])
 
 py_test(
+    name = "backend_test",
+    srcs = ["backend_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
     name = "canonical_form_test",
     size = "large",
     srcs = ["canonical_form_test.py"],

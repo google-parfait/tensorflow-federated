@@ -18,7 +18,6 @@ from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl import do_not_use_compiler
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
@@ -157,15 +156,6 @@ class ToComputationImplTest(test.TestCase):
     self.assertIsInstance(computation_impl_lambda,
                           computation_impl.ComputationImpl)
 
-  def test_identity_lambda_executes_as_identity(self):
-    lam = building_blocks.Lambda('x', tf.int32,
-                                 building_blocks.Reference('x', tf.int32))
-    computation_impl_lambda = computation_wrapper_instances.building_block_to_computation(
-        lam)
-    for k in range(10):
-      self.assertEqual(computation_impl_lambda(k), k)
-
 
 if __name__ == '__main__':
-  do_not_use_compiler._do_not_use_set_local_execution_context()
   test.main()

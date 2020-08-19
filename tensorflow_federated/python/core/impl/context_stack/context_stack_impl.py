@@ -19,6 +19,7 @@ import threading
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
 
 
 class ContextStackImpl(context_stack_base.ContextStack, threading.local):
@@ -55,29 +56,4 @@ class ContextStackImpl(context_stack_base.ContextStack, threading.local):
       self._stack.pop()
 
 
-class _RuntimeErrorContext(context_base.Context):
-  """A context that will fail if you execute against it."""
-
-  def _raise_runtime_error(self):
-    raise RuntimeError(
-        'No default context installed.\n'
-        '\n'
-        'You should not expect to get this error using the TFF API.\n'
-        '\n'
-        'If you are getting this error when testing a module inside of '
-        '`tensorflow_federated/python/core/...`, you may need to explicitly '
-        'invoke `execution_contexts.set_local_execution_context()` in '
-        'the `main` function of your test.')
-
-  def ingest(self, val, type_spec):
-    del val  # Unused
-    del type_spec  # Unused
-    self._raise_runtime_error()
-
-  def invoke(self, comp, arg):
-    del comp  # Unused
-    del arg  # Unused
-    self._raise_runtime_error()
-
-
-context_stack = ContextStackImpl(_RuntimeErrorContext())
+context_stack = ContextStackImpl(runtime_error_context.RuntimeErrorContext())

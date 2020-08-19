@@ -19,18 +19,44 @@ from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
-def set_local_execution_context(num_clients=None,
-                                max_fanout=100,
-                                clients_per_thread=1,
-                                server_tf_device=None,
-                                client_tf_devices=tuple()):
-  """Sets an execution context that executes computations locally."""
+def create_local_execution_context(num_clients=None,
+                                   max_fanout=100,
+                                   clients_per_thread=1,
+                                   server_tf_device=None,
+                                   client_tf_devices=tuple()):
+  """Creates an execution context that executes computations locally."""
   factory = executor_stacks.local_executor_factory(
       num_clients=num_clients,
       max_fanout=max_fanout,
       clients_per_thread=clients_per_thread,
       server_tf_device=server_tf_device,
       client_tf_devices=client_tf_devices)
-  context = execution_context.ExecutionContext(
+  return execution_context.ExecutionContext(
       executor_fn=factory, compiler_fn=compiler.transform_to_native_form)
+
+
+def set_local_execution_context(num_clients=None,
+                                max_fanout=100,
+                                clients_per_thread=1,
+                                server_tf_device=None,
+                                client_tf_devices=tuple()):
+  """Sets an execution context that executes computations locally."""
+  context = create_local_execution_context(
+      num_clients=num_clients,
+      max_fanout=max_fanout,
+      clients_per_thread=clients_per_thread,
+      server_tf_device=server_tf_device,
+      client_tf_devices=client_tf_devices)
   context_stack_impl.context_stack.set_default_context(context)
+
+
+def create_sizing_execution_context(num_clients: int = None,
+                                    max_fanout: int = 100,
+                                    clients_per_thread: int = 1):
+  """Creates an execution context that executes computations locally."""
+  factory = executor_stacks.sizing_executor_factory(
+      num_clients=num_clients,
+      max_fanout=max_fanout,
+      clients_per_thread=clients_per_thread)
+  return execution_context.ExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.transform_to_native_form)

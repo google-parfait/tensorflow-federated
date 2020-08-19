@@ -48,6 +48,7 @@ py_library(
     deps = [
         ":context_base",
         ":context_stack_base",
+        ":runtime_error_context",
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
@@ -91,8 +92,8 @@ py_test(
 )
 
 py_library(
-    name = "symbol_binding_context",
-    srcs = ["symbol_binding_context.py"],
+    name = "runtime_error_context",
+    srcs = ["runtime_error_context.py"],
     srcs_version = "PY3",
     deps = [":context_base"],
 )
@@ -101,7 +102,10 @@ py_library(
     name = "set_default_context",
     srcs = ["set_default_context.py"],
     srcs_version = "PY3",
-    deps = [":context_stack_impl"],
+    deps = [
+        ":context_stack_impl",
+        ":runtime_error_context",
+    ],
 )
 
 py_test(
@@ -115,4 +119,11 @@ py_test(
         ":context_stack_test_utils",
         ":set_default_context",
     ],
+)
+
+py_library(
+    name = "symbol_binding_context",
+    srcs = ["symbol_binding_context.py"],
+    srcs_version = "PY3",
+    deps = [":context_base"],
 )

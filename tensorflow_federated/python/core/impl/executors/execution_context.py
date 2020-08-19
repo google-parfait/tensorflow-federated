@@ -158,6 +158,10 @@ class ExecutionContext(context_base.Context):
     else:
       self._compiler_pipeline = None
 
+  @property
+  def executor_factory(self):
+    return self._executor_factory
+
   def ingest(self, val, type_spec):
     return ExecutionContextValue(val, type_spec)
 

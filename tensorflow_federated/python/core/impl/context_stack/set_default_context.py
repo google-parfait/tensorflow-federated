@@ -14,6 +14,7 @@
 """A utility to change the context stack."""
 
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
 
 
 def set_default_context(ctx):
@@ -23,3 +24,8 @@ def set_default_context(ctx):
     ctx: An instance of `context_base.Context`.
   """
   context_stack_impl.context_stack.set_default_context(ctx)
+
+
+def set_no_default_context():
+  """Places a `RuntimeErrorContext` at the bottom of the stack."""
+  set_default_context(runtime_error_context.RuntimeErrorContext())

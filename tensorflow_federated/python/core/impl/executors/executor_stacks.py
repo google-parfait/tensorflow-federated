@@ -381,7 +381,7 @@ def sizing_executor_factory(
     num_clients: int = None,
     max_fanout: int = 100,
     clients_per_thread: int = 1) -> executor_factory.ExecutorFactory:
-  """Constructs an executor to execute computations on the local machine with sizing.
+  """Constructs an executor factory to execute computations locally with sizing.
 
   Args:
     num_clients: The number of clients. If specified, the executor factory
@@ -395,9 +395,9 @@ def sizing_executor_factory(
       order of `log(num_clients) / log(max_fanout)`.
     clients_per_thread: Integer number of clients for each of TFF's threads to
       run in sequence. Increasing `clients_per_thread` therefore reduces the
-      concurrency of the TFF runtime, which can be useful if client work is
-      very lightweight or models are very large and multiple copies cannot fit
-      in memory.
+      concurrency of the TFF runtime, which can be useful if client work is very
+      lightweight or models are very large and multiple copies cannot fit in
+      memory.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the

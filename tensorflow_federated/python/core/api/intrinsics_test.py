@@ -27,7 +27,6 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
-from tensorflow_federated.python.core.impl import do_not_use_compiler
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -718,7 +717,7 @@ class IntrinsicsTest(parameterized.TestCase):
   def test_federated_value_raw_np_scalar(self):
 
     @computations.federated_computation
-    def test_np_values():
+    def foo():
       floatv = np.float64(0)
       tff_float = intrinsics.federated_value(floatv, placements.SERVER)
       self.assertIsInstance(tff_float, value_base.Value)
@@ -729,9 +728,7 @@ class IntrinsicsTest(parameterized.TestCase):
       self.assert_type(tff_int, 'int64@SERVER')
       return (tff_float, tff_int)
 
-    floatv, intv = test_np_values()
-    self.assertEqual(floatv, 0.0)
-    self.assertEqual(intv, 0)
+    self.assert_type(foo, '( -> <float64@SERVER,int64@SERVER>)')
 
   def test_federated_value_raw_tf_scalar_variable(self):
     v = tf.Variable(initial_value=0., name='test_var')
@@ -873,5 +870,4 @@ class IntrinsicsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  do_not_use_compiler._do_not_use_set_local_execution_context()
   common_test.main()

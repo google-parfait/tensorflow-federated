@@ -14,7 +14,6 @@
 """Utils for testing executors."""
 
 import asyncio
-import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -52,24 +51,24 @@ def executors(*args):
   Note: To use this decorator your test is required to inherit from
   `parameterized.TestCase`.
 
-  1.  The decorator can be specified without arguments:
+  The decorator can be called without arguments:
 
-      ```
-      @executors
-      def foo(self):
-        ...
-      ```
+  ```
+  @executors
+  def foo(self):
+    ...
+  ```
 
-  2.  The decorator can be called with arguments:
+  or with arguments:
 
-      ```
-      @executors(
-          ('label', executor),
-          ...
-      )
-      def foo(self):
-        ...
-      ```
+  ```
+  @executors(
+      ('label', executor),
+      ...
+  )
+  def foo(self):
+    ...
+  ```
 
   If the decorator is specified without arguments or is called with no
   arguments, the default this decorator with parameterize the test by the
@@ -89,9 +88,14 @@ def executors(*args):
      A test generator to be handled by `parameterized.TestGeneratorMetaclass`.
   """
 
-  def executor_decorator(fn):
-    """Create a wrapped function with custom execution contexts."""
+  def decorator(fn, *named_executors):
+    if not named_executors:
+      named_executors = [
+          ('reference', reference_executor.ReferenceExecutor()),
+          ('local', executor_stacks.local_executor_factory()),
+      ]
 
+    @parameterized.named_parameters(*named_executors)
     def wrapped_fn(self, executor):
       """Install a particular execution context before running `fn`."""
       # Executors inheriting from `executor_base.Executor` will need to be
@@ -106,25 +110,10 @@ def executors(*args):
 
     return wrapped_fn
 
-  def decorator(fn, *named_executors):
-    """Construct a custom `parameterized.named_parameter` decorator for `fn`."""
-    wraps_decorator = functools.wraps(fn)
-    if not named_executors:
-      named_executors = [
-          ('reference', reference_executor.ReferenceExecutor()),
-          ('local', executor_stacks.local_executor_factory()),
-      ]
-    named_parameters_decorator = parameterized.named_parameters(
-        *named_executors)
-    fn = executor_decorator(fn)
-    fn = named_parameters_decorator(fn)
-    fn = wraps_decorator(fn)
-    return fn
-
   if len(args) == 1 and callable(args[0]):
     return decorator(args[0])
   else:
-    return lambda x: decorator(x, *args)
+    return lambda fn: decorator(fn, *args)
 
 
 class AsyncTestCase(absltest.TestCase):

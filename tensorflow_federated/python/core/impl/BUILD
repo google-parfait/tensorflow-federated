@@ -112,7 +112,6 @@ py_library(
     visibility = [
         "//tensorflow_federated/python/core/api:__pkg__",
         "//tensorflow_federated/python/core/backends/native:__pkg__",
-        "//tensorflow_federated/python/core/impl/wrappers:__pkg__",
     ],
     deps = [
         "//tensorflow_federated/python/core/impl:computation_impl",
