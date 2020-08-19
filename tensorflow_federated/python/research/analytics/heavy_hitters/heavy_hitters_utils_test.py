@@ -71,6 +71,82 @@ class HeavyHittersUtilsTest(tf.test.TestCase):
     ground_truth = {'a': 3, 'd': 2, 'b': 2, 'c': 2}
     self.assertAlmostEqual(hh_utils.f1_score(ground_truth, signal, 3), 1.0)
 
+  def test_compute_thershold_leakage(self):
+    # The counts of discovered heavy hitters do not affect the results.
+    signal = {'a': 5, 'b': 5, 'c': 5, 'd': 5, 'e': 5}
+    ground_truth = {'a': 7, 'b': 6, 'c': 4, 'd': 4, 'e': 3, 'f': 2, 'g': 1}
+
+    threshold = 0
+    expected_false_positive_rate = {}
+    expected_false_discovery_rate = {}
+    expected_harmonic_mean_fpr_fdr = {}
+    false_positive_rate, false_discovery_rate, harmonic_mean_fpr_fdr = hh_utils.compute_thershold_leakage(
+        ground_truth, signal, threshold)
+    self.assertEqual(false_positive_rate, expected_false_positive_rate)
+    self.assertEqual(false_discovery_rate, expected_false_discovery_rate)
+    self.assertEqual(harmonic_mean_fpr_fdr, expected_harmonic_mean_fpr_fdr)
+
+    threshold = 10
+    expected_false_positive_rate = {
+        10: 5.0 / 7,
+        9: 5.0 / 7,
+        8: 5.0 / 7,
+        7: 4.0 / 6,
+        6: 3.0 / 5,
+        5: 3.0 / 5,
+        4: 1.0 / 3,
+        3: 0.0,
+        2: 0.0,
+        1: 0.0
+    }
+    expected_false_discovery_rate = {
+        10: 5.0 / 5,
+        9: 5.0 / 5,
+        8: 5.0 / 5,
+        7: 4.0 / 5,
+        6: 3.0 / 5,
+        5: 3.0 / 5,
+        4: 1.0 / 5,
+        3: 0.0,
+        2: 0.0,
+        1: 0.0
+    }
+    expected_harmonic_mean_fpr_fdr = {
+        10: 2 * (5.0 / 5) * (5.0 / 7) / (5.0 / 5 + 5.0 / 7),
+        9: 2 * (5.0 / 5) * (5.0 / 7) / (5.0 / 5 + 5.0 / 7),
+        8: 2 * (5.0 / 5) * (5.0 / 7) / (5.0 / 5 + 5.0 / 7),
+        7: 2 * (4.0 / 5) * (4.0 / 6) / (4.0 / 5 + 4.0 / 6),
+        6: 2 * (3.0 / 5) * (3.0 / 5) / (3.0 / 5 + 3.0 / 5),
+        5: 2 * (3.0 / 5) * (3.0 / 5) / (3.0 / 5 + 3.0 / 5),
+        4: 2 * (1.0 / 5) * (1.0 / 3) / (1.0 / 5 + 1.0 / 3),
+        3: 0.0,
+        2: 0.0,
+        1: 0.0
+    }
+
+    false_positive_rate, false_discovery_rate, harmonic_mean_fpr_fdr = hh_utils.compute_thershold_leakage(
+        ground_truth, signal, threshold)
+    self.assertEqual(false_positive_rate, expected_false_positive_rate)
+    self.assertEqual(false_discovery_rate, expected_false_discovery_rate)
+    for threshold in range(1, 11):
+      self.assertAlmostEqual(harmonic_mean_fpr_fdr[threshold],
+                             expected_harmonic_mean_fpr_fdr[threshold])
+
+    threshold = 5
+    signal = {}
+    ground_truth = {'a': 7, 'b': 6, 'c': 4, 'd': 4, 'e': 3, 'f': 2, 'g': 1}
+    expected_false_positive_rate = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0}
+    expected_false_discovery_rate = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0}
+    expected_harmonic_mean_fpr_fdr = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0}
+
+    false_positive_rate, false_discovery_rate, harmonic_mean_fpr_fdr = hh_utils.compute_thershold_leakage(
+        ground_truth, signal, threshold)
+    self.assertEqual(false_positive_rate, expected_false_positive_rate)
+    self.assertEqual(false_discovery_rate, expected_false_discovery_rate)
+    for threshold in range(1, 5):
+      self.assertAlmostEqual(harmonic_mean_fpr_fdr[threshold],
+                             expected_harmonic_mean_fpr_fdr[threshold])
+
 
 class GetTopElementsTest(tf.test.TestCase):
 

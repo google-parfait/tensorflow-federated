@@ -13,12 +13,14 @@
 # limitations under the License.
 """A set of utilities for heavy hitter discovery."""
 
+import bisect
 import collections
 import statistics
 import time
 
 from absl import app
 from absl import logging
+from scipy import stats
 
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -319,6 +321,73 @@ def calculate_ground_truth(data, dataset_name):
   ground_truth_results = get_all_words_counts(all_datasets)
   logging.info('Obtained ground truth in %.2f seconds', time.time() - start)
   return ground_truth_results
+
+
+def compute_thershold_leakage(ground_truth, signal, t):
+  """Computes the threshold leakage of the least frequent words.
+
+  A word is leaked at threshold `t` if it appears less than `t` times in
+  `ground_truth` but appears in `signal`.
+
+  The false positive rate (FPR) at a threshold `t` is defined as the number of
+  leaked words divided by the number of words appearing less than `t` times in
+  `ground_truth`.
+
+  The false discovery rate (FDR) at a threshold `t` is defined as the number of
+  leaked words divided by the size of `signal`.
+
+  Args:
+    ground_truth: The ground truth dict.
+    signal: The obtained heavy hitters dict.
+    t: Compute FPR, FDR and the harmonic mean of these two with a leak threshold
+      from 1 to t.
+
+  Returns:
+    Three dictionaries: false_positive_rate, false_discovery_rate,
+    harmonic_mean_fpr_fdr leakage at threshold from 1 to t.
+  """
+
+  false_positive_rate = {}
+  false_discovery_rate = {}
+  harmonic_mean_fpr_fdr = {}
+
+  # Order the ground truth dictionary increasingly by counts for binary search.
+  ground_truth = collections.OrderedDict(
+      sorted(ground_truth.items(), key=lambda x: x[1]))
+  ground_truth_words = list(ground_truth.keys())
+  ground_truth_counts = list(ground_truth.values())
+
+  leaked_words_candidates = set(signal.keys())
+  bisect_upper_bound = len(ground_truth_counts)
+  signal_size = len(signal)
+
+  # Iterate the threshold from t to 1. Note that leaked words of threshold t-1
+  # is a subset of leaked words of threshold k.
+  for threshold in range(t, 0, -1):
+    below_threshold_index = bisect.bisect_left(
+        ground_truth_counts, threshold, lo=0, hi=bisect_upper_bound)
+    words_below_threshold = set(ground_truth_words[:below_threshold_index])
+    leaked_words = words_below_threshold.intersection(leaked_words_candidates)
+    leaked_words_count = len(leaked_words)
+
+    # If leaked_words_count > 0, then it must be below_threhold_index > 0 and
+    # signal_size > 0, so there won't be a "divide by 0" error.
+    if leaked_words_count > 0:
+      false_positive_rate[
+          threshold] = leaked_words_count / below_threshold_index
+      false_discovery_rate[threshold] = leaked_words_count / signal_size
+      harmonic_mean_fpr_fdr[threshold] = stats.hmean(
+          [false_positive_rate[threshold], false_discovery_rate[threshold]])
+    else:
+      false_positive_rate[threshold] = 0.0
+      false_discovery_rate[threshold] = 0.0
+      harmonic_mean_fpr_fdr[threshold] = 0.0
+
+    # The leaked_words in the next round must be a subset of this round.
+    leaked_words_candidates = leaked_words
+    bisect_upper_bound = below_threshold_index
+
+  return false_positive_rate, false_discovery_rate, harmonic_mean_fpr_fdr
 
 
 @tff.tf_computation(tff.SequenceType(tf.string))
