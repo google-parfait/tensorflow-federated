@@ -13,13 +13,9 @@
 # limitations under the License.
 """Adapter to map between TFF compression processes and python containers."""
 
-import collections
-
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.utils import adapters
-
-ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
 
 
 class CompressionServerState(tff.learning.framework.ServerState):
@@ -33,9 +29,9 @@ class CompressionServerState(tff.learning.framework.ServerState):
       reference_model: the `ModelWeights` object to assign weights from.
       keras_model: the `tf.keras.Model` object to assign weights to.
     """
-    if not isinstance(reference_model, ModelWeights):
-      raise TypeError('Reference model must be an instance of '
-                      'compression_process_adapter.ModelWeights.')
+    if not isinstance(reference_model, tff.learning.ModelWeights):
+      raise TypeError('The reference model must be an instance of '
+                      'tff.learning.ModelWeights.')
 
     def assign_weights(keras_weights, tff_weights):
       for k, w in zip(keras_weights, tff_weights):
