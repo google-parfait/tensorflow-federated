@@ -13,10 +13,12 @@
 # limitations under the License.
 """Libraries for the Shakespeare dataset for federated learning simulation."""
 
-import os.path
+import collections
+import os
 
 import tensorflow as tf
 
+from tensorflow_federated.python.simulation import from_tensor_slices_client_data
 from tensorflow_federated.python.simulation import hdf5_client_data
 
 
@@ -78,3 +80,35 @@ def load_data(cache_dir=None):
       os.path.join(dir_path, 'shakespeare_test.h5'))
 
   return train_client_data, test_client_data
+
+
+def get_synthetic():
+  return from_tensor_slices_client_data.FromTensorSlicesClientData(
+      _SYNTHETIC_SHAKESPEARE_DATA)
+
+
+# A small sub-sample of snippets from the shakespeare dataset.
+_SYNTHETIC_SHAKESPEARE_DATA = {
+    'THE_TRAGEDY_OF_KING_LEAR_MACBETH':
+        collections.OrderedDict(snippets=[
+            b'Hark!',
+            b'When?',
+            b"My name's Macbeth.",
+            b"'Twas a rough fight.",
+            b'Came they not by you?',
+            b'No, nor more fearful.',
+        ]),
+    'MUCH_ADO_ABOUT_NOTHING_EMILIA':
+        collections.OrderedDict(snippets=[
+            b'Never.',
+            b'But now, my lord.',
+            b'How if fair and foolish?',
+            b'Is not this man jealous?',
+            b'Why, with my lord, madam.',
+            b'[Within.] I do beseech you',
+        ]),
+    'THE_TAMING_OF_THE_SHREW_CUPID':
+        collections.OrderedDict(snippets=[
+            b'Hail to thee, worthy Timon, and to all',
+        ]),
+}

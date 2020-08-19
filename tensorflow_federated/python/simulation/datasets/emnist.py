@@ -119,12 +119,12 @@ def load_data(only_digits=True, cache_dir=None):
 
 
 def get_synthetic(num_clients=2):
-  """Quickly returns a small synthetic dataset, useful for unit tests, etc.
+  """Returns a small synthetic dataset for testing.
 
-  Each client produced has exactly 10 examples, one of each digit. The images
-  are derived from a fixed set of hard-coded images, and transformed using
-  `tff.simulation.datasets.emnist.get_infinite` to produce the desired number of
-  clients.
+  Each client produced has exactly 10 examples, one label for each digit. The
+  images are derived from a fixed set of hard-coded images, and transformed
+  using `tff.simulation.datasets.emnist.get_infinite` to produce the desired
+  number of clients.
 
   Args:
     num_clients: The number of synthetic clients to generate.

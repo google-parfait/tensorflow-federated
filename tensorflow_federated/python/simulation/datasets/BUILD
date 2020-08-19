@@ -77,10 +77,8 @@ py_test(
     name = "emnist_test",
     size = "small",
     srcs = ["emnist_test.py"],
-    local = True,
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nopresubmit"],
     deps = [":emnist"],
 )
 
@@ -88,7 +86,19 @@ py_library(
     name = "shakespeare",
     srcs = ["shakespeare.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation:hdf5_client_data"],
+    deps = [
+        "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
+        "//tensorflow_federated/python/simulation:hdf5_client_data",
+    ],
+)
+
+py_test(
+    name = "shakespeare_test",
+    size = "small",
+    srcs = ["shakespeare_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":shakespeare"],
 )
 
 py_library(

@@ -21,9 +21,9 @@ import tensorflow as tf
 from tensorflow_federated.python.simulation.datasets import emnist
 
 
-class LoadDataTest(tf.test.TestCase, absltest.TestCase):
+class EMNISTTest(tf.test.TestCase, absltest.TestCase):
 
-  def test_synthetic(self):
+  def test_get_synthetic(self):
     client_data = emnist.get_synthetic(num_clients=4)
     self.assertLen(client_data.client_ids, 4)
 
