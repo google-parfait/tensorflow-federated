@@ -28,8 +28,6 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.executors import executor_stacks
-from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
 
 class IntrinsicsTest(parameterized.TestCase):
@@ -847,26 +845,6 @@ class IntrinsicsTest(parameterized.TestCase):
       return val
 
     self.assert_type(foo3, '({int32*}@CLIENTS -> {int32}@CLIENTS)')
-
-  @executor_test_utils.executors(
-      ('local', executor_stacks.local_executor_factory()),)
-  def test_federated_zip_with_twenty_elements_local_executor(self):
-
-    n = 20
-    n_clients = 2
-
-    @computations.federated_computation(
-        [computation_types.FederatedType(tf.int32, placements.CLIENTS)] * n)
-    def foo(x):
-      val = intrinsics.federated_zip(x)
-      self.assertIsInstance(val, value_base.Value)
-      return val
-
-    data = [list(range(n_clients)) for _ in range(n)]
-
-    # This would not have ever returned when local executor was scaling
-    # factorially with number of elements zipped
-    foo(data)
 
 
 if __name__ == '__main__':
