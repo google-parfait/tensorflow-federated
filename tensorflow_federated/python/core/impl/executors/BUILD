@@ -442,7 +442,6 @@ py_test(
         ":executor_test_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl:reference_executor",
     ],
 )
 

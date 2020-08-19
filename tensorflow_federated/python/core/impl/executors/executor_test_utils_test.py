@@ -20,7 +20,6 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -51,7 +50,7 @@ class ExecutorsTest(parameterized.TestCase):
     self.assertEqual(result, 6)
 
   @executor_test_utils.executors(
-      ('reference', reference_executor.ReferenceExecutor()),)
+      ('local', executor_stacks.local_executor_factory()),)
   def test_with_one_argument(self):
 
     @computations.tf_computation(tf.int32)
@@ -63,8 +62,8 @@ class ExecutorsTest(parameterized.TestCase):
     self.assertEqual(result, 6)
 
   @executor_test_utils.executors(
-      ('reference', reference_executor.ReferenceExecutor()),
       ('local', executor_stacks.local_executor_factory()),
+      ('sizing', executor_stacks.sizing_executor_factory()),
   )
   def test_with_two_argument(self):
 

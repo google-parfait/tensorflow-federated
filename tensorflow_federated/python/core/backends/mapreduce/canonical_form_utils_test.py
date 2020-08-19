@@ -826,6 +826,9 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
 
 
 if __name__ == '__main__':
+  # The `reference_executor.ReferenceExecutor` is used here because it is
+  # currently the only context which implements the `tff.federated_secure_sum`
+  # intrinsic.
   reference_executor = reference_executor.ReferenceExecutor()
   set_default_context.set_default_context(reference_executor)
   test.main()
