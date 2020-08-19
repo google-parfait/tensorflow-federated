@@ -27,6 +27,24 @@ py_test(
 )
 
 py_library(
+    name = "centralized_training_loop",
+    srcs = ["centralized_training_loop.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/research/optimization/shared:keras_callbacks",
+        "//tensorflow_federated/python/research/utils:utils_impl",
+    ],
+)
+
+py_test(
+    name = "centralized_training_loop_test",
+    srcs = ["centralized_training_loop_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":centralized_training_loop"],
+)
+
+py_library(
     name = "checkpoint_manager",
     srcs = ["checkpoint_manager.py"],
     srcs_version = "PY3",

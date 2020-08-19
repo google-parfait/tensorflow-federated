@@ -14,16 +14,13 @@
 """Baseline experiment on centralized EMNIST data."""
 
 import collections
-import os
 
 from absl import app
 from absl import flags
-from absl import logging
-import pandas as pd
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.shared import keras_callbacks
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
+from tensorflow_federated.python.research.utils import centralized_training_loop
 from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import emnist_dataset
 from tensorflow_federated.python.research.utils.models import emnist_models
@@ -46,7 +43,7 @@ with utils_impl.record_new_flags() as hparam_flags:
                     'Which model to use for classification.')
 
 flags.DEFINE_string(
-    'root_output_dir', '/tmp/tff/optimization/emnist/centralized',
+    'root_output_dir', '/tmp/centralized/emnist',
     'The top-level output directory experiment runs. --experiment_name will '
     'be append, and the directory will contain tensorboard logs, metrics CSVs '
     'and other output.')
@@ -57,27 +54,6 @@ FLAGS = flags.FLAGS
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
-
-  experiment_output_dir = FLAGS.root_output_dir
-  tensorboard_dir = os.path.join(experiment_output_dir, 'logdir',
-                                 FLAGS.experiment_name)
-  results_dir = os.path.join(experiment_output_dir, 'results',
-                             FLAGS.experiment_name)
-
-  for path in [experiment_output_dir, tensorboard_dir, results_dir]:
-    try:
-      tf.io.gfile.makedirs(path)
-    except tf.errors.OpError:
-      pass  # Directory already exists.
-
-  hparam_dict = collections.OrderedDict([
-      (name, FLAGS[name].value) for name in hparam_flags
-  ])
-  hparam_dict['results_file'] = results_dir
-  hparams_file = os.path.join(results_dir, 'hparams.csv')
-
-  logging.info('Saving hyper parameters to: [%s]', hparams_file)
-  utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
   train_dataset, eval_dataset = emnist_dataset.get_centralized_emnist_datasets(
       batch_size=FLAGS.batch_size, only_digits=False)
@@ -96,30 +72,20 @@ def main(argv):
       optimizer=optimizer,
       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
-  logging.info('Training model:')
-  logging.info(model.summary())
+  hparams_dict = collections.OrderedDict([
+      (name, FLAGS[name].value) for name in hparam_flags
+  ])
 
-  csv_logger_callback = keras_callbacks.AtomicCSVLogger(results_dir)
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_dir)
-  # Reduce the learning rate after a fixed number of epochs.
-  def decay_lr(epoch, learning_rate):
-    if (epoch + 1) % FLAGS.decay_epochs == 0:
-      return learning_rate * FLAGS.lr_decay
-    else:
-      return learning_rate
-
-  lr_callback = tf.keras.callbacks.LearningRateScheduler(decay_lr, verbose=1)
-
-  history = model.fit(
-      train_dataset,
-      validation_data=eval_dataset,
-      epochs=FLAGS.num_epochs,
-      callbacks=[lr_callback, tensorboard_callback, csv_logger_callback])
-
-  logging.info('Final metrics:')
-  for name in ['loss', 'sparse_categorical_accuracy']:
-    metric = history.history['val_{}'.format(name)][-1]
-    logging.info('\t%s: %.4f', name, metric)
+  centralized_training_loop.run(
+      keras_model=model,
+      train_dataset=train_dataset,
+      validation_dataset=eval_dataset,
+      experiment_name=FLAGS.experiment_name,
+      root_output_dir=FLAGS.root_output_dir,
+      num_epochs=FLAGS.num_epochs,
+      hparams_dict=hparams_dict,
+      decay_epochs=FLAGS.decay_epochs,
+      lr_decay=FLAGS.lr_decay)
 
 
 if __name__ == '__main__':
