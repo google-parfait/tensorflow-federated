@@ -93,7 +93,7 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
       elements.append(infer_type(element))
     # If this is a tuple of (name, value) pairs, the caller most likely intended
     # this to be a StructType, so we avoid storing the Python container.
-    if all_elements_named:
+    if elements and all_elements_named:
       return computation_types.StructType(elements)
     else:
       return computation_types.StructWithPythonType(elements, type(arg))

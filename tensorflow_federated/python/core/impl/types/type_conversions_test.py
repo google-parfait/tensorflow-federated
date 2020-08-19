@@ -233,6 +233,10 @@ class InferTypeTest(parameterized.TestCase):
     self.assertIsInstance(t.element, computation_types.StructWithPythonType)
     self.assertIs(t.element.python_container, test_named_tuple)
 
+  def test_with_empty_tuple(self):
+    t = type_conversions.infer_type(())
+    self.assertEqual(t, computation_types.StructWithPythonType([], tuple))
+
 
 class TypeToTfDtypesAndShapesTest(test.TestCase):
 
