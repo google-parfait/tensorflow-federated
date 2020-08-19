@@ -53,13 +53,13 @@ class IterativeProcess(object):
     """Creates a `tff.templates.IterativeProcess`.
 
     Args:
-      initialize_fn: a no-arg `tff.Computation` that creates the initial state
+      initialize_fn: A no-arg `tff.Computation` that creates the initial state
         of the chained computation.
-      next_fn: a `tff.Computation` that defines an iterated function. If
-        `initialize_fn` returns a type _T_, then `next_fn` must return a type
-        _U_ which is compatible with _T_ or multiple values where the first type
-        is _U_, and accept either a single argument of type _U_ or multiple
-        arguments where the first argument must be of type _U_.
+      next_fn: A `tff.Computation` that defines an iterated function. If
+        `initialize_fn` returns a type `T`, then `next_fn` must return a type
+        `U` which is compatible with `T` or multiple values where the first type
+        is `U`, and accept either a single argument of type `U` or multiple
+        arguments where the first argument must be of type `U`.
 
     Raises:
       TypeError: `initialize_fn` and `next_fn` are not compatible function
@@ -109,9 +109,9 @@ class IterativeProcess(object):
   def next(self):
     """A `tff.Computation` that produces the next state.
 
-    The first argument of should always be the current state (originally
-    produced by `tff.templates.IterativeProcess.initialize`), and the first (or
-    only) returned value is the updated state.
+    Its first argument should always be the current state (originally produced
+    by `tff.templates.IterativeProcess.initialize`), and the first (or only)
+    returned value is the updated state.
 
     Returns:
       A `tff.Computation`.

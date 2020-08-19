@@ -40,7 +40,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
   also a `MeasuredProcess` where:
     - `C.state` is the concatenation `<F.state, G.state>`.
     - `C.result` is the result of _G_ applied to the result of
-      _F_ `G(G.state, F(F.state, x).result).result`.
+      _F_: `G(G.state, F(F.state, x).result).result`.
     - `C.measurements` is the concatenation `<F.measurements, G.measurements>`.
 
   The resulting composition _C_ would have the following type signatures:
@@ -50,16 +50,16 @@ class MeasuredProcess(iterative_process.IterativeProcess):
   """
 
   def __init__(self, initialize_fn, next_fn):
-    """Creates a `tff.utils.MeasuredProcess`.
+    """Creates a `tff.templates.MeasuredProcess`.
 
     Args:
-      initialize_fn: a no-arg `tff.Computation` that creates the initial state
+      initialize_fn: A no-arg `tff.Computation` that creates the initial state
         of the measured process.
-      next_fn: a `tff.Computation` that defines an iterated function. If
+      next_fn: A `tff.Computation` that defines an iterated function. If
         `initialize_fn` returns a type `S`, then `next_fn` must return a TFF
         type `<state=S,result=O,measurements=M>`, and accept either a single
-        argument of type _T_ or multiple arguments where the first argument must
-        be of type _T_.
+        argument of type `S` or multiple arguments where the first argument must
+        be of type `S`.
 
     Raises:
       TypeError: `initialize_fn` and `next_fn` are not compatible function
@@ -92,10 +92,9 @@ class MeasuredProcess(iterative_process.IterativeProcess):
   def next(self):
     """A `tff.Computation` that runs one iteration of the process.
 
-    The first argument of should always be the current state (originally
-    produced by `tff.templates.MeasuredProcess.initialize`), and the return
-    type must me a named tuple matching the signature
-    `<state=A,result=B,measurements=C>`.
+    Its first argument should always be the current state (originally produced
+    by `tff.templates.MeasuredProcess.initialize`), and the return type must be
+    a named tuple matching the signature `<state=A,result=B,measurements=C>`.
 
     Returns:
       A `tff.Computation`.
