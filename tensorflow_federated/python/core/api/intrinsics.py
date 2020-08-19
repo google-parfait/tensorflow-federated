@@ -417,7 +417,7 @@ def sequence_reduce(value, zero, op):
   One can also invoke `sequence_reduce` on a federated sequence, in which case
   the reductions are performed pointwise; under the hood, we construct an
   expression  of the form
-  `federated_map(a -> sequence_reduce(x, zero, op), value)`. See also the
+  `federated_map(x -> sequence_reduce(x, zero, op), value)`. See also the
   discussion on `sequence_map`.
 
   Args:
