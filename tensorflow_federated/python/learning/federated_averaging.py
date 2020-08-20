@@ -92,11 +92,15 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
       optimizer.apply_gradients(zip(gradients, model.weights.trainable))
 
       if output.num_examples is None:
-        return num_examples_sum + tf.shape(output.predictions)[0]
+        return num_examples_sum + tf.shape(
+            output.predictions, out_type=tf.int64)[0]
       else:
-        return num_examples_sum + output.num_examples
+        return num_examples_sum + tf.cast(output.num_examples, tf.int64)
 
-    num_examples_sum = self._dataset_reduce_fn(reduce_fn, dataset)
+    num_examples_sum = self._dataset_reduce_fn(
+        reduce_fn,
+        dataset,
+        initial_state_fn=lambda: tf.zeros(shape=[], dtype=tf.int64))
 
     weights_delta = tf.nest.map_structure(tf.subtract, model.weights.trainable,
                                           initial_weights.trainable)
