@@ -138,7 +138,6 @@ def build_triehh_process(
   round_num_type = tff.TensorType(dtype=tf.int32, shape=[])
 
   @tff.tf_computation(tf_dataset_type, discovered_prefixes_type, round_num_type)
-
   def client_update_fn(tf_dataset, discovered_prefixes, round_num):
     return client_update(tf_dataset, discovered_prefixes,
                          tf.constant(possible_prefix_extensions), round_num,

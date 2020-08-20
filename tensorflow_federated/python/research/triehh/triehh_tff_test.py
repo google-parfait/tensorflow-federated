@@ -24,9 +24,20 @@ from tensorflow_federated.python.research.triehh import triehh_tff
 
 class TriehhTffTest(hh_test.HeavyHittersTest):
 
-  def test_build_triehh_process_works_as_expeted(self):
+  def create_dataset(self, size):
+
+    def create_dataset_fn(client_id):
+      del client_id
+      return tf.data.Dataset.from_tensor_slices(['hello', 'hey', 'hi'])
+
+    client_ids = list(range(size))
+
+    return tff.simulation.ClientData.from_clients_and_fn(
+        client_ids=client_ids,
+        create_tf_dataset_for_client_fn=create_dataset_fn)
+
+  def perform_execution(self, num_sub_rounds=1):
     clients = 3
-    num_sub_rounds = 4
     max_rounds = 10
     max_num_prefixes = 3
     threshold = 1
@@ -59,17 +70,9 @@ class TriehhTffTest(hh_test.HeavyHittersTest):
                         expected_accumulated_votes)
     self.assertAllEqual(server_state.round_num, expected_round_num)
 
-    def create_dataset_fn(client_id):
-      del client_id
-      return tf.data.Dataset.from_tensor_slices(['hello', 'hey', 'hi'])
+    client_data = self.create_dataset(100)
 
-    client_ids = list(range(100))
-
-    client_data = tff.simulation.ClientData.from_clients_and_fn(
-        client_ids=client_ids,
-        create_tf_dataset_for_client_fn=create_dataset_fn)
-
-    for round_num in range(max_rounds * num_sub_rounds):
+    for _ in range(max_rounds * num_sub_rounds):
       # TODO(b/152051528): Remove this once lookup table state is cleared in
       # eager executer.
       tff.backends.native.set_local_execution_context()
@@ -80,17 +83,17 @@ class TriehhTffTest(hh_test.HeavyHittersTest):
       ]
       server_state, _ = iterative_process.next(server_state, sampled_datasets)
 
-      if (round_num + 1) % num_sub_rounds == 0:
-        if tf.math.equal(tf.size(server_state.discovered_prefixes), 0):
-          # Training is done.
-          # No new prefixes have been discovered.
-          break
-
     expected_discovered_heavy_hitters = tf.constant(['hi', 'hey', 'hello'],
                                                     dtype=tf.string)
 
     self.assertSetAllEqual(server_state.discovered_heavy_hitters,
                            expected_discovered_heavy_hitters)
+
+  def test_build_triehh_process_works_as_expeted(self):
+    self.perform_execution(num_sub_rounds=4)
+
+  def test_sub_round_partitioning_work_as_expected(self):
+    self.perform_execution(num_sub_rounds=1)
 
 
 if __name__ == '__main__':

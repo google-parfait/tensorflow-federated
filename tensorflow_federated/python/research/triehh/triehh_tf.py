@@ -24,7 +24,6 @@ Federated Heavy Hitters Discovery with Differential Privacy
     https://arxiv.org/pdf/1902.08534.pdf
 """
 
-from absl import logging
 import attr
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -356,7 +355,6 @@ def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
   # ways includes normalizing the count by the total number of votes or by the
   # number of clients in this round.
   if accumulated_weights == 0:
-    logging.warning('All participating clients have empty data.')
     heavy_hitters_frequencies = tf.cast(heavy_hitters_votes, tf.float64)
   else:
     heavy_hitters_frequencies = heavy_hitters_votes / accumulated_weights
@@ -389,7 +387,7 @@ def accumulate_server_votes_and_decode(server_state, possible_prefix_extensions,
   # Increment the server's round_num.
   round_num = server_state.round_num + 1
 
-  # Return an udpated server state.
+  # Return an updated server state.
   return tff.utils.update_state(
       server_state,
       discovered_heavy_hitters=discovered_heavy_hitters,
