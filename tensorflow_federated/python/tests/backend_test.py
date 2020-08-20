@@ -23,6 +23,8 @@ def get_all_execution_contexts():
   return [
       ('native_local', tff.backends.native.create_local_execution_context()),
       ('native_sizing', tff.backends.native.create_sizing_execution_context()),
+      ('native_debug',
+       tff.backends.native.create_thread_debugging_execution_context()),
   ]
 
 

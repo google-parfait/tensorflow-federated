@@ -60,3 +60,19 @@ def create_sizing_execution_context(num_clients: int = None,
       clients_per_thread=clients_per_thread)
   return execution_context.ExecutionContext(
       executor_fn=factory, compiler_fn=compiler.transform_to_native_form)
+
+
+def create_thread_debugging_execution_context(num_clients=None,
+                                              clients_per_thread=1):
+  """Creates a simple execution context that executes computations locally."""
+  factory = executor_stacks.thread_debugging_executor_factory(
+      num_clients=num_clients,
+      clients_per_thread=clients_per_thread,
+  )
+
+  def _debug_compiler(comp):
+    native_form = compiler.transform_to_native_form(comp)
+    return compiler.transform_mathematical_functions_to_tensorflow(native_form)
+
+  return execution_context.ExecutionContext(
+      executor_fn=factory, compiler_fn=_debug_compiler)

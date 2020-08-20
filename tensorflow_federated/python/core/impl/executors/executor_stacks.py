@@ -33,13 +33,15 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 def _wrap_executor_in_threading_stack(ex: executor_base.Executor,
-                                      use_caching: Optional[bool] = True):
+                                      use_caching: Optional[bool] = True,
+                                      can_resolve_references=True):
   threaded_ex = thread_delegating_executor.ThreadDelegatingExecutor(ex)
   if use_caching:
     threaded_ex = caching_executor.CachingExecutor(threaded_ex)
-  rre_wrapped_ex = reference_resolving_executor.ReferenceResolvingExecutor(
-      threaded_ex)
-  return rre_wrapped_ex
+  if can_resolve_references:
+    threaded_ex = reference_resolving_executor.ReferenceResolvingExecutor(
+        threaded_ex)
+  return threaded_ex
 
 
 class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
@@ -54,9 +56,11 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
       self,
       *,
       use_caching: bool,
+      can_resolve_references: bool = True,
       server_device: Optional[tf.config.LogicalDevice] = None,
       client_devices: Optional[Sequence[tf.config.LogicalDevice]] = ()):
     self._use_caching = use_caching
+    self._can_resolve_references = can_resolve_references
     self._server_device = server_device
     self._client_devices = client_devices
     self._client_device_index = 0
@@ -86,7 +90,10 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
     else:
       device = None
     eager_ex = eager_tf_executor.EagerTFExecutor(device=device)
-    return _wrap_executor_in_threading_stack(eager_ex)
+    return _wrap_executor_in_threading_stack(
+        eager_ex,
+        use_caching=self._use_caching,
+        can_resolve_references=self._can_resolve_references)
 
   def clean_up_executors(self):
     # Does not hold any executors internally, so nothing to clean up.
@@ -375,6 +382,76 @@ def local_executor_factory(
         unplaced_ex_factory=unplaced_ex_factory)
 
   return executor_factory.ExecutorFactoryImpl(_factory_fn)
+
+
+def thread_debugging_executor_factory(
+    num_clients=None,
+    clients_per_thread=1,
+) -> executor_factory.ExecutorFactory:
+  r"""Constructs a simplified execution stack to execute local computations.
+
+  The constructed executors support a limited set of TFF's computations. In
+  particular, the debug executor can only resolve references at the top level
+  of the stack, and therefore assumes that all local computation is expressed
+  in pure TensorFlow.
+
+  The debug executor makes particular guarantees about the structure of the
+  stacks it constructs which are intended to make them maximally easy to reason
+  about. That is, the debug executor will essentially execute exactly the
+  computation it is passed (in particular, this implies that there are no
+  caching layers), and uses its declared inability to execute arbitrary TFF
+  lambdas to reduce the complexity of the constructed stack. Every debugging
+  executor will have a similar structure, the simplest structure that can
+  execute the full expressivity of TFF while running each client in a dedicated
+  thread:
+
+
+                        ReferenceResolvingExecutor
+                                  |
+                            FederatingExecutor
+                          /       ...         \
+    ThreadDelegatingExecutor                  ThreadDelegatingExecutor
+                |                                         |
+        EagerTFExecutor                            EagerTFExecutor
+
+
+  This structure can be useful in understanding the concurrency pattern of TFF
+  execution, and where the TFF runtime infers data dependencies.
+
+  Args:
+    num_clients: The number of clients. If specified, the executor factory
+      function returned by `local_executor_factory` will be configured to have
+      exactly `num_clients` clients. If unspecified (`None`), then the function
+      returned will attempt to infer cardinalities of all placements for which
+      it is passed values.
+    clients_per_thread: Integer number of clients for each of TFF's threads to
+      run in sequence. Increasing `clients_per_thread` therefore reduces the
+      concurrency of the TFF runtime, which can be useful if client work is very
+      lightweight or models are very large and multiple copies cannot fit in
+      memory.
+
+  Returns:
+    An instance of `executor_factory.ExecutorFactory` encapsulating the
+    executor construction logic specified above.
+
+  Raises:
+    ValueError: If the number of clients is specified and not one or larger.
+  """
+  py_typecheck.check_type(clients_per_thread, int)
+  if num_clients is not None:
+    py_typecheck.check_type(num_clients, int)
+  unplaced_ex_factory = UnplacedExecutorFactory(
+      use_caching=False,
+      can_resolve_references=False,
+  )
+  federating_executor_factory = FederatingExecutorFactory(
+      clients_per_thread=clients_per_thread,
+      unplaced_ex_factory=unplaced_ex_factory,
+      num_clients=num_clients,
+      use_sizing=False)
+
+  return executor_factory.ExecutorFactoryImpl(
+      federating_executor_factory.create_executor)
 
 
 def sizing_executor_factory(

@@ -30,6 +30,7 @@ from tensorflow_federated.python.core.impl.executors.executor_factory import Siz
 from tensorflow_federated.python.core.impl.executors.executor_service import ExecutorService
 from tensorflow_federated.python.core.impl.executors.executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import sizing_executor_factory
+from tensorflow_federated.python.core.impl.executors.executor_stacks import thread_debugging_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import worker_pool_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.executors.federated_composing_strategy import FederatedComposingStrategy

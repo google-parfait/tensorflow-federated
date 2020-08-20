@@ -28,6 +28,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -150,8 +151,10 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
                                                     lambda t: t.is_sequence())
   which_computation = comp.WhichOneof('computation')
   if which_computation != 'tensorflow':
+    unexpected_building_block = building_blocks.ComputationBuildingBlock.from_proto(
+        comp)
     raise TypeError('Expected a TensorFlow computation, found {}.'.format(
-        which_computation))
+        unexpected_building_block))
 
   if type_spec.is_function():
     param_type = type_spec.parameter

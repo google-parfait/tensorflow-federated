@@ -68,6 +68,10 @@ def _create_concurrent_maxthread_tuples():
     ex_factory = executor_stacks.sizing_executor_factory(
         clients_per_thread=concurrency)
     tuples.append((sizing_ex_string, ex_factory, concurrency))
+    debug_ex_string = 'debug_executor_{}_client_thread'.format(concurrency)
+    ex_factory = executor_stacks.thread_debugging_executor_factory(
+        clients_per_thread=concurrency)
+    tuples.append((debug_ex_string, ex_factory, concurrency))
   return tuples
 
 
@@ -94,6 +98,7 @@ class ExecutorStacksTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('local_executor', executor_stacks.local_executor_factory),
       ('sizing_executor', executor_stacks.sizing_executor_factory),
+      ('debug_executor', executor_stacks.thread_debugging_executor_factory),
   )
   def test_construction_with_no_args(self, executor_factory_fn):
     executor_factory_impl = executor_factory_fn()
@@ -153,10 +158,14 @@ class ExecutorStacksTest(parameterized.TestCase):
       ('local_executor_none_clients', executor_stacks.local_executor_factory()),
       ('sizing_executor_none_clients',
        executor_stacks.sizing_executor_factory()),
+      ('debug_executor_none_clients',
+       executor_stacks.thread_debugging_executor_factory()),
       ('local_executor_one_client',
        executor_stacks.local_executor_factory(num_clients=1)),
       ('sizing_executor_one_client',
        executor_stacks.sizing_executor_factory(num_clients=1)),
+      ('debug_executor_one_client',
+       executor_stacks.thread_debugging_executor_factory(num_clients=1)),
   )
   def test_execution_of_tensorflow(self, executor):
 
@@ -181,9 +190,19 @@ class ExecutorStacksTest(parameterized.TestCase):
     # One for server, one for `None`-placed, concurrency_level for clients.
     self.assertLen(args_list, concurrency_level + 2)
 
+  @mock.patch(
+      'tensorflow_federated.python.core.impl.executors.reference_resolving_executor.ReferenceResolvingExecutor',
+      return_value=ExecutorMock())
+  def test_thread_debugging_executor_constructs_exactly_one_reference_resolving_executor(
+      self, executor_mock):
+    executor_stacks.thread_debugging_executor_factory().create_executor(
+        {placement_literals.CLIENTS: 10})
+    executor_mock.assert_called_once()
+
   @parameterized.named_parameters(
       ('local_executor', executor_stacks.local_executor_factory),
       ('sizing_executor', executor_stacks.sizing_executor_factory),
+      ('debug_executor', executor_stacks.thread_debugging_executor_factory),
   )
   def test_create_executor_raises_with_wrong_cardinalities(
       self, executor_factory_fn):
