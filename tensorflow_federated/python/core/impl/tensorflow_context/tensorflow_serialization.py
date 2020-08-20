@@ -70,18 +70,17 @@ def finalize_binding(binding, tensor_info_map):
 
 
 def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
-  """Serializes the 'target' as a TF computation with a given parameter type.
+  """Serializes the `target` as a TF computation with a given parameter type.
 
   Args:
     target: The entity to convert into and serialize as a TF computation. This
       can currently only be a Python function or `tf.function`, with arguments
-      matching the 'parameter_type'.
+      matching the `parameter_type`.
     parameter_type: The parameter type specification if the target accepts a
       parameter, or `None` if the target doesn't declare any parameters. Either
-      an instance of `types.Type`, or something that's convertible to it by
-      `types.to_type()`.
-    unpack: Whether to always unpack the parameter_type. Necessary for support
-      of polymorphic tf2_computations.
+      an instance of `computation_types.Type`.
+    unpack: Whether to always unpack the `parameter_type`. Necessary for support
+      of polymorphic `tf2_computations`.
 
   Returns:
     The constructed `pb.Computation` instance with the `pb.TensorFlow` variant
@@ -93,7 +92,8 @@ def serialize_tf2_as_tf_computation(target, parameter_type, unpack=None):
       parameter type.
   """
   py_typecheck.check_callable(target)
-  parameter_type = computation_types.to_type(parameter_type)
+  if parameter_type is not None:
+    py_typecheck.check_type(parameter_type, computation_types.Type)
   signature = function_utils.get_signature(target)
   if signature.parameters and parameter_type is None:
     raise ValueError(
@@ -223,8 +223,7 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
       referenced from here).
     parameter_type: The parameter type specification if the target accepts a
       parameter, or `None` if the target doesn't declare any parameters. Either
-      an instance of `types.Type`, or something that's convertible to it by
-      `types.to_type()`.
+      an instance of `computation_types.Type`.
     context_stack: The context stack to use.
 
   Returns:
@@ -245,7 +244,8 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
 
   py_typecheck.check_type(target, types.FunctionType)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-  parameter_type = computation_types.to_type(parameter_type)
+  if parameter_type is not None:
+    py_typecheck.check_type(parameter_type, computation_types.Type)
   signature = function_utils.get_signature(target)
 
   with tf.Graph().as_default() as graph:

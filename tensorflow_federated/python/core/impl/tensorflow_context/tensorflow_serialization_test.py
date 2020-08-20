@@ -76,7 +76,8 @@ class TensorFlowSerializationTest(test.TestCase):
   @test.graph_mode_test
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
     comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-        lambda x: x + 3, tf.int32, context_stack_impl.context_stack)
+        lambda x: x + 3, computation_types.TensorType(tf.int32),
+        context_stack_impl.context_stack)
     self.assertEqual(
         str(type_serialization.deserialize_type(comp.type)), '(int32 -> int32)')
     self.assertEqual(str(extra_type_spec), '(int32 -> int32)')
@@ -95,7 +96,9 @@ class TensorFlowSerializationTest(test.TestCase):
     output_type = collections.namedtuple('OutputType', ['A', 'B'])
     comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
         lambda z: output_type(2.0 * tf.cast(z.x, tf.float32), 3.0 * z.y),
-        batch_type(tf.int32, (tf.float32, [2])),
+        computation_types.StructWithPythonType([('x', tf.int32),
+                                                ('y', (tf.float32, [2]))],
+                                               batch_type),
         context_stack_impl.context_stack)
     self.assertEqual(
         str(type_serialization.deserialize_type(comp.type)),

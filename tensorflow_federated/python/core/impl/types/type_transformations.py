@@ -12,7 +12,7 @@
 # limitations under the License.
 """A library of transformation functions for computation types."""
 
-from typing import Any, Callable, Tuple, TypeVar
+from typing import Callable, Tuple, TypeVar
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -96,33 +96,21 @@ def transform_type_postorder(
 
 
 # TODO(b/134525440): Unifying the recursive methods in type_analysis.
-def visit_preorder(
-    type_spec: Any,
-    fn: Callable[[computation_types.Type, T], T],
-    context: T,
-):
-  """Recursively calls `fn` on the possibly nested structure `type_spec`.
+def visit_preorder(type_signature: computation_types.Type,
+                   fn: Callable[[computation_types.Type, T], T], context: T):
+  """Recursively calls `fn` on the possibly nested structure `type_signature`.
 
   Walks the tree in a preorder manner. Updates `context` on the way down with
   the appropriate information, as defined in `fn`.
 
   Args:
-    type_spec: A `computation_types.Type` or object convertible to it by
-      `computation_types.to_type`.
-    fn: A function to apply to each of the constituent elements of `type_spec`
-      with the argument `context`. Must return an updated version of `context`
-      which incorporated the information we'd like to track as we move down the
-      type tree.
+    type_signature: A `computation_types.Type`.
+    fn: A function to apply to each of the constituent elements of
+      `type_signature` with the argument `context`. Must return an updated
+      version of `context` which incorporated the information we'd like to track
+      as we move down the type tree.
     context: Initial state of information to be passed down the tree.
   """
-  _visit_preorder(computation_types.to_type(type_spec), fn, context)
-
-
-def _visit_preorder(
-    type_spec: computation_types.Type,
-    fn: Callable[[computation_types.Type, T], T],
-    context: T,
-):
-  context = fn(type_spec, context)
-  for child_type in type_spec.children():
+  context = fn(type_signature, context)
+  for child_type in type_signature.children():
     visit_preorder(child_type, fn, context)
