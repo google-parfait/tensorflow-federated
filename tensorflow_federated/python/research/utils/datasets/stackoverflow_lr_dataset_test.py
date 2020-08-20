@@ -1,4 +1,4 @@
-# Copyright 2019, The TensorFlow Federated Authors.
+# Copyright 2020, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,13 +51,19 @@ class DatasetTest(tf.test.TestCase):
     self.assertEqual(test_batch[1].shape.as_list(), [TEST_BATCH_SIZE, 5])
 
   def test_global_stackoverflow_dataset_structure(self):
-    global_train, global_test = stackoverflow_lr_dataset.get_centralized_stackoverflow_datasets(
-        batch_size=32, vocab_tokens_size=100, vocab_tags_size=5)
+    global_train, global_val, global_test = stackoverflow_lr_dataset.get_centralized_stackoverflow_datasets(
+        batch_size=32,
+        vocab_tokens_size=100,
+        vocab_tags_size=5,
+        num_validation_examples=10000)
 
     train_batch = next(iter(global_train))
+    val_batch = next(iter(global_val))
     test_batch = next(iter(global_test))
     self.assertEqual(train_batch[0].shape.as_list(), [32, 100])
     self.assertEqual(train_batch[1].shape.as_list(), [32, 5])
+    self.assertEqual(val_batch[0].shape.as_list(), [TEST_BATCH_SIZE, 100])
+    self.assertEqual(val_batch[1].shape.as_list(), [TEST_BATCH_SIZE, 5])
     self.assertEqual(test_batch[0].shape.as_list(), [TEST_BATCH_SIZE, 100])
     self.assertEqual(test_batch[1].shape.as_list(), [TEST_BATCH_SIZE, 5])
 

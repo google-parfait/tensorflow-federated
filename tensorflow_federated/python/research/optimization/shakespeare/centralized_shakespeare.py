@@ -11,19 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Baseline experiment on centralized EMNIST data."""
+"""Baseline experiment on centralized Shakespeare data."""
 
 import collections
 
 from absl import app
 from absl import flags
 import tensorflow as tf
+import tensorflow_federated as tff
 
+from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import centralized_training_loop
 from tensorflow_federated.python.research.utils import utils_impl
-from tensorflow_federated.python.research.utils.datasets import emnist_dataset
-from tensorflow_federated.python.research.utils.models import emnist_models
+from tensorflow_federated.python.research.utils.datasets import shakespeare_dataset
+from tensorflow_federated.python.research.utils.models import shakespeare_models
 
 with utils_impl.record_new_flags() as hparam_flags:
   # Generic centralized training flags
@@ -32,7 +34,7 @@ with utils_impl.record_new_flags() as hparam_flags:
       'experiment_name', None,
       'Name of the experiment. Part of the name of the output directory.')
   flags.DEFINE_string(
-      'root_output_dir', '/tmp/centralized/emnist',
+      'root_output_dir', '/tmp/centralized/shakespeare',
       'The top-level output directory experiment runs. --experiment_name will '
       'be appended, and the directory will contain tensorboard logs, metrics '
       'written as CSVs, and a CSV of hyperparameter choices.')
@@ -43,34 +45,54 @@ with utils_impl.record_new_flags() as hparam_flags:
                        'the learning rate.')
   flags.DEFINE_float('lr_decay', 0.1, 'How much to decay the learning rate by'
                      ' at each stage.')
+  flags.DEFINE_boolean('shuffle_train_data', True,
+                       'Whether to shuffle the training data.')
 
-  # EMNIST character recognition flags
-  flags.DEFINE_enum('model', 'cnn', ['cnn', '2nn'],
-                    'Which model to use for classification.')
+  # Shakespeare next character prediction flags
+  flags.DEFINE_integer(
+      'shakespeare_sequence_length', 80,
+      'Length of character sequences to use for the RNN model.')
 
 FLAGS = flags.FLAGS
+
+# Vocabulary with OOV ID, zero for the padding, and BOS, EOS IDs.
+VOCAB_SIZE = len(shakespeare_dataset.CHAR_VOCAB) + 4
 
 
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  train_dataset, eval_dataset = emnist_dataset.get_centralized_emnist_datasets(
-      batch_size=FLAGS.batch_size, only_digits=False)
+  train_client_data, test_client_data = (
+      tff.simulation.datasets.shakespeare.load_data())
+
+  def preprocess(ds):
+    return shakespeare_dataset.convert_snippets_to_character_sequence_examples(
+        dataset=ds,
+        batch_size=FLAGS.batch_size,
+        epochs=1,
+        shuffle_buffer_size=0,
+        sequence_length=FLAGS.shakespeare_sequence_length)
+
+  train_dataset = train_client_data.create_tf_dataset_from_all_clients()
+  if FLAGS.shuffle_train_data:
+    train_dataset = train_dataset.shuffle(buffer_size=10000)
+  train_dataset = preprocess(train_dataset)
+
+  eval_dataset = preprocess(
+      test_client_data.create_tf_dataset_from_all_clients())
 
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
 
-  if FLAGS.model == 'cnn':
-    model = emnist_models.create_conv_dropout_model(only_digits=False)
-  elif FLAGS.model == '2nn':
-    model = emnist_models.create_two_hidden_layer_model(only_digits=False)
-  else:
-    raise ValueError('Cannot handle model flag [{!s}].'.format(FLAGS.model))
-
+  pad_token, _, _, _ = shakespeare_dataset.get_special_tokens()
+  model = shakespeare_models.create_recurrent_model(
+      vocab_size=VOCAB_SIZE, sequence_length=FLAGS.shakespeare_sequence_length)
   model.compile(
-      loss=tf.keras.losses.SparseCategoricalCrossentropy(),
       optimizer=optimizer,
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+      metrics=[
+          keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token])
+      ])
 
   hparams_dict = collections.OrderedDict([
       (name, FLAGS[name].value) for name in hparam_flags

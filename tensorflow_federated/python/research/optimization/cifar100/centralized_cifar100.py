@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Baseline experiment on centralized EMNIST data."""
+"""Baseline experiment on centralized CIFAR-100 data."""
 
 import collections
 
@@ -22,8 +22,8 @@ import tensorflow as tf
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import centralized_training_loop
 from tensorflow_federated.python.research.utils import utils_impl
-from tensorflow_federated.python.research.utils.datasets import emnist_dataset
-from tensorflow_federated.python.research.utils.models import emnist_models
+from tensorflow_federated.python.research.utils.datasets import cifar100_dataset
+from tensorflow_federated.python.research.utils.models import resnet_models
 
 with utils_impl.record_new_flags() as hparam_flags:
   # Generic centralized training flags
@@ -32,7 +32,7 @@ with utils_impl.record_new_flags() as hparam_flags:
       'experiment_name', None,
       'Name of the experiment. Part of the name of the output directory.')
   flags.DEFINE_string(
-      'root_output_dir', '/tmp/centralized/emnist',
+      'root_output_dir', '/tmp/centralized/cifar100',
       'The top-level output directory experiment runs. --experiment_name will '
       'be appended, and the directory will contain tensorboard logs, metrics '
       'written as CSVs, and a CSV of hyperparameter choices.')
@@ -44,29 +44,29 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_float('lr_decay', 0.1, 'How much to decay the learning rate by'
                      ' at each stage.')
 
-  # EMNIST character recognition flags
-  flags.DEFINE_enum('model', 'cnn', ['cnn', '2nn'],
-                    'Which model to use for classification.')
+  # CIFAR-100 flags
+  flags.DEFINE_integer('cifar100_crop_size', 24, 'The height and width of '
+                       'images after preprocessing.')
 
 FLAGS = flags.FLAGS
+
+TEST_BATCH_SIZE = 100
+CIFAR_SHAPE = (32, 32, 3)
+NUM_CLASSES = 100
 
 
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
 
-  train_dataset, eval_dataset = emnist_dataset.get_centralized_emnist_datasets(
-      batch_size=FLAGS.batch_size, only_digits=False)
+  crop_shape = (FLAGS.cifar100_crop_size, FLAGS.cifar100_crop_size, 3)
+
+  cifar_train, cifar_test = cifar100_dataset.get_centralized_cifar100(
+      train_batch_size=FLAGS.batch_size, crop_shape=crop_shape)
 
   optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
-
-  if FLAGS.model == 'cnn':
-    model = emnist_models.create_conv_dropout_model(only_digits=False)
-  elif FLAGS.model == '2nn':
-    model = emnist_models.create_two_hidden_layer_model(only_digits=False)
-  else:
-    raise ValueError('Cannot handle model flag [{!s}].'.format(FLAGS.model))
-
+  model = resnet_models.create_resnet18(
+      input_shape=crop_shape, num_classes=NUM_CLASSES)
   model.compile(
       loss=tf.keras.losses.SparseCategoricalCrossentropy(),
       optimizer=optimizer,
@@ -78,8 +78,8 @@ def main(argv):
 
   centralized_training_loop.run(
       keras_model=model,
-      train_dataset=train_dataset,
-      validation_dataset=eval_dataset,
+      train_dataset=cifar_train,
+      validation_dataset=cifar_test,
       experiment_name=FLAGS.experiment_name,
       root_output_dir=FLAGS.root_output_dir,
       num_epochs=FLAGS.num_epochs,

@@ -1,4 +1,4 @@
-# Copyright 2019, The TensorFlow Federated Authors.
+# Copyright 2020, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -164,6 +164,7 @@ def get_stackoverflow_datasets(
 def get_centralized_stackoverflow_datasets(batch_size,
                                            vocab_tokens_size=10000,
                                            vocab_tags_size=500,
+                                           num_validation_examples=10000,
                                            shuffle_buffer_size=10000):
   """Loads centralized StackOverflow training and testing sets."""
 
@@ -188,9 +189,14 @@ def get_centralized_stackoverflow_datasets(batch_size,
       batch_size,
       shuffle_buffer_size,
       shuffle_data=True)
+  val_dataset = preprocess(
+      stackoverflow_test.create_tf_dataset_from_all_clients().take(
+          num_validation_examples),
+      TEST_BATCH_SIZE,
+      shuffle_data=False)
   test_dataset = preprocess(
       stackoverflow_test.create_tf_dataset_from_all_clients(),
       TEST_BATCH_SIZE,
       shuffle_data=False)
 
-  return train_dataset, test_dataset
+  return train_dataset, val_dataset, test_dataset
