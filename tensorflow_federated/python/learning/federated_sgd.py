@@ -31,6 +31,7 @@ from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
@@ -38,7 +39,10 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 class ClientSgd(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated SGD."""
 
-  def __init__(self, model, batch_weight_fn=None):
+  def __init__(self,
+               model: model_lib.Model,
+               batch_weight_fn: Optional[Callable[[Any], tf.Tensor]] = None,
+               use_experimental_simulation_loop: bool = False):
     """Constructs the client computation for Federated SGD.
 
     Args:
@@ -47,6 +51,8 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
         and returns a float32 weight. If not provided, the default uses the size
         of the batch (as measured by the batch dimension of the predictions
         returned by forward_pass).
+      use_experimental_simulation_loop: Controls the reduce loop function for
+        input dataset. An experimental reduce loop is used for simulation.
     """
     if batch_weight_fn is not None:
       py_typecheck.check_callable(batch_weight_fn)
@@ -54,6 +60,9 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 
     self._model = model_utils.enhance(model)
     py_typecheck.check_type(self._model, model_utils.EnhancedModel)
+
+    self._dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
+        use_experimental_simulation_loop)
 
   @property
   def variables(self):
@@ -103,8 +112,10 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       return (tuple(tf.zeros_like(w) for w in flat_trainable_weights),
               tf.constant(0.0))
 
-    flat_grad_sums, batch_weight_sum = dataset.reduce(
-        initial_state=_zero_initial_state(), reduce_func=reduce_fn)
+    flat_grad_sums, batch_weight_sum = self._dataset_reduce_fn(
+        reduce_fn=reduce_fn,
+        dataset=dataset,
+        initial_state_fn=_zero_initial_state)
     grad_sums = tf.nest.pack_sequence_as(model.weights.trainable,
                                          flat_grad_sums)
 
@@ -140,6 +151,7 @@ def build_federated_sgd_process(
     *,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
+    use_experimental_simulation_loop: bool = False,
 ) -> iterative_process.IterativeProcess:
   """Builds the TFF computations for optimization using federated SGD.
 
@@ -209,13 +221,18 @@ def build_federated_sgd_process(
       model updates on the clients back to the server. It must support the
       signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
       `None` if `stateful_delta_aggregate_fn` is not `None`.
+    use_experimental_simulation_loop: Controls the reduce loop function for
+        input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A `tff.templates.IterativeProcess`.
   """
 
   def client_sgd_avg(model_fn):
-    return ClientSgd(model_fn(), client_weight_fn)
+    return ClientSgd(
+        model_fn(),
+        client_weight_fn,
+        use_experimental_simulation_loop=use_experimental_simulation_loop)
 
   return optimizer_utils.build_model_delta_optimizer_process(
       model_fn,

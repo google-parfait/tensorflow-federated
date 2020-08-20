@@ -23,9 +23,11 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.utils import tf_computation_utils
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework import dataset_reduce
 
 
-def build_federated_evaluation(model_fn):
+def build_federated_evaluation(model_fn,
+                               use_experimental_simulation_loop: bool = False):
   """Builds the TFF computation for federated evaluation of the given model.
 
   Args:
@@ -33,6 +35,8 @@ def build_federated_evaluation(model_fn):
       must *not* capture TensorFlow tensors or variables and use them. The model
       must be constructed entirely from scratch on each invocation, returning
       the same pre-constructed model each call will result in an error.
+    use_experimental_simulation_loop: Controls the reduce loop function for
+        input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A federated computation (an instance of `tff.Computation`) that accepts
@@ -63,7 +67,12 @@ def build_federated_evaluation(model_fn):
         model_output = model.forward_pass(batch, training=False)
         return prev_loss + tf.cast(model_output.loss, tf.float64)
 
-      dataset.reduce(tf.constant(0.0, dtype=tf.float64), reduce_fn)
+      dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
+          use_experimental_simulation_loop)
+      dataset_reduce_fn(
+          reduce_fn=reduce_fn,
+          dataset=dataset,
+          initial_state_fn=lambda: tf.constant(0, dtype=tf.float64))
 
       return collections.OrderedDict([('local_outputs',
                                        model.report_local_outputs())])

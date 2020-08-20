@@ -76,6 +76,7 @@ py_library(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/utils:tf_computation_utils",
+        "//tensorflow_federated/python/learning/framework:dataset_reduce",
     ],
 )
 
@@ -93,6 +94,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/learning/framework:dataset_reduce",
     ],
 )
 
@@ -107,6 +109,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/utils:computation_utils",
+        "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
@@ -125,6 +128,7 @@ py_test(
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/learning/framework:dataset_reduce",
     ],
 )
 

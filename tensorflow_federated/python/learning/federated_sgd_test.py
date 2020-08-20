@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import collections
-
+from unittest import mock
 from absl.testing import parameterized
+
 import numpy as np
 import tensorflow as tf
 
@@ -24,6 +25,7 @@ from tensorflow_federated.python.learning import federated_sgd
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework import dataset_reduce
 
 
 class FederatedSgdTest(test.TestCase, parameterized.TestCase):
@@ -51,10 +53,13 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
         ],
         non_trainable=[0.0])
 
-  def test_client_tf(self):
+  @parameterized.named_parameters(('non-simulation', False),
+                                  ('simulation', True))
+  def test_client_tf(self, simulation):
     model = self.model()
     dataset = self.dataset()
-    client_tf = federated_sgd.ClientSgd(model)
+    client_tf = federated_sgd.ClientSgd(
+        model, use_experimental_simulation_loop=simulation)
     client_outputs = self.evaluate(client_tf(dataset, self.initial_weights()))
 
     # Both trainable parameters should have gradients, and we don't return the
@@ -97,6 +102,23 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(
         self.evaluate(client_outputs.optimizer_output['has_non_finite_delta']),
         1)
+
+  @parameterized.named_parameters(('non-simulation', False),
+                                  ('simulation', True))
+  @mock.patch.object(
+      dataset_reduce,
+      '_dataset_reduce_fn',
+      wraps=dataset_reduce._dataset_reduce_fn)
+  def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
+    model = self.model()
+    dataset = self.dataset()
+    client_tf = federated_sgd.ClientSgd(
+        model, use_experimental_simulation_loop=simulation)
+    client_tf(dataset, self.initial_weights())
+    if simulation:
+      mock_method.assert_not_called()
+    else:
+      mock_method.assert_called()
 
 
 class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):

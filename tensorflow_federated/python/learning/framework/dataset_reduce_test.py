@@ -43,6 +43,32 @@ class DatasetReduceTest(parameterized.TestCase):
     total_sum = dataset_reduce_fn(reduce_fn=lambda x, y: x + y, dataset=ds)
     self.assertEqual(total_sum, np.int32(45))
 
+  @parameterized.named_parameters(
+      ('non-simulation', False, dataset_reduce._dataset_reduce_fn),
+      ('simulation', True, dataset_reduce._for_iter_dataset_fn))
+  def test_build_dataset_reduce_fn_float(self, simulation, reduce_fn):
+    dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(simulation)
+    self.assertIs(dataset_reduce, reduce_fn)
+    ds = tf.data.Dataset.range(
+        10, output_type=tf.float32).map(lambda x: 0.1 * x)
+    total_sum = dataset_reduce_fn(reduce_fn=lambda x, y: x + y, dataset=ds)
+    self.assertEqual(total_sum, np.float32(4.5))
+
+  @parameterized.named_parameters(
+      ('non-simulation', False, dataset_reduce._dataset_reduce_fn),
+      ('simulation', True, dataset_reduce._for_iter_dataset_fn))
+  def test_build_dataset_reduce_fn_tuple(self, simulation, reduce_fn):
+    dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(simulation)
+    self.assertIs(dataset_reduce, reduce_fn)
+    ds = tf.data.Dataset.range(
+        10, output_type=tf.float32).map(lambda x: 0.1 * x)
+    total_cnt, total_sum = dataset_reduce_fn(
+        reduce_fn=lambda x, y: (x + 1, x + y),
+        dataset=ds,
+        initial_state_fn=lambda: (tf.constant(0), tf.constant(0.1)))
+    self.assertEqual(total_cnt, np.float32(10))
+    self.assertEqual(total_sum, np.float32(4.6))
+
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))
   def test_dataset_reduce_op_presence(self, simulation):

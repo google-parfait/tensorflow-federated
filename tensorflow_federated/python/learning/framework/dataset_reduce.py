@@ -13,31 +13,35 @@
 # limitations under the License.
 """Dataset reduce functions for federated optimization algorithms."""
 
-from typing import Callable, Iterable, Union
+from typing import Any, Callable, Iterable, Union
 
 import tensorflow as tf
 
-_ReduceFnCallable = Callable[[tf.Tensor, tf.Tensor], tf.Tensor]
+_ReduceFnCallable = Callable[[Any, tf.Tensor], Any]
 
 
-def _dataset_reduce_fn(reduce_fn: _ReduceFnCallable,
-                       dataset: tf.data.Dataset) -> tf.Tensor:
-  return dataset.reduce(initial_state=tf.constant(0), reduce_func=reduce_fn)
+def _dataset_reduce_fn(
+    reduce_fn: _ReduceFnCallable,
+    dataset: tf.data.Dataset,
+    initial_state_fn: Callable[[], Any] = lambda: tf.constant(0)
+) -> Any:
+  return dataset.reduce(initial_state=initial_state_fn(), reduce_func=reduce_fn)
 
 
 def _for_iter_dataset_fn(
     reduce_fn: _ReduceFnCallable,
     dataset: Iterable,  # pylint: disable=g-bare-generic
+    initial_state_fn: Callable[[], Any] = lambda: tf.constant(0)
 ) -> tf.Tensor:
   """Performs dataset reduce for simulation performance."""
   # TODO(b/162683412): use `tf.data.Dataset` instead of `Iterable` for pytype.
-  num_examples_sum = tf.constant(0, dtype=tf.int32)
   # TODO(b/155208489): this is a workaround for GPU simulation because
   # `tf.device` does not cross the boundary of dataset ops. TF use a different
   # set of ops when we explicitly use `iter` for dataset.
+  update_state = initial_state_fn()
   for batch in iter(dataset):
-    num_examples_sum = reduce_fn(num_examples_sum, batch)
-  return num_examples_sum
+    update_state = reduce_fn(update_state, batch)
+  return update_state
 
 
 def build_dataset_reduce_fn(
