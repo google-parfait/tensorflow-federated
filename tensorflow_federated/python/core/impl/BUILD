@@ -373,7 +373,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":reference_executor",
         ":value_impl",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -382,6 +381,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation_context",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
