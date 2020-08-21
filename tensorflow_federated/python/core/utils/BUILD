@@ -175,7 +175,7 @@ py_library(
 
 py_test(
     name = "federated_aggregations_test",
-    size = "small",
+    timeout = "moderate",
     srcs = ["federated_aggregations_test.py"],
     flaky = 1,  # TODO(b/162455851): Fix flakiness.
     python_version = "PY3",
@@ -185,6 +185,7 @@ py_test(
     ],
     deps = [
         ":federated_aggregations",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",

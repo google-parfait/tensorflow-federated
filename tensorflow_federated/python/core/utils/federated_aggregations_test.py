@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -813,11 +814,27 @@ def _hijack_federated_secure_sum():
   `intrinsics.federated_secure_sum` inside the `federated_aggregations` module
   will be relaced by `intrinsics.federated_sum`.
   """
-  temp = getattr(federated_aggregations.intrinsics, 'federated_secure_sum')
+
+  def fake_secure_sum(value, bitwidth):
+    # TODO(b/165856119): update parameter validation to reflect
+    # `federated_secure_sum` it it becomes possible to broadcast `bitwidth`.
+    value_type = value.type_signature.member
+    if value_type.is_struct():
+      bitwidth_struct = structure.from_container(bitwidth)
+      if not structure.is_same_structure(value_type, bitwidth_struct):
+        raise TypeError('value and bitwidth must have the same structure.\n'
+                        'value: {v}\nbitwidth:{b}'.format(
+                            v=value.type_signature.member,
+                            b=bitwidth.type_signature))
+    return federated_aggregations.intrinsics.federated_sum(value)
+
+  real_secure_sum = getattr(federated_aggregations.intrinsics,
+                            'federated_secure_sum')
   setattr(federated_aggregations.intrinsics, 'federated_secure_sum',
-          lambda v, _: federated_aggregations.intrinsics.federated_sum(v))
+          fake_secure_sum)
   yield
-  setattr(federated_aggregations.intrinsics, 'federated_secure_sum', temp)
+  setattr(federated_aggregations.intrinsics, 'federated_secure_sum',
+          real_secure_sum)
 
 
 def _np_val_fn(value, tf_dtype):
