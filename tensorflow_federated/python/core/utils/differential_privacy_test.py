@@ -268,8 +268,10 @@ class BuildDpAggregateProcessTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(
         dp_aggregate_process.next.type_signature,
         computation_types.FunctionType(
-            parameter=(server_state_type, client_value_type,
-                       client_value_weight_type),
+            parameter=collections.OrderedDict(
+                global_state=server_state_type,
+                value=client_value_type,
+                weight=client_value_weight_type),
             result=collections.OrderedDict(
                 state=server_state_type,
                 result=server_result_type,

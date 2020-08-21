@@ -218,7 +218,10 @@ class ModelDeltaProcessTest(tf.test.TestCase):
             round_num=tf.float32), tff.SERVER)
     metrics_type = test_model_for_types.federated_output_computation.type_signature.result
 
-    expected_parameter_type = (server_state_type, client_datasets_type)
+    expected_parameter_type = collections.OrderedDict(
+        server_state=server_state_type,
+        federated_dataset=client_datasets_type,
+    )
     expected_result_type = (server_state_type, metrics_type)
 
     expected_type = tff.FunctionType(

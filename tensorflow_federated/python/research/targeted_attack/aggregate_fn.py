@@ -37,16 +37,16 @@ def build_aggregate_and_clip(norm_bound):
 
     @tff.tf_computation(value_type)
     @tf.function
-    def clip_by_norm(gradient, norm=norm_bound):
+    def clip_by_norm(gradient):
       """Clip the gradient by a certain l_2 norm."""
 
       delta_norm = tf.linalg.global_norm(tf.nest.flatten(gradient))
 
-      if delta_norm < tf.cast(norm, tf.float32):
+      if delta_norm < tf.cast(norm_bound, tf.float32):
         return gradient
       else:
         delta_mul_factor = tf.math.divide_no_nan(
-            tf.cast(norm, tf.float32), delta_norm)
+            tf.cast(norm_bound, tf.float32), delta_norm)
         return tf.nest.map_structure(lambda g: g * delta_mul_factor, gradient)
 
     return global_state, tff.federated_map(clip_by_norm, round_model_delta)

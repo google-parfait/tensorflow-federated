@@ -236,7 +236,10 @@ class ModelDeltaOptimizerTest(test.TestCase):
         str(iterative_process.next.type_signature),
         str(
             computation_types.FunctionType(
-                parameter=(server_state_type, dataset_type),
+                parameter=collections.OrderedDict(
+                    server_state=server_state_type,
+                    federated_dataset=dataset_type,
+                ),
                 result=(server_state_type, metrics_type))))
 
   def test_construction_with_adam_optimizer(self):

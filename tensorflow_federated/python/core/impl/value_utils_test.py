@@ -42,7 +42,9 @@ class ValueUtilsTest(parameterized.TestCase):
     add_numbers = value_impl.ValueImpl(
         building_blocks.ComputationBuildingBlock.from_proto(
             computation_impl.ComputationImpl.get_proto(
-                computations.tf_computation(tf.add, [tf.int32, tf.int32]))),
+                computations.tf_computation(
+                    lambda a, b: tf.add(a, b),  # pylint: disable=unnecessary-lambda
+                    [tf.int32, tf.int32]))),
         _context_stack)
 
     curried = value_utils.get_curried(add_numbers)

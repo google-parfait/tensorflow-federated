@@ -129,11 +129,12 @@ class DecayIterativeProcessBuilderTest(tf.test.TestCase):
 
     expected_result_type = (server_state_type, output_type)
     expected_type = tff.FunctionType(
-        parameter=(server_state_type, dataset_type),
+        parameter=collections.OrderedDict(
+            server_state=server_state_type, federated_dataset=dataset_type),
         result=expected_result_type)
 
     actual_type = iterative_process.next.type_signature
-    self.assertTrue(actual_type.is_equivalent_to(expected_type))
+    actual_type.check_equivalent_to(expected_type)
 
   def test_iterative_process_decreases_loss(self):
     iterative_process = decay_iterative_process_builder.from_flags(

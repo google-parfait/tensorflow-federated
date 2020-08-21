@@ -617,6 +617,19 @@ def create_computation_appending(
   return building_blocks.Block(symbols, result)
 
 
+def _unname_fn_parameter(fn, unnamed_parameter_type):
+  """Coerces `fn` to a comp whose parameter type is `unnamed_parameter_type`."""
+  if structure.name_list(fn.type_signature.parameter):
+    return building_blocks.Lambda(
+        'a', unnamed_parameter_type,
+        building_blocks.Call(
+            fn,
+            building_blocks.Reference('a', unnamed_parameter_type),
+        ))
+  else:
+    return fn
+
+
 def create_federated_aggregate(
     value: building_blocks.ComputationBuildingBlock,
     zero: building_blocks.ComputationBuildingBlock,
@@ -660,6 +673,13 @@ def create_federated_aggregate(
   zero_arg_type.check_assignable_from(zero.type_signature)
   result_type = computation_types.FederatedType(report.type_signature.result,
                                                 placement_literals.SERVER)
+
+  accumulate_parameter_type = computation_types.StructType(
+      [zero_arg_type, value.type_signature.member])
+  accumulate = _unname_fn_parameter(accumulate, accumulate_parameter_type)
+  merge_parameter_type = computation_types.StructType(
+      [zero_arg_type, zero_arg_type])
+  merge = _unname_fn_parameter(merge, merge_parameter_type)
 
   intrinsic_type = computation_types.FunctionType((
       type_conversions.type_to_non_all_equal(value.type_signature),
@@ -982,6 +1002,12 @@ def create_federated_reduce(
   py_typecheck.check_type(op, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(op.type_signature.result,
                                                 placement_literals.SERVER)
+  # Remove names from `op`'s argument.
+  parameter_type = computation_types.StructType([
+      zero.type_signature,
+      value.type_signature.member,
+  ])
+  op = _unname_fn_parameter(op, parameter_type)
   intrinsic_type = computation_types.FunctionType((
       type_conversions.type_to_non_all_equal(value.type_signature),
       zero.type_signature,
@@ -1572,6 +1598,9 @@ def create_sequence_reduce(
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(zero, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(op, building_blocks.ComputationBuildingBlock)
+  op_parameter_type = computation_types.StructType(
+      [zero.type_signature, value.type_signature.element])
+  op = _unname_fn_parameter(op, op_parameter_type)
   intrinsic_type = computation_types.FunctionType((
       value.type_signature,
       zero.type_signature,

@@ -228,28 +228,30 @@ def pack_args_into_struct(
       for index, (name,
                   elem_type) in enumerate(structure.to_elements(type_spec)):
         if index < len(args):
+          # This argument is present in `args`.
           if name is not None and name in kwargs:
-            raise TypeError('Argument {} specified twice.'.format(name))
+            raise TypeError('Argument `{}` specified twice.'.format(name))
           else:
             arg_value = args[index]
             result_elements.append((name, context.ingest(arg_value, elem_type)))
             positions_used.add(index)
         elif name is not None and name in kwargs:
+          # This argument is present in `kwargs`.
           arg_value = kwargs[name]
           result_elements.append((name, context.ingest(arg_value, elem_type)))
           keywords_used.add(name)
         elif name:
-          raise TypeError('Argument named {} is missing.'.format(name))
+          raise TypeError(f'Missing argument `{name}` of type {elem_type}.')
         else:
-          raise TypeError('Argument at position {} is missing.'.format(index))
+          raise TypeError(
+              f'Missing argument of type {elem_type} at position {index}.')
       positions_missing = set(range(len(args))).difference(positions_used)
       if positions_missing:
         raise TypeError(
-            'Positional arguments at {} not used.'.format(positions_missing))
+            f'Positional arguments at {positions_missing} not used.')
       keywords_missing = set(kwargs.keys()).difference(keywords_used)
       if keywords_missing:
-        raise TypeError(
-            'Keyword arguments at {} not used.'.format(keywords_missing))
+        raise TypeError(f'Keyword arguments at {keywords_missing} not used.')
       return structure.Struct(result_elements)
 
 

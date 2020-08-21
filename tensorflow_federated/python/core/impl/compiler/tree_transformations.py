@@ -466,12 +466,16 @@ class InlineSelectionsFromTuples(transformation_utils.TransformSpec):
     if comp.source.is_struct():
       tup = comp.source
     else:
+      comp.source.check_reference()
       tup = symbol_tree.get_payload_with_name(comp.source.name).value
     if comp.index is None:
-      element_to_inline = getattr(tup, comp.name)
+      # Look up the index based on the type signature of the original source.
+      # The underlying value it refers to might be an unnamed struct because we
+      # allow coercion from unnamed structs to named structs.
+      index = structure.name_to_index_map(comp.source.type_signature)[comp.name]
     else:
-      element_to_inline = tup[comp.index]
-    return element_to_inline, True
+      index = comp.index
+    return tup[index], True
 
 
 def inline_selections_from_tuple(comp):

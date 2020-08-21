@@ -173,13 +173,13 @@ class ComputationWrapperTest(test.TestCase):
       """This is my fn."""
       return x + y
 
-    self.assertEqual(my_fn(1, 2), '<1,2> : <int32,int32> -> 3')
+    self.assertEqual(my_fn(1, 2), '<x=1,y=2> : <x=int32,y=int32> -> 3')
     self.assertEqual(my_fn.__doc__, 'This is my fn.')
 
   def test_as_wrapper_with_tuple_params_on_two_parameter_py_fn(self):
     self.assertEqual(
         test_wrap(lambda x, y: x + y, (tf.int32, tf.int32))(1, 2),
-        '<1,2> : <int32,int32> -> 3')
+        '<x=1,y=2> : <x=int32,y=int32> -> 3')
 
   def test_as_decorator_with_tuple_params_on_one_parameter_py_fn(self):
     # Computations only have a single parameter (or none), and we allow the
@@ -267,78 +267,36 @@ class ComputationWrapperTest(test.TestCase):
       test_wrap(10, 20)
 
   def test_with_varargs_no_type(self):
+    with self.assertRaises(TypeError):
 
-    @test_wrap
-    def my_fn(*args):
-      """This is my fn."""
-      return sum(args)
-
-    self.assertEqual(
-        my_fn(10, 20, 30), '<10,20,30> : <int32,int32,int32> -> 60')
-    self.assertEqual(my_fn.__doc__, 'This is my fn.')
+      @test_wrap
+      def _(*args):
+        """This is my fn."""
+        return sum(args)
 
   def test_with_varargs_scalar_type(self):
+    with self.assertRaises(TypeError):
 
-    @test_wrap(tf.int32)
-    def my_fn(*args):
-      """This is my fn."""
-      return sum(args)
-
-    self.assertEqual(my_fn(10), '10 : int32 -> 10')
-    self.assertEqual(my_fn.__doc__, 'This is my fn.')
+      @test_wrap(tf.int32)
+      def _(*args):
+        """This is my fn."""
+        return sum(args)
 
   def test_with_varargs_tuple_type(self):
+    with self.assertRaises(TypeError):
 
-    @test_wrap([tf.int32, tf.int32, tf.int32, tf.int32])
-    def my_fn(x, y, *args):
-      """This is my fn."""
-      return x + y + sum(args)
-
-    self.assertEqual(
-        my_fn(10, 20, 30, 40),
-        '<10,20,30,40> : <int32,int32,int32,int32> -> 100')
-    self.assertEqual(my_fn.__doc__, 'This is my fn.')
+      @test_wrap([tf.int32, tf.int32, tf.int32, tf.int32])
+      def _(x, y, *args):
+        """This is my fn."""
+        return x + y + sum(args)
 
   def test_with_kwargs_no_type(self):
+    with self.assertRaises(TypeError):
 
-    @test_wrap
-    def my_fn(**kwargs):
-      """This is my fn."""
-      return kwargs['x'] / kwargs['y']
-
-    self.assertIn(
-        my_fn(x=10, y=20), [
-            '<x=10,y=20> : <x=int32,y=int32> -> 0.5',
-            '<y=20,x=10> : <y=int32,x=int32> -> 0.5'
-        ])
-    self.assertEqual(my_fn.__doc__, 'This is my fn.')
-
-  def test_with_all_kinds_or_args_no_type(self):
-    # Exercising a corner case that may not follow the style guide, but is one
-    # possible scenario one may throw the wrapper at.
-    @test_wrap
-    def my_fn(  # pylint: disable=keyword-arg-before-vararg
-        a,
-        b,
-        c=10,
-        d=20,
-        *args,
-        **kwargs):
-      """This is my fn."""
-      return '{},{},{},{},{},{}'.format(a, b, c, d, args, kwargs)
-
-    self.assertEqual(my_fn(1, 2), '<1,2> : <int32,int32> -> 1,2,10,20,(),{}')
-    self.assertEqual(
-        my_fn(1, 2, 3), '<1,2,3> : <int32,int32,int32> -> 1,2,3,20,(),{}')
-    self.assertEqual(
-        my_fn(1, 2, d=3), '<1,2,d=3> : <int32,int32,d=int32> -> 1,2,10,3,(),{}')
-    self.assertEqual(
-        my_fn(1, 2, e=3),
-        '<1,2,e=3> : <int32,int32,e=int32> -> 1,2,10,20,(),{\'e\': 3}')
-    self.assertEqual(
-        my_fn(1, 2, 3, 4, 5),
-        '<1,2,3,4,5> : <int32,int32,int32,int32,int32> -> 1,2,3,4,(5,),{}')
-    self.assertEqual(my_fn.__doc__, 'This is my fn.')
+      @test_wrap
+      def _(**kwargs):
+        """This is my fn."""
+        return kwargs['x'] / kwargs['y']
 
   def test_as_decorator_with_unbundled_arguments(self):
 
@@ -346,11 +304,34 @@ class ComputationWrapperTest(test.TestCase):
     def foo(unused_x, unused_y):
       return 99
 
-    self.assertEqual(foo(10, 20), '<10,20> : <int32,int32> -> 99')
+    self.assertEqual(
+        foo(unused_y=20, unused_x=10),
+        '<unused_x=10,unused_y=20> : <unused_x=int32,unused_y=int32> -> 99')
+
+  def test_as_decorator_with_named_positional_arguments(self):
+
+    @test_wrap(tf.int32, tf.int32)
+    def foo(unused_x, unused_y):
+      return 99
+
+    expected = ('<unused_x=10,unused_y=20> : <unused_x=int32,unused_y=int32> ->'
+                ' 99')
+    self.assertEqual(foo(unused_x=10, unused_y=20), expected)
+    self.assertEqual(foo(10, unused_y=20), expected)
+    self.assertEqual(foo(unused_y=20, unused_x=10), expected)
+
+  def test_as_decorator_with_optional_arguments(self):
+    with self.assertRaisesRegex(TypeError, 'default'):
+
+      @test_wrap(tf.int32, tf.int32)
+      def _(unused_x=10, unused_y=20):
+        return 99
 
   def test_as_wrapper_with_unbundled_arguments(self):
     foo = test_wrap(lambda unused_x, unused_y: 99, tf.int32, tf.int32)
-    self.assertEqual(foo(10, 20), '<10,20> : <int32,int32> -> 99')
+    self.assertEqual(
+        foo(10, 20),
+        '<unused_x=10,unused_y=20> : <unused_x=int32,unused_y=int32> -> 99')
 
   def test_as_wrapper_with_one_argument_instance_method(self):
 

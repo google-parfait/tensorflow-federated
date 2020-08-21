@@ -686,7 +686,9 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_execute_with_nested_lambda(self):
     int32_add = bb.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
-            computations.tf_computation(tf.add, [tf.int32, tf.int32])))
+            computations.tf_computation(
+                lambda a, b: tf.add(a, b),  # pylint: disable=unnecessary-lambda
+                [tf.int32, tf.int32])))
 
     curried_int32_add = bb.Lambda(
         'x', tf.int32,
@@ -694,8 +696,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
             'y', tf.int32,
             bb.Call(
                 int32_add,
-                bb.Struct([(None, bb.Reference('x', tf.int32)),
-                           (None, bb.Reference('y', tf.int32))]))))
+                bb.Struct([('a', bb.Reference('x', tf.int32)),
+                           ('b', bb.Reference('y', tf.int32))]))))
 
     make_10 = bb.ComputationBuildingBlock.from_proto(
         computation_impl.ComputationImpl.get_proto(
@@ -958,7 +960,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     def foo(x, y):
       return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, y])
 
-    self.assertEqual(str(foo.type_signature), '(<int32,int32> -> int32)')
+    self.assertEqual(str(foo.type_signature), '(<x=int32,y=int32> -> int32)')
     self.assertEqual(foo(2, 3), 5)
 
   def test_generic_plus_with_tuples(self):
@@ -972,7 +974,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
     self.assertEqual(
         str(foo.type_signature),
-        '(<<A=int32,B=float32>,<A=int32,B=float32>> -> <A=int32,B=float32>)')
+        '(<x=<A=int32,B=float32>,y=<A=int32,B=float32>> -> <A=int32,B=float32>)'
+    )
     foo_result = foo([2, 0.1], [3, 0.2])
     self.assertIsInstance(foo_result, structure.Struct)
     self.assertSameElements(dir(foo_result), ['A', 'B'])
@@ -1154,7 +1157,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
     self.assertEqual(
         str(foo.type_signature),
-        '(<{float32}@CLIENTS,{float32}@CLIENTS> -> float32@SERVER)')
+        '(<v={float32}@CLIENTS,w={float32}@CLIENTS> -> float32@SERVER)')
     self.assertEqual(foo([5.0, 2.0, 3.0], [10.0, 20.0, 30.0]), 3.0)
 
   def test_federated_broadcast_without_data_on_clients(self):
@@ -1179,7 +1182,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
     self.assertEqual(
         str(foo.type_signature),
-        '(<{int32}@CLIENTS,int32@SERVER> -> {<int32,int32>}@CLIENTS)')
+        '(<x={int32}@CLIENTS,y=int32@SERVER> -> {<int32,int32>}@CLIENTS)')
 
     foo_result = foo([1, 2, 3], 10)
     self.assert_list(foo_result, '<1,10>,<2,10>,<3,10>')

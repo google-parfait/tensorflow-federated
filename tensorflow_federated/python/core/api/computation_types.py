@@ -617,8 +617,9 @@ class FunctionType(Type, metaclass=_Intern):
       return False
     if (self.parameter is None) != (source_type.parameter is None):
       return False
+    # Note that function parameters are contravariant, so we invert the check.
     if (self.parameter is not None and
-        not self.parameter.is_assignable_from(source_type.parameter)):
+        not source_type.parameter.is_assignable_from(self.parameter)):
       return False
     return self.result.is_assignable_from(source_type.result)
 

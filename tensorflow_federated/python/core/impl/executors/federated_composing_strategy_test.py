@@ -363,7 +363,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
       return intrinsics.federated_mean(x, y)
 
     executor, num_clients = _create_test_executor()
-    arg = ([float(x + 1) for x in range(num_clients)], [1.0, 2.0, 3.0] * 4)
+    arg = structure.Struct([('x', [float(x + 1) for x in range(num_clients)]),
+                            ('y', [1.0, 2.0, 3.0] * 4)])
     result = _invoke(executor, comp, arg)
     self.assertAlmostEqual(result, 6.83333333333, places=3)
 

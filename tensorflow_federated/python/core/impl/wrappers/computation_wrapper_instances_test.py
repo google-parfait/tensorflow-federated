@@ -54,8 +54,8 @@ class ComputationWrapperInstancesTest(test.TestCase):
   @test.graph_mode_test
   def test_tf_wrapper_with_tf_add(self):
     foo = computation_wrapper_instances.tensorflow_wrapper(
-        tf.add, (tf.int32, tf.int32))
-    self.assertEqual(str(foo.type_signature), '(<int32,int32> -> int32)')
+        lambda a, b: tf.add(a, b), (tf.int32, tf.int32))  # pylint: disable=unnecessary-lambda
+    self.assertEqual(str(foo.type_signature), '(<a=int32,b=int32> -> int32)')
 
     # TODO(b/113112885): Remove this protected member access as noted above.
     comp = foo._computation_proto  # pylint: disable=protected-access
@@ -85,11 +85,11 @@ class ComputationWrapperInstancesTest(test.TestCase):
 
     self.assertIsInstance(foo, computation_impl.ComputationImpl)
     self.assertEqual(
-        str(foo.type_signature), '(<(int32 -> int32),int32> -> int32)')
+        str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
 
     self.assertEqual(
         str(foo.to_building_block()),
-        '(FEDERATED_arg -> (let fc_FEDERATED_symbol_0=FEDERATED_arg[0](FEDERATED_arg[1]),fc_FEDERATED_symbol_1=FEDERATED_arg[0](fc_FEDERATED_symbol_0) in fc_FEDERATED_symbol_1))'
+        '(FEDERATED_arg -> (let fc_FEDERATED_symbol_0=FEDERATED_arg.f(FEDERATED_arg.x),fc_FEDERATED_symbol_1=FEDERATED_arg.f(fc_FEDERATED_symbol_0) in fc_FEDERATED_symbol_1))'
     )
 
   def test_tf_wrapper_fails_bad_types(self):

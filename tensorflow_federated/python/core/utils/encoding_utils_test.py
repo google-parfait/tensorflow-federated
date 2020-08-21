@@ -182,20 +182,24 @@ class EncodedSumTest(test.TestCase, parameterized.TestCase):
     value_type = computation_types.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
     gather_fn = encoding_utils.build_encoded_sum(value, encoder)
+    self.assertIsInstance(gather_fn, StatefulAggregateFn)
+
     state_type = gather_fn._initialize_fn.type_signature.result
-    gather_signature = computations.federated_computation(
-        gather_fn._next_fn,
+
+    @computations.federated_computation(
         computation_types.FederatedType(state_type, placements.SERVER),
         computation_types.FederatedType(value_type, placements.CLIENTS),
         computation_types.FederatedType(
-            computation_types.to_type(tf.float32),
-            placements.CLIENTS)).type_signature
+            computation_types.to_type(tf.float32), placements.CLIENTS))
+    def gather_computation(state, value, weight):
+      return gather_fn._next_fn(state, value, weight)
 
-    self.assertIsInstance(gather_fn, StatefulAggregateFn)
-    self.assertEqual(state_type, gather_signature.result[0].member)
-    self.assertEqual(placements.SERVER, gather_signature.result[0].placement)
-    self.assertEqual(value_type, gather_signature.result[1].member)
-    self.assertEqual(placements.SERVER, gather_signature.result[1].placement)
+    gather_result_type = gather_computation.type_signature.result
+
+    self.assertEqual(state_type, gather_result_type[0].member)
+    self.assertEqual(placements.SERVER, gather_result_type[0].placement)
+    self.assertEqual(value_type, gather_result_type[1].member)
+    self.assertEqual(placements.SERVER, gather_result_type[1].placement)
 
   def test_run_encoded_sum(self):
     value = np.array([0.0, 1.0, 2.0, -1.0])

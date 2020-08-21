@@ -13,16 +13,137 @@
 # limitations under the License.
 """Utilities for constructing decorators/wrappers for functions and defuns."""
 
+import collections
+import inspect
 import types
-from typing import Optional
+from typing import Optional, Tuple
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.tensorflow_libs import function
 
 
-def _wrap(fn, parameter_type, wrapper_fn):
+def _parameters(fn):
+  return function_utils.get_signature(fn).parameters.values()
+
+
+def _check_parameters(parameters):
+  """Ensure only non-varargs positional-or-keyword arguments."""
+  for parameter in parameters:
+    if parameter.default is not inspect.Parameter.empty:
+      # We don't have a way to build defaults into the function's type.
+      raise TypeError(
+          'TFF does not support default parameters. Found parameter '
+          f'`{parameter.name}` with default value {parameter.default}')
+    if parameter.kind is inspect.Parameter.POSITIONAL_ONLY:
+      # We don't have a way to encode positional-only into the function's type.
+      raise TypeError(
+          'TFF does not support positional-only parameters. Found parameter '
+          f'`{parameter.name}` which appears before a `/` entry.')
+    if parameter.kind is inspect.Parameter.KEYWORD_ONLY:
+      # We don't have a way to encode keyword-only into the function's type.
+      raise TypeError(
+          'TFF does not support keyword-only arguments. Found parameter '
+          f'`{parameter.name}` which appears after a `*` or `*args` entry.')
+    if parameter.kind in (inspect.Parameter.VAR_POSITIONAL,
+                          inspect.Parameter.VAR_KEYWORD):
+      # For concrete functions, we can't determine at tracing time which
+      # arguments should be bundled into args vs. kwargs, since arguments can
+      # be passed by position *or* by keyword at later call sites.
+      raise TypeError('TFF does not support varargs. Found varargs parameter '
+                      f'`{parameter.name}`.')
+    if parameter.kind is not inspect.Parameter.POSITIONAL_OR_KEYWORD:
+      raise AssertionError(f'Unexpected parameter kind: {parameter.kind}')
+
+
+def _wrap_polymorphic(fn, wrapper_fn) -> function_utils.PolymorphicFunction:
+  """Wraps `fn` in `wrapper_fn` at invocation time."""
+  try:
+    fn_name = fn.__name__
+  except AttributeError:
+    fn_name = None
+
+  def _polymorphic_wrapper(parameter_type: computation_types.Type,
+                           unpack: Optional[bool]):
+    return wrapper_fn(fn, parameter_type, unpack=unpack, name=fn_name)
+
+  polymorphic_fn = function_utils.PolymorphicFunction(_polymorphic_wrapper)
+  return polymorphic_fn
+
+
+def _wrap_concrete(fn, wrapper_fn,
+                   parameter_type) -> function_utils.ConcreteFunction:
+  """Wraps `fn` in `wrapper_fn` given the provided `parameter_type`."""
+  concrete_fn = wrapper_fn(fn, parameter_type, unpack=None)
+  py_typecheck.check_type(concrete_fn, function_utils.ConcreteFunction,
+                          'value returned by the wrapper')
+  result_parameter_type = concrete_fn.type_signature.parameter
+  if (result_parameter_type is not None and
+      not result_parameter_type.is_equivalent_to(parameter_type)):
+    raise TypeError(
+        'Expected a concrete function that takes parameter {}, got one '
+        'that takes {}.'.format(
+            str(parameter_type), str(concrete_fn.type_signature.parameter)))
+  return concrete_fn
+
+
+def _parameter_type(
+    parameters, parameter_types: Tuple[computation_types.Type, ...]
+) -> Optional[computation_types.Type]:
+  """Bundle any user-provided parameter types into a single argument type."""
+  parameter_names = [parameter.name for parameter in parameters]
+  if not parameter_types and not parameters:
+    return None
+  if len(parameter_types) == 1:
+    parameter_type = parameter_types[0]
+    if parameter_type is None and not parameters:
+      return None
+    if len(parameters) == 1:
+      return parameter_type
+    # There is a single parameter type but multiple parameters.
+    if not parameter_type.is_struct() or len(parameter_type) != len(parameters):
+      raise TypeError(
+          f'Function with {len(parameters)} parameters must have a parameter '
+          f'type with the same number of parameters. Found parameter type '
+          f'{parameter_type}.')
+    name_list_from_types = structure.name_list(parameter_type)
+    if name_list_from_types:
+      if len(name_list_from_types) != len(parameter_type):
+        raise TypeError(
+            'Types with both named and unnamed fields cannot be unpacked into '
+            f'argument lists. Found parameter type {parameter_type}.')
+      if set(name_list_from_types) != set(parameter_names):
+        raise TypeError(
+            'Function argument names must match field names of parameter type. '
+            f'Found argument names {parameter_names}, which do not match '
+            f'{name_list_from_types}, the top-level fields of the parameter '
+            f'type {parameter_type}.')
+      # The provided parameter type has all named fields which exactly match
+      # the names of the function's parameters.
+      return parameter_type
+    else:
+      # The provided parameter type has no named fields. Apply the names from
+      # the function parameters.
+      parameter_types = (v for (_, v) in structure.to_elements(parameter_type))
+      return computation_types.StructWithPythonType(
+          list(zip(parameter_names, parameter_types)), collections.OrderedDict)
+  elif len(parameters) == 1:
+    # If there are multiple provided argument types but the function being
+    # decorated only accepts a single argument, tuple the arguments together.
+    return computation_types.to_type(parameter_types)
+  if len(parameters) != len(parameter_types):
+    raise TypeError(
+        f'Function with {len(parameters)} parameters is '
+        f'incompatible with provided argument types {parameter_types}.')
+  # The function has `n` parameters and `n` parameter types.
+  # Zip them up into a structure using the names from the function as keys.
+  return computation_types.StructWithPythonType(
+      list(zip(parameter_names, parameter_types)), collections.OrderedDict)
+
+
+def _wrap(fn, parameter_types: Tuple[computation_types.Type, ...], wrapper_fn):
   """Wraps a possibly-polymorphic `fn` in `wrapper_fn`.
 
   If `parameter_type` is `None` and `fn` takes any arguments (even with default
@@ -35,8 +156,7 @@ def _wrap(fn, parameter_type, wrapper_fn):
 
   * `target_fn`, the Python function to be wrapped.
 
-  * `parameter_type`, the optional type of the computation's
-    parameter (an instance of `computation_types.Type`).
+  * `parameter_types`, the user-provded list of parameter types.
 
   * `unpack`, an argument which will be passed on to
     `function_utils.wrap_as_zero_or_one_arg_callable` when wrapping `target_fn`.
@@ -47,7 +167,7 @@ def _wrap(fn, parameter_type, wrapper_fn):
 
   Args:
     fn: The function or defun to wrap as a computation.
-    parameter_type: Optional type of any arguments to `fn`.
+    parameter_types: Types of any arguments to `fn`.
     wrapper_fn: The Python callable that performs actual wrapping. The object to
       be returned by this function should be an instance of a
       `ConcreteFunction`.
@@ -63,43 +183,26 @@ def _wrap(fn, parameter_type, wrapper_fn):
     TypeError: if the arguments are of the wrong types, or the `wrapper_fn`
       constructs something that isn't a ConcreteFunction.
   """
-  try:
-    fn_name = fn.__name__
-  except AttributeError:
-    fn_name = None
-  signature = function_utils.get_signature(fn)
-  parameter_type = computation_types.to_type(parameter_type)
-  if parameter_type is None and signature.parameters:
+  parameters = _parameters(fn)
+  # NOTE: many of the properties checked here are only necessary for
+  # non-polymorphic computations whose type signatures must be resolved
+  # prior to use. However, we continue to enforce these requirements even
+  # in the polymorphic case in order to avoid creating an inconsistency.
+  _check_parameters(parameters)
+
+  if (not parameter_types) and parameters:
     # There is no TFF type specification, and the function/defun declares
     # parameters. Create a polymorphic template.
-    def _wrap_polymorphic(parameter_type: computation_types.Type,
-                          unpack: Optional[bool]):
-      return wrapper_fn(fn, parameter_type, unpack=unpack, name=fn_name)
+    wrapped_func = _wrap_polymorphic(fn, wrapper_fn)
+  else:
+    # Either we have a concrete parameter type, or this is no-arg function.
+    parameter_type = _parameter_type(parameters, parameter_types)
+    wrapped_func = _wrap_concrete(fn, wrapper_fn, parameter_type)
 
-    polymorphic_fn = function_utils.PolymorphicFunction(_wrap_polymorphic)
-
-    # When applying a decorator, the __doc__ attribute with the documentation
-    # in triple-quotes is not automatically transferred from the function on
-    # which it was applied to the wrapped object, so we must transfer it here
-    # explicitly.
-    polymorphic_fn.__doc__ = getattr(fn, '__doc__', None)
-    return polymorphic_fn
-
-  # Either we have a concrete parameter type, or this is no-arg function.
-  concrete_fn = wrapper_fn(fn, parameter_type, unpack=None)
-  py_typecheck.check_type(concrete_fn, function_utils.ConcreteFunction,
-                          'value returned by the wrapper')
-  if (concrete_fn.type_signature.parameter is not None and
-      not concrete_fn.type_signature.parameter.is_equivalent_to(parameter_type)
-     ):
-    raise TypeError(
-        'Expected a concrete function that takes parameter {}, got one '
-        'that takes {}.'.format(
-            str(parameter_type), str(concrete_fn.type_signature.parameter)))
   # When applying a decorator, the __doc__ attribute with the documentation
   # in triple-quotes is not automatically transferred from the function on
-  concrete_fn.__doc__ = getattr(fn, '__doc__', None)
-  return concrete_fn
+  wrapped_func.__doc__ = getattr(fn, '__doc__', None)
+  return wrapped_func
 
 
 class ComputationWrapper(object):
@@ -189,22 +292,6 @@ class ComputationWrapper(object):
         The number and order of parameters in the decorator arguments and the
         Python function must match. For named elements, the names in the
         decorator and the Python function must also match.
-
-        Python functions with multiple parameters can end the parameter list
-        with `*args` or `*kwargs` to pack all remaining arguments into a single
-        If the Python function declares `*args` or `*kwargs`, any remaining
-        parameters will be packed into this single argument:
-
-        ```python
-        @xyz(tf.int32, tf.int32, tf.int32, tf.int32)
-        def my_comp(x, y, *args):
-          ... # use `x`, `y`, `args[0]`, `args[1]`
-        ```
-
-        If `*args` is the only argument to the Python function, an exception
-        will be thrown, since it's ambiguous whether the function accepts a
-        single `tff.StructType` argument (as in the single-argument case (a)
-        above) or a list of arguments.
 
   2. When the decorator is specified without arguments (`@xyz` or `@xyz()`):
 
@@ -315,7 +402,8 @@ class ComputationWrapper(object):
       # a polymorphic callable. The parameter type is unspecified.
       # Deliberate wrapping with a lambda to prevent the caller from being able
       # to accidentally specify parameter type as a second argument.
-      return lambda fn: _wrap(fn, None, self._wrapper_fn)
+      provided_types = ()
+      return lambda fn: _wrap(fn, provided_types, self._wrapper_fn)
     elif (isinstance(args[0], (types.FunctionType, types.MethodType)) or
           function.is_tf_function(args[0])):
       # If the first argument on the list is a Python function, instance method,
@@ -324,14 +412,9 @@ class ComputationWrapper(object):
       # function definition, of an inline invocation as "... = xyz(lambda....).
       # Any of the following arguments, if present, are the arguments to the
       # wrapper that are to be interpreted as the type specification.
-      if len(args) > 2:
-        args = (args[0], args[1:])
-      return _wrap(
-          args[0],
-          computation_types.to_type(args[1]) if len(args) > 1 else None,
-          self._wrapper_fn)
+      fn_to_wrap = args[0]
+      provided_types = tuple(map(computation_types.to_type, args[1:]))
+      return _wrap(fn_to_wrap, provided_types, self._wrapper_fn)
     else:
-      if len(args) > 1:
-        args = (args,)
-      arg_type = computation_types.to_type(args[0])
-      return lambda fn: _wrap(fn, arg_type, self._wrapper_fn)
+      provided_types = tuple(map(computation_types.to_type, args))
+      return lambda fn: _wrap(fn, provided_types, self._wrapper_fn)

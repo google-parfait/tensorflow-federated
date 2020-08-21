@@ -237,8 +237,18 @@ class CanonicalForm(object):
   in this form are supplied as constructor arguments.
   """
 
-  def __init__(self, initialize, prepare, work, zero, accumulate, merge, report,
-               bitwidth, update):
+  def __init__(self,
+               initialize,
+               prepare,
+               work,
+               zero,
+               accumulate,
+               merge,
+               report,
+               bitwidth,
+               update,
+               server_state_label=None,
+               client_data_label=None):
     """Constructs a representation of a MapReduce-like iterative process.
 
     Note: All the computations supplied here as arguments must be TensorFlow
@@ -257,6 +267,8 @@ class CanonicalForm(object):
       bitwidth: The computation that produces the bitwidth for secure sum.
       update: The computation that takes the global update and the server state
         and produces the new server state, as well as server-side output.
+      server_state_label: Optional string label for the server state.
+      client_data_label: Optional string label for the client data.
 
     Raises:
       TypeError: If the Python or TFF types of the arguments are invalid or not
@@ -400,6 +412,13 @@ class CanonicalForm(object):
     self._bitwidth = bitwidth
     self._update = update
 
+    if server_state_label is not None:
+      py_typecheck.check_type(server_state_label, str)
+    self._server_state_label = server_state_label
+    if client_data_label is not None:
+      py_typecheck.check_type(client_data_label, str)
+    self._client_data_label = client_data_label
+
   @property
   def initialize(self):
     return self._initialize
@@ -435,6 +454,14 @@ class CanonicalForm(object):
   @property
   def update(self):
     return self._update
+
+  @property
+  def server_state_label(self):
+    return self._server_state_label
+
+  @property
+  def client_data_label(self):
+    return self._client_data_label
 
   def summary(self, print_fn=print):
     """Prints a string summary of the `CanonicalForm`.

@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for iterative_process_compositions."""
 
+import collections
+
 from absl.testing import absltest
 import tensorflow as tf
 
@@ -73,9 +75,10 @@ def _create_stateless_int_dataset_reduction_iterative_process():
        computation_types.FederatedType(
            computation_types.SequenceType(tf.int64),
            placement_literals.CLIENTS)))
-  def next_fn(empty_tup, x):
-    del empty_tup  # Unused
-    return intrinsics.federated_sum(intrinsics.federated_map(reduce_dataset, x))
+  def next_fn(server_state, client_data):
+    del server_state  # Unused
+    return intrinsics.federated_sum(
+        intrinsics.federated_map(reduce_dataset, client_data))
 
   return iterative_process.IterativeProcess(initialize_fn=init, next_fn=next_fn)
 
@@ -145,17 +148,19 @@ class ConstructDatasetsOnClientsTest(absltest.TestCase):
 
   def test_mutates_iterproc_accepting_dataset_in_second_index_of_next(self):
     iterproc = _create_stateless_int_dataset_reduction_iterative_process()
-    expected_new_next_type_signature = computation_types.FunctionType([
-        computation_types.FederatedType(tf.int64, placement_literals.SERVER),
-        computation_types.FederatedType(tf.string, placement_literals.CLIENTS)
-    ], computation_types.FederatedType(tf.int64, placement_literals.SERVER))
+    expected_new_next_type_signature = computation_types.FunctionType(
+        collections.OrderedDict(
+            server_state=computation_types.FederatedType(
+                tf.int64, placement_literals.SERVER),
+            client_data=computation_types.FederatedType(
+                tf.string, placement_literals.CLIENTS)),
+        computation_types.FederatedType(tf.int64, placement_literals.SERVER))
 
     new_iterproc = iterative_process_compositions.compose_dataset_computation(
         int_dataset_computation, iterproc)
 
-    self.assertTrue(
-        expected_new_next_type_signature.is_equivalent_to(
-            new_iterproc.next.type_signature))
+    expected_new_next_type_signature.check_equivalent_to(
+        new_iterproc.next.type_signature)
 
   def test_returns_iterproc_accepting_dataset_in_third_index_of_next(self):
     iterproc = _create_stateless_int_dataset_reduction_iterative_process()

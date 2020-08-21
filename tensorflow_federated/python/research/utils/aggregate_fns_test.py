@@ -83,10 +83,10 @@ class FixedClipNormProcessTest(tf.test.TestCase):
     self.assertEqual(
         aggregate_fn.next.type_signature,
         tff.FunctionType(
-            parameter=(
-                tff.FederatedType((), tff.SERVER),
-                tff.FederatedType(update_type, tff.CLIENTS),
-                tff.FederatedType(tf.float32, tff.CLIENTS),
+            parameter=collections.OrderedDict(
+                state=tff.FederatedType((), tff.SERVER),
+                deltas=tff.FederatedType(update_type, tff.CLIENTS),
+                weights=tff.FederatedType(tf.float32, tff.CLIENTS),
             ),
             result=collections.OrderedDict(
                 state=tff.FederatedType((), tff.SERVER),

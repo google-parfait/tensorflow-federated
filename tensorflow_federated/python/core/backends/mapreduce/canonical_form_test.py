@@ -402,10 +402,10 @@ class CanonicalFormTest(absltest.TestCase):
         capture.summary,
         'initialize: ( -> <num_rounds=int32>)\n'
         'prepare   : (<num_rounds=int32> -> <max_temperature=float32>)\n'
-        'work      : (<float32*,<max_temperature=float32>> -> <<is_over=bool>,<>>)\n'
+        'work      : (<data=float32*,state=<max_temperature=float32>> -> <<is_over=bool>,<>>)\n'
         'zero      : ( -> <num_total=int32,num_over=int32>)\n'
-        'accumulate: (<<num_total=int32,num_over=int32>,<is_over=bool>> -> <num_total=int32,num_over=int32>)\n'
-        'merge     : (<<num_total=int32,num_over=int32>,<num_total=int32,num_over=int32>> -> <num_total=int32,num_over=int32>)\n'
+        'accumulate: (<accumulator=<num_total=int32,num_over=int32>,update=<is_over=bool>> -> <num_total=int32,num_over=int32>)\n'
+        'merge     : (<accumulator1=<num_total=int32,num_over=int32>,accumulator2=<num_total=int32,num_over=int32>> -> <num_total=int32,num_over=int32>)\n'
         'report    : (<num_total=int32,num_over=int32> -> <ratio_over_threshold=float32>)\n'
         'bitwidth  : ( -> <>)\n'
         'update    : ( -> <num_rounds=int32>)\n'

@@ -23,6 +23,7 @@ from typing import Callable, Optional
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -67,10 +68,14 @@ def get_iterative_process_for_canonical_form(cf):
   def init_computation():
     return intrinsics.federated_value(cf.initialize(), placements.SERVER)
 
-  @computations.federated_computation(init_computation.type_signature.result,
-                                      computation_types.FederatedType(
-                                          cf.work.type_signature.parameter[0],
-                                          placements.CLIENTS))
+  next_parameter_type = computation_types.StructType([
+      (cf.server_state_label, init_computation.type_signature.result),
+      (cf.client_data_label,
+       computation_types.FederatedType(cf.work.type_signature.parameter[0],
+                                       placements.CLIENTS)),
+  ])
+
+  @computations.federated_computation(next_parameter_type)
   def next_computation(arg):
     """The logic of a single MapReduce processing round."""
     s1 = arg[0]
@@ -157,6 +162,10 @@ def _check_type_is_no_arg_fn(
 def _check_iterative_process_compatible_with_canonical_form(
     initialize_tree, next_tree):
   """Tests compatibility with `tff.backends.mapreduce.CanonicalForm`.
+
+  Note: the conditions here are specified in the documentation for
+    `get_canonical_form_for_iterative_process`. Changes to this function should
+    be propagated to that documentation.
 
   Args:
     initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
@@ -929,7 +938,12 @@ def get_canonical_form_for_iterative_process(
   an instance of `tff.backends.mapreduce.CanonicalForm`.
 
   Args:
-    ip: An instance of `tff.templates.IterativeProcess`.
+    ip: An instance of `tff.templates.IterativeProcess` that is compatible
+      with canonical form. Iterative processes are only compatible if:
+      - `initialize_fn` returns a single federated value placed at `SERVER`.
+      - `next` takes exactly two arguments. The first must be the state value
+        placed at `SERVER`.
+      - `next` returns exactly two values.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the TensorFlow graphs backing the
       resulting `tff.backends.mapreduce.CanonicalForm`. These options are
@@ -1029,6 +1043,10 @@ def get_canonical_form_for_iterative_process(
   update = _extract_update(after_aggregate, grappler_config)
   _check_type_equal(update.type_signature, type_info['update_type'])
 
+  next_parameter_names = (
+      name for (name,
+                _) in structure.iter_elements(ip.next.type_signature.parameter))
+  server_state_label, client_data_label = next_parameter_names
   return canonical_form.CanonicalForm(
       computation_wrapper_instances.building_block_to_computation(initialize),
       computation_wrapper_instances.building_block_to_computation(prepare),
@@ -1038,4 +1056,6 @@ def get_canonical_form_for_iterative_process(
       computation_wrapper_instances.building_block_to_computation(merge),
       computation_wrapper_instances.building_block_to_computation(report),
       computation_wrapper_instances.building_block_to_computation(bitwidth),
-      computation_wrapper_instances.building_block_to_computation(update))
+      computation_wrapper_instances.building_block_to_computation(update),
+      server_state_label=server_state_label,
+      client_data_label=client_data_label)

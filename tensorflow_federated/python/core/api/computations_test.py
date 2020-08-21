@@ -136,8 +136,11 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     self.assertEqual(foo(11), True)
 
     # Wrapping an existing Python function with a parameter.
-    bar = computations.tf_computation(tf.add, (tf.int32, tf.int32))
-    self.assertEqual(str(bar.type_signature), '(<int32,int32> -> int32)')
+    def add(a, b):
+      return tf.add(a, b)
+
+    bar = computations.tf_computation(add, (tf.int32, tf.int32))
+    self.assertEqual(str(bar.type_signature), '(<a=int32,b=int32> -> int32)')
 
     # Wrapping a no-parameter lambda.
     baz = computations.tf_computation(lambda: tf.constant(10))
@@ -256,7 +259,7 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
   def test_polymorphic(self):
 
-    def foo(x, y, z=3):
+    def foo(x, y, z):
       # Since we don't wrap this as a tf.function, we need to do some
       # tf.convert_to_tensor(...) in order to ensure we have TensorFlow types.
       x = tf.convert_to_tensor(x)
@@ -265,9 +268,9 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
     tf_comp = computations.tf_computation(foo)  # A polymorphic TFF function.
 
-    self.assertEqual(tf_comp(1, 2), (3, 3))  # With int32
-    self.assertEqual(tf_comp(1.0, 2.0), (3.0, 3))  # With float32
-    self.assertEqual(tf_comp(1, 2, z=3), (3, 3))  # With z
+    self.assertEqual(tf_comp(1, 2, 3), (3, 3))  # With int32
+    self.assertEqual(tf_comp(1.0, 2.0, 3), (3.0, 3))  # With float32
+    self.assertEqual(tf_comp(1, 2, 3), (3, 3))  # With z
 
   def test_explicit_tuple_param(self):
     # See also test_polymorphic_tuple_input
@@ -289,12 +292,12 @@ class TensorFlowComputationsTest(parameterized.TestCase):
   def test_nested_tuple_input_polymorphic(self):
 
     @tf.function(autograph=False)
-    def foo(tuple1, tuple2=(1, 2)):
+    def foo(tuple1, tuple2):
       return tuple1[0] + tuple1[1][0] + tuple1[1][1] + tuple2[0] + tuple2[1]
 
     # Polymorphic
     tf_poly = computations.tf_computation(foo)
-    self.assertEqual(tf_poly((1, (2, 3))), 9)
+    self.assertEqual(tf_poly((1, (2, 3)), (1, 2)), 9)
     self.assertEqual(tf_poly((1, (2, 3)), (0, 0)), 6)
 
   def test_nested_tuple_input_explicit_types(self):
@@ -512,7 +515,7 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
       return result_value
 
     self.assertEqual(
-        str(foo.type_signature), '(<(int32 -> int32),int32> -> int32)')
+        str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
 
     @computations.tf_computation(tf.int32)
     def third_power(x):
@@ -525,9 +528,10 @@ class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
   def test_computation_typical_usage_as_decorator_with_labeled_type(self):
 
     @computations.federated_computation(
-        ('f', computation_types.FunctionType(tf.int32, tf.int32)),
-        ('x', tf.int32),
-    )
+        collections.OrderedDict(
+            f=computation_types.FunctionType(tf.int32, tf.int32),
+            x=tf.int32,
+        ))
     def foo(f, x):
       return f(f(x))
 

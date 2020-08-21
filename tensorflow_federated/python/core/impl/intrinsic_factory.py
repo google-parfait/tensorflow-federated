@@ -432,14 +432,16 @@ class IntrinsicFactory(object):
     value = value_impl.to_value(value, None, self._context_stack)
     zero = value_impl.to_value(zero, None, self._context_stack)
     op = value_impl.to_value(op, None, self._context_stack)
-    if value.type_signature.is_sequence():
-      element_type = value.type_signature.element
+    # Check if the value is a federated sequence that should be reduced
+    # under a `federated_map`.
+    if value.type_signature.is_federated():
+      value_sequence_type = value.type_signature.member
+      needs_map = True
     else:
-      py_typecheck.check_type(value.type_signature,
-                              computation_types.FederatedType)
-      py_typecheck.check_type(value.type_signature.member,
-                              computation_types.SequenceType)
-      element_type = value.type_signature.member.element
+      value_sequence_type = value.type_signature
+      needs_map = False
+    value_sequence_type.check_sequence()
+    element_type = value_sequence_type.element
     op_type_expected = type_factory.reduction_op(zero.type_signature,
                                                  element_type)
     if not op_type_expected.is_assignable_from(op.type_signature):
@@ -449,22 +451,13 @@ class IntrinsicFactory(object):
     value = value_impl.ValueImpl.get_comp(value)
     zero = value_impl.ValueImpl.get_comp(zero)
     op = value_impl.ValueImpl.get_comp(op)
-    if value.type_signature.is_sequence():
+    if not needs_map:
       comp = building_block_factory.create_sequence_reduce(value, zero, op)
       comp = self._bind_comp_as_reference(comp)
       return value_impl.ValueImpl(comp, self._context_stack)
     else:
-      value_type = computation_types.SequenceType(element_type)
-      intrinsic_type = computation_types.FunctionType((
-          value_type,
-          zero.type_signature,
-          op.type_signature,
-      ), op.type_signature.result)
-      intrinsic = building_blocks.Intrinsic(intrinsic_defs.SEQUENCE_REDUCE.uri,
-                                            intrinsic_type)
-      ref = building_blocks.Reference('arg', value_type)
-      tup = building_blocks.Struct((ref, zero, op))
-      call = building_blocks.Call(intrinsic, tup)
+      ref = building_blocks.Reference('arg', value_sequence_type)
+      call = building_block_factory.create_sequence_reduce(ref, zero, op)
       fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
       fn_impl = value_impl.ValueImpl(fn, self._context_stack)
       return self.federated_map(fn_impl, value)

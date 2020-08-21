@@ -263,9 +263,11 @@ class EagerTFExecutorTest(tf.test.TestCase):
     val = asyncio.get_event_loop().run_until_complete(
         ex.create_value(
             comp_proto,
-            computation_types.FunctionType([tf.int32, tf.int32], tf.int32)))
+            computation_types.FunctionType(
+                computation_types.StructType([('a', tf.int32),
+                                              ('b', tf.int32)]), tf.int32)))
     self.assertIsInstance(val, eager_tf_executor.EagerValue)
-    self.assertEqual(str(val.type_signature), '(<int32,int32> -> int32)')
+    self.assertEqual(str(val.type_signature), '(<a=int32,b=int32> -> int32)')
     self.assertTrue(callable(val.internal_representation))
     arg = structure.Struct([('a', tf.constant(10)), ('b', tf.constant(10))])
     result = val.internal_representation(arg)
@@ -282,7 +284,9 @@ class EagerTFExecutorTest(tf.test.TestCase):
     loop = asyncio.get_event_loop()
     comp = loop.run_until_complete(ex.create_value(comp))
     arg = loop.run_until_complete(
-        ex.create_value([10, 20], comp.type_signature.parameter))
+        ex.create_value(
+            structure.Struct([('a', 10), ('b', 20)]),
+            comp.type_signature.parameter))
     result = loop.run_until_complete(ex.create_call(comp, arg))
     self.assertIsInstance(result, eager_tf_executor.EagerValue)
     self.assertEqual(str(result.type_signature), 'int32')

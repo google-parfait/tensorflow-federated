@@ -28,6 +28,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/utils:function_utils",
         "//tensorflow_federated/python/tensorflow_libs:function",

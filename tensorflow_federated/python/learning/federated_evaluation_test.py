@@ -111,8 +111,9 @@ class FederatedEvaluationTest(test.TestCase, parameterized.TestCase):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
     self.assertEqual(
         str(evaluate.type_signature),
-        '(<<trainable=<float32>,non_trainable=<>>@SERVER,'
-        '{<temp=float32[?]>*}@CLIENTS> -> <num_over=float32@SERVER>)')
+        '(<server_model_weights=<trainable=<float32>,non_trainable=<>>@SERVER,'
+        'federated_dataset={<temp=float32[?]>*}@CLIENTS> -> '
+        '<num_over=float32@SERVER>)')
 
     def _temp_dict(temps):
       return {'temp': np.array(temps, dtype=np.float32)}
