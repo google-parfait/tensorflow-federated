@@ -55,24 +55,6 @@ def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
 tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
 
 
-def _tf2_wrapper_fn(target_fn, parameter_type, unpack, name=None):
-  """Wrapper function to plug Tensorflow 2.0 logic into the TFF framework.
-
-  This function is passed through `computation_wrapper.ComputationWrapper`.
-  Documentation its arguments can be found inside the definition of that class.
-  """
-  del name  # Unused.
-  comp_pb, extra_type_spec = (
-      tensorflow_serialization.serialize_tf2_as_tf_computation(
-          target_fn, parameter_type, unpack=unpack))
-  return computation_impl.ComputationImpl(comp_pb,
-                                          context_stack_impl.context_stack,
-                                          extra_type_spec)
-
-
-tf2_wrapper = computation_wrapper.ComputationWrapper(_tf2_wrapper_fn)
-
-
 def _federated_computation_wrapper_fn(target_fn,
                                       parameter_type,
                                       unpack,

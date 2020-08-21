@@ -151,26 +151,6 @@ def tf_computation(*args):
   return computation_wrapper_instances.tensorflow_wrapper(*args)
 
 
-def tf2_computation(*args):
-  """As `tff.tf_computation`, but supports eager-mode constructs.
-
-  In particular, the function being wrapped can reference `tf.Variables` that
-  have already been created; with `tff.tf_computation` all graph mutation
-  (including variable creation) must happen inside the function being wrapped.
-
-  Note: This decorator is still experimental, and does not support all features,
-  most noteably `tf.Variable` initialization and `tf.data.Dataset`s (and their
-  conversion to TFF sequences).
-
-  Args:
-    *args: As with `tff.tf_computation`.
-
-  Returns:
-    As with `tff.tf_computation`.
-  """
-  return computation_wrapper_instances.tf2_wrapper(*args)
-
-
 def federated_computation(*args):
   """Decorates/wraps Python functions as TFF federated/composite computations.
 

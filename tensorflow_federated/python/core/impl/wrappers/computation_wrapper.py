@@ -106,10 +106,10 @@ class ComputationWrapper(object):
   """A class for creating wrappers that convert functions into computations.
 
   This class builds upon the _wrap() function defined above, adding on
-  functionality shared between the `tf_computation`, `tf2_computation`, and
-  `federated_computation` decorators. The shared functionality includes relating
-  formal Python function parameters and call arguments to TFF types, packing and
-  unpacking arguments, verifying types, and support for polymorphism.
+  functionality shared between the `tf_computation` and `federated_computation`
+  decorators. The shared functionality includes relating formal Python function
+  parameters and call arguments to TFF types, packing and unpacking arguments,
+  verifying types, and support for polymorphism.
 
   Here's how one can use `ComputationWrapper` to construct a decorator/wrapper
   named `xyz`:
