@@ -13,6 +13,7 @@
 # limitations under the License.
 """A library of static analysis functions for computation types."""
 
+import collections
 from typing import Any, Callable, Optional
 
 import tensorflow as tf
@@ -27,6 +28,12 @@ from tensorflow_federated.python.core.impl.types import type_transformations
 _TypePredicate = Callable[[computation_types.Type], bool]
 
 
+def _preorder_types(type_signature: computation_types.Type):
+  yield type_signature
+  for child in type_signature.children():
+    yield from _preorder_types(child)
+
+
 def count(type_signature: computation_types.Type,
           predicate: _TypePredicate) -> int:
   """Returns the number of types in `type_signature` matching `predicate`.
@@ -36,18 +43,15 @@ def count(type_signature: computation_types.Type,
     predicate: A Python function that takes a type as a parameter and returns a
       boolean value.
   """
-  counter = 1 if predicate(type_signature) else 0
-  counter += sum(count(child, predicate) for child in type_signature.children())
-  return counter
+  one_or_zero = lambda t: 1 if predicate(t) else 0
+  return sum(map(one_or_zero, _preorder_types(type_signature)))
 
 
 def contains(type_signature: computation_types.Type,
              predicate: _TypePredicate) -> bool:
   """Checks if `type_signature` contains any types that pass `predicate`."""
-  if predicate(type_signature):
-    return True
-  for child in type_signature.children():
-    if contains(child, predicate):
+  for t in _preorder_types(type_signature):
+    if predicate(t):
       return True
   return False
 
@@ -433,122 +437,182 @@ def is_struct_with_py_container(value, type_spec):
           isinstance(value, structure.Struct))
 
 
-def is_concrete_instance_of(type_with_concrete_elements,
-                            type_with_abstract_elements):
-  """Checks whether abstract types can be concretized via a parallel structure.
+class NotConcreteTypeError(TypeError):
 
-  This function builds up a new concrete structure via the bindings encountered
-  in `type_with_abstract_elements` in a postorder fashion. That is, it walks the
-  type trees in parallel, caching bindings for abstract types on the way. When
-  it encounters a previously bound abstract type, it simply inlines this cached
-  value. Finally, `abstract_types_can_be_concretized` delegates checking type
-  equivalence to `computation_types.Type.is_equivalent_to`, passing in the
-  created concrete structure for comparison with `type_with_concrete_elements`.
+  def __init__(self, full_type, found_abstract):
+    message = ('Expected concrete type containing no abstract types, but '
+               f'found abstract type {found_abstract} in {full_type}.')
+    super().__init__(message)
+
+
+class MismatchedConcreteTypesError(TypeError):
+
+  def __init__(self, full_concrete, full_generic, abstract_label,
+               first_concrete, second_concrete):
+    message = (
+        f'Expected concrete type {full_concrete} to be a valid substitution '
+        f'for generic type {full_generic}, but abstract type {abstract_label} '
+        f'had substitutions {first_concrete} and {second_concrete}, which are '
+        'not equivalent.')
+    super().__init__(message)
+
+
+class UnassignableConcreteTypesError(TypeError):
+
+  def __init__(self, full_concrete, full_generic, abstract_label, definition,
+               not_assignable_from):
+    message = (
+        f'Expected concrete type {full_concrete} to be a valid substitution '
+        f'for generic type {full_generic}, but abstract type {abstract_label} '
+        f'was defined as {definition}, and later used as {not_assignable_from} '
+        ' which cannot be assigned from the former.')
+    super().__init__(message)
+
+
+class MismatchedStructureError(TypeError):
+
+  def __init__(self, full_concrete, full_generic, concrete_member,
+               generic_member, mismatch):
+    message = (
+        f'Expected concrete type {full_concrete} to be a valid substitution '
+        f'for generic type {full_generic}, but their structures do not match: '
+        f'{concrete_member} differs in {mismatch} from {generic_member}.')
+    super().__init__(message)
+
+
+class MissingDefiningUsageError(TypeError):
+
+  def __init__(self, generic_type, label_name):
+    message = (
+        f'Missing defining use of abstract type {label_name} in type '
+        f'{generic_type}. See `check_concrete_instance_of` documentation for '
+        'details on what counts as a defining use.')
+    super().__init__(message)
+
+
+def check_concrete_instance_of(concrete_type: computation_types.Type,
+                               generic_type: computation_types.Type):
+  """Checks whether `concrete_type` is a valid substitution of `generic_type`.
+
+  This function determines whether `generic_type`'s type parameters can be
+  substituted such that it is equivalent to `concrete type`.
+
+  Note that passing through argument-position of function type swaps the
+  variance of abstract types. Argument-position types can be assigned *from*
+  other instances of the same type, but are not equivalent to it.
+
+  Due to this variance issue, only abstract types must include at least one
+  "defining" usage. "Defining" uses are those which are encased in function
+  parameter position an odd number of times. These usages must all be
+  equivalent. Non-defining usages need not compare equal but must be assignable
+  *from* defining usages.
 
   Args:
-    type_with_concrete_elements: Instance of `computation_types.Type` of
-      parallel structure to `type_with_concrete_elements`, containing only
-      concrete types, to test for equivalence with a concretization of
-      `type_with_abstract_elements`.
-    type_with_abstract_elements: Instance of `computation_types.Type` which may
-      contain abstract types, to check for possibility of concretizing according
-      to `type_with_concrete_elements`.
-
-  Returns:
-    `True` if `type_with_abstract_elements` can be concretized to
-    `type_with_concrete_elements`. Returns `False` if they are of the same
-    structure but some conflicting assignment exists in
-    `type_with_concrete_elements`.
+    concrete_type: A type containing no `computation_types.AbstractType`s to
+      check against `generic_type`'s shape.
+    generic_type: A type which may contain `computation_types.AbstractType`s.
 
   Raises:
-    TypeError: If `type_with_abstract_elements` and
-    `type_with_concrete_elements` are not structurally equivalent; that is,
-    their type trees are of different structure; or if
-    `type_with_concrete_elements` contains abstract elements.
+    TypeError: If `concrete_type` is not a valid substitution of `generic_type`.
   """
-  py_typecheck.check_type(type_with_abstract_elements, computation_types.Type)
-  py_typecheck.check_type(type_with_concrete_elements, computation_types.Type)
+  py_typecheck.check_type(concrete_type, computation_types.Type)
+  py_typecheck.check_type(generic_type, computation_types.Type)
 
-  if contains(type_with_concrete_elements, lambda t: t.is_abstract()):
-    raise TypeError(
-        '`type_with_concrete_elements` must contain no abstract types. You '
-        'have passed {}'.format(type_with_concrete_elements))
+  for t in _preorder_types(concrete_type):
+    if t.is_abstract():
+      raise NotConcreteTypeError(concrete_type, t)
 
-  bound_abstract_types = {}
-  type_error_string = ('Structural mismatch encountered while concretizing '
-                       'abstract types. The structure of {} does not match the '
-                       'structure of {}').format(type_with_abstract_elements,
-                                                 type_with_concrete_elements)
+  type_bindings = {}
+  non_defining_usages = collections.defaultdict(list)
 
-  def _concretize_abstract_types(
-      abstract_type_spec: computation_types.Type,
-      concrete_type_spec: computation_types.Type) -> computation_types.Type:
-    """Recursive helper function to construct concrete type spec."""
-    if abstract_type_spec.is_abstract():
-      bound_type = bound_abstract_types.get(str(abstract_type_spec.label))
-      if bound_type:
-        return bound_type
+  def _check_helper(generic_type_member: computation_types.Type,
+                    concrete_type_member: computation_types.Type,
+                    defining: bool):
+    """Recursive helper function."""
+
+    def _raise_structural(mismatch):
+      raise MismatchedStructureError(concrete_type, generic_type,
+                                     concrete_type_member, generic_type_member,
+                                     mismatch)
+
+    def _both_are(predicate):
+      if predicate(generic_type_member):
+        if predicate(concrete_type_member):
+          return True
+        else:
+          _raise_structural('kind')
       else:
-        bound_abstract_types[str(abstract_type_spec.label)] = concrete_type_spec
-        return concrete_type_spec
-    elif abstract_type_spec.is_tensor():
-      return abstract_type_spec
-    elif abstract_type_spec.is_struct():
-      if not concrete_type_spec.is_struct():
-        raise TypeError(type_error_string)
-      abstract_elements = structure.to_elements(abstract_type_spec)
-      concrete_elements = structure.to_elements(concrete_type_spec)
-      if len(abstract_elements) != len(concrete_elements):
-        raise TypeError(type_error_string)
-      concretized_tuple_elements = []
-      for k in range(len(abstract_elements)):
-        if abstract_elements[k][0] != concrete_elements[k][0]:
-          raise TypeError(type_error_string)
-        concretized_tuple_elements.append(
-            (abstract_elements[k][0],
-             _concretize_abstract_types(abstract_elements[k][1],
-                                        concrete_elements[k][1])))
-      return computation_types.StructType(concretized_tuple_elements)
-    elif abstract_type_spec.is_sequence():
-      if not concrete_type_spec.is_sequence():
-        raise TypeError(type_error_string)
-      return computation_types.SequenceType(
-          _concretize_abstract_types(abstract_type_spec.element,
-                                     concrete_type_spec.element))
-    elif abstract_type_spec.is_function():
-      if not concrete_type_spec.is_function():
-        raise TypeError(type_error_string)
-      if abstract_type_spec.parameter is None:
-        if concrete_type_spec.parameter is not None:
-          return TypeError(type_error_string)
-        concretized_param = None
+        return False
+
+    if generic_type_member.is_abstract():
+      label = str(generic_type_member.label)
+      if not defining:
+        non_defining_usages[label].append(concrete_type_member)
       else:
-        concretized_param = _concretize_abstract_types(
-            abstract_type_spec.parameter, concrete_type_spec.parameter)
-      concretized_result = _concretize_abstract_types(abstract_type_spec.result,
-                                                      concrete_type_spec.result)
-      return computation_types.FunctionType(concretized_param,
-                                            concretized_result)
-    elif abstract_type_spec.is_placement():
-      if not concrete_type_spec.is_placement():
-        raise TypeError(type_error_string)
-      return abstract_type_spec
-    elif abstract_type_spec.is_federated():
-      if not concrete_type_spec.is_federated():
-        raise TypeError(type_error_string)
-      new_member = _concretize_abstract_types(abstract_type_spec.member,
-                                              concrete_type_spec.member)
-      return computation_types.FederatedType(new_member,
-                                             abstract_type_spec.placement,
-                                             abstract_type_spec.all_equal)
+        bound_type = type_bindings.get(label)
+        if bound_type is not None:
+          if not concrete_type_member.is_equivalent_to(bound_type):
+            raise MismatchedConcreteTypesError(concrete_type, generic_type,
+                                               label, bound_type,
+                                               concrete_type_member)
+        else:
+          type_bindings[label] = concrete_type_member
+    elif _both_are(lambda t: t.is_tensor()):
+      if generic_type_member != concrete_type_member:
+        _raise_structural('tensor types')
+    elif _both_are(lambda t: t.is_placement()):
+      if generic_type_member != concrete_type_member:
+        _raise_structural('placements')
+    elif _both_are(lambda t: t.is_struct()):
+      generic_elements = structure.to_elements(generic_type_member)
+      concrete_elements = structure.to_elements(concrete_type_member)
+      if len(generic_elements) != len(concrete_elements):
+        _raise_structural('length')
+      for k in range(len(generic_elements)):
+        if generic_elements[k][0] != concrete_elements[k][0]:
+          _raise_structural('element names')
+        _check_helper(generic_elements[k][1], concrete_elements[k][1], defining)
+    elif _both_are(lambda t: t.is_sequence()):
+      _check_helper(generic_type_member.element, concrete_type_member.element,
+                    defining)
+    elif _both_are(lambda t: t.is_function()):
+      if generic_type_member.parameter is None:
+        if concrete_type_member.parameter is not None:
+          _raise_structural('parameter')
+      else:
+        _check_helper(generic_type_member.parameter,
+                      concrete_type_member.parameter, not defining)
+      _check_helper(generic_type_member.result, concrete_type_member.result,
+                    defining)
+    elif _both_are(lambda t: t.is_federated()):
+      if generic_type_member.placement != concrete_type_member.placement:
+        _raise_structural('placement')
+      if generic_type_member.all_equal != concrete_type_member.all_equal:
+        _raise_structural('all equal')
+      _check_helper(generic_type_member.member, concrete_type_member.member,
+                    defining)
     else:
-      raise TypeError(
-          'Unexpected abstract typespec {}.'.format(abstract_type_spec))
+      raise TypeError(f'Unexpected type kind {generic_type}.')
 
-  concretized_abstract_type = _concretize_abstract_types(
-      type_with_abstract_elements, type_with_concrete_elements)
+  _check_helper(generic_type, concrete_type, False)
 
-  return concretized_abstract_type.is_equivalent_to(type_with_concrete_elements)
+  for label, usages in non_defining_usages.items():
+    bound_type = type_bindings.get(label)
+    if bound_type is None:
+      if len(usages) == 1:
+        # Single-use abstract types can't be wrong.
+        # Note: we could also add an exception here for cases where every usage
+        # is equivalent to the first usage. However, that's not currently
+        # needed since the only intrinsic that doesn't have a defining use is
+        # GENERIC_ZERO, which has only a sinle-use type parameter.
+        pass
+      else:
+        raise MissingDefiningUsageError(generic_type, label)
+    else:
+      for usage in usages:
+        if not usage.is_assignable_from(bound_type):
+          raise UnassignableConcreteTypesError(concrete_type, generic_type,
+                                               label, bound_type, usage)
 
 
 def check_valid_federated_weighted_mean_argument_tuple_type(

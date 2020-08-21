@@ -849,12 +849,8 @@ class Intrinsic(ComputationBuildingBlock):
     intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(uri)
     if intrinsic_def is not None:
       # Note: this is really expensive.
-      if not type_analysis.is_concrete_instance_of(
-          type_signature, intrinsic_def.type_signature):
-        raise TypeError('Tried to construct an Intrinsic with bad type '
-                        'signature; Intrinsic {} expects type signature {}, '
-                        'and you tried to construct one of type {}.'.format(
-                            uri, intrinsic_def.type_signature, type_signature))
+      type_analysis.check_concrete_instance_of(type_signature,
+                                               intrinsic_def.type_signature)
     super().__init__(type_signature)
     self._uri = uri
 

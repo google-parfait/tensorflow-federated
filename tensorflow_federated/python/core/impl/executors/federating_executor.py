@@ -346,10 +346,7 @@ class FederatingExecutor(executor_base.Executor):
     """
     type_spec = computation_types.to_type(type_spec)
     if isinstance(value, intrinsic_defs.IntrinsicDef):
-      if not type_analysis.is_concrete_instance_of(type_spec,
-                                                   value.type_signature):
-        raise TypeError('Incompatible type {} used with intrinsic {}.'.format(
-            type_spec, value.uri))
+      type_analysis.check_concrete_instance_of(type_spec, value.type_signature)
       return self._strategy.ingest_value(value, type_spec)
     elif isinstance(value, placement_literals.PlacementLiteral):
       if type_spec is None:
