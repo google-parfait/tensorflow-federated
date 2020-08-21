@@ -65,7 +65,6 @@ divide-and-conquer.
 import collections
 
 from absl import logging
-import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -124,7 +123,7 @@ def check_extraction_result(before_extraction, extracted):
             before_extraction.type_signature, extracted.type_signature))
 
 
-def consolidate_and_extract_local_processing(comp):
+def consolidate_and_extract_local_processing(comp, grappler_config_proto):
   """Consolidates all the local processing in `comp`.
 
   The input computation `comp` must have the following properties:
@@ -213,6 +212,9 @@ def consolidate_and_extract_local_processing(comp):
   Args:
     comp: An instance of `building_blocks.ComputationBuildingBlock` that serves
       as the input to this transformation, as described above.
+    grappler_config_proto: An instance of `tf.compat.v1.ConfigProto` to
+      configure Grappler graph optimization of the generated TensorFlow graph.
+      If `None`, Grappler is bypassed.
 
   Returns:
     An instance of `building_blocks.CompiledComputation` that holds the
@@ -239,18 +241,19 @@ def consolidate_and_extract_local_processing(comp):
       # `federated_apply/map`.
       if unwrapped.function.uri in (intrinsic_defs.FEDERATED_APPLY.uri,
                                     intrinsic_defs.FEDERATED_MAP.uri):
-        extracted = parse_tff_to_tf(unwrapped.argument[0])
+        extracted = parse_tff_to_tf(unwrapped.argument[0],
+                                    grappler_config_proto)
         check_extraction_result(unwrapped.argument[0], extracted)
         return extracted
       else:
         member_type = None if comp.parameter_type is None else comp.parameter_type.member
         rebound = building_blocks.Lambda(comp.parameter_name, member_type,
                                          unwrapped.argument)
-        extracted = parse_tff_to_tf(rebound)
+        extracted = parse_tff_to_tf(rebound, grappler_config_proto)
         check_extraction_result(rebound, extracted)
         return extracted
     else:
-      extracted = parse_tff_to_tf(comp)
+      extracted = parse_tff_to_tf(comp, grappler_config_proto)
       check_extraction_result(comp, extracted)
       return extracted
   elif comp.type_signature.is_federated():
@@ -259,20 +262,20 @@ def consolidate_and_extract_local_processing(comp):
     # `federated_apply/map`.
     if unwrapped.function.uri in (intrinsic_defs.FEDERATED_APPLY.uri,
                                   intrinsic_defs.FEDERATED_MAP.uri):
-      extracted = parse_tff_to_tf(unwrapped.argument[0])
+      extracted = parse_tff_to_tf(unwrapped.argument[0], grappler_config_proto)
       check_extraction_result(unwrapped.argument[0], extracted)
       return extracted
     else:
-      extracted = parse_tff_to_tf(unwrapped.argument)
+      extracted = parse_tff_to_tf(unwrapped.argument, grappler_config_proto)
       check_extraction_result(unwrapped.argument, extracted)
       return extracted.function
   else:
-    called_tf = parse_tff_to_tf(comp)
+    called_tf = parse_tff_to_tf(comp, grappler_config_proto)
     check_extraction_result(comp, called_tf)
     return called_tf.function
 
 
-def parse_tff_to_tf(comp):
+def parse_tff_to_tf(comp, grappler_config_proto):
   """Parses TFF construct `comp` into TensorFlow construct.
 
   Does not change the type signature of `comp`. Therefore may return either
@@ -282,6 +285,9 @@ def parse_tff_to_tf(comp):
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` to parse down
       to a single TF block.
+    grappler_config_proto: An instance of `tf.compat.v1.ConfigProto` to
+      configure Grappler graph optimization of the generated TensorFlow graph.
+      If `None`, Grappler is bypassed.
 
   Returns:
     The result of parsing TFF to TF. If successful, this is either a single
@@ -292,28 +298,12 @@ def parse_tff_to_tf(comp):
   """
   tf_parsed, _ = transformations.compile_local_computation_to_tensorflow(comp)
 
-  # TODO(b/154352798): We copy TF's RewriterConfig toggle enum values as it
-  # is not exposed. There is ongoing discussion with TF API owners on exposing
-  # the ability to call into Grappler offline; follow up here when we land on
-  # something.
-  logging.info('Using Grappler on `CanonicalForm` TensorFlow graphs.')
-  off = 2
-  aggressive = 3
+  if grappler_config_proto is not None:
+    logging.info('Using Grappler on `CanonicalForm` TensorFlow graphs.')
+    tf_parsed, _ = transformations.optimize_tensorflow_graphs(
+        tf_parsed, grappler_config_proto)
 
-  grappler_config_proto = tf.compat.v1.ConfigProto()
-
-  # TODO(b/155127458): Enable function optimization when possible.
-  grappler_config_proto.graph_options.rewrite_options.function_optimization = off
-
-  grappler_config_proto.graph_options.rewrite_options.memory_optimization = aggressive
-  grappler_config_proto.graph_options.rewrite_options.constant_folding = aggressive
-  grappler_config_proto.graph_options.rewrite_options.arithmetic_optimization = aggressive
-  grappler_config_proto.graph_options.rewrite_options.loop_optimization = aggressive
-
-  optimized_tf, _ = transformations.optimize_tensorflow_graphs(
-      tf_parsed, grappler_config_proto)
-
-  return optimized_tf
+  return tf_parsed
 
 
 def force_align_and_split_by_intrinsics(comp, uri):

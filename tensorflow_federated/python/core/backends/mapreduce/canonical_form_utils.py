@@ -18,7 +18,9 @@ variable names used in this module.
 """
 
 import collections
-from typing import Callable
+from typing import Callable, Optional
+
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
@@ -37,6 +39,14 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
+
+_GRAPPLER_DEFAULT_CONFIG = tf.compat.v1.ConfigProto()
+_AGGRESSIVE = _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.AGGRESSIVE
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.memory_optimization = _AGGRESSIVE
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.constant_folding = _AGGRESSIVE
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.arithmetic_optimization = _AGGRESSIVE
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.loop_optimization = _AGGRESSIVE
+_GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.function_optimization = _AGGRESSIVE
 
 
 def get_iterative_process_for_canonical_form(cf):
@@ -437,7 +447,7 @@ def _create_before_and_after_aggregate_for_no_federated_secure_sum(tree):
   return before_aggregate, after_aggregate
 
 
-def _extract_prepare(before_broadcast):
+def _extract_prepare(before_broadcast, grappler_config):
   """extracts `prepare` from `before_broadcast`.
 
   This function is intended to be used by
@@ -448,6 +458,8 @@ def _extract_prepare(before_broadcast):
   Args:
     before_broadcast: The first result of splitting `next_comp` on
       `intrinsic_defs.FEDERATED_BROADCAST`.
+    grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
+      Grappler graph optimization.
 
   Returns:
     `prepare` as specified by `canonical_form.CanonicalForm`, an instance of
@@ -462,10 +474,10 @@ def _extract_prepare(before_broadcast):
       transformations.bind_single_selection_as_argument_to_lower_level_lambda(
           before_broadcast, s1_index_in_before_broadcast)).result.function
   return transformations.consolidate_and_extract_local_processing(
-      s1_to_s2_computation)
+      s1_to_s2_computation, grappler_config)
 
 
-def _extract_work(before_aggregate):
+def _extract_work(before_aggregate, grappler_config):
   """Extracts `work` from `before_aggregate`.
 
   This function is intended to be used by
@@ -476,6 +488,8 @@ def _extract_work(before_aggregate):
   Args:
     before_aggregate: The first result of splitting `after_broadcast` on
       aggregate intrinsics.
+    grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
+      Grappler graph optimization.
 
   Returns:
     `work` as specified by `canonical_form.CanonicalForm`, an instance of
@@ -500,10 +514,10 @@ def _extract_work(before_aggregate):
           c3_to_unzipped_c4_computation.result))
 
   return transformations.consolidate_and_extract_local_processing(
-      c3_to_c4_computation)
+      c3_to_c4_computation, grappler_config)
 
 
-def _extract_federated_aggregate_functions(before_aggregate):
+def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
   """Extracts federated aggregate functions from `before_aggregate`.
 
   This function is intended to be used by
@@ -514,6 +528,8 @@ def _extract_federated_aggregate_functions(before_aggregate):
   Args:
     before_aggregate: The first result of splitting `after_broadcast` on
       aggregate intrinsics.
+    grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
+      Grappler graph optimization.
 
   Returns:
     `zero`, `accumulate`, `merge` and `report` as specified by
@@ -541,15 +557,18 @@ def _extract_federated_aggregate_functions(before_aggregate):
   report_tff = transformations.select_output_from_lambda(
       federated_aggregate, report_index_in_federated_aggregate_result).result
 
-  zero = transformations.consolidate_and_extract_local_processing(zero_tff)
+  zero = transformations.consolidate_and_extract_local_processing(
+      zero_tff, grappler_config)
   accumulate = transformations.consolidate_and_extract_local_processing(
-      accumulate_tff)
-  merge = transformations.consolidate_and_extract_local_processing(merge_tff)
-  report = transformations.consolidate_and_extract_local_processing(report_tff)
+      accumulate_tff, grappler_config)
+  merge = transformations.consolidate_and_extract_local_processing(
+      merge_tff, grappler_config)
+  report = transformations.consolidate_and_extract_local_processing(
+      report_tff, grappler_config)
   return zero, accumulate, merge, report
 
 
-def _extract_federated_secure_sum_functions(before_aggregate):
+def _extract_federated_secure_sum_functions(before_aggregate, grappler_config):
   """Extracts secure sum from `before_aggregate`.
 
   This function is intended to be used by
@@ -560,6 +579,8 @@ def _extract_federated_secure_sum_functions(before_aggregate):
   Args:
     before_aggregate: The first result of splitting `after_broadcast` on
       aggregate intrinsics.
+    grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
+      Grappler graph optimization.
 
   Returns:
     `bitwidth` as specified by `canonical_form.CanonicalForm`, an instance of
@@ -577,10 +598,11 @@ def _extract_federated_secure_sum_functions(before_aggregate):
       federated_secure_sum,
       bitwidth_index_in_federated_secure_sum_result).result
 
-  return transformations.consolidate_and_extract_local_processing(bitwidth_tff)
+  return transformations.consolidate_and_extract_local_processing(
+      bitwidth_tff, grappler_config)
 
 
-def _extract_update(after_aggregate):
+def _extract_update(after_aggregate, grappler_config):
   """Extracts `update` from `after_aggregate`.
 
   This function is intended to be used by
@@ -591,6 +613,8 @@ def _extract_update(after_aggregate):
   Args:
     after_aggregate: The second result of splitting `after_broadcast` on
       aggregate intrinsics.
+    grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
+      Grappler graph optimization.
 
   Returns:
     `update` as specified by `canonical_form.CanonicalForm`, an instance of
@@ -642,7 +666,8 @@ def _extract_update(after_aggregate):
       pack_fn, ref)
   call = building_blocks.Call(s6_to_s7_computation, unpacked_args)
   fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
-  return transformations.consolidate_and_extract_local_processing(fn)
+  return transformations.consolidate_and_extract_local_processing(
+      fn, grappler_config)
 
 
 def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
@@ -894,7 +919,10 @@ def _replace_intrinsics_with_bodies(comp):
   return comp
 
 
-def get_canonical_form_for_iterative_process(ip):
+def get_canonical_form_for_iterative_process(
+    ip: iterative_process.IterativeProcess,
+    grappler_config: Optional[
+        tf.compat.v1.ConfigProto] = _GRAPPLER_DEFAULT_CONFIG):
   """Constructs `tff.backends.mapreduce.CanonicalForm` given iterative process.
 
   This function transforms computations from the input `ip` into
@@ -902,6 +930,11 @@ def get_canonical_form_for_iterative_process(ip):
 
   Args:
     ip: An instance of `tff.templates.IterativeProcess`.
+    grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
+      configure Grappler graph optimization of the TensorFlow graphs backing the
+      resulting `tff.backends.mapreduce.CanonicalForm`. These options are
+      combined with a set of defaults that aggressively configure Grappler.
+      If `None`, Grappler is bypassed.
 
   Returns:
     An instance of `tff.backends.mapreduce.CanonicalForm` equivalent to this
@@ -913,6 +946,12 @@ def get_canonical_form_for_iterative_process(ip):
       process fails.
   """
   py_typecheck.check_type(ip, iterative_process.IterativeProcess)
+  if grappler_config is not None:
+    py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
+    overridden_grappler_config = tf.compat.v1.ConfigProto()
+    overridden_grappler_config.CopyFrom(_GRAPPLER_DEFAULT_CONFIG)
+    overridden_grappler_config.MergeFrom(grappler_config)
+    grappler_config = overridden_grappler_config
 
   initialize_comp = building_blocks.ComputationBuildingBlock.from_proto(
       ip.initialize._computation_proto)  # pylint: disable=protected-access
@@ -967,26 +1006,27 @@ def get_canonical_form_for_iterative_process(ip):
                              before_aggregate, after_aggregate)
 
   initialize = transformations.consolidate_and_extract_local_processing(
-      initialize_comp)
+      initialize_comp, grappler_config)
   _check_type_equal(initialize.type_signature, type_info['initialize_type'])
 
-  prepare = _extract_prepare(before_broadcast)
+  prepare = _extract_prepare(before_broadcast, grappler_config)
   _check_type_equal(prepare.type_signature, type_info['prepare_type'])
 
-  work = _extract_work(before_aggregate)
+  work = _extract_work(before_aggregate, grappler_config)
   _check_type_equal(work.type_signature, type_info['work_type'])
 
   zero, accumulate, merge, report = _extract_federated_aggregate_functions(
-      before_aggregate)
+      before_aggregate, grappler_config)
   _check_type_equal(zero.type_signature, type_info['zero_type'])
   _check_type_equal(accumulate.type_signature, type_info['accumulate_type'])
   _check_type_equal(merge.type_signature, type_info['merge_type'])
   _check_type_equal(report.type_signature, type_info['report_type'])
 
-  bitwidth = _extract_federated_secure_sum_functions(before_aggregate)
+  bitwidth = _extract_federated_secure_sum_functions(before_aggregate,
+                                                     grappler_config)
   _check_type_equal(bitwidth.type_signature, type_info['bitwidth_type'])
 
-  update = _extract_update(after_aggregate)
+  update = _extract_update(after_aggregate, grappler_config)
   _check_type_equal(update.type_signature, type_info['update_type'])
 
   return canonical_form.CanonicalForm(

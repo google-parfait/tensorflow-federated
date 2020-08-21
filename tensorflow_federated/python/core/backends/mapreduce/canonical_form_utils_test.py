@@ -806,6 +806,35 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
 
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
+  # pyformat: disable
+  @parameterized.named_parameters(
+      ('sum_example',
+       get_iterative_process_for_sum_example()),
+      ('sum_example_with_no_prepare',
+       get_iterative_process_for_sum_example_with_no_prepare()),
+      ('sum_example_with_no_broadcast',
+       get_iterative_process_for_sum_example_with_no_broadcast()),
+      ('sum_example_with_no_federated_aggregate',
+       get_iterative_process_for_sum_example_with_no_federated_aggregate()),
+      ('sum_example_with_no_federated_secure_sum',
+       get_iterative_process_for_sum_example_with_no_federated_secure_sum()),
+      ('sum_example_with_no_update',
+       get_iterative_process_for_sum_example_with_no_update()),
+      ('sum_example_with_no_server_state',
+       get_iterative_process_for_sum_example_with_no_server_state()),
+      ('minimal_sum_example',
+       get_iterative_process_for_minimal_sum_example()),
+      ('example_with_unused_lambda_arg',
+       test_utils.get_iterative_process_for_example_with_unused_lambda_arg()),
+      ('example_with_unused_tf_computation_arg',
+       test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()),
+  )
+  # pyformat: enable
+  def test_returns_canonical_form_with_grappler_disabled(self, ip):
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip, None)
+
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+
   def test_raises_value_error_for_sum_example_with_no_aggregation(self):
     ip = get_iterative_process_for_sum_example_with_no_aggregation()
 

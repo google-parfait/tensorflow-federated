@@ -33,6 +33,9 @@ from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
+DEFAULT_GRAPPLER_CONFIG = tf.compat.v1.ConfigProto()
+
+
 class CheckExtractionResultTest(absltest.TestCase):
 
   def get_function_from_first_symbol_binding_in_lambda_result(self, tree):
@@ -118,13 +121,15 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
-      transformations.consolidate_and_extract_local_processing(None)
+      transformations.consolidate_and_extract_local_processing(
+          None, DEFAULT_GRAPPLER_CONFIG)
 
   def test_raises_reference_to_functional_type(self):
     function_type = computation_types.FunctionType(tf.int32, tf.int32)
     ref = building_blocks.Reference('x', function_type)
     with self.assertRaisesRegex(ValueError, 'of functional type passed'):
-      transformations.consolidate_and_extract_local_processing(ref)
+      transformations.consolidate_and_extract_local_processing(
+          ref, DEFAULT_GRAPPLER_CONFIG)
 
   def test_already_reduced_case(self):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
@@ -132,7 +137,8 @@ class ConsolidateAndExtractTest(absltest.TestCase):
 
     comp = mapreduce_test_utils.computation_to_building_block(init)
 
-    result = transformations.consolidate_and_extract_local_processing(comp)
+    result = transformations.consolidate_and_extract_local_processing(
+        comp, DEFAULT_GRAPPLER_CONFIG)
 
     self.assertIsInstance(result, building_blocks.CompiledComputation)
     self.assertIsInstance(result.proto, computation_pb2.Computation)
@@ -141,14 +147,16 @@ class ConsolidateAndExtractTest(absltest.TestCase):
   def test_reduces_unplaced_lambda_leaving_type_signature_alone(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', tf.int32))
-    extracted_tf = transformations.consolidate_and_extract_local_processing(lam)
+    extracted_tf = transformations.consolidate_and_extract_local_processing(
+        lam, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     self.assertEqual(extracted_tf.type_signature, lam.type_signature)
 
   def test_reduces_unplaced_lambda_to_equivalent_tf(self):
     lam = building_blocks.Lambda('x', tf.int32,
                                  building_blocks.Reference('x', tf.int32))
-    extracted_tf = transformations.consolidate_and_extract_local_processing(lam)
+    extracted_tf = transformations.consolidate_and_extract_local_processing(
+        lam, DEFAULT_GRAPPLER_CONFIG)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
     executable_lam = computation_wrapper_instances.building_block_to_computation(
@@ -160,7 +168,8 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     fed_int_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     lam = building_blocks.Lambda('x', fed_int_type,
                                  building_blocks.Reference('x', fed_int_type))
-    extracted_tf = transformations.consolidate_and_extract_local_processing(lam)
+    extracted_tf = transformations.consolidate_and_extract_local_processing(
+        lam, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     unplaced_function_type = computation_types.FunctionType(
         fed_int_type.member, fed_int_type.member)
@@ -173,7 +182,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
         'arg', computation_types.FederatedType(tf.int32, placements.CLIENTS))
     mapped_fn = building_block_factory.create_federated_map_or_apply(lam, arg)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
-        mapped_fn)
+        mapped_fn, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
@@ -189,7 +198,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
         'arg', computation_types.FederatedType(tf.int32, placements.CLIENTS))
     mapped_fn = building_block_factory.create_federated_map_or_apply(lam, arg)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
-        mapped_fn)
+        mapped_fn, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
@@ -204,7 +213,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     federated_value = building_block_factory.create_federated_value(
         zero, placements.SERVER)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
-        federated_value)
+        federated_value, DEFAULT_GRAPPLER_CONFIG)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
     self.assertEqual(executable_tf(), 0)
@@ -216,7 +225,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     federated_value = building_block_factory.create_federated_value(
         zero, placements.CLIENTS)
     extracted_tf = transformations.consolidate_and_extract_local_processing(
-        federated_value)
+        federated_value, DEFAULT_GRAPPLER_CONFIG)
     executable_tf = computation_wrapper_instances.building_block_to_computation(
         extracted_tf)
     self.assertEqual(executable_tf(), 0)
@@ -224,7 +233,8 @@ class ConsolidateAndExtractTest(absltest.TestCase):
   def test_reduces_lambda_returning_empty_tuple_to_tf(self):
     empty_tuple = building_blocks.Struct([])
     lam = building_blocks.Lambda('x', tf.int32, empty_tuple)
-    extracted_tf = transformations.consolidate_and_extract_local_processing(lam)
+    extracted_tf = transformations.consolidate_and_extract_local_processing(
+        lam, DEFAULT_GRAPPLER_CONFIG)
     self.assertIsInstance(extracted_tf, building_blocks.CompiledComputation)
 
 
