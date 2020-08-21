@@ -164,13 +164,12 @@ def main(argv):
   server_optimizer_fn = optimizer_utils.create_optimizer_fn_from_flags('server')
   client_optimizer_fn = optimizer_utils.create_optimizer_fn_from_flags('client')
 
-  training_process = dp_utils.DPFedAvgProcessAdapter(
-      tff.learning.federated_averaging.build_federated_averaging_process(
-          model_fn=model_fn,
-          server_optimizer_fn=server_optimizer_fn,
-          client_weight_fn=client_weight_fn,
-          client_optimizer_fn=client_optimizer_fn,
-          aggregation_process=aggregation_process))
+  iterative_process = tff.learning.build_federated_averaging_process(
+      model_fn=model_fn,
+      server_optimizer_fn=server_optimizer_fn,
+      client_weight_fn=client_weight_fn,
+      client_optimizer_fn=client_optimizer_fn,
+      aggregation_process=aggregation_process)
 
   client_datasets_fn = training_utils.build_client_datasets_fn(
       train_dataset, FLAGS.clients_per_round)
@@ -195,7 +194,7 @@ def main(argv):
   logging.info(model_builder().summary())
 
   training_loop.run(
-      training_process, client_datasets_fn, evaluate_fn, test_fn=test_fn)
+      iterative_process, client_datasets_fn, evaluate_fn, test_fn=test_fn)
 
 
 if __name__ == '__main__':

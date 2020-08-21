@@ -3,12 +3,6 @@ package(default_visibility = ["//tensorflow_federated/python/research"])
 licenses(["notice"])
 
 py_library(
-    name = "adapters",
-    srcs = ["adapters.py"],
-    srcs_version = "PY3",
-)
-
-py_library(
     name = "aggregate_fns",
     srcs = ["aggregate_fns.py"],
     srcs_version = "PY3",
@@ -96,10 +90,10 @@ py_library(
     srcs = ["training_loop.py"],
     srcs_version = "PY3",
     deps = [
-        ":adapters",
         ":checkpoint_manager",
         ":metrics_manager",
         ":utils_impl",
+        "//tensorflow_federated",
     ],
 )
 
@@ -110,7 +104,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":adapters",
         ":checkpoint_manager",
         ":metrics_manager",
         ":training_loop",

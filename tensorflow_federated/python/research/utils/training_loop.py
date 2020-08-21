@@ -24,8 +24,8 @@ from absl import flags
 from absl import logging
 import pandas as pd
 import tensorflow as tf
+import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.research.utils import checkpoint_manager
 from tensorflow_federated.python.research.utils import metrics_manager
 from tensorflow_federated.python.research.utils import utils_impl
@@ -137,7 +137,7 @@ def _compute_numpy_l2_difference(model, previous_model):
   return l2_total_tensor.numpy()
 
 
-def run(iterative_process: adapters.IterativeProcessPythonAdapter,
+def run(iterative_process: tff.templates.IterativeProcess,
         client_datasets_fn: Callable[[int], List[tf.data.Dataset]],
         validation_fn: Callable[[Any], Dict[str, float]],
         train_eval_fn: Optional[Callable[[Any], Dict[str, float]]] = None,
@@ -145,7 +145,7 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
   """Runs federated training for the given TFF `IterativeProcess` instance.
 
   Args:
-    iterative_process: An `IterativeProcessPythonAdapter` instance to run.
+    iterative_process: A `tff.templates.IterativeProcess` instance to run.
     client_datasets_fn: Function accepting an integer argument (the round
       number) and returning a list of client datasets to use as federated data
       for that round, and a list of the corresponding client ids.
@@ -164,9 +164,9 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     The `state` of the `IterationResult` representing the result of the training
       loop.
   """
-  if not isinstance(iterative_process, adapters.IterativeProcessPythonAdapter):
+  if not isinstance(iterative_process, tff.templates.IterativeProcess):
     raise TypeError('iterative_process should be type '
-                    '`adapters.IterativeProcessPythonAdapter`.')
+                    '`tff.templates.IterativeProcess`.')
   if not callable(client_datasets_fn):
     raise TypeError('client_datasets_fn should be callable.')
   if not callable(validation_fn):
@@ -177,7 +177,7 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     raise TypeError('test_fn should be callable.')
   total_rounds = FLAGS.total_rounds
 
-  logging.info('Starting iterative_process_training_loop')
+  logging.info('Starting iterative_process training loop...')
   initial_state = iterative_process.initialize()
 
   if not hasattr(initial_state, 'model'):
@@ -219,15 +219,13 @@ def run(iterative_process: adapters.IterativeProcessPythonAdapter,
     # determined (and possibly fixed).
     try:
       with profiler(round_num):
-        iteration_result = iterative_process.next(state, federated_train_data)
+        state, round_metrics = iterative_process.next(state,
+                                                      federated_train_data)
     except (tf.errors.FailedPreconditionError, tf.errors.NotFoundError,
             tf.errors.InternalError) as e:
       logging.warning('Caught %s exception while running round %d:\n\t%s',
                       type(e), round_num, e)
       continue  # restart the loop without incrementing the round number
-
-    state = iteration_result.state
-    round_metrics = iteration_result.metrics
 
     train_metrics['training_secs'] = time.time() - training_start_time
     train_metrics['model_delta_l2_norm'] = _compute_numpy_l2_difference(

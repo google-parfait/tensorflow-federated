@@ -63,14 +63,13 @@ def metrics_builder():
 
 class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
 
-  def _run_rounds(self, iterproc_adapter, client_datasets, num_rounds):
+  def _run_rounds(self, iterproc, client_datasets, num_rounds):
     train_outputs = []
-    state = iterproc_adapter.initialize()
+    state = iterproc.initialize()
     for round_num in range(num_rounds):
-      iteration_result = iterproc_adapter.next(state, client_datasets)
-      train_outputs.append(iteration_result.metrics)
-      logging.info('Round %d: %s', round_num, iteration_result.metrics)
-      state = iteration_result.state
+      state, metrics = iterproc.next(state, client_datasets)
+      train_outputs.append(metrics)
+      logging.info('Round %d: %s', round_num, metrics)
     return state, train_outputs
 
   def test_iterative_process_no_schedule_decreases_loss(self):
@@ -78,9 +77,10 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.server_lr_schedule = 'constant'
     federated_data = [[_batch_fn()]]
     input_spec = _get_input_spec()
-    iterproc_adapter = iterative_process_builder.from_flags(
-        input_spec, model_builder, loss_builder, metrics_builder)
-    _, train_outputs = self._run_rounds(iterproc_adapter, federated_data, 4)
+    iterproc = iterative_process_builder.from_flags(input_spec, model_builder,
+                                                    loss_builder,
+                                                    metrics_builder)
+    _, train_outputs = self._run_rounds(iterproc, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
   def test_iterative_process_with_custom_client_weight_fn_decreases_loss(self):
@@ -92,13 +92,13 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     def client_weight_fn(local_outputs):
       return 1.0 / (1.0 + local_outputs['loss'][-1])
 
-    iterproc_adapter = iterative_process_builder.from_flags(
+    iterproc = iterative_process_builder.from_flags(
         input_spec,
         model_builder,
         loss_builder,
         metrics_builder,
         client_weight_fn=client_weight_fn)
-    _, train_outputs = self._run_rounds(iterproc_adapter, federated_data, 4)
+    _, train_outputs = self._run_rounds(iterproc, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
   @parameterized.named_parameters(('inv_lin_decay', 'inv_lin_decay'),
@@ -112,9 +112,10 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.client_lr_schedule = sched_type
     federated_data = [[_batch_fn()]]
     input_spec = _get_input_spec()
-    iterproc_adapter = iterative_process_builder.from_flags(
-        input_spec, model_builder, loss_builder, metrics_builder)
-    _, train_outputs = self._run_rounds(iterproc_adapter, federated_data, 4)
+    iterproc = iterative_process_builder.from_flags(input_spec, model_builder,
+                                                    loss_builder,
+                                                    metrics_builder)
+    _, train_outputs = self._run_rounds(iterproc, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
   def test_iterative_process_with_exp_decay_client_schedule(self):
@@ -126,9 +127,10 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
 
     federated_data = [[_batch_fn()]]
     input_spec = _get_input_spec()
-    iterproc_adapter = iterative_process_builder.from_flags(
-        input_spec, model_builder, loss_builder, metrics_builder)
-    _, train_outputs = self._run_rounds(iterproc_adapter, federated_data, 4)
+    iterproc = iterative_process_builder.from_flags(input_spec, model_builder,
+                                                    loss_builder,
+                                                    metrics_builder)
+    _, train_outputs = self._run_rounds(iterproc, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
   @parameterized.named_parameters(('inv_lin_decay', 'inv_lin_decay'),
@@ -141,9 +143,10 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.server_lr_schedule = sched_type
     federated_data = [[_batch_fn()]]
     input_spec = _get_input_spec()
-    iterproc_adapter = iterative_process_builder.from_flags(
-        input_spec, model_builder, loss_builder, metrics_builder)
-    _, train_outputs = self._run_rounds(iterproc_adapter, federated_data, 4)
+    iterproc = iterative_process_builder.from_flags(input_spec, model_builder,
+                                                    loss_builder,
+                                                    metrics_builder)
+    _, train_outputs = self._run_rounds(iterproc, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
   def test_iterative_process_with_exp_decay_server_schedule(self):
@@ -155,9 +158,10 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
 
     federated_data = [[_batch_fn()]]
     input_spec = _get_input_spec()
-    iterproc_adapter = iterative_process_builder.from_flags(
-        input_spec, model_builder, loss_builder, metrics_builder)
-    _, train_outputs = self._run_rounds(iterproc_adapter, federated_data, 4)
+    iterproc = iterative_process_builder.from_flags(input_spec, model_builder,
+                                                    loss_builder,
+                                                    metrics_builder)
+    _, train_outputs = self._run_rounds(iterproc, federated_data, 4)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
 
   def test_decay_factor_0_does_not_decrease_loss(self):
@@ -169,9 +173,10 @@ class IterativeProcessBuilderTest(tf.test.TestCase, parameterized.TestCase):
 
     federated_data = [[_batch_fn()]]
     input_spec = _get_input_spec()
-    iterproc_adapter = iterative_process_builder.from_flags(
-        input_spec, model_builder, loss_builder, metrics_builder)
-    _, train_outputs = self._run_rounds(iterproc_adapter, federated_data, 4)
+    iterproc = iterative_process_builder.from_flags(input_spec, model_builder,
+                                                    loss_builder,
+                                                    metrics_builder)
+    _, train_outputs = self._run_rounds(iterproc, federated_data, 4)
     self.assertLess(train_outputs[1]['loss'], train_outputs[0]['loss'])
     self.assertNear(
         train_outputs[2]['loss'], train_outputs[3]['loss'], err=1e-5)

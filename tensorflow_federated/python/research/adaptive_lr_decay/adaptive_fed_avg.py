@@ -27,8 +27,6 @@ import attr
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.utils import adapters
-
 
 def _initialize_optimizer_vars(model, optimizer):
   """Ensures variables holding the state of `optimizer` are created."""
@@ -372,36 +370,15 @@ def build_fed_avg_process(model_fn,
         server_update_fn, (server_state, aggregated_gradients,
                            client_monitor_value, server_monitor_value))
 
-    return server_state, initial_aggregated_outputs, aggregated_outputs
+    result = collections.OrderedDict(
+        before_training=initial_aggregated_outputs,
+        during_training=aggregated_outputs)
+
+    return server_state, result
 
   @tff.federated_computation
   def initialize_fn():
     return tff.federated_value(server_init_tf(), tff.SERVER)
 
-  tff_iterative_process = tff.templates.IterativeProcess(
+  return tff.templates.IterativeProcess(
       initialize_fn=initialize_fn, next_fn=run_one_round)
-
-  return FedAvgDecayAdapter(tff_iterative_process)
-
-
-class FedAvgDecayAdapter(adapters.IterativeProcessPythonAdapter):
-  """Converts iterative process results from anonymous tuples.
-
-  Converts to ServerState and unpacks metrics. This simplifies tasks such as
-  recording metrics.
-  """
-
-  def __init__(self, iterative_process):
-    self._iterative_process = iterative_process
-
-  def initialize(self):
-    return self._iterative_process.initialize()
-
-  def next(self, state, data):
-    state, initial_metrics, metrics = self._iterative_process.next(state, data)
-    total_metrics = {
-        'before_training': initial_metrics,
-        'during_training': metrics
-    }
-    outputs = None
-    return adapters.IterationResult(state, total_metrics, outputs)

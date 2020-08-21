@@ -52,7 +52,7 @@ def from_flags(
     client_weight_fn: Optional[ClientWeightFn] = None,
     *,
     dataset_preprocess_comp: Optional[tff.Computation] = None,
-) -> fed_avg_schedule.FederatedAveragingProcessAdapter:
+) -> tff.templates.IterativeProcess:
   """Builds a `tff.templates.IterativeProcess` instance from flags.
 
   The iterative process is designed to incorporate learning rate schedules,
@@ -73,13 +73,13 @@ def from_flags(
       `model_builder`, and returns a scalar client weight. If `None`, defaults
       to the number of examples processed over all batches.
     dataset_preprocess_comp: Optional `tff.Computation` that sets up a data
-      pipeline on the clients. The computation must take a squence of values
-      and return a sequence of values, or in TFF type shorthand `(U* -> V*)`. If
+      pipeline on the clients. The computation must take a squence of values and
+      return a sequence of values, or in TFF type shorthand `(U* -> V*)`. If
       `None`, no dataset preprocessing is applied. If specified, `input_spec` is
       optinal, as the necessary type signatures will taken from the computation.
 
   Returns:
-    A `fed_avg_schedule.FederatedAveragingProcessAdapter`.
+    A `tff.templates.IterativeProcess`.
   """
   # TODO(b/147808007): Assert that model_builder() returns an uncompiled keras
   # model.

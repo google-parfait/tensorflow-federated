@@ -79,11 +79,10 @@ class DecayIterativeProcessBuilderTest(tf.test.TestCase):
     train_outputs = []
     state = iterative_process.initialize()
     for round_num in range(num_rounds):
-      iteration_result = iterative_process.next(state, client_datasets)
-      train_outputs.append(iteration_result.metrics)
-      logging.info('Round %d: %s', round_num, iteration_result.metrics)
-      logging.info('Model: %s', iteration_result.state.model)
-      state = iteration_result.state
+      state, metrics = iterative_process.next(state, client_datasets)
+      train_outputs.append(metrics)
+      logging.info('Round %d: %s', round_num, metrics)
+      logging.info('Model: %s', state.model)
     return state, train_outputs
 
   def test_iterative_process_type_signature(self):
@@ -112,9 +111,8 @@ class DecayIterativeProcessBuilderTest(tf.test.TestCase):
             client_lr_callback=lr_callback_type,
             server_lr_callback=lr_callback_type), tff.SERVER)
 
-    self.assertEqual(
-        iterative_process._iterative_process.initialize.type_signature,
-        tff.FunctionType(parameter=None, result=server_state_type))
+    self.assertEqual(iterative_process.initialize.type_signature,
+                     tff.FunctionType(parameter=None, result=server_state_type))
 
     dataset_type = tff.FederatedType(
         tff.SequenceType(
@@ -126,12 +124,15 @@ class DecayIterativeProcessBuilderTest(tf.test.TestCase):
         collections.OrderedDict(
             mean_squared_error=tff.TensorType(tf.float32),
             loss=tff.TensorType(tf.float32)), tff.SERVER)
+    output_type = collections.OrderedDict(
+        before_training=metrics_type, during_training=metrics_type)
 
-    actual_type = iterative_process._iterative_process.next.type_signature
+    expected_result_type = (server_state_type, output_type)
     expected_type = tff.FunctionType(
         parameter=(server_state_type, dataset_type),
-        result=(server_state_type, metrics_type, metrics_type))
+        result=expected_result_type)
 
+    actual_type = iterative_process.next.type_signature
     self.assertTrue(actual_type.is_equivalent_to(expected_type))
 
   def test_iterative_process_decreases_loss(self):

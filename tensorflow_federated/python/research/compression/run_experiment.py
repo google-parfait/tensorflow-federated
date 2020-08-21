@@ -31,7 +31,6 @@ from absl import flags
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.compression import compression_process_adapter
 from tensorflow_federated.python.research.compression import sparsity
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
@@ -76,6 +75,27 @@ with utils_impl.record_new_flags() as hparam_flags:
 # End of hyperparameter flags.
 
 FLAGS = flags.FLAGS
+
+
+def assign_weights_fn(reference_model, keras_model):
+  """Assign tff.learning.ModelWeights to the weights of a `tf.keras.Model`.
+
+  Args:
+    reference_model: the `tff.learning.ModelWeights` object to assign weights
+      from.
+    keras_model: the `tf.keras.Model` object to assign weights to.
+  """
+  if not isinstance(reference_model, tff.learning.ModelWeights):
+    raise TypeError('The reference model must be an instance of '
+                    'tff.learning.ModelWeights.')
+
+  def assign_weights(keras_weights, tff_weights):
+    for k, w in zip(keras_weights, tff_weights):
+      k.assign(w)
+
+  assign_weights(keras_model.trainable_weights, reference_model.trainable)
+  assign_weights(keras_model.non_trainable_weights,
+                 reference_model.non_trainable)
 
 
 def model_builder():
@@ -163,8 +183,6 @@ def run_experiment():
   client_datasets_fn = training_utils.build_client_datasets_fn(
       emnist_train, FLAGS.clients_per_round)
 
-  assign_weights_fn = compression_process_adapter.CompressionServerState.assign_weights_to_keras_model
-
   evaluate_fn = training_utils.build_evaluate_fn(
       eval_dataset=emnist_test,
       model_builder=model_builder,
@@ -207,8 +225,6 @@ def run_experiment():
       server_optimizer_fn=server_optimizer_fn,
       aggregation_process=encoded_mean_process,
       broadcast_process=encoded_broadcast_process)
-  iterative_process = compression_process_adapter.CompressionProcessAdapter(
-      iterative_process)
 
   training_loop.run(
       iterative_process=iterative_process,
@@ -220,9 +236,7 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Expected no command-line arguments, '
                          'got: {}'.format(argv))
-
   tff.backends.native.set_local_execution_context(max_fanout=25)
-
   run_experiment()
 
 

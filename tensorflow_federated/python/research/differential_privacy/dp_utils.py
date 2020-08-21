@@ -15,28 +15,6 @@
 
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.utils import adapters
-
-
-class DPFedAvgProcessAdapter(adapters.IterativeProcessPythonAdapter):
-  """Converts iterative process results from anonymous tuples.
-
-  Converts to ServerState and unpacks metrics, including adding the vector
-  clips as metrics.
-  """
-
-  def __init__(self, iterative_process):
-    self._iterative_process = iterative_process
-
-  def initialize(self):
-    return self._iterative_process.initialize()
-
-  def next(self, state, data):
-    state, metrics = self._iterative_process.next(state, data)
-
-    outputs = None
-    return adapters.IterationResult(state, metrics, outputs)
-
 
 def assign_weights_to_keras_model(reference_model, keras_model):
   """Assign the model weights to the weights of a `tf.keras.Model`.

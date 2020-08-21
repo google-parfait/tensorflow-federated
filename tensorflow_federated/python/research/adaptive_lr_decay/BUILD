@@ -6,10 +6,7 @@ py_library(
     name = "adaptive_fed_avg",
     srcs = ["adaptive_fed_avg.py"],
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated",
-        "//tensorflow_federated/python/research/utils:adapters",
-    ],
+    deps = ["//tensorflow_federated"],
 )
 
 py_test(

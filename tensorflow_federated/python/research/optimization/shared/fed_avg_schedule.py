@@ -31,13 +31,12 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 # is non-finite.
 
 import collections
-from typing import Collection, Callable, Optional, Union
+from typing import Callable, Optional, Union
 
 import attr
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 # Convenience type aliases.
@@ -258,29 +257,6 @@ def build_server_init_fn(
   return server_init_tf
 
 
-class FederatedAveragingProcessAdapter(adapters.IterativeProcessPythonAdapter):
-  """Converts iterative process results from anonymous tuples.
-
-  Converts to ServerState and unpacks metrics. This simplifies tasks such as
-  recording metrics.
-  """
-
-  def __init__(self, iterative_process: tff.templates.IterativeProcess):
-    self._iterative_process = iterative_process
-
-  def initialize(self) -> ServerState:
-    return self._iterative_process.initialize()
-
-  def next(
-      self,
-      state: ServerState,
-      data: Collection[tf.data.Dataset],
-  ) -> adapters.IterationResult:
-    state, metrics = self._iterative_process.next(state, data)
-    outputs = None
-    return adapters.IterationResult(state, metrics, outputs)
-
-
 def build_fed_avg_process(
     model_fn: ModelBuilder,
     client_optimizer_fn: OptimizerBuilder,
@@ -289,7 +265,7 @@ def build_fed_avg_process(
     server_lr: Union[float, LRScheduleFn] = 1.0,
     client_weight_fn: Optional[ClientWeightFn] = None,
     dataset_preprocess_comp: Optional[tff.Computation] = None,
-) -> FederatedAveragingProcessAdapter:
+) -> tff.templates.IterativeProcess:
   """Builds the TFF computations for optimization using federated averaging.
 
   Args:
@@ -312,7 +288,7 @@ def build_fed_avg_process(
       `None`, no dataset preprocessing is applied.
 
   Returns:
-    A `FederatedAveragingProcessAdapter`.
+    A `tff.templates.IterativeProcess`.
   """
 
   client_lr_schedule = client_lr
@@ -406,7 +382,5 @@ def build_fed_avg_process(
   def initialize_fn():
     return tff.federated_value(server_init_tf(), tff.SERVER)
 
-  tff_iterative_process = tff.templates.IterativeProcess(
+  return tff.templates.IterativeProcess(
       initialize_fn=initialize_fn, next_fn=run_one_round)
-
-  return FederatedAveragingProcessAdapter(tff_iterative_process)

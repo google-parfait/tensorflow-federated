@@ -21,7 +21,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.utils import adapters
 from tensorflow_federated.python.research.utils import checkpoint_manager
 from tensorflow_federated.python.research.utils import metrics_manager
 from tensorflow_federated.python.research.utils import training_loop
@@ -31,27 +30,11 @@ _Batch = collections.namedtuple('Batch', ['x', 'y'])
 FLAGS = flags.FLAGS
 
 
-class BasicAdapter(adapters.IterativeProcessPythonAdapter):
-  """Converts iterative process results from anonymous tuples."""
-
-  def __init__(self, iterative_process):
-    self._iterative_process = iterative_process
-
-  def initialize(self):
-    return self._iterative_process.initialize()
-
-  def next(self, state, data):
-    state, metrics = self._iterative_process.next(state, data)
-    outputs = None
-    return adapters.IterationResult(state, metrics, outputs)
-
-
 def _build_federated_averaging_process():
-  iterative_process = tff.learning.build_federated_averaging_process(
+  return tff.learning.build_federated_averaging_process(
       _uncompiled_model_fn,
       client_optimizer_fn=tf.keras.optimizers.SGD,
       server_optimizer_fn=tf.keras.optimizers.SGD)
-  return BasicAdapter(iterative_process)
 
 
 def _uncompiled_model_fn():
@@ -152,7 +135,7 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
   def test_raises_no_model_attribute_in_state(self):
 
-    class BadIterativeProcess(adapters.IterativeProcessPythonAdapter):
+    class BadIterativeProcess(tff.templates.IterativeProcess):
       """Converts iterative process results from anonymous tuples."""
 
       def __init__(self):

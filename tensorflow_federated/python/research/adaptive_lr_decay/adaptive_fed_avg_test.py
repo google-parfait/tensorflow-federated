@@ -54,16 +54,17 @@ class AdaptiveFedAvgTest(tf.test.TestCase):
     train_outputs = []
     state = iterative_process.initialize()
     for round_num in range(num_rounds):
-      iteration_result = iterative_process.next(state, client_datasets)
-      if hasattr(iteration_result.metrics, 'train'):
-        # tff.learning returns a nested tuple of metrics, we only compare
-        # against `train`.
-        train_outputs.append(iteration_result.metrics.train)
-      else:
-        train_outputs.append(iteration_result.metrics)
-      logging.info('Round %d: %s', round_num, iteration_result.metrics)
-      logging.info('Model: %s', iteration_result.state.model)
-      state = iteration_result.state
+      state, metrics = iterative_process.next(state, client_datasets)
+      # iteration_result = iterative_process.next(state, client_datasets)
+      # if hasattr(iteration_result['result'], 'train'):
+      #   # tff.learning returns a nested tuple of metrics, we only compare
+      #   # against `train`.
+      #   train_outputs.append(iteration_result['result'].train)
+      # else:
+      #   train_outputs.append(iteration_result['result'])
+      train_outputs.append(metrics)
+      logging.info('Round %d: %s', round_num, metrics)
+      logging.info('Model: %s', state.model)
     return state, train_outputs
 
   def _run_rounds_tff_fedavg(self, iterative_process, num_rounds):
