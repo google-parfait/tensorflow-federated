@@ -21,4 +21,5 @@ from tensorflow_federated.python.simulation.from_tensor_slices_client_data impor
 from tensorflow_federated.python.simulation.hdf5_client_data import HDF5ClientData
 from tensorflow_federated.python.simulation.iterative_process_compositions import compose_dataset_computation
 from tensorflow_federated.python.simulation.server_utils import run_server
+from tensorflow_federated.python.simulation.server_utils import server_context
 from tensorflow_federated.python.simulation.transforming_client_data import TransformingClientData

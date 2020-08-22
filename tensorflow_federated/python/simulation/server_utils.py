@@ -14,8 +14,10 @@
 """A set of utilities for components of simulation serving infrastructure."""
 
 import concurrent
+import contextlib
 import time
 
+from absl import logging
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
@@ -26,10 +28,63 @@ from tensorflow_federated.python.core.impl.executors import executor_service
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
+@contextlib.contextmanager
+def server_context(executor, num_threads, port, credentials=None, options=None):
+  """Context manager yielding gRPC server hosting simulation component.
+
+  Args:
+    executor: The executor to be hosted by the server.
+    num_threads: The number of network threads to use for handling gRPC calls.
+    port: The port to listen on (for gRPC), must be a non-zero integer.
+    credentials: The optional credentials to use for the secure connection if
+      any, or `None` if the server should open an insecure port. If specified,
+      must be a valid `ServerCredentials` object that can be accepted by the
+      gRPC server's `add_secure_port()`.
+    options: The optional `list` of server options, each in the `(key, value)`
+      format accepted by the `grpc.server()` constructor.
+
+  Yields:
+    The constructed gRPC server.
+
+  Raises:
+    ValueError: If `num_threads` or `port` are invalid.
+  """
+  py_typecheck.check_type(executor, executor_base.Executor)
+  py_typecheck.check_type(num_threads, int)
+  py_typecheck.check_type(port, int)
+  if credentials is not None:
+    py_typecheck.check_type(credentials, grpc.ServerCredentials)
+  if num_threads < 1:
+    raise ValueError('The number of threads must be a positive integer.')
+  if port < 1:
+    raise ValueError('The server port must be a positive integer.')
+  try:
+    service = executor_service.ExecutorService(executor)
+    server_kwargs = {}
+    if options is not None:
+      server_kwargs['options'] = options
+    server = grpc.server(
+        concurrent.futures.ThreadPoolExecutor(max_workers=num_threads),
+        **server_kwargs)
+    full_port_string = '[::]:{}'.format(port)
+    if credentials is not None:
+      server.add_secure_port(full_port_string, credentials)
+    else:
+      server.add_insecure_port(full_port_string)
+    executor_pb2_grpc.add_ExecutorServicer_to_server(service, server)
+    server.start()
+    yield server
+  except KeyboardInterrupt:
+    logging.info('Server stopped by KeyboardInterrupt.')
+  finally:
+    logging.info('Shutting down server.')
+    server.stop(None)
+
+
 def run_server(executor, num_threads, port, credentials=None, options=None):
   """Runs a gRPC server hosting a simulation component in this process.
 
-  The server runs indefinitely, but can be stopped by a keyboard interrrupt.
+  The server runs indefinitely, but can be stopped by a keyboard interrupt.
 
   Args:
     executor: The executor to be hosted by the server.
@@ -45,31 +100,6 @@ def run_server(executor, num_threads, port, credentials=None, options=None):
   Raises:
     ValueError: If `num_threads` or `port` are invalid.
   """
-  py_typecheck.check_type(executor, executor_base.Executor)
-  py_typecheck.check_type(num_threads, int)
-  py_typecheck.check_type(port, int)
-  if credentials is not None:
-    py_typecheck.check_type(credentials, grpc.ServerCredentials)
-  if num_threads < 1:
-    raise ValueError('The number of threads must be a positive integer.')
-  if port < 1:
-    raise ValueError('The server port must be a positive integer.')
-  service = executor_service.ExecutorService(executor)
-  server_kwargs = {}
-  if options is not None:
-    server_kwargs['options'] = options
-  server = grpc.server(
-      concurrent.futures.ThreadPoolExecutor(max_workers=num_threads),
-      **server_kwargs)
-  full_port_string = '[::]:{}'.format(port)
-  if credentials is not None:
-    server.add_secure_port(full_port_string, credentials)
-  else:
-    server.add_insecure_port(full_port_string)
-  executor_pb2_grpc.add_ExecutorServicer_to_server(service, server)
-  server.start()
-  try:
+  with server_context(executor, num_threads, port, credentials, options):
     while True:
       time.sleep(_ONE_DAY_IN_SECONDS)
-  except KeyboardInterrupt:
-    server.stop(None)

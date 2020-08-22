@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import multiprocessing
-import signal
 import time
+from unittest import mock
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
@@ -23,23 +22,33 @@ from tensorflow_federated.python.simulation import server_utils
 
 class ServerUtilsTest(test.TestCase):
 
-  def test_server_runs(self):
+  @mock.patch('absl.logging.info')
+  def test_server_context_shuts_down_under_keyboard_interrupt(
+      self, mock_logging_info):
+
     ex = eager_tf_executor.EagerTFExecutor()
 
-    def noarg_run_server():
-      server_utils.run_server(ex, 1, 8888)
-
-    process = multiprocessing.Process(target=noarg_run_server)
-    process.start()
-    time.sleep(1)
-    process.terminate()
-    counter = 0
-    while process.exitcode is None:
+    with server_utils.server_context(ex, 1, 8888) as server:
       time.sleep(1)
-      counter += 1
-      if counter > 10:
-        raise AssertionError('Exitcode not propagated.')
-    self.assertEqual(process.exitcode, -signal.SIGTERM)
+      raise KeyboardInterrupt
+
+    mock_logging_info.assert_has_calls([
+        mock.call('Server stopped by KeyboardInterrupt.'),
+        mock.call('Shutting down server.')
+    ])
+
+  @mock.patch('absl.logging.info')
+  def test_server_context_shuts_down_uncaught_exception(self,
+                                                        mock_logging_info):
+
+    ex = eager_tf_executor.EagerTFExecutor()
+
+    with self.assertRaises(TypeError):
+      with server_utils.server_context(ex, 1, 8888) as server:
+        time.sleep(1)
+        raise TypeError
+
+    mock_logging_info.assert_called_once_with('Shutting down server.')
 
 
 if __name__ == '__main__':
