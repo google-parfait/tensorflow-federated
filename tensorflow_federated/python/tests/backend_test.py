@@ -19,12 +19,13 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-def get_all_execution_contexts():
+def get_all_contexts():
   return [
       ('native_local', tff.backends.native.create_local_execution_context()),
       ('native_sizing', tff.backends.native.create_sizing_execution_context()),
       ('native_debug',
        tff.backends.native.create_thread_debugging_execution_context()),
+      ('reference', tff.backends.reference.create_reference_context()),
   ]
 
 
@@ -46,7 +47,7 @@ def with_contexts(*args):
 
   ```
   @with_contexts(
-      ('label', executor),
+      ('label', context),
       ...
   )
   def foo(self):
@@ -70,7 +71,7 @@ def with_contexts(*args):
 
   def decorator(fn, *named_contexts):
     if not named_contexts:
-      named_contexts = get_all_execution_contexts()
+      named_contexts = get_all_contexts()
 
     @parameterized.named_parameters(*named_contexts)
     def wrapped_fn(self, context):
@@ -86,7 +87,7 @@ def with_contexts(*args):
     return lambda fn: decorator(fn, *args)
 
 
-class ExecutionContextsTest(parameterized.TestCase):
+class BackendTest(parameterized.TestCase):
 
   @with_contexts
   def test_federated_value(self):

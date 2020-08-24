@@ -1087,7 +1087,7 @@ def coerce_dataset_elements_to_tff_type_spec(dataset, element_type):
   if element_type.is_tensor():
     return dataset
 
-  # This is a similar to `reference_executor.to_representation_for_type`,
+  # This is a similar to `reference_context.to_representation_for_type`,
   # look for opportunities to consolidate?
   def _to_representative_value(type_spec, elements):
     """Convert to a container to a type understood by TF and TFF."""

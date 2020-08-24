@@ -23,10 +23,10 @@ from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.backends.reference import reference_context
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import intrinsic_factory
-from tensorflow_federated.python.core.impl import reference_executor
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks as bb
@@ -47,69 +47,69 @@ def zero_for(type_spec, context_stack):
       context_stack)
 
 
-class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
+class ReferenceContextTest(parameterized.TestCase, test.TestCase):
 
   def test_computed_value(self):
-    v = reference_executor.ComputedValue(10, tf.int32)
+    v = reference_context.ComputedValue(10, tf.int32)
     self.assertEqual(str(v.type_signature), 'int32')
     self.assertEqual(v.value, 10)
 
   def test_to_representation_for_type_with_tensor_type(self):
     self.assertEqual(
-        reference_executor.to_representation_for_type(10, tf.int32), 10)
+        reference_context.to_representation_for_type(10, tf.int32), 10)
     with self.assertRaises(TypeError):
-      reference_executor.to_representation_for_type(0.1, tf.int32)
+      reference_context.to_representation_for_type(0.1, tf.int32)
     with self.assertRaises(TypeError):
-      reference_executor.to_representation_for_type([], tf.int32)
+      reference_context.to_representation_for_type([], tf.int32)
 
   def test_to_representation_for_type_with_named_tuple_type(self):
     foo = structure.Struct([('x', 10), ('y', 20)])
     self.assertEqual(
-        reference_executor.to_representation_for_type(foo, [('x', tf.int32),
-                                                            ('y', tf.int32)]),
+        reference_context.to_representation_for_type(foo, [('x', tf.int32),
+                                                           ('y', tf.int32)]),
         foo)
     foo = structure.Struct([
         ('x', structure.Struct([(None, 10), (None, 20)])),
         ('y', 30),
     ])
     self.assertEqual(
-        reference_executor.to_representation_for_type(
+        reference_context.to_representation_for_type(
             foo, [('x', [tf.int32, tf.int32]), ('y', tf.int32)]), foo)
     self.assertEqual(
-        reference_executor.to_representation_for_type(
+        reference_context.to_representation_for_type(
             structure.Struct([('x', [10, 20]), ('y', 30)]),
             [('x', [tf.int32, tf.int32]), ('y', tf.int32)]),
         structure.Struct([('x', structure.Struct([(None, 10), (None, 20)])),
                           ('y', 30)]))
     with self.assertRaises(TypeError):
-      reference_executor.to_representation_for_type(10, [tf.int32, tf.int32])
+      reference_context.to_representation_for_type(10, [tf.int32, tf.int32])
 
     unordered_dict = {'a': 10, 'b': 20}
     self.assertEqual(
         str(
-            reference_executor.to_representation_for_type(
+            reference_context.to_representation_for_type(
                 unordered_dict, [('a', tf.int32), ('b', tf.int32)])),
         '<a=10,b=20>')
     self.assertEqual(
         str(
-            reference_executor.to_representation_for_type(
+            reference_context.to_representation_for_type(
                 unordered_dict, [('b', tf.int32), ('a', tf.int32)])),
         '<b=20,a=10>')
 
   def test_to_representation_for_type_with_sequence_type(self):
     foo = [1, 2, 3]
     self.assertEqual(
-        reference_executor.to_representation_for_type(
+        reference_context.to_representation_for_type(
             foo, computation_types.SequenceType(tf.int32)), foo)
 
   def test_to_representation_for_type_with_sequence_type_empty_tensor_slices(
       self):
     ds = tf.data.Dataset.from_tensor_slices([])
     self.assertEqual(
-        reference_executor.to_representation_for_type(
+        reference_context.to_representation_for_type(
             ds, computation_types.SequenceType(tf.float32)), [])
     with self.assertRaisesRegex(TypeError, 'not assignable to expected type'):
-      reference_executor.to_representation_for_type(
+      reference_context.to_representation_for_type(
           ds, computation_types.SequenceType(tf.string))
 
   def test_to_representation_for_type_with_sequence_type_empty_generator(self):
@@ -124,7 +124,7 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
         output_types=(tf.int32, tf.float32),
         output_shapes=((2,), (2, 4)))
     self.assertEqual(
-        reference_executor.to_representation_for_type(
+        reference_context.to_representation_for_type(
             ds,
             computation_types.SequenceType(
                 computation_types.StructType([
@@ -135,42 +135,42 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_to_representation_for_type_with_function_type(self):
 
     def foo(x):
-      self.assertIsInstance(x, reference_executor.ComputedValue)
-      return reference_executor.ComputedValue(str(x.value), tf.string)
+      self.assertIsInstance(x, reference_context.ComputedValue)
+      return reference_context.ComputedValue(str(x.value), tf.string)
 
     self.assertIs(
-        reference_executor.to_representation_for_type(
+        reference_context.to_representation_for_type(
             foo, computation_types.FunctionType(tf.int32, tf.string),
             lambda x, t: x), foo)
 
     with self.assertRaises(TypeError):
-      reference_executor.to_representation_for_type(
+      reference_context.to_representation_for_type(
           foo, computation_types.FunctionType(tf.int32, tf.string))
 
     with self.assertRaises(TypeError):
-      reference_executor.to_representation_for_type(
+      reference_context.to_representation_for_type(
           10, computation_types.FunctionType(tf.int32, tf.string))
 
   def test_to_representation_for_type_with_abstract_type(self):
     with self.assertRaises(TypeError):
-      reference_executor.to_representation_for_type(
+      reference_context.to_representation_for_type(
           10, computation_types.AbstractType('T'))
 
   def test_to_representation_for_type_with_placement_type(self):
     self.assertIs(
-        reference_executor.to_representation_for_type(
+        reference_context.to_representation_for_type(
             placement_literals.CLIENTS, computation_types.PlacementType()),
         placement_literals.CLIENTS)
 
   def test_to_representation_for_type_with_federated_type(self):
     self.assertEqual(
-        reference_executor.to_representation_for_type(
+        reference_context.to_representation_for_type(
             10,
             computation_types.FederatedType(
                 tf.int32, placement_literals.SERVER, all_equal=True)), 10)
     x = [1, 2, 3]
     self.assertEqual(
-        reference_executor.to_representation_for_type(
+        reference_context.to_representation_for_type(
             x,
             computation_types.FederatedType(
                 tf.int32, placement_literals.CLIENTS, all_equal=False)), x)
@@ -178,9 +178,9 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_stamp_computed_value_into_graph_with_undefined_tensor_dims(self):
     v_type = computation_types.TensorType(tf.int32, [None])
     v_value = np.array([1, 2, 3], dtype=np.int32)
-    v = reference_executor.ComputedValue(v_value, v_type)
+    v = reference_context.ComputedValue(v_value, v_type)
     with tf.Graph().as_default() as graph:
-      stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
+      stamped_v = reference_context.stamp_computed_value_into_graph(v, graph)
       with tf.compat.v1.Session(graph=graph) as sess:
         v_result = tensorflow_utils.fetch_value_in_session(sess, stamped_v)
     self.assertTrue(np.array_equal(v_result, np.array([1, 2, 3])))
@@ -188,10 +188,10 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_stamp_computed_value_into_graph_with_tuples_of_tensors(self):
     v_val = structure.Struct([('x', 10), ('y', structure.Struct([('z', 0.6)]))])
     v_type = [('x', tf.int32), ('y', [('z', tf.float32)])]
-    v = reference_executor.ComputedValue(
-        reference_executor.to_representation_for_type(v_val, v_type), v_type)
+    v = reference_context.ComputedValue(
+        reference_context.to_representation_for_type(v_val, v_type), v_type)
     with tf.Graph().as_default() as graph:
-      stamped_v = reference_executor.stamp_computed_value_into_graph(v, graph)
+      stamped_v = reference_context.stamp_computed_value_into_graph(v, graph)
       with tf.compat.v1.Session(graph=graph) as sess:
         stampped_v_val = tensorflow_utils.fetch_value_in_session(
             sess, stamped_v)
@@ -203,14 +203,14 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertAlmostEqual(nested_elements[0][1], 0.6)
 
   def test_computation_context_resolve_reference(self):
-    c1 = reference_executor.ComputationContext()
-    c2 = reference_executor.ComputationContext(
-        c1, {'foo': reference_executor.ComputedValue(10, tf.int32)})
-    c3 = reference_executor.ComputationContext(
-        c2, {'bar': reference_executor.ComputedValue(11, tf.int32)})
-    c4 = reference_executor.ComputationContext(c3)
-    c5 = reference_executor.ComputationContext(
-        c4, {'foo': reference_executor.ComputedValue(12, tf.int32)})
+    c1 = reference_context.ComputationContext()
+    c2 = reference_context.ComputationContext(
+        c1, {'foo': reference_context.ComputedValue(10, tf.int32)})
+    c3 = reference_context.ComputationContext(
+        c2, {'bar': reference_context.ComputedValue(11, tf.int32)})
+    c4 = reference_context.ComputationContext(c3)
+    c5 = reference_context.ComputationContext(
+        c4, {'foo': reference_context.ComputedValue(12, tf.int32)})
     self.assertRaises(ValueError, c1.resolve_reference, 'foo')
     self.assertEqual(c2.resolve_reference('foo').value, 10)
     self.assertEqual(c3.resolve_reference('foo').value, 10)
@@ -223,12 +223,12 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(c5.resolve_reference('bar').value, 11)
 
   def test_computation_context_get_cardinality(self):
-    c1 = reference_executor.ComputationContext(None, None,
-                                               {placement_literals.CLIENTS: 10})
+    c1 = reference_context.ComputationContext(None, None,
+                                              {placement_literals.CLIENTS: 10})
     self.assertEqual(c1.get_cardinality(placement_literals.CLIENTS), 10)
     with self.assertRaises(ValueError):
       c1.get_cardinality(placement_literals.SERVER)
-    c2 = reference_executor.ComputationContext(c1)
+    c2 = reference_context.ComputationContext(c1)
     self.assertEqual(c2.get_cardinality(placement_literals.CLIENTS), 10)
 
   def test_tensorflow_computation_with_no_argument(self):
@@ -652,11 +652,11 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
   def test_multiply_by_scalar_with_float_and_float(self):
     self.assertEqual(
-        reference_executor.multiply_by_scalar(
-            reference_executor.ComputedValue(10.0, tf.float32), 0.5).value, 5.0)
+        reference_context.multiply_by_scalar(
+            reference_context.ComputedValue(10.0, tf.float32), 0.5).value, 5.0)
     self.assertAlmostEqual(
-        reference_executor.multiply_by_scalar(
-            reference_executor.ComputedValue(np.float32(1.0), tf.float32),
+        reference_context.multiply_by_scalar(
+            reference_context.ComputedValue(np.float32(1.0), tf.float32),
             0.333333333333).value,
         0.3333333,
         places=3)
@@ -664,8 +664,8 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
   def test_multiply_by_scalar_with_tuple_and_float(self):
     self.assertEqual(
         str(
-            reference_executor.multiply_by_scalar(
-                reference_executor.ComputedValue(
+            reference_context.multiply_by_scalar(
+                reference_context.ComputedValue(
                     structure.Struct([
                         ('A', 10.0),
                         ('B', structure.Struct([('C', 20.0)])),
@@ -673,12 +673,12 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
                 0.5).value), '<A=5.0,B=<C=10.0>>')
 
   def test_fit_argument(self):
-    old_arg = reference_executor.ComputedValue(
+    old_arg = reference_context.ComputedValue(
         structure.Struct([('A', 10)]),
         [('A', type_factory.at_clients(tf.int32, all_equal=True))])
-    new_arg = reference_executor.fit_argument(
+    new_arg = reference_context.fit_argument(
         old_arg, [('A', type_factory.at_clients(tf.int32))],
-        reference_executor.ComputationContext(
+        reference_context.ComputationContext(
             cardinalities={placement_literals.CLIENTS: 3}))
     self.assertEqual(str(new_arg.type_signature), '<A={int32}@CLIENTS>')
     self.assertEqual(new_arg.value.A, [10, 10, 10])
@@ -1251,19 +1251,19 @@ class ReferenceExecutorTest(parameterized.TestCase, test.TestCase):
 
   def test_numpy_cast(self):
     self.assertEqual(
-        reference_executor.numpy_cast(True, tf.bool, tf.TensorShape([])),
+        reference_context.numpy_cast(True, tf.bool, tf.TensorShape([])),
         np.bool_(True))
     self.assertEqual(
-        reference_executor.numpy_cast(10, tf.int32, tf.TensorShape([])),
+        reference_context.numpy_cast(10, tf.int32, tf.TensorShape([])),
         np.int32(10))
     self.assertEqual(
-        reference_executor.numpy_cast(0.3333333333333333333333333, tf.float32,
-                                      tf.TensorShape([])),
+        reference_context.numpy_cast(0.3333333333333333333333333, tf.float32,
+                                     tf.TensorShape([])),
         np.float32(0.3333333333333333333333333))
     self.assertTrue(
         np.array_equal(
-            reference_executor.numpy_cast([[1, 2], [3, 4]], tf.int32,
-                                          tf.TensorShape([2, 2])),
+            reference_context.numpy_cast([[1, 2], [3, 4]], tf.int32,
+                                         tf.TensorShape([2, 2])),
             np.array([[1, 2], [3, 4]])))
 
   def test_sum_of_squares(self):
@@ -1504,11 +1504,5 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  # We need to be able to individually test all components of the executor, and
-  # the compiler pipeline will potentially interfere with this process by
-  # performing reductions. Since this executor is intended to be the standards
-  # to compare against, it is the compiler pipeline that should get tested
-  # against this implementation, not the other way round.
-  executor_without_compiler = reference_executor.ReferenceExecutor()
-  with context_stack_impl.context_stack.install(executor_without_compiler):
-    test.main()
+  reference_context.set_reference_context()
+  test.main()

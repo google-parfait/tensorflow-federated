@@ -14,7 +14,6 @@
 """Libraries for testing TensorFlow Federated."""
 
 from tensorflow_federated.python.core.impl.context_stack.set_default_context import set_no_default_context
-from tensorflow_federated.python.core.impl.reference_executor import ReferenceExecutor
 from tensorflow_federated.python.core.test.static_assert import assert_contains_secure_aggregation
 from tensorflow_federated.python.core.test.static_assert import assert_contains_unsecure_aggregation
 from tensorflow_federated.python.core.test.static_assert import assert_not_contains_secure_aggregation

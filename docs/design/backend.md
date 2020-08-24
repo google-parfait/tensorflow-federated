@@ -162,15 +162,12 @@ delegating to an external IREE runtime.
 ## Reference
 
 A
-[reference_executor.ReferenceExecutor](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/reference_executor.py)
+[reference_context.ReferenceContext](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/reference/reference_context.py)
 is a
 [context_base.Context](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/context_stack/context_base.py)
-that compiles and executes ASTs. Note that the `ReferenceExecutor` does not
+that compiles and executes ASTs. Note that the `ReferenceContext` does not
 inherit from
 [execution_context.ExecutionContext](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/executors/execution_context.py)
 and the runtime is not implemented as an
 [execution stack](execution.md#execution-stack); instead the compiler and
-runtime are trivially implemented inline in the `ReferenceExecutor`.
-
-TODO(b/148163833): Rename the `ReferenceExecutor` module to something more
-descriptive, possibly `DebugContext`.
+runtime are trivially implemented inline in the `ReferenceContext`.

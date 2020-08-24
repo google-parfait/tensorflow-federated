@@ -19,7 +19,6 @@ py_library(
     ],
     deps = [
         ":static_assert",
-        "//tensorflow_federated/python/core/impl:reference_executor",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
     ],
 )

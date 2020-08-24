@@ -22,3 +22,4 @@ expressibe in TFF.
 
 from tensorflow_federated.python.core.backends import mapreduce
 from tensorflow_federated.python.core.backends import native
+from tensorflow_federated.python.core.backends import reference

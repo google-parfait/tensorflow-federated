@@ -11,13 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A simple interpreted reference executor.
+"""A simple interpreted reference context.
 
-This executor is designed for simplicity, not for performance. It is intended
+This context is designed for simplicity, not for performance. It is intended
 for use in unit tests, as the golden standard and point of comparison for other
-executors. Unit test suites for other executors should include a test that runs
-them side by side and compares their results against this executor for a number
-of computations.
+contexts.
 """
 
 import collections
@@ -49,7 +47,7 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 class ComputedValue(object):
-  """A container for values computed by the reference executor."""
+  """A container for values computed by the reference context."""
 
   def __init__(self, value, type_spec):
     """Creates a value with given raw payload `value` and TFF type `type_spec`.
@@ -106,7 +104,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
       This function only verifies that `value` is a callable.
 
   *   For TFF abstract types, there is no valid representation. The reference
-      executor requires all types in an executable computation to be concrete.
+      context requires all types in an executable computation to be concrete.
 
   *   For TFF placement types, the valid representations are the placement
       literals (currently only `tff.SERVER` and `tff.CLIENTS`).
@@ -119,7 +117,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
 
       Note: This function does not attempt at validating that the sizes of lists
       that represent federated values match the corresponding placemenets. The
-      cardinality analysis is a separate step, handled by the reference executor
+      cardinality analysis is a separate step, handled by the reference context
       at a different point. As long as values can be packed into a Python list,
       they are accepted as they are.
 
@@ -147,7 +145,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
     py_typecheck.check_callable(callable_handler)
 
   # Note: We do not simply call `type_conversions.infer_type()` on `value`, as
-  # the representations of values in the reference executor are only a subset of
+  # the representations of values in the reference context are only a subset of
   # the Python types recognized by that helper function.
 
   if type_spec.is_tensor():
@@ -220,7 +218,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
           'this call.')
   elif type_spec.is_abstract():
     raise TypeError(
-        'Abstract types are not supported by the reference executor.')
+        'Abstract types are not supported by the reference context.')
   elif type_spec.is_placement():
     py_typecheck.check_type(value, placement_literals.PlacementLiteral)
     return value
@@ -558,20 +556,18 @@ def fit_argument(arg: ComputedValue, type_spec,
     return arg
 
 
-class ReferenceExecutor(context_base.Context):
-  """A simple interpreted reference executor.
+class ReferenceContext(context_base.Context):
+  """A simple interpreted reference context.
 
-  This executor is to be used by default in unit tests and simple applications
-  such as colab notebooks and turorials. It is intended to serve as the gold
-  standard of correctness for all other executors to compare against. As such,
-  it is designed for simplicity and ease of reasoning about correctness, rather
-  than for high performance. We will tolerate copying values, marshaling and
-  unmarshaling when crossing TF graph boundary, etc., for the sake of keeping
-  the logic minimal. The executor can be reused across multiple calls, so any
-  state associated with individual executions is maintained separately from
-  this class. High-performance simulations on large data sets will require a
-  separate executor optimized for performance. This executor is plugged in as
-  the handler of computation invocations at the top level of the context stack.
+  This context is designed for simplicity and ease of reasoning about
+  correctness, rather than for high performance. We will tolerate copying
+  values, marshaling and marshaling when crossing TF graph boundary, etc., for
+  the sake of keeping the logic minimal. The context can be reused across
+  multiple calls, so any state associated with individual executions is
+  maintained separately from this class. High-performance simulations on large
+  data sets will require a separate context optimized for performance. This
+  context is plugged in as the handler of computation invocations at the top
+  level of the context stack.
 
   Note: The `tff.federated_secure_sum()` intrinsic is implemented using a
   non-secure algorithm in order to enable testing of the semantics of federated
@@ -579,7 +575,7 @@ class ReferenceExecutor(context_base.Context):
   """
 
   def __init__(self):
-    """Creates a reference executor."""
+    """Creates a reference context."""
 
     # TODO(b/113116813): Add a way to declare environmental bindings here,
     # e.g., a way to specify how data URIs are mapped to physical resources.
@@ -726,7 +722,7 @@ class ReferenceExecutor(context_base.Context):
       TypeError: If type mismatch occurs during the course of computation.
       ValueError: If a malformed value is encountered.
       NotImplementedError: For computation building blocks that are not yet
-        supported by this executor.
+        supported by this context.
     """
     if comp.is_compiled_computation():
       return self._compute_compiled(comp, context)
@@ -751,7 +747,7 @@ class ReferenceExecutor(context_base.Context):
     else:
       raise NotImplementedError(
           'A computation building block of a type {} not currently recognized '
-          'by the reference executor: {}.'.format(type(comp), comp))
+          'by the reference context: {}.'.format(type(comp), comp))
 
   def _compute_compiled(self, comp, context):
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
@@ -1208,3 +1204,13 @@ class ReferenceExecutor(context_base.Context):
         arg.value,
         computation_types.FederatedType(arg.type_signature.member,
                                         placement_literals.CLIENTS, True))
+
+
+def create_reference_context():
+  return ReferenceContext()
+
+
+def set_reference_context():
+  """Sets a reference context that executes computations locally."""
+  context = ReferenceContext()
+  context_stack_impl.context_stack.set_default_context(context)

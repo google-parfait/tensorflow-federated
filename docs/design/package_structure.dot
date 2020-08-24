@@ -60,15 +60,17 @@ digraph {
   core_utils -> core_test
   core_utils -> core_api
   core_utils -> impl [arrowhead="none", style="invisible"]
-  core_backends -> core_backends_mapreduce
   core_backends -> core_backends_native
+  core_backends -> core_backends_mapreduce
   core_backends -> core_backends_iree
+  core_backends -> core_backends_reference
   core_backends -> core_api
   core_backends -> impl [arrowhead="none", style="invisible"]
+  core_backends_native -> impl [arrowhead="none", style="invisible"]
   core_backends_mapreduce -> core_templates
   core_backends_mapreduce -> impl [arrowhead="none", style="invisible"]
-  core_backends_native -> impl [arrowhead="none", style="invisible"]
   core_backends_iree -> impl [arrowhead="none", style="invisible"]
+  core_backends_reference -> impl [arrowhead="none", style="invisible"]
   core_templates -> core_api
   core_templates -> impl [arrowhead="none", style="invisible"]
   core_test -> core_api
@@ -81,9 +83,10 @@ digraph {
     core [href="#tff-core" target="_parent"]
     core_utils [label="utils", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     core_backends [label="backends", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    core_backends_mapreduce [label="mapreduce", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     core_backends_native [label="native", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_backends_mapreduce [label="mapreduce", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     core_backends_iree [label="iree", href="#tff-core" target="_parent"]
+    core_backends_reference [label="reference", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     core_templates [label="templates", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     core_test [label="test", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     core_api [label="api", href="#tff-core" target="_parent"]
@@ -166,7 +169,7 @@ digraph {
   {rank=same; learning_framework, simulation_datasets, simulation_models}
   {rank=same; core}
   {rank=same; core_utils, core_backends}
-  {rank=same; core_backends_mapreduce, core_backends_native, core_backends_iree}
+  {rank=same; core_backends_native, core_backends_mapreduce, core_backends_iree, core_backends_reference}
   {rank=same; core_templates}
   {rank=same; core_test}
   {rank=same; core_api, core_framework}
