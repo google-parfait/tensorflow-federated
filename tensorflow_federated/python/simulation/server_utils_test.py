@@ -15,6 +15,8 @@
 import time
 from unittest import mock
 
+import portpicker
+
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.simulation import server_utils
@@ -28,7 +30,8 @@ class ServerUtilsTest(test.TestCase):
 
     ex = eager_tf_executor.EagerTFExecutor()
 
-    with server_utils.server_context(ex, 1, 8888) as server:
+    with server_utils.server_context(ex, 1,
+                                     portpicker.pick_unused_port()) as server:
       time.sleep(1)
       raise KeyboardInterrupt
 
@@ -44,7 +47,8 @@ class ServerUtilsTest(test.TestCase):
     ex = eager_tf_executor.EagerTFExecutor()
 
     with self.assertRaises(TypeError):
-      with server_utils.server_context(ex, 1, 8888) as server:
+      with server_utils.server_context(ex, 1,
+                                       portpicker.pick_unused_port()) as server:
         time.sleep(1)
         raise TypeError
 
