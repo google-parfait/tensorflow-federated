@@ -13,9 +13,8 @@
 # limitations under the License.
 """A collection of constructors for basic types of executor stacks."""
 
-import collections
 import math
-from typing import List, Optional, Sequence
+from typing import Callable, List, Optional, Sequence
 
 import tensorflow as tf
 
@@ -215,44 +214,70 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
     pass
 
 
+def create_minimal_length_flat_stack_fn(
+    max_clients_per_stack: int,
+    federated_stack_factory: FederatingExecutorFactory
+) -> Callable[[executor_factory.CardinalitiesType],
+              List[executor_base.Executor]]:
+  """Creates a function returning a list of executors to run `cardinalities`.
+
+  This list is of minimal length among all lists subject to the constraint that
+  each executor can be responsible for executing no more than
+  `max_clients_per_stack`. For example, given a `cardinalities` argument of 10
+  and `max_clients_per_stack` of 3, this function may return a list of
+  executors 3 of which run 3 clients and 1 of which runs 1, or 2 of which run 3
+  and 2 of which run 2.
+
+  Args:
+    max_clients_per_stack: Integer determining the maximum number of clients a
+      single executor in the list returned by the function may execute.
+    federated_stack_factory: The `FederatingExecutorFactory` for use in actually
+      constructing these executors.
+
+  Returns:
+    A callable taking a parameter of type `executor_factory.CardinalitiesType`,
+    and returning a list of `executor_base.Executors` which in total can execute
+    the cardinalities specified by the argument. This callable will raise if it
+    is passed a cardinalitites dict with a negative number of clients.
+  """
+
+  def create_executor_list(
+      cardinalities: executor_factory.CardinalitiesType
+  ) -> List[executor_base.Executor]:
+    num_clients = cardinalities.get(placement_literals.CLIENTS, 0)
+    if num_clients < 0:
+      raise ValueError('Number of clients cannot be negative.')
+    elif num_clients < 1:
+      return [
+          federated_stack_factory.create_executor(cardinalities=cardinalities)
+      ]
+    executors = []
+    while num_clients > 0:
+      n = min(num_clients, max_clients_per_stack)
+      sub_executor_cardinalities = {**cardinalities}
+      sub_executor_cardinalities[placement_literals.CLIENTS] = n
+      executors.append(
+          federated_stack_factory.create_executor(sub_executor_cardinalities))
+      num_clients -= n
+    return executors
+
+  return create_executor_list
+
+
 class ComposingExecutorFactory(executor_factory.ExecutorFactory):
   """Factory class encapsulating executor compositional logic.
 
-  This class is responsible for constructing federated execution stacks as
-  necessary in response to a potentially changing number of clients across
-  rounds, as well as aggregating these constructed executors into a
+  This class is responsible for aggregating lists of executors into a
   compositional hierarchy based on the `max_fanout` parameter.
   """
 
-  def __init__(
-      self,
-      *,
-      max_fanout: int,
-      unplaced_ex_factory: UnplacedExecutorFactory,
-      federated_stack_factory: Optional[FederatingExecutorFactory] = None,
-      child_executors: Optional[Sequence[executor_base.Executor]] = None,
-  ):
+  def __init__(self, *, max_fanout: int,
+               unplaced_ex_factory: UnplacedExecutorFactory,
+               flat_stack_fn: Callable[[executor_factory.CardinalitiesType],
+                                       Sequence[executor_base.Executor]]):
     if max_fanout < 2:
       raise ValueError('Max fanout must be greater than 1.')
-    if (federated_stack_factory is None and
-        child_executors is None) or (federated_stack_factory is not None and
-                                     child_executors is not None):
-      # TODO(b/159378732): Remove this two-arg pattern when possible, in favor
-      # of a single stack factory argument.
-      raise ValueError(
-          'Exactly one of federated_stack_factory or child_executors should be '
-          'specified in the initializer to `ComposingExecutorFactory`. '
-          'Received federated_stack_factory {f} and child_executors {c}.'
-          .format(f=federated_stack_factory, c=child_executors))
-    if federated_stack_factory is not None:
-      py_typecheck.check_type(federated_stack_factory,
-                              FederatingExecutorFactory)
-    elif child_executors is not None:
-      py_typecheck.check_type(child_executors, collections.abc.Sequence)
-      for ex in child_executors:
-        py_typecheck.check_type(ex, executor_base.Executor)
-    self._federated_stack_factory = federated_stack_factory
-    self._child_executors = child_executors
+    self._flat_stack_fn = flat_stack_fn
     self._max_fanout = max_fanout
     self._unplaced_ex_factory = unplaced_ex_factory
 
@@ -261,16 +286,9 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
   ) -> executor_base.Executor:
     """Creates an executor hierarchy of maximum width `self._max_fanout`.
 
-    If the `ComposingExecutorFactory` has been configured with a
-    `federated_stack_factory`, this function will construct the minimum number
-    of federated stacks necessary to run the configuration specified by
-    `cardinalities`such that each stack has no more than `self._max_fanout`
-    clients, and arrange these stacks in a hierarchy of width no greater than
-    `self._max_fanout`.
-
-    If the `ComposingExecutorFactory` has been configured with prebuilt
-    child executors, this function will simply arrange these child executors in
-    a stack of widtch no greater than `self._max_fanout`.
+    First creates a flat list of executors to aggregate, using the
+    `flat_stack_fn` passed in at initialization. Then composes this list
+    into a hierarchy of width at most `self._max_fanout`.
 
     Args:
       cardinalities: A mapping from placements to integers specifying the
@@ -279,25 +297,8 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     Returns:
       An `executor_base.Executor` satisfying the conditions above.
     """
-    if self._child_executors is not None:
-      return self._aggregate_stacks(self._child_executors)
-    num_clients = cardinalities.get(placement_literals.CLIENTS, 0)
-    if num_clients < 0:
-      raise ValueError('Number of clients cannot be negative.')
-    if num_clients < 1:
-      return self._federated_stack_factory.create_executor(
-          cardinalities=cardinalities)
-    else:
-      executors = []
-      while num_clients > 0:
-        n = min(num_clients, self._max_fanout)
-        sub_executor_cardinalities = {**cardinalities}
-        sub_executor_cardinalities[placement_literals.CLIENTS] = n
-        executors.append(
-            self._federated_stack_factory.create_executor(
-                sub_executor_cardinalities))
-        num_clients -= n
-      return self._aggregate_stacks(executors)
+    executors = self._flat_stack_fn(cardinalities)
+    return self._aggregate_stacks(executors)
 
   def clean_up_executors(self):
     """Holds no executors internally, so passes on cleanup."""
@@ -414,10 +415,12 @@ def local_executor_factory(
       unplaced_ex_factory=unplaced_ex_factory,
       num_clients=num_clients,
       use_sizing=False)
+  flat_stack_fn = create_minimal_length_flat_stack_fn(
+      max_fanout, federating_executor_factory)
   full_stack_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
-      federated_stack_factory=federating_executor_factory,
+      flat_stack_fn=flat_stack_fn,
   )
   return executor_factory.ExecutorFactoryImpl(
       full_stack_factory.create_executor)
@@ -534,11 +537,12 @@ def sizing_executor_factory(
       unplaced_ex_factory=unplaced_ex_factory,
       num_clients=num_clients,
       use_sizing=True)
+  flat_stack_fn = create_minimal_length_flat_stack_fn(
+      max_fanout, federating_executor_factory)
   full_stack_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
-      federated_stack_factory=federating_executor_factory,
-  )
+      flat_stack_fn=flat_stack_fn)
 
   def _factory_fn(
       cardinalities: executor_factory.CardinalitiesType
@@ -574,11 +578,12 @@ def worker_pool_executor_factory(executors,
   if not executors:
     raise ValueError('The list executors cannot be empty.')
   executors = [_wrap_executor_in_threading_stack(e) for e in executors]
+  flat_stack_fn = lambda _: executors
   unplaced_ex_factory = UnplacedExecutorFactory(use_caching=True)
   composing_executor_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
-      child_executors=executors,
+      flat_stack_fn=flat_stack_fn,
   )
   return executor_factory.ExecutorFactoryImpl(
       executor_stack_fn=composing_executor_factory.create_executor)
