@@ -135,6 +135,22 @@ class BackendTest(parameterized.TestCase):
     result = foo(10)
     self.assertIsNotNone(result)
 
+  @with_contexts
+  def test_tf_lookup_table_cross_round(self):
+    self.skipTest('b/151828771')
+
+    @tff.tf_computation(
+        tff.TensorType(shape=[None], dtype=tf.string),
+        tff.TensorType(shape=[], dtype=tf.string))
+    def foo(table_args, to_lookup):
+      table = tf.lookup.StaticHashTable(
+          tf.lookup.KeyValueTensorInitializer(
+              table_args, tf.range(tf.shape(table_args)[0])), 100)
+      return table.lookup(to_lookup)
+
+    self.assertEqual(foo(tf.constant(['a', 'b']), 'a'), 0)
+    self.assertEqual(foo(tf.constant(['d', 'e', 'f']), 'f'), 2)
+
 
 if __name__ == '__main__':
   tff.test.set_no_default_context()
