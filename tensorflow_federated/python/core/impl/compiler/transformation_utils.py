@@ -309,7 +309,14 @@ def transform_postorder_with_symbol_bindings(comp, transform, symbol_tree):
     source, source_modified = _transform_postorder_with_symbol_bindings_switch(
         comp.source, transform, context_tree, identifier_seq)
     if source_modified:
-      comp = building_blocks.Selection(source, comp.name, comp.index)
+      # Normalize selection to index based on the type signature of the
+      # original source. The new source may not have names present.
+      if comp.index is not None:
+        index = comp.index
+      else:
+        index = structure.name_to_index_map(
+            comp.source.type_signature)[comp.name]
+      comp = building_blocks.Selection(source, index=index)
     comp, comp_modified = transform(comp, context_tree)
     return comp, comp_modified or source_modified
 

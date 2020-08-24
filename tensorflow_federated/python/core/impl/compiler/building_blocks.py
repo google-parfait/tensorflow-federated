@@ -376,8 +376,8 @@ class Selection(ComputationBuildingBlock):
       name = str(name)
       if not structure.has_field(source_type, name):
         raise ValueError(
-            'The name \'{}\' does not correspond to any of the names in the '
-            'struct type: {}.'.format(name, structure.name_list(source_type)))
+            f'Error selecting named field `{name}` from type `{source_type}`, '
+            f'whose only named fields are {structure.name_list(source_type)}.')
       type_signature = source_type[name]
     else:
       py_typecheck.check_type(index, int)
