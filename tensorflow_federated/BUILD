@@ -11,6 +11,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":version",
+        "//tensorflow_federated/python/aggregators",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",

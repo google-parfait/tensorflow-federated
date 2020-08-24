@@ -43,6 +43,11 @@ digraph {
     learning_framework [label="framework", href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
+  // TFF Aggregators
+  learning -> aggregators
+  aggregators -> core [arrowhead="none", style="invisible"]
+  aggregators [href="#tff-aggregators" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+
   // TFF Core
   core -> core_utils
   core -> core_backends

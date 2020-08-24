@@ -110,7 +110,12 @@ Models for running Federated Learning simulations.
 Libraries for using Federated Learning algorithms.
 
 [learning/framework](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/framework)
-Libraries for developing Federated Learning algorithms
+Libraries for developing Federated Learning algorithms.
+
+#### TFF Aggregators
+
+[aggregators](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/aggregators)
+Libraries for constructing federated aggregations.
 
 #### TFF Core
 

@@ -6,6 +6,7 @@ package_group(
     ],
     packages = [
         # TFF Dependencies
+        "//tensorflow_federated/python/aggregators/...",
         "//tensorflow_federated/python/learning/...",
         "//tensorflow_federated/python/simulation/...",
 
