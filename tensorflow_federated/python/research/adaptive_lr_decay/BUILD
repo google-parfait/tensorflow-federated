@@ -6,7 +6,10 @@ py_library(
     name = "adaptive_fed_avg",
     srcs = ["adaptive_fed_avg.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        ":callbacks",
+        "//tensorflow_federated",
+    ],
 )
 
 py_test(

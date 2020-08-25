@@ -103,9 +103,7 @@ def from_flags(input_spec,
   return adaptive_fed_avg.build_fed_avg_process(
       tff_model_fn,
       client_lr_callback,
-      callbacks.update_reduce_lr_on_plateau,
       server_lr_callback,
-      callbacks.update_reduce_lr_on_plateau,
       client_optimizer_fn=client_optimizer_fn,
       server_optimizer_fn=server_optimizer_fn,
       client_weight_fn=client_weight_fn)

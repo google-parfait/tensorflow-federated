@@ -77,9 +77,7 @@ can call
 iterative_process = adaptive_fed_avg.build_fed_avg_process(
   model_fn,
   client_lr_callback,
-  callbacks.update_reduce_lr_on_plateau,
   server_lr_callback,
-  callbacks.update_reduce_lr_on_plateau,
   client_optimizer_fn=tf.keras.optimizers.SGD,
   server_optimizer_fn=tf.keras.optimizers.SGD)
 ```

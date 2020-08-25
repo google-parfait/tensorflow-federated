@@ -85,6 +85,51 @@ class ReduceLROnPlateau(object):
   cooldown = attr.ib(default=None)
   cooldown_counter = attr.ib(default=None)
 
+  def update(self, round_metric):
+    """Updates the `ReduceLROnPlateau` callback based on the round metric."""
+    metrics_window = self.metrics_window[1:]
+    metrics_window.append(round_metric)
+    average_metric = tf.reduce_mean(metrics_window)
+
+    learning_rate = self.learning_rate
+    best = self.best
+    wait = self.wait
+    cooldown_counter = self.cooldown_counter
+
+    if cooldown_counter > 0:
+      cooldown_counter -= 1
+      wait = 0
+
+    if self.improves_best(average_metric):
+      best = average_metric
+      wait = 0
+    elif cooldown_counter <= 0:
+      wait += 1
+      if wait >= self.patience:
+        if learning_rate > self.min_lr:
+          learning_rate = tf.maximum(learning_rate * self.decay_factor,
+                                     self.min_lr)
+          cooldown_counter = self.cooldown
+          wait = 0
+
+    # Return an updated callback
+    return tff.utils.update_state(
+        self,
+        learning_rate=learning_rate,
+        metrics_window=metrics_window,
+        best=best,
+        wait=wait,
+        cooldown_counter=cooldown_counter)
+
+  def improves_best(self, metric):
+    """Determines if a round metric improves a given ReduceLROnPlateau`."""
+    if self.minimize and metric < self.best - self.min_delta:
+      return True
+    elif not self.minimize and metric > self.best + self.min_delta:
+      return True
+    else:
+      return False
+
 
 def create_reduce_lr_on_plateau(**kwargs):
   """Initializes a callback in a way that automatically infers attributes."""
@@ -122,49 +167,3 @@ def create_reduce_lr_on_plateau(**kwargs):
     callback.cooldown_counter = callback.cooldown
 
   return callback
-
-
-def improves_best(callback, metric):
-  """Determines if a round metric improves a given ReduceLROnPlateau`."""
-  if callback.minimize and metric < callback.best - callback.min_delta:
-    return True
-  elif not callback.minimize and metric > callback.best + callback.min_delta:
-    return True
-  else:
-    return False
-
-
-@tf.function
-def update_reduce_lr_on_plateau(callback, round_metric):
-  """Updates the `ReduceLROnPlateau` callback based on the round metric."""
-  metrics_window = callback.metrics_window[1:]
-  metrics_window.append(round_metric)
-  average_metric = tf.reduce_mean(metrics_window)
-
-  learning_rate = callback.learning_rate
-  best = callback.best
-  wait = callback.wait
-  cooldown_counter = callback.cooldown_counter
-
-  if cooldown_counter > 0:
-    cooldown_counter -= 1
-    wait = 0
-
-  if improves_best(callback, average_metric):
-    best = average_metric
-    wait = 0
-  elif cooldown_counter <= 0:
-    wait += 1
-    if wait >= callback.patience:
-      if learning_rate > callback.min_lr:
-        learning_rate = tf.maximum(learning_rate * callback.decay_factor,
-                                   callback.min_lr)
-        cooldown_counter = callback.cooldown
-        wait = 0
-  return tff.utils.update_state(
-      callback,
-      learning_rate=learning_rate,
-      metrics_window=metrics_window,
-      best=best,
-      wait=wait,
-      cooldown_counter=cooldown_counter)

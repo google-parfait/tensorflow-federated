@@ -98,9 +98,7 @@ class AdaptiveFedAvgTest(tf.test.TestCase):
     iterative_process = adaptive_fed_avg.build_fed_avg_process(
         _uncompiled_model_builder,
         client_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         server_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
@@ -134,9 +132,7 @@ class AdaptiveFedAvgTest(tf.test.TestCase):
     iterative_process = adaptive_fed_avg.build_fed_avg_process(
         _uncompiled_model_builder,
         client_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         server_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
@@ -163,9 +159,7 @@ class AdaptiveFedAvgTest(tf.test.TestCase):
     iterative_process = adaptive_fed_avg.build_fed_avg_process(
         _uncompiled_model_builder,
         client_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         server_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
@@ -197,9 +191,7 @@ class AdaptiveFedAvgTest(tf.test.TestCase):
     iterative_process = adaptive_fed_avg.build_fed_avg_process(
         _uncompiled_model_builder,
         client_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         server_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
@@ -228,9 +220,7 @@ class AdaptiveFedAvgTest(tf.test.TestCase):
     iterative_process = adaptive_fed_avg.build_fed_avg_process(
         _uncompiled_model_builder,
         client_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         server_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
@@ -266,17 +256,13 @@ class AdaptiveFedAvgTest(tf.test.TestCase):
     iterative_process1 = adaptive_fed_avg.build_fed_avg_process(
         _uncompiled_model_builder,
         client_lr_callback1,
-        callbacks.update_reduce_lr_on_plateau,
         server_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
     iterative_process2 = adaptive_fed_avg.build_fed_avg_process(
         _uncompiled_model_builder,
         client_lr_callback2,
-        callbacks.update_reduce_lr_on_plateau,
         server_lr_callback,
-        callbacks.update_reduce_lr_on_plateau,
         client_optimizer_fn=tf.keras.optimizers.SGD,
         server_optimizer_fn=tf.keras.optimizers.SGD)
 

@@ -22,13 +22,22 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 """
 
 import collections
+from typing import Any, Callable, Optional
 
 import attr
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.python.research.adaptive_lr_decay import callbacks
 
-def _initialize_optimizer_vars(model, optimizer):
+# Convenience type aliases.
+ModelBuilder = Callable[[], tff.learning.Model]
+OptimizerBuilder = Callable[[float], tf.keras.optimizers.Optimizer]
+ClientWeightFn = Callable[[Any], float]
+
+
+def _initialize_optimizer_vars(model: tff.learning.Model,
+                               optimizer: tf.keras.optimizers.Optimizer):
   """Ensures variables holding the state of `optimizer` are created."""
   delta = tf.nest.map_structure(tf.zeros_like, _get_weights(model).trainable)
   model_weights = _get_weights(model)
@@ -37,7 +46,7 @@ def _initialize_optimizer_vars(model, optimizer):
   optimizer.apply_gradients(grads_and_vars, name='server_update')
 
 
-def _get_weights(model):
+def _get_weights(model: tff.learning.Model) -> tff.learning.ModelWeights:
   return tff.learning.ModelWeights(
       trainable=tuple(model.trainable_variables),
       non_trainable=tuple(model.non_trainable_variables))
@@ -59,7 +68,9 @@ class ServerState(object):
   server_lr_callback = attr.ib()
 
   @classmethod
-  def assign_weights_to_keras_model(cls, reference_weights, keras_model):
+  def assign_weights_to_keras_model(
+      cls, reference_weights: tff.learning.ModelWeights,
+      keras_model: tf.keras.Model):
     """Assign the model weights to the weights of a `tf.keras.Model`.
 
     Args:
@@ -81,8 +92,7 @@ class ServerState(object):
 
 @tf.function
 def server_update(model, server_optimizer, server_state, aggregated_gradients,
-                  client_monitor_value, client_callback_update_fn,
-                  server_monitor_value, server_callback_update_fn):
+                  client_monitor_value, server_monitor_value):
   """Updates `server_state` according to `weights_delta` and output metrics.
 
   The `model_weights` attribute of `server_state` is updated according to the
@@ -98,12 +108,8 @@ def server_update(model, server_optimizer, server_state, aggregated_gradients,
       gradient sums.
     client_monitor_value: The updated round metric used to update the client
       callback.
-    client_callback_update_fn: A function that accepts a client callback and
-      client monitor value, and returns an updated client callback.
     server_monitor_value: The updated round metric used to update the server
       callback.
-    server_callback_update_fn: A function that accepts a server callback and
-      server monitor value, and returns an updated server callback.
 
   Returns:
     An updated `ServerState`.
@@ -121,10 +127,10 @@ def server_update(model, server_optimizer, server_state, aggregated_gradients,
 
   server_optimizer.apply_gradients(grads_and_vars)
 
-  updated_client_lr_callback = client_callback_update_fn(
-      server_state.client_lr_callback, client_monitor_value)
-  updated_server_lr_callback = server_callback_update_fn(
-      server_state.server_lr_callback, server_monitor_value)
+  updated_client_lr_callback = server_state.client_lr_callback.update(
+      client_monitor_value)
+  updated_server_lr_callback = server_state.server_lr_callback.update(
+      server_monitor_value)
 
   # Create a new state based on the updated model.
   return tff.utils.update_state(
@@ -224,8 +230,10 @@ def client_update(model,
                                                ]))
 
 
-def build_server_init_fn(model_fn, server_optimizer_fn, client_lr_callback,
-                         server_lr_callback):
+def build_server_init_fn(model_fn: ModelBuilder,
+                         server_optimizer_fn: OptimizerBuilder,
+                         client_lr_callback: callbacks.ReduceLROnPlateau,
+                         server_lr_callback: callbacks.ReduceLROnPlateau):
   """Builds a `tff.tf_computation` that returns the initial `ServerState`.
 
   The attributes `ServerState.model` and `ServerState.optimizer_state` are
@@ -244,7 +252,7 @@ def build_server_init_fn(model_fn, server_optimizer_fn, client_lr_callback,
 
   @tff.tf_computation
   def server_init_tf():
-    server_optimizer = server_optimizer_fn()
+    server_optimizer = server_optimizer_fn(server_lr_callback.learning_rate)
     model = model_fn()
     _initialize_optimizer_vars(model, server_optimizer)
     return ServerState(
@@ -256,22 +264,20 @@ def build_server_init_fn(model_fn, server_optimizer_fn, client_lr_callback,
   return server_init_tf
 
 
-def build_fed_avg_process(model_fn,
-                          client_lr_callback,
-                          client_callback_update_fn,
-                          server_lr_callback,
-                          server_callback_update_fn,
-                          client_optimizer_fn=tf.keras.optimizers.SGD,
-                          server_optimizer_fn=tf.keras.optimizers.SGD,
-                          client_weight_fn=None):
+def build_fed_avg_process(
+    model_fn: ModelBuilder,
+    client_lr_callback: callbacks.ReduceLROnPlateau,
+    server_lr_callback: callbacks.ReduceLROnPlateau,
+    client_optimizer_fn: OptimizerBuilder = tf.keras.optimizers.SGD,
+    server_optimizer_fn: OptimizerBuilder = tf.keras.optimizers.SGD,
+    client_weight_fn: Optional[ClientWeightFn] = None,
+):
   """Builds the TFF computations for FedAvg with learning rate decay.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
     client_lr_callback: A `ReduceLROnPlateau` callback.
-    client_callback_update_fn: A function that updates the client callback.
     server_lr_callback: A `ReduceLROnPlateau` callback.
-    server_callback_update_fn: A function that updates the server callback.
     client_optimizer_fn: A function that accepts a `learning_rate` keyword
       argument and returns a `tf.keras.optimizers.Optimizer` instance.
     server_optimizer_fn: A function that accepts a `learning_rate` argument and
@@ -302,7 +308,7 @@ def build_fed_avg_process(model_fn,
 
   @tff.tf_computation(tf_dataset_type, model_weights_type, client_lr_type)
   def client_update_fn(tf_dataset, initial_model_weights, client_lr):
-    client_optimizer = client_optimizer_fn(learning_rate=client_lr)
+    client_optimizer = client_optimizer_fn(client_lr)
     initial_model_output = get_client_output(model_fn(), tf_dataset,
                                              initial_model_weights)
     client_state = client_update(model_fn(), tf_dataset, initial_model_weights,
@@ -316,13 +322,12 @@ def build_fed_avg_process(model_fn,
                        server_monitor_value):
     model = model_fn()
     server_lr = server_state.server_lr_callback.learning_rate
-    server_optimizer = server_optimizer_fn(learning_rate=server_lr)
+    server_optimizer = server_optimizer_fn(server_lr)
     # We initialize the server optimizer variables to avoid creating them
     # within the scope of the tf.function server_update.
     _initialize_optimizer_vars(model, server_optimizer)
     return server_update(model, server_optimizer, server_state, model_delta,
-                         client_monitor_value, client_callback_update_fn,
-                         server_monitor_value, server_callback_update_fn)
+                         client_monitor_value, server_monitor_value)
 
   @tff.federated_computation(
       tff.FederatedType(server_state_type, tff.SERVER),
