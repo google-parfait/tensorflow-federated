@@ -176,8 +176,10 @@ class DatasetPreprocessFnTest(tf.test.TestCase):
         max_training_elements_per_user=100,
         vocab=['one', 'must'],
         num_oov_buckets=1)
+
     train_preprocessed_ds = train_preprocess_fn(ds)
     element = next(iter(train_preprocessed_ds))
+
     # BOS is len(vocab)+2, EOS is len(vocab)+3, pad is 0, OOV is len(vocab)+1
     self.assertAllEqual(
         self.evaluate(element[0]), np.array([[4, 1, 2, 3, 5, 0]]))

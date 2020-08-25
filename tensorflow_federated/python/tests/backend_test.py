@@ -147,7 +147,6 @@ class BackendTest(parameterized.TestCase):
 
   @with_contexts
   def test_tf_lookup_table_cross_round(self):
-    self.skipTest('b/151828771')
 
     @tff.tf_computation(
         tff.TensorType(shape=[None], dtype=tf.string),
@@ -160,6 +159,7 @@ class BackendTest(parameterized.TestCase):
 
     self.assertEqual(foo(tf.constant(['a', 'b']), 'a'), 0)
     self.assertEqual(foo(tf.constant(['d', 'e', 'f']), 'f'), 2)
+    self.assertEqual(foo(tf.constant(['d', 'e', 'f', 'g', 'h', 'i']), 'i'), 5)
 
 
 class NonDeterministicTest(parameterized.TestCase):

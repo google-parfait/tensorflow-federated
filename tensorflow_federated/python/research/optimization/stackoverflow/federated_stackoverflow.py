@@ -144,7 +144,7 @@ def run_federated(
   validation_set = preprocess_val_and_test(
       base_test_dataset.take(num_validation_examples))
 
-  train_dataset_preprocess_comp = stackoverflow_dataset.create_train_dataset_preprocess_fn(
+  train_dataset_preprocess_fn = stackoverflow_dataset.create_train_dataset_preprocess_fn(
       vocab=stackoverflow_dataset.create_vocab(vocab_size),
       num_oov_buckets=num_oov_buckets,
       client_batch_size=client_batch_size,
@@ -152,6 +152,10 @@ def run_federated(
       max_seq_len=sequence_length,
       max_training_elements_per_user=max_elements_per_user,
       max_batches_per_user=max_batches_per_client)
+
+  @tff.tf_computation(tff.SequenceType(train_clientdata.element_type_structure))
+  def train_dataset_preprocess_comp(dataset):
+    return train_dataset_preprocess_fn(dataset)
 
   input_spec = train_dataset_preprocess_comp.type_signature.result.element
 

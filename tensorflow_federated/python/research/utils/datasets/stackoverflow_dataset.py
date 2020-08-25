@@ -13,7 +13,6 @@
 # limitations under the License.
 """Data loader for Stackoverflow."""
 
-import collections
 from typing import List
 
 from absl import logging
@@ -75,6 +74,7 @@ def build_to_ids_fn(vocab, max_seq_len, num_oov_buckets=1):
       num_oov_buckets=num_oov_buckets)
 
   def to_ids(example):
+
     sentence = tf.reshape(example['tokens'], shape=[1])
     words = tf.strings.split(sentence, sep=' ').values
     truncated_words = words[:max_seq_len]
@@ -113,9 +113,9 @@ def create_train_dataset_preprocess_fn(vocab: List[str],
                                        max_shuffle_buffer_size: int = 10000):
   """Creates preprocessing functions for Stackoverflow data.
 
-  This function returns a function which takes a dataset and returns a dataset,
-  generally for mapping over a set of unprocessed client datasets during
-  training.
+  This function returns a Python function which takes a dataset and returns a
+  dataset, suitable for mapping over a set of unprocessed client datasets
+  during training.
 
   Args:
     vocab: Vocabulary which defines the embedding.
@@ -160,16 +160,6 @@ def create_train_dataset_preprocess_fn(vocab: List[str],
   else:
     shuffle_buffer_size = max_training_elements_per_user
 
-  feature_dtypes = collections.OrderedDict(
-      creation_date=tf.string,
-      title=tf.string,
-      score=tf.int64,
-      tags=tf.string,
-      tokens=tf.string,
-      type=tf.string,
-  )
-
-  @tff.tf_computation(tff.SequenceType(feature_dtypes))
   def preprocess_train(dataset):
     to_ids = build_to_ids_fn(
         vocab=vocab, max_seq_len=max_seq_len, num_oov_buckets=num_oov_buckets)

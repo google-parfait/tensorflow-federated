@@ -207,7 +207,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     # is fixed.
     resources = []
     for op in wrapped_fn.graph.get_operations():
-      if op.type == 'VarHandleOp':
+      if op.type in ['VarHandleOp', 'HashTableV2']:
         resources += op.outputs
     if resources:
       for resource in wrapped_fn.prune(feeds={}, fetches=resources)():
