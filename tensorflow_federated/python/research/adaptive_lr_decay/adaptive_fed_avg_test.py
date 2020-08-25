@@ -272,6 +272,133 @@ class AdaptiveFedAvgTest(tf.test.TestCase):
     self.assertAllClose(state1.model.trainable, state2.model.trainable, 1e-4)
     self.assertAllClose(train_outputs1, train_outputs2, 1e-4)
 
+  def test_iterative_process_type_signature(self):
+    client_lr_callback = callbacks.create_reduce_lr_on_plateau(
+        learning_rate=0.1,
+        min_delta=0.5,
+        window_size=2,
+        decay_factor=1.0,
+        cooldown=0)
+    server_lr_callback = callbacks.create_reduce_lr_on_plateau(
+        learning_rate=0.1,
+        min_delta=0.5,
+        window_size=2,
+        decay_factor=1.0,
+        cooldown=0)
+
+    iterative_process = adaptive_fed_avg.build_fed_avg_process(
+        _uncompiled_model_builder,
+        client_lr_callback,
+        server_lr_callback,
+        client_optimizer_fn=tf.keras.optimizers.SGD,
+        server_optimizer_fn=tf.keras.optimizers.SGD)
+
+    lr_callback_type = tff.framework.type_from_tensors(client_lr_callback)
+
+    server_state_type = tff.FederatedType(
+        adaptive_fed_avg.ServerState(
+            model=tff.learning.ModelWeights(
+                trainable=(tff.TensorType(tf.float32, [1, 1]),
+                           tff.TensorType(tf.float32, [1])),
+                non_trainable=()),
+            optimizer_state=[tf.int64],
+            client_lr_callback=lr_callback_type,
+            server_lr_callback=lr_callback_type), tff.SERVER)
+
+    self.assertEqual(iterative_process.initialize.type_signature,
+                     tff.FunctionType(parameter=None, result=server_state_type))
+
+    dataset_type = tff.FederatedType(
+        tff.SequenceType(
+            collections.OrderedDict(
+                x=tff.TensorType(tf.float32, [None, 1]),
+                y=tff.TensorType(tf.float32, [None, 1]))), tff.CLIENTS)
+
+    metrics_type = tff.FederatedType(
+        collections.OrderedDict(loss=tff.TensorType(tf.float32)), tff.SERVER)
+    output_type = collections.OrderedDict(
+        before_training=metrics_type, during_training=metrics_type)
+
+    expected_result_type = (server_state_type, output_type)
+    expected_type = tff.FunctionType(
+        parameter=collections.OrderedDict(
+            server_state=server_state_type, federated_dataset=dataset_type),
+        result=expected_result_type)
+
+    actual_type = iterative_process.next.type_signature
+    self.assertEqual(
+        actual_type,
+        expected_type,
+        msg='{s}\n!={t}'.format(s=actual_type, t=expected_type))
+
+  def test_build_with_preprocess_funtion(self):
+    test_dataset = tf.data.Dataset.range(5)
+    client_datasets_type = tff.FederatedType(
+        tff.SequenceType(test_dataset.element_spec), tff.CLIENTS)
+
+    @tff.tf_computation(tff.SequenceType(test_dataset.element_spec))
+    def preprocess_dataset(ds):
+
+      def to_batch(x):
+        return collections.OrderedDict(
+            x=[float(x) * 1.0], y=[float(x) * 3.0 + 1.0])
+
+      return ds.map(to_batch).repeat().batch(2).take(3)
+
+    client_lr_callback = callbacks.create_reduce_lr_on_plateau(
+        learning_rate=0.1,
+        min_delta=0.5,
+        window_size=2,
+        decay_factor=1.0,
+        cooldown=0)
+    server_lr_callback = callbacks.create_reduce_lr_on_plateau(
+        learning_rate=0.1,
+        min_delta=0.5,
+        window_size=2,
+        decay_factor=1.0,
+        cooldown=0)
+
+    iterative_process = adaptive_fed_avg.build_fed_avg_process(
+        _uncompiled_model_builder,
+        client_lr_callback,
+        server_lr_callback,
+        client_optimizer_fn=tf.keras.optimizers.SGD,
+        server_optimizer_fn=tf.keras.optimizers.SGD,
+        dataset_preprocess_comp=preprocess_dataset)
+
+    lr_callback_type = tff.framework.type_from_tensors(client_lr_callback)
+
+    server_state_type = tff.FederatedType(
+        adaptive_fed_avg.ServerState(
+            model=tff.learning.ModelWeights(
+                trainable=(tff.TensorType(tf.float32, [1, 1]),
+                           tff.TensorType(tf.float32, [1])),
+                non_trainable=()),
+            optimizer_state=[tf.int64],
+            client_lr_callback=lr_callback_type,
+            server_lr_callback=lr_callback_type), tff.SERVER)
+
+    self.assertEqual(iterative_process.initialize.type_signature,
+                     tff.FunctionType(parameter=None, result=server_state_type))
+
+    metrics_type = tff.FederatedType(
+        collections.OrderedDict(loss=tff.TensorType(tf.float32)), tff.SERVER)
+    output_type = collections.OrderedDict(
+        before_training=metrics_type, during_training=metrics_type)
+    expected_result_type = (server_state_type, output_type)
+
+    expected_type = tff.FunctionType(
+        parameter=collections.OrderedDict(
+            server_state=server_state_type,
+            federated_dataset=client_datasets_type),
+        result=expected_result_type)
+
+    actual_type = iterative_process.next.type_signature
+    self.assertEqual(
+        actual_type,
+        expected_type,
+        msg='{s}\n!={t}'.format(s=actual_type, t=expected_type))
+
 
 if __name__ == '__main__':
   tf.test.main()
