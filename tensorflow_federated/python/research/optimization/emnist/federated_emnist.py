@@ -34,6 +34,7 @@ def run_federated(
     client_epochs_per_round: int,
     client_batch_size: int,
     clients_per_round: int,
+    max_batches_per_client: Optional[int] = -1,
     client_datasets_random_seed: Optional[int] = None,
     emnist_model: Optional[str] = 'cnn'):
   """Runs an iterative process on the EMNIST character recognition task.
@@ -63,6 +64,9 @@ def run_federated(
     client_batch_size: An integer representing the batch size used on clients.
     clients_per_round: An integer representing the number of clients
       participating in each round.
+    max_batches_per_client: An optional int specifying the number of batches
+      taken by each client at each round. If `-1`, the entire client dataset is
+      used.
     client_datasets_random_seed: An optional int used to seed which clients are
       sampled at each round. If `None`, no seed is used.
     emnist_model: A string specifying the model used for character recognition.
@@ -71,7 +75,10 @@ def run_federated(
   """
 
   emnist_train, emnist_test = emnist_dataset.get_emnist_datasets(
-      client_batch_size, client_epochs_per_round, only_digits=False)
+      client_batch_size,
+      client_epochs_per_round,
+      max_batches_per_client=max_batches_per_client,
+      only_digits=False)
 
   input_spec = emnist_train.create_tf_dataset_for_client(
       emnist_train.client_ids[0]).element_spec

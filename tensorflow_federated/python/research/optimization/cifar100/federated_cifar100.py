@@ -35,6 +35,7 @@ def run_federated(
     client_epochs_per_round: int,
     client_batch_size: int,
     clients_per_round: int,
+    max_batches_per_client: Optional[int] = -1,
     client_datasets_random_seed: Optional[int] = None,
     crop_size: Optional[int] = 24):
   """Runs an iterative process on the CIFAR-100 classification task.
@@ -64,6 +65,9 @@ def run_federated(
     client_batch_size: An integer representing the batch size used on clients.
     clients_per_round: An integer representing the number of clients
       participating in each round.
+    max_batches_per_client: An optional int specifying the number of batches
+      taken by each client at each round. If `-1`, the entire client dataset is
+      used.
     client_datasets_random_seed: An optional int used to seed which clients are
       sampled at each round. If `None`, no seed is used.
     crop_size: An optional integer representing the resulting size of input
@@ -75,7 +79,8 @@ def run_federated(
   cifar_train, cifar_test = cifar100_dataset.get_federated_cifar100(
       client_epochs_per_round=client_epochs_per_round,
       train_batch_size=client_batch_size,
-      crop_shape=crop_shape)
+      crop_shape=crop_shape,
+      max_batches_per_client=max_batches_per_client)
 
   input_spec = cifar_train.create_tf_dataset_for_client(
       cifar_train.client_ids[0]).element_spec
