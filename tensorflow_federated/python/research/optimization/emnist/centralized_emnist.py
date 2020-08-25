@@ -13,80 +13,70 @@
 # limitations under the License.
 """Baseline experiment on centralized EMNIST data."""
 
-import collections
+from typing import Any, Mapping, Optional
 
-from absl import app
-from absl import flags
 import tensorflow as tf
 
-from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import centralized_training_loop
-from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import emnist_dataset
 from tensorflow_federated.python.research.utils.models import emnist_models
 
-with utils_impl.record_new_flags() as hparam_flags:
-  # Generic centralized training flags
-  optimizer_utils.define_optimizer_flags('centralized')
-  flags.DEFINE_string(
-      'experiment_name', None,
-      'Name of the experiment. Part of the name of the output directory.')
-  flags.DEFINE_string(
-      'root_output_dir', '/tmp/centralized/emnist',
-      'The top-level output directory experiment runs. --experiment_name will '
-      'be appended, and the directory will contain tensorboard logs, metrics '
-      'written as CSVs, and a CSV of hyperparameter choices.')
-  flags.DEFINE_integer('num_epochs', 50, 'Number of epochs to train.')
-  flags.DEFINE_integer('batch_size', 20,
-                       'Size of batches for training and eval.')
-  flags.DEFINE_integer('decay_epochs', 25, 'Number of epochs before decaying '
-                       'the learning rate.')
-  flags.DEFINE_float('lr_decay', 0.1, 'How much to decay the learning rate by'
-                     ' at each stage.')
-
-  # EMNIST character recognition flags
-  flags.DEFINE_enum('model', 'cnn', ['cnn', '2nn'],
-                    'Which model to use for classification.')
-
-FLAGS = flags.FLAGS
+EMNIST_MODELS = ['cnn', '2nn']
 
 
-def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
+def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
+                    experiment_name: str,
+                    root_output_dir: str,
+                    num_epochs: int,
+                    batch_size: int,
+                    decay_epochs: Optional[int] = None,
+                    lr_decay: Optional[float] = None,
+                    hparams_dict: Optional[Mapping[str, Any]] = None,
+                    emnist_model: Optional[str] = 'cnn'):
+  """Trains a model on EMNIST character recognition using a given optimizer.
+
+  Args:
+    optimizer: A `tf.keras.optimizers.Optimizer` used to perform training.
+    experiment_name: The name of the experiment. Part of the output directory.
+    root_output_dir: The top-level output directory for experiment runs. The
+      `experiment_name` argument will be appended, and the directory will
+      contain tensorboard logs, metrics written as CSVs, and a CSV of
+      hyperparameter choices (if `hparams_dict` is used).
+    num_epochs: The number of training epochs.
+    batch_size: The batch size, used for train, validation, and test.
+    decay_epochs: The number of epochs of training before decaying the learning
+      rate. If None, no decay occurs.
+    lr_decay: The amount to decay the learning rate by after `decay_epochs`
+      training epochs have occurred.
+    hparams_dict: A mapping with string keys representing the hyperparameters
+      and their values. If not None, this is written to CSV.
+    emnist_model: A string specifying the model used for character recognition.
+      Can be one of `cnn` and `2nn`, corresponding to a CNN model and a densely
+      connected 2-layer model (respectively).
+  """
 
   train_dataset, eval_dataset = emnist_dataset.get_centralized_emnist_datasets(
-      batch_size=FLAGS.batch_size, only_digits=False)
+      batch_size=batch_size, only_digits=False)
 
-  optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
-
-  if FLAGS.model == 'cnn':
+  if emnist_model == 'cnn':
     model = emnist_models.create_conv_dropout_model(only_digits=False)
-  elif FLAGS.model == '2nn':
+  elif emnist_model == '2nn':
     model = emnist_models.create_two_hidden_layer_model(only_digits=False)
   else:
-    raise ValueError('Cannot handle model flag [{!s}].'.format(FLAGS.model))
+    raise ValueError('Cannot handle model flag [{!s}].'.format(emnist_model))
 
   model.compile(
       loss=tf.keras.losses.SparseCategoricalCrossentropy(),
       optimizer=optimizer,
       metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
 
-  hparams_dict = collections.OrderedDict([
-      (name, FLAGS[name].value) for name in hparam_flags
-  ])
-
   centralized_training_loop.run(
       keras_model=model,
       train_dataset=train_dataset,
       validation_dataset=eval_dataset,
-      experiment_name=FLAGS.experiment_name,
-      root_output_dir=FLAGS.root_output_dir,
-      num_epochs=FLAGS.num_epochs,
+      experiment_name=experiment_name,
+      root_output_dir=root_output_dir,
+      num_epochs=num_epochs,
       hparams_dict=hparams_dict,
-      decay_epochs=FLAGS.decay_epochs,
-      lr_decay=FLAGS.lr_decay)
-
-
-if __name__ == '__main__':
-  app.run(main)
+      decay_epochs=decay_epochs,
+      lr_decay=lr_decay)

@@ -13,80 +13,54 @@
 # limitations under the License.
 """Baseline experiment on centralized Shakespeare data."""
 
-import collections
+from typing import Any, Mapping, Optional
 
-from absl import app
-from absl import flags
 import tensorflow as tf
-import tensorflow_federated as tff
 
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
-from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import centralized_training_loop
-from tensorflow_federated.python.research.utils import utils_impl
 from tensorflow_federated.python.research.utils.datasets import shakespeare_dataset
 from tensorflow_federated.python.research.utils.models import shakespeare_models
-
-with utils_impl.record_new_flags() as hparam_flags:
-  # Generic centralized training flags
-  optimizer_utils.define_optimizer_flags('centralized')
-  flags.DEFINE_string(
-      'experiment_name', None,
-      'Name of the experiment. Part of the name of the output directory.')
-  flags.DEFINE_string(
-      'root_output_dir', '/tmp/centralized/shakespeare',
-      'The top-level output directory experiment runs. --experiment_name will '
-      'be appended, and the directory will contain tensorboard logs, metrics '
-      'written as CSVs, and a CSV of hyperparameter choices.')
-  flags.DEFINE_integer('num_epochs', 50, 'Number of epochs to train.')
-  flags.DEFINE_integer('batch_size', 20,
-                       'Size of batches for training and eval.')
-  flags.DEFINE_integer('decay_epochs', 25, 'Number of epochs before decaying '
-                       'the learning rate.')
-  flags.DEFINE_float('lr_decay', 0.1, 'How much to decay the learning rate by'
-                     ' at each stage.')
-  flags.DEFINE_boolean('shuffle_train_data', True,
-                       'Whether to shuffle the training data.')
-
-  # Shakespeare next character prediction flags
-  flags.DEFINE_integer(
-      'shakespeare_sequence_length', 80,
-      'Length of character sequences to use for the RNN model.')
-
-FLAGS = flags.FLAGS
 
 # Vocabulary with OOV ID, zero for the padding, and BOS, EOS IDs.
 VOCAB_SIZE = len(shakespeare_dataset.CHAR_VOCAB) + 4
 
 
-def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
+def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
+                    experiment_name: str,
+                    root_output_dir: str,
+                    num_epochs: int,
+                    batch_size: int,
+                    decay_epochs: Optional[int] = None,
+                    lr_decay: Optional[float] = None,
+                    hparams_dict: Optional[Mapping[str, Any]] = None,
+                    sequence_length: Optional[int] = 80):
+  """Trains a two-layer RNN on Shakespeare next-character-prediction.
 
-  train_client_data, test_client_data = (
-      tff.simulation.datasets.shakespeare.load_data())
+  Args:
+    optimizer: A `tf.keras.optimizers.Optimizer` used to perform training.
+    experiment_name: The name of the experiment. Part of the output directory.
+    root_output_dir: The top-level output directory for experiment runs. The
+      `experiment_name` argument will be appended, and the directory will
+      contain tensorboard logs, metrics written as CSVs, and a CSV of
+      hyperparameter choices (if `hparams_dict` is used).
+    num_epochs: The number of training epochs.
+    batch_size: The batch size, used for train, validation, and test.
+    decay_epochs: The number of epochs of training before decaying the learning
+      rate. If None, no decay occurs.
+    lr_decay: The amount to decay the learning rate by after `decay_epochs`
+      training epochs have occurred.
+    hparams_dict: A mapping with string keys representing the hyperparameters
+      and their values. If not None, this is written to CSV.
+    sequence_length: The sequence length used for Shakespeare preprocessing.
+  """
 
-  def preprocess(ds):
-    return shakespeare_dataset.convert_snippets_to_character_sequence_examples(
-        dataset=ds,
-        batch_size=FLAGS.batch_size,
-        epochs=1,
-        shuffle_buffer_size=0,
-        sequence_length=FLAGS.shakespeare_sequence_length)
-
-  train_dataset = train_client_data.create_tf_dataset_from_all_clients()
-  if FLAGS.shuffle_train_data:
-    train_dataset = train_dataset.shuffle(buffer_size=10000)
-  train_dataset = preprocess(train_dataset)
-
-  eval_dataset = preprocess(
-      test_client_data.create_tf_dataset_from_all_clients())
-
-  optimizer = optimizer_utils.create_optimizer_fn_from_flags('centralized')()
+  train_dataset, eval_dataset = shakespeare_dataset.construct_centralized_datasets(
+      batch_size=batch_size, sequence_length=sequence_length)
 
   pad_token, _, _, _ = shakespeare_dataset.get_special_tokens()
   model = shakespeare_models.create_recurrent_model(
-      vocab_size=VOCAB_SIZE, sequence_length=FLAGS.shakespeare_sequence_length)
+      vocab_size=VOCAB_SIZE, sequence_length=sequence_length)
   model.compile(
       optimizer=optimizer,
       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
@@ -94,21 +68,13 @@ def main(argv):
           keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token])
       ])
 
-  hparams_dict = collections.OrderedDict([
-      (name, FLAGS[name].value) for name in hparam_flags
-  ])
-
   centralized_training_loop.run(
       keras_model=model,
       train_dataset=train_dataset,
       validation_dataset=eval_dataset,
-      experiment_name=FLAGS.experiment_name,
-      root_output_dir=FLAGS.root_output_dir,
-      num_epochs=FLAGS.num_epochs,
+      experiment_name=experiment_name,
+      root_output_dir=root_output_dir,
+      num_epochs=num_epochs,
       hparams_dict=hparams_dict,
-      decay_epochs=FLAGS.decay_epochs,
-      lr_decay=FLAGS.lr_decay)
-
-
-if __name__ == '__main__':
-  app.run(main)
+      decay_epochs=decay_epochs,
+      lr_decay=lr_decay)

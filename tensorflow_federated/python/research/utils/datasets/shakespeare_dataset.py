@@ -157,7 +157,7 @@ def construct_character_level_datasets(client_batch_size: int,
 
 def construct_centralized_datasets(batch_size: int = EVAL_BATCH_SIZE,
                                    sequence_length: int = SEQUENCE_LENGTH,
-                                   shuffle_buffer_size: int = 0):
+                                   shuffle_buffer_size: int = 10000):
   """Loads and preprocesses centralized training and test Shakespeare datasets."""
   train_client_data, test_client_data = (
       tff.simulation.datasets.shakespeare.load_data())
@@ -173,7 +173,7 @@ def construct_centralized_datasets(batch_size: int = EVAL_BATCH_SIZE,
       test_client_data.create_tf_dataset_from_all_clients(),
       batch_size=batch_size,
       epochs=1,
-      shuffle_buffer_size=shuffle_buffer_size,
+      shuffle_buffer_size=0,
       sequence_length=sequence_length)
 
   return eval_train_dataset, eval_test_dataset
