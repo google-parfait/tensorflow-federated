@@ -81,6 +81,7 @@ def assert_nested_struct_eq(x, y):
           str(xe), str(ye)))
 
 
+# TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
 def skip_test_for_gpu(test_fn):
   """Decorator for a test to be skipped in GPU tests.
 

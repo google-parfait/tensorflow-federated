@@ -133,7 +133,17 @@ class BackendTest(parameterized.TestCase):
       return x
 
     result = foo(10)
-    self.assertIsNotNone(result)
+    self.assertEqual(result, 10)
+
+  @with_contexts
+  def test_constant(self):
+
+    @tff.federated_computation
+    def foo():
+      return 10
+
+    result = foo()
+    self.assertEqual(result, 10)
 
   @with_contexts
   def test_tf_lookup_table_cross_round(self):
@@ -150,6 +160,48 @@ class BackendTest(parameterized.TestCase):
 
     self.assertEqual(foo(tf.constant(['a', 'b']), 'a'), 0)
     self.assertEqual(foo(tf.constant(['d', 'e', 'f']), 'f'), 2)
+
+
+class NonDeterministicTest(parameterized.TestCase):
+
+  # TODO(b/131363314): The reference executor should support generating and
+  # returning infinite datasets
+  @with_contexts(
+      ('native_local', tff.backends.native.create_local_execution_context()),
+      ('native_sizing', tff.backends.native.create_sizing_execution_context()),
+      ('native_debug',
+       tff.backends.native.create_thread_debugging_execution_context()),
+  )
+  def test_computation_called_once_is_invoked_once(self):
+
+    @tff.tf_computation
+    def get_random():
+      return tf.random.normal([])
+
+    @tff.federated_computation
+    def get_one_random_twice():
+      value = get_random()
+      return value, value
+
+    first_random, second_random = get_one_random_twice()
+    self.assertEqual(first_random, second_random)
+
+  @with_contexts
+  def test_computation_called_twice_is_invoked_twice(self):
+    self.skipTest(
+        'b/139135080: Recognize distinct instantiations of the same TF code as '
+        '(potentially) distinct at construction time.')
+
+    @tff.tf_computation
+    def get_random():
+      return tf.random.normal([])
+
+    @tff.federated_computation
+    def get_two_random():
+      return get_random(), get_random()
+
+    first_random, second_random = get_two_random()
+    self.assertNotEqual(first_random, second_random)
 
 
 if __name__ == '__main__':

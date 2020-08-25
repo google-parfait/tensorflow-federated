@@ -49,8 +49,7 @@ class ZeroOrOneArgFnToBuildingBlockTest(parameterized.TestCase):
        '(FEDERATED_foo -> <FEDERATED_foo[1],FEDERATED_foo[0]>)'),
       ('constant', lambda: 'stuff', None, '( -> (let fc_FEDERATED_symbol_0=comp#'))
   # pyformat: enable
-  def test_zero_or_one_arg_fn_to_building_block(self, fn, parameter_type,
-                                                fn_str):
+  def test_returns_result(self, fn, parameter_type, fn_str):
     parameter_name = 'foo' if parameter_type is not None else None
     fn = function_utils.wrap_as_zero_or_one_arg_callable(fn, parameter_type)
     result, _ = federated_computation_utils.zero_or_one_arg_fn_to_building_block(
@@ -59,29 +58,30 @@ class ZeroOrOneArgFnToBuildingBlockTest(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('tuple_result',
+      ('tuple',
        lambda x: (x[1], x[0]),
        computation_types.StructType([tf.int32, tf.float32]),
        computation_types.StructWithPythonType([
            (None, tf.float32), (None, tf.int32)], tuple)),
-      ('list_result',
+      ('list',
        lambda x: [x[1], x[0]],
        computation_types.StructType([tf.int32, tf.float32]),
        computation_types.StructWithPythonType([
            (None, tf.float32), (None, tf.int32)], list)),
-      ('odict_result',
+      ('odict',
        lambda x: collections.OrderedDict([('A', x[1]), ('B', x[0])]),
        computation_types.StructType([tf.int32, tf.float32]),
        computation_types.StructWithPythonType([
            ('A', tf.float32), ('B', tf.int32)], collections.OrderedDict)),
-      ('namedtuple_result',
+      ('namedtuple',
        lambda x: TestNamedTuple(x=x[1], y=x[0]),
        computation_types.StructType([tf.int32, tf.float32]),
        computation_types.StructWithPythonType([
            ('x', tf.float32), ('y', tf.int32)], TestNamedTuple)),
   )
   # pyformat: enable
-  def test_py_container_args(self, fn, parameter_type, exepcted_result_type):
+  def test_returns_result_with_py_container(self, fn, parameter_type,
+                                            exepcted_result_type):
     parameter_name = 'foo'
     fn = function_utils.wrap_as_zero_or_one_arg_callable(fn, parameter_type)
     _, type_signature = federated_computation_utils.zero_or_one_arg_fn_to_building_block(
@@ -90,6 +90,15 @@ class ZeroOrOneArgFnToBuildingBlockTest(parameterized.TestCase):
     self.assertIs(type_signature.result.python_container,
                   exepcted_result_type.python_container)
     self.assertEqual(type_signature.result, exepcted_result_type)
+
+  def test_raises_value_error_with_none_result(self):
+    fn = lambda: None
+    parameter_type = None
+    fn = function_utils.wrap_as_zero_or_one_arg_callable(fn, parameter_type)
+
+    with self.assertRaisesRegex(ValueError, 'must return some non-`None`'):
+      federated_computation_utils.zero_or_one_arg_fn_to_building_block(
+          fn, None, parameter_type, context_stack_impl.context_stack)
 
 
 if __name__ == '__main__':

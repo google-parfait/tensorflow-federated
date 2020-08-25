@@ -29,7 +29,6 @@ from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import do_not_use_compiler
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.executors import execution_context
@@ -457,125 +456,6 @@ class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
       return comp4(comp3(comp2(comp1())))
 
     self.assertEqual(comp5(), 75.0)
-
-
-class FederatedComputationsTest(parameterized.TestCase, tf.test.TestCase):
-
-  @executor_test_utils.executors
-  def test_raises_value_error_none_result(self):
-    with self.assertRaisesRegex(ValueError, 'must return some non-`None`'):
-
-      @computations.federated_computation(None)
-      def _():
-        return None
-
-  @executor_test_utils.executors
-  def test_computation_with_no_args_returns_value(self):
-
-    @computations.federated_computation
-    def foo():
-      return 10
-
-    self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
-    self.assertEqual(foo(), 10)
-
-  # TODO(b/131363314): The reference executor should support generating and
-  # returning infinite datasets
-  @executor_test_utils.executors(
-      ('local', executor_stacks.local_executor_factory(num_clients=1)),)
-  def test_computation_called_once_is_invoked_once(self):
-
-    @computations.tf_computation
-    def get_random():
-      return tf.random.normal([])
-
-    @computations.federated_computation
-    def same_random_number_twice():
-      value = get_random()
-      return value, value
-
-    num1, num2 = same_random_number_twice()
-    self.assertEqual(num1, num2)
-
-  @executor_test_utils.executors
-  def test_computation_typical_usage_as_decorator_with_unlabeled_type(self):
-
-    @computations.federated_computation(
-        computation_types.FunctionType(tf.int32, tf.int32),
-        tf.int32,
-    )
-    def foo(f, x):
-      assert isinstance(f, value_base.Value)
-      assert isinstance(x, value_base.Value)
-      assert str(f.type_signature) == '(int32 -> int32)'
-      assert str(x.type_signature) == 'int32'
-      result_value = f(f(x))
-      assert isinstance(result_value, value_base.Value)
-      assert str(result_value.type_signature) == 'int32'
-      return result_value
-
-    self.assertEqual(
-        str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
-
-    @computations.tf_computation(tf.int32)
-    def third_power(x):
-      return x**3
-
-    self.assertEqual(foo(third_power, 10), int(1e9))
-    self.assertEqual(foo(third_power, 1), 1)
-
-  @executor_test_utils.executors
-  def test_computation_typical_usage_as_decorator_with_labeled_type(self):
-
-    @computations.federated_computation(
-        collections.OrderedDict(
-            f=computation_types.FunctionType(tf.int32, tf.int32),
-            x=tf.int32,
-        ))
-    def foo(f, x):
-      return f(f(x))
-
-    @computations.tf_computation(tf.int32)
-    def square(x):
-      return x**2
-
-    @computations.tf_computation(tf.int32, tf.int32)
-    def square_drop_y(x, y):
-      del y  # Unused.
-      return x * x
-
-    self.assertEqual(
-        str(foo.type_signature), '(<f=(int32 -> int32),x=int32> -> int32)')
-
-    self.assertEqual(foo(square, 10), int(1e4))
-    self.assertEqual(square_drop_y(square_drop_y(10, 5), 100), int(1e4))
-    self.assertEqual(square_drop_y(square_drop_y(10, 100), 5), int(1e4))
-    with self.assertRaisesRegex(
-        TypeError,
-        r'(Values of type .* cannot be cast to type .*)|'  # Reference executor
-        '(Expected a value of type .*, found .*)'  # Local executor
-    ):
-      foo(square_drop_y, 10)
-
-
-class ComputationsTest(parameterized.TestCase):
-
-  @executor_test_utils.executors
-  def test_tf_computation_called_twice_is_invoked_twice(self):
-    self.skipTest(
-        'b/139135080: Recognize distinct instantiations of the same TF code as '
-        '(potentially) distinct at construction time.')
-
-    @computations.tf_computation
-    def get_random():
-      return tf.random.normal([])
-
-    @computations.federated_computation
-    def get_two_random():
-      return get_random(), get_random()
-
-    first_random, second_random = get_two_random()
-    self.assertNotEqual(first_random, second_random)
 
 
 if __name__ == '__main__':

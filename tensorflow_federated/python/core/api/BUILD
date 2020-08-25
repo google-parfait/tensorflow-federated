@@ -85,7 +85,6 @@ py_test(
         ":computation_types",
         ":computations",
         ":intrinsics",
-        ":value_base",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl:do_not_use_compiler",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
