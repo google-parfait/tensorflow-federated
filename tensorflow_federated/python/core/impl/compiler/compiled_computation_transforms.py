@@ -1111,7 +1111,7 @@ class StructCalledGraphs(transformation_utils.TransformSpec):
     if not self.should_transform(comp):
       return comp, False
     if len(comp) == 0:  # pylint: disable=g-explicit-length-test
-      # FIXME(b/157172423): this destroys the container type.
+      # TODO(b/157172423): this destroys the container type.
       return building_block_factory.create_compiled_empty_tuple(), True
     compiled_computation_list = []
     arg_list = []
