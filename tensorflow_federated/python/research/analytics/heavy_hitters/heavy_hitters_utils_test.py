@@ -71,7 +71,7 @@ class HeavyHittersUtilsTest(tf.test.TestCase):
     ground_truth = {'a': 3, 'd': 2, 'b': 2, 'c': 2}
     self.assertAlmostEqual(hh_utils.f1_score(ground_truth, signal, 3), 1.0)
 
-  def test_compute_thershold_leakage(self):
+  def test_compute_threshold_leakage(self):
     # The counts of discovered heavy hitters do not affect the results.
     signal = {'a': 5, 'b': 5, 'c': 5, 'd': 5, 'e': 5}
     ground_truth = {'a': 7, 'b': 6, 'c': 4, 'd': 4, 'e': 3, 'f': 2, 'g': 1}
@@ -80,7 +80,7 @@ class HeavyHittersUtilsTest(tf.test.TestCase):
     expected_false_positive_rate = {}
     expected_false_discovery_rate = {}
     expected_harmonic_mean_fpr_fdr = {}
-    false_positive_rate, false_discovery_rate, harmonic_mean_fpr_fdr = hh_utils.compute_thershold_leakage(
+    false_positive_rate, false_discovery_rate, harmonic_mean_fpr_fdr = hh_utils.compute_threshold_leakage(
         ground_truth, signal, threshold)
     self.assertEqual(false_positive_rate, expected_false_positive_rate)
     self.assertEqual(false_discovery_rate, expected_false_discovery_rate)
@@ -124,7 +124,7 @@ class HeavyHittersUtilsTest(tf.test.TestCase):
         1: 0.0
     }
 
-    false_positive_rate, false_discovery_rate, harmonic_mean_fpr_fdr = hh_utils.compute_thershold_leakage(
+    false_positive_rate, false_discovery_rate, harmonic_mean_fpr_fdr = hh_utils.compute_threshold_leakage(
         ground_truth, signal, threshold)
     self.assertEqual(false_positive_rate, expected_false_positive_rate)
     self.assertEqual(false_discovery_rate, expected_false_discovery_rate)
@@ -139,7 +139,7 @@ class HeavyHittersUtilsTest(tf.test.TestCase):
     expected_false_discovery_rate = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0}
     expected_harmonic_mean_fpr_fdr = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0}
 
-    false_positive_rate, false_discovery_rate, harmonic_mean_fpr_fdr = hh_utils.compute_thershold_leakage(
+    false_positive_rate, false_discovery_rate, harmonic_mean_fpr_fdr = hh_utils.compute_threshold_leakage(
         ground_truth, signal, threshold)
     self.assertEqual(false_positive_rate, expected_false_positive_rate)
     self.assertEqual(false_discovery_rate, expected_false_discovery_rate)

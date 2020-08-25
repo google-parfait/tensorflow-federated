@@ -278,14 +278,15 @@ def top_k(signal, k):
 def compute_loss(results,
                  expected_results,
                  correction,
-                 space=None,
-                 space_cost_per_error=None,
+                 communication_cost=None,
+                 communication_cost_per_error=None,
                  factor_bandwidth_into_loss=False):
   """Computes the loss between results and expected_results."""
   distance = distance_l1(
       signal=results, ground_truth=expected_results, correction=correction)
   if factor_bandwidth_into_loss:
-    distance = distance + (float(space) / space_cost_per_error)
+    distance = distance + (
+        float(communication_cost) / communication_cost_per_error)
   return distance
 
 
@@ -323,7 +324,7 @@ def calculate_ground_truth(data, dataset_name):
   return ground_truth_results
 
 
-def compute_thershold_leakage(ground_truth, signal, t):
+def compute_threshold_leakage(ground_truth, signal, t):
   """Computes the threshold leakage of the least frequent words.
 
   A word is leaked at threshold `t` if it appears less than `t` times in
