@@ -94,7 +94,7 @@ def run_federated(
       client_batch_size=client_batch_size,
       client_epochs_per_round=client_epochs_per_round,
       max_training_elements_per_user=max_elements_per_user,
-      max_batches_per_client=max_batches_per_client,
+      max_batches_per_user=max_batches_per_client,
       num_validation_examples=num_validation_examples)
 
   input_spec = stackoverflow_train.create_tf_dataset_for_client(
