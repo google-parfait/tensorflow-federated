@@ -73,9 +73,6 @@ class TriehhTffTest(hh_test.HeavyHittersTest):
     client_data = self.create_dataset(100)
 
     for _ in range(max_rounds * num_sub_rounds):
-      # TODO(b/152051528): Remove this once lookup table state is cleared in
-      # eager executer.
-      tff.backends.native.set_local_execution_context()
       sampled_clients = list(range(clients))
       sampled_datasets = [
           client_data.create_tf_dataset_for_client(client_id)
