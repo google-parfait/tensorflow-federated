@@ -165,7 +165,6 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
 
   wrapped_fn = _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu,
                                                param_type, device)
-
   param_fns = []
   if param_type is not None:
     for spec in structure.flatten(type_spec.parameter):
@@ -189,6 +188,21 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
       result_fns.append(fn)
 
   def _fn_to_return(arg, param_fns, wrapped_fn):  # pylint:disable=missing-docstring
+
+    # TODO(b/166479382): This cleanup-before-invocation pattern is a workaround
+    # to square the circle of TF data expecting to lazily reference this
+    # resource on iteration, as well as usages that expect to reinitialize a
+    # table with new data. Revisit the semantics implied by this cleanup
+    # pattern.
+    eager_cleanup_resources = []
+    for op in wrapped_fn.graph.get_operations():
+      if op.type == 'HashTableV2':
+        eager_cleanup_resources += op.outputs
+    if eager_cleanup_resources:
+      for resource in wrapped_fn.prune(
+          feeds={}, fetches=eager_cleanup_resources)():
+        tf.raw_ops.DestroyResourceOp(resource=resource)
+
     param_elements = []
     if arg is not None:
       arg_parts = structure.flatten(arg)
@@ -207,7 +221,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     # is fixed.
     resources = []
     for op in wrapped_fn.graph.get_operations():
-      if op.type in ['VarHandleOp', 'HashTableV2']:
+      if op.type == 'VarHandleOp':
         resources += op.outputs
     if resources:
       for resource in wrapped_fn.prune(feeds={}, fetches=resources)():

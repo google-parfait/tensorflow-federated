@@ -13,6 +13,7 @@
 # limitations under the License.
 """Data loader for Stackoverflow."""
 
+import collections
 from typing import List
 
 from absl import logging
@@ -160,6 +161,16 @@ def create_train_dataset_preprocess_fn(vocab: List[str],
   else:
     shuffle_buffer_size = max_training_elements_per_user
 
+  feature_dtypes = collections.OrderedDict(
+      creation_date=tf.string,
+      title=tf.string,
+      score=tf.int64,
+      tags=tf.string,
+      tokens=tf.string,
+      type=tf.string,
+  )
+
+  @tff.tf_computation(tff.SequenceType(feature_dtypes))
   def preprocess_train(dataset):
     to_ids = build_to_ids_fn(
         vocab=vocab, max_seq_len=max_seq_len, num_oov_buckets=num_oov_buckets)

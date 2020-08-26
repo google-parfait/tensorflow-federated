@@ -316,6 +316,34 @@ class EagerTFExecutorTest(tf.test.TestCase):
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @test.skip_test_for_gpu
+  def test_executor_create_call_take_two_from_stateful_dataset(self):
+
+    vocab = ['a', 'b', 'c', 'd', 'e', 'f']
+
+    @computations.tf_computation(computation_types.SequenceType(tf.string))
+    def comp(ds):
+      table = tf.lookup.StaticVocabularyTable(
+          tf.lookup.KeyValueTensorInitializer(
+              vocab, tf.range(len(vocab), dtype=tf.int64)),
+          num_oov_buckets=1)
+      ds = ds.map(table.lookup)
+      return ds.take(2)
+
+    ds = tf.data.Dataset.from_tensor_slices(vocab)
+    ex = eager_tf_executor.EagerTFExecutor()
+    loop = asyncio.get_event_loop()
+    comp = loop.run_until_complete(ex.create_value(comp))
+    arg = loop.run_until_complete(
+        ex.create_value(ds, comp.type_signature.parameter))
+    result = loop.run_until_complete(ex.create_call(comp, arg))
+    self.assertIsInstance(result, eager_tf_executor.EagerValue)
+    self.assertEqual(str(result.type_signature), 'int64*')
+    self.assertIn('Dataset', type(result.internal_representation).__name__)
+    self.assertCountEqual([x.numpy() for x in result.internal_representation],
+                          [0, 1])
+
+  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
+  @test.skip_test_for_gpu
   def test_executor_create_call_take_three_int_from_infinite_dataset(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int32))
