@@ -81,6 +81,56 @@ def _invoke(ex, comp, arg=None):
 
 class FederatedComposingStrategyTest(absltest.TestCase):
 
+  def test_recovers_from_raising(self):
+
+    class _RaisingExecutor(eager_tf_executor.EagerTFExecutor):
+      """An executor which can be configured to raise on `create_value`."""
+
+      def __init__(self):
+        self._should_raise = True
+        super().__init__()
+
+      def stop_raising(self):
+        self._should_raise = False
+
+      async def create_value(self, *args, **kwargs):
+        if self._should_raise:
+          raise AssertionError
+        return await super().create_value(*args, **kwargs)
+
+    raising_executors = [_RaisingExecutor() for _ in range(2)]
+
+    factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
+        placement_literals.SERVER: _create_worker_stack(),
+        placement_literals.CLIENTS: raising_executors,
+    })
+    federating_ex = federating_executor.FederatingExecutor(
+        factory, _create_worker_stack())
+
+    raising_stacks = [federating_ex for _ in range(3)]
+
+    executor = _create_middle_stack([
+        _create_middle_stack(raising_stacks),
+        _create_middle_stack(raising_stacks),
+    ])
+
+    @computations.federated_computation(type_factory.at_clients(tf.float32))
+    def comp(x):
+      return intrinsics.federated_mean(x)
+
+    # 2 clients per worker stack * 3 worker stacks * 2 middle stacks
+    num_clients = 12
+    arg = [float(x + 1) for x in range(num_clients)]
+
+    with self.assertRaises(AssertionError):
+      _invoke(executor, comp, arg)
+
+    for ex in raising_executors:
+      ex.stop_raising()
+
+    result = _invoke(executor, comp, arg)
+    self.assertEqual(result, 6.5)
+
   def test_federated_value_at_server(self):
 
     @computations.federated_computation

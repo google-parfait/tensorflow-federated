@@ -194,35 +194,25 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       clients located in the corresponding child executor.
     """
 
-    # This helper function and the logic to cache the `_cardinalities_task` is
-    # is required because `functools.lru_cache` is not compatible with async
-    # coroutines. See https://bugs.python.org/issue35040 for more information.
-    async def _get_cardinalities_helper():
+    async def _num_clients(executor):
+      """Returns the number of clients for the given `executor`."""
+      intrinsic_type = computation_types.FunctionType(
+          type_factory.at_clients(tf.int32), type_factory.at_server(tf.int32))
+      intrinsic = executor_utils.create_intrinsic_comp(
+          intrinsic_defs.FEDERATED_SUM, intrinsic_type)
+      arg_type = type_factory.at_clients(tf.int32, all_equal=True)
+      fn, arg = await asyncio.gather(
+          executor.create_value(intrinsic, intrinsic_type),
+          executor.create_value(1, arg_type))
+      call = await executor.create_call(fn, arg)
+      result = await call.compute()
+      if isinstance(result, tf.Tensor):
+        return result.numpy()
+      else:
+        return result
 
-      async def _num_clients(executor):
-        """Returns the number of clients for the given `executor`."""
-        intrinsic_type = computation_types.FunctionType(
-            type_factory.at_clients(tf.int32), type_factory.at_server(tf.int32))
-        intrinsic = executor_utils.create_intrinsic_comp(
-            intrinsic_defs.FEDERATED_SUM, intrinsic_type)
-        arg_type = type_factory.at_clients(tf.int32, all_equal=True)
-        fn, arg = await asyncio.gather(
-            executor.create_value(intrinsic, intrinsic_type),
-            executor.create_value(1, arg_type))
-        call = await executor.create_call(fn, arg)
-        result = await call.compute()
-        if isinstance(result, tf.Tensor):
-          return result.numpy()
-        else:
-          return result
-
-      return await asyncio.gather(
-          *[_num_clients(c) for c in self._target_executors])
-
-    if self._cardinalities_task is None:
-      self._cardinalities_task = asyncio.ensure_future(
-          _get_cardinalities_helper())
-    return await self._cardinalities_task
+    return await asyncio.gather(
+        *[_num_clients(c) for c in self._target_executors])
 
   async def compute_federated_value(
       self, value: Any, type_signature: computation_types.Type
