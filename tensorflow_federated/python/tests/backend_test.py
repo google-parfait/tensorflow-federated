@@ -178,22 +178,6 @@ class TensorFlowComputationTest(parameterized.TestCase):
     self.assertEqual(result, 10)
 
   @with_contexts
-  def test_lookup_table(self):
-
-    @tff.tf_computation(
-        tff.TensorType(shape=[None], dtype=tf.string),
-        tff.TensorType(shape=[], dtype=tf.string))
-    def foo(table_args, to_lookup):
-      values = tf.range(tf.shape(table_args)[0])
-      initializer = tf.lookup.KeyValueTensorInitializer(table_args, values)
-      table = tf.lookup.StaticHashTable(initializer, 100)
-      return table.lookup(to_lookup)
-
-    self.assertEqual(foo(tf.constant(['a', 'b']), 'a'), 0)
-    self.assertEqual(foo(tf.constant(['d', 'e', 'f']), 'f'), 2)
-    self.assertEqual(foo(tf.constant(['d', 'e', 'f', 'g', 'h', 'i']), 'i'), 5)
-
-  @with_contexts
   def test_concrete_returns_result(self):
 
     @tff.tf_computation(tf.int32, tf.int32)

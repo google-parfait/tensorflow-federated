@@ -293,6 +293,36 @@ class EagerTFExecutorTest(tf.test.TestCase):
     self.assertIsInstance(result.internal_representation, tf.Tensor)
     self.assertEqual(result.internal_representation.numpy(), 30)
 
+  def test_dynamic_lookup_table_usage(self):
+
+    @computations.tf_computation(
+        computation_types.TensorType(shape=[None], dtype=tf.string),
+        computation_types.TensorType(shape=[], dtype=tf.string))
+    def comp(table_args, to_lookup):
+      values = tf.range(tf.shape(table_args)[0])
+      initializer = tf.lookup.KeyValueTensorInitializer(table_args, values)
+      table = tf.lookup.StaticHashTable(initializer, 100)
+      return table.lookup(to_lookup)
+
+    ex = eager_tf_executor.EagerTFExecutor()
+    loop = asyncio.get_event_loop()
+    comp = loop.run_until_complete(ex.create_value(comp))
+    arg_1 = loop.run_until_complete(
+        ex.create_value(
+            structure.Struct([('table_args', tf.constant(['a', 'b', 'c'])),
+                              ('to_lookup', tf.constant('a'))]),
+            comp.type_signature.parameter))
+    arg_2 = loop.run_until_complete(
+        ex.create_value(
+            structure.Struct([('table_args', tf.constant(['a', 'b', 'c', 'd'])),
+                              ('to_lookup', tf.constant('d'))]),
+            comp.type_signature.parameter))
+    result_1 = loop.run_until_complete(ex.create_call(comp, arg_1))
+    result_2 = loop.run_until_complete(ex.create_call(comp, arg_2))
+
+    self.assertEqual(self.evaluate(result_1.internal_representation), 0)
+    self.assertEqual(self.evaluate(result_2.internal_representation), 3)
+
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
   @test.skip_test_for_gpu
   def test_executor_create_call_take_two_int_from_finite_dataset(self):
