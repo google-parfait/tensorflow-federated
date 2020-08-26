@@ -51,16 +51,6 @@ def count_total(ds):
 
 class TensorFlowComputationsTest(parameterized.TestCase):
 
-  def test_tf_fn_with_variable(self):
-    # N.B. This does not work with TF 2 style serialization,
-    # because a variable is created on a non-first call.
-
-    @computations.tf_computation
-    def read_var():
-      v = tf.Variable(10, name='test_var')
-      return v
-    self.assertEqual(read_var(), 10)
-
   @parameterized.named_parameters(
       ('one_client', 1),
       ('two_clients', 2),
@@ -104,28 +94,6 @@ class TensorFlowComputationsTest(parameterized.TestCase):
       self.assertEqual(expected_aggregate_history, size_info.aggregate_history)
       self.assertEqual(expected_broadcast_bits, size_info.broadcast_bits)
       self.assertEqual(expected_aggregate_bits, size_info.aggregate_bits)
-
-  @executor_test_utils.executors
-  def test_computation_with_no_args_returns_value(self):
-
-    @computations.tf_computation
-    def foo():
-      return 10
-
-    self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
-    self.assertEqual(foo(), 10)
-
-  def test_tf_fn_with_empty_tuple_type_trivial_logic(self):
-    empty_tuple = ()
-    pass_through = computations.tf_computation(lambda x: x, empty_tuple)
-    self.assertEqual(pass_through(empty_tuple), empty_tuple)
-
-  def test_tf_fn_with_empty_tuple_type_nontrivial_logic(self):
-    empty_tuple = ()
-    nontrivial_manipulation = computations.tf_computation(
-        lambda x: (x, x), empty_tuple)
-    self.assertEqual(
-        nontrivial_manipulation(empty_tuple), (empty_tuple, empty_tuple))
 
   def test_tf_comp_first_mode_of_usage_as_non_polymorphic_wrapper(self):
     # Wrapping a lambda with a parameter.
@@ -255,21 +223,6 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     self.assertEqual(type(result[4]), list)
     self.assertEqual(result[5], (1,))
     self.assertEqual(type(result[5]), tuple)
-
-  def test_polymorphic(self):
-
-    def foo(x, y, z):
-      # Since we don't wrap this as a tf.function, we need to do some
-      # tf.convert_to_tensor(...) in order to ensure we have TensorFlow types.
-      x = tf.convert_to_tensor(x)
-      y = tf.convert_to_tensor(y)
-      return (x + y, tf.convert_to_tensor(z))
-
-    tf_comp = computations.tf_computation(foo)  # A polymorphic TFF function.
-
-    self.assertEqual(tf_comp(1, 2, 3), (3, 3))  # With int32
-    self.assertEqual(tf_comp(1.0, 2.0, 3), (3.0, 3))  # With float32
-    self.assertEqual(tf_comp(1, 2, 3), (3, 3))  # With z
 
   def test_explicit_tuple_param(self):
     # See also test_polymorphic_tuple_input

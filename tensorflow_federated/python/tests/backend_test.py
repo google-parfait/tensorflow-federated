@@ -14,7 +14,6 @@
 
 from absl.testing import absltest
 from absl.testing import parameterized
-
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -87,7 +86,27 @@ def with_contexts(*args):
     return lambda fn: decorator(fn, *args)
 
 
-class BackendTest(parameterized.TestCase):
+class FederatedComputationTest(parameterized.TestCase):
+
+  @with_contexts
+  def test_constant(self):
+
+    @tff.federated_computation
+    def foo():
+      return 10
+
+    result = foo()
+    self.assertEqual(result, 10)
+
+  @with_contexts
+  def test_empyt_tuple(self):
+
+    @tff.federated_computation
+    def foo():
+      return ()
+
+    result = foo()
+    self.assertEqual(result, ())
 
   @with_contexts
   def test_federated_value(self):
@@ -125,20 +144,13 @@ class BackendTest(parameterized.TestCase):
     result = foo(value)
     self.assertIsNotNone(result)
 
-  @with_contexts
-  def test_identity(self):
 
-    @tff.federated_computation
-    def foo(x):
-      return x
-
-    result = foo(10)
-    self.assertEqual(result, 10)
+class TensorFlowComputationTest(parameterized.TestCase):
 
   @with_contexts
   def test_constant(self):
 
-    @tff.federated_computation
+    @tff.tf_computation
     def foo():
       return 10
 
@@ -146,20 +158,72 @@ class BackendTest(parameterized.TestCase):
     self.assertEqual(result, 10)
 
   @with_contexts
-  def test_tf_lookup_table_cross_round(self):
+  def test_empyt_tuple(self):
+
+    @tff.tf_computation
+    def foo():
+      return ()
+
+    result = foo()
+    self.assertEqual(result, ())
+
+  @with_contexts
+  def test_variable(self):
+
+    @tff.tf_computation
+    def foo():
+      return tf.Variable(10, name='var')
+
+    result = foo()
+    self.assertEqual(result, 10)
+
+  @with_contexts
+  def test_lookup_table(self):
 
     @tff.tf_computation(
         tff.TensorType(shape=[None], dtype=tf.string),
         tff.TensorType(shape=[], dtype=tf.string))
     def foo(table_args, to_lookup):
-      table = tf.lookup.StaticHashTable(
-          tf.lookup.KeyValueTensorInitializer(
-              table_args, tf.range(tf.shape(table_args)[0])), 100)
+      values = tf.range(tf.shape(table_args)[0])
+      initializer = tf.lookup.KeyValueTensorInitializer(table_args, values)
+      table = tf.lookup.StaticHashTable(initializer, 100)
       return table.lookup(to_lookup)
 
     self.assertEqual(foo(tf.constant(['a', 'b']), 'a'), 0)
     self.assertEqual(foo(tf.constant(['d', 'e', 'f']), 'f'), 2)
     self.assertEqual(foo(tf.constant(['d', 'e', 'f', 'g', 'h', 'i']), 'i'), 5)
+
+  @with_contexts
+  def test_concrete_returns_result(self):
+
+    @tff.tf_computation(tf.int32, tf.int32)
+    def foo(x, y):
+      return x + y
+
+    result = foo(1, 2)
+    self.assertEqual(result, 3)
+
+  @with_contexts
+  def test_concrete_raises_type_error(self):
+
+    @tff.tf_computation(tf.int32, tf.int32)
+    def foo(x, y):
+      return x + y
+
+    with self.assertRaises(TypeError):
+      foo(1.0, 2.0)
+
+  @with_contexts
+  def test_polymorphic(self):
+
+    @tff.tf_computation
+    def foo(x, y):
+      return x + y
+
+    result = foo(1, 2)
+    self.assertEqual(result, 3)
+    result = foo(1.0, 2.0)
+    self.assertEqual(result, 3.0)
 
 
 class NonDeterministicTest(parameterized.TestCase):
