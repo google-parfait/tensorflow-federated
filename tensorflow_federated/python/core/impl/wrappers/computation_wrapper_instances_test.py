@@ -14,7 +14,6 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
@@ -23,58 +22,137 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
-class ComputationWrapperInstancesTest(test.TestCase):
+class TensorflowWrapperTest(test.TestCase):
 
-  @test.graph_mode_test
-  def test_tf_wrapper_with_one_op_py_fn(self):
+  def test_invoke_with_lambda(self):
+    foo = lambda x: x > 10
+    foo = computation_wrapper_instances.tensorflow_wrapper(foo, tf.int32)
+    self.assertEqual(foo.type_signature.compact_representation(),
+                     '(int32 -> bool)')
+
+  def test_invoke_with_polymorphic_lambda(self):
+    foo = lambda x: x > 10
+    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+
+    concrete_fn = foo.fn_for_argument_type(
+        computation_types.TensorType(tf.int32))
+    self.assertEqual(concrete_fn.type_signature.compact_representation(),
+                     '(int32 -> bool)')
+    concrete_fn = foo.fn_for_argument_type(
+        computation_types.TensorType(tf.float32))
+    self.assertEqual(concrete_fn.type_signature.compact_representation(),
+                     '(float32 -> bool)')
+
+  def test_invoke_with_no_arg_lambda(self):
+    foo = lambda: 10
+    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
+
+  def test_invoke_with_fn(self):
+
+    def foo(x):
+      return x > 10
+
+    foo = computation_wrapper_instances.tensorflow_wrapper(foo, tf.int32)
+    self.assertEqual(foo.type_signature.compact_representation(),
+                     '(int32 -> bool)')
+
+  def test_invoke_with_polymorphic_fn(self):
+
+    def foo(x):
+      return x > 10
+
+    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+
+    concrete_fn = foo.fn_for_argument_type(
+        computation_types.TensorType(tf.int32))
+    self.assertEqual(concrete_fn.type_signature.compact_representation(),
+                     '(int32 -> bool)')
+    concrete_fn = foo.fn_for_argument_type(
+        computation_types.TensorType(tf.float32))
+    self.assertEqual(concrete_fn.type_signature.compact_representation(),
+                     '(float32 -> bool)')
+
+  def test_invoke_with_no_arg_fn(self):
+
+    def foo():
+      return 10
+
+    foo = computation_wrapper_instances.tensorflow_wrapper(foo)
+    self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
+
+  def test_decorate_as_fn(self):
 
     @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
     def foo(x):
       return x > 10
 
-    self.assertEqual(str(foo.type_signature), '(int32 -> bool)')
+    self.assertEqual(foo.type_signature.compact_representation(),
+                     '(int32 -> bool)')
 
-    # TODO(b/113112885): Remove this protected member access once the part of
-    # the infrastructure that deals with invoking functions is present. At this
-    # point, extracting the proto from within 'foo' is the only way to test the
-    # wrapper works as intended.
-    comp = foo._computation_proto  # pylint: disable=protected-access
+  def test_decorate_as_polymorphic_fn(self):
 
-    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-    x = tf.compat.v1.placeholder(tf.int32)
-    result = tf.import_graph_def(
-        serialization_utils.unpack_graph_def(comp.tensorflow.graph_def),
-        {comp.tensorflow.parameter.tensor.tensor_name: x},
-        [comp.tensorflow.result.tensor.tensor_name])
-    self.assertEqual(
-        list(tf.compat.v1.Session().run(result, feed_dict={x: n})
-             for n in [1, 20, 5, 10, 30]),
-        [[False], [True], [False], [False], [True]])
+    @computation_wrapper_instances.tensorflow_wrapper
+    def foo(x):
+      return x > 10
 
-  @test.graph_mode_test
-  def test_tf_wrapper_with_tf_add(self):
-    foo = computation_wrapper_instances.tensorflow_wrapper(
-        lambda a, b: tf.add(a, b), (tf.int32, tf.int32))  # pylint: disable=unnecessary-lambda
-    self.assertEqual(str(foo.type_signature), '(<a=int32,b=int32> -> int32)')
+    concrete_fn = foo.fn_for_argument_type(
+        computation_types.TensorType(tf.int32))
+    self.assertEqual(concrete_fn.type_signature.compact_representation(),
+                     '(int32 -> bool)')
+    concrete_fn = foo.fn_for_argument_type(
+        computation_types.TensorType(tf.float32))
+    self.assertEqual(concrete_fn.type_signature.compact_representation(),
+                     '(float32 -> bool)')
 
-    # TODO(b/113112885): Remove this protected member access as noted above.
-    comp = foo._computation_proto  # pylint: disable=protected-access
+  def test_decorate_as_no_arg_fn(self):
 
-    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-    x = tf.compat.v1.placeholder(tf.int32)
-    y = tf.compat.v1.placeholder(tf.int32)
-    result = tf.import_graph_def(
-        serialization_utils.unpack_graph_def(comp.tensorflow.graph_def), {
-            comp.tensorflow.parameter.struct.element[0].tensor.tensor_name: x,
-            comp.tensorflow.parameter.struct.element[1].tensor.tensor_name: y
-        }, [comp.tensorflow.result.tensor.tensor_name])
-    with self.session() as sess:
+    @computation_wrapper_instances.tensorflow_wrapper
+    def foo():
+      return 10
 
-      def _run(n):
-        return sess.run(result, feed_dict={x: n, y: 3})
+    self.assertEqual(foo.type_signature.compact_representation(), '( -> int32)')
 
-      results = [_run(n) for n in [1, 20, 5, 10, 30]]
-      self.assertEqual(results, [[4], [23], [8], [13], [33]])
+  def test_fails_with_bad_types(self):
+    function = computation_types.FunctionType(
+        None, computation_types.TensorType(tf.int32))
+    federated = computation_types.FederatedType(tf.int32,
+                                                placement_literals.CLIENTS)
+    tuple_on_function = computation_types.StructType([federated, function])
+
+    def foo(x):  # pylint: disable=unused-variable
+      del x  # Unused.
+
+    with self.assertRaisesRegex(
+        TypeError,
+        r'you have attempted to create one with the type {int32}@CLIENTS'):
+      computation_wrapper_instances.tensorflow_wrapper(foo, federated)
+
+    # pylint: disable=anomalous-backslash-in-string
+    with self.assertRaisesRegex(
+        TypeError,
+        r'you have attempted to create one with the type \( -> int32\)'):
+      computation_wrapper_instances.tensorflow_wrapper(foo, function)
+
+    with self.assertRaisesRegex(
+        TypeError, r'you have attempted to create one with the type placement'):
+      computation_wrapper_instances.tensorflow_wrapper(
+          foo, computation_types.PlacementType())
+
+    with self.assertRaisesRegex(
+        TypeError, r'you have attempted to create one with the type T'):
+      computation_wrapper_instances.tensorflow_wrapper(
+          foo, computation_types.AbstractType('T'))
+
+    with self.assertRaisesRegex(
+        TypeError,
+        r'you have attempted to create one with the type <{int32}@CLIENTS,\( '
+        '-> int32\)>'):
+      computation_wrapper_instances.tensorflow_wrapper(foo, tuple_on_function)
+    # pylint: enable=anomalous-backslash-in-string
+
+
+class FederatedComputationWrapperTest(test.TestCase):
 
   def test_federated_computation_wrapper(self):
 
@@ -91,55 +169,6 @@ class ComputationWrapperInstancesTest(test.TestCase):
         str(foo.to_building_block()),
         '(FEDERATED_arg -> (let fc_FEDERATED_symbol_0=FEDERATED_arg.f(FEDERATED_arg.x),fc_FEDERATED_symbol_1=FEDERATED_arg.f(fc_FEDERATED_symbol_0) in fc_FEDERATED_symbol_1))'
     )
-
-  def test_tf_wrapper_fails_bad_types(self):
-    function = computation_types.FunctionType(
-        None, computation_types.TensorType(tf.int32))
-    federated = computation_types.FederatedType(tf.int32,
-                                                placement_literals.CLIENTS)
-    tuple_on_function = computation_types.StructType([federated, function])
-
-    with self.assertRaisesRegex(
-        TypeError,
-        r'you have attempted to create one with the type {int32}@CLIENTS'):
-
-      @computation_wrapper_instances.tensorflow_wrapper(federated)
-      def _(x):
-        del x
-
-    # pylint: disable=anomalous-backslash-in-string
-    with self.assertRaisesRegex(
-        TypeError,
-        r'you have attempted to create one with the type \( -> int32\)'):
-
-      @computation_wrapper_instances.tensorflow_wrapper(function)
-      def _(x):
-        del x
-
-    with self.assertRaisesRegex(
-        TypeError, r'you have attempted to create one with the type placement'):
-
-      @computation_wrapper_instances.tensorflow_wrapper(
-          computation_types.PlacementType())
-      def _(x):
-        del x
-
-    with self.assertRaisesRegex(
-        TypeError, r'you have attempted to create one with the type T'):
-
-      @computation_wrapper_instances.tensorflow_wrapper(
-          computation_types.AbstractType('T'))
-      def _(x):
-        del x
-
-    with self.assertRaisesRegex(
-        TypeError,
-        r'you have attempted to create one with the type <{int32}@CLIENTS,\( '
-        '-> int32\)>'):
-
-      @computation_wrapper_instances.tensorflow_wrapper(tuple_on_function)
-      def _(x):
-        del x
 
 
 class ToComputationImplTest(test.TestCase):
