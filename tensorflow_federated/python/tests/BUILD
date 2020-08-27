@@ -7,7 +7,10 @@ py_test(
     srcs = ["backend_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        ":temperature_sensor_example",
+        "//tensorflow_federated",
+    ],
 )
 
 py_test(
@@ -40,6 +43,13 @@ py_test(
     size = "medium",
     srcs = ["perf_regression_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
+py_library(
+    name = "temperature_sensor_example",
+    srcs = ["temperature_sensor_example.py"],
     srcs_version = "PY3",
     deps = ["//tensorflow_federated"],
 )

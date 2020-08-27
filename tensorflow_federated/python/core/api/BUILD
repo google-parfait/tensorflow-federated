@@ -84,14 +84,10 @@ py_test(
     deps = [
         ":computation_types",
         ":computations",
-        ":intrinsics",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl:do_not_use_compiler",
-        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
         "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 

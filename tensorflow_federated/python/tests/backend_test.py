@@ -17,6 +17,8 @@ from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_federated as tff
 
+from tensorflow_federated.python.tests import temperature_sensor_example
+
 
 def get_all_contexts():
   return [
@@ -54,8 +56,7 @@ def with_contexts(*args):
   ```
 
   If the decorator is specified without arguments or is called with no
-  arguments, the default contexts used are those returned by
-  `get_all_execution_contexts`.
+  arguments, the default contexts used are those returned by `get_all_contexts`.
 
   If the decorator is called with arguments the arguments must be in a form that
   is accpeted by `parameterized.named_parameters`.
@@ -84,6 +85,23 @@ def with_contexts(*args):
     return decorator(args[0])
   else:
     return lambda fn: decorator(fn, *args)
+
+
+class ExampleTest(parameterized.TestCase):
+
+  @with_contexts
+  def test_temperature_sensor_example(self):
+    to_float = lambda x: tf.cast(x, tf.float32)
+    temperatures = [
+        tf.data.Dataset.range(10).map(to_float),
+        tf.data.Dataset.range(20).map(to_float),
+        tf.data.Dataset.range(30).map(to_float),
+    ]
+    threshold = 10.0
+
+    result = temperature_sensor_example.mean_over_threshold(
+        temperatures, threshold)
+    self.assertEqual(result, 12.5)
 
 
 class FederatedComputationTest(parameterized.TestCase):
@@ -250,6 +268,35 @@ class NonDeterministicTest(parameterized.TestCase):
 
     first_random, second_random = get_two_random()
     self.assertNotEqual(first_random, second_random)
+
+
+class SizingExecutionContextTest(parameterized.TestCase):
+
+  @with_contexts(
+      ('native_sizing', tff.backends.native.create_sizing_execution_context()),)
+  def test_get_size_info(self):
+    num_clients = 10
+    to_float = lambda x: tf.cast(x, tf.float32)
+    temperatures = [tf.data.Dataset.range(10).map(to_float)] * num_clients
+    threshold = 15.0
+
+    temperature_sensor_example.mean_over_threshold(temperatures, threshold)
+    context = tff.framework.get_context_stack().current
+    size_info = context.executor_factory.get_size_info()
+
+    # Each client receives a tf.float32 and uploads two tf.float32 values.
+    expected_broadcast_bits = [num_clients * 32]
+    expected_aggregate_bits = [num_clients * 32 * 2]
+    expected_broadcast_history = {
+        (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients
+    }
+    expected_aggregate_history = {
+        (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients * 2
+    }
+    self.assertEqual(size_info.broadcast_history, expected_broadcast_history)
+    self.assertEqual(size_info.aggregate_history, expected_aggregate_history)
+    self.assertEqual(size_info.broadcast_bits, expected_broadcast_bits)
+    self.assertEqual(size_info.aggregate_bits, expected_aggregate_bits)
 
 
 if __name__ == '__main__':

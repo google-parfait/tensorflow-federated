@@ -28,72 +28,12 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test as common_test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl import do_not_use_compiler
-from tensorflow_federated.python.core.impl.context_stack import get_context_stack
-from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
-from tensorflow_federated.python.core.impl.types import type_factory
-
-
-@computations.tf_computation(
-    computation_types.SequenceType(tf.float32), tf.float32)
-def count_over(ds, t):
-  return ds.reduce(
-      np.float32(0), lambda n, x: n + tf.cast(tf.greater(x, t), tf.float32))
-
-
-@computations.tf_computation(computation_types.SequenceType(tf.float32))
-def count_total(ds):
-  return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
 
 class TensorFlowComputationsTest(parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ('one_client', 1),
-      ('two_clients', 2),
-      ('four_clients', 4),
-      ('ten_clients', 10),
-  )
-  def test_get_size_info(self, num_clients):
-
-    @computations.federated_computation(
-        type_factory.at_clients(computation_types.SequenceType(tf.float32)),
-        type_factory.at_server(tf.float32))
-    def comp(temperatures, threshold):
-      client_data = [temperatures, intrinsics.federated_broadcast(threshold)]
-      result_map = intrinsics.federated_map(
-          count_over, intrinsics.federated_zip(client_data))
-      count_map = intrinsics.federated_map(count_total, temperatures)
-      return intrinsics.federated_mean(result_map, count_map)
-
-    sizing_factory = executor_stacks.sizing_executor_factory(
-        num_clients=num_clients)
-    sizing_context = execution_context.ExecutionContext(sizing_factory)
-    with get_context_stack.get_context_stack().install(sizing_context):
-      to_float = lambda x: tf.cast(x, tf.float32)
-      temperatures = [tf.data.Dataset.range(10).map(to_float)] * num_clients
-      threshold = 15.0
-      comp(temperatures, threshold)
-
-      # Each client receives a tf.float32 and uploads two tf.float32 values.
-      expected_broadcast_bits = [num_clients * 32]
-      expected_aggregate_bits = [num_clients * 32 * 2]
-      expected_broadcast_history = {
-          (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients
-      }
-      expected_aggregate_history = {
-          (('CLIENTS', num_clients),): [[1, tf.float32]] * num_clients * 2
-      }
-
-      size_info = sizing_factory.get_size_info()
-
-      self.assertEqual(expected_broadcast_history, size_info.broadcast_history)
-      self.assertEqual(expected_aggregate_history, size_info.aggregate_history)
-      self.assertEqual(expected_broadcast_bits, size_info.broadcast_bits)
-      self.assertEqual(expected_aggregate_bits, size_info.aggregate_bits)
 
   def test_tf_comp_first_mode_of_usage_as_non_polymorphic_wrapper(self):
     # Wrapping a lambda with a parameter.
