@@ -44,7 +44,11 @@ def run_federated(
     embedding_size: Optional[int] = 96,
     latent_size: Optional[int] = 670,
     num_layers: Optional[int] = 1,
-    shared_embedding: Optional[bool] = False):
+    shared_embedding: Optional[bool] = False,
+    total_rounds: Optional[int] = 1500,
+    experiment_name: Optional[str] = 'federated_so_nwp',
+    root_output_dir: Optional[str] = '/tmp/fed_opt',
+    **kwargs):
   """Runs an iterative process on the Stack Overflow next word prediction task.
 
   This method will load and pre-process dataset and construct a model used for
@@ -90,6 +94,14 @@ def run_federated(
     num_layers: The number of stacked recurrent layers to use.
     shared_embedding: Boolean indicating whether to tie input and output
       embeddings.
+    total_rounds: The number of federated training rounds.
+    experiment_name: The name of the experiment being run. This will be appended
+      to the `root_output_dir` for purposes of writing outputs.
+    root_output_dir: The name of the root output directory for writing
+      experiment outputs.
+    **kwargs: Additional arguments configuring the training loop. For details
+      on supported arguments, see
+      `tensorflow_federated/python/research/utils/training_utils.py`.
   """
 
   model_builder = functools.partial(
@@ -200,4 +212,8 @@ def run_federated(
       iterative_process=training_process,
       client_datasets_fn=client_datasets_fn,
       validation_fn=evaluate_fn,
-      test_fn=test_fn)
+      test_fn=test_fn,
+      total_rounds=total_rounds,
+      experiment_name=experiment_name,
+      root_output_dir=root_output_dir,
+      **kwargs)

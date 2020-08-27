@@ -16,7 +16,6 @@
 import collections
 import os
 
-from absl import flags
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -26,8 +25,6 @@ from tensorflow_federated.python.research.utils import metrics_manager
 from tensorflow_federated.python.research.utils import training_loop
 
 _Batch = collections.namedtuple('Batch', ['x', 'y'])
-
-FLAGS = flags.FLAGS
 
 
 def _build_federated_averaging_process():
@@ -62,8 +59,6 @@ def _create_input_spec():
 class ExperimentRunnerTest(tf.test.TestCase):
 
   def test_raises_non_iterative_process(self):
-    FLAGS.total_rounds = 10
-    FLAGS.experiment_name = 'non_iterative_process'
     bad_iterative_process = _build_federated_averaging_process().next
     federated_data = [[_batch_fn()]]
 
@@ -71,36 +66,39 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def evaluate_fn(model):
+    def validation_fn(model):
       del model
       return {}
 
-    temp_filepath = self.get_temp_dir()
-    FLAGS.root_output_dir = temp_filepath
+    root_output_dir = self.get_temp_dir()
     with self.assertRaises(TypeError):
-      training_loop.run([bad_iterative_process], client_datasets_fn,
-                        evaluate_fn)
+      training_loop.run(
+          iterative_process=[bad_iterative_process],
+          client_datasets_fn=client_datasets_fn,
+          validation_fn=validation_fn,
+          total_rounds=10,
+          experiment_name='non_iterative_process',
+          root_output_dir=root_output_dir)
 
   def test_raises_non_callable_client_dataset(self):
-    FLAGS.total_rounds = 10
-    FLAGS.experiment_name = 'non_callable_client_dataset'
     iterative_process = _build_federated_averaging_process()
-    federated_data = [[_batch_fn()]]
+    client_dataset = [[_batch_fn()]]
 
-    client_dataset = federated_data
-
-    def evaluate_fn(model):
+    def validation_fn(model):
       del model
       return {}
 
-    temp_filepath = self.get_temp_dir()
-    FLAGS.root_output_dir = temp_filepath
+    root_output_dir = self.get_temp_dir()
     with self.assertRaises(TypeError):
-      training_loop.run(iterative_process, client_dataset, evaluate_fn)
+      training_loop.run(
+          iterative_process=iterative_process,
+          client_datasets_fn=client_dataset,
+          validation_fn=validation_fn,
+          total_rounds=10,
+          experiment_name='non_callable_client_dataset',
+          root_output_dir=root_output_dir)
 
   def test_raises_non_callable_evaluate_fn(self):
-    FLAGS.total_rounds = 10
-    FLAGS.experiment_name = 'non_callable_evaluate'
     iterative_process = _build_federated_averaging_process()
     federated_data = [[_batch_fn()]]
 
@@ -109,16 +107,17 @@ class ExperimentRunnerTest(tf.test.TestCase):
       return federated_data
 
     metrics_dict = {}
-
-    temp_filepath = self.get_temp_dir()
-    FLAGS.root_output_dir = temp_filepath
+    root_output_dir = self.get_temp_dir()
     with self.assertRaises(TypeError):
-      training_loop.run(iterative_process, client_datasets_fn, metrics_dict)
+      training_loop.run(
+          iterative_process=iterative_process,
+          client_datasets_fn=client_datasets_fn,
+          validation_fn=metrics_dict,
+          total_rounds=10,
+          experiment_name='non_callable_evaluate',
+          root_output_dir=root_output_dir)
 
   def test_raises_non_str_output_dir(self):
-    FLAGS.total_rounds = 10
-    FLAGS.root_output_dir = 1
-    FLAGS.experiment_name = 'non_str_output_dir'
     iterative_process = _build_federated_averaging_process()
     federated_data = [[_batch_fn()]]
 
@@ -126,12 +125,18 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def eval_fn(model):
+    def validation_fn(model):
       del model
       return {}
 
     with self.assertRaises(TypeError):
-      training_loop.run(iterative_process, client_datasets_fn, eval_fn)
+      training_loop.run(
+          iterative_process=iterative_process,
+          client_datasets_fn=client_datasets_fn,
+          validation_fn=validation_fn,
+          total_rounds=10,
+          experiment_name='non_str_output_dir',
+          root_output_dir=1)
 
   def test_raises_no_model_attribute_in_state(self):
 
@@ -154,17 +159,20 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def eval_fn(model):
+    def validation_fn(model):
       del model
       return {}
 
     with self.assertRaisesRegex(TypeError,
                                 'The server state must have a model attribute'):
-      training_loop.run(iterative_process, client_datasets_fn, eval_fn)
+      training_loop.run(
+          iterative_process=iterative_process,
+          client_datasets_fn=client_datasets_fn,
+          validation_fn=validation_fn,
+          total_rounds=10,
+          experiment_name='bad_iterative_process')
 
   def test_fedavg_training_decreases_loss(self):
-    FLAGS.total_rounds = 1
-    FLAGS.experiment_name = 'fedavg_decreases_loss'
     batch = _batch_fn()
     federated_data = [[batch]]
     iterative_process = _build_federated_averaging_process()
@@ -173,7 +181,7 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def evaluate(model):
+    def validation_fn(model):
       keras_model = tff.simulation.models.mnist.create_keras_model(
           compile_model=True)
       model.assign_weights_to(keras_model)
@@ -181,17 +189,20 @@ class ExperimentRunnerTest(tf.test.TestCase):
 
     initial_state = iterative_process.initialize()
 
-    temp_filepath = self.get_temp_dir()
-    FLAGS.root_output_dir = temp_filepath
-    final_state = training_loop.run(iterative_process, client_datasets_fn,
-                                    evaluate)
+    root_output_dir = self.get_temp_dir()
+    final_state = training_loop.run(
+        iterative_process=iterative_process,
+        client_datasets_fn=client_datasets_fn,
+        validation_fn=validation_fn,
+        total_rounds=1,
+        experiment_name='fedavg_decreases_loss',
+        root_output_dir=root_output_dir)
     self.assertLess(
-        evaluate(final_state.model)['loss'],
-        evaluate(initial_state.model)['loss'])
+        validation_fn(final_state.model)['loss'],
+        validation_fn(initial_state.model)['loss'])
 
   def test_checkpoint_manager_saves_state(self):
-    FLAGS.total_rounds = 1
-    FLAGS.experiment_name = 'checkpoint_manager_saves_state'
+    experiment_name = 'checkpoint_manager_saves_state'
     iterative_process = _build_federated_averaging_process()
     federated_data = [[_batch_fn()]]
 
@@ -199,21 +210,21 @@ class ExperimentRunnerTest(tf.test.TestCase):
       del round_num
       return federated_data
 
-    def evaluate_fn(model):
+    def validation_fn(model):
       del model
       return {}
 
-    temp_filepath = self.get_temp_dir()
-    FLAGS.root_output_dir = temp_filepath
-    final_state = training_loop.run(iterative_process, client_datasets_fn,
-                                    evaluate_fn)
+    root_output_dir = self.get_temp_dir()
+    final_state = training_loop.run(
+        iterative_process=iterative_process,
+        client_datasets_fn=client_datasets_fn,
+        validation_fn=validation_fn,
+        total_rounds=1,
+        experiment_name=experiment_name,
+        root_output_dir=root_output_dir)
 
     ckpt_manager = checkpoint_manager.FileCheckpointManager(
-        os.path.join(
-            temp_filepath,
-            'checkpoints',
-            FLAGS.experiment_name,
-        ))
+        os.path.join(root_output_dir, 'checkpoints', experiment_name))
     restored_state, restored_round = ckpt_manager.load_latest_checkpoint(
         final_state)
 
@@ -230,10 +241,8 @@ class ExperimentRunnerTest(tf.test.TestCase):
     self.assertEqual(final_loss, restored_loss)
 
   def test_train_eval_writes_metrics(self):
-    FLAGS.total_rounds = 1
-    FLAGS.rounds_per_eval = 10
-    FLAGS.rounds_per_train_eval = 10
-    FLAGS.experiment_name = 'train_eval_metrics'
+
+    experiment_name = 'train_eval_metrics'
     iterative_process = _build_federated_averaging_process()
     batch = _batch_fn()
     federated_data = [[batch]]
@@ -248,13 +257,19 @@ class ExperimentRunnerTest(tf.test.TestCase):
       model.assign_weights_to(keras_model)
       return {'loss': keras_model.evaluate(batch.x, batch.y)}
 
-    temp_filepath = self.get_temp_dir()
-    FLAGS.root_output_dir = temp_filepath
+    root_output_dir = self.get_temp_dir()
     training_loop.run(
-        iterative_process, client_datasets_fn, evaluate, train_eval_fn=evaluate)
+        iterative_process=iterative_process,
+        client_datasets_fn=client_datasets_fn,
+        validation_fn=evaluate,
+        total_rounds=1,
+        experiment_name=experiment_name,
+        train_eval_fn=evaluate,
+        root_output_dir=root_output_dir,
+        rounds_per_eval=10,
+        rounds_per_train_eval=10)
 
-    results_dir = os.path.join(FLAGS.root_output_dir, 'results',
-                               FLAGS.experiment_name)
+    results_dir = os.path.join(root_output_dir, 'results', experiment_name)
 
     scalar_manager = metrics_manager.ScalarMetricsManager(results_dir)
     metrics = scalar_manager.get_metrics()
@@ -264,9 +279,7 @@ class ExperimentRunnerTest(tf.test.TestCase):
     self.assertNotIn('test/loss', metrics.columns)
 
   def test_fn_writes_metrics(self):
-    FLAGS.total_rounds = 1
-    FLAGS.rounds_per_eval = 10
-    FLAGS.experiment_name = 'test_metrics'
+    experiment_name = 'test_metrics'
     iterative_process = _build_federated_averaging_process()
     batch = _batch_fn()
     federated_data = [[batch]]
@@ -281,13 +294,18 @@ class ExperimentRunnerTest(tf.test.TestCase):
       model.assign_weights_to(keras_model)
       return {'loss': keras_model.evaluate(batch.x, batch.y)}
 
-    temp_filepath = self.get_temp_dir()
-    FLAGS.root_output_dir = temp_filepath
+    root_output_dir = self.get_temp_dir()
     training_loop.run(
-        iterative_process, client_datasets_fn, evaluate, test_fn=evaluate)
+        iterative_process=iterative_process,
+        client_datasets_fn=client_datasets_fn,
+        validation_fn=evaluate,
+        total_rounds=1,
+        experiment_name=experiment_name,
+        root_output_dir=root_output_dir,
+        rounds_per_eval=10,
+        test_fn=evaluate)
 
-    results_dir = os.path.join(FLAGS.root_output_dir, 'results',
-                               FLAGS.experiment_name)
+    results_dir = os.path.join(root_output_dir, 'results', experiment_name)
 
     scalar_manager = metrics_manager.ScalarMetricsManager(results_dir)
     metrics = scalar_manager.get_metrics()

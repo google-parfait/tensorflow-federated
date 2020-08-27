@@ -452,7 +452,7 @@ def get_hparam_flags():
 
 @contextlib.contextmanager
 def record_new_flags() -> Iterator[List[str]]:
-  """A context manager that returns all flags created in it's scope.
+  """A context manager that returns all flags created in its scope.
 
   This is useful to define all of the flags which should be considered
   hyperparameters of the training run, without needing to repeat them.
@@ -472,6 +472,22 @@ def record_new_flags() -> Iterator[List[str]]:
   new_flags = []
   yield new_flags
   new_flags.extend([f for f in flags.FLAGS if f not in old_flags])
+
+
+def lookup_flag_values(flag_list: Iterable[str]) -> collections.OrderedDict:
+  """Returns a dictionary of (flag_name, flag_value) pairs for an iterable of flag names."""
+  flag_odict = collections.OrderedDict()
+  for flag_name in flag_list:
+    if not isinstance(flag_name, str):
+      raise ValueError(
+          'All flag names must be strings. Flag {} was of type {}.'.format(
+              flag_name, type(flag_name)))
+
+    if flag_name not in flags.FLAGS:
+      raise ValueError('"{}" is not a defined flag.'.format(flag_name))
+    flag_odict[flag_name] = flags.FLAGS[flag_name].value
+
+  return flag_odict
 
 
 def hparams_to_str(wid: int,

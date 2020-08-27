@@ -40,7 +40,7 @@ from tensorflow_federated.python.research.utils.models import emnist_models
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 
-with utils_impl.record_new_flags() as hparam_flags:
+with utils_impl.record_new_flags():
   # Training hyperparameters
   flags.DEFINE_integer('clients_per_round', 2,
                        'How many clients to sample per round.')
@@ -71,6 +71,25 @@ with utils_impl.record_new_flags() as hparam_flags:
   flags.DEFINE_boolean('use_sparsity_in_aggregation', True,
                        'Whether to add sparsity to the aggregation. This will '
                        'only be used for client to server compression.')
+
+with utils_impl.record_new_flags() as training_loop_flags:
+  flags.DEFINE_integer('total_rounds', 200, 'Number of total training rounds.')
+  flags.DEFINE_string(
+      'experiment_name', None, 'The name of this experiment. Will be append to '
+      '--root_output_dir to separate experiment results.')
+  flags.DEFINE_string('root_output_dir', '/tmp/compression/',
+                      'Root directory for writing experiment output.')
+  flags.DEFINE_boolean(
+      'write_metrics_with_bz2', True, 'Whether to use bz2 '
+      'compression when writing output metrics to a csv file.')
+  flags.DEFINE_integer(
+      'rounds_per_eval', 1,
+      'How often to evaluate the global model on the validation dataset.')
+  flags.DEFINE_integer('rounds_per_checkpoint', 50,
+                       'How often to checkpoint the global model.')
+  flags.DEFINE_integer(
+      'rounds_per_profile', 0,
+      '(Experimental) How often to run the experimental TF profiler, if >0.')
 
 # End of hyperparameter flags.
 
@@ -226,10 +245,15 @@ def run_experiment():
       aggregation_process=encoded_mean_process,
       broadcast_process=encoded_broadcast_process)
 
+  hparam_dict = utils_impl.lookup_flag_values(utils_impl.get_hparam_flags())
+  training_loop_dict = utils_impl.lookup_flag_values(training_loop_flags)
+
   training_loop.run(
       iterative_process=iterative_process,
       client_datasets_fn=client_datasets_fn,
-      validation_fn=evaluate_fn)
+      validation_fn=evaluate_fn,
+      hparam_dict=hparam_dict,
+      **training_loop_dict)
 
 
 def main(argv):

@@ -200,6 +200,24 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertCountEqual(hparam_flags, ['exp_name', 'learning_rate'])
 
+  def test_convert_flag_names_to_odict(self):
+    with utils_impl.record_new_flags() as hparam_flags:
+      flags.DEFINE_integer('flag1', 1, 'This is the first flag.')
+      flags.DEFINE_float('flag2', 2.0, 'This is the second flag.')
+
+    hparam_odict = utils_impl.lookup_flag_values(hparam_flags)
+    expected_odict = collections.OrderedDict(flag1=1, flag2=2.0)
+
+    self.assertEqual(hparam_odict, expected_odict)
+
+  def test_convert_undefined_flag_names(self):
+    with self.assertRaisesRegex(ValueError, '"bad_flag" is not a defined flag'):
+      utils_impl.lookup_flag_values(['bad_flag'])
+
+  def test_convert_nonstr_flag(self):
+    with self.assertRaisesRegex(ValueError, 'All flag names must be strings'):
+      utils_impl.lookup_flag_values([300])
+
   @mock.patch.object(utils_impl, 'multiprocessing')
   def test_launch_experiment(self, mock_multiprocessing):
     pool = mock_multiprocessing.Pool(processes=10)

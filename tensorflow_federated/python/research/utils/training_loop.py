@@ -13,14 +13,12 @@
 # limitations under the License.
 """Internal dispatcher for training loops."""
 
-import collections
 import contextlib
 import os.path
 import pprint
 import time
 from typing import Any, Callable, Dict, List, Optional
 
-from absl import flags
 from absl import logging
 import pandas as pd
 import tensorflow as tf
@@ -30,39 +28,6 @@ from tensorflow_federated.python.research.utils import checkpoint_manager
 from tensorflow_federated.python.research.utils import metrics_manager
 from tensorflow_federated.python.research.utils import utils_impl
 
-# Defining training loop flags
-with utils_impl.record_hparam_flags():
-  # Training rounds
-  flags.DEFINE_integer('total_rounds', 200, 'Number of total training rounds.')
-
-  # Root output directory.
-  flags.DEFINE_string('root_output_dir', '/tmp/fed_opt/',
-                      'Root directory for writing experiment output.')
-
-  flags.DEFINE_string(
-      'experiment_name', None, 'The name of this experiment. Will be append to '
-      '--root_output_dir to separate experiment results.')
-
-  # Metrics writing flags.
-  flags.DEFINE_boolean(
-      'write_metrics_with_bz2', True, 'Whether to use bz2 '
-      'compression when writing output metrics to a csv file.')
-
-  # Checkpoint and evaluation flags.
-  flags.DEFINE_integer(
-      'rounds_per_eval', 1,
-      'How often to evaluate the global model on the validation dataset.')
-  flags.DEFINE_integer(
-      'rounds_per_train_eval', 100,
-      'How often to evaluate the global model on the entire training dataset.')
-  flags.DEFINE_integer('rounds_per_checkpoint', 50,
-                       'How often to checkpoint the global model.')
-  flags.DEFINE_integer(
-      'rounds_per_profile', 0,
-      '(Experimental) How often to run the experimental TF profiler, if >0.')
-
-FLAGS = flags.FLAGS
-
 
 def create_if_not_exists(path):
   try:
@@ -71,7 +36,11 @@ def create_if_not_exists(path):
     logging.info('Skipping creation of directory [%s], already exists', path)
 
 
-def _setup_outputs(root_output_dir, experiment_name, hparam_dict):
+def _setup_outputs(root_output_dir,
+                   experiment_name,
+                   hparam_dict,
+                   write_metrics_with_bz2=True,
+                   rounds_per_profile=0):
   """Set up directories for experiment loops, write hyperparameters to disk."""
 
   if not experiment_name:
@@ -86,15 +55,16 @@ def _setup_outputs(root_output_dir, experiment_name, hparam_dict):
   results_dir = os.path.join(root_output_dir, 'results', experiment_name)
   create_if_not_exists(results_dir)
   metrics_mngr = metrics_manager.ScalarMetricsManager(
-      results_dir, use_bz2=FLAGS.write_metrics_with_bz2)
+      results_dir, use_bz2=write_metrics_with_bz2)
 
   summary_logdir = os.path.join(root_output_dir, 'logdir', experiment_name)
   create_if_not_exists(summary_logdir)
   summary_writer = tf.summary.create_file_writer(summary_logdir)
 
-  hparam_dict['metrics_file'] = metrics_mngr.metrics_filename
-  hparams_file = os.path.join(results_dir, 'hparams.csv')
-  utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
+  if hparam_dict:
+    hparam_dict['metrics_file'] = metrics_mngr.metrics_filename
+    hparams_file = os.path.join(results_dir, 'hparams.csv')
+    utils_impl.atomic_write_to_csv(pd.Series(hparam_dict), hparams_file)
 
   logging.info('Writing...')
   logging.info('    checkpoints to: %s', checkpoint_dir)
@@ -103,8 +73,7 @@ def _setup_outputs(root_output_dir, experiment_name, hparam_dict):
 
   @contextlib.contextmanager
   def profiler(round_num):
-    if (FLAGS.rounds_per_profile > 0 and
-        round_num % FLAGS.rounds_per_profile == 0):
+    if (rounds_per_profile > 0 and round_num % rounds_per_profile == 0):
       with tf.profiler.experimental.Profile(summary_logdir):
         yield
     else:
@@ -140,29 +109,56 @@ def _compute_numpy_l2_difference(model, previous_model):
 def run(iterative_process: tff.templates.IterativeProcess,
         client_datasets_fn: Callable[[int], List[tf.data.Dataset]],
         validation_fn: Callable[[Any], Dict[str, float]],
+        total_rounds: int,
+        experiment_name: str,
         train_eval_fn: Optional[Callable[[Any], Dict[str, float]]] = None,
-        test_fn: Optional[Callable[[Any], Dict[str, float]]] = None):
-  """Runs federated training for the given TFF `IterativeProcess` instance.
+        test_fn: Optional[Callable[[Any], Dict[str, float]]] = None,
+        root_output_dir: Optional[str] = '/tmp/fed_opt',
+        hparam_dict: Optional[Dict[str, Any]] = None,
+        write_metrics_with_bz2: Optional[bool] = True,
+        rounds_per_eval: Optional[int] = 1,
+        rounds_per_checkpoint: Optional[int] = 50,
+        rounds_per_train_eval: Optional[int] = 100,
+        rounds_per_profile: Optional[int] = 0):
+  """Runs federated training for a given `tff.templates.IterativeProcess`.
 
   Args:
     iterative_process: A `tff.templates.IterativeProcess` instance to run.
     client_datasets_fn: Function accepting an integer argument (the round
       number) and returning a list of client datasets to use as federated data
       for that round, and a list of the corresponding client ids.
-    validation_fn: Callable accepting the `model` attribute of an
-      `IterationResult.state`, and returning a dict of evaluation metrics. Used
-      to compute validation metrics throughout the training process.
-    train_eval_fn: An optional callable accepting the `model` attribute of
-      an `IterationResult.state` and returning a dict of evaluation metrics.
-      Used to compute training metrics over the entire training dataset
-      throughout the course of the iterative process.
-    test_fn: An optional callable accepting the `model` attribute of an
-      `IterationResult.state`) and returning a dict of test metrics. Used to
+    validation_fn: A callable accepting the `model` attribute of the iterative
+      process state and returning a dict of evaluation metrics. Used to compute
+      validation metrics throughout the training process.
+    total_rounds: The number of federated training rounds to perform.
+    experiment_name: The name of the experiment being run. This will be appended
+      to the `root_output_dir` for purposes of writing outputs.
+    train_eval_fn: An optional callable accepting the `model` attribute of the
+      iterative process state and returning a dict of evaluation metrics. Used
+      to compute training metrics over the entire training dataset throughout
+      the course of the iterative process. If set to `None`, no such evaluation
+      is done.
+    test_fn: An optional callable accepting the `model` attribute of the
+      iterative process state and returning a dict of test metrics. Used to
       compute test metrics at the end of the training process.
+    root_output_dir: The name of the root output directory for writing
+      experiment outputs.
+    hparam_dict: An optional dictionary specifying hyperparameters of the
+      experiment. If provided, the hyperparameters will be written to CSV.
+    write_metrics_with_bz2: Whether to use `bz2` compression when writing
+      metrics to CSV.
+    rounds_per_eval: How often to compute validation metrics.
+    rounds_per_checkpoint: How often to checkpoint the iterative process state.
+      If you expect the job to restart frequently, this should be small. If no
+      interruptions are expected, this can be made larger.
+    rounds_per_train_eval: How often to compute metrics over the entire training
+      dataset. Note that this is only done if a `train_eval_fn` argument is
+      supplied.
+    rounds_per_profile: Experimental setting. If set to a value greater than 0,
+      this dictates how often a TensorFlow profiler is run.
 
   Returns:
-    The `state` of the `IterationResult` representing the result of the training
-      loop.
+    The final `state` of the iterative process after training.
   """
   if not isinstance(iterative_process, tff.templates.IterativeProcess):
     raise TypeError('iterative_process should be type '
@@ -175,7 +171,6 @@ def run(iterative_process: tff.templates.IterativeProcess,
     raise TypeError('train_eval_fn should be callable.')
   if test_fn is not None and not callable(test_fn):
     raise TypeError('test_fn should be callable.')
-  total_rounds = FLAGS.total_rounds
 
   logging.info('Starting iterative_process training loop...')
   initial_state = iterative_process.initialize()
@@ -183,13 +178,9 @@ def run(iterative_process: tff.templates.IterativeProcess,
   if not hasattr(initial_state, 'model'):
     raise TypeError('The server state must have a model attribute.')
 
-  hparam_flags = utils_impl.get_hparam_flags()
-  hparam_dict = collections.OrderedDict([
-      (name, FLAGS[name].value) for name in hparam_flags
-  ])
-
   checkpoint_mngr, metrics_mngr, summary_writer, profiler = _setup_outputs(
-      FLAGS.root_output_dir, FLAGS.experiment_name, hparam_dict)
+      root_output_dir, experiment_name, hparam_dict, write_metrics_with_bz2,
+      rounds_per_profile)
 
   logging.info('Asking checkpoint manager to load checkpoint.')
   state, round_num = checkpoint_mngr.load_latest_checkpoint(initial_state)
@@ -235,7 +226,7 @@ def run(iterative_process: tff.templates.IterativeProcess,
     logging.info('Round {:2d}, {:.2f}s per round in average.'.format(
         round_num, (time.time() - loop_start_time) / (round_num + 1)))
 
-    if (round_num % FLAGS.rounds_per_checkpoint == 0 or
+    if (round_num % rounds_per_checkpoint == 0 or
         round_num == total_rounds - 1):
       save_checkpoint_start_time = time.time()
       checkpoint_mngr.save_checkpoint(state, round_num)
@@ -244,14 +235,14 @@ def run(iterative_process: tff.templates.IterativeProcess,
 
     metrics = {'train': train_metrics}
 
-    if round_num % FLAGS.rounds_per_eval == 0:
+    if round_num % rounds_per_eval == 0:
       # Compute validation metrics
       evaluate_start_time = time.time()
       validation_metrics = validation_fn(state.model)
       validation_metrics['evaluate_secs'] = time.time() - evaluate_start_time
       metrics['eval'] = validation_metrics
 
-    if train_eval_fn and round_num % FLAGS.rounds_per_train_eval == 0:
+    if train_eval_fn and round_num % rounds_per_train_eval == 0:
       # Compute metrics over the entire training dataset
       train_eval_start = time.time()
       train_eval_metrics = train_eval_fn(state.model)

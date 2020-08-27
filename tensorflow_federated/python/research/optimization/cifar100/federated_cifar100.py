@@ -37,7 +37,11 @@ def run_federated(
     clients_per_round: int,
     max_batches_per_client: Optional[int] = -1,
     client_datasets_random_seed: Optional[int] = None,
-    crop_size: Optional[int] = 24):
+    crop_size: Optional[int] = 24,
+    total_rounds: Optional[int] = 1500,
+    experiment_name: Optional[str] = 'federated_cifar100',
+    root_output_dir: Optional[str] = '/tmp/fed_opt',
+    **kwargs):
   """Runs an iterative process on the CIFAR-100 classification task.
 
   This method will load and pre-process dataset and construct a model used for
@@ -72,6 +76,14 @@ def run_federated(
       sampled at each round. If `None`, no seed is used.
     crop_size: An optional integer representing the resulting size of input
       images after preprocessing.
+    total_rounds: The number of federated training rounds.
+    experiment_name: The name of the experiment being run. This will be appended
+      to the `root_output_dir` for purposes of writing outputs.
+    root_output_dir: The name of the root output directory for writing
+      experiment outputs.
+    **kwargs: Additional arguments configuring the training loop. For details
+      on supported arguments, see
+      `tensorflow_federated/python/research/utils/training_utils.py`.
   """
 
   crop_shape = (crop_size, crop_size, 3)
@@ -121,4 +133,8 @@ def run_federated(
       iterative_process=training_process,
       client_datasets_fn=client_datasets_fn,
       validation_fn=evaluate_fn,
-      test_fn=evaluate_fn)
+      test_fn=evaluate_fn,
+      total_rounds=total_rounds,
+      experiment_name=experiment_name,
+      root_output_dir=root_output_dir,
+      **kwargs)

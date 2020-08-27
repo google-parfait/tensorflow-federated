@@ -43,18 +43,15 @@ _SUPPORTED_TASKS = [
     'stackoverflow_lr'
 ]
 
-# Defining optimizer flags
-with utils_impl.record_hparam_flags():
+with utils_impl.record_hparam_flags() as optimizer_flags:
+  # Defining optimizer flags
   optimizer_utils.define_optimizer_flags('client')
   optimizer_utils.define_optimizer_flags('server')
   optimizer_utils.define_lr_schedule_flags('client')
   optimizer_utils.define_lr_schedule_flags('server')
 
-with utils_impl.record_hparam_flags():
-  flags.DEFINE_enum('task', None, _SUPPORTED_TASKS,
-                    'Which task to perform federated training on.')
-
-  # Training hyperparameters
+with utils_impl.record_hparam_flags() as shared_flags:
+  # Federated training hyperparameters
   flags.DEFINE_integer('client_epochs_per_round', 1,
                        'Number of epochs in the client to take per round.')
   flags.DEFINE_integer('client_batch_size', 20, 'Batch size on the clients.')
@@ -62,6 +59,33 @@ with utils_impl.record_hparam_flags():
                        'How many clients to sample per round.')
   flags.DEFINE_integer('client_datasets_random_seed', 1,
                        'Random seed for client sampling.')
+  flags.DEFINE_integer('total_rounds', 200, 'Number of total training rounds.')
+
+  # Training loop configuration
+  flags.DEFINE_string(
+      'experiment_name', None, 'The name of this experiment. Will be append to '
+      '--root_output_dir to separate experiment results.')
+  flags.DEFINE_string('root_output_dir', '/tmp/fed_opt/',
+                      'Root directory for writing experiment output.')
+  flags.DEFINE_boolean(
+      'write_metrics_with_bz2', True, 'Whether to use bz2 '
+      'compression when writing output metrics to a csv file.')
+  flags.DEFINE_integer(
+      'rounds_per_eval', 1,
+      'How often to evaluate the global model on the validation dataset.')
+  flags.DEFINE_integer(
+      'rounds_per_train_eval', 100,
+      'How often to evaluate the global model on the entire training dataset.')
+  flags.DEFINE_integer('rounds_per_checkpoint', 50,
+                       'How often to checkpoint the global model.')
+  flags.DEFINE_integer(
+      'rounds_per_profile', 0,
+      '(Experimental) How often to run the experimental TF profiler, if >0.')
+
+with utils_impl.record_hparam_flags() as task_flags:
+  # Task specification
+  flags.DEFINE_enum('task', None, _SUPPORTED_TASKS,
+                    'Which task to perform federated training on.')
 
   # CIFAR-100 flags
   flags.DEFINE_integer('cifar100_crop_size', 24, 'The height and width of '
@@ -156,44 +180,49 @@ def main(argv):
         dataset_preprocess_comp=dataset_preprocess_comp)
 
   assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
+  hparam_dict = utils_impl.lookup_flag_values(utils_impl.get_hparam_flags())
 
-  common_args = collections.OrderedDict([
-      ('iterative_process_builder', iterative_process_builder),
-      ('assign_weights_fn', assign_weights_fn),
-      ('client_epochs_per_round', FLAGS.client_epochs_per_round),
-      ('client_batch_size', FLAGS.client_batch_size),
-      ('clients_per_round', FLAGS.clients_per_round),
-      ('client_datasets_random_seed', FLAGS.client_datasets_random_seed)
-  ])
+  shared_args = utils_impl.lookup_flag_values(shared_flags)
+  shared_args['iterative_process_builder'] = iterative_process_builder
+  shared_args['assign_weights_fn'] = assign_weights_fn
 
   if FLAGS.task == 'cifar100':
+    hparam_dict['cifar100_crop_size'] = FLAGS.cifar100_crop_size
     federated_cifar100.run_federated(
-        **common_args, crop_size=FLAGS.cifar100_crop_size)
+        **shared_args,
+        crop_size=FLAGS.cifar100_crop_size,
+        hparam_dict=hparam_dict)
 
   elif FLAGS.task == 'emnist_cr':
     federated_emnist.run_federated(
-        **common_args, emnist_model=FLAGS.emnist_cr_model)
+        **shared_args,
+        emnist_model=FLAGS.emnist_cr_model,
+        hparam_dict=hparam_dict)
 
   elif FLAGS.task == 'emnist_ae':
-    federated_emnist_ae.run_federated(**common_args)
+    federated_emnist_ae.run_federated(**shared_args, hparam_dict=hparam_dict)
 
   elif FLAGS.task == 'shakespeare':
     federated_shakespeare.run_federated(
-        **common_args, sequence_length=FLAGS.shakespeare_sequence_length)
+        **shared_args,
+        sequence_length=FLAGS.shakespeare_sequence_length,
+        hparam_dict=hparam_dict)
 
   elif FLAGS.task == 'stackoverflow_nwp':
     so_nwp_flags = collections.OrderedDict()
-    for flag_name in FLAGS:
+    for flag_name in task_flags:
       if flag_name.startswith('so_nwp_'):
         so_nwp_flags[flag_name[7:]] = FLAGS[flag_name].value
-    federated_stackoverflow.run_federated(**common_args, **so_nwp_flags)
+    federated_stackoverflow.run_federated(
+        **shared_args, **so_nwp_flags, hparam_dict=hparam_dict)
 
   elif FLAGS.task == 'stackoverflow_lr':
     so_lr_flags = collections.OrderedDict()
-    for flag_name in FLAGS:
+    for flag_name in task_flags:
       if flag_name.startswith('so_lr_'):
         so_lr_flags[flag_name[6:]] = FLAGS[flag_name].value
-    federated_stackoverflow_lr.run_federated(**common_args, **so_lr_flags)
+    federated_stackoverflow_lr.run_federated(
+        **shared_args, **so_lr_flags, hparam_dict=hparam_dict)
 
   else:
     raise ValueError(

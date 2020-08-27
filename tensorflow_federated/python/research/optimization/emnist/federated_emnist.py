@@ -36,7 +36,11 @@ def run_federated(
     clients_per_round: int,
     max_batches_per_client: Optional[int] = -1,
     client_datasets_random_seed: Optional[int] = None,
-    emnist_model: Optional[str] = 'cnn'):
+    emnist_model: Optional[str] = 'cnn',
+    total_rounds: Optional[int] = 1500,
+    experiment_name: Optional[str] = 'federated_emnist_cr',
+    root_output_dir: Optional[str] = '/tmp/fed_opt',
+    **kwargs):
   """Runs an iterative process on the EMNIST character recognition task.
 
   This method will load and pre-process dataset and construct a model used for
@@ -72,6 +76,14 @@ def run_federated(
     emnist_model: A string specifying the model used for character recognition.
       Can be one of `cnn` and `2nn`, corresponding to a CNN model and a densely
       connected 2-layer model (respectively).
+    total_rounds: The number of federated training rounds.
+    experiment_name: The name of the experiment being run. This will be appended
+      to the `root_output_dir` for purposes of writing outputs.
+    root_output_dir: The name of the root output directory for writing
+      experiment outputs.
+    **kwargs: Additional arguments configuring the training loop. For details
+      on supported arguments, see
+      `tensorflow_federated/python/research/utils/training_utils.py`.
   """
 
   emnist_train, emnist_test = emnist_dataset.get_emnist_datasets(
@@ -125,4 +137,8 @@ def run_federated(
       iterative_process=training_process,
       client_datasets_fn=client_datasets_fn,
       validation_fn=evaluate_fn,
-      test_fn=evaluate_fn)
+      test_fn=evaluate_fn,
+      total_rounds=total_rounds,
+      experiment_name=experiment_name,
+      root_output_dir=root_output_dir,
+      **kwargs)
