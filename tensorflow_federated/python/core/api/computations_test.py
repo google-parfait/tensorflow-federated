@@ -187,6 +187,18 @@ class TensorFlowComputationsTest(parameterized.TestCase):
     tf_comp = computations.tf_computation(foo)
     self.assertEqual(tf_comp(*args), 6)
 
+  @executor_test_utils.executors
+  def test_with_none_tensorshape_param(self):
+    self.skipTest('b/166663998')
+
+    @computations.tf_computation(
+        computation_types.TensorType(
+            dtype=tf.int32, shape=tf.TensorShape(None)))
+    def add_one(x):
+      return x + 1
+
+    self.assertEqual(add_one(0), 1)
+
 
 class TensorFlowComputationsWithDatasetsTest(parameterized.TestCase):
 
