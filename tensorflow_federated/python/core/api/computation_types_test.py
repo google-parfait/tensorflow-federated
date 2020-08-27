@@ -36,6 +36,11 @@ class TestCheckEquivalentTypesTest(absltest.TestCase):
 
 class TensorTypeTest(absltest.TestCase):
 
+  def test_unknown_tensorshape(self):
+    t = computation_types.TensorType(tf.int32, tf.TensorShape(None))
+    self.assertEqual(t.dtype, tf.int32)
+    self.assertEqual(t.shape, tf.TensorShape(None))
+
   def test_dtype_and_shape(self):
     t = computation_types.TensorType(tf.int32, [10])
     self.assertEqual(t.dtype, tf.int32)

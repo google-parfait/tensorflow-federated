@@ -261,7 +261,10 @@ class _Intern(abc.ABCMeta):
 
 
 def _hash_dtype_and_shape(dtype: tf.DType, shape: tf.TensorShape) -> int:
-  return hash((dtype.name, tuple(shape.as_list())))
+  if shape.rank is not None:
+    # as_list is not defined on unknown tensorshapes
+    return hash((dtype.name, tuple(shape.as_list())))
+  return hash((dtype.name, None))
 
 
 class TensorType(Type, metaclass=_Intern):
