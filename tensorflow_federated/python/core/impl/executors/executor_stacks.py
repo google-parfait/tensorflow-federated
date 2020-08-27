@@ -554,8 +554,8 @@ def sizing_executor_factory(
   return executor_factory.SizingExecutorFactory(_factory_fn)
 
 
-# TODO(b/159378732): Change signature of this function to accept a
-# factory.
+# TODO(b/166634524): Reparameterize to encapsulate remote executor
+# construction.
 def worker_pool_executor_factory(executors,
                                  max_fanout=100
                                 ) -> executor_factory.ExecutorFactory:

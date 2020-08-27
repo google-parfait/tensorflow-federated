@@ -11,13 +11,44 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
+import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import grpc
+import portpicker
+
 import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.tests import temperature_sensor_example
+
+
+def _create_localhost_remote_context(ports):
+  channels = [
+      grpc.insecure_channel('localhost:{}'.format(port)) for port in ports
+  ]
+  context = tff.backends.native.create_remote_execution_context(
+      channels, rpc_mode='REQUEST_REPLY')
+  return context
+
+
+@contextlib.contextmanager
+def _localhost_serving_environment(ports):
+  servers = []
+  with contextlib.ExitStack() as stack:
+    for port in ports:
+      target_executor = tff.framework.local_executor_factory(
+          num_clients=1).create_executor({})
+      servers.append(
+          stack.enter_context(
+              tff.simulation.server_context(
+                  target_executor, num_threads=1, port=port)))
+    yield servers
+
+
+_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 
 
 def get_all_contexts():
@@ -27,6 +58,8 @@ def get_all_contexts():
       ('native_debug',
        tff.backends.native.create_thread_debugging_execution_context()),
       ('reference', tff.backends.reference.create_reference_context()),
+      ('native_remote_two_clients', _create_localhost_remote_context(_PORTS),
+       functools.partial(_localhost_serving_environment, _PORTS)),
   ]
 
 
@@ -48,7 +81,7 @@ def with_contexts(*args):
 
   ```
   @with_contexts(
-      ('label', context),
+      ('label', context, environment),
       ...
   )
   def foo(self):
@@ -56,14 +89,20 @@ def with_contexts(*args):
   ```
 
   If the decorator is specified without arguments or is called with no
-  arguments, the default contexts used are those returned by `get_all_contexts`.
+  arguments, the default contexts and environment context managers used are
+  those returned by `get_all_contexts`.
+
+  This decorator will first enter `environment` as a Python context if it is
+  passed as a non`-None` argument, then install `context` on the TFF context
+  stack and invoke `foo`.
 
   If the decorator is called with arguments the arguments must be in a form that
-  is accpeted by `parameterized.named_parameters`.
+  is accepted by `parameterized.named_parameters`.
 
   Args:
-    *args: Either a test function to be decorated or named executors for the
-      decorated method, either a single iterable, or a list of tuples or dicts.
+    *args: Either a test function to be decorated or named contexts and
+      environments for the decorated method, either a single iterable, or a list
+      of tuples or dicts.
 
   Returns:
      A test generator to be handled by `parameterized.TestGeneratorMetaclass`.
@@ -74,10 +113,14 @@ def with_contexts(*args):
       named_contexts = get_all_contexts()
 
     @parameterized.named_parameters(*named_contexts)
-    def wrapped_fn(self, context):
+    def wrapped_fn(self, context, environment=None):
       context_stack = tff.framework.get_context_stack()
-      with context_stack.install(context):
-        fn(self)
+      if environment is None:
+        with context_stack.install(context):
+          fn(self)
+      else:
+        with environment(), context_stack.install(context):
+          fn(self)
 
     return wrapped_fn
 
@@ -93,7 +136,6 @@ class ExampleTest(parameterized.TestCase):
   def test_temperature_sensor_example(self):
     to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [
-        tf.data.Dataset.range(10).map(to_float),
         tf.data.Dataset.range(20).map(to_float),
         tf.data.Dataset.range(30).map(to_float),
     ]
@@ -101,7 +143,7 @@ class ExampleTest(parameterized.TestCase):
 
     result = temperature_sensor_example.mean_over_threshold(
         temperatures, threshold)
-    self.assertEqual(result, 12.5)
+    self.assertEqual(result, 15.)
 
 
 class FederatedComputationTest(parameterized.TestCase):
@@ -117,7 +159,7 @@ class FederatedComputationTest(parameterized.TestCase):
     self.assertEqual(result, 10)
 
   @with_contexts
-  def test_empyt_tuple(self):
+  def test_empty_tuple(self):
 
     @tff.federated_computation
     def foo():
@@ -161,6 +203,23 @@ class FederatedComputationTest(parameterized.TestCase):
     value = [list(range(num_clients))] * num_element
     result = foo(value)
     self.assertIsNotNone(result)
+
+  @with_contexts
+  def test_repeated_invocations_of_map(self):
+
+    @tff.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
+    def map_add_one(federated_arg):
+      return tff.federated_map(add_one, federated_arg)
+
+    result1 = map_add_one([0, 1])
+    result2 = map_add_one([0, 1])
+
+    self.assertIsNotNone(result1)
+    self.assertEqual(result1, result2)
 
 
 class TensorFlowComputationTest(parameterized.TestCase):
@@ -233,10 +292,12 @@ class NonDeterministicTest(parameterized.TestCase):
   # TODO(b/131363314): The reference executor should support generating and
   # returning infinite datasets
   @with_contexts(
-      ('native_local', tff.backends.native.create_local_execution_context()),
-      ('native_sizing', tff.backends.native.create_sizing_execution_context()),
+      ('native_local', tff.backends.native.create_local_execution_context(),
+       None),
+      ('native_sizing', tff.backends.native.create_sizing_execution_context(),
+       None),
       ('native_debug',
-       tff.backends.native.create_thread_debugging_execution_context()),
+       tff.backends.native.create_thread_debugging_execution_context(), None),
   )
   def test_computation_called_once_is_invoked_once(self):
 
@@ -273,7 +334,8 @@ class NonDeterministicTest(parameterized.TestCase):
 class SizingExecutionContextTest(parameterized.TestCase):
 
   @with_contexts(
-      ('native_sizing', tff.backends.native.create_sizing_execution_context()),)
+      ('native_sizing', tff.backends.native.create_sizing_execution_context(),
+       None),)
   def test_get_size_info(self):
     num_clients = 10
     to_float = lambda x: tf.cast(x, tf.float32)

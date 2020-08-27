@@ -17,6 +17,7 @@ from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.impl.executors import remote_executor
 
 
 def create_local_execution_context(num_clients=None,
@@ -76,3 +77,25 @@ def create_thread_debugging_execution_context(num_clients=None,
 
   return execution_context.ExecutionContext(
       executor_fn=factory, compiler_fn=_debug_compiler)
+
+
+def create_remote_execution_context(channels,
+                                    rpc_mode='REQUEST_REPLY',
+                                    thread_pool_executor=None,
+                                    dispose_batch_size=20,
+                                    max_fanout: int = 100):
+  """Creates context to execute computations using remote workers on `channels`."""
+  # TODO(b/166634524): Reparameterize worker_pool_executor_factory to
+  # construct remote executors, rename to remote_executor_factory or something
+  # similar.
+  executors = [
+      remote_executor.RemoteExecutor(channel, rpc_mode, thread_pool_executor,
+                                     dispose_batch_size) for channel in channels
+  ]
+  factory = executor_stacks.worker_pool_executor_factory(
+      executors=executors,
+      max_fanout=max_fanout,
+  )
+
+  return execution_context.ExecutionContext(
+      executor_fn=factory, compiler_fn=compiler.transform_to_native_form)
