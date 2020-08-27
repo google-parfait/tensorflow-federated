@@ -30,20 +30,21 @@ def _to_tensor_type_proto(
   shape = tensor_type.shape
   if shape.dims is None:
     dims = None
+    unknown_rank = True
   else:
     dims = [d.value if d.value is not None else -1 for d in shape.dims]
+    unknown_rank = False
   return pb.TensorType(
       dtype=tensor_type.dtype.base_dtype.as_datatype_enum,
       dims=dims,
-      unknown_rank=dims is None)
+      unknown_rank=unknown_rank)
 
 
 def _to_tensor_shape(tensor_type_proto: pb.TensorType) -> tf.TensorShape:
-  if not hasattr(tensor_type_proto, 'dims'):
-    if tensor_type_proto.unknown_rank:
-      return tf.TensorShape(None)
-    else:
-      return tf.TensorShape([])
+  if tensor_type_proto.unknown_rank:
+    return tf.TensorShape(None)
+  elif not hasattr(tensor_type_proto, 'dims'):
+    return tf.TensorShape([])
   dims = [dim if dim >= 0 else None for dim in tensor_type_proto.dims]
   return tf.TensorShape(dims)
 

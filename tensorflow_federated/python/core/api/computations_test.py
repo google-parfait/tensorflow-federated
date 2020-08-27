@@ -189,7 +189,6 @@ class TensorFlowComputationsTest(parameterized.TestCase):
 
   @executor_test_utils.executors
   def test_with_none_tensorshape_param(self):
-    self.skipTest('b/166663998')
 
     @computations.tf_computation(
         computation_types.TensorType(

@@ -134,6 +134,7 @@ class TypeSerializationTest(test.TestCase, parameterized.TestCase):
         computation_types.TensorType(tf.int32),
         computation_types.TensorType(tf.int32, [10]),
         computation_types.TensorType(tf.int32, [None]),
+        computation_types.TensorType(tf.int32, tf.TensorShape(None)),
     ])
 
   def test_serialize_deserialize_sequence_types(self):
