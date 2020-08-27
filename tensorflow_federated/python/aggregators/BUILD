@@ -13,3 +13,13 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
 )
+
+py_library(
+    name = "factory",
+    srcs = ["factory.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+    ],
+)
