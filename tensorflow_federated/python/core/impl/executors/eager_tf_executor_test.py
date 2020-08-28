@@ -31,12 +31,7 @@ from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
 
-def create_test_executor_factory():
-  executor = eager_tf_executor.EagerTFExecutor()
-  return executor_factory.ExecutorFactoryImpl(lambda _: executor)
-
-
-class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
+class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_int_arg_and_result(self):
 
@@ -155,6 +150,117 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
       self.assertIsInstance(res, tf.Tensor)
     self.assertAlmostEqual(results[0], 1.1)
     self.assertAlmostEqual(results[1], 1.2)
+
+  def _get_wrap_function_on_device(self, device):
+    with tf.Graph().as_default() as graph:
+      x = tf.compat.v1.placeholder(tf.int32, shape=[])
+      y = tf.add(x, tf.constant(1))
+
+    def _function_to_wrap(arg):
+      with tf.device(device.name):
+        return tf.import_graph_def(
+            graph.as_graph_def(),
+            input_map={x.name: arg},
+            return_elements=[y.name])[0]
+
+    signature = [tf.TensorSpec([], tf.int32)]
+    wrapped_fn = tf.compat.v1.wrap_function(_function_to_wrap, signature)
+
+    def fn(arg):
+      with tf.device(device.name):
+        return wrapped_fn(arg)
+
+    result = fn(tf.constant(10))
+    return result
+
+  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
+                                  ('TPU', 'TPU'))
+  def test_wrap_function_on_all_available_logical_devices(self, device_str):
+    for device in tf.config.list_logical_devices(device_str):
+      self.assertTrue(
+          self._get_wrap_function_on_device(device).device.endswith(
+              device.name))
+
+  def _get_embed_tensorflow_computation_succeeds_with_device(self, device):
+
+    @computations.tf_computation(tf.int32)
+    def comp(x):
+      return tf.add(x, 1)
+
+    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+
+    fn = eager_tf_executor.embed_tensorflow_computation(
+        comp_proto, comp.type_signature, device=device)
+    result = fn(tf.constant(20))
+    return result
+
+  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
+                                  ('TPU', 'TPU'))
+  def test_embed_tensorflow_computation_succeeds_with_cpu(self, device_str):
+    for device in tf.config.list_logical_devices(device_str):
+      self.assertTrue(
+          self._get_embed_tensorflow_computation_succeeds_with_device(
+              device).device.endswith(device.name))
+
+  def _get_to_representation_for_type_succeeds_on_device(self, device):
+
+    @computations.tf_computation(tf.int32)
+    def comp(x):
+      return tf.add(x, 1)
+
+    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+
+    fn = eager_tf_executor.to_representation_for_type(
+        comp_proto, {}, comp.type_signature, device=device)
+    result = fn(tf.constant(20))
+    return result
+
+  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
+                                  ('TPU', 'TPU'))
+  def test_to_representation_for_type_succeeds_on_devices_cpu(self, device_str):
+    for device in tf.config.list_logical_devices(device_str):
+      self.assertTrue(
+          self._get_to_representation_for_type_succeeds_on_device(
+              device).device.endswith(device.name))
+
+  def test_get_no_arg_wrapped_function_from_comp_with_dataset_reduce(self):
+
+    @computations.tf_computation
+    def comp():
+      return tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
+
+    wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
+        computation_impl.ComputationImpl.get_proto(comp),
+        must_pin_function_to_cpu=False,
+        param_type=None,
+        device=None)
+    self.assertEqual(wrapped_fn(), np.int64(45))
+
+  def test_get_wrapped_function_from_comp_raises_with_incorrect_binding(self):
+
+    with tf.Graph().as_default() as graph:
+      var = tf.Variable(initial_value=0.0, name='var1', import_scope='')
+      assign_op = var.assign_add(tf.constant(1.0))
+      tf.add(1.0, assign_op)
+
+    result_binding = pb.TensorFlow.Binding(
+        tensor=pb.TensorFlow.TensorBinding(tensor_name='Invalid'))
+    comp = pb.Computation(
+        tensorflow=pb.TensorFlow(
+            graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+            result=result_binding))
+    with self.assertRaises(TypeError):
+      wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
+          comp, must_pin_function_to_cpu=False, param_type=None, device=None)
+      wrapped_fn()
+
+
+def _create_test_executor_factory():
+  executor = eager_tf_executor.EagerTFExecutor()
+  return executor_factory.ExecutorFactoryImpl(lambda _: executor)
+
+
+class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_to_representation_for_type_with_int(self):
     value = 10
@@ -501,114 +607,11 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     def comp():
       return tf.math.add(5, 5)
 
-    executor = create_test_executor_factory()
+    executor = _create_test_executor_factory()
     with executor_test_utils.install_executor(executor):
       result = comp()
 
     self.assertEqual(result, 10)
-
-  def _get_wrap_function_on_device(self, device):
-    with tf.Graph().as_default() as graph:
-      x = tf.compat.v1.placeholder(tf.int32, shape=[])
-      y = tf.add(x, tf.constant(1))
-
-    def _function_to_wrap(arg):
-      with tf.device(device.name):
-        return tf.import_graph_def(
-            graph.as_graph_def(),
-            input_map={x.name: arg},
-            return_elements=[y.name])[0]
-
-    signature = [tf.TensorSpec([], tf.int32)]
-    wrapped_fn = tf.compat.v1.wrap_function(_function_to_wrap, signature)
-
-    def fn(arg):
-      with tf.device(device.name):
-        return wrapped_fn(arg)
-
-    result = fn(tf.constant(10))
-    return result
-
-  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
-                                  ('TPU', 'TPU'))
-  def test_wrap_function_on_all_available_logical_devices(self, device_str):
-    for device in tf.config.list_logical_devices(device_str):
-      self.assertTrue(
-          self._get_wrap_function_on_device(device).device.endswith(
-              device.name))
-
-  def _get_embed_tensorflow_computation_succeeds_with_device(self, device):
-
-    @computations.tf_computation(tf.int32)
-    def comp(x):
-      return tf.add(x, 1)
-
-    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
-
-    fn = eager_tf_executor.embed_tensorflow_computation(
-        comp_proto, comp.type_signature, device=device)
-    result = fn(tf.constant(20))
-    return result
-
-  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
-                                  ('TPU', 'TPU'))
-  def test_embed_tensorflow_computation_succeeds_with_cpu(self, device_str):
-    for device in tf.config.list_logical_devices(device_str):
-      self.assertTrue(
-          self._get_embed_tensorflow_computation_succeeds_with_device(
-              device).device.endswith(device.name))
-
-  def _get_to_representation_for_type_succeeds_on_device(self, device):
-
-    @computations.tf_computation(tf.int32)
-    def comp(x):
-      return tf.add(x, 1)
-
-    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
-
-    fn = eager_tf_executor.to_representation_for_type(
-        comp_proto, {}, comp.type_signature, device=device)
-    result = fn(tf.constant(20))
-    return result
-
-  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
-                                  ('TPU', 'TPU'))
-  def test_to_representation_for_type_succeeds_on_devices_cpu(self, device_str):
-    for device in tf.config.list_logical_devices(device_str):
-      self.assertTrue(
-          self._get_to_representation_for_type_succeeds_on_device(
-              device).device.endswith(device.name))
-
-  def test_get_no_arg_wrapped_function_from_comp_with_dataset_reduce(self):
-
-    @computations.tf_computation
-    def comp():
-      return tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
-
-    wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
-        computation_impl.ComputationImpl.get_proto(comp),
-        must_pin_function_to_cpu=False,
-        param_type=None,
-        device=None)
-    self.assertEqual(wrapped_fn(), np.int64(45))
-
-  def test_get_wrapped_function_from_comp_raises_with_incorrect_binding(self):
-
-    with tf.Graph().as_default() as graph:
-      var = tf.Variable(initial_value=0.0, name='var1', import_scope='')
-      assign_op = var.assign_add(tf.constant(1.0))
-      tf.add(1.0, assign_op)
-
-    result_binding = pb.TensorFlow.Binding(
-        tensor=pb.TensorFlow.TensorBinding(tensor_name='Invalid'))
-    comp = pb.Computation(
-        tensorflow=pb.TensorFlow(
-            graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
-            result=result_binding))
-    with self.assertRaises(TypeError):
-      wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
-          comp, must_pin_function_to_cpu=False, param_type=None, device=None)
-      wrapped_fn()
 
 
 if __name__ == '__main__':
