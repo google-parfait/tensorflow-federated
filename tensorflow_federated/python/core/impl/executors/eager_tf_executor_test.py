@@ -14,6 +14,7 @@
 
 import asyncio
 import collections
+from absl.testing import parameterized
 
 import numpy as np
 import tensorflow as tf
@@ -35,17 +36,10 @@ def create_test_executor_factory():
   return executor_factory.ExecutorFactoryImpl(lambda _: executor)
 
 
-class EagerTFExecutorTest(tf.test.TestCase):
+class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   # TODO(b/134764569): Potentially take advantage of something similar to the
   # `tf.test.TestCase.evaluate()` to avoid having to call `.numpy()` everywhere.
-
-  def setUp(self):
-    super().setUp()
-    self._logical_devices_cpu = tf.config.list_logical_devices('CPU')
-    self._logical_devices_gpu = tf.config.list_logical_devices('GPU')
-    self._logical_devices_tpu = tf.config.list_logical_devices('TPU')
-
   def test_embed_tensorflow_computation_with_int_arg_and_result(self):
 
     @computations.tf_computation(tf.int32)
@@ -184,7 +178,8 @@ class EagerTFExecutorTest(tf.test.TestCase):
     value = 10
     type_signature = computation_types.TensorType(tf.int32)
     v = eager_tf_executor.to_representation_for_type(
-        value, {}, type_signature, self._logical_devices_cpu[0])
+        value, {}, type_signature,
+        tf.config.list_logical_devices('CPU')[0])
     self.assertIsInstance(v, tf.Tensor)
     self.assertEqual(v.numpy(), 10)
     self.assertEqual(v.dtype, tf.int32)
@@ -202,7 +197,7 @@ class EagerTFExecutorTest(tf.test.TestCase):
         eager_tf_executor.EagerTFExecutor()
 
   def test_executor_construction_with_correct_device_name(self):
-    eager_tf_executor.EagerTFExecutor(self._logical_devices_cpu[0])
+    eager_tf_executor.EagerTFExecutor(tf.config.list_logical_devices('CPU')[0])
 
   def test_executor_construction_with_no_device_name(self):
     eager_tf_executor.EagerTFExecutor()
@@ -514,8 +509,6 @@ class EagerTFExecutorTest(tf.test.TestCase):
 
     self.assertEqual(result, 10)
 
-  # TODO(b/155239129): we have to acquire logical device list in `setUp`. It
-  # prevents us from using smart test style like parameterized test.
   def _get_wrap_function_on_device(self, device):
     with tf.Graph().as_default() as graph:
       x = tf.compat.v1.placeholder(tf.int32, shape=[])
@@ -538,26 +531,14 @@ class EagerTFExecutorTest(tf.test.TestCase):
     result = fn(tf.constant(10))
     return result
 
-  def test_wrap_function_on_all_available_logical_devices_cpu(self):
-    for device in self._logical_devices_cpu:
+  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
+                                  ('TPU', 'TPU'))
+  def test_wrap_function_on_all_available_logical_devices(self, device_str):
+    for device in tf.config.list_logical_devices(device_str):
       self.assertTrue(
           self._get_wrap_function_on_device(device).device.endswith(
               device.name))
 
-  def test_wrap_function_on_all_available_logical_devices_gpu(self):
-    for device in self._logical_devices_gpu:
-      self.assertTrue(
-          self._get_wrap_function_on_device(device).device.endswith(
-              device.name))
-
-  def test_wrap_function_on_all_available_logical_devices_tpu(self):
-    for device in self._logical_devices_tpu:
-      self.assertTrue(
-          self._get_wrap_function_on_device(device).device.endswith(
-              device.name))
-
-  # TODO(b/155239129): we have to acquire logical device list in `setUp`. It
-  # prevents us from using smart test style like parameterized test.
   def _get_embed_tensorflow_computation_succeeds_with_device(self, device):
 
     @computations.tf_computation(tf.int32)
@@ -571,26 +552,14 @@ class EagerTFExecutorTest(tf.test.TestCase):
     result = fn(tf.constant(20))
     return result
 
-  def test_embed_tensorflow_computation_succeeds_with_cpu(self):
-    for device in self._logical_devices_cpu:
+  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
+                                  ('TPU', 'TPU'))
+  def test_embed_tensorflow_computation_succeeds_with_cpu(self, device_str):
+    for device in tf.config.list_logical_devices(device_str):
       self.assertTrue(
           self._get_embed_tensorflow_computation_succeeds_with_device(
               device).device.endswith(device.name))
 
-  def test_embed_tensorflow_computation_succeeds_with_gpu(self):
-    for device in self._logical_devices_gpu:
-      self.assertTrue(
-          self._get_embed_tensorflow_computation_succeeds_with_device(
-              device).device.endswith(device.name))
-
-  def test_embed_tensorflow_computation_succeeds_with_tpu(self):
-    for device in self._logical_devices_tpu:
-      self.assertTrue(
-          self._get_embed_tensorflow_computation_succeeds_with_device(
-              device).device.endswith(device.name))
-
-  # TODO(b/155239129): we have to acquire logical device list in `setUp`. It
-  # prevents us from using smart test style like parameterized test.
   def _get_to_representation_for_type_succeeds_on_device(self, device):
 
     @computations.tf_computation(tf.int32)
@@ -604,20 +573,10 @@ class EagerTFExecutorTest(tf.test.TestCase):
     result = fn(tf.constant(20))
     return result
 
-  def test_to_representation_for_type_succeeds_on_devices_cpu(self):
-    for device in self._logical_devices_cpu:
-      self.assertTrue(
-          self._get_to_representation_for_type_succeeds_on_device(
-              device).device.endswith(device.name))
-
-  def test_to_representation_for_type_succeeds_on_devices_gpu(self):
-    for device in self._logical_devices_gpu:
-      self.assertTrue(
-          self._get_to_representation_for_type_succeeds_on_device(
-              device).device.endswith(device.name))
-
-  def test_to_representation_for_type_succeeds_on_devices_tpu(self):
-    for device in self._logical_devices_tpu:
+  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
+                                  ('TPU', 'TPU'))
+  def test_to_representation_for_type_succeeds_on_devices_cpu(self, device_str):
+    for device in tf.config.list_logical_devices(device_str):
       self.assertTrue(
           self._get_to_representation_for_type_succeeds_on_device(
               device).device.endswith(device.name))
