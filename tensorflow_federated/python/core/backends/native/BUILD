@@ -29,7 +29,6 @@ py_library(
     deps = [
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl:computation_impl",
-        "//tensorflow_federated/python/core/impl:do_not_use_compiler",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",

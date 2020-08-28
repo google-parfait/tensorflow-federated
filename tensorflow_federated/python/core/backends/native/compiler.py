@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Library of compiler functions for usage in the native execution context."""
+
 from absl import logging
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl import computation_impl
-from tensorflow_federated.python.core.impl import do_not_use_compiler
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
@@ -37,7 +37,22 @@ def transform_to_native_form(
     A new `computation_base.Computation` representing the compiled version of
     `comp`.
   """
-  return do_not_use_compiler._do_not_use_transform_to_native_form(comp)  # pylint: disable=protected-access
+  proto = computation_impl.ComputationImpl.get_proto(comp)
+  computation_building_block = building_blocks.ComputationBuildingBlock.from_proto(
+      proto)
+  try:
+    logging.debug('Compiling TFF computation.')
+    call_dominant_form, _ = transformations.transform_to_call_dominant(
+        computation_building_block)
+    logging.debug('Computation compiled to:')
+    logging.debug(call_dominant_form.formatted_representation())
+    return computation_wrapper_instances.building_block_to_computation(
+        call_dominant_form)
+  except ValueError as e:
+    logging.debug('Compilation for native runtime failed with error %s', e)
+    logging.debug('computation: %s',
+                  computation_building_block.compact_representation())
+    return comp
 
 
 def transform_mathematical_functions_to_tensorflow(

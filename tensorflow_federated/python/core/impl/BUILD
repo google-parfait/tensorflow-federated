@@ -106,25 +106,6 @@ py_test(
 )
 
 py_library(
-    name = "do_not_use_compiler",
-    srcs = ["do_not_use_compiler.py"],
-    srcs_version = "PY3",
-    visibility = [
-        "//tensorflow_federated/python/core/api:__pkg__",
-        "//tensorflow_federated/python/core/backends/native:__pkg__",
-    ],
-    deps = [
-        "//tensorflow_federated/python/core/impl:computation_impl",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:transformations",
-        "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
-        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
-    ],
-)
-
-py_library(
     name = "intrinsic_bodies",
     srcs = ["intrinsic_bodies.py"],
     srcs_version = "PY3",
