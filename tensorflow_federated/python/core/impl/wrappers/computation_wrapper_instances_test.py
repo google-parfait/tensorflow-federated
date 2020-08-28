@@ -319,6 +319,17 @@ class TensorflowWrapperTest(test.TestCase):
     self.assertEqual(foo.type_signature.compact_representation(),
                      '(int32 -> int32)')
 
+  def test_does_not_raise_type_error_with_sequence_inputs_and_outputs(self):
+    try:
+
+      @computation_wrapper_instances.tensorflow_wrapper(
+          computation_types.SequenceType(tf.int32))
+      def foo(x):  # pylint: disable=unused-variable
+        return x
+
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
+
   def test_fails_with_bad_types(self):
     function = computation_types.FunctionType(
         None, computation_types.TensorType(tf.int32))

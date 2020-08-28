@@ -18,6 +18,7 @@ import functools
 from absl.testing import absltest
 from absl.testing import parameterized
 import grpc
+import numpy as np
 import portpicker
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -215,7 +216,7 @@ class FederatedComputationTest(parameterized.TestCase):
 class TensorFlowComputationTest(parameterized.TestCase):
 
   @with_contexts
-  def test_constant(self):
+  def test_returns_constant(self):
 
     @tff.tf_computation
     def foo():
@@ -225,7 +226,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     self.assertEqual(result, 10)
 
   @with_contexts
-  def test_empyt_tuple(self):
+  def test_returns_empyt_tuple(self):
 
     @tff.tf_computation
     def foo():
@@ -235,7 +236,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     self.assertEqual(result, ())
 
   @with_contexts
-  def test_variable(self):
+  def test_returns_variable(self):
 
     @tff.tf_computation
     def foo():
@@ -244,8 +245,55 @@ class TensorFlowComputationTest(parameterized.TestCase):
     result = foo()
     self.assertEqual(result, 10)
 
+  # pyformat: disable
+  @with_contexts(
+      ('native_local', tff.backends.native.create_local_execution_context()),
+      ('native_remote',
+       _create_localhost_remote_context(_PORTS),
+       _create_localhost_server_contexts(_PORTS)),
+      ('native_sizing', tff.backends.native.create_sizing_execution_context()),
+      ('native_thread_debug',
+       tff.backends.native.create_thread_debugging_execution_context()),
+  )
+  # pyformat: enable
+  def test_takes_infinite_dataset(self):
+
+    @tff.tf_computation
+    def foo(ds):
+      return ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
+
+    ds = tf.data.Dataset.range(10).repeat()
+    actual_result = foo(ds)
+
+    expected_result = ds.take(10).reduce(np.int64(0), lambda x, y: x + y)
+    self.assertEqual(actual_result, expected_result)
+
+  # pyformat: disable
+  @with_contexts(
+      ('native_local', tff.backends.native.create_local_execution_context()),
+      ('native_remote',
+       _create_localhost_remote_context(_PORTS),
+       _create_localhost_server_contexts(_PORTS)),
+      ('native_sizing', tff.backends.native.create_sizing_execution_context()),
+      ('native_thread_debug',
+       tff.backends.native.create_thread_debugging_execution_context()),
+  )
+  # pyformat: enable
+  def test_returns_infinite_dataset(self):
+
+    @tff.tf_computation
+    def foo():
+      return tf.data.Dataset.range(10).repeat()
+
+    actual_result = foo()
+
+    expected_result = tf.data.Dataset.range(10).repeat()
+    self.assertEqual(
+        actual_result.take(100).reduce(np.int64(0), lambda x, y: x + y),
+        expected_result.take(100).reduce(np.int64(0), lambda x, y: x + y))
+
   @with_contexts
-  def test_concrete_returns_result(self):
+  def test_returns_result_with_typed_fn(self):
 
     @tff.tf_computation(tf.int32, tf.int32)
     def foo(x, y):
@@ -255,7 +303,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     self.assertEqual(result, 3)
 
   @with_contexts
-  def test_concrete_raises_type_error(self):
+  def test_raises_type_error_with_typed_fn(self):
 
     @tff.tf_computation(tf.int32, tf.int32)
     def foo(x, y):
@@ -265,7 +313,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
       foo(1.0, 2.0)
 
   @with_contexts
-  def test_polymorphic(self):
+  def test_returns_result_with_polymorphic_fn(self):
 
     @tff.tf_computation
     def foo(x, y):

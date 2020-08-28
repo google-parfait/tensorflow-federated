@@ -74,23 +74,6 @@ py_library(
     deps = ["//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances"],
 )
 
-py_test(
-    name = "computations_test",
-    size = "small",
-    srcs = ["computations_test.py"],
-    python_version = "PY3",
-    shard_count = 10,
-    srcs_version = "PY3",
-    deps = [
-        ":computation_types",
-        ":computations",
-        "//tensorflow_federated/python/common_libs:test",
-        "//tensorflow_federated/python/core/impl:do_not_use_compiler",
-        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
-        "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
-    ],
-)
-
 py_library(
     name = "intrinsics",
     srcs = ["intrinsics.py"],

@@ -48,3 +48,15 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:remote_executor",
     ],
 )
+
+py_test(
+    name = "execution_contexts_test",
+    srcs = ["execution_contexts_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":execution_contexts",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api:computations",
+    ],
+)
