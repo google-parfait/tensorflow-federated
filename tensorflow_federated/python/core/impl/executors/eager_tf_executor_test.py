@@ -223,7 +223,14 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
           self._get_to_representation_for_type_succeeds_on_device(
               device).device.endswith(device.name))
 
+  def _skip_in_multi_gpus(self):
+    logical_gpus = tf.config.list_logical_devices('GPU')
+    if len(logical_gpus) > 1:
+      self.skipTest('Skip the test if multi-GPUs, checkout the MultiGPUTests')
+
   def test_get_no_arg_wrapped_function_from_comp_with_dataset_reduce(self):
+
+    self._skip_in_multi_gpus()
 
     @computations.tf_computation
     def comp():
@@ -238,6 +245,8 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_get_wrapped_function_from_comp_raises_with_incorrect_binding(self):
 
+    self._skip_in_multi_gpus()
+
     with tf.Graph().as_default() as graph:
       var = tf.Variable(initial_value=0.0, name='var1', import_scope='')
       assign_op = var.assign_add(tf.constant(1.0))
@@ -249,10 +258,101 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
         tensorflow=pb.TensorFlow(
             graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
             result=result_binding))
-    with self.assertRaises(TypeError):
-      wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
+    with self.assertRaisesRegex(TypeError,
+                                'Caught exception trying to prune graph.*'):
+      eager_tf_executor._get_wrapped_function_from_comp(
           comp, must_pin_function_to_cpu=False, param_type=None, device=None)
-      wrapped_fn()
+
+  def test_check_dataset_reduce_in_multi_gpu_no_mgpu_no_raise(self):
+    self._skip_in_multi_gpus()
+    with tf.Graph().as_default() as graph:
+      tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
+    eager_tf_executor._check_dataset_reduce_in_multi_gpu(graph.as_graph_def())
+
+
+class MultiGPUTest(tf.test.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    # Multiple logical GPU devices will be created for tests in this clss. And
+    # logical deviceds have to be created before listed in each indivisual test.
+    self._create_logical_multi_gpus()
+
+  def _create_logical_multi_gpus(self):
+    gpu_devices = tf.config.list_physical_devices('GPU')
+    if not gpu_devices:
+      self.skipTest('Skip GPU tests when no GPU is provided')
+    if len(gpu_devices) == 1:
+      tf.config.set_logical_device_configuration(gpu_devices[0], [
+          tf.config.LogicalDeviceConfiguration(memory_limit=128),
+          tf.config.LogicalDeviceConfiguration(memory_limit=128)
+      ])
+
+  def test_check_dataset_reduce_in_multi_gpu_no_reduce_no_raise(self):
+    with tf.Graph().as_default() as graph:
+      tf.data.Dataset.range(10).map(lambda x: x + 1)
+    eager_tf_executor._check_dataset_reduce_in_multi_gpu(graph.graph_def())
+
+  def test_check_dataset_reduce_in_multi_gpu(self):
+    with tf.Graph().as_default() as graph:
+      tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
+    with self.assertRaisesRegex(
+        ValueError, 'Detected dataset reduce op in multi-GPU TFF simulation.*'):
+      eager_tf_executor._check_dataset_reduce_in_multi_gpu(graph.as_graph_def())
+
+  def test_check_dataset_reduce_in_multi_gpu_tf_device_no_raise(self):
+    logical_gpus = tf.config.list_logical_devices('GPU')
+    with tf.Graph().as_default() as graph:
+      with tf.device(logical_gpus[0].name):
+        tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
+    eager_tf_executor._check_dataset_reduce_in_multi_gpu(graph.graph_def())
+
+  def test_get_no_arg_wrapped_function_check_dataset_reduce_in_multi_gpu(self):
+
+    @computations.tf_computation
+    def comp():
+      return tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
+
+    with self.assertRaisesRegex(
+        ValueError, 'Detected dataset reduce op in multi-GPU TFF simulation.*'):
+      eager_tf_executor._get_wrapped_function_from_comp(
+          computation_impl.ComputationImpl.get_proto(comp),
+          must_pin_function_to_cpu=False,
+          param_type=None,
+          device=None)
+
+  def test_get_no_arg_wrapped_function_multi_gpu_no_reduce(self):
+
+    @computations.tf_computation
+    @tf.function
+    def comp():
+      value = tf.constant(0, dtype=tf.int64)
+      for d in iter(tf.data.Dataset.range(10)):
+        value += d
+      return value
+
+    wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
+        computation_impl.ComputationImpl.get_proto(comp),
+        must_pin_function_to_cpu=False,
+        param_type=None,
+        device=None)
+    self.assertEqual(wrapped_fn(), np.int64(45))
+
+  def test_get_no_arg_wrapped_function_multi_gpu_tf_device(self):
+
+    logical_gpus = tf.config.list_logical_devices('GPU')
+
+    @computations.tf_computation
+    def comp():
+      with tf.device(logical_gpus[0].name):
+        return tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
+
+    wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
+        computation_impl.ComputationImpl.get_proto(comp),
+        must_pin_function_to_cpu=False,
+        param_type=None,
+        device=None)
+    self.assertEqual(wrapped_fn(), np.int64(45))
 
 
 def _create_test_executor_factory():

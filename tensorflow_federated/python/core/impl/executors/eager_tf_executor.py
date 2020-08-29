@@ -13,7 +13,8 @@
 # limitations under the License.
 """A simple executor that operates synchronously in eager TensorFlow mode."""
 
-from typing import Any, MutableMapping, Optional
+import itertools
+from typing import Any, Iterable, MutableMapping, Optional
 
 import cachetools
 import tensorflow as tf
@@ -39,6 +40,34 @@ from tensorflow_federated.python.tensorflow_libs import graph_merge
 
 # Cache size here is simply heuristic, no formal analysis.
 _TF_FUNCTION_CACHE_SIZE = 100
+
+
+def _all_graph_def_nodes(
+    graph_def: tf.compat.v1.GraphDef) -> Iterable[tf.compat.v1.NodeDef]:
+  return itertools.chain(graph_def.node,
+                         *[f.node_def for f in graph_def.library.function])
+
+
+def _check_dataset_reduce_in_multi_gpu(
+    graph_def: tf.compat.v1.GraphDef) -> None:
+  """Detect if ReduceDataset Op is used in a multi-GPU simulation."""
+  gpu_devices = tf.config.list_logical_devices('GPU')
+  if len(gpu_devices) <= 1:
+    return
+  has_dataset_reduce_node = False
+  for node in _all_graph_def_nodes(graph_def):
+    # If `tf.device` is explicitly used in the graph_def, the graph_def was
+    # defined by advanced users who we trust know what they are doing.
+    if node.device:
+      return
+    if node.op == 'ReduceDataset':
+      has_dataset_reduce_node = True
+  if has_dataset_reduce_node:
+    raise ValueError(
+        'Detected dataset reduce op in multi-GPU TFF simulation: '
+        '`use_experimental_simulation_loop=True` for `tff.learning`; or '
+        'use `for ... in iter(dataset)` for your own dataset iteration.'
+        'Reduce op will be functinoal after b/159180073.')
 
 
 def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
@@ -68,6 +97,9 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
       Result of importing graphdef backing `comp`.
     """
     graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
+    # TODO(b/159180073): clean raise after fixing dataset reduce.
+    _check_dataset_reduce_in_multi_gpu(graph_def)
+
     init_op = comp.tensorflow.initialize_op
     if init_op:
       graph_def = tensorflow_utils.add_control_deps_for_init_op(
