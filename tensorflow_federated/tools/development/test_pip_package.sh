@@ -63,14 +63,32 @@ main() {
   trap "rm -rf ${temp_dir}" EXIT
   pushd "${temp_dir}"
 
+  if [[ $? -ne 0 ]]; then
+      return_code=$?
+      echo "error code 1 ='$?'"
+      exit "${return_code}"
+  fi
+
   # Create a virtual environment
   virtualenv --python=python3 "venv"
   source "venv/bin/activate"
   pip install --upgrade pip
 
+  if [[ $? -ne 0 ]]; then
+      return_code=$?
+      echo "error code 2 ='$?'"
+      exit "${return_code}"
+  fi
+
   # Test pip package
   pip install --upgrade "${package}"
   python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"
+
+  if [[ $? -ne 0 ]]; then
+      return_code=$?
+      echo "error code 2 ='$?'"
+      exit "${return_code}"
+  fi
 }
 
 main "$@"
