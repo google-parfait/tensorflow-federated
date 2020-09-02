@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.research.utils.models import stackoverflow_models
@@ -24,6 +25,27 @@ class KerasSequenceModelsTest(absltest.TestCase):
     model = stackoverflow_models.create_recurrent_model(10, name='rnn-lstm')
     self.assertIsInstance(model, tf.keras.Model)
     self.assertEqual('rnn-lstm', model.name)
+
+  def test_shared_embedding_returns_dense_gradient_in_graph_mode(self):
+    batch_size = 2
+    sequence_length = 20
+    batch_x = np.ones((batch_size, sequence_length), dtype=np.int32)
+    batch_y = np.ones((batch_size, sequence_length), dtype=np.int32)
+    graph = tf.Graph()
+    with graph.as_default():
+      model = stackoverflow_models.create_recurrent_model(shared_embedding=True)
+      loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+      with tf.GradientTape() as tape:
+        predictions = model(batch_x, training=True)
+        loss = loss_fn(y_true=batch_y, y_pred=predictions)
+      embedding_gradient = tape.gradient(loss, model.trainable_variables[0])
+      init_op = tf.compat.v1.global_variables_initializer()
+
+    with tf.compat.v1.Session(graph=graph) as sess:
+      sess.run(init_op)
+      embedding_grad = sess.run(embedding_gradient)
+
+    self.assertTrue(np.all(np.linalg.norm(embedding_grad, axis=1) > 0.0))
 
 
 if __name__ == '__main__':

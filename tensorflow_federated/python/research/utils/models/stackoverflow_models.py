@@ -16,10 +16,16 @@
 import tensorflow as tf
 
 
-class TransposableEmbedding(tf.keras.layers.Embedding):
-  """A Keras Embedding layer implements a transposed projection for output."""
+class TransposableEmbedding(tf.keras.layers.Layer):
+  """A Keras layer implements a transposed projection for output."""
 
-  def reverse_project(self, inputs):
+  def __init__(self, embedding_layer: tf.keras.layers.Embedding):
+    super().__init__()
+    self.embeddings = embedding_layer.embeddings
+
+  # Placing `tf.matmul` under the `call` method is important for backpropagating
+  # the gradients of `self.embeddings` in graph mode.
+  def call(self, inputs):
     return tf.matmul(inputs, self.embeddings, transpose_b=True)
 
 
@@ -47,7 +53,7 @@ def create_recurrent_model(vocab_size=10000,
   """
   extended_vocab_size = vocab_size + 3 + num_oov_buckets  # For pad/bos/eos/oov.
   inputs = tf.keras.layers.Input(shape=(None,))
-  input_embedding = TransposableEmbedding(
+  input_embedding = tf.keras.layers.Embedding(
       input_dim=extended_vocab_size, output_dim=embedding_size, mask_zero=True)
   embedded = input_embedding(inputs)
   projected = embedded
@@ -59,7 +65,8 @@ def create_recurrent_model(vocab_size=10000,
     projected = tf.keras.layers.Dense(embedding_size)(processed)
 
   if shared_embedding:
-    logits = input_embedding.reverse_project(projected)
+    transposed_embedding = TransposableEmbedding(input_embedding)
+    logits = transposed_embedding(projected)
   else:
     logits = tf.keras.layers.Dense(
         extended_vocab_size, activation=None)(
