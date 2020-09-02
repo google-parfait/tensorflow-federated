@@ -73,7 +73,7 @@ main() {
   pip install --upgrade pip
 
   # Publish pip package
-  pip install --upgrade "twine"
+  pip install --upgrade twine
   twine check "${package}"
   twine upload "${package}"
 }
