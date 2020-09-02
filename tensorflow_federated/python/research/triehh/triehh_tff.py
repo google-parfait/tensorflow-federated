@@ -89,14 +89,13 @@ def build_triehh_process(
   def server_init_tf():
     return ServerState(
         discovered_heavy_hitters=tf.constant([], dtype=tf.string),
-        heavy_hitters_frequencies=tf.constant([], dtype=tf.float64),
+        heavy_hitters_counts=tf.constant([], dtype=tf.int32),
         discovered_prefixes=tf.constant([''], dtype=tf.string),
         round_num=tf.constant(0, dtype=tf.int32),
         accumulated_votes=tf.zeros(
             dtype=tf.int32,
             shape=[max_num_prefixes,
-                   len(possible_prefix_extensions)]),
-        accumulated_weights=tf.constant(0, dtype=tf.int32))
+                   len(possible_prefix_extensions)]))
 
   # We cannot use server_init_tf.type_signature.result because the
   # discovered_* fields need to have [None] shapes, since they will grow over
@@ -106,29 +105,24 @@ def build_triehh_process(
           ServerState(
               discovered_heavy_hitters=tff.TensorType(
                   dtype=tf.string, shape=[None]),
-              heavy_hitters_frequencies=tff.TensorType(
-                  dtype=tf.float64, shape=[None]),
+              heavy_hitters_counts=tff.TensorType(dtype=tf.int32, shape=[None]),
               discovered_prefixes=tff.TensorType(dtype=tf.string, shape=[None]),
               round_num=tff.TensorType(dtype=tf.int32, shape=[]),
               accumulated_votes=tff.TensorType(
                   dtype=tf.int32, shape=[None,
                                          len(possible_prefix_extensions)]),
-              accumulated_weights=tff.TensorType(dtype=tf.int32, shape=[]),
           )))
 
   sub_round_votes_type = tff.TensorType(
       dtype=tf.int32, shape=[max_num_prefixes,
                              len(possible_prefix_extensions)])
-  sub_round_weight_type = tff.TensorType(dtype=tf.int32, shape=[])
 
-  @tff.tf_computation(server_state_type, sub_round_votes_type,
-                      sub_round_weight_type)
-  def server_update_fn(server_state, sub_round_votes, sub_round_weight):
+  @tff.tf_computation(server_state_type, sub_round_votes_type)
+  def server_update_fn(server_state, sub_round_votes):
     return server_update(
         server_state,
         tf.constant(possible_prefix_extensions),
         sub_round_votes,
-        sub_round_weight,
         num_sub_rounds=tf.constant(num_sub_rounds),
         max_num_prefixes=tf.constant(max_num_prefixes),
         threshold=tf.constant(threshold))
@@ -169,11 +163,8 @@ def build_triehh_process(
 
     accumulated_votes = tff.federated_sum(client_outputs.client_votes)
 
-    accumulated_weights = tff.federated_sum(client_outputs.client_weight)
-
-    server_state = tff.federated_map(
-        server_update_fn,
-        (server_state, accumulated_votes, accumulated_weights))
+    server_state = tff.federated_map(server_update_fn,
+                                     (server_state, accumulated_votes))
 
     server_output = tff.federated_value([], tff.SERVER)
 
