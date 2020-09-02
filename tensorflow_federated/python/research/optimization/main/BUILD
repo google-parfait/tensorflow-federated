@@ -19,6 +19,26 @@ py_binary(
     ],
 )
 
+py_test(
+    name = "centralized_tasks_test",
+    size = "large",
+    srcs = ["centralized_tasks_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    tags = [
+        "manual",
+        "nopresubmit",
+    ],
+    deps = [
+        "//tensorflow_federated/python/research/optimization/cifar100:centralized_cifar100",
+        "//tensorflow_federated/python/research/optimization/emnist:centralized_emnist",
+        "//tensorflow_federated/python/research/optimization/emnist_ae:centralized_emnist_ae",
+        "//tensorflow_federated/python/research/optimization/shakespeare:centralized_shakespeare",
+        "//tensorflow_federated/python/research/optimization/stackoverflow:centralized_stackoverflow",
+        "//tensorflow_federated/python/research/optimization/stackoverflow_lr:centralized_stackoverflow_lr",
+    ],
+)
+
 py_binary(
     name = "federated_trainer",
     srcs = ["federated_trainer.py"],
