@@ -34,8 +34,6 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 # TODO(b/140752097): Factor out more commonalities between executorts to place
 # in this helper file. The helpers that are currently here may not be the right
 # ones. Exploit commonalities with transformations.
-# TODO(b/134543154): Add a dedicated test for this library (not a priority since
-# it's already transitively getting covered by existing executor tests).
 async def delegate_entirely_to_executor(arg, arg_type, executor):
   """Delegates `arg` in its entirety to the target executor.
 
