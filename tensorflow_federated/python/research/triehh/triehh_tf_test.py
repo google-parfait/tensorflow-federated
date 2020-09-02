@@ -45,7 +45,8 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
 
     accumulate_client_votes = triehh_tf.make_accumulate_client_votes_fn(
         round_num, num_sub_rounds, discovered_prefixes_table,
-        possible_prefix_extensions_table)
+        possible_prefix_extensions_table,
+        tf.constant(triehh_tf.DEFAULT_TERMINATOR, dtype=tf.string))
 
     initial_votes = tf.constant(
         [[1, 2, 1, 0, 0], [1, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
@@ -81,11 +82,10 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     num_sub_rounds = tf.constant(1)
     sample_data = tf.data.Dataset.from_tensor_slices(
         ['a', '', 'abc', 'bac', 'abb', 'aaa', 'acc', 'hi'])
-    client_output = triehh_tf.client_update(sample_data, discovered_prefixes,
-                                            possible_prefix_extensions,
-                                            round_num, num_sub_rounds,
-                                            max_num_prefixes,
-                                            max_user_contribution)
+    client_output = triehh_tf.client_update(
+        sample_data, discovered_prefixes, possible_prefix_extensions, round_num,
+        num_sub_rounds, max_num_prefixes, max_user_contribution,
+        tf.constant(triehh_tf.DEFAULT_TERMINATOR, dtype=tf.string))
 
     # Each string is attached with triehh_tf.DEFAULT_TERMINATOR before the
     # client votes, so 'a$' get a vote here.
@@ -111,11 +111,10 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     # defaults to yielding tf.int32 values.
     sample_data = tf.data.Dataset.from_generator(
         generator=lambda: iter(()), output_types=tf.string, output_shapes=())
-    client_output = triehh_tf.client_update(sample_data, discovered_prefixes,
-                                            possible_prefix_extensions,
-                                            round_num, num_sub_rounds,
-                                            max_num_prefixes,
-                                            max_user_contribution)
+    client_output = triehh_tf.client_update(
+        sample_data, discovered_prefixes, possible_prefix_extensions, round_num,
+        num_sub_rounds, max_num_prefixes, max_user_contribution,
+        tf.constant(triehh_tf.DEFAULT_TERMINATOR, dtype=tf.string))
 
     expected_client_votes = tf.constant(
         [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
@@ -136,11 +135,10 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
     num_sub_rounds = tf.constant(1)
     sample_data = tf.data.Dataset.from_tensor_slices(
         ['a', '', 'abc', 'bac', 'abb', 'aaa', 'acc', 'hi'])
-    client_output = triehh_tf.client_update(sample_data, discovered_prefixes,
-                                            possible_prefix_extensions,
-                                            round_num, num_sub_rounds,
-                                            max_num_prefixes,
-                                            max_user_contribution)
+    client_output = triehh_tf.client_update(
+        sample_data, discovered_prefixes, possible_prefix_extensions, round_num,
+        num_sub_rounds, max_num_prefixes, max_user_contribution,
+        tf.constant(triehh_tf.DEFAULT_TERMINATOR, dtype=tf.string))
 
     expected_client_votes = tf.constant(
         [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0],
@@ -718,7 +716,8 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
             dataset, server_state.discovered_prefixes,
             possible_prefix_extensions, round_num, tf.constant(num_sub_rounds),
             tf.constant(max_num_prefixes, dtype=tf.int32),
-            tf.constant(max_user_contribution, dtype=tf.int32))
+            tf.constant(max_user_contribution, dtype=tf.int32),
+            tf.constant(triehh_tf.DEFAULT_TERMINATOR, dtype=tf.string))
         accumulated_votes += client_output.client_votes
 
       server_state = triehh_tf.server_update(
@@ -791,7 +790,8 @@ class TriehhTfTest(hh_test.HeavyHittersTest):
             dataset, server_state.discovered_prefixes,
             possible_prefix_extensions, round_num, tf.constant(num_sub_rounds),
             tf.constant(max_num_prefixes, dtype=tf.int32),
-            tf.constant(max_user_contribution, dtype=tf.int32))
+            tf.constant(max_user_contribution, dtype=tf.int32),
+            tf.constant(triehh_tf.DEFAULT_TERMINATOR, dtype=tf.string))
         accumulated_votes += client_output.client_votes
 
       server_state = triehh_tf.server_update(

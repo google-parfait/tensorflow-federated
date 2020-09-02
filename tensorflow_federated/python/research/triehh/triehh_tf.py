@@ -67,7 +67,8 @@ class ServerState(object):
 
 def make_accumulate_client_votes_fn(round_num, num_sub_rounds,
                                     discovered_prefixes_table,
-                                    possible_prefix_extensions_table):
+                                    possible_prefix_extensions_table,
+                                    default_terminator):
   """Returns a reduce function that is used to accumulate client votes.
 
   This function creates an accumulate_client_votes reduce function that can be
@@ -83,6 +84,7 @@ def make_accumulate_client_votes_fn(round_num, num_sub_rounds,
       discovered prefixes.
     possible_prefix_extensions_table: A tf.lookup.StaticHashTable containing the
       possible prefix extensions that a client can vote on.
+    default_terminator: A tf.string containing the end of sequence symbol.
 
   Returns:
     An accumulate_client_votes reduce function for a specific round, set of
@@ -95,7 +97,6 @@ def make_accumulate_client_votes_fn(round_num, num_sub_rounds,
 
     example = tf.strings.lower(example)
     # Append the default terminator to the example.
-    default_terminator = tf.constant(DEFAULT_TERMINATOR, dtype=tf.string)
     example = tf.strings.join([example, default_terminator])
 
     # Compute effective round number.
@@ -130,7 +131,7 @@ def make_accumulate_client_votes_fn(round_num, num_sub_rounds,
 @tf.function
 def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
                   round_num, num_sub_rounds, max_num_prefixes,
-                  max_user_contribution):
+                  max_user_contribution, default_terminator):
   """Creates a ClientOutput object that holds the client's votes.
 
   This function takes in a 'tf.data.Dataset' containing the client's words,
@@ -153,6 +154,7 @@ def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
       can keep in the trie.
     max_user_contribution: A tf.constant dictating the maximum number of
       examples a client can contribute.
+    default_terminator: A tf.string containing the end of sequence symbol.
 
   Returns:
     A ClientOutput object holding the client's votes.
@@ -179,7 +181,7 @@ def client_update(dataset, discovered_prefixes, possible_prefix_extensions,
 
     accumulate_client_votes_fn = make_accumulate_client_votes_fn(
         round_num, num_sub_rounds, discovered_prefixes_table,
-        possible_prefix_extensions_table)
+        possible_prefix_extensions_table, default_terminator)
 
     sampled_data_list = hh_utils.get_top_elements(dataset,
                                                   max_user_contribution)

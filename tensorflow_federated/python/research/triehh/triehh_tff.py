@@ -136,7 +136,8 @@ def build_triehh_process(
     return client_update(tf_dataset, discovered_prefixes,
                          tf.constant(possible_prefix_extensions), round_num,
                          num_sub_rounds, max_num_prefixes,
-                         max_user_contribution)
+                         max_user_contribution,
+                         tf.constant(default_terminator, dtype=tf.string))
 
   federated_server_state_type = tff.FederatedType(server_state_type, tff.SERVER)
   federated_dataset_type = tff.FederatedType(
