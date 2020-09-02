@@ -48,6 +48,7 @@ def run_federated(
     total_rounds: Optional[int] = 1500,
     experiment_name: Optional[str] = 'federated_so_nwp',
     root_output_dir: Optional[str] = '/tmp/fed_opt',
+    max_eval_batches: Optional[int] = None,
     **kwargs):
   """Runs an iterative process on the Stack Overflow next word prediction task.
 
@@ -99,6 +100,9 @@ def run_federated(
       to the `root_output_dir` for purposes of writing outputs.
     root_output_dir: The name of the root output directory for writing
       experiment outputs.
+    max_eval_batches: If set to a positive integer, evaluation datasets are
+      capped to at most that many batches. If set to None or a nonpositive
+      integer, the full evaluation datasets are used.
     **kwargs: Additional arguments configuring the training loop. For details
       on supported arguments, see
       `tensorflow_federated/python/research/utils/training_utils.py`.
@@ -136,25 +140,20 @@ def run_federated(
         keras_metrics.NumTokensCounter(masked_tokens=[pad_token])
     ]
 
-  dataset_vocab = stackoverflow_dataset.create_vocab(vocab_size)
+  train_clientdata, _, _ = tff.simulation.datasets.stackoverflow.load_data()
 
-  train_clientdata, _, test_clientdata = (
-      tff.simulation.datasets.stackoverflow.load_data())
-
-  # Split the test data into test and validation sets.
   # TODO(b/161914546): consider moving evaluation to use
   # `tff.learning.build_federated_evaluation` to get metrics over client
   # distributions, as well as the example weight means from this centralized
   # evaluation.
-  base_test_dataset = test_clientdata.create_tf_dataset_from_all_clients()
-  preprocess_val_and_test = stackoverflow_dataset.create_test_dataset_preprocess_fn(
-      vocab=dataset_vocab,
-      num_oov_buckets=num_oov_buckets,
-      max_seq_len=sequence_length)
-  test_set = preprocess_val_and_test(
-      base_test_dataset.skip(num_validation_examples))
-  validation_set = preprocess_val_and_test(
-      base_test_dataset.take(num_validation_examples))
+  _, validation_dataset, test_dataset = stackoverflow_dataset.get_centralized_datasets(
+      vocab_size=vocab_size,
+      max_seq_len=sequence_length,
+      train_batch_size=client_batch_size,
+      max_validation_batches=max_eval_batches,
+      max_test_batches=max_eval_batches,
+      num_validation_examples=num_validation_examples,
+      num_oov_buckets=num_oov_buckets)
 
   train_dataset_preprocess_comp = stackoverflow_dataset.create_train_dataset_preprocess_fn(
       vocab=stackoverflow_dataset.create_vocab(vocab_size),
@@ -191,7 +190,7 @@ def run_federated(
 
   evaluate_fn = training_utils.build_evaluate_fn(
       model_builder=model_builder,
-      eval_dataset=validation_set,
+      eval_dataset=validation_dataset,
       loss_builder=loss_builder,
       metrics_builder=metrics_builder,
       assign_weights_to_keras_model=assign_weights_fn)
@@ -200,7 +199,7 @@ def run_federated(
       model_builder=model_builder,
       # Use both val and test for symmetry with other experiments, which
       # evaluate on the entire test set.
-      eval_dataset=validation_set.concatenate(test_set),
+      eval_dataset=validation_dataset.concatenate(test_dataset),
       loss_builder=loss_builder,
       metrics_builder=metrics_builder,
       assign_weights_to_keras_model=assign_weights_fn)

@@ -61,6 +61,7 @@ def run_federated(
     total_rounds: Optional[int] = 1500,
     experiment_name: Optional[str] = 'federated_shakespeare',
     root_output_dir: Optional[str] = '/tmp/fed_opt',
+    max_eval_batches: Optional[int] = None,
     **kwargs):
   """Runs an iterative process on a Shakespeare next character prediction task.
 
@@ -101,6 +102,9 @@ def run_federated(
       to the `root_output_dir` for purposes of writing outputs.
     root_output_dir: The name of the root output directory for writing
       experiment outputs.
+    max_eval_batches: If set to a positive integer, evaluation datasets are
+      capped to at most that many batches. If set to None or a nonpositive
+      integer, the full evaluation datasets are used.
     **kwargs: Additional arguments configuring the training loop. For details
       on supported arguments, see
       `tensorflow_federated/python/research/utils/training_utils.py`.
@@ -111,8 +115,11 @@ def run_federated(
       client_epochs_per_round=client_epochs_per_round,
       sequence_length=sequence_length,
       max_batches_per_client=max_batches_per_client)
-  _, test_dataset = shakespeare_dataset.construct_centralized_datasets()
-  test_dataset = test_dataset.cache()
+
+  _, test_dataset = shakespeare_dataset.get_centralized_datasets(
+      train_batch_size=client_batch_size,
+      max_test_batches=max_eval_batches,
+      sequence_length=sequence_length)
 
   model_builder = functools.partial(
       create_shakespeare_model, sequence_length=sequence_length)

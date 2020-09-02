@@ -50,6 +50,7 @@ def run_federated(
     total_rounds: Optional[int] = 1500,
     experiment_name: Optional[str] = 'federated_so_lr',
     root_output_dir: Optional[str] = '/tmp/fed_opt',
+    max_eval_batches: Optional[int] = None,
     **kwargs):
   """Runs an iterative process on the Stack Overflow logistic regression task.
 
@@ -95,12 +96,15 @@ def run_federated(
       to the `root_output_dir` for purposes of writing outputs.
     root_output_dir: The name of the root output directory for writing
       experiment outputs.
+    max_eval_batches: If set to a positive integer, evaluation datasets are
+      capped to at most that many batches. If set to None or a nonpositive
+      integer, the full evaluation datasets are used.
     **kwargs: Additional arguments configuring the training loop. For details
       on supported arguments, see
       `tensorflow_federated/python/research/utils/training_utils.py`.
   """
 
-  stackoverflow_train, stackoverflow_validation, stackoverflow_test = stackoverflow_lr_dataset.get_stackoverflow_datasets(
+  stackoverflow_train, _, _ = stackoverflow_lr_dataset.get_stackoverflow_datasets(
       vocab_tokens_size=vocab_tokens_size,
       vocab_tags_size=vocab_tags_size,
       client_batch_size=client_batch_size,
@@ -108,6 +112,14 @@ def run_federated(
       max_training_elements_per_user=max_elements_per_user,
       max_batches_per_user=max_batches_per_client,
       num_validation_examples=num_validation_examples)
+
+  _, stackoverflow_validation, stackoverflow_test = stackoverflow_lr_dataset.get_centralized_datasets(
+      batch_size=client_batch_size,
+      vocab_tokens_size=vocab_tokens_size,
+      vocab_tags_size=vocab_tags_size,
+      num_validation_examples=num_validation_examples,
+      max_validation_batches=max_eval_batches,
+      max_test_batches=max_eval_batches)
 
   input_spec = stackoverflow_train.create_tf_dataset_for_client(
       stackoverflow_train.client_ids[0]).element_spec
