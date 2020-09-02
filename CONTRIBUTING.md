@@ -64,8 +64,8 @@ information on using pull requests.
 
     ```shell
     git diff --name-only \
-      | sed '/.*\.py/!d' \
-      | xargs yapf --in-place
+        | sed '/.*\.py/!d' \
+        | xargs yapf --in-place
     ```
 
 *   Lint your changes.
@@ -76,8 +76,8 @@ information on using pull requests.
 
     ```shell
     git diff --name-only \
-      | sed '/.*\.py/!d' \
-      | xargs pylint
+        | sed '/.*\.py/!d' \
+        | xargs pylint
     ```
 
 ### License
