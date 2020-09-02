@@ -100,35 +100,111 @@ def int_identity(x):
   return x
 
 
-class ConstructDatasetsOnClientsTest(absltest.TestCase):
+@computations.federated_computation(
+    tf.int32,
+    computation_types.FederatedType(
+        computation_types.SequenceType(tf.int64), placement_literals.CLIENTS),
+    tf.float32,
+)
+def test_int64_sequence_struct_computation(a, dataset, b):
+  return a, dataset, b
+
+
+@computations.federated_computation(
+    computation_types.FederatedType(
+        computation_types.SequenceType(tf.int64), placement_literals.CLIENTS))
+def test_int64_sequence_computation(dataset):
+  del dataset
+  return intrinsics.federated_value(5, placement_literals.SERVER)
+
+
+class ConstructDatasetsOnClientsComputationTest(absltest.TestCase):
+
+  def test_raises_non_computation_dataset_comp(self):
+    fn = lambda _: []
+    with self.assertRaises(TypeError):
+      iterative_process_compositions.compose_dataset_computation_with_computation(
+          fn, test_int64_sequence_struct_computation)
+
+  def test_raises_non_computation_outer_comp(self):
+    non_comp = lambda x: x
+    with self.assertRaises(TypeError):
+      iterative_process_compositions.compose_dataset_computation_with_computation(
+          int_dataset_computation, non_comp)
+
+  def test_raises_computation_not_returning_dataset(self):
+    with self.assertRaises(TypeError):
+      iterative_process_compositions.compose_dataset_computation_with_computation(
+          int_identity, test_int64_sequence_struct_computation)
+
+  def test_raises_computation_no_dataset_parameter(self):
+    no_dataset_comp = computations.federated_computation(lambda x: x, tf.int32)
+    with self.assertRaises(TypeError):
+      iterative_process_compositions.compose_dataset_computation_with_computation(
+          int_dataset_computation, no_dataset_comp)
+
+  def test_raises_mismatched_dataset_comp_return_type_and_sequence_type(self):
+    with self.assertRaises(TypeError):
+      iterative_process_compositions.compose_dataset_computation_with_computation(
+          float_dataset_computation, test_int64_sequence_struct_computation)
+
+  def test_mutates_comp_accepting_only_dataset(self):
+    expected_new_next_type_signature = computation_types.FunctionType(
+        parameter=computation_types.FederatedType(tf.string,
+                                                  placement_literals.CLIENTS),
+        result=computation_types.FederatedType(tf.int32,
+                                               placement_literals.SERVER))
+    new_comp = iterative_process_compositions.compose_dataset_computation_with_computation(
+        int_dataset_computation, test_int64_sequence_computation)
+    expected_new_next_type_signature.check_equivalent_to(
+        new_comp.type_signature)
+
+  def test_mutates_comp_accepting_dataset_in_second_index(self):
+    expected_new_next_type_signature = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            a=tf.int32,
+            dataset=computation_types.FederatedType(tf.string,
+                                                    placement_literals.CLIENTS),
+            b=tf.float32),
+        result=(tf.int32,
+                computation_types.FederatedType(
+                    computation_types.SequenceType(tf.int64),
+                    placement_literals.CLIENTS), tf.float32))
+    new_comp = iterative_process_compositions.compose_dataset_computation_with_computation(
+        int_dataset_computation, test_int64_sequence_struct_computation)
+    expected_new_next_type_signature.check_equivalent_to(
+        new_comp.type_signature)
+
+
+class ConstructDatasetsOnClientsIterativeProcessTest(absltest.TestCase):
 
   def test_raises_non_computation(self):
-
     fn = lambda _: []
     iterproc = _create_federated_int_dataset_identity_iterative_process()
 
     with self.assertRaises(TypeError):
-      iterative_process_compositions.compose_dataset_computation(fn, iterproc)
+      iterative_process_compositions.compose_dataset_computation_with_iterative_process(
+          fn, iterproc)
 
   def test_raises_non_iterative_process(self):
     non_iterproc = lambda x: x
 
     with self.assertRaises(TypeError):
-      iterative_process_compositions.compose_dataset_computation(
+      iterative_process_compositions.compose_dataset_computation_with_iterative_process(
           int_dataset_computation, non_iterproc)
 
   def test_raises_computation_not_returning_dataset(self):
     iterproc = _create_federated_int_dataset_identity_iterative_process()
 
     with self.assertRaises(TypeError):
-      iterative_process_compositions.compose_dataset_computation(
+      iterative_process_compositions.compose_dataset_computation_with_iterative_process(
           int_identity, iterproc)
 
   def test_raises_iterative_process_no_dataset_parameter(self):
     iterproc = _create_dummy_iterative_process()
 
     with self.assertRaises(TypeError):
-      iterative_process_compositions.compose_dataset_computation(
+      iterative_process_compositions.compose_dataset_computation_with_iterative_process(
           int_dataset_computation, iterproc)
 
   def test_raises_mismatched_dataset_comp_return_type_and_iterproc_sequence_type(
@@ -136,14 +212,14 @@ class ConstructDatasetsOnClientsTest(absltest.TestCase):
     iterproc = _create_federated_int_dataset_identity_iterative_process()
 
     with self.assertRaises(TypeError):
-      iterative_process_compositions.compose_dataset_computation(
+      iterative_process_compositions.compose_dataset_computation_with_iterative_process(
           float_dataset_computation, iterproc)
 
   def test_raises_iterproc_if_dataset_is_returned_by_init(self):
     iterproc = _create_federated_int_dataset_identity_iterative_process()
 
     with self.assertRaises(TypeError):
-      iterative_process_compositions.compose_dataset_computation(
+      iterative_process_compositions.compose_dataset_computation_with_iterative_process(
           int_dataset_computation, iterproc)
 
   def test_mutates_iterproc_accepting_dataset_in_second_index_of_next(self):
@@ -156,7 +232,7 @@ class ConstructDatasetsOnClientsTest(absltest.TestCase):
                 tf.string, placement_literals.CLIENTS)),
         computation_types.FederatedType(tf.int64, placement_literals.SERVER))
 
-    new_iterproc = iterative_process_compositions.compose_dataset_computation(
+    new_iterproc = iterative_process_compositions.compose_dataset_computation_with_iterative_process(
         int_dataset_computation, iterproc)
 
     expected_new_next_type_signature.check_equivalent_to(
@@ -182,7 +258,7 @@ class ConstructDatasetsOnClientsTest(absltest.TestCase):
         computation_types.FederatedType(tf.string, placement_literals.CLIENTS)
     ], computation_types.FederatedType(tf.int64, placement_literals.SERVER))
 
-    new_iterproc = iterative_process_compositions.compose_dataset_computation(
+    new_iterproc = iterative_process_compositions.compose_dataset_computation_with_iterative_process(
         int_dataset_computation, iterproc_with_dataset_as_third_elem)
 
     self.assertTrue(
