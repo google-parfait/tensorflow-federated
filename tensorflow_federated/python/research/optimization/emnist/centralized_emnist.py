@@ -32,7 +32,8 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
                     decay_epochs: Optional[int] = None,
                     lr_decay: Optional[float] = None,
                     hparams_dict: Optional[Mapping[str, Any]] = None,
-                    emnist_model: Optional[str] = 'cnn'):
+                    emnist_model: Optional[str] = 'cnn',
+                    max_batches: Optional[int] = None):
   """Trains a model on EMNIST character recognition using a given optimizer.
 
   Args:
@@ -53,10 +54,16 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
     emnist_model: A string specifying the model used for character recognition.
       Can be one of `cnn` and `2nn`, corresponding to a CNN model and a densely
       connected 2-layer model (respectively).
+    max_batches: If set to a positive integer, datasets are capped to at most
+      that many batches. If set to None or a nonpositive integer, the full
+      datasets are used.
   """
 
-  train_dataset, eval_dataset = emnist_dataset.get_centralized_emnist_datasets(
-      batch_size=batch_size, only_digits=False)
+  train_dataset, eval_dataset = emnist_dataset.get_centralized_datasets(
+      train_batch_size=batch_size,
+      max_train_batches=max_batches,
+      max_test_batches=max_batches,
+      only_digits=False)
 
   if emnist_model == 'cnn':
     model = emnist_models.create_conv_dropout_model(only_digits=False)

@@ -14,7 +14,7 @@
 """Data loader for Stackoverflow."""
 
 import collections
-from typing import List
+from typing import List, Optional
 
 from absl import logging
 import attr
@@ -297,20 +297,75 @@ def construct_word_level_datasets(vocab_size: int,
   return stackoverflow_train, stackoverflow_val, stackoverflow_test
 
 
-def get_centralized_train_dataset(vocab_size: int,
-                                  batch_size: int,
-                                  max_seq_len: int,
-                                  shuffle_buffer_size: int = 10000,
-                                  num_oov_buckets: int = 1):
-  """Creates centralized approximately shuffled train dataset."""
+def get_centralized_datasets(vocab_size: int,
+                             max_seq_len: int,
+                             train_batch_size: int,
+                             validation_batch_size: Optional[int] = 100,
+                             test_batch_size: Optional[int] = 100,
+                             max_train_batches: Optional[int] = None,
+                             max_validation_batches: Optional[int] = None,
+                             max_test_batches: Optional[int] = None,
+                             num_validation_examples: Optional[int] = 10000,
+                             shuffle_buffer_size: Optional[int] = 10000,
+                             num_oov_buckets: Optional[int] = 1):
+  """Creates centralized datasets for Stack Overflow NWP.
+
+  Args:
+    vocab_size: Integer representing size of the vocab to use. Vocabulary will
+      then be the `vocab_size` most frequent words in the Stackoverflow dataset.
+    max_seq_len: Integer determining shape of padded batches. Sequences will be
+      padded up to this length, and sentences longer than `max_seq_len` will be
+      truncated to this length.
+    train_batch_size: The batch size for the training dataset.
+    validation_batch_size: The batch size for the validation dataset.
+    test_batch_size: The batch size for the test dataset.
+    max_train_batches: If set to a positive integer, this specifies the maximum
+      number of batches to use from the training dataset.
+    max_validation_batches: If set to a positive integer, this specifies the
+      maximum number of batches to use from the validation dataset.
+    max_test_batches: If set to a positive integer, this specifies the maximum
+      number of batches to use from the test dataset.
+    num_validation_examples: Number of examples from Stackoverflow test set to
+      use for validation on each round.
+    shuffle_buffer_size: The shuffle buffer size for the training dataset. If
+      set to nonpositive number, no shuffling occurs.
+    num_oov_buckets: Number of out of vocabulary buckets.
+
+  Returns:
+    train_dataset: A `tf.data.Dataset` instance representing the training
+      dataset.
+    validation_dataset: A `tf.data.Dataset` instance representing the validation
+      dataset.
+    test_dataset: A `tf.data.Dataset` instance representing the test dataset.
+  """
 
   vocab = create_vocab(vocab_size)
   to_ids = build_to_ids_fn(
       vocab=vocab, max_seq_len=max_seq_len, num_oov_buckets=num_oov_buckets)
-  train, _, _ = tff.simulation.datasets.stackoverflow.load_data()
+  raw_train, _, raw_test = tff.simulation.datasets.stackoverflow.load_data()
 
-  train = train.create_tf_dataset_from_all_clients()
-  train = train.shuffle(buffer_size=shuffle_buffer_size)
-  return batch_and_split(
-      train.map(to_ids, num_parallel_calls=tf.data.experimental.AUTOTUNE),
-      max_seq_len, batch_size)
+  train_dataset = raw_train.create_tf_dataset_from_all_clients()
+  train_dataset = train_dataset.shuffle(buffer_size=shuffle_buffer_size)
+  train_dataset = train_dataset.map(
+      to_ids, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  train_dataset = batch_and_split(train_dataset, max_seq_len, train_batch_size)
+
+  test_dataset = raw_test.create_tf_dataset_from_all_clients()
+  test_dataset = test_dataset.map(
+      to_ids, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+  validation_dataset = test_dataset.take(num_validation_examples)
+  validation_dataset = batch_and_split(validation_dataset, max_seq_len,
+                                       validation_batch_size)
+
+  test_dataset = test_dataset.skip(num_validation_examples)
+  test_dataset = batch_and_split(test_dataset, max_seq_len, test_batch_size)
+
+  if max_train_batches is not None and max_train_batches > 0:
+    train_dataset = train_dataset.take(max_train_batches)
+  if max_validation_batches is not None and max_validation_batches > 0:
+    validation_dataset = validation_dataset.take(max_validation_batches)
+  if max_test_batches is not None and max_test_batches > 0:
+    test_dataset = test_dataset.take(max_test_batches)
+
+  return train_dataset, validation_dataset, test_dataset

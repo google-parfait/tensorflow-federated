@@ -35,7 +35,8 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
                     decay_epochs: Optional[int] = None,
                     lr_decay: Optional[float] = None,
                     hparams_dict: Optional[Mapping[str, Any]] = None,
-                    crop_size: Optional[int] = 24):
+                    crop_size: Optional[int] = 24,
+                    max_batches: Optional[int] = None):
   """Trains a ResNet-18 on CIFAR-100 using a given optimizer.
 
   Args:
@@ -54,11 +55,17 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
     hparams_dict: A mapping with string keys representing the hyperparameters
       and their values. If not None, this is written to CSV.
     crop_size: The crop size used for CIFAR-100 preprocessing.
+    max_batches: If set to a positive integer, datasets are capped to at most
+      that many batches. If set to None or a nonpositive integer, the full
+      datasets are used.
   """
   crop_shape = (crop_size, crop_size, NUM_CHANNELS)
 
-  cifar_train, cifar_test = cifar100_dataset.get_centralized_cifar100(
-      train_batch_size=batch_size, crop_shape=crop_shape)
+  cifar_train, cifar_test = cifar100_dataset.get_centralized_datasets(
+      train_batch_size=batch_size,
+      max_train_batches=max_batches,
+      max_test_batches=max_batches,
+      crop_shape=crop_shape)
 
   model = resnet_models.create_resnet18(
       input_shape=crop_shape, num_classes=NUM_CLASSES)

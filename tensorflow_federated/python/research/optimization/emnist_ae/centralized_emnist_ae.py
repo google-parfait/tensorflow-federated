@@ -29,7 +29,8 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
                     batch_size: int,
                     decay_epochs: Optional[int] = None,
                     lr_decay: Optional[float] = None,
-                    hparams_dict: Optional[Mapping[str, Any]] = None):
+                    hparams_dict: Optional[Mapping[str, Any]] = None,
+                    max_batches: Optional[int] = None):
   """Trains a bottleneck autoencoder on EMNIST using a given optimizer.
 
   Args:
@@ -47,9 +48,15 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
       training epochs have occurred.
     hparams_dict: A mapping with string keys representing the hyperparameters
       and their values. If not None, this is written to CSV.
+    max_batches: If set to a positive integer, datasets are capped to at most
+      that many batches. If set to None or a nonpositive integer, the full
+      datasets are used.
   """
-  train_dataset, eval_dataset = emnist_ae_dataset.get_centralized_emnist_datasets(
-      batch_size=batch_size, only_digits=False)
+  train_dataset, eval_dataset = emnist_ae_dataset.get_centralized_datasets(
+      train_batch_size=batch_size,
+      max_train_batches=max_batches,
+      max_test_batches=max_batches,
+      only_digits=False)
 
   model = emnist_ae_models.create_autoencoder_model()
   model.compile(

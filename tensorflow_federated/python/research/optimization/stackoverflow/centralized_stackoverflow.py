@@ -38,7 +38,8 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
                     embedding_size: Optional[int] = 96,
                     latent_size: Optional[int] = 670,
                     num_layers: Optional[int] = 1,
-                    shared_embedding: Optional[bool] = False):
+                    shared_embedding: Optional[bool] = False,
+                    max_batches: Optional[int] = None):
   """Trains an RNN on the Stack Overflow next word prediction task.
 
   Args:
@@ -66,22 +67,21 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
     num_layers: The number of stacked recurrent layers to use.
     shared_embedding: Boolean indicating whether to tie input and output
       embeddings.
+    max_batches: If set to a positive integer, datasets are capped to at most
+      that many batches. If set to None or a nonpositive integer, the full
+      datasets are used.
   """
 
-  _, validation_dataset, test_dataset = stackoverflow_dataset.construct_word_level_datasets(
+  train_dataset, validation_dataset, test_dataset = stackoverflow_dataset.get_centralized_datasets(
       vocab_size=vocab_size,
-      client_batch_size=batch_size,
-      client_epochs_per_round=1,
       max_seq_len=sequence_length,
-      max_training_elements_per_user=-1,
+      train_batch_size=batch_size,
+      max_train_batches=max_batches,
+      max_validation_batches=max_batches,
+      max_test_batches=max_batches,
       num_validation_examples=num_validation_examples,
-      num_oov_buckets=num_oov_buckets)
-  train_dataset = stackoverflow_dataset.get_centralized_train_dataset(
-      vocab_size=vocab_size,
       num_oov_buckets=num_oov_buckets,
-      batch_size=batch_size,
-      max_seq_len=sequence_length,
-      shuffle_buffer_size=10000)
+  )
 
   model = stackoverflow_models.create_recurrent_model(
       vocab_size=vocab_size,

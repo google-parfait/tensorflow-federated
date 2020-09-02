@@ -15,6 +15,7 @@
 
 import collections
 import functools
+from typing import Optional, Tuple
 
 import tensorflow as tf
 import tensorflow_federated as tff
@@ -109,11 +110,21 @@ def get_federated_cifar100(client_epochs_per_round,
   return cifar_train, cifar_test
 
 
-def get_centralized_cifar100(train_batch_size, crop_shape=CIFAR_SHAPE):
+def get_centralized_datasets(train_batch_size: int,
+                             test_batch_size: Optional[int] = 100,
+                             max_train_batches: Optional[int] = None,
+                             max_test_batches: Optional[int] = None,
+                             crop_shape: Optional[Tuple[int, int,
+                                                        int]] = CIFAR_SHAPE):
   """Loads and preprocesses centralized CIFAR100 training and testing sets.
 
   Args:
     train_batch_size: The batch size for the training dataset.
+    test_batch_size: The batch size for the test dataset.
+    max_train_batches: If set to a positive integer, this specifies the maximum
+      number of batches to use from the training dataset.
+    max_test_batches: If set to a positive integer, this specifies the maximum
+      number of batches to use from the test dataset.
     crop_shape: An iterable of integers specifying the desired crop
       shape for pre-processing. Must be convertable to a tuple of integers
       (CROP_HEIGHT, CROP_WIDTH, NUM_CHANNELS) which cannot have elements that
@@ -121,7 +132,9 @@ def get_centralized_cifar100(train_batch_size, crop_shape=CIFAR_SHAPE):
       set to 3 to maintain the RGB image structure of the elements.
 
   Returns:
-    A length two tuple of `tf.data.Dataset` objects.
+    train_dataset: A `tf.data.Dataset` instance representing the training
+      dataset.
+    test_dataset: A `tf.data.Dataset` instance representing the test dataset.
   """
   try:
     crop_shape = tuple(crop_shape)
@@ -133,16 +146,22 @@ def get_centralized_cifar100(train_batch_size, crop_shape=CIFAR_SHAPE):
                      'tensor of shape [height, width, channels].')
   cifar_train, cifar_test = tff.simulation.datasets.cifar100.load_data()
   train_crop_shape = (train_batch_size,) + crop_shape
-  test_crop_shape = (TEST_BATCH_SIZE,) + crop_shape
+  test_crop_shape = (test_batch_size,) + crop_shape
   train_image_map = functools.partial(
       preprocess_cifar_example, crop_shape=train_crop_shape, distort=True)
   test_image_map = functools.partial(
       preprocess_cifar_example, crop_shape=test_crop_shape, distort=False)
 
-  cifar_train = cifar_train.create_tf_dataset_from_all_clients().shuffle(
-      buffer_size=10000).batch(train_batch_size, drop_remainder=True).map(
-          train_image_map, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-  cifar_test = cifar_test.create_tf_dataset_from_all_clients().batch(
-      TEST_BATCH_SIZE, drop_remainder=False).map(test_image_map).cache()
+  train_dataset = cifar_train.create_tf_dataset_from_all_clients().shuffle(
+      buffer_size=10000).batch(
+          train_batch_size, drop_remainder=True).map(
+              train_image_map, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  test_dataset = cifar_test.create_tf_dataset_from_all_clients().batch(
+      test_batch_size, drop_remainder=False).map(test_image_map).cache()
 
-  return cifar_train, cifar_test
+  if max_train_batches is not None and max_train_batches > 0:
+    train_dataset = train_dataset.take(max_train_batches)
+  if max_test_batches is not None and max_test_batches > 0:
+    test_dataset = test_dataset.take(max_test_batches)
+
+  return train_dataset, test_dataset

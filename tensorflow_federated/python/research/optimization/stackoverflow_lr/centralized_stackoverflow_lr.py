@@ -32,7 +32,8 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
                     hparams_dict: Optional[Mapping[str, Any]] = None,
                     vocab_tokens_size: Optional[int] = 10000,
                     vocab_tags_size: Optional[int] = 500,
-                    num_validation_examples: Optional[int] = 10000):
+                    num_validation_examples: Optional[int] = 10000,
+                    max_batches: Optional[int] = None):
   """Trains an RNN on the Stack Overflow next word prediction task.
 
   Args:
@@ -55,13 +56,18 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
     vocab_tags_size: Integer dictating the number of most frequent tags to use
       in the label creation.
     num_validation_examples: The number of test examples to use for validation.
+    max_batches: If set to a positive integer, datasets are capped to at most
+      that many batches. If set to None or a nonpositive integer, the full
+      datasets are used.
   """
 
-  train_dataset, validation_dataset, test_dataset = stackoverflow_lr_dataset.get_centralized_stackoverflow_datasets(
-      batch_size=batch_size,
+  train_dataset, validation_dataset, test_dataset = stackoverflow_lr_dataset.get_centralized_datasets(
+      train_batch_size=batch_size,
+      max_train_batches=max_batches,
+      max_validation_batches=max_batches,
+      max_test_batches=max_batches,
       vocab_tokens_size=vocab_tokens_size,
       vocab_tags_size=vocab_tags_size,
-      shuffle_buffer_size=10000,
       num_validation_examples=num_validation_examples)
 
   model = stackoverflow_lr_models.create_logistic_model(

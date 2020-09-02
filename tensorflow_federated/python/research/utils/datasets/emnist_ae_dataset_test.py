@@ -40,15 +40,15 @@ class DatasetTest(tf.test.TestCase):
     self.assertEqual(test_batch_shape.as_list(), [TEST_BATCH_SIZE, 28*28])
 
   def test_global_emnist_dataset_structure(self):
-    global_train, global_test = emnist_ae_dataset.get_centralized_emnist_datasets(
-        batch_size=32, only_digits=False)
+    global_train, global_test = emnist_ae_dataset.get_centralized_datasets(
+        train_batch_size=32, test_batch_size=100, only_digits=False)
 
     train_batch = next(iter(global_train))
     train_batch_shape = train_batch[0].shape
     test_batch = next(iter(global_test))
     test_batch_shape = test_batch[0].shape
     self.assertEqual(train_batch_shape.as_list(), [32, 28*28])
-    self.assertEqual(test_batch_shape.as_list(), [TEST_BATCH_SIZE, 28*28])
+    self.assertEqual(test_batch_shape.as_list(), [100, 28 * 28])
 
   def test_take_with_repeat(self):
     emnist_train, _ = emnist_ae_dataset.get_emnist_datasets(

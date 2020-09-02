@@ -29,14 +29,14 @@ class DatasetTest(tf.test.TestCase):
 
   def test_centralized_cifar_structure(self):
     crop_shape = (24, 24, 3)
-    cifar_train, cifar_test = cifar100_dataset.get_centralized_cifar100(
-        train_batch_size=20, crop_shape=crop_shape)
+    cifar_train, cifar_test = cifar100_dataset.get_centralized_datasets(
+        train_batch_size=20, test_batch_size=100, crop_shape=crop_shape)
     train_batch = next(iter(cifar_train))
     train_batch_shape = tuple(train_batch[0].shape)
     self.assertEqual(train_batch_shape, (20, 24, 24, 3))
     test_batch = next(iter(cifar_test))
     test_batch_shape = tuple(test_batch[0].shape)
-    self.assertEqual(test_batch_shape, (TEST_BATCH_SIZE, 24, 24, 3))
+    self.assertEqual(test_batch_shape, (100, 24, 24, 3))
 
   def test_federated_cifar_structure(self):
     crop_shape = (32, 32, 3)
@@ -64,7 +64,7 @@ class DatasetTest(tf.test.TestCase):
       cifar100_dataset.get_federated_cifar100(
           client_epochs_per_round=1, train_batch_size=10, crop_shape=(32, 32))
     with self.assertRaises(ValueError):
-      cifar100_dataset.get_centralized_cifar100(
+      cifar100_dataset.get_centralized_datasets(
           train_batch_size=10, crop_shape=(32, 32))
 
   def test_raises_no_repeat_and_no_take(self):

@@ -51,8 +51,10 @@ class DatasetTest(tf.test.TestCase):
     self.assertEqual(test_batch[1].shape.as_list(), [TEST_BATCH_SIZE, 5])
 
   def test_global_stackoverflow_dataset_structure(self):
-    global_train, global_val, global_test = stackoverflow_lr_dataset.get_centralized_stackoverflow_datasets(
-        batch_size=32,
+    global_train, global_val, global_test = stackoverflow_lr_dataset.get_centralized_datasets(
+        train_batch_size=32,
+        validation_batch_size=100,
+        test_batch_size=500,
         vocab_tokens_size=100,
         vocab_tags_size=5,
         num_validation_examples=10000)
@@ -62,10 +64,10 @@ class DatasetTest(tf.test.TestCase):
     test_batch = next(iter(global_test))
     self.assertEqual(train_batch[0].shape.as_list(), [32, 100])
     self.assertEqual(train_batch[1].shape.as_list(), [32, 5])
-    self.assertEqual(val_batch[0].shape.as_list(), [TEST_BATCH_SIZE, 100])
-    self.assertEqual(val_batch[1].shape.as_list(), [TEST_BATCH_SIZE, 5])
-    self.assertEqual(test_batch[0].shape.as_list(), [TEST_BATCH_SIZE, 100])
-    self.assertEqual(test_batch[1].shape.as_list(), [TEST_BATCH_SIZE, 5])
+    self.assertEqual(val_batch[0].shape.as_list(), [100, 100])
+    self.assertEqual(val_batch[1].shape.as_list(), [100, 5])
+    self.assertEqual(test_batch[0].shape.as_list(), [500, 100])
+    self.assertEqual(test_batch[1].shape.as_list(), [500, 5])
 
   @test.skip_test_for_gpu
   def test_take_with_repeat(self):

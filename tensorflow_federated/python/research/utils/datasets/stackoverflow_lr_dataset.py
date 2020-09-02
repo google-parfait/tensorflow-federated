@@ -13,6 +13,8 @@
 # limitations under the License.
 """Data loader for Stackoverflow."""
 
+from typing import Optional
+
 import tensorflow as tf
 import tensorflow_federated as tff
 
@@ -161,12 +163,44 @@ def get_stackoverflow_datasets(
   return stackoverflow_train, stackoverflow_validation, stackoverflow_test
 
 
-def get_centralized_stackoverflow_datasets(batch_size,
-                                           vocab_tokens_size=10000,
-                                           vocab_tags_size=500,
-                                           num_validation_examples=10000,
-                                           shuffle_buffer_size=10000):
-  """Loads centralized StackOverflow training and testing sets."""
+def get_centralized_datasets(train_batch_size: int,
+                             validation_batch_size: Optional[int] = 500,
+                             test_batch_size: Optional[int] = 500,
+                             max_train_batches: Optional[int] = None,
+                             max_validation_batches: Optional[int] = None,
+                             max_test_batches: Optional[int] = None,
+                             vocab_tokens_size=10000,
+                             vocab_tags_size=500,
+                             num_validation_examples=10000,
+                             shuffle_buffer_size=10000):
+  """Loads centralized StackOverflow training and testing sets.
+
+  Args:
+    train_batch_size: The batch size for the training dataset.
+    validation_batch_size: The batch size for the validation dataset.
+    test_batch_size: The batch size for the test dataset.
+    max_train_batches: If set to a positive integer, this specifies the maximum
+      number of batches to use from the training dataset.
+    max_validation_batches: If set to a positive integer, this specifies the
+      maximum number of batches to use from the validation dataset.
+    max_test_batches: If set to a positive integer, this specifies the maximum
+      number of batches to use from the test dataset.
+    vocab_tokens_size: Integer representing size of the vocab to use. Vocabulary
+      will be the `vocab_token_size` most frequent words.
+    vocab_tags_size: Integer representing the number of tags to use. The tag
+      labels will be the `vocab_tag_size` most frequent tags.
+    num_validation_examples: Number of examples from Stackoverflow test set to
+      use for validation on each round.
+    shuffle_buffer_size: The shuffle buffer size for the training dataset. If
+      set to nonpositive number, no shuffling occurs.
+
+  Returns:
+    train_dataset: A `tf.data.Dataset` instance representing the training
+      dataset.
+    validation_dataset: A `tf.data.Dataset` instance representing the validation
+      dataset.
+    test_dataset: A `tf.data.Dataset` instance representing the test dataset.
+  """
 
   # Ignoring held-out Stackoverflow users for consistency with other datasets in
   # optimization paper.
@@ -186,17 +220,25 @@ def get_centralized_stackoverflow_datasets(batch_size,
 
   train_dataset = preprocess(
       stackoverflow_train.create_tf_dataset_from_all_clients(),
-      batch_size,
+      train_batch_size,
       shuffle_buffer_size,
       shuffle_data=True)
-  val_dataset = preprocess(
+  validation_dataset = preprocess(
       stackoverflow_test.create_tf_dataset_from_all_clients().take(
           num_validation_examples),
-      TEST_BATCH_SIZE,
+      validation_batch_size,
       shuffle_data=False)
   test_dataset = preprocess(
-      stackoverflow_test.create_tf_dataset_from_all_clients(),
-      TEST_BATCH_SIZE,
+      stackoverflow_test.create_tf_dataset_from_all_clients().skip(
+          num_validation_examples),
+      test_batch_size,
       shuffle_data=False)
 
-  return train_dataset, val_dataset, test_dataset
+  if max_train_batches is not None and max_train_batches > 0:
+    train_dataset = train_dataset.take(max_train_batches)
+  if max_validation_batches is not None and max_validation_batches > 0:
+    validation_dataset = validation_dataset.take(max_validation_batches)
+  if max_test_batches is not None and max_test_batches > 0:
+    test_dataset = test_dataset.take(max_test_batches)
+
+  return train_dataset, validation_dataset, test_dataset

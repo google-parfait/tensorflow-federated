@@ -34,7 +34,8 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
                     decay_epochs: Optional[int] = None,
                     lr_decay: Optional[float] = None,
                     hparams_dict: Optional[Mapping[str, Any]] = None,
-                    sequence_length: Optional[int] = 80):
+                    sequence_length: Optional[int] = 80,
+                    max_batches: Optional[int] = None):
   """Trains a two-layer RNN on Shakespeare next-character-prediction.
 
   Args:
@@ -53,10 +54,16 @@ def run_centralized(optimizer: tf.keras.optimizers.Optimizer,
     hparams_dict: A mapping with string keys representing the hyperparameters
       and their values. If not None, this is written to CSV.
     sequence_length: The sequence length used for Shakespeare preprocessing.
+    max_batches: If set to a positive integer, datasets are capped to at most
+      that many batches. If set to None or a nonpositive integer, the full
+      datasets are used.
   """
 
-  train_dataset, eval_dataset = shakespeare_dataset.construct_centralized_datasets(
-      batch_size=batch_size, sequence_length=sequence_length)
+  train_dataset, eval_dataset = shakespeare_dataset.get_centralized_datasets(
+      train_batch_size=batch_size,
+      max_train_batches=max_batches,
+      max_test_batches=max_batches,
+      sequence_length=sequence_length)
 
   pad_token, _, _, _ = shakespeare_dataset.get_special_tokens()
   model = shakespeare_models.create_recurrent_model(
