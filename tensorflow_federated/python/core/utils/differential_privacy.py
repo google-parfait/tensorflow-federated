@@ -55,7 +55,7 @@ def build_dp_query(clip,
                    adaptive_clip_learning_rate=0,
                    target_unclipped_quantile=None,
                    clipped_count_budget_allocation=None,
-                   expected_num_clients=None,
+                   expected_clients_per_round=None,
                    per_vector_clipping=False,
                    geometric_clip_update=True,
                    model=None):
@@ -78,8 +78,8 @@ def build_dp_query(clip,
     target_unclipped_quantile: Target unclipped quantile for adaptive clipping.
     clipped_count_budget_allocation: The fraction of privacy budget to use for
       estimating clipped counts.
-    expected_num_clients: The expected number of clients for estimating clipped
-      fractions.
+    expected_clients_per_round: The expected number of clients for estimating
+      clipped fractions.
     per_vector_clipping: If True, clip each weight tensor independently.
       Otherwise, global clipping is used. The clipping norm for each vector (or
       the initial clipping norm, in the case of adaptive clipping) is
@@ -114,8 +114,8 @@ def build_dp_query(clip,
                             'target_unclipped_quantile')
     py_typecheck.check_type(clipped_count_budget_allocation, numbers.Number,
                             'clipped_count_budget_allocation')
-    py_typecheck.check_type(expected_num_clients, numbers.Number,
-                            'expected_num_clients')
+    py_typecheck.check_type(expected_clients_per_round, numbers.Number,
+                            'expected_clients_per_round')
     p = clipped_count_budget_allocation
     nm = noise_multiplier
     vectors_noise_multiplier = nm * ((1 - p) / num_vectors)**(-0.5)
@@ -148,7 +148,7 @@ def build_dp_query(clip,
           target_unclipped_quantile=target_unclipped_quantile,
           learning_rate=learning_rate,
           clipped_count_stddev=clipped_count_stddev,
-          expected_num_records=expected_num_clients,
+          expected_num_records=expected_clients_per_round,
           geometric_update=geometric_clip_update,
           denominator=expected_total_weight)
 

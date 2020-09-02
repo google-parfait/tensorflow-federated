@@ -67,7 +67,7 @@ class BuildDpQueryTest(test.TestCase):
         adaptive_clip_learning_rate=0.05,
         target_unclipped_quantile=0.5,
         clipped_count_budget_allocation=ccba,
-        expected_num_clients=10)
+        expected_clients_per_round=10)
     self.assertIsInstance(query,
                           tensorflow_privacy.QuantileAdaptiveClipAverageQuery)
     self.assertIsInstance(query._numerator,

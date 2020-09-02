@@ -170,7 +170,7 @@ def main(argv):
         adaptive_clip_learning_rate=FLAGS.adaptive_clip_learning_rate,
         target_unclipped_quantile=FLAGS.target_unclipped_quantile,
         clipped_count_budget_allocation=FLAGS.clipped_count_budget_allocation,
-        expected_num_clients=FLAGS.clients_per_round,
+        expected_clients_per_round=FLAGS.clients_per_round,
         per_vector_clipping=FLAGS.per_vector_clipping,
         model=model_fn())
 
