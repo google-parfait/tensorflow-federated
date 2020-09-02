@@ -31,3 +31,18 @@ py_test(
     srcs_version = "PY3",
     deps = [":yogi"],
 )
+
+py_library(
+    name = "shampoo",
+    srcs = ["shampoo.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "shampoo_test",
+    size = "medium",
+    srcs = ["shampoo_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":shampoo"],
+)
