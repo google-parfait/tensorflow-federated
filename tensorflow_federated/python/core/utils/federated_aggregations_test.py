@@ -228,7 +228,7 @@ class FederatedSampleTest(tf.test.TestCase):
 
     value = call_federated_sample([1.0] * 100 + [0.0] * 100)
     self.assertLen(value, 100)
-    self.assertAlmostEqual(len(np.nonzero(value)[0]), 50, delta=15)
+    self.assertAlmostEqual(len(np.nonzero(value)[0]), 50, delta=20)
 
   def test_federated_sample_preserves_nan_percentage(self):
 
@@ -238,7 +238,7 @@ class FederatedSampleTest(tf.test.TestCase):
       return federated_aggregations.federated_sample(value)
 
     value = call_federated_sample([1.0] * 100 + [np.nan] * 100)
-    self.assertAlmostEqual(np.count_nonzero(np.isnan(value)), 50, delta=15)
+    self.assertAlmostEqual(np.count_nonzero(np.isnan(value)), 50, delta=20)
 
   def test_federated_sample_preserves_inf_percentage(self):
 
@@ -248,7 +248,7 @@ class FederatedSampleTest(tf.test.TestCase):
       return federated_aggregations.federated_sample(value)
 
     value = call_federated_sample([1.0] * 100 + [np.inf] * 100)
-    self.assertAlmostEqual(np.count_nonzero(np.isinf(value)), 50, delta=15)
+    self.assertAlmostEqual(np.count_nonzero(np.isinf(value)), 50, delta=20)
 
   def test_federated_sample_named_tuple_type_of_ordered_dict(self):
     dict_type = computation_types.to_type(

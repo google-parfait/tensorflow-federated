@@ -177,7 +177,6 @@ py_test(
     name = "federated_aggregations_test",
     timeout = "moderate",
     srcs = ["federated_aggregations_test.py"],
-    flaky = 1,  # TODO(b/162455851): Fix flakiness.
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
