@@ -114,7 +114,7 @@ def run_federated(
       num_validation_examples=num_validation_examples)
 
   _, stackoverflow_validation, stackoverflow_test = stackoverflow_lr_dataset.get_centralized_datasets(
-      batch_size=client_batch_size,
+      train_batch_size=client_batch_size,
       vocab_tokens_size=vocab_tokens_size,
       vocab_tags_size=vocab_tags_size,
       num_validation_examples=num_validation_examples,
