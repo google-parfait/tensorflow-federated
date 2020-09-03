@@ -80,22 +80,22 @@ class FixedClipNormProcessTest(tf.test.TestCase):
     aggregate_fn = aggregate_fns.build_fixed_clip_norm_mean_process(
         clip_norm=clip_norm, model_update_type=update_type)
 
-    self.assertEqual(
-        aggregate_fn.next.type_signature,
-        tff.FunctionType(
-            parameter=collections.OrderedDict(
-                state=tff.FederatedType((), tff.SERVER),
-                deltas=tff.FederatedType(update_type, tff.CLIENTS),
-                weights=tff.FederatedType(tf.float32, tff.CLIENTS),
-            ),
-            result=collections.OrderedDict(
-                state=tff.FederatedType((), tff.SERVER),
-                result=tff.FederatedType(update_type, tff.SERVER),
-                measurements=tff.FederatedType(
-                    aggregate_fns.NormClippedAggregationMetrics(
-                        max_global_norm=tf.float32, num_clipped=tf.int32),
-                    tff.SERVER)),
-        ))
+    self.assertTrue(
+        aggregate_fn.next.type_signature.is_equivalent_to(
+            tff.FunctionType(
+                parameter=collections.OrderedDict(
+                    state=tff.FederatedType((), tff.SERVER),
+                    deltas=tff.FederatedType(update_type, tff.CLIENTS),
+                    weights=tff.FederatedType(tf.float32, tff.CLIENTS),
+                ),
+                result=tff.templates.MeasuredProcessOutput(
+                    state=tff.FederatedType((), tff.SERVER),
+                    result=tff.FederatedType(update_type, tff.SERVER),
+                    measurements=tff.FederatedType(
+                        aggregate_fns.NormClippedAggregationMetrics(
+                            max_global_norm=tf.float32, num_clipped=tf.int32),
+                        tff.SERVER)),
+            )))
 
     state = aggregate_fn.initialize()
     weights = [1., 1.]
@@ -107,10 +107,10 @@ class FixedClipNormProcessTest(tf.test.TestCase):
       expected_clipped.append(tf.nest.pack_sequence_as(delta, clipped))
     expected_mean = tf.nest.map_structure(lambda a, b: (a + b) / 2,
                                           *expected_clipped)
-    self.assertAllClose(expected_mean, output['result'])
+    self.assertAllClose(expected_mean, output.result)
 
     # Global l2 norms [17.74824, 53.99074].
-    metrics = output['measurements']
+    metrics = output.measurements
     self.assertAlmostEqual(metrics.max_global_norm, 53.99074, places=5)
     self.assertEqual(metrics.num_clipped, 1)
 

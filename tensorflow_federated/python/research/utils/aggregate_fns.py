@@ -17,7 +17,6 @@ Intended for usage with the `tff.learning` API for composing different
 communication primitives in federated learning.
 """
 
-import collections
 from typing import Union
 
 import attr
@@ -135,7 +134,7 @@ def build_fixed_clip_norm_mean_process(
     clipped_deltas, client_norms, client_was_clipped = tff.federated_map(
         clip_by_global_norm, deltas)
 
-    return collections.OrderedDict(
+    return tff.templates.MeasuredProcessOutput(
         state=state,
         result=tff.federated_mean(clipped_deltas, weight=weights),
         measurements=tff.federated_zip(

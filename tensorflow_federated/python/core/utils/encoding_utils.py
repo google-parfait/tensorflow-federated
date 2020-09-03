@@ -156,7 +156,7 @@ def build_encoded_broadcast_process(value_type, encoders):
                                                         (state, value))
     client_encoded_value = intrinsics.federated_broadcast(encoded_value)
     client_value = intrinsics.federated_map(decode_fn, client_encoded_value)
-    return collections.OrderedDict(
+    return measured_process.MeasuredProcessOutput(
         state=new_state, result=client_value, measurements=empty_metrics)
 
   return measured_process.MeasuredProcess(
@@ -286,7 +286,7 @@ def build_encoded_sum_process(value_type, encoders):
     """Encoded sum federated_computation."""
     empty_metrics = intrinsics.federated_value((), placements.SERVER)
     state, result = encoded_sum_fn(state, values)
-    return collections.OrderedDict(
+    return measured_process.MeasuredProcessOutput(
         state=state, result=result, measurements=empty_metrics)
 
   return measured_process.MeasuredProcess(
@@ -417,7 +417,7 @@ def build_encoded_mean_process(value_type, encoders):
     summed_weights = intrinsics.federated_sum(weight)
     decoded_values = intrinsics.federated_map(
         divide_fn, (summed_decoded_values, summed_weights))
-    return collections.OrderedDict(
+    return measured_process.MeasuredProcessOutput(
         state=updated_state, result=decoded_values, measurements=empty_metrics)
 
   return measured_process.MeasuredProcess(
@@ -661,6 +661,5 @@ def _accmulate_state_update_tensor(a, b, mode):
 
 
 def _accumulator_value(values, state_update_tensors):
-  return collections.OrderedDict([('values', values),
-                                  ('state_update_tensors', state_update_tensors)
-                                 ])
+  return collections.OrderedDict(
+      values=values, state_update_tensors=state_update_tensors)

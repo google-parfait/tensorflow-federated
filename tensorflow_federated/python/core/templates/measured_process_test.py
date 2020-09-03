@@ -18,19 +18,13 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import values
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.templates import measured_process
-
-
-# A test output for MeasuredProcess that matches the required type signature.
-@attr.s(frozen=True, slots=True, eq=False)
-class MeasuredProcessOutput():
-  state = attr.ib()
-  result = attr.ib()
-  measurements = attr.ib()
 
 
 def _build_initialize_comp(constant):
@@ -45,14 +39,14 @@ def _build_initialize_comp(constant):
 @computations.tf_computation(tf.int32, tf.int32)
 def add_int32(current, val):
   """Performs arbitrary Tensor math for testing."""
-  return MeasuredProcessOutput(
+  return measured_process.MeasuredProcessOutput(
       state=current + val, result=val, measurements=[current / (val + 1)])
 
 
 @computations.tf_computation(tf.float32, tf.float32)
 def add_mul_int32(current, val):
   """Performs arbitrary Tensor math for testing."""
-  return MeasuredProcessOutput(
+  return measured_process.MeasuredProcessOutput(
       state=current + val,
       result=current * val,
       measurements=[current / (val + 1.0)])
@@ -62,7 +56,8 @@ def add_mul_int32(current, val):
 def count_int32(current):
   """Performs arbitrary Tensor math for testing."""
   # NOTE: the empty tuple () is the NoneType of TFF.
-  return MeasuredProcessOutput(state=current + 1, result=(), measurements=())
+  return measured_process.MeasuredProcessOutput(
+      state=current + 1, result=(), measurements=())
 
 
 class MeasuredProcessTest(test.TestCase):
@@ -88,7 +83,7 @@ class MeasuredProcessTest(test.TestCase):
     @computations.tf_computation(
         computation_types.TensorType(shape=[None], dtype=tf.string))
     def next_fn(strings):
-      return MeasuredProcessOutput(
+      return measured_process.MeasuredProcessOutput(
           state=tf.concat([strings, tf.constant(['abc'])], axis=0),
           result=(),
           measurements=())
@@ -127,6 +122,48 @@ class MeasuredProcessTest(test.TestCase):
     expected_measurment = sum(range(iterations - 1)) / iterations
     self.assertAllClose(output.measurements, [expected_measurment])
 
+  def test_constructor_with_next_federated_same_placed_struct_result(self):
+
+    @computations.federated_computation
+    def initialize_comp():
+      return intrinsics.federated_value(0, placements.SERVER)
+
+    # A `next` function that returns all the same placement and is zipped so
+    # the FederatedType is at the top of the type hierarchy.
+    @computations.federated_computation(initialize_comp.type_signature.result)
+    def next_comp(state):
+      return intrinsics.federated_zip(
+          measured_process.MeasuredProcessOutput(
+              state=state,
+              result=intrinsics.federated_value(0, placements.SERVER),
+              measurements=intrinsics.federated_value((), placements.SERVER))),
+
+    with self.assertRaisesRegex(
+        TypeError,
+        'The return type of next_fn must be assignable to the first parameter'):
+      measured_process.MeasuredProcess(
+          initialize_fn=initialize_comp, next_fn=next_comp)
+
+  def test_constructor_with_next_struct_of_different_placedresult(self):
+
+    @computations.federated_computation
+    def initialize_comp():
+      return intrinsics.federated_value(0, placements.SERVER)
+
+    # A `next` function that returns different placements for the components.
+    @computations.federated_computation(initialize_comp.type_signature.result)
+    def next_comp(state):
+      return measured_process.MeasuredProcessOutput(
+          state=state,
+          result=intrinsics.federated_value(0, placements.CLIENTS),
+          measurements=intrinsics.federated_value((), placements.SERVER))
+
+    try:
+      measured_process.MeasuredProcess(
+          initialize_fn=initialize_comp, next_fn=next_comp)
+    except Exception as e:  # pylint: disable=broad-except
+      self.fail(f'Failed to construct MeasuredProcess: {e}')
+
   def test_constructor_with_initialize_bad_type(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       measured_process.MeasuredProcess(initialize_fn=None, next_fn=add_int32)
@@ -147,9 +184,8 @@ class MeasuredProcessTest(test.TestCase):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       measured_process.MeasuredProcess(initialize_fn=initialize, next_fn=None)
 
-  def test_constructor_with_type_mismatch(self):
+  def test_constructor_with_init_next_type_mismatch(self):
     initialize = _build_initialize_comp(0)
-
     with self.assertRaisesRegex(
         TypeError, r'The return type of initialize_fn must be assignable.*'):
 
@@ -160,6 +196,8 @@ class MeasuredProcessTest(test.TestCase):
       measured_process.MeasuredProcess(
           initialize_fn=initialize, next_fn=add_float32)
 
+  def test_constructor_with_next_result_param_type_mismatch(self):
+    initialize = _build_initialize_comp(0)
     with self.assertRaisesRegex(
         TypeError,
         'The return type of next_fn must be assignable to the first parameter'):
@@ -171,19 +209,10 @@ class MeasuredProcessTest(test.TestCase):
       measured_process.MeasuredProcess(
           initialize_fn=initialize, next_fn=add_bad_result)
 
+  def test_constructor_with_next_result_not_measuredprocessoutput(self):
+    initialize = _build_initialize_comp(0)
     with self.assertRaisesRegex(
-        TypeError,
-        'The return type of next_fn must be assignable to the first parameter'):
-
-      @computations.federated_computation(tf.int32)
-      def add_bad_multi_result(_):
-        return 0.0, 0
-
-      measured_process.MeasuredProcess(
-          initialize_fn=initialize, next_fn=add_bad_multi_result)
-
-    with self.assertRaisesRegex(TypeError,
-                                'MeasuredProcess must return a StructType'):
+        TypeError, 'MeasuredProcess must return a MeasuredProcessOutput'):
 
       @computations.federated_computation(tf.int32)
       def add_not_tuple_result(_):
@@ -193,8 +222,7 @@ class MeasuredProcessTest(test.TestCase):
           initialize_fn=initialize, next_fn=add_not_tuple_result)
 
     with self.assertRaisesRegex(
-        TypeError,
-        'must match type signature <state=A,result=B,measurements=C>'):
+        TypeError, 'MeasuredProcess must return a MeasuredProcessOutput'):
 
       @computations.federated_computation(tf.int32)
       def add_not_named_tuple_result(_):

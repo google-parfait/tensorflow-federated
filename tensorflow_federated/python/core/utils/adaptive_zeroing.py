@@ -13,7 +13,6 @@
 # limitations under the License.
 """Measured Process for adaptive zeroing."""
 
-import collections
 from typing import Union
 
 import attr
@@ -170,7 +169,7 @@ def build_adaptive_zeroing_mean_process(
     measurements = intrinsics.federated_zip(
         AdaptiveZeroingMetrics(new_threshold, num_zeroed))
 
-    return collections.OrderedDict(
+    return measured_process.MeasuredProcessOutput(
         state=new_global_state, result=mean_value, measurements=measurements)
 
   return measured_process.MeasuredProcess(

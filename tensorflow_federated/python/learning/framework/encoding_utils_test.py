@@ -90,10 +90,10 @@ class IterativeProcessTest(test.TestCase, parameterized.TestCase):
 
   def _verify_iterative_process(self, iterative_process):
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0], [3.0, 4.0]]),
-            ('y', [[5.0], [6.0]]),
-        ])).batch(2)
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0]],
+            y=[[5.0], [6.0]],
+        )).batch(2)
     federated_ds = [ds] * 3
 
     state = iterative_process.initialize()

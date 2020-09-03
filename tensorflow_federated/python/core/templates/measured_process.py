@@ -13,13 +13,35 @@
 # limitations under the License.
 """Define a template for a stateful process that produces metrics."""
 
-from tensorflow_federated.python.common_libs import structure
+import attr
+
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.templates import iterative_process
 
+
+@attr.s(frozen=True, eq=False, slots=True)
+class MeasuredProcessOutput:
+  """A structure containing the output of a `MeasuredProcess.next` computation.
+
+  Attributes:
+    state: A structure that will be passed to invocation of
+      `MeasuredProcess.next`. Not intended for inspection externally, contains
+      implementation details of the process.
+    result: The result of the process given the current input and state. Using
+      the rules of composition, either passed to input arguments of chained a
+      `MeasuredProcess`, or concatenated with outputs of parallel
+      `MeasuredProcess`es.
+    measurements: Metrics derived from the computation of `result`. Intended for
+      surfacing values to track the progress of a process that are not sent to
+      chained `MeasuredProcess`es.
+  """
+  state = attr.ib()
+  result = attr.ib()
+  measurements = attr.ib()
+
 # The type signature of the result of MeasuredProcess must be a named tuple
 # with the following names in the same order.
-_RESULT_FIELD_NAMES = ['state', 'result', 'measurements']
+_RESULT_FIELD_NAMES = [f.name for f in attr.fields(MeasuredProcessOutput)]
 
 
 # TODO(b/150384321): add method for performing the composition; current proposal
@@ -56,37 +78,24 @@ class MeasuredProcess(iterative_process.IterativeProcess):
       initialize_fn: A no-arg `tff.Computation` that creates the initial state
         of the measured process.
       next_fn: A `tff.Computation` that defines an iterated function. If
-        `initialize_fn` returns a type `S`, then `next_fn` must return a TFF
-        type `<state=S,result=O,measurements=M>`, and accept either a single
-        argument of type `S` or multiple arguments where the first argument must
-        be of type `S`.
+        `initialize_fn` returns a type `S`, then `next_fn` must return a
+        `MeasuredProcessOutput` where the `state` attribute matches the type
+        `S`, and accept either a single argument of type `S` or multiple
+        arguments where the first argument must be of type `S`.
 
     Raises:
       TypeError: `initialize_fn` and `next_fn` are not compatible function
-        types, or `next_fn` does not have a valid output signature.
+        types, or `next_fn` does not return a `MeasuredProcessOutput`.
     """
     super().__init__(initialize_fn, next_fn)
-    # Additional type checks for the specialized MeasuredProcess.
-    if isinstance(next_fn.type_signature.result,
-                  computation_types.FederatedType):
-      next_result_type = next_fn.type_signature.result.member
-    elif isinstance(next_fn.type_signature.result,
-                    computation_types.StructType):
-      next_result_type = next_fn.type_signature.result
-    else:
+    next_result_type = next_fn.type_signature.result
+    if not (isinstance(next_result_type, computation_types.StructWithPythonType)
+            and next_result_type.python_container is MeasuredProcessOutput):
       raise TypeError(
-          'MeasuredProcess must return a StructType (or '
-          'FederatedType containing a StructType) with the signature '
-          '<state=A,result=B,measurements=C>. Received a ({t}): {s}'.format(
+          'MeasuredProcess must return a MeasuredProcessOutput. Received a '
+          '({t}): {s}'.format(
               t=type(next_fn.type_signature.result),
               s=next_fn.type_signature.result))
-    result_field_names = [
-        name for (name, _) in structure.iter_elements(next_result_type)
-    ]
-    if result_field_names != _RESULT_FIELD_NAMES:
-      raise TypeError('The return type of next_fn must match type signature '
-                      '<state=A,result=B,measurements=C>. Got: {!s}'.format(
-                          next_result_type))
 
   @property
   def next(self):
@@ -94,7 +103,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
 
     Its first argument should always be the current state (originally produced
     by `tff.templates.MeasuredProcess.initialize`), and the return type must be
-    a named tuple matching the signature `<state=A,result=B,measurements=C>`.
+    a `tff.templates.MeasuredProcessOutput`.
 
     Returns:
       A `tff.Computation`.

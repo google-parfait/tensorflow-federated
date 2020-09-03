@@ -13,7 +13,6 @@
 # limitations under the License.
 """Utilities for interop with tensorflow_privacy."""
 
-import collections
 import math
 import numbers
 import warnings
@@ -385,7 +384,7 @@ def build_dp_aggregate_process(value_type, query):
 
     metrics = intrinsics.federated_map(derive_metrics, updated_state)
 
-    return collections.OrderedDict(
+    return measured_process.MeasuredProcessOutput(
         state=updated_state, result=result, measurements=metrics)
 
   return measured_process.MeasuredProcess(

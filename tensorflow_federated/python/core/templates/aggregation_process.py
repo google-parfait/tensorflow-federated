@@ -19,9 +19,6 @@ from tensorflow_federated.python.core.templates import measured_process
 
 _STATE_PARAM_INDEX = 0
 _INPUT_PARAM_INDEX = 1
-_STATE_OUTPUT_INDEX = 0
-_RESULT_OUTPUT_INDEX = 1
-_MEASUREMENTS_OUTPUT_INDEX = 2
 
 
 class AggregationProcess(measured_process.MeasuredProcess):
@@ -51,6 +48,10 @@ class AggregationProcess(measured_process.MeasuredProcess):
       TypeError: `initialize_fn` and `next_fn` are not compatible function
         types, or do not have valid federated type signature.
     """
+    # Calling super class __init__ first ensures that
+    # next_fn.type_signature.result is a `MeasuredProcessOutput`, make our
+    # validation here easier as that must be true.
+    super().__init__(initialize_fn, next_fn)
     if (not initialize_fn.type_signature.result.is_federated() or
         initialize_fn.type_signature.result.placement != placements.SERVER):
       raise TypeError(
@@ -74,30 +75,29 @@ class AggregationProcess(measured_process.MeasuredProcess):
           f'The second argument of next_fn must be federated and placed at '
           f'CLIENTS, but found {next_fn_param[_INPUT_PARAM_INDEX]}')
 
-    if next_fn_result[_STATE_OUTPUT_INDEX].placement != placements.SERVER:
+    if next_fn_result.state.placement != placements.SERVER:
       raise TypeError(
           f'The "state" attribute of return type of next_fn must be placed at '
-          f'SERVER, but found {next_fn_result[_STATE_OUTPUT_INDEX]}.')
-    if next_fn_result[_RESULT_OUTPUT_INDEX].placement != placements.SERVER:
+          f'SERVER, but found {next_fn_result.state}.')
+    if next_fn_result.result.placement != placements.SERVER:
       raise TypeError(
           f'The "result" attribute of return type of next_fn must be placed at '
-          f'SERVER, but found {next_fn_result[_RESULT_OUTPUT_INDEX]}.')
-    if next_fn_result[_MEASUREMENTS_OUTPUT_INDEX].placement != placements.SERVER:
+          f'SERVER, but found {next_fn_result.result}.')
+    if next_fn_result.measurements.placement != placements.SERVER:
       raise TypeError(
           f'The "measurements" attribute of return type of next_fn must be '
           f'placed at SERVER, but found '
-          f'{next_fn_result[_MEASUREMENTS_OUTPUT_INDEX]}.')
+          f'{next_fn_result.measurements}.')
 
     if (next_fn_param[_INPUT_PARAM_INDEX].member !=
-        next_fn_result[_RESULT_OUTPUT_INDEX].member):
+        next_fn_result.result.member):
       raise TypeError(
           f'The second argument of next_fn must be of the same non-federated '
           f'type as the "result" attrubute of the returned structure, but '
           f'instead found: Second argument of next_fn of type: '
           f'{next_fn_param[_INPUT_PARAM_INDEX].member} and "result" attrubute '
           f'of the returned structure of type: '
-          f'{next_fn_result[_RESULT_OUTPUT_INDEX].member}')
-    super().__init__(initialize_fn, next_fn)
+          f'{next_fn_result.result.member}')
 
   @property
   def next(self) -> computation_base.Computation:

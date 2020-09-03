@@ -285,13 +285,13 @@ class EncodedSumProcessTest(test.TestCase, parameterized.TestCase):
     call_gather = gather_process._next_fn
 
     output = call_gather(initial_state, [value, value])
-    self.assertAllClose(2 * value, output['result'])
+    self.assertAllClose(2 * value, output.result)
 
     output = call_gather(initial_state, [value, -value])
-    self.assertAllClose(0 * value, output['result'])
+    self.assertAllClose(0 * value, output.result)
 
     output = call_gather(initial_state, [value, 2 * value])
-    self.assertAllClose(3 * value, output['result'])
+    self.assertAllClose(3 * value, output.result)
 
   @parameterized.named_parameters(*_bad_encoder_named_parameters)
   def test_build_encoded_sum_process_raises_bad_encoder(self, bad_encoder):
@@ -446,13 +446,13 @@ class EncodedMeanProcessTest(test.TestCase, parameterized.TestCase):
     call_gather = gather_process._next_fn
 
     output = call_gather(initial_state, [value, value], [1.0, 1.0])
-    self.assertAllClose(1 * value, output['result'])
+    self.assertAllClose(1 * value, output.result)
 
     output = call_gather(initial_state, [value, value], [0.3, 0.7])
-    self.assertAllClose(1 * value, output['result'])
+    self.assertAllClose(1 * value, output.result)
 
     output = call_gather(initial_state, [value, 2 * value], [1.0, 2.0])
-    self.assertAllClose(5 / 3 * value, output['result'])
+    self.assertAllClose(5 / 3 * value, output.result)
 
   @parameterized.named_parameters(*_bad_encoder_named_parameters)
   def test_build_encoded_mean_process_raises_bad_encoder(self, bad_encoder):

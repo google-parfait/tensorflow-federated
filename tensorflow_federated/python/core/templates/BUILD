@@ -48,6 +48,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":aggregation_process",
+        ":measured_process",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -90,7 +91,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":iterative_process",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
@@ -106,6 +106,8 @@ py_test(
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:values",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/executors:execution_context",

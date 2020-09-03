@@ -532,7 +532,7 @@ def _wrap_in_measured_process(
     def next_comp(state, value):
       empty_metrics = intrinsics.federated_value((), placements.SERVER)
       state, result = stateful_fn(state, value)
-      return collections.OrderedDict(
+      return measured_process.MeasuredProcessOutput(
           state=state, result=result, measurements=empty_metrics)
 
   elif isinstance(stateful_fn, computation_utils.StatefulAggregateFn):
@@ -544,7 +544,7 @@ def _wrap_in_measured_process(
     def next_comp(state, value, weight):
       empty_metrics = intrinsics.federated_value((), placements.SERVER)
       state, result = stateful_fn(state, value, weight)
-      return collections.OrderedDict(
+      return measured_process.MeasuredProcessOutput(
           state=state, result=result, measurements=empty_metrics)
 
   else:
@@ -573,7 +573,7 @@ def build_stateless_mean(
       computation_types.FederatedType(tf.float32, placements.CLIENTS))
   def stateless_mean(state, value, weight):
     empty_metrics = intrinsics.federated_value((), placements.SERVER)
-    return collections.OrderedDict(
+    return measured_process.MeasuredProcessOutput(
         state=state,
         result=intrinsics.federated_mean(value, weight=weight),
         measurements=empty_metrics)
@@ -594,7 +594,7 @@ def build_stateless_broadcaster(
   )
   def stateless_broadcast(state, value):
     empty_metrics = intrinsics.federated_value((), placements.SERVER)
-    return collections.OrderedDict(
+    return measured_process.MeasuredProcessOutput(
         state=state,
         result=intrinsics.federated_broadcast(value),
         measurements=empty_metrics)
