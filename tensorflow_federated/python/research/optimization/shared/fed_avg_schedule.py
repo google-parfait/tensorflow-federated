@@ -24,12 +24,6 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
-# TODO(b/147626125): Merge with fed_avg.py to allow for learning rate schedules
-# in the reparameterized federated averaging framework.
-
-# TODO(b/149402127): Implement a check to zero out client updates if any value
-# is non-finite.
-
 import collections
 from typing import Callable, Optional, Union
 
@@ -45,8 +39,6 @@ OptimizerBuilder = Callable[[float], tf.keras.optimizers.Optimizer]
 ClientWeightFn = Callable[..., float]
 LRScheduleFn = Callable[[int], float]
 
-ModelWeights = collections.namedtuple('ModelWeights', 'trainable non_trainable')
-
 
 def _initialize_optimizer_vars(model: tff.learning.Model,
                                optimizer: tf.keras.optimizers.Optimizer):
@@ -59,10 +51,8 @@ def _initialize_optimizer_vars(model: tff.learning.Model,
   assert optimizer.variables()
 
 
-def _get_weights(model: tff.learning.Model) -> ModelWeights:
-  return ModelWeights(
-      trainable=tuple(model.trainable_variables),
-      non_trainable=tuple(model.non_trainable_variables))
+def _get_weights(model: tff.learning.Model) -> tff.learning.ModelWeights:
+  return tff.learning.ModelWeights.from_model(model)
 
 
 @attr.s(eq=False, order=False, frozen=True)
@@ -82,25 +72,20 @@ class ServerState(object):
   # schedules.
 
   @classmethod
-  def assign_weights_to_keras_model(cls, reference_model: ModelWeights,
+  def assign_weights_to_keras_model(cls,
+                                    reference_model: tff.learning.ModelWeights,
                                     keras_model: tf.keras.Model):
     """Assign the model weights to the weights of a `tf.keras.Model`.
 
     Args:
-      reference_model: the `ModelWeights` object to assign weights from.
+      reference_model: the `tff.learning.ModelWeights` object to assign weights
+        from.
       keras_model: the `tf.keras.Model` object to assign weights to.
     """
-    if not isinstance(reference_model, ModelWeights):
+    if not isinstance(reference_model, tff.learning.ModelWeights):
       raise TypeError('The reference model must be an instance of '
-                      'fed_avg_schedule.ModelWeights.')
-
-    def assign_weights(keras_weights, tff_weights):
-      for k, w in zip(keras_weights, tff_weights):
-        k.assign(w)
-
-    assign_weights(keras_model.trainable_weights, reference_model.trainable)
-    assign_weights(keras_model.non_trainable_weights,
-                   reference_model.non_trainable)
+                      'tff.learning.ModelWeights.')
+    reference_model.assign_weights_to(keras_model)
 
 
 @tf.function
@@ -182,7 +167,7 @@ def create_client_update_fn():
     Args:
       model: A `tff.learning.Model`.
       dataset: A 'tf.data.Dataset'.
-      initial_weights: A `tff.learning.Model.weights` from server.
+      initial_weights: A `tff.learning.ModelWeights` from server.
       client_optimizer: A `tf.keras.optimizer.Optimizer` object.
       client_weight_fn: Optional function that takes the output of
         `model.report_local_outputs` and returns a tensor that provides the

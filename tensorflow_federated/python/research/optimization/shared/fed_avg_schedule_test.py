@@ -117,7 +117,10 @@ class ModelDeltaProcessTest(tf.test.TestCase):
         server_optimizer_fn=tf.keras.optimizers.SGD)
 
     state, _, initial_state = self._run_rounds(iterproc, federated_data, 1)
-    self.assertAllClose(state.model, initial_state.model, 1e-8)
+    self.assertAllClose(state.model.trainable, initial_state.model.trainable,
+                        1e-8)
+    self.assertAllClose(state.model.non_trainable,
+                        initial_state.model.non_trainable, 1e-8)
 
   def test_server_update_with_inf_weight_is_noop(self):
     federated_data = [[_batch_fn()]]
@@ -130,7 +133,10 @@ class ModelDeltaProcessTest(tf.test.TestCase):
         client_weight_fn=client_weight_fn)
 
     state, _, initial_state = self._run_rounds(iterproc, federated_data, 1)
-    self.assertAllClose(state.model, initial_state.model, 1e-8)
+    self.assertAllClose(state.model.trainable, initial_state.model.trainable,
+                        1e-8)
+    self.assertAllClose(state.model.non_trainable,
+                        initial_state.model.non_trainable, 1e-8)
 
   def test_fed_avg_with_client_schedule(self):
     federated_data = [[_batch_fn()]]
@@ -211,7 +217,7 @@ class ModelDeltaProcessTest(tf.test.TestCase):
     server_state_type = tff.FederatedType(
         fed_avg_schedule.ServerState(
             model=tff.framework.type_from_tensors(
-                fed_avg_schedule.ModelWeights(
+                tff.learning.ModelWeights(
                     test_model_for_types.trainable_variables,
                     test_model_for_types.non_trainable_variables)),
             optimizer_state=(tf.int64,),

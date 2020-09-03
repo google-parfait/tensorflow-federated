@@ -68,26 +68,20 @@ class ServerState(object):
   server_lr_callback = attr.ib()
 
   @classmethod
-  def assign_weights_to_keras_model(
-      cls, reference_weights: tff.learning.ModelWeights,
-      keras_model: tf.keras.Model):
+  def assign_weights_to_keras_model(cls,
+                                    reference_model: tff.learning.ModelWeights,
+                                    keras_model: tf.keras.Model):
     """Assign the model weights to the weights of a `tf.keras.Model`.
 
     Args:
-      reference_weights: the `tff.learning.ModelWeights` object to assign
-        weights from.
+      reference_model: the `tff.learning.ModelWeights` object to assign weights
+        from.
       keras_model: the `tf.keras.Model` object to assign weights to.
     """
-    if not isinstance(reference_weights, tff.learning.ModelWeights):
-      raise TypeError('The reference weights must be an instance of '
+    if not isinstance(reference_model, tff.learning.ModelWeights):
+      raise TypeError('The reference model must be an instance of '
                       'tff.learning.ModelWeights.')
-    def assign_weights(keras_weights, tff_weights):
-      for k, w in zip(keras_weights, tff_weights):
-        k.assign(w)
-
-    assign_weights(keras_model.trainable_weights, reference_weights.trainable)
-    assign_weights(keras_model.non_trainable_weights,
-                   reference_weights.non_trainable)
+    reference_model.assign_weights_to(keras_model)
 
 
 @tf.function
