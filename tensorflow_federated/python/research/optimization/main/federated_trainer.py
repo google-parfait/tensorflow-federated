@@ -151,7 +151,6 @@ def main(argv):
   def iterative_process_builder(
       model_fn: Callable[[], tff.learning.Model],
       client_weight_fn: Optional[Callable[[Any], tf.Tensor]] = None,
-      dataset_preprocess_comp: Optional[tff.Computation] = None,
   ) -> tff.templates.IterativeProcess:
     """Creates an iterative process using a given TFF `model_fn`.
 
@@ -161,10 +160,6 @@ def main(argv):
         `model.report_local_outputs` and returns a tensor providing the weight
         in the federated average of model deltas. If not provided, the default
         is the total number of examples processed on device.
-      dataset_preprocess_comp: Optional `tff.Computation` that sets up a data
-        pipeline on the clients. The computation must take a squence of values
-        and return a sequence of values, or in TFF type shorthand `(U* -> V*)`.
-        If `None`, no dataset preprocessing is applied.
 
     Returns:
       A `tff.templates.IterativeProcess`.
@@ -176,8 +171,7 @@ def main(argv):
         client_lr=client_lr_schedule,
         server_optimizer_fn=server_optimizer_fn,
         server_lr=server_lr_schedule,
-        client_weight_fn=client_weight_fn,
-        dataset_preprocess_comp=dataset_preprocess_comp)
+        client_weight_fn=client_weight_fn)
 
   assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
   hparam_dict = utils_impl.lookup_flag_values(utils_impl.get_hparam_flags())

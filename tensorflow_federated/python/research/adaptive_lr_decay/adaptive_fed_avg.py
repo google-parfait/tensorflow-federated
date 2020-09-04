@@ -265,7 +265,6 @@ def build_fed_avg_process(
     client_optimizer_fn: OptimizerBuilder = tf.keras.optimizers.SGD,
     server_optimizer_fn: OptimizerBuilder = tf.keras.optimizers.SGD,
     client_weight_fn: Optional[ClientWeightFn] = None,
-    dataset_preprocess_comp: Optional[tff.Computation] = None,
 ) -> tff.templates.IterativeProcess:
   """Builds the TFF computations for FedAvg with learning rate decay.
 
@@ -281,10 +280,6 @@ def build_fed_avg_process(
       `model.report_local_outputs` and returns a tensor that provides the weight
       in the federated average of model deltas. If not provided, the default is
       the total number of examples processed on device.
-    dataset_preprocess_comp: Optional `tff.Computation` that sets up a data
-      pipeline on the clients. The computation must take a squence of values
-      and return a sequence of values, or in TFF type shorthand `(U* -> V*)`. If
-      `None`, no dataset preprocessing is applied.
 
   Returns:
     A `tff.templates.IterativeProcess`.
@@ -300,19 +295,8 @@ def build_fed_avg_process(
   server_state_type = server_init_tf.type_signature.result
   model_weights_type = server_state_type.model
 
-  if dataset_preprocess_comp is not None:
-    tf_dataset_type = dataset_preprocess_comp.type_signature.parameter
-    model_input_type = tff.SequenceType(dummy_model.input_spec)
-    preprocessed_dataset_type = dataset_preprocess_comp.type_signature.result
-    if not model_input_type.is_assignable_from(preprocessed_dataset_type):
-      raise TypeError('Supplied `dataset_preprocess_comp` does not yield '
-                      'batches that are compatible with the model constructed '
-                      'by `model_fn`. Model expects type {m}, but dataset '
-                      'yields type {d}.'.format(
-                          m=model_input_type, d=preprocessed_dataset_type))
-  else:
-    tf_dataset_type = tff.SequenceType(dummy_model.input_spec)
-    model_input_type = tff.SequenceType(dummy_model.input_spec)
+  tf_dataset_type = tff.SequenceType(dummy_model.input_spec)
+  model_input_type = tff.SequenceType(dummy_model.input_spec)
 
   client_lr_type = server_state_type.client_lr_callback.learning_rate
   client_monitor_value_type = server_state_type.client_lr_callback.best
@@ -365,9 +349,6 @@ def build_fed_avg_process(
     client_lr = tff.federated_broadcast(
         server_state.client_lr_callback.learning_rate)
 
-    if dataset_preprocess_comp is not None:
-      federated_dataset = tff.federated_map(dataset_preprocess_comp,
-                                            federated_dataset)
     client_outputs = tff.federated_map(
         client_update_fn, (federated_dataset, client_model, client_lr))
 

@@ -29,17 +29,14 @@ from tensorflow_federated.python.research.optimization.stackoverflow_lr import f
 from tensorflow_federated.python.research.utils import metrics_manager
 
 
-def iterative_process_builder(model_fn,
-                              client_weight_fn=None,
-                              dataset_preprocess_comp=None):
+def iterative_process_builder(model_fn, client_weight_fn=None):
   return fed_avg_schedule.build_fed_avg_process(
       model_fn=model_fn,
       client_optimizer_fn=tf.keras.optimizers.SGD,
       client_lr=0.1,
       server_optimizer_fn=tf.keras.optimizers.SGD,
       server_lr=1.0,
-      client_weight_fn=client_weight_fn,
-      dataset_preprocess_comp=dataset_preprocess_comp)
+      client_weight_fn=client_weight_fn)
 
 
 def assign_weights_fn(reference_model, keras_model):

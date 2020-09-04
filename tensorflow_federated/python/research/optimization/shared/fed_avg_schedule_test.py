@@ -208,8 +208,10 @@ class ModelDeltaProcessTest(tf.test.TestCase):
     iterproc = fed_avg_schedule.build_fed_avg_process(
         _uncompiled_model_builder,
         client_optimizer_fn=tf.keras.optimizers.SGD,
-        server_optimizer_fn=tf.keras.optimizers.SGD,
-        dataset_preprocess_comp=preprocess_dataset)
+        server_optimizer_fn=tf.keras.optimizers.SGD)
+
+    iterproc = tff.simulation.compose_dataset_computation_with_iterative_process(
+        preprocess_dataset, iterproc)
 
     with tf.Graph().as_default():
       test_model_for_types = _uncompiled_model_builder()
@@ -253,8 +255,10 @@ class ModelDeltaProcessTest(tf.test.TestCase):
     iterproc = fed_avg_schedule.build_fed_avg_process(
         _uncompiled_model_builder,
         client_optimizer_fn=tf.keras.optimizers.SGD,
-        server_optimizer_fn=tf.keras.optimizers.SGD,
-        dataset_preprocess_comp=preprocess_dataset)
+        server_optimizer_fn=tf.keras.optimizers.SGD)
+
+    iterproc = tff.simulation.compose_dataset_computation_with_iterative_process(
+        preprocess_dataset, iterproc)
 
     _, train_outputs, _ = self._run_rounds(iterproc, [test_dataset], 6)
     self.assertLess(train_outputs[-1]['loss'], train_outputs[0]['loss'])
