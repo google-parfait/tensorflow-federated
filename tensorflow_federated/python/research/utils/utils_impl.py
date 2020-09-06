@@ -93,7 +93,7 @@ def atomic_write_to_csv(dataframe: pd.DataFrame,
   # an atomic move.
   tmp_gfile_name = os.path.join(
       os.path.dirname(output_file), '{}.tmp{}'.format(
-          os.path.basename(output_file), np.random.randint(0, 2**63)))
+          os.path.basename(output_file), np.random.randint(0, 2**63, dtype=np.int64)))
   tf.io.gfile.copy(src=tmp_name, dst=tmp_gfile_name, overwrite=overwrite)
 
   # Finally, do an atomic rename and clean up:
