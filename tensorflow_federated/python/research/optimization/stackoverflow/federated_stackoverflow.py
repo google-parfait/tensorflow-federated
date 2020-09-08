@@ -67,9 +67,8 @@ def run_federated(
 
   Args:
     iterative_process_builder: A function that accepts a no-arg `model_fn`, a
-      `client_weight_fn` and a `dataset_preprocess_comp`, and returns a
-      `tff.templates.IterativeProcess`. The `model_fn` must return a
-      `tff.learning.Model`.
+      `client_weight_fn` and returns a `tff.templates.IterativeProcess`. The
+      `model_fn` must return a `tff.learning.Model`.
     assign_weights_fn: A function that accepts the server state `S` and a
       `tf.keras.Model`, and updates the weights in the Keras model. This is used
       to do evaluation using Keras.
