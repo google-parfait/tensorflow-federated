@@ -1,3 +1,5 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
 # TODO(b/163856734): Fix visibility.
 package(default_visibility = ["//visibility:public"])
 

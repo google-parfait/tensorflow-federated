@@ -1,3 +1,5 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
 package(default_visibility = ["//tensorflow_federated/python/research"])
 
 licenses(["notice"])

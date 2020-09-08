@@ -1,3 +1,5 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
 # Direct and indirect packages that have visibility into the `core` package.
 package_group(
     name = "core_visibility",

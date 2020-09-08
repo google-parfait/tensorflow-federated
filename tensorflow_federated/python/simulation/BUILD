@@ -1,3 +1,5 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
 # Direct and indirect packages that have visibility into the `simulation`
 # package.
 package_group(name = "simulation_visibility")

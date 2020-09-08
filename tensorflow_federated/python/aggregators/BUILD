@@ -1,3 +1,5 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
 package_group(
     name = "default_visibility",
     packages = ["//tensorflow_federated/python/aggregators/..."],
