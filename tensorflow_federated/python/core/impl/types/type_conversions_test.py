@@ -499,6 +499,18 @@ class TypeToPyContainerTest(test.TestCase):
                 computation_types.StructWithPythonType(types, tuple),
                 placement_literals.SERVER)), (1, 2.0))
 
+  def test_client_placed_tuple(self):
+    value = [
+        structure.Struct([(None, 1), (None, 2)]),
+        structure.Struct([(None, 3), (None, 4)])
+    ]
+    type_spec = computation_types.FederatedType(
+        computation_types.StructWithPythonType([(None, tf.int32),
+                                                (None, tf.int32)], tuple),
+        placement_literals.CLIENTS)
+    self.assertEqual([(1, 2), (3, 4)],
+                     type_conversions.type_to_py_container(value, type_spec))
+
   def test_anon_tuple_with_names_to_container_without_names_fails(self):
     anon_tuple = structure.Struct([(None, 1), ('a', 2.0)])
     types = [tf.int32, tf.float32]

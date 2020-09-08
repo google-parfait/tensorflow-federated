@@ -320,7 +320,15 @@ def type_to_py_container(value, type_spec):
       and unnamed values.
   """
   if type_spec.is_federated():
-    structure_type_spec = type_spec.member
+    if type_spec.all_equal:
+      structure_type_spec = type_spec.member
+    else:
+      if not isinstance(value, list):
+        raise TypeError('Unexpected Python type for non-all-equal TFF type '
+                        f'{type_spec}: expected `list`, found `{type(value)}`.')
+      return [
+          type_to_py_container(element, type_spec.member) for element in value
+      ]
   else:
     structure_type_spec = type_spec
 
@@ -334,7 +342,7 @@ def type_to_py_container(value, type_spec):
       # when TFF is constructing datasets it always uses the proper Python
       # container, so we simply return `value` here without modification.
       return value
-    raise TypeError('Unexpected Python type for TF type {}: {}'.format(
+    raise TypeError('Unexpected Python type for TFF type {}: {}'.format(
         structure_type_spec, type(value)))
 
   if not structure_type_spec.is_struct():

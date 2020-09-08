@@ -1117,7 +1117,7 @@ class ReferenceContextTest(parameterized.TestCase, test.TestCase):
         str(foo.type_signature),
         '(<{int32}@CLIENTS,{int32}@CLIENTS> -> {<int32,int32>}@CLIENTS)')
     foo_result = foo([[1, 2, 3], [4, 5, 6]])
-    self.assert_list(foo_result, '<1,4>,<2,5>,<3,6>')
+    self.assert_list(foo_result, '[1,4],[2,5],[3,6]')
 
   def test_federated_aggregate_with_integers(self):
     test_named_tuple = collections.namedtuple('_', ['sum', 'n'])
@@ -1185,7 +1185,7 @@ class ReferenceContextTest(parameterized.TestCase, test.TestCase):
         '(<x={int32}@CLIENTS,y=int32@SERVER> -> {<int32,int32>}@CLIENTS)')
 
     foo_result = foo([1, 2, 3], 10)
-    self.assert_list(foo_result, '<1,10>,<2,10>,<3,10>')
+    self.assert_list(foo_result, '[1,10],[2,10],[3,10]')
 
   @parameterized.named_parameters(
       ('federated', computations.federated_computation),
