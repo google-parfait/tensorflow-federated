@@ -858,6 +858,8 @@ def to_type(spec) -> Type:
     raise TypeError(
         'Unsupported mapping type {}. Use collections.OrderedDict for '
         'mappings.'.format(py_typecheck.type_string(type(spec))))
+  elif isinstance(spec, structure.Struct):
+    return StructType(structure.to_elements(spec))
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(

@@ -614,6 +614,19 @@ class ToTypeTest(absltest.TestCase):
     self.assertIs(t.b.python_container, TestFoo2)
     self.assertEqual(str(t), '<a=<int32,bool>,b=<c=float32[2]>>')
 
+  def test_struct(self):
+    t = computation_types.to_type(
+        structure.Struct((
+            (None, tf.int32),
+            ('b', tf.int64),
+        )))
+    self.assertEqual(
+        t,
+        computation_types.StructType([
+            (None, computation_types.TensorType(tf.int32)),
+            ('b', computation_types.TensorType(tf.int64))
+        ]))
+
 
 class RepresentationTest(absltest.TestCase):
 
