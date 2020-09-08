@@ -1,7 +1,11 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+# Packages that have visibility into the `learning` package.
+package_group(name = "learning_visibility")
+
 package_group(
     name = "default_visibility",
+    includes = [":learning_visibility"],
     packages = [
         # Subpackages
         "//tensorflow_federated/python/learning/...",

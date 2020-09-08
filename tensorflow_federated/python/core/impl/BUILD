@@ -1,6 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-# Direct and indirect packages that have visibility into the `impl` package.
+# Packages that have visibility into the `impl` package.
 package_group(
     name = "impl_visibility",
     includes = [
