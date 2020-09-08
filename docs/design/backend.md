@@ -5,7 +5,7 @@
 A backend is the composition of a [compiler](compilation.md#compiler) and a
 [runtime](execution.md#runtime) in a [Context](context.md#context) used to
 [construct](tracing.md), [compile](compilation.md), and [execute](execution.md)
-an [AST](compilation.md#ast), meaning a backend constructs environemnts that
+an [AST](compilation.md#ast), meaning a backend constructs environments that
 evaluate an AST.
 
 The
