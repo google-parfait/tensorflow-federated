@@ -27,6 +27,7 @@ from tensorflow_federated.python.core.impl.executors import federated_composing_
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
+from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
@@ -554,17 +555,25 @@ def sizing_executor_factory(
   return executor_factory.SizingExecutorFactory(_factory_fn)
 
 
-# TODO(b/166634524): Reparameterize to encapsulate remote executor
-# construction.
-def worker_pool_executor_factory(executors,
-                                 max_fanout=100
-                                ) -> executor_factory.ExecutorFactory:
-  """Create an executor backed by a worker pool.
+def remote_executor_factory(channels,
+                            rpc_mode='REQUEST_REPLY',
+                            thread_pool_executor=None,
+                            dispose_batch_size=20,
+                            max_fanout=100) -> executor_factory.ExecutorFactory:
+  """Create an executor backed by remote workers.
 
   Args:
-    executors: A list of `tff.framework.Executor` instances that forward work to
-      workers in the worker pool. These can be any type of executors, but in
-      most scenarios, they will be instances of `tff.framework.RemoteExecutor`.
+    channels: A list of `grpc.Channels` hosting services which can execute TFF
+      work.
+    rpc_mode: A string specifying the connection mode between the local host and
+      `channels`.
+    thread_pool_executor: Optional concurrent.futures.Executor used to wait for
+      the reply to a streaming RPC message. Uses the default Executor if not
+      specified.
+    dispose_batch_size: The batch size for requests to dispose of remote worker
+      values. Lower values will result in more requests to the remote worker,
+      but will result in values being cleaned up sooner and therefore may result
+      in lower memory usage on the remote worker.
     max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
       `num_clients > max_fanout`, the constructed executor stack will consist of
       multiple levels of aggregators. The height of the stack will be on the
@@ -574,10 +583,14 @@ def worker_pool_executor_factory(executors,
     An instance of `executor_factory.ExecutorFactory` encapsulating the
     executor construction logic specified above.
   """
-  py_typecheck.check_type(executors, list)
-  if not executors:
-    raise ValueError('The list executors cannot be empty.')
-  executors = [_wrap_executor_in_threading_stack(e) for e in executors]
+  py_typecheck.check_type(channels, list)
+  if not channels:
+    raise ValueError('The list of channels cannot be empty.')
+  remote_executors = [
+      remote_executor.RemoteExecutor(channel, rpc_mode, thread_pool_executor,
+                                     dispose_batch_size) for channel in channels
+  ]
+  executors = [_wrap_executor_in_threading_stack(e) for e in remote_executors]
   flat_stack_fn = lambda _: executors
   unplaced_ex_factory = UnplacedExecutorFactory(use_caching=True)
   composing_executor_factory = ComposingExecutorFactory(

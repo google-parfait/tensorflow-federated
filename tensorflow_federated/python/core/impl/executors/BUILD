@@ -378,6 +378,7 @@ py_library(
         ":federated_resolving_strategy",
         ":federating_executor",
         ":reference_resolving_executor",
+        ":remote_executor",
         ":sizing_executor",
         ":thread_delegating_executor",
         "//tensorflow_federated/python/common_libs:py_typecheck",

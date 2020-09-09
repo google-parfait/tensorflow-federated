@@ -64,6 +64,6 @@ function constructs a local execution stack that executes an
 ### Remote Execution Stack
 
 The
-[executor_stacks.worker_pool_executor_factory](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/executors/executor_stacks.py)
+[executor_stacks.remote_executor_factory](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/executors/executor_stacks.py)
 function constructs a remote execution stack that executes an
 [AST](compilation.md#ast) on some service.
