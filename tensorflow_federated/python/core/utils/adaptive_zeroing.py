@@ -53,13 +53,13 @@ def build_adaptive_zeroing_mean_process(
   """Builds `tff.templates.MeasuredProcess` for averaging with adaptive zeroing.
 
   The returned `MeasuredProcess` averages values after zeroing out any values
-  whose norm is greater than C * r where C is adapted to approximate the q'th
-  quantile of the distribution of value norms. Its next function has the
+  whose norm is greater than `C * r` where C is adapted to approximate the q'th
+  quantile of the distribution of value norms. Its `next` function has the
   following type signature:
 
-  ({state_type}@SERVER,{value_type}@CLIENTS,{float32}@CLIENTS> ->
+  (<{state_type}@SERVER,{value_type}@CLIENTS,{float32}@CLIENTS> ->
    <state={state_type}@SERVER,result={value_type}@SERVER,
-   measurements=AdaptiveZeroingMetrics@SERVER>)
+    measurements=AdaptiveZeroingMetrics@SERVER>)
 
   Args:
     value_type: The type of values to be averaged by the `MeasuredProcess`. Can
