@@ -224,6 +224,24 @@ py_test(
     ],
 )
 
+py_test(
+    name = "eager_tf_executor_multi_gpu_test",
+    size = "small",
+    srcs = ["eager_tf_executor_multi_gpu_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    # TODO(b/168138878): add Kokoro GPU only tag and more description.
+    tags = [
+        "notap",
+        "requires-gpu-nvidia",
+    ],
+    deps = [
+        ":eager_tf_executor",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl:computation_impl",
+    ],
+)
+
 py_library(
     name = "execution_context",
     srcs = ["execution_context.py"],
