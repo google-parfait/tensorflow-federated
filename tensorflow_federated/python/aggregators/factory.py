@@ -19,7 +19,7 @@ from typing import Union
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 
-_ValueType = Union[computation_types.TensorType, computation_types.StructType]
+ValueType = Union[computation_types.TensorType, computation_types.StructType]
 
 
 class AggregationProcessFactory(abc.ABC):
@@ -27,7 +27,7 @@ class AggregationProcessFactory(abc.ABC):
 
   @abc.abstractmethod
   def create(self,
-             value_type: _ValueType) -> aggregation_process.AggregationProcess:
+             value_type: ValueType) -> aggregation_process.AggregationProcess:
     """Creates a `tff.aggregators.AggregationProcess` aggregating `value_type`.
 
     The provided `value_type` is a non-federated `tff.Type` object, that is,
