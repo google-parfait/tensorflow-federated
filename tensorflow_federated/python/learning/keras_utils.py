@@ -58,9 +58,10 @@ def from_keras_model(
       using the `loss_weights` argument).
     input_spec: A structure of `tf.TensorSpec`s or `tff.Type` specifying the
       type of arguments the model expects. Notice this must be a compound
-      structure of two elements, specifying both the data fed into the model to
-      generate predictions, as its first element, as well as the expected type
-      of the ground truth as its second.
+      structure of two elements, specifying both the data fed into the model (x)
+      to generate predictions as well as the expected type of the ground truth
+      (y). If provided as a list, it must be in the order [x, y]. If provided as
+      a dictionary, the keys must explicitly be named `'x'` and `'y'`.
     loss_weights: (Optional) A list of Python floats used to weight the loss
       contribution of each model output.
     metrics: (Optional) a list of `tf.keras.metrics.Metric` objects.
@@ -69,11 +70,14 @@ def from_keras_model(
     A `tff.learning.Model` object.
 
   Raises:
-    TypeError: If `keras_model` is not an instance of `tf.keras.Model`.
-    ValueError: If `keras_model` was compiled, or , or `input_spec` does not
-      contain two elements.
-    KeyError: If `loss` is a `dict` and does not have the same keys as
-      `keras_model.outputs`.
+    TypeError: If `keras_model` is not instance of `tf.keras.Model`, if
+      `keras_model` has a single output and `loss` is not instance of
+      `tf.keras.losses.Loss`, or if `keras_model` has multiple outputs and
+      `loss` is not a list of instances of `tf.keras.losses.Loss`.
+    ValueError: If `keras_model` was compiled, if `keras_model` has multiple
+      outputs and `loss` is not list of equal length, if `input_spec` does not
+      contain exactly two elements, or if `input_spec` is a dictionary and does
+      not contain keys `'x'` and `'y'`.
   """
   # Validate `keras_model`
   py_typecheck.check_type(keras_model, tf.keras.Model)
@@ -123,6 +127,17 @@ def from_keras_model(
   else:
     for type_elem in input_spec:
       py_typecheck.check_type(type_elem, computation_types.TensorType)
+  if isinstance(input_spec, collections.Mapping):
+    if 'x' not in input_spec:
+      raise ValueError(
+          'The `input_spec` is a collections.Mapping (e.g., a dict), so it '
+          'must contain an entry with key `\'x\'`, representing the input(s) '
+          'to the Keras model.')
+    if 'y' not in input_spec:
+      raise ValueError(
+          'The `input_spec` is a collections.Mapping (e.g., a dict), so it '
+          'must contain an entry with key `\'y\'`, representing the label(s) '
+          'to be used in the Keras loss(es).')
 
   if metrics is None:
     metrics = []

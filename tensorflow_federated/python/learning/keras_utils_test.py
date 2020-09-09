@@ -118,6 +118,30 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
 
   @parameterized.named_parameters(
+      ('more_than_two_elements', [
+          tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+          tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+          tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
+      ]),
+      ('dict_with_key_not_named_x',
+       collections.OrderedDict(
+           [('foo', tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
+            ('y', tf.TensorSpec(shape=[None, 1], dtype=tf.float32))])),
+      ('dict_with_key_not_named_y',
+       collections.OrderedDict(
+           [('x', tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
+            ('bar', tf.TensorSpec(shape=[None, 1], dtype=tf.float32))])),
+  )
+  def test_input_spec_batch_types_errors(self, input_spec):
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=1)
+    with self.assertRaises(ValueError):
+      keras_utils.from_keras_model(
+          keras_model=keras_model,
+          input_spec=input_spec,
+          loss=tf.keras.losses.MeanSquaredError())
+
+  @parameterized.named_parameters(
       # Test cases for the cartesian product of all parameter values.
       *_create_tff_model_from_keras_model_tuples())
   def test_tff_model_from_keras_model(self, feature_dims, model_fn):
@@ -538,6 +562,17 @@ class KerasUtilsTest(test.TestCase, parameterized.TestCase):
       with self.assertRaises(TypeError):
         _ = keras_utils.from_keras_model(
             keras_model=keras_model, input_spec=input_spec, loss=3)
+
+    with self.subTest('loss_as_dict_fails'):
+      with self.assertRaises(TypeError):
+        _ = keras_utils.from_keras_model(
+            keras_model=keras_model,
+            input_spec=input_spec,
+            loss={
+                'dense_5': tf.keras.losses.MeanSquaredError(),
+                'dense_6': tf.keras.losses.MeanSquaredError(),
+                'dummy': tf.keras.losses.MeanSquaredError()
+            })
 
     with self.subTest('loss_list_no_opt'):
       tff_model = keras_utils.from_keras_model(
