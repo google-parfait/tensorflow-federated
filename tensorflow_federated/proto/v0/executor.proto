@@ -26,6 +26,10 @@ service Executor {
   // call (it will block until the value becomes available).
   rpc Compute(ComputeRequest) returns (ComputeResponse) {}
 
+  // Configures executor to handle specified cardinalities.
+  rpc SetCardinalities(SetCardinalitiesRequest)
+      returns (SetCardinalitiesResponse) {}
+
   // TODO(b/134543154): Given that there is no support for asynchronous server
   // processing in Python gRPC, long-running calls may be a problem. Revisit
   // this and look for alternatives.
@@ -47,6 +51,7 @@ message ExecuteRequest {
     CreateSelectionRequest create_selection = 4;
     ComputeRequest compute = 5;
     DisposeRequest dispose = 7;
+    SetCardinalitiesRequest set_cardinalities = 8;
   }
   int32 sequence_number = 6;
 }
@@ -59,6 +64,7 @@ message ExecuteResponse {
     CreateSelectionResponse create_selection = 4;
     ComputeResponse compute = 5;
     DisposeResponse dispose = 7;
+    SetCardinalitiesResponse set_cardinalities = 8;
   }
   int32 sequence_number = 6;
 }
@@ -122,6 +128,19 @@ message DisposeRequest {
 }
 
 message DisposeResponse {}
+
+// A message used to configure the worker to execute a specified set of
+// cardinalities.
+message SetCardinalitiesRequest {
+  repeated Cardinality cardinalities = 1;
+
+  message Cardinality {
+    tensorflow_federated.v0.Placement placement = 1;
+    int32 cardinality = 2;
+  }
+}
+
+message SetCardinalitiesResponse {}
 
 // A representation of a value that's to be embedded in the executor, or that
 // is being returned as a result of a computation.

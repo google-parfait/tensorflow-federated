@@ -16,7 +16,7 @@
 import os
 import os.path
 import tempfile
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Collection, Optional, List, Mapping, Tuple, Union
 import zipfile
 
 import numpy as np
@@ -31,6 +31,7 @@ from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import type_utils
+from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -471,3 +472,30 @@ def deserialize_value(
   else:
     raise ValueError(
         'Unable to deserialize a value of type {}.'.format(which_value))
+
+
+CardinalitiesType = Mapping[placement_literals.PlacementLiteral, int]
+
+
+def serialize_cardinalities(
+    cardinalities: CardinalitiesType
+) -> List[executor_pb2.SetCardinalitiesRequest.Cardinality]:
+  serialized_cardinalities = []
+  for placement, cardinality in cardinalities.items():
+    cardinality_message = executor_pb2.SetCardinalitiesRequest.Cardinality(
+        placement=computation_pb2.Placement(uri=placement.uri),
+        cardinality=cardinality)
+    serialized_cardinalities.append(cardinality_message)
+  return serialized_cardinalities
+
+
+def deserialize_cardinalities(
+    serialized_cardinalities: Collection[
+        executor_pb2.SetCardinalitiesRequest.Cardinality]
+) -> CardinalitiesType:
+  cardinalities_dict = {}
+  for cardinality_spec in serialized_cardinalities:
+    literal = placement_literals.uri_to_placement_literal(
+        cardinality_spec.placement.uri)
+    cardinalities_dict[literal] = cardinality_spec.cardinality
+  return cardinalities_dict
