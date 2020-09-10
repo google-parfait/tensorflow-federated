@@ -182,9 +182,6 @@ py_test(
     srcs = ["federated_aggregations_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "manual",  # TODO(b/162455851): Fix flakiness.
-    ],
     deps = [
         ":federated_aggregations",
         "//tensorflow_federated/python/common_libs:structure",
