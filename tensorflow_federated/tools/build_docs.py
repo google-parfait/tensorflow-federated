@@ -18,7 +18,6 @@ import os
 from absl import app
 from absl import flags
 import tensorflow_docs
-
 import tensorflow_federated as tff
 
 FLAGS = flags.FLAGS
