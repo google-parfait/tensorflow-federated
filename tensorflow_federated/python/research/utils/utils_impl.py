@@ -113,24 +113,11 @@ def atomic_read_from_csv(csv_file):
   Returns:
     A `pandas.Dataframe`.
   """
-
-  # When reading from a zip, pandas.from_csv() is not happy taking a gfile,
-  # so we need a temp file on the local filesystem.
-  tmp_dir = tempfile.mkdtemp(prefix='atomic_read_from_csv_tmp')
-  # We put the output_file name last so we preserve the extension to allow
-  # inference of the compression format. Note that files with .zip extension
-  # (but not .bz2, .gzip, or .xv) have unexpected internal filenames due to
-  # https://github.com/pandas-dev/pandas/issues/26023, not because of something
-  # we are doing here.
-  tmp_name = os.path.join(tmp_dir, os.path.basename(csv_file))
-  assert not tf.io.gfile.exists(tmp_name), 'file [{!s}] exists'.format(tmp_name)
-  tf.io.gfile.copy(src=csv_file, dst=tmp_name, overwrite=True)
-  # Do the read from the temp file.
-  dataframe = pd.read_csv(tmp_name, index_col=0)
-  # Finally, clean up:
-  shutil.rmtree(tmp_dir)
-
-  return dataframe
+  return pd.read_csv(
+      tf.io.gfile.GFile(csv_file, mode='rb'),
+      compression='bz2' if csv_file.endswith('.bz2') else None,
+      engine='c',
+      index_col=0)
 
 
 def _optimizer_canonical_name(optimizer_cls):
