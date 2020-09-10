@@ -35,8 +35,7 @@ from tensorflow_federated.python.tensorflow_libs import graph_spec
 def _index_from_name(type_signature, name):
   if name is None:
     raise ValueError
-  source_names_list = [x[0] for x in structure.iter_elements(type_signature)]
-  return source_names_list.index(name)
+  return structure.name_to_index_map(type_signature)[name]
 
 
 def select_graph_output(comp, name=None, index=None):
@@ -95,13 +94,13 @@ def select_graph_output(comp, name=None, index=None):
         'Can only select output from a CompiledComputation with return type '
         'struct; you have attempted a selection from a CompiledComputation '
         'with return type {}'.format(binding_oneof))
-  proto_type = type_serialization.deserialize_type(proto.type)
-  py_typecheck.check_type(proto_type.result, computation_types.StructType)
+  comp_result_type = comp.type_signature.result
+  py_typecheck.check_type(comp_result_type, computation_types.StructType)
   if name is not None:
-    index = _index_from_name(proto_type.result, name)
+    index = _index_from_name(comp_result_type, name)
   result = graph_result_binding.struct.element[index]
-  result_type = proto_type.result[index]
-  type_signature = computation_types.FunctionType(proto_type.parameter,
+  result_type = comp_result_type[index]
+  type_signature = computation_types.FunctionType(comp.type_signature.parameter,
                                                   result_type)
   selected_proto = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
@@ -175,8 +174,8 @@ def permute_graph_inputs(comp, input_permutation):
     py_typecheck.check_type(index, int)
   proto = comp.proto
   graph_parameter_binding = proto.tensorflow.parameter
-  proto_type = type_serialization.deserialize_type(proto.type)
-  py_typecheck.check_type(proto_type.parameter, computation_types.StructType)
+  py_typecheck.check_type(comp.type_signature.parameter,
+                          computation_types.StructType)
   binding_oneof = graph_parameter_binding.WhichOneof('binding')
   if binding_oneof != 'struct':
     raise TypeError(
@@ -184,7 +183,8 @@ def permute_graph_inputs(comp, input_permutation):
         'struct; you have attempted a permutation with a CompiledComputation '
         'with parameter type {}'.format(binding_oneof))
 
-  original_parameter_type_elements = structure.to_elements(proto_type.parameter)
+  original_parameter_type_elements = structure.to_elements(
+      comp.type_signature.parameter)
   original_parameter_bindings = [
       x for x in graph_parameter_binding.struct.element
   ]
@@ -209,7 +209,7 @@ def permute_graph_inputs(comp, input_permutation):
   ]
   new_parameter_type = computation_types.StructType(new_parameter_type_elements)
   type_signature = computation_types.FunctionType(new_parameter_type,
-                                                  proto_type.result)
+                                                  comp.type_signature.result)
   permuted_proto = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
       tensorflow=pb.TensorFlow(
@@ -253,15 +253,16 @@ def bind_graph_parameter_as_tuple(comp, name=None):
   if name is not None:
     py_typecheck.check_type(name, str)
   proto = comp.proto
-  proto_type = type_serialization.deserialize_type(proto.type)
 
   parameter_binding = [proto.tensorflow.parameter]
-  parameter_type = computation_types.StructType([(name, proto_type.parameter)])
+  parameter_type = computation_types.StructType([
+      (name, comp.type_signature.parameter)
+  ])
   new_parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(element=parameter_binding))
 
   new_function_type = computation_types.FunctionType(parameter_type,
-                                                     proto_type.result)
+                                                     comp.type_signature.result)
   serialized_type = type_serialization.serialize_type(new_function_type)
   input_padded_proto = pb.Computation(
       type=serialized_type,
@@ -388,7 +389,6 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
   proto = comp.proto
   graph_def = proto.tensorflow.graph_def
   graph_parameter_binding = proto.tensorflow.parameter
-  proto_type = type_serialization.deserialize_type(proto.type)
   binding_oneof = graph_parameter_binding.WhichOneof('binding')
   if binding_oneof != 'struct':
     raise TypeError(
@@ -396,9 +396,10 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
         'struct; you have attempted to pad a CompiledComputation '
         'with parameter type {}'.format(binding_oneof))
   # This line provides protection against an improperly serialized proto
-  py_typecheck.check_type(proto_type.parameter, computation_types.StructType)
+  py_typecheck.check_type(comp.type_signature.parameter,
+                          computation_types.StructType)
   parameter_bindings = [x for x in graph_parameter_binding.struct.element]
-  parameter_type_elements = structure.to_elements(proto_type.parameter)
+  parameter_type_elements = structure.to_elements(comp.type_signature.parameter)
   type_signature_elements = structure.to_elements(type_signature)
   if len(parameter_bindings) > len(type_signature):
     raise ValueError('We can only pad graph input bindings, never mask them. '
@@ -416,8 +417,8 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
         'of the compiled computation in `pad_graph_inputs_to_match_type` '
         'must match the beginning of the proposed new type signature; '
         'you have proposed a parameter type of {} for a computation '
-        'with existing parameter type {}.'.format(type_signature,
-                                                  proto_type.parameter))
+        'with existing parameter type {}.'.format(
+            type_signature, comp.type_signature.parameter))
   g = tf.Graph()
   with g.as_default():
     tf.graph_util.import_graph_def(
@@ -441,7 +442,7 @@ def pad_graph_inputs_to_match_type(comp, type_signature):
 
   new_parameter_type = computation_types.StructType(type_signature_elements)
   new_function_type = computation_types.FunctionType(new_parameter_type,
-                                                     proto_type.result)
+                                                     comp.type_signature.result)
   serialized_type = type_serialization.serialize_type(new_function_type)
 
   input_padded_proto = pb.Computation(

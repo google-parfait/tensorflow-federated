@@ -69,7 +69,7 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
 
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
 
-    with self.assertRaises(ValueError):
+    with self.assertRaises(KeyError):
       compiled_computation_transforms.select_graph_output(foo, name='x')
 
   def test_select_graph_output_by_index_single_level_of_nesting(self):
