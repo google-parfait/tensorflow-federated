@@ -551,7 +551,7 @@ class ValueImplTest(parameterized.TestCase):
         str(federated_value.type_signature), '<a=int32,b=bool>@SERVER')
     federated_attribute = federated_value['a']
     self.assertEqual(str(federated_attribute.type_signature), 'int32@SERVER')
-    with self.assertRaises(ValueError):
+    with self.assertRaises(AttributeError):
       _ = federated_value['badkey']
 
   def test_getattr_resolution_federated_value_server(self):
@@ -578,7 +578,7 @@ class ValueImplTest(parameterized.TestCase):
     federated_attribute = federated_value.a
     self.assertEqual(str(federated_attribute.type_signature), '{int32}@CLIENTS')
 
-  def test_getattr_fails_federated_value_unknown_attr(self):
+  def test_getattr_raises_federated_value_unknown_attr(self):
     federated_value_clients = value_impl.to_value(
         building_blocks.Reference(
             'test',
@@ -587,7 +587,8 @@ class ValueImplTest(parameterized.TestCase):
         None, context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value_clients.type_signature), '<a=int32,b=bool>@CLIENTS')
-    with self.assertRaisesRegex(ValueError, r'has no element of name `c`'):
+    with self.assertRaisesRegex(AttributeError,
+                                r'There is no such attribute \'c\''):
       _ = federated_value_clients.c
     federated_value_server = value_impl.to_value(
         building_blocks.Reference(
@@ -597,8 +598,31 @@ class ValueImplTest(parameterized.TestCase):
         None, context_stack_impl.context_stack)
     self.assertEqual(
         str(federated_value_server.type_signature), '<a=int32,b=bool>@SERVER')
-    with self.assertRaisesRegex(ValueError, r'has no element of name `c`'):
+    with self.assertRaisesRegex(AttributeError,
+                                r'There is no such attribute \'c\''):
       _ = federated_value_server.c
+
+  def test_getattr_federated_value_with_none_default_missing_name(self):
+    federated_value = value_impl.to_value(
+        building_blocks.Reference(
+            'test',
+            computation_types.FederatedType([('a', tf.int32), ('b', tf.bool)],
+                                            placement_literals.SERVER, True)),
+        None, context_stack_impl.context_stack)
+    self.assertEqual(
+        str(federated_value.type_signature), '<a=int32,b=bool>@SERVER')
+    missing_attr = getattr(federated_value, 'c', None)
+    self.assertIsNone(missing_attr)
+
+  def test_getattr_non_federated_value_with_none_default_missing_name(self):
+    struct_value = value_impl.to_value(
+        building_blocks.Reference(
+            'test',
+            computation_types.StructType([('a', tf.int32), ('b', tf.bool)])),
+        None, context_stack_impl.context_stack)
+    self.assertEqual(str(struct_value.type_signature), '<a=int32,b=bool>')
+    missing_attr = getattr(struct_value, 'c', None)
+    self.assertIsNone(missing_attr)
 
   @executor_test_utils.executors
   def test_setattr_named_tuple_type_int(self):

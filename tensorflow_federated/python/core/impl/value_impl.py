@@ -142,6 +142,12 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     py_typecheck.check_type(name, str)
     _check_struct_or_federated_struct(self, name)
     if _is_federated_named_tuple(self):
+      if name not in structure.name_list(self.type_signature.member):
+        raise AttributeError(
+            'There is no such attribute \'{}\' in this federated tuple. Valid '
+            'attributes: ({})'.format(
+                name, ', '.join(dir(self.type_signature.member))))
+
       return ValueImpl(
           building_block_factory.create_federated_getattr_call(
               self._comp, name), self._context_stack)
