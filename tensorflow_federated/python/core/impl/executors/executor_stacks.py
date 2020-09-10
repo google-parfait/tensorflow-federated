@@ -13,6 +13,7 @@
 # limitations under the License.
 """A collection of constructors for basic types of executor stacks."""
 
+import asyncio
 import math
 from typing import Callable, List, Optional, Sequence
 
@@ -590,8 +591,31 @@ def remote_executor_factory(channels,
       remote_executor.RemoteExecutor(channel, rpc_mode, thread_pool_executor,
                                      dispose_batch_size) for channel in channels
   ]
-  executors = [_wrap_executor_in_threading_stack(e) for e in remote_executors]
-  flat_stack_fn = lambda _: executors
+
+  def _configure_remote_executor(ex, cardinalities):
+    """Configures `ex` to run the appropriate number of clients."""
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(ex.set_cardinalities(cardinalities))
+    return
+
+  def _configure_remote_workers(cardinalities):
+    if not cardinalities.get(placement_literals.CLIENTS):
+      for ex in remote_executors:
+        _configure_remote_executor(ex, cardinalities)
+      return [_wrap_executor_in_threading_stack(e) for e in remote_executors]
+
+    remaining_clients = cardinalities[placement_literals.CLIENTS]
+    clients_per_most_executors = remaining_clients // len(remote_executors)
+
+    for ex in remote_executors[:-1]:
+      _configure_remote_executor(
+          ex, {placement_literals.CLIENTS: clients_per_most_executors})
+      remaining_clients -= clients_per_most_executors
+    _configure_remote_executor(remote_executors[-1],
+                               {placement_literals.CLIENTS: remaining_clients})
+    return [_wrap_executor_in_threading_stack(e) for e in remote_executors]
+
+  flat_stack_fn = _configure_remote_workers
   unplaced_ex_factory = UnplacedExecutorFactory(use_caching=True)
   composing_executor_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,

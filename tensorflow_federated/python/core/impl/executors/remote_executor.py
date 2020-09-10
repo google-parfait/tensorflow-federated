@@ -17,6 +17,7 @@ import asyncio
 import itertools
 import queue
 import threading
+from typing import Mapping
 import weakref
 
 import absl.logging as logging
@@ -32,6 +33,7 @@ from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_service_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.types import placement_literals
 
 _STREAM_CLOSE_WAIT_SECONDS = 10
 
@@ -270,6 +272,21 @@ class RemoteExecutor(executor_base.Executor):
       # We don't care about the response, and so don't bother to await it.
       # Just start it as a task so that it runs at some point.
       asyncio.get_event_loop().create_task(send_request_fut)
+
+  @tracing.trace(span=True)
+  async def set_cardinalities(
+      self, cardinalities: Mapping[placement_literals.PlacementLiteral, int]):
+    serialized_cardinalities = executor_service_utils.serialize_cardinalities(
+        cardinalities)
+    request = executor_pb2.SetCardinalitiesRequest(
+        cardinalities=serialized_cardinalities)
+
+    if self._bidi_stream is None:
+      _request(self._stub.SetCardinalities, request)
+    else:
+      await self._bidi_stream.send_request(
+          executor_pb2.ExecuteRequest(set_cardinalities=request))
+    return
 
   @tracing.trace(span=True)
   async def create_value(self, value, type_spec=None):

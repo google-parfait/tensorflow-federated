@@ -38,8 +38,7 @@ def _create_localhost_remote_context(ports):
 def _create_localhost_server_contexts(ports):
   server_contexts = []
   for port in ports:
-    executor_factory = tff.framework.local_executor_factory(
-        num_clients=1).create_executor({})
+    executor_factory = tff.framework.local_executor_factory()
     server_context = tff.simulation.server_context(
         executor_factory, num_threads=1, port=port)
     server_contexts.append(server_context)
@@ -127,6 +126,7 @@ class ExampleTest(parameterized.TestCase):
   def test_temperature_sensor_example(self):
     to_float = lambda x: tf.cast(x, tf.float32)
     temperatures = [
+        tf.data.Dataset.range(10).map(to_float),
         tf.data.Dataset.range(20).map(to_float),
         tf.data.Dataset.range(30).map(to_float),
     ]
@@ -134,7 +134,7 @@ class ExampleTest(parameterized.TestCase):
 
     result = temperature_sensor_example.mean_over_threshold(
         temperatures, threshold)
-    self.assertEqual(result, 15.)
+    self.assertEqual(result, 12.5)
 
 
 class FederatedComputationTest(parameterized.TestCase):
@@ -211,6 +211,25 @@ class FederatedComputationTest(parameterized.TestCase):
 
     self.assertIsNotNone(result1)
     self.assertEqual(result1, result2)
+
+  @with_contexts
+  def test_polymorphism(self):
+
+    @tff.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
+    def map_add_one(federated_arg):
+      return tff.federated_map(add_one, federated_arg)
+
+    result1 = map_add_one([0, 1])
+    result2 = map_add_one([0, 1, 2])
+
+    self.assertIsNotNone(result1)
+    self.assertIsNotNone(result2)
+    self.assertLen(result1, 2)
+    self.assertLen(result2, 3)
 
 
 class TensorFlowComputationTest(parameterized.TestCase):

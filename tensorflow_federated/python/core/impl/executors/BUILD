@@ -319,7 +319,7 @@ py_library(
     srcs = ["executor_service.py"],
     srcs_version = "PY3",
     deps = [
-        ":executor_base",
+        ":executor_factory",
         ":executor_service_utils",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -337,12 +337,14 @@ py_test(
     deps = [
         ":eager_tf_executor",
         ":executor_base",
+        ":executor_factory",
         ":executor_service",
         ":executor_service_utils",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )
 
@@ -619,6 +621,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )
 
@@ -630,7 +633,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":execution_context",
+        ":executor_factory",
         ":executor_service",
+        ":executor_service_utils",
         ":executor_stacks",
         ":executor_test_utils",
         ":reference_resolving_executor",

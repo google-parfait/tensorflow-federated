@@ -31,7 +31,9 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.executors import execution_context
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_service
+from tensorflow_federated.python.core.impl.executors import executor_service_utils
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
@@ -51,21 +53,36 @@ def test_context(rpc_mode='REQUEST_REPLY'):
   server_pool = logging_pool.pool(max_workers=1)
   server = grpc.server(server_pool)
   server.add_insecure_port('[::]:{}'.format(port))
-  target_executor = executor_stacks.local_executor_factory(
-      num_clients=3).create_executor({})
-  tracer = executor_test_utils.TracingExecutor(target_executor)
-  service = executor_service.ExecutorService(tracer)
+  target_factory = executor_stacks.local_executor_factory(num_clients=3)
+  tracers = []
+
+  def _tracer_fn(cardinalities):
+    tracer = executor_test_utils.TracingExecutor(
+        target_factory.create_executor(cardinalities))
+    tracers.append(tracer)
+    return tracer
+
+  service = executor_service.ExecutorService(
+      executor_factory.ExecutorFactoryImpl(_tracer_fn))
   executor_pb2_grpc.add_ExecutorServicer_to_server(service, server)
   server.start()
+
   channel = grpc.insecure_channel('localhost:{}'.format(port))
+  stub = executor_pb2_grpc.ExecutorStub(channel)
+  serialized_cards = executor_service_utils.serialize_cardinalities(
+      {placement_literals.CLIENTS: 3})
+  stub.SetCardinalities(
+      executor_pb2.SetCardinalitiesRequest(cardinalities=serialized_cards))
+
   remote_exec = remote_executor.RemoteExecutor(channel, rpc_mode)
   executor = reference_resolving_executor.ReferenceResolvingExecutor(
       remote_exec)
   try:
-    yield collections.namedtuple('_', 'executor tracer')(executor, tracer)
+    yield collections.namedtuple('_', 'executor tracers')(executor, tracers)
   finally:
     executor.close()
-    tracer.close()
+    for tracer in tracers:
+      tracer.close()
     try:
       channel.close()
     except AttributeError:
@@ -444,7 +461,9 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
     self.assertEqual(result, 230)
 
     # Make sure exactly two selections happened.
-    seletions = [x for x in context.tracer.trace if x[0] == 'create_selection']
+    seletions = [
+        x for x in context.tracers[0].trace if x[0] == 'create_selection'
+    ]
     self.assertLen(seletions, 2)
 
   @parameterized.named_parameters(

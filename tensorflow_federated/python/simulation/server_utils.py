@@ -22,18 +22,22 @@ import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_service
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
 @contextlib.contextmanager
-def server_context(executor, num_threads, port, credentials=None, options=None):
+def server_context(ex_factory,
+                   num_threads,
+                   port,
+                   credentials=None,
+                   options=None):
   """Context manager yielding gRPC server hosting simulation component.
 
   Args:
-    executor: The executor to be hosted by the server.
+    ex_factory: The executor factory to be hosted by the server.
     num_threads: The number of network threads to use for handling gRPC calls.
     port: The port to listen on (for gRPC), must be a non-zero integer.
     credentials: The optional credentials to use for the secure connection if
@@ -49,7 +53,7 @@ def server_context(executor, num_threads, port, credentials=None, options=None):
   Raises:
     ValueError: If `num_threads` or `port` are invalid.
   """
-  py_typecheck.check_type(executor, executor_base.Executor)
+  py_typecheck.check_type(ex_factory, executor_factory.ExecutorFactory)
   py_typecheck.check_type(num_threads, int)
   py_typecheck.check_type(port, int)
   if credentials is not None:
@@ -59,7 +63,7 @@ def server_context(executor, num_threads, port, credentials=None, options=None):
   if port < 1:
     raise ValueError('The server port must be a positive integer.')
   try:
-    service = executor_service.ExecutorService(executor)
+    service = executor_service.ExecutorService(ex_factory)
     server_kwargs = {}
     if options is not None:
       server_kwargs['options'] = options

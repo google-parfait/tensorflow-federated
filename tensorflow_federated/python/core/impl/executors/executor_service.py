@@ -31,7 +31,7 @@ from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
-from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_service_utils
 
 
@@ -44,10 +44,12 @@ def _set_invalid_arg_err(context: grpc.ServicerContext, err):
 class ExecutorService(executor_pb2_grpc.ExecutorServicer):
   """A wrapper around a target executor that makes it into a gRPC service."""
 
-  def __init__(self, executor, *args, **kwargs):
-    py_typecheck.check_type(executor, executor_base.Executor)
+  def __init__(self, ex_factory: executor_factory.ExecutorFactory, *args,
+               **kwargs):
+    py_typecheck.check_type(ex_factory, executor_factory.ExecutorFactory)
     super().__init__(*args, **kwargs)
-    self._executor = executor
+    self._ex_factory = ex_factory
+    self._executor = None
     self._lock = threading.Lock()
 
     # The keys in this dictionary are value ids (the same as what we return
@@ -80,6 +82,14 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
           tracing.wrap_coroutine_in_current_trace_context(coro),
           self._event_loop)
 
+  @property
+  def executor(self):
+    if self._executor is None:
+      raise RuntimeError('The executor service has not yet been configured '
+                         'with cardinalities and cannot execute any '
+                         'concrete requests.')
+    return self._executor
+
   async def _HandleRequest(
       self,
       req: executor_pb2.ExecuteRequest,
@@ -109,6 +119,10 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     elif which == 'dispose':
       response = executor_pb2.ExecuteResponse(
           dispose=self.Dispose(req.dispose, context))
+    elif which == 'set_cardinalities':
+      response = executor_pb2.ExecuteResponse(
+          set_cardinalities=self.SetCardinalities(req.set_cardinalities,
+                                                  context))
     else:
       raise RuntimeError('Unknown request type')
     response.sequence_number = req.sequence_number
@@ -161,6 +175,22 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
 
     logging.debug('Closing bidi Execute stream')
 
+  def SetCardinalities(
+      self,
+      request: executor_pb2.SetCardinalitiesRequest,
+      context: grpc.ServicerContext,
+  ) -> executor_pb2.SetCardinalitiesResponse:
+    """Sets the cartinality for the executor service."""
+    py_typecheck.check_type(request, executor_pb2.SetCardinalitiesRequest)
+    try:
+      cardinalities_dict = executor_service_utils.deserialize_cardinalities(
+          request.cardinalities)
+      self._executor = self._ex_factory.create_executor(cardinalities_dict)
+      return executor_pb2.SetCardinalitiesResponse()
+    except (ValueError, TypeError) as err:
+      _set_invalid_arg_err(context, err)
+      return executor_pb2.SetCardinalitiesResponse()
+
   def CreateValue(
       self,
       request: executor_pb2.CreateValueRequest,
@@ -173,7 +203,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         value, value_type = (
             executor_service_utils.deserialize_value(request.value))
       value_id = str(uuid.uuid4())
-      coro = self._executor.create_value(value, value_type)
+      coro = self.executor.create_value(value, value_type)
       future_val = self._run_coro_threadsafe_with_tracing(coro)
       with self._lock:
         self._values[value_id] = future_val
@@ -201,7 +231,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         function = await asyncio.wrap_future(function_val)
         argument = await asyncio.wrap_future(
             argument_val) if argument_val is not None else None
-        return await self._executor.create_call(function, argument)
+        return await self.executor.create_call(function, argument)
 
       coro = _processing()
       result_fut = self._run_coro_threadsafe_with_tracing(coro)
@@ -233,7 +263,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
             *[asyncio.wrap_future(v) for v in elem_futures])
         elements = list(zip(elem_names, elem_values))
         struct = structure.Struct(elements)
-        return await self._executor.create_struct(struct)
+        return await self.executor.create_struct(struct)
 
       result_fut = self._run_coro_threadsafe_with_tracing(_processing())
       result_id = str(uuid.uuid4())
@@ -260,9 +290,9 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         source = await asyncio.wrap_future(source_fut)
         which_selection = request.WhichOneof('selection')
         if which_selection == 'name':
-          coro = self._executor.create_selection(source, name=request.name)
+          coro = self.executor.create_selection(source, name=request.name)
         else:
-          coro = self._executor.create_selection(source, index=request.index)
+          coro = self.executor.create_selection(source, index=request.index)
         return await coro
 
       result_fut = self._run_coro_threadsafe_with_tracing(_processing())
@@ -316,6 +346,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       with self._lock:
         for value_ref in request.value_ref:
           del self._values[value_ref.id]
+      self._ex_factory.clean_up_executors()
     except KeyError as err:
       _set_invalid_arg_err(context, err)
     return executor_pb2.DisposeResponse()
