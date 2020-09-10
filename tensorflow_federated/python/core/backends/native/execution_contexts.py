@@ -78,6 +78,14 @@ def create_thread_debugging_execution_context(num_clients=None,
       executor_fn=factory, compiler_fn=_debug_compiler)
 
 
+def set_thread_debugging_execution_context(num_clients=None,
+                                           clients_per_thread=1):
+  """Sets an execution context that executes computations locally."""
+  context = create_thread_debugging_execution_context(
+      num_clients=num_clients, clients_per_thread=clients_per_thread)
+  context_stack_impl.context_stack.set_default_context(context)
+
+
 def create_remote_execution_context(channels,
                                     rpc_mode='REQUEST_REPLY',
                                     thread_pool_executor=None,
