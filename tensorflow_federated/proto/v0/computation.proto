@@ -511,11 +511,6 @@ message PlacementType {
 // level of the API. Users of TFF will not need to declare them explicitly, but
 // template specialization will happen before computation logic gets serialized.
 message TensorFlow {
-  // WARNING: The internal structure of this message can change in a backwards-
-  // incompatible manner. At the moment, the implementation of the Core API is
-  // the only component that can construct, analyze, or create any dependencies
-  // on this structure.
-
   // The semantics is as follows: the graph embedded here will be instantiated,
   // with all placeholder components of the parameter bound to concrete tensors
   // or, in case of sequences, to iterators associated with concrete datasets.
