@@ -27,6 +27,37 @@ py_library(
 )
 
 py_library(
+    name = "quantile_estimation",
+    srcs = ["quantile_estimation.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":factory",
+        ":sum_factory",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/templates:iterative_process",
+    ],
+)
+
+py_test(
+    name = "quantile_estimation_test",
+    srcs = ["quantile_estimation_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":quantile_estimation",
+        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
+    ],
+)
+
+py_library(
     name = "sum_factory",
     srcs = ["sum_factory.py"],
     srcs_version = "PY3",
