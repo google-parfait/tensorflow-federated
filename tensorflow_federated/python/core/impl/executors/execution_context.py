@@ -184,12 +184,12 @@ class ExecutionContext(context_base.Context):
     with tracing.span('ExecutionContext', 'Invoke', span=True):
 
       @contextlib.contextmanager
-      def executor_closer(wrapped_executor):
+      def executor_closer(ex_factory, cardinalities):
         """Wraps an Executor into a closeable resource."""
         try:
-          yield wrapped_executor
+          yield ex_factory.create_executor(cardinalities)
         finally:
-          wrapped_executor.close()
+          ex_factory.clean_up_executors()
 
       if arg is not None:
         py_typecheck.check_type(arg, ExecutionContextValue)
@@ -199,8 +199,7 @@ class ExecutionContext(context_base.Context):
       else:
         cardinalities = {}
 
-      with executor_closer(
-          self._executor_factory.create_executor(cardinalities)) as executor:
+      with executor_closer(self._executor_factory, cardinalities) as executor:
         py_typecheck.check_type(executor, executor_base.Executor)
 
         def get_event_loop():
