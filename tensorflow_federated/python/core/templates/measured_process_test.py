@@ -24,6 +24,7 @@ from tensorflow_federated.python.core.api import values
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 
 
@@ -138,9 +139,7 @@ class MeasuredProcessTest(test.TestCase):
               result=intrinsics.federated_value(0, placements.SERVER),
               measurements=intrinsics.federated_value((), placements.SERVER))),
 
-    with self.assertRaisesRegex(
-        TypeError,
-        'The return type of next_fn must be assignable to the first parameter'):
+    with self.assertRaises(iterative_process.NextMustReturnStateError):
       measured_process.MeasuredProcess(
           initialize_fn=initialize_comp, next_fn=next_comp)
 
@@ -168,8 +167,7 @@ class MeasuredProcessTest(test.TestCase):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       measured_process.MeasuredProcess(initialize_fn=None, next_fn=add_int32)
 
-    with self.assertRaisesRegex(
-        TypeError, r'initialize_fn must be a no-arg tff.Computation'):
+    with self.assertRaises(iterative_process.InitializeFnHasArgsError):
 
       @computations.federated_computation(tf.int32)
       def one_arg_initialize(one_arg):
@@ -186,8 +184,8 @@ class MeasuredProcessTest(test.TestCase):
 
   def test_constructor_with_init_next_type_mismatch(self):
     initialize = _build_initialize_comp(0)
-    with self.assertRaisesRegex(
-        TypeError, r'The return type of initialize_fn must be assignable.*'):
+    with self.assertRaises(
+        iterative_process.NextMustAcceptStateFromInitializeError):
 
       @computations.federated_computation(tf.float32, tf.float32)
       def add_float32(current, val):
@@ -198,9 +196,7 @@ class MeasuredProcessTest(test.TestCase):
 
   def test_constructor_with_next_result_param_type_mismatch(self):
     initialize = _build_initialize_comp(0)
-    with self.assertRaisesRegex(
-        TypeError,
-        'The return type of next_fn must be assignable to the first parameter'):
+    with self.assertRaises(iterative_process.NextMustReturnStateError):
 
       @computations.federated_computation(tf.int32)
       def add_bad_result(_):

@@ -119,8 +119,7 @@ class IterativeProcessTest(test.TestCase):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       iterative_process.IterativeProcess(initialize_fn=None, next_fn=add_int32)
 
-    with self.assertRaisesRegex(
-        TypeError, r'initialize_fn must be a no-arg tff.Computation'):
+    with self.assertRaises(iterative_process.InitializeFnHasArgsError):
 
       @computations.federated_computation(tf.int32)
       def one_arg_initialize(one_arg):
@@ -135,8 +134,8 @@ class IterativeProcessTest(test.TestCase):
       iterative_process.IterativeProcess(initialize_fn=initialize, next_fn=None)
 
   def test_constructor_with_type_mismatch(self):
-    with self.assertRaisesRegex(
-        TypeError, r'The return type of initialize_fn must be assignable.*'):
+    with self.assertRaises(
+        iterative_process.NextMustAcceptStateFromInitializeError):
 
       @computations.federated_computation(tf.float32, tf.float32)
       def add_float32(current, val):
@@ -145,9 +144,7 @@ class IterativeProcessTest(test.TestCase):
       iterative_process.IterativeProcess(
           initialize_fn=initialize, next_fn=add_float32)
 
-    with self.assertRaisesRegex(
-        TypeError,
-        'The return type of next_fn must be assignable to the first parameter'):
+    with self.assertRaises(iterative_process.NextMustReturnStateError):
 
       @computations.federated_computation(tf.int32)
       def add_bad_result(_):
@@ -156,9 +153,7 @@ class IterativeProcessTest(test.TestCase):
       iterative_process.IterativeProcess(
           initialize_fn=initialize, next_fn=add_bad_result)
 
-    with self.assertRaisesRegex(
-        TypeError,
-        'The return type of next_fn must be assignable to the first parameter'):
+    with self.assertRaises(iterative_process.NextMustReturnStateError):
 
       @computations.federated_computation(tf.int32)
       def add_bad_multi_result(_):

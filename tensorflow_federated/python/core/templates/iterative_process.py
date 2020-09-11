@@ -17,6 +17,40 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 
 
+class InvalidConstructorArgumentsError(TypeError):
+  pass
+
+
+class InitializeFnHasArgsError(InvalidConstructorArgumentsError):
+
+  def __init__(self, initialize_fn):
+    message = ('`initialize_fn` must be a no-arg `tff.Computation`, but found '
+               f'parameter type:\n{initialize_fn.type_signature.parameter}')
+    super().__init__(message)
+
+
+class NextMustAcceptStateFromInitializeError(InvalidConstructorArgumentsError):
+
+  def __init__(self, initialize_result_type, next_parameter_type):
+    message = (
+        'The return type of `initialize_fn` must be assignable to the first '
+        'parameter of `next_fn`, but \n'
+        f'`initialize_fn` returned type:\n{initialize_result_type}\n'
+        f'`next_fn`\'s argument type is:\n{next_parameter_type}')
+    super().__init__(message)
+
+
+class NextMustReturnStateError(InvalidConstructorArgumentsError):
+
+  def __init__(self, next_result_type, state_type):
+    message = (
+        'The return type of `next_fn` must be assignable to the state type\n'
+        'returned by `initialize_fn` and accepted by `next_fn` but found\n'
+        f'`next_fn` which returns type:\n`{next_result_type}`\n'
+        f'which does not match state type:\n`{state_type}`')
+    super().__init__(message)
+
+
 class IterativeProcess(object):
   """A process that includes an initialization and iterated computation.
 
@@ -67,36 +101,35 @@ class IterativeProcess(object):
     """
     py_typecheck.check_type(initialize_fn, computation_base.Computation)
     if initialize_fn.type_signature.parameter is not None:
-      raise TypeError(
-          'initialize_fn must be a no-arg tff.Computation, but found parameter '
-          '{}'.format(initialize_fn.type_signature))
+      raise InitializeFnHasArgsError(initialize_fn)
     initialize_result_type = initialize_fn.type_signature.result
 
     py_typecheck.check_type(next_fn, computation_base.Computation)
-    if next_fn.type_signature.parameter.is_struct(
-    ) and next_fn.type_signature.parameter:
-      next_first_param_type = next_fn.type_signature.parameter[0]
+    next_parameter_type = next_fn.type_signature.parameter
+    # `next_first_parameter_type` may be `next_parameter_type` or
+    # `next_parameter_type[0]`, depending on which one was assignable from
+    # `initialize_result_type`.
+    if next_parameter_type.is_assignable_from(initialize_result_type):
+      # The only argument is the state type
+      state_type = next_parameter_type
+    elif (next_parameter_type.is_struct() and next_parameter_type and
+          next_parameter_type[0].is_assignable_from(initialize_result_type)):
+      # The first argument is the state type
+      state_type = next_parameter_type[0]
     else:
-      next_first_param_type = next_fn.type_signature.parameter
-    if not next_first_param_type.is_assignable_from(initialize_result_type):
-      raise TypeError('The return type of initialize_fn must be assignable '
-                      'to the first parameter of next_fn, but found\n'
-                      'initialize_fn.type_signature.result=\n{}\n'
-                      'next_fn.type_signature.parameter[0]=\n{}'.format(
-                          initialize_result_type, next_first_param_type))
+      raise NextMustAcceptStateFromInitializeError(initialize_result_type,
+                                                   next_parameter_type)
 
     next_result_type = next_fn.type_signature.result
-    if not next_first_param_type.is_assignable_from(next_result_type):
-      # This might be multiple output next_fn, check if the first argument might
-      # be the state. If still not the right type, raise an error.
-      if next_result_type.is_struct():
-        next_result_type = next_result_type[0]
-      if not next_first_param_type.is_assignable_from(next_result_type):
-        raise TypeError('The return type of next_fn must be assignable to the '
-                        'first parameter, but found\n'
-                        'next_fn.type_signature.parameter[0]=\n{}\n'
-                        'actual next_result_type=\n{}'.format(
-                            next_first_param_type, next_result_type))
+    if state_type.is_assignable_from(next_result_type):
+      # The whole return value is the state type
+      pass
+    elif (next_result_type.is_struct() and next_result_type and
+          state_type.is_assignable_from(next_result_type[0])):
+      # The first return value is state type
+      pass
+    else:
+      raise NextMustReturnStateError(next_result_type, state_type)
     self._initialize_fn = initialize_fn
     self._next_fn = next_fn
 
