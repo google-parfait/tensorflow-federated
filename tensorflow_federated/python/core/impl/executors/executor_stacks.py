@@ -592,27 +592,31 @@ def remote_executor_factory(channels,
                                      dispose_batch_size) for channel in channels
   ]
 
-  def _configure_remote_executor(ex, cardinalities):
+  def _configure_remote_executor(ex, cardinalities, loop):
     """Configures `ex` to run the appropriate number of clients."""
-    loop = asyncio.get_event_loop()
     loop.run_until_complete(ex.set_cardinalities(cardinalities))
     return
 
   def _configure_remote_workers(cardinalities):
-    if not cardinalities.get(placement_literals.CLIENTS):
-      for ex in remote_executors:
-        _configure_remote_executor(ex, cardinalities)
-      return [_wrap_executor_in_threading_stack(e) for e in remote_executors]
+    loop = asyncio.new_event_loop()
+    try:
+      if not cardinalities.get(placement_literals.CLIENTS):
+        for ex in remote_executors:
+          _configure_remote_executor(ex, cardinalities, loop)
+        return [_wrap_executor_in_threading_stack(e) for e in remote_executors]
 
-    remaining_clients = cardinalities[placement_literals.CLIENTS]
-    clients_per_most_executors = remaining_clients // len(remote_executors)
+      remaining_clients = cardinalities[placement_literals.CLIENTS]
+      clients_per_most_executors = remaining_clients // len(remote_executors)
 
-    for ex in remote_executors[:-1]:
+      for ex in remote_executors[:-1]:
+        _configure_remote_executor(
+            ex, {placement_literals.CLIENTS: clients_per_most_executors}, loop)
+        remaining_clients -= clients_per_most_executors
       _configure_remote_executor(
-          ex, {placement_literals.CLIENTS: clients_per_most_executors})
-      remaining_clients -= clients_per_most_executors
-    _configure_remote_executor(remote_executors[-1],
-                               {placement_literals.CLIENTS: remaining_clients})
+          remote_executors[-1], {placement_literals.CLIENTS: remaining_clients},
+          loop)
+    finally:
+      loop.close()
     return [_wrap_executor_in_threading_stack(e) for e in remote_executors]
 
   flat_stack_fn = _configure_remote_workers
