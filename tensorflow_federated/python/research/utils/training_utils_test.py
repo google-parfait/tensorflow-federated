@@ -199,12 +199,9 @@ class TrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
         trainable=list(state.model.trainable),
         non_trainable=list(state.model.non_trainable))
 
-    def assign_weights_to_keras_model(model, keras_model):
-      model.assign_weights_to(keras_model)
-
-    evaluate_fn = training_utils.build_evaluate_fn(
-        test_dataset, model_builder, loss_builder, metrics_builder,
-        assign_weights_to_keras_model)
+    evaluate_fn = training_utils.build_evaluate_fn(test_dataset, model_builder,
+                                                   loss_builder,
+                                                   metrics_builder)
 
     test_metrics = evaluate_fn(reference_model)
     self.assertIn('loss', test_metrics)

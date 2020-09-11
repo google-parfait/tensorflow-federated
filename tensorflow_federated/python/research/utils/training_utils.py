@@ -15,7 +15,7 @@
 
 import collections
 import functools
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
 from absl import logging
 import numpy as np
@@ -76,8 +76,11 @@ def convert_to_tuple_dataset(dataset):
         'tuple-like structure, found {} instead.'.format(example_structure))
 
 
-def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
-                      metrics_builder, assign_weights_to_keras_model):
+def build_evaluate_fn(
+    eval_dataset: tf.data.Dataset, model_builder: Callable[[], tf.keras.Model],
+    loss_builder: Callable[[], tf.keras.losses.Loss],
+    metrics_builder: Callable[[], List[tf.keras.metrics.Metric]]
+) -> Callable[[tff.learning.ModelWeights], Dict[str, Any]]:
   """Builds an evaluation function for a given model and test dataset.
 
   The evaluation function takes as input a fed_avg_schedule.ServerState, and
@@ -91,12 +94,9 @@ def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
     loss_builder: A no-arg function returning a `tf.keras.losses.Loss` object.
     metrics_builder: A no-arg function that returns a list of
       `tf.keras.metrics.Metric` objects.
-    assign_weights_to_keras_model: A function taking arguments
-      (reference_model, keras_model) that assigns the weights of reference_model
-      to keras_model.
 
   Returns:
-    A function that take as input the state of an iterative process and returns
+    A function that take as input a `tff.learning.ModelWeights` and returns
     a dict of (name, value) pairs for each associated evaluation metric.
   """
 
@@ -110,10 +110,15 @@ def build_evaluate_fn(eval_dataset, model_builder, loss_builder,
 
   eval_tuple_dataset = convert_to_tuple_dataset(eval_dataset)
 
-  def evaluate_fn(reference_model):
+  def evaluate_fn(reference_model: tff.learning.ModelWeights) -> Dict[str, Any]:
     """Evaluation function to be used during training."""
+
+    if not isinstance(reference_model, tff.learning.ModelWeights):
+      raise TypeError('The reference model used for evaluation must be a'
+                      '`tff.learning.ModelWeights` instance.')
+
     keras_model = compiled_eval_keras_model()
-    assign_weights_to_keras_model(reference_model, keras_model)
+    reference_model.assign_weights_to(keras_model)
     logging.info('Evaluating the current model')
     eval_metrics = keras_model.evaluate(eval_tuple_dataset, verbose=0)
     return dict(zip(keras_model.metrics_names, eval_metrics))
@@ -163,9 +168,11 @@ def build_sample_fn(
   return functools.partial(sample, random_seed=random_seed)
 
 
-def build_client_datasets_fn(train_dataset: tff.simulation.ClientData,
-                             train_clients_per_round: int,
-                             random_seed: Optional[int] = None):
+def build_client_datasets_fn(
+    train_dataset: tff.simulation.ClientData,
+    train_clients_per_round: int,
+    random_seed: Optional[int] = None
+) -> Callable[[int], List[tf.data.Dataset]]:
   """Builds the function for generating client datasets at each round.
 
   The function samples a number of clients (without replacement within a given
@@ -183,7 +190,7 @@ def build_client_datasets_fn(train_dataset: tff.simulation.ClientData,
       training process. Note that this will alter the global numpy random seed.
 
   Returns:
-    A function which returns a list of `tff.simulation.ClientData` objects at a
+    A function which returns a list of `tf.data.Dataset` objects at a
     given round round_num.
   """
   sample_clients_fn = build_sample_fn(

@@ -14,7 +14,7 @@
 """Federated EMNIST character recognition library using TFF."""
 
 import functools
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 from absl import logging
 import tensorflow as tf
@@ -30,7 +30,6 @@ EMNIST_MODELS = ['cnn', '2nn']
 
 def run_federated(
     iterative_process_builder: Callable[..., tff.templates.IterativeProcess],
-    assign_weights_fn: Callable[[Any, tf.keras.Model], None],
     client_epochs_per_round: int,
     client_batch_size: int,
     clients_per_round: int,
@@ -49,21 +48,21 @@ def run_federated(
   process that it applies to the task, using
   `tensorflow_federated.python.research.utils.training_loop`.
 
-   We assume that the iterative process has the following functional type
-   signatures:
+  We assume that the iterative process has the following functional type
+  signatures:
 
     *   `initialize`: `( -> S@SERVER)` where `S` represents the server state.
     *   `next`: `<S@SERVER, {B*}@CLIENTS> -> <S@SERVER, T@SERVER>` where `S`
         represents the server state, `{B*}` represents the client datasets,
         and `T` represents a python `Mapping` object.
 
+  Moreover, the server state must have an attribute `model` of type
+  `tff.learning.ModelWeights`.
+
   Args:
     iterative_process_builder: A function that accepts a no-arg `model_fn`, and
       returns a `tff.templates.IterativeProcess`. The `model_fn` must return a
       `tff.learning.Model`.
-    assign_weights_fn: A function that accepts the server state `S` and a
-      `tf.keras.Model`, and updates the weights in the Keras model. This is used
-      to do evaluation using Keras.
     client_epochs_per_round: An integer representing the number of epochs of
       training performed per client in each training round.
     client_batch_size: An integer representing the batch size used on clients.
@@ -136,8 +135,7 @@ def run_federated(
       eval_dataset=emnist_test,
       model_builder=model_builder,
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder,
-      assign_weights_to_keras_model=assign_weights_fn)
+      metrics_builder=metrics_builder)
 
   logging.info('Training model:')
   logging.info(model_builder().summary())

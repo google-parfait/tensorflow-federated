@@ -173,12 +173,10 @@ def main(argv):
         server_lr=server_lr_schedule,
         client_weight_fn=client_weight_fn)
 
-  assign_weights_fn = fed_avg_schedule.ServerState.assign_weights_to_keras_model
   hparam_dict = utils_impl.lookup_flag_values(utils_impl.get_hparam_flags())
 
   shared_args = utils_impl.lookup_flag_values(shared_flags)
   shared_args['iterative_process_builder'] = iterative_process_builder
-  shared_args['assign_weights_fn'] = assign_weights_fn
 
   if FLAGS.task == 'cifar100':
     hparam_dict['cifar100_crop_size'] = FLAGS.cifar100_crop_size

@@ -122,6 +122,17 @@ def run(iterative_process: tff.templates.IterativeProcess,
         rounds_per_profile: Optional[int] = 0):
   """Runs federated training for a given `tff.templates.IterativeProcess`.
 
+  We assume that the iterative process has the following functional type
+  signatures:
+
+    *   `initialize`: `( -> S@SERVER)` where `S` represents the server state.
+    *   `next`: `<S@SERVER, {B*}@CLIENTS> -> <S@SERVER, T@SERVER>` where `S`
+        represents the server state, `{B*}` represents the client datasets,
+        and `T` represents a python `Mapping` object.
+
+  Moreover, the server state must have an attribute `model` that can be passed
+  to `validation_fn`, `train_eval_fn`, and `test_fn` (if given).
+
   Args:
     iterative_process: A `tff.templates.IterativeProcess` instance to run.
     client_datasets_fn: Function accepting an integer argument (the round
@@ -177,6 +188,9 @@ def run(iterative_process: tff.templates.IterativeProcess,
 
   if not hasattr(initial_state, 'model'):
     raise TypeError('The server state must have a model attribute.')
+  elif not isinstance(initial_state.model, tff.learning.ModelWeights):
+    raise TypeError('The model attribute of the server state must be of type '
+                    '`tff.learning.ModelWeights`.')
 
   checkpoint_mngr, metrics_mngr, summary_writer, profiler = _setup_outputs(
       root_output_dir, experiment_name, hparam_dict, write_metrics_with_bz2,

@@ -9,7 +9,6 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated",
-        "//tensorflow_federated/python/research/differential_privacy:dp_utils",
         "//tensorflow_federated/python/research/optimization/shared:keras_metrics",
         "//tensorflow_federated/python/research/optimization/shared:optimizer_utils",
         "//tensorflow_federated/python/research/utils:training_loop",

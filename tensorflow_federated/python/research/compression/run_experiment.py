@@ -96,27 +96,6 @@ with utils_impl.record_new_flags() as training_loop_flags:
 FLAGS = flags.FLAGS
 
 
-def assign_weights_fn(reference_model, keras_model):
-  """Assign tff.learning.ModelWeights to the weights of a `tf.keras.Model`.
-
-  Args:
-    reference_model: the `tff.learning.ModelWeights` object to assign weights
-      from.
-    keras_model: the `tf.keras.Model` object to assign weights to.
-  """
-  if not isinstance(reference_model, tff.learning.ModelWeights):
-    raise TypeError('The reference model must be an instance of '
-                    'tff.learning.ModelWeights.')
-
-  def assign_weights(keras_weights, tff_weights):
-    for k, w in zip(keras_weights, tff_weights):
-      k.assign(w)
-
-  assign_weights(keras_model.trainable_weights, reference_model.trainable)
-  assign_weights(keras_model.non_trainable_weights,
-                 reference_model.non_trainable)
-
-
 def model_builder():
   """Create a keras model based on the original FedAvg CNN."""
   return emnist_models.create_original_fedavg_cnn_model(
@@ -206,8 +185,7 @@ def run_experiment():
       eval_dataset=emnist_test,
       model_builder=model_builder,
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder,
-      assign_weights_to_keras_model=assign_weights_fn)
+      metrics_builder=metrics_builder)
 
   client_optimizer_fn = functools.partial(
       utils_impl.create_optimizer_from_flags, 'client')

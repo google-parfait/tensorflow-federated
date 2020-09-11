@@ -67,22 +67,6 @@ class ServerState(object):
   client_lr_callback = attr.ib()
   server_lr_callback = attr.ib()
 
-  @classmethod
-  def assign_weights_to_keras_model(cls,
-                                    reference_model: tff.learning.ModelWeights,
-                                    keras_model: tf.keras.Model):
-    """Assign the model weights to the weights of a `tf.keras.Model`.
-
-    Args:
-      reference_model: the `tff.learning.ModelWeights` object to assign weights
-        from.
-      keras_model: the `tf.keras.Model` object to assign weights to.
-    """
-    if not isinstance(reference_model, tff.learning.ModelWeights):
-      raise TypeError('The reference model must be an instance of '
-                      'tff.learning.ModelWeights.')
-    reference_model.assign_weights_to(keras_model)
-
 
 @tf.function
 def server_update(model, server_optimizer, server_state, aggregated_gradients,

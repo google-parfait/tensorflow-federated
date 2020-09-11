@@ -39,10 +39,6 @@ def iterative_process_builder(model_fn, client_weight_fn=None):
       client_weight_fn=client_weight_fn)
 
 
-def assign_weights_fn(reference_model, keras_model):
-  reference_model.assign_weights_to(keras_model)
-
-
 class FederatedTasksTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -63,8 +59,6 @@ class FederatedTasksTest(tf.test.TestCase, parameterized.TestCase):
         total_rounds=total_rounds,
         max_batches_per_client=2,
         iterative_process_builder=iterative_process_builder,
-        assign_weights_fn=fed_avg_schedule.ServerState
-        .assign_weights_to_keras_model,
         rounds_per_checkpoint=10,
         rounds_per_eval=10,
         rounds_per_train_eval=10,

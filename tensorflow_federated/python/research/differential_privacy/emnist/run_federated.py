@@ -22,7 +22,6 @@ from absl import logging
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.differential_privacy import dp_utils
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import training_loop
 from tensorflow_federated.python.research.utils import training_utils
@@ -166,8 +165,7 @@ def main(argv):
       eval_dataset=emnist_test,
       model_builder=model_builder,
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder,
-      assign_weights_to_keras_model=dp_utils.assign_weights_to_keras_model)
+      metrics_builder=metrics_builder)
 
   logging.info('Training model:')
   logging.info(model_builder().summary())

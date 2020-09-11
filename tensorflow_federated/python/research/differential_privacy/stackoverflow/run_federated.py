@@ -22,7 +22,6 @@ from absl import logging
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.differential_privacy import dp_utils
 from tensorflow_federated.python.research.optimization.shared import keras_metrics
 from tensorflow_federated.python.research.optimization.shared import optimizer_utils
 from tensorflow_federated.python.research.utils import training_loop
@@ -197,8 +196,7 @@ def main(argv):
       model_builder=model_builder,
       eval_dataset=validation_dataset,
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder,
-      assign_weights_to_keras_model=dp_utils.assign_weights_to_keras_model)
+      metrics_builder=metrics_builder)
 
   test_fn = training_utils.build_evaluate_fn(
       model_builder=model_builder,
@@ -206,8 +204,7 @@ def main(argv):
       # evaluate on the entire test set.
       eval_dataset=validation_dataset.concatenate(test_dataset),
       loss_builder=loss_builder,
-      metrics_builder=metrics_builder,
-      assign_weights_to_keras_model=dp_utils.assign_weights_to_keras_model)
+      metrics_builder=metrics_builder)
 
   logging.info('Training model:')
   logging.info(model_builder().summary())
