@@ -388,6 +388,71 @@ class FederatedComputationWrapperTest(test.TestCase):
     )
 
 
+class AssertReturnsTest(test.TestCase):
+
+  def test_basic_non_tff_function_as_decorator_succeeds(self):
+
+    @computation_wrapper_instances.assert_returns(tf.int32)
+    def f():
+      return 5
+
+    self.assertEqual(f(), 5)
+
+  def test_basic_non_tff_function_as_decorator_fails(self):
+
+    @computation_wrapper_instances.assert_returns(tf.int32)
+    def f():
+      return [5]
+
+    with self.assertRaises(TypeError):
+      f()
+
+  def test_basic_non_tff_function_as_nondecorator_succeeds(self):
+
+    def f():
+      return 5
+
+    f_wrapped = computation_wrapper_instances.assert_returns(f, tf.int32)
+    self.assertEqual(f_wrapped(), 5)
+
+  def test_basic_non_tff_function_as_nondecorator_fails(self):
+
+    def f():
+      return [5]
+
+    f_wrapped = computation_wrapper_instances.assert_returns(f, tf.int32)
+    with self.assertRaises(TypeError):
+      f_wrapped()
+
+  def test_with_tensorflow_computation_succeeds(self):
+
+    @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
+    @computation_wrapper_instances.assert_returns(tf.int32)
+    def _(x):
+      return x
+
+  def test_with_tensorflow_computation_fails(self):
+    with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
+
+      @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
+      @computation_wrapper_instances.assert_returns(tf.int32)
+      def _(x):
+        return (x, x)
+
+  def test_with_tensorflow_computation_picking_up_named_parameters(self):
+
+    @computation_wrapper_instances.tensorflow_wrapper(tf.int32, tf.int32)
+    @computation_wrapper_instances.assert_returns(tf.int32)
+    def f(a, b):
+      del b
+      return a
+
+    self.assertEqual(
+        f.type_signature,
+        computation_types.FunctionType(
+            collections.OrderedDict(a=tf.int32, b=tf.int32), tf.int32))
+
+
 class ToComputationImplTest(test.TestCase):
 
   def test_raises_on_none(self):

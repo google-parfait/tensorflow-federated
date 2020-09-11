@@ -184,6 +184,15 @@ class Type(object, metaclass=abc.ABCMeta):
     """Returns whether values of `other` can be cast to and from this type."""
     return self.is_assignable_from(other) and other.is_assignable_from(self)
 
+  def check_identical_to(self, other: 'Type'):
+    """Raises if `other` and `Type` are not exactly identical."""
+    if not self.is_identical_to(other):
+      raise TypeError(f'Type {self} and {other} are not identical')
+
+  def is_identical_to(self, other: 'Type'):
+    """Returns whether or not `self` and `other` are exactly identical."""
+    return self == other
+
 
 class _ValueWithHash():
   """A wrapper for a value which combines it with a hashcode."""

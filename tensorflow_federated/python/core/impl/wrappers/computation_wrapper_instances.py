@@ -13,13 +13,17 @@
 # limitations under the License.
 """Definitions of specific computation wrapper instances."""
 
+import functools
+
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_utils
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_serialization
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 
@@ -90,3 +94,65 @@ def building_block_to_computation(building_block):
                           building_blocks.ComputationBuildingBlock)
   return computation_impl.ComputationImpl(building_block.proto,
                                           context_stack_impl.context_stack)
+
+
+def _assert_returns_helper(fn, expected_return_type):
+  """Helper for `assert_returns`."""
+  if not computation_wrapper.is_function(fn):
+    raise ValueError(f'`assert_raises` expected a function, but found {fn}.')
+
+  @functools.wraps(fn)
+  def wrapped_func(*args, **kwargs):
+    result = fn(*args, **kwargs)
+    if result is None:
+      raise ValueError('TFF computations may not return `None`. '
+                       'Consider instead returning `()`.')
+    result_type = type_conversions.infer_type(result)
+    if not result_type.is_identical_to(expected_return_type):
+      raise TypeError(
+          f'Value returned from `{fn.__name__}` did not match asserted type.'
+          f'Expected type:\n{expected_return_type}\n'
+          f'Found type:\n{result_type}\n')
+    return result
+
+  return wrapped_func
+
+
+def assert_returns(*args):
+  """Asserts that the decorated function returns values of the provided type.
+
+  Args:
+    *args: Either a Python function, or TFF type spec, or both (function first).
+
+  Returns:
+    If invoked with a function as an argument, returns an instance of a TFF
+    computation constructed based on this function. If called without one, as
+    in the typical decorator style of usage, returns a callable that expects
+    to be called with the function definition supplied as a parameter. See
+    also `tff.tf_computation` for an extended documentation.
+  """
+  if not args:
+    raise ValueError('`assert_return`s called without a return type')
+  if computation_wrapper.is_function(args[0]):
+    # If the first argument on the list is a Python function or a
+    # tf.function, this is the one that's being wrapped. This is the case of
+    # either a decorator invocation without arguments as "@xyz" applied to a
+    # function definition, of an inline invocation as "... = xyz(lambda....).
+    if len(args) != 2:
+      raise ValueError(
+          f'`assert_returns` expected two arguments: a function to decorate '
+          f'and an expected return type. Found {len(args)} arguments: {args}')
+    return _assert_returns_helper(args[0], computation_types.to_type(args[1]))
+  else:
+    # The function is being invoked as a decorator with arguments.
+    # The arguments come first, then the returned value is applied to
+    # the function to be wrapped.
+    if len(args) != 1:
+      raise ValueError(
+          f'`assert_returns` expected a single argument specifying the '
+          f'return type. Found {len(args)} arguments: {args}')
+    return_type = computation_types.to_type(args[0])
+    if return_type is None:
+      raise ValueError('Asserted return type may not be `None`. '
+                       'Consider instead a return type of `()`')
+    return lambda fn: _assert_returns_helper(fn, return_type)

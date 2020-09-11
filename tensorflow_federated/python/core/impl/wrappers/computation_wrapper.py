@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities for constructing decorators/wrappers for functions and defuns."""
+"""Utilities for constructing decorators/wrappers for functions and tf.function."""
 
 import collections
 import inspect
@@ -166,7 +166,7 @@ def _wrap(fn, parameter_types: Tuple[computation_types.Type, ...], wrapper_fn):
     debugging purposes).
 
   Args:
-    fn: The function or defun to wrap as a computation.
+    fn: The function or tf.function to wrap as a computation.
     parameter_types: Types of any arguments to `fn`.
     wrapper_fn: The Python callable that performs actual wrapping. The object to
       be returned by this function should be an instance of a
@@ -191,7 +191,7 @@ def _wrap(fn, parameter_types: Tuple[computation_types.Type, ...], wrapper_fn):
   _check_parameters(parameters)
 
   if (not parameter_types) and parameters:
-    # There is no TFF type specification, and the function/defun declares
+    # There is no TFF type specification, and the function/tf.function declares
     # parameters. Create a polymorphic template.
     wrapped_func = _wrap_polymorphic(fn, wrapper_fn)
   else:
@@ -203,6 +203,11 @@ def _wrap(fn, parameter_types: Tuple[computation_types.Type, ...], wrapper_fn):
   # in triple-quotes is not automatically transferred from the function on
   wrapped_func.__doc__ = getattr(fn, '__doc__', None)
   return wrapped_func
+
+
+def is_function(maybe_fn):
+  return (isinstance(maybe_fn, (types.FunctionType, types.MethodType)) or
+          function.is_tf_function(maybe_fn))
 
 
 class ComputationWrapper(object):
@@ -389,8 +394,8 @@ class ComputationWrapper(object):
 
     Returns:
       Either a result of wrapping, or a callable that expects a function,
-      method, or a defun and performs wrapping on it, depending on specific
-      usage pattern.
+      method, or a tf.function and performs wrapping on it, depending on
+      specific usage pattern.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
@@ -404,12 +409,12 @@ class ComputationWrapper(object):
       # to accidentally specify parameter type as a second argument.
       provided_types = ()
       return lambda fn: _wrap(fn, provided_types, self._wrapper_fn)
-    elif (isinstance(args[0], (types.FunctionType, types.MethodType)) or
-          function.is_tf_function(args[0])):
+    elif is_function(args[0]):
       # If the first argument on the list is a Python function, instance method,
-      # or a defun, this is the one that's being wrapped. This is the case of
-      # either a decorator invocation without arguments as "@xyz" applied to a
-      # function definition, of an inline invocation as "... = xyz(lambda....).
+      # or a tf.function, this is the one that's being wrapped. This is the case
+      # of either a decorator invocation without arguments as "@xyz" applied to
+      # a function definition, of an inline invocation as
+      # `... = xyz(lambda....).`
       # Any of the following arguments, if present, are the arguments to the
       # wrapper that are to be interpreted as the type specification.
       fn_to_wrap = args[0]

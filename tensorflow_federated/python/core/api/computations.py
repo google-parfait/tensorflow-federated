@@ -16,6 +16,9 @@
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
+assert_returns = computation_wrapper_instances.assert_returns
+
+
 def tf_computation(*args):
   """Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
