@@ -89,7 +89,7 @@ def get_emnist_datasets(client_batch_size: int,
 
   emnist_train = emnist_train.preprocess(preprocess_train_dataset)
   emnist_test = preprocess_test_dataset(
-      emnist_test.create_tf_dataset_from_all_clients()).cache()
+      emnist_test.create_tf_dataset_from_all_clients())
   return emnist_train, emnist_test
 
 
