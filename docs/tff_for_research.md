@@ -217,17 +217,15 @@ One approach is to let each client fine-tune a single global model (trained
 using federated learning) with their local data. This approach has connections
 to meta-learning, see, e.g., [this paper](https://arxiv.org/abs/1909.12488). An
 example of this approach is given in
-[`run_emnist_p13n.py`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/personalization/run_emnist_p13n.py).
-To explore and compare different fine-tuning strategies, you can:
+[`emnist_p13n_main.py`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples/personalization/emnist_p13n_main.py).
+To explore and compare different personalization strategies, you can:
 
-*   Implement a `tf.function` that starts from an initial model, trains and
-    evaluates a personalized model using each client's local datasets. An
-    example is
-    [`build_personalize_fn`](https://github.com/tensorflow/federated/blob/e157d7c2e2150f9e63c5c07a9ca17d741de510df/tensorflow_federated/python/research/personalization/p13n_utils.py#L36).
+*   Define a personalization strategy by implementing a `tf.function` that
+    starts from an initial model, trains and evaluates a personalized model
+    using each client's local datasets. An example is given by
+    [`build_personalize_fn`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples/personalization/p13n_utils.py).
 
 *   Define an `OrderedDict` that maps strategy names to the corresponding
-    `tf.function`s (see
-    [`personalize_fn_dict`](https://github.com/tensorflow/federated/blob/e157d7c2e2150f9e63c5c07a9ca17d741de510df/tensorflow_federated/python/research/personalization/run_emnist_p13n.py#L131)
-    for an example), and construct the
-    [TFF computation](https://github.com/tensorflow/federated/blob/e157d7c2e2150f9e63c5c07a9ca17d741de510df/tensorflow_federated/python/research/personalization/run_emnist_p13n.py#L152)
-    to evaluate those strategies.
+    personalization strategies, and use it as the `personalize_fn_dict` argument
+    in
+    [`tff.learning.build_personalization_eval`](https://www.tensorflow.org/federated/api_docs/python/tff/learning/build_personalization_eval).

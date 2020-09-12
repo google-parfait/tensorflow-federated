@@ -17,36 +17,12 @@ import collections
 import functools
 
 from absl import app
-from absl import flags
-
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.personalization.p13n_utils import build_personalize_fn
-from tensorflow_federated.python.research.personalization.p13n_utils import evaluate_fn
-from tensorflow_federated.python.research.utils.models import emnist_models
-
-# All parameters (except the last one) defined here are for FedAvg training.
-# For simplicity, parameters used in personalization (or `p13n` for short) are
-# explicitly set in the `main` function below.
-flags.DEFINE_integer('num_clients_per_round', 20,
-                     'Number of clients per FedAvg training round.')
-flags.DEFINE_integer('num_epochs_per_round', 10,
-                     'Number of training epochs in each FedAvg round.')
-flags.DEFINE_integer('batch_size', 20, 'Batch size used in FedAvg.')
-flags.DEFINE_integer('num_total_rounds', 10,
-                     'Number of total FedAvg training rounds.')
-flags.DEFINE_integer(
-    'num_rounds_per_p13n_eval', 5,
-    'Number of FedAvg training rounds between two p13n evals.')
-flags.DEFINE_bool(
-    'shuffle_clients_before_split', True,
-    'Whether to shuffle the clients before splitting into training and p13n.')
-
-FLAGS = flags.FLAGS
-
-SEED = 42  # Seed used when splitting the clients into training and p13n.
+from tensorflow_federated.python.examples.personalization.p13n_utils import build_personalize_fn
+from tensorflow_federated.python.examples.personalization.p13n_utils import evaluate_fn
 
 
 def _get_emnist_datasets():
@@ -57,9 +33,11 @@ def _get_emnist_datasets():
 
   def preprocess_train_data(dataset):
     """Pre-process the dataset for training the global model."""
-    return dataset.repeat(
-        FLAGS.num_epochs_per_round).map(element_fn).shuffle(1000).batch(
-            FLAGS.batch_size)
+    num_epochs_per_round = 10
+    batch_size = 20
+    buffer_size = 1000
+    return dataset.repeat(num_epochs_per_round).map(element_fn).shuffle(
+        buffer_size).batch(batch_size)
 
   def preprocess_p13n_data(dataset):
     """Pre-process the dataset for training/evaluating a personalized model."""
@@ -72,12 +50,9 @@ def _get_emnist_datasets():
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
       only_digits=False)  # EMNIST has 3400 clients.
 
-  if FLAGS.shuffle_clients_before_split:
-    # Shuffle the client ids before splitting into training and personalization.
-    client_ids = list(
-        np.random.RandomState(SEED).permutation(emnist_train.client_ids))
-  else:
-    client_ids = emnist_train.client_ids
+  # Shuffle the client ids before splitting into training and personalization.
+  client_ids = list(
+      np.random.RandomState(seed=42).permutation(emnist_train.client_ids))
 
   # The first 2500 clients are used for training a global model.
   federated_train_data = [
@@ -102,6 +77,40 @@ def _get_emnist_datasets():
   return federated_train_data, federated_p13n_data
 
 
+def _create_conv_dropout_model(only_digits=True):
+  """A convolutional model to use for EMNIST experiments.
+
+  Args:
+    only_digits: If True, uses a final layer with 10 outputs, for use with the
+      digits only EMNIST dataset. If False, uses 62 outputs for the larger
+      dataset.
+
+  Returns:
+    A `tf.keras.Model`.
+  """
+  data_format = 'channels_last'
+
+  model = tf.keras.models.Sequential([
+      tf.keras.layers.Conv2D(
+          32,
+          kernel_size=(3, 3),
+          activation='relu',
+          data_format=data_format,
+          input_shape=(28, 28, 1)),
+      tf.keras.layers.Conv2D(
+          64, kernel_size=(3, 3), activation='relu', data_format=data_format),
+      tf.keras.layers.MaxPool2D(pool_size=(2, 2), data_format=data_format),
+      tf.keras.layers.Dropout(0.25),
+      tf.keras.layers.Flatten(),
+      tf.keras.layers.Dense(128, activation='relu'),
+      tf.keras.layers.Dropout(0.5),
+      tf.keras.layers.Dense(
+          10 if only_digits else 62, activation=tf.nn.softmax),
+  ])
+
+  return model
+
+
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError('Too many command-line arguments.')
@@ -111,7 +120,7 @@ def main(argv):
 
   def model_fn():
     """Build a `tff.learning.Model` for training EMNIST."""
-    keras_model = emnist_models.create_conv_dropout_model(only_digits=False)
+    keras_model = _create_conv_dropout_model(only_digits=False)
     return tff.learning.from_keras_model(
         keras_model=keras_model,
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
@@ -145,15 +154,15 @@ def main(argv):
       build_personalize_fn,
       optimizer_fn=sgd_opt,
       train_batch_size=20,
-      max_num_epochs=10,
+      max_num_epochs=3,
       num_epochs_per_eval=1,
       test_batch_size=20)
-  adam_opt = lambda: tf.keras.optimizers.Adam(learning_rate=0.02)
+  adam_opt = lambda: tf.keras.optimizers.Adam(learning_rate=0.002)
   personalize_fn_dict['adam'] = functools.partial(
       build_personalize_fn,
       optimizer_fn=adam_opt,
       train_batch_size=20,
-      max_num_epochs=10,
+      max_num_epochs=3,
       num_epochs_per_eval=1,
       test_batch_size=20)
 
@@ -164,57 +173,60 @@ def main(argv):
       model_fn=model_fn,
       personalize_fn_dict=personalize_fn_dict,
       baseline_evaluate_fn=functools.partial(evaluate_fn, batch_size=10),
-      max_num_samples=900)  # Metrics from all p13n clients will be returned.
+      max_num_samples=100)  # Metrics from at most 100 clients will be returned.
 
-  # Start the training loop.
-  for round_idx in range(1, FLAGS.num_total_rounds + 1):
+  # Train a global model using the standard FedAvg algorithm.
+  num_total_rounds = 5
+  num_clients_per_round = 10
+  print(f'Running FedAvg for {num_total_rounds} training rounds...')
+  for _ in range(1, num_total_rounds + 1):
     sampled_train_data = list(
         np.random.choice(
-            federated_train_data, FLAGS.num_clients_per_round, replace=False))
+            federated_train_data, num_clients_per_round, replace=False))
     server_state, _ = iterative_process.next(server_state, sampled_train_data)
 
-    if round_idx % FLAGS.num_rounds_per_p13n_eval == 0:
-      # Invoke the constructed `tff.Computation`. Below we run `p13n_eval` for
-      # 18 rounds with 50 clients per round. This will take some time to finish.
-      # The returned `p13n_metrics` is a nested dictionary that stores all the
-      # personalization metrics from the clients.
-      p13n_metrics = p13n_eval(server_state.model, federated_p13n_data[:50])
-      p13n_metrics = p13n_metrics._asdict(recursive=True)  # Convert to a dict.
-      for i in range(1, 18):
-        current_p13n_metrics = p13n_eval(
-            server_state.model,
-            federated_p13n_data[i * 50:(i + 1) * 50])._asdict(recursive=True)
+  print('Evaluating the personalization strategies on the global model...')
+  # Run `p13n_eval` on a federated dataset of 50 randomly sampled clients.
+  # The returned `p13n_metrics` is a nested dictionary that stores the
+  # evaluation metrics from 50 clients.
+  num_clients_do_p13n_eval = 50
+  sampled_p13n_data = list(
+      np.random.choice(
+          federated_p13n_data, num_clients_do_p13n_eval, replace=False))
+  p13n_metrics = p13n_eval(server_state.model, sampled_p13n_data)
+  p13n_metrics = p13n_metrics._asdict(recursive=True)  # Convert to a dict.
+  # Specifically, `p13n_metrics` is an `OrderedDict` that maps
+  # key 'baseline_metrics' to the evaluation metrics of the initial global
+  # model (computed by `baseline_evaluate_fn` argument in `p13n_eval`), and
+  # maps keys (strategy names) in `personalize_fn_dict` to the evaluation
+  # metrics of the corresponding personalization strategies.
+  #
+  # Only metrics from at most `max_num_samples` participating clients are
+  # collected (clients are sampled without replacement). Each metric is
+  # mapped to a list of scalars (each scalar comes from one client). Metric
+  # values at the same position, e.g., `metric_1[i]`, `metric_2[i]`, ...,
+  # come from the same client.
+  #
+  # Users can save `p13n_metrics` to file for further analysis. For
+  # simplcity, we extract and print three values here:
+  # 1. mean accuracy of the initial global model;
+  # 2. mean accuracy of SGD-trained personalized models obtained at Epoch 1.
+  # 3. mean accuracy of Adam-trained personalized models obtained at Epoch 1.
+  global_model_accuracies = np.array(
+      p13n_metrics['baseline_metrics']['sparse_categorical_accuracy'])
+  mean_global_acc = np.mean(global_model_accuracies).item()
+  print(f'Mean accuracy of the global model: {mean_global_acc}.')
 
-        p13n_metrics = tf.nest.map_structure(
-            lambda a, b: tf.concat([a, b], axis=0), p13n_metrics,
-            current_p13n_metrics)
-      # Specifically, `p13n_metrics` is an `OrderedDict` that maps
-      # key 'baseline_metrics' to the evaluation metrics of the initial global
-      # model (computed by `baseline_evaluate_fn` argument in `p13n_eval`), and
-      # maps keys (strategy names) in `personalize_fn_dict` to the evaluation
-      # metrics of the corresponding personalization strategies.
-      #
-      # Only metrics from at most `max_num_samples` participating clients are
-      # collected (clients are sampled without replacement). Each metric is
-      # mapped to a list of scalars (each scalar comes from one client). Metric
-      # values at the same position, e.g., metric_1[i], metric_2[i]..., come
-      # from the same client.
-      #
-      # Users can save `p13n_metrics` to file for further analysis. For
-      # simplcity, we extract and print two values here:
-      # 1. mean accuracy of the initial global model;
-      # 2. mean accuracy of the personalized models obtained at Epoch 1.
-      print('Current Round {}'.format(round_idx))
+  print('Mean accuracy of the personalized models at Epoch 1:')
+  personalized_models_accuracies_sgd = np.array(
+      p13n_metrics['sgd']['epoch_1']['sparse_categorical_accuracy'])
+  mean_p13n_acc_sgd = np.mean(personalized_models_accuracies_sgd).item()
+  print(f'SGD-trained personalized models: {mean_p13n_acc_sgd}.')
 
-      global_model_accuracies = np.array(
-          p13n_metrics['baseline_metrics']['sparse_categorical_accuracy'])
-      print('Mean accuracy of the global model: {}'.format(
-          np.mean(global_model_accuracies).item()))
-
-      personalized_models_accuracies = np.array(
-          p13n_metrics['sgd']['epoch_1']['sparse_categorical_accuracy'])
-      print('Mean accuracy of the personalized models at Epoch 1: {}'.format(
-          np.mean(personalized_models_accuracies).item()))
+  personalized_models_accuracies_adam = np.array(
+      p13n_metrics['adam']['epoch_1']['sparse_categorical_accuracy'])
+  mean_p13n_acc_adam = np.mean(personalized_models_accuracies_adam).item()
+  print(f'Adam-trained personalized models: {mean_p13n_acc_adam}.')
 
 
 if __name__ == '__main__':

@@ -13,18 +13,20 @@
 # limitations under the License.
 """An example of personalization strategy.
 
-A personalization strategy is represented as a `tf.function` called
-`personalze_fn` below: it accepts a `tff.learning.Model` (with weights already
-initialized to the initial model weights when users invoke the tff.Computation),
-an unbatched `tf.data.Dataset` for train, an unbatched `tf.data.Dataset` for
-test, and an arbitrary `context` object (which is used to hold any extra
-information that a personalization strategy may use), trains a personalized
-model, and returns the evaluation metrics.
+A personalization strategy defines the process of training and evaluating a
+personalized model. It is a `tf.function`-decorated function, which accepts a
+`tff.learning.Model` (with weights already initialized to the initial model
+weights when users invoke the `tff.Computation`), an unbatched `tf.data.Dataset`
+for train, an unbatched `tf.data.Dataset` for test, and an arbitrary `context`
+object (which is used to hold any extra information that a personalization
+strategy may use), trains a personalized model, and returns the evaluation
+metrics.
 
-The example below trains a personalized model for `max_num_epochs` epochs, and
-evaluates the model every `num_epochs_per_eval` epoch, and records the metrics.
-The final evaluation metrics are represented as a nested `OrderedDict` of string
-metric names to scalar `tf.Tensor`s.
+The `personalze_fn` below is an example of personalization strategy. It trains a
+personalized model for `max_num_epochs` epochs, and evaluates the model every
+`num_epochs_per_eval` epoch, and records the metrics. The final evaluation
+metrics are represented as a nested `OrderedDict` of string metric names to
+scalar `tf.Tensor`s.
 """
 
 import collections
@@ -157,10 +159,7 @@ def evaluate_fn(model, dataset, batch_size):
 
   Note: The returned metrics are defined in `model.report_local_outputs`, which
   can be specified by the `metrics` argument when using
-  `tff.learning.from_keras_model` to build the input `tff.learning.Model`. In
-  addition to passing the `metrics` argument to `tff.learning.from_keras_model`,
-  users can always define extra metrics they want to evaluate inside this
-  `evaluate_fn` function.
+  `tff.learning.from_keras_model` to build the input `tff.learning.Model`.
 
   Args:
     model: A `tff.learning.Model`.

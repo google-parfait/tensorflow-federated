@@ -18,7 +18,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.personalization import p13n_utils
+from tensorflow_federated.python.examples.personalization import p13n_utils
 
 
 def _create_dataset():
@@ -45,7 +45,7 @@ def _model_fn():
       metrics=[tf.keras.metrics.MeanAbsoluteError()])
 
 
-class P13NUtilsTest(tf.test.TestCase):
+class P13nUtilsTest(tf.test.TestCase):
 
   def test_evaluate_fn_succeeds_with_valid_args(self):
     model = _model_fn()

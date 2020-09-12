@@ -1,6 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
-package(default_visibility = ["//tensorflow_federated/python/research"])
+package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])
 
@@ -22,13 +22,12 @@ py_test(
 )
 
 py_binary(
-    name = "run_emnist_p13n",
-    srcs = ["run_emnist_p13n.py"],
+    name = "emnist_p13n_main",
+    srcs = ["emnist_p13n_main.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
         ":p13n_utils",
         "//tensorflow_federated",
-        "//tensorflow_federated/python/research/utils/models:emnist_models",
     ],
 )
