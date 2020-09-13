@@ -88,6 +88,45 @@ class SizingExecutorTest(parameterized.TestCase):
     self.assertCountEqual(ex.broadcast_history, [[10, tf.int32]])
     self.assertCountEqual(ex.aggregate_history, [[1, tf.int32]])
 
+  def test_unknown_input_type(self):
+    ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
+
+    tensor_type = computation_types.TensorType(tf.int32, [None])
+
+    @computations.tf_computation(tensor_type)
+    def return_constant(x):
+      del x
+      return tf.constant(0)
+
+    async def _make():
+      v1 = await ex.create_value(return_constant)
+      v2 = await ex.create_value([1, 2, 3], tensor_type)
+      v3 = await ex.create_call(v1, v2)
+      return await v3.compute()
+
+    asyncio.get_event_loop().run_until_complete(_make())
+    self.assertCountEqual(ex.broadcast_history, [[3, tf.int32]])
+    self.assertCountEqual(ex.aggregate_history, [[1, tf.int32]])
+
+  def test_unknown_output_type(self):
+    ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
+
+    tensor_type = computation_types.TensorType(tf.int32, None)
+
+    @computations.tf_computation(tensor_type)
+    def return_constant(x):
+      return tf.range(x)
+
+    async def _make():
+      v1 = await ex.create_value(return_constant)
+      v2 = await ex.create_value(3, tensor_type)
+      v3 = await ex.create_call(v1, v2)
+      return await v3.compute()
+
+    asyncio.get_event_loop().run_until_complete(_make())
+    self.assertCountEqual(ex.broadcast_history, [[1, tf.int32]])
+    self.assertCountEqual(ex.aggregate_history, [[3, tf.int32]])
+
   def test_multiple_inputs(self):
     ex = sizing_executor.SizingExecutor(eager_tf_executor.EagerTFExecutor())
 

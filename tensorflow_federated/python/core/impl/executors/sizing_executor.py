@@ -59,7 +59,7 @@ def get_type_information(value, type_spec):
       lengths = tf.map_fn(tf.strings.length, value, dtype=tf.int32)
       num_elements = tf.reduce_sum(lengths)
     else:
-      num_elements = type_spec.shape.num_elements()
+      num_elements = tf.size(value)
     return [[num_elements, type_spec.dtype]]
 
   # If the type is a StructType we can continue traversing the type_spec.
