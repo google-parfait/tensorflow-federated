@@ -35,7 +35,7 @@ def _create_localhost_remote_context(ports):
   return context
 
 
-def _create_localhost_server_contexts(ports):
+def _create_localhost_worker_contexts(ports):
   server_contexts = []
   for port in ports:
     executor_factory = tff.framework.local_executor_factory()
@@ -45,7 +45,25 @@ def _create_localhost_server_contexts(ports):
   return server_contexts
 
 
-_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
+def _create_localhost_aggregator_contexts(worker_ports, aggregator_ports):
+
+  worker_contexts = _create_localhost_worker_contexts(worker_ports)
+
+  aggregator_contexts = []
+
+  for target_port, server_port in zip(worker_ports, aggregator_ports):
+    channel = [grpc.insecure_channel('localhost:{}'.format(target_port))]
+    ex_factory = tff.framework.remote_executor_factory(
+        channel, rpc_mode='REQUEST_REPLY')
+    server_context = tff.simulation.server_context(
+        ex_factory, num_threads=1, port=server_port)
+    aggregator_contexts.append(server_context)
+
+  return worker_contexts + aggregator_contexts
+
+
+_WORKER_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
+_AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 
 
 def _get_all_contexts():
@@ -53,8 +71,11 @@ def _get_all_contexts():
   return [
       ('native_local', tff.backends.native.create_local_execution_context()),
       ('native_remote',
-       _create_localhost_remote_context(_PORTS),
-       _create_localhost_server_contexts(_PORTS)),
+       _create_localhost_remote_context(_WORKER_PORTS),
+       _create_localhost_worker_contexts(_WORKER_PORTS)),
+      ('native_remote_intermediate_aggregator',
+       _create_localhost_remote_context(_AGGREGATOR_PORTS),
+       _create_localhost_aggregator_contexts(_WORKER_PORTS, _AGGREGATOR_PORTS)),
       ('native_sizing', tff.backends.native.create_sizing_execution_context()),
       ('native_thread_debug',
        tff.backends.native.create_thread_debugging_execution_context()),
@@ -269,8 +290,11 @@ class TensorFlowComputationTest(parameterized.TestCase):
   @with_contexts(
       ('native_local', tff.backends.native.create_local_execution_context()),
       ('native_remote',
-       _create_localhost_remote_context(_PORTS),
-       _create_localhost_server_contexts(_PORTS)),
+       _create_localhost_remote_context(_WORKER_PORTS),
+       _create_localhost_worker_contexts(_WORKER_PORTS)),
+      ('native_remote_intermediate_aggregator',
+       _create_localhost_remote_context(_AGGREGATOR_PORTS),
+       _create_localhost_aggregator_contexts(_WORKER_PORTS, _AGGREGATOR_PORTS)),
       ('native_sizing', tff.backends.native.create_sizing_execution_context()),
       ('native_thread_debug',
        tff.backends.native.create_thread_debugging_execution_context()),
@@ -292,8 +316,11 @@ class TensorFlowComputationTest(parameterized.TestCase):
   @with_contexts(
       ('native_local', tff.backends.native.create_local_execution_context()),
       ('native_remote',
-       _create_localhost_remote_context(_PORTS),
-       _create_localhost_server_contexts(_PORTS)),
+       _create_localhost_remote_context(_WORKER_PORTS),
+       _create_localhost_worker_contexts(_WORKER_PORTS)),
+      ('native_remote_intermediate_aggregator',
+       _create_localhost_remote_context(_AGGREGATOR_PORTS),
+       _create_localhost_aggregator_contexts(_WORKER_PORTS, _AGGREGATOR_PORTS)),
       ('native_sizing', tff.backends.native.create_sizing_execution_context()),
       ('native_thread_debug',
        tff.backends.native.create_thread_debugging_execution_context()),
