@@ -196,6 +196,17 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
     with self.assertRaisesRegex(ValueError, 'Please specify'):
       cd.ClientData.train_test_client_split(client_data, num_test_clients=0)
 
+  def test_split_train_test_fixed_seed(self):
+    client_data = self.get_test_client_data()
+
+    train_0, test_0 = cd.ClientData.train_test_client_split(
+        client_data, num_test_clients=3, seed=0)
+    train_1, test_1 = cd.ClientData.train_test_client_split(
+        client_data, num_test_clients=3, seed=0)
+
+    self.assertEqual(train_0.client_ids, train_1.client_ids)
+    self.assertEqual(test_0.client_ids, test_1.client_ids)
+
 
 if __name__ == '__main__':
   tf.test.main()

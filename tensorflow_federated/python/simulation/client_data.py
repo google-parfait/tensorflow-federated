@@ -204,8 +204,10 @@ class ClientData(object, metaclass=abc.ABCMeta):
 
   @classmethod
   def train_test_client_split(
-      cls, client_data: 'ClientData',
-      num_test_clients: int) -> Tuple['ClientData', 'ClientData']:
+      cls,
+      client_data: 'ClientData',
+      num_test_clients: int,
+      seed: Optional[int] = None) -> Tuple['ClientData', 'ClientData']:
     """Returns a pair of (train, test) `ClientData`.
 
     This method partitions the clients of `client_data` into two `ClientData`
@@ -221,6 +223,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
       num_test_clients: How many clients to hold out for testing. This can be at
         most len(client_data.client_ids) - 1, since we don't want to produce
         empty `ClientData`.
+      seed: Optional seed to fix shuffling of clients before splitting.
 
     Returns:
       A pair (train_client_data, test_client_data), where test_client_data
@@ -240,7 +243,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
                            len(client_data.client_ids), num_test_clients))
 
     train_client_ids = list(client_data.client_ids)
-    np.random.shuffle(train_client_ids)
+    np.random.RandomState(seed).shuffle(train_client_ids)
     # These clients will be added back into the training set at the end.
     clients_with_insufficient_batches = []
     test_client_ids = []
