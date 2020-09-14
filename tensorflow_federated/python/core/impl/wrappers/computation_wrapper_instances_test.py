@@ -14,6 +14,7 @@
 
 import collections
 
+import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
@@ -392,7 +393,7 @@ class AssertReturnsTest(test.TestCase):
 
   def test_basic_non_tff_function_as_decorator_succeeds(self):
 
-    @computation_wrapper_instances.assert_returns(tf.int32)
+    @computation_wrapper_instances.check_returns_type(tf.int32)
     def f():
       return 5
 
@@ -400,7 +401,7 @@ class AssertReturnsTest(test.TestCase):
 
   def test_basic_non_tff_function_as_decorator_fails(self):
 
-    @computation_wrapper_instances.assert_returns(tf.int32)
+    @computation_wrapper_instances.check_returns_type(tf.int32)
     def f():
       return [5]
 
@@ -412,7 +413,7 @@ class AssertReturnsTest(test.TestCase):
     def f():
       return 5
 
-    f_wrapped = computation_wrapper_instances.assert_returns(f, tf.int32)
+    f_wrapped = computation_wrapper_instances.check_returns_type(f, tf.int32)
     self.assertEqual(f_wrapped(), 5)
 
   def test_basic_non_tff_function_as_nondecorator_fails(self):
@@ -420,14 +421,14 @@ class AssertReturnsTest(test.TestCase):
     def f():
       return [5]
 
-    f_wrapped = computation_wrapper_instances.assert_returns(f, tf.int32)
+    f_wrapped = computation_wrapper_instances.check_returns_type(f, tf.int32)
     with self.assertRaises(TypeError):
       f_wrapped()
 
   def test_with_tensorflow_computation_succeeds(self):
 
     @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
-    @computation_wrapper_instances.assert_returns(tf.int32)
+    @computation_wrapper_instances.check_returns_type(tf.int32)
     def _(x):
       return x
 
@@ -435,14 +436,14 @@ class AssertReturnsTest(test.TestCase):
     with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
 
       @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
-      @computation_wrapper_instances.assert_returns(tf.int32)
+      @computation_wrapper_instances.check_returns_type(tf.int32)
       def _(x):
         return (x, x)
 
   def test_with_tensorflow_computation_picking_up_named_parameters(self):
 
     @computation_wrapper_instances.tensorflow_wrapper(tf.int32, tf.int32)
-    @computation_wrapper_instances.assert_returns(tf.int32)
+    @computation_wrapper_instances.check_returns_type(tf.int32)
     def f(a, b):
       del b
       return a
@@ -451,6 +452,53 @@ class AssertReturnsTest(test.TestCase):
         f.type_signature,
         computation_types.FunctionType(
             collections.OrderedDict(a=tf.int32, b=tf.int32), tf.int32))
+
+  def test_fails_with_mismatched_container_type(self):
+    with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
+
+      # This test fails because it `check_returns_type` with a `tuple`,
+      # but returns a `list`.
+      @computation_wrapper_instances.tensorflow_wrapper(tf.int32)
+      @computation_wrapper_instances.check_returns_type((tf.int32, tf.int32))
+      def _(a):
+        return [a, a]
+
+  def test_fails_with_more_general_tensorspec(self):
+    type_with_known_shape = computation_types.TensorType(tf.int32, [1])
+    type_with_unknown_shape = computation_types.TensorType(tf.int32, [None])
+
+    with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
+
+      @computation_wrapper_instances.tensorflow_wrapper(type_with_known_shape)
+      @computation_wrapper_instances.check_returns_type(type_with_unknown_shape)
+      def _(a):
+        return a
+
+  def test_attrs_type(self):
+
+    @attr.s(frozen=True, eq=False, slots=True)
+    class MyAttrs:
+      a = attr.ib()
+      b = attr.ib()
+
+    expected_return_type = MyAttrs(a=tf.int32, b=tf.int32)
+
+    @computation_wrapper_instances.tensorflow_wrapper
+    @computation_wrapper_instances.check_returns_type(expected_return_type)
+    def _():
+      return MyAttrs(a=0, b=0)
+
+  def test_attrs_type_in_def(self):
+
+    @attr.s(frozen=True, eq=False, slots=True)
+    class MyAttrs:
+      a = attr.ib(type=tf.int32)
+      b = attr.ib(type=tf.int32)
+
+    @computation_wrapper_instances.tensorflow_wrapper
+    @computation_wrapper_instances.check_returns_type(MyAttrs)
+    def _():
+      return MyAttrs(a=0, b=0)
 
 
 class ToComputationImplTest(test.TestCase):

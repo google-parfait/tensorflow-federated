@@ -16,7 +16,7 @@
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
-assert_returns = computation_wrapper_instances.assert_returns
+check_returns_type = computation_wrapper_instances.check_returns_type
 
 
 def tf_computation(*args):

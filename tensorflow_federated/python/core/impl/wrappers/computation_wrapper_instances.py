@@ -96,8 +96,8 @@ def building_block_to_computation(building_block):
                                           context_stack_impl.context_stack)
 
 
-def _assert_returns_helper(fn, expected_return_type):
-  """Helper for `assert_returns`."""
+def _check_returns_type_helper(fn, expected_return_type):
+  """Helper for `check_returns_type`."""
   if not computation_wrapper.is_function(fn):
     raise ValueError(f'`assert_raises` expected a function, but found {fn}.')
 
@@ -118,8 +118,38 @@ def _assert_returns_helper(fn, expected_return_type):
   return wrapped_func
 
 
-def assert_returns(*args):
-  """Asserts that the decorated function returns values of the provided type.
+def check_returns_type(*args):
+  """Checks that the decorated function returns values of the provided type.
+
+  This decorator can be used to ensure that a TFF computation returns a value
+  of the expected type. For example:
+
+  ```
+  @tff.tf_computation(tf.int32, tf.int32)
+  @tff.check_returns_type(tf.int32)
+  def add(a, b):
+    return a + b
+  ```
+
+  It can also be applied to non-TFF (Python) functions to ensure that the values
+  they return conform to the expected type.
+
+  Note that this assertion is run whenever the function is called. In the case
+  of `@tff.tf_computation` and `@tff.federated_computation`s, this means that
+  the assertion will run when the computation is traced. To enable this,
+  `@tff.check_returns_type` should be applied *inside* the `tff.tf_computation`:
+
+  ```
+  # YES:
+  @tff.tf_computation(...)
+  @tff.check_returns_type(...)
+  ...
+
+  # NO:
+  @tff.check_returns_type(...) # Don't put this before the line below
+  @tff.tf_computation(...)
+  ...
+  ```
 
   Args:
     *args: Either a Python function, or TFF type spec, or both (function first).
@@ -140,19 +170,20 @@ def assert_returns(*args):
     # function definition, of an inline invocation as "... = xyz(lambda....).
     if len(args) != 2:
       raise ValueError(
-          f'`assert_returns` expected two arguments: a function to decorate '
+          f'`check_returns_type` expected two arguments: a function to decorate '
           f'and an expected return type. Found {len(args)} arguments: {args}')
-    return _assert_returns_helper(args[0], computation_types.to_type(args[1]))
+    return _check_returns_type_helper(args[0],
+                                      computation_types.to_type(args[1]))
   else:
     # The function is being invoked as a decorator with arguments.
     # The arguments come first, then the returned value is applied to
     # the function to be wrapped.
     if len(args) != 1:
       raise ValueError(
-          f'`assert_returns` expected a single argument specifying the '
+          f'`check_returns_type` expected a single argument specifying the '
           f'return type. Found {len(args)} arguments: {args}')
     return_type = computation_types.to_type(args[0])
     if return_type is None:
       raise ValueError('Asserted return type may not be `None`. '
                        'Consider instead a return type of `()`')
-    return lambda fn: _assert_returns_helper(fn, return_type)
+    return lambda fn: _check_returns_type_helper(fn, return_type)

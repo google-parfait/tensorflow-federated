@@ -34,7 +34,7 @@ from tensorflow_federated.python.core.api.computation_types import StructWithPyt
 from tensorflow_federated.python.core.api.computation_types import TensorType
 from tensorflow_federated.python.core.api.computation_types import to_type
 from tensorflow_federated.python.core.api.computation_types import Type
-from tensorflow_federated.python.core.api.computations import assert_returns
+from tensorflow_federated.python.core.api.computations import check_returns_type
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
 from tensorflow_federated.python.core.api.intrinsics import federated_aggregate
