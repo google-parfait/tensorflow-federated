@@ -245,8 +245,12 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
 
   def __hash__(self):
     if self._cached_hash is None:
-      self._cached_hash = hash(self.proto.SerializeToString(deterministic=True))
+      self._cached_hash = self._uncached_hash()
     return self._cached_hash
+
+  @abc.abstractmethod
+  def _uncached_hash(self):
+    raise NotImplementedError
 
 
 class Reference(ComputationBuildingBlock):
@@ -308,6 +312,9 @@ class Reference(ComputationBuildingBlock):
   @property
   def context(self):
     return self._context
+
+  def _uncached_hash(self):
+    return hash((self._name, self.type_signature))
 
   def __repr__(self):
     return 'Reference(\'{}\', {!r}{})'.format(
@@ -400,6 +407,9 @@ class Selection(ComputationBuildingBlock):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         selection=selection)
+
+  def _uncached_hash(self):
+    return hash((self._source, self._name, self._index))
 
   def is_selection(self):
     return True
@@ -501,6 +511,9 @@ class Struct(ComputationBuildingBlock, structure.Struct):
         type=type_serialization.serialize_type(self.type_signature),
         struct=pb.Struct(element=elements))
 
+  def _uncached_hash(self):
+    return structure.Struct.__hash__(self)
+
   def is_struct(self):
     return True
 
@@ -587,6 +600,9 @@ class Call(ComputationBuildingBlock):
       call = pb.Call(function=self._function.proto)
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature), call=call)
+
+  def _uncached_hash(self):
+    return hash((self._function, self._argument))
 
   def is_call(self):
     return True
@@ -676,6 +692,9 @@ class Lambda(ComputationBuildingBlock):
     # `pb.Computation`.
     # https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
     return pb.Computation(type=type_signature, **{'lambda': fn})  # pytype: disable=wrong-keyword-args
+
+  def _uncached_hash(self):
+    return hash((self._parameter_name, self._parameter_type, self._result))
 
   def is_lambda(self):
     return True
@@ -797,6 +816,9 @@ class Block(ComputationBuildingBlock):
                 'result': self._result.proto
             }))
 
+  def _uncached_hash(self):
+    return hash((tuple(self._locals), self._result))
+
   def is_block(self):
     return True
 
@@ -859,6 +881,9 @@ class Intrinsic(ComputationBuildingBlock):
         type=type_serialization.serialize_type(self.type_signature),
         intrinsic=pb.Intrinsic(uri=self._uri))
 
+  def _uncached_hash(self):
+    return hash((self._uri, self.type_signature))
+
   def is_intrinsic(self):
     return True
 
@@ -913,6 +938,9 @@ class Data(ComputationBuildingBlock):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         data=pb.Data(uri=self._uri))
+
+  def _uncached_hash(self):
+    return hash((self._uri, self.type_signature))
 
   def is_data(self):
     return True
@@ -969,6 +997,9 @@ class CompiledComputation(ComputationBuildingBlock):
   def _proto(self) -> pb.Computation:
     return self._proto_representation
 
+  def _uncached_hash(self):
+    return hash(self._proto_representation.SerializeToString())
+
   def is_compiled_computation(self):
     return True
 
@@ -1014,6 +1045,9 @@ class Placement(ComputationBuildingBlock):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         placement=pb.Placement(uri=self._literal.uri))
+
+  def _uncached_hash(self):
+    return hash(self._literal)
 
   def is_placement(self):
     return True

@@ -18,7 +18,7 @@ import collections
 import itertools
 import operator
 import typing
-from typing import Callable, Set, Tuple
+from typing import Callable, Dict, Set, Tuple
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
@@ -1157,37 +1157,9 @@ def has_unique_names(comp):
   return unique
 
 
-class BuildingBlockKeyedMapping(collections.abc.MutableMapping):
-  """Dictlike structure keyed by `building_blocks.ComputationBuildingBlocks`."""
-
-  def __init__(self):
-    self._comps = []
-    self._mapping = {}
-
-  def __delitem__(self, comp: building_blocks.ComputationBuildingBlock):
-    del self._mapping[id(comp)]
-    self._comps.remove(comp)
-
-  def __getitem__(self, comp: building_blocks.ComputationBuildingBlock):
-    comp_id = id(comp)
-    return self._mapping[comp_id]
-
-  def __iter__(self):
-    return (x for x in self._comps)
-
-  def __len__(self):
-    return len(self._mapping)
-
-  def __setitem__(self, comp: building_blocks.ComputationBuildingBlock,
-                  value: Set[str]):
-    if comp not in self._comps:
-      self._comps.append(comp)
-    self._mapping[id(comp)] = value
-
-
 def get_map_of_unbound_references(
     comp: building_blocks.ComputationBuildingBlock
-) -> BuildingBlockKeyedMapping:
+) -> Dict[building_blocks.ComputationBuildingBlock, Set[str]]:
   """Gets a Python `dict` of unbound references in `comp`, keyed by Python `id`.
 
   Compuations that are equal will have the same collections of unbounded
@@ -1203,7 +1175,7 @@ def get_map_of_unbound_references(
     subtree of that compuation.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  references = BuildingBlockKeyedMapping()
+  references = {}
 
   def _update(comp):
     """Updates the Python dict of references."""
