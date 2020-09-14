@@ -188,9 +188,6 @@ def run(iterative_process: tff.templates.IterativeProcess,
 
   if not hasattr(initial_state, 'model'):
     raise TypeError('The server state must have a model attribute.')
-  elif not isinstance(initial_state.model, tff.learning.ModelWeights):
-    raise TypeError('The model attribute of the server state must be of type '
-                    '`tff.learning.ModelWeights`.')
 
   checkpoint_mngr, metrics_mngr, summary_writer, profiler = _setup_outputs(
       root_output_dir, experiment_name, hparam_dict, write_metrics_with_bz2,
