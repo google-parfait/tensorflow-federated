@@ -14,6 +14,7 @@
 
 import asyncio
 import collections
+from typing import Optional
 from absl.testing import parameterized
 
 import numpy as np
@@ -29,6 +30,15 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
+
+
+def _get_first_logical_device(
+    device_type: Optional[str]) -> Optional[tf.config.LogicalDevice]:
+  if device_type is None:
+    return None
+  tf_devices = tf.config.list_logical_devices(device_type=device_type)
+  device = tf_devices[0] if tf_devices else None
+  return device
 
 
 class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
@@ -175,8 +185,8 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
                                   ('TPU', 'TPU'))
-  def test_wrap_function_on_all_available_logical_devices(self, device_str):
-    for device in tf.config.list_logical_devices(device_str):
+  def test_wrap_function_on_all_available_logical_devices(self, device_type):
+    for device in tf.config.list_logical_devices(device_type):
       self.assertTrue(
           self._get_wrap_function_on_device(device).device.endswith(
               device.name))
@@ -196,8 +206,8 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
                                   ('TPU', 'TPU'))
-  def test_embed_tensorflow_computation_succeeds_on_devices(self, device_str):
-    for device in tf.config.list_logical_devices(device_str):
+  def test_embed_tensorflow_computation_succeeds_on_devices(self, device_type):
+    for device in tf.config.list_logical_devices(device_type):
       self.assertTrue(
           self._get_embed_tensorflow_computation_succeeds_with_device(
               device).device.endswith(device.name))
@@ -207,7 +217,10 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     if len(logical_gpus) > 1:
       self.skipTest('Skip the test if multi-GPUs, checkout the MultiGPUTests')
 
-  def test_get_no_arg_wrapped_function_from_comp_with_dataset_reduce(self):
+  @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
+                                  ('device_gpu', 'GPU'))
+  def test_get_no_arg_wrapped_function_from_comp_with_dataset_reduce(
+      self, device_type):
 
     self._skip_in_multi_gpus()
 
@@ -219,10 +232,13 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
         computation_impl.ComputationImpl.get_proto(comp),
         must_pin_function_to_cpu=False,
         param_type=None,
-        device=None)
+        device=_get_first_logical_device(device_type))
     self.assertEqual(wrapped_fn(), np.int64(45))
 
-  def test_get_wrapped_function_from_comp_raises_with_incorrect_binding(self):
+  @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
+                                  ('device_gpu', 'GPU'))
+  def test_get_wrapped_function_from_comp_raises_with_incorrect_binding(
+      self, device_type):
 
     self._skip_in_multi_gpus()
 
@@ -240,7 +256,10 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(TypeError,
                                 'Caught exception trying to prune graph.*'):
       eager_tf_executor._get_wrapped_function_from_comp(
-          comp, must_pin_function_to_cpu=False, param_type=None, device=None)
+          comp,
+          must_pin_function_to_cpu=False,
+          param_type=None,
+          device=_get_first_logical_device(device_type))
 
   def test_check_dataset_reduce_in_multi_gpu_no_mgpu_no_raise(self):
     self._skip_in_multi_gpus()
@@ -298,8 +317,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
                                   ('TPU', 'TPU'))
-  def test_to_representation_for_type_succeeds_on_device(self, device_str):
-    for device in tf.config.list_logical_devices(device_str):
+  def test_to_representation_for_type_succeeds_on_device(self, device_type):
+    for device in tf.config.list_logical_devices(device_type):
       self.assertTrue(
           self._get_to_representation_for_type_succeeds_on_device(
               device).device.endswith(device.name))
