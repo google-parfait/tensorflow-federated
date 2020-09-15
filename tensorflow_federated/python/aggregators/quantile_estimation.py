@@ -108,14 +108,21 @@ class PrivateQuantileEstimatorProcess(iterative_process.IterativeProcess):
 
     super().__init__(init_fn, next_fn)
 
-  @classmethod
-  def get_current_estimate(cls, state):
-    """Gets the most recent estimate of the given quantile from the state.
+    self._current_estimate_fn = computations.tf_computation(
+        lambda state: state[0].current_estimate,
+        init_fn.type_signature.result.member)
 
-    Args:
-      state: The state of a `PrivateQuantileEstimatorProcess`.
+  @property
+  def get_current_estimate(self):
+    """A `tff.Computation` that computes the current estimate from `state`.
+
+    Given a `state` controlled by this process, computes and returns the most
+    recent estimate of the given quantile.
+
+    Note that this computation operates on types without placements, and thus
+    can be used with `state` residing either on `SERVER` or `CLIENTS`.
 
     Returns:
-      The most recent estimate of the given quantile.
+      A `tff.Computation`.
     """
-    return state[0].current_estimate
+    return self._current_estimate_fn

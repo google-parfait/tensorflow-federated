@@ -61,6 +61,11 @@ class PrivateQEComputationTest(test.TestCase, parameterized.TestCase):
         computation_types.FunctionType(
             parameter=None, result=server_state_type),
         process.initialize.type_signature)
+    self.assertEqual(
+        computation_types.FunctionType(
+            parameter=server_state_type.member,
+            result=computation_types.to_type(tf.float32)),
+        process.get_current_estimate.type_signature)
 
     client_value_type = computation_types.FederatedType(tf.float32,
                                                         placements.CLIENTS)
