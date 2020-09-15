@@ -88,12 +88,16 @@ class CanonicalFormTest(absltest.TestCase):
       self.fail('Raised TypeError unexpectedly.')
 
   def test_init_does_not_raise_type_error_with_unknown_dimensions(self):
+    server_state_type = computation_types.TensorType(
+        shape=[None], dtype=tf.int32)
 
     @computations.tf_computation
     def initialize():
-      return tf.constant(0)
+      # Return a value of a type assignable to, but not equal to
+      # `server_state_type`
+      return tf.constant([1, 2, 3])
 
-    @computations.tf_computation(tf.int32)
+    @computations.tf_computation(server_state_type)
     def prepare(server_state):
       del server_state  # Unused
       return tf.constant(1.0)
@@ -134,12 +138,15 @@ class CanonicalFormTest(absltest.TestCase):
     def bitwidth():
       return []
 
-    @computations.tf_computation(tf.int32,
+    @computations.tf_computation(server_state_type,
                                  (tf.float32, computation_types.StructType([])))
     def update(server_state, global_update):
       del server_state  # Unused
       del global_update  # Unused
-      return tf.constant(1), []
+      # Return a new server state value whose type is assignable but not equal
+      # to `server_state_type`, and which is different from the type returned
+      # by `initialize`.
+      return tf.constant([1]), []
 
     try:
       canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,

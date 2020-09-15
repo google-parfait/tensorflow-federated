@@ -393,14 +393,14 @@ class CanonicalForm(object):
           'The `update` computation returns a result  of type {} that is not '
           'a two-tuple.'.format(update.type_signature.result))
 
-    if not update.type_signature.result[0].is_equivalent_to(
-        initialize.type_signature.result):
+    updated_state_type = update.type_signature.result[0]
+    if not prepare_arg_type.is_assignable_from(updated_state_type):
       raise TypeError(
-          'The `update` computation returns a result tuple with type {} as '
-          'the first element (the updated state of the server), which does '
-          'not match the result type {} of `initialize`.'.format(
-              update.type_signature.result[0],
-              initialize.type_signature.result))
+          'The `update` computation returns a result tuple whose first element '
+          f'(the updated state type of the server) is type:\n'
+          f'{updated_state_type}\n'
+          f'which is not assignable to the state parameter type of `prepare`:\n'
+          f'{prepare_arg_type}')
 
     self._initialize = initialize
     self._prepare = prepare
