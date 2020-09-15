@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import contextlib
 
 from absl import flags
@@ -300,6 +301,72 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
       self.assertNear(lr_schedule(13), 1.0, err=1e-5)
       self.assertNear(lr_schedule(109), 0.2, err=1e-5)
       self.assertNear(lr_schedule(409), 0.1, err=1e-5)
+
+
+class RemoveUnusedFlagsTest(tf.test.TestCase):
+
+  def test_remove_unused_flags_without_optimizer_flag(self):
+    hparam_dict = collections.OrderedDict([('client_opt_fn', 'sgd'),
+                                           ('client_sgd_momentum', 0.3)])
+    with self.assertRaisesRegex(ValueError,
+                                'The flag client_optimizer was not defined.'):
+      _ = optimizer_utils.remove_unused_flags('client', hparam_dict)
+
+  def test_remove_unused_flags_with_empty_optimizer(self):
+    hparam_dict = collections.OrderedDict([('optimizer', '')])
+
+    with self.assertRaisesRegex(
+        ValueError, 'The flag optimizer was not set. '
+        'Unable to determine the relevant optimizer.'):
+      _ = optimizer_utils.remove_unused_flags(
+          prefix=None, hparam_dict=hparam_dict)
+
+  def test_remove_unused_flags_with_prefix(self):
+    hparam_dict = collections.OrderedDict([('client_optimizer', 'sgd'),
+                                           ('non_client_value', 0.1),
+                                           ('client_sgd_momentum', 0.3),
+                                           ('client_adam_momentum', 0.5)])
+
+    relevant_hparam_dict = optimizer_utils.remove_unused_flags(
+        'client', hparam_dict)
+    expected_flag_names = [
+        'client_optimizer', 'non_client_value', 'client_sgd_momentum'
+    ]
+    self.assertCountEqual(relevant_hparam_dict.keys(), expected_flag_names)
+    self.assertEqual(relevant_hparam_dict['client_optimizer'], 'sgd')
+    self.assertEqual(relevant_hparam_dict['non_client_value'], 0.1)
+    self.assertEqual(relevant_hparam_dict['client_sgd_momentum'], 0.3)
+
+  def test_remove_unused_flags_without_prefix(self):
+    hparam_dict = collections.OrderedDict([('optimizer', 'sgd'), ('value', 0.1),
+                                           ('sgd_momentum', 0.3),
+                                           ('adam_momentum', 0.5)])
+    relevant_hparam_dict = optimizer_utils.remove_unused_flags(
+        prefix=None, hparam_dict=hparam_dict)
+    expected_flag_names = ['optimizer', 'value', 'sgd_momentum']
+    self.assertCountEqual(relevant_hparam_dict.keys(), expected_flag_names)
+    self.assertEqual(relevant_hparam_dict['optimizer'], 'sgd')
+    self.assertEqual(relevant_hparam_dict['value'], 0.1)
+    self.assertEqual(relevant_hparam_dict['sgd_momentum'], 0.3)
+
+  def test_removal_with_standard_default_values(self):
+    hparam_dict = collections.OrderedDict([('client_optimizer', 'adam'),
+                                           ('non_client_value', 0),
+                                           ('client_sgd_momentum', 0),
+                                           ('client_adam_param1', None),
+                                           ('client_adam_param2', False)])
+
+    relevant_hparam_dict = optimizer_utils.remove_unused_flags(
+        'client', hparam_dict)
+    expected_flag_names = [
+        'client_optimizer', 'non_client_value', 'client_adam_param1',
+        'client_adam_param2'
+    ]
+    self.assertCountEqual(relevant_hparam_dict.keys(), expected_flag_names)
+    self.assertEqual(relevant_hparam_dict['client_optimizer'], 'adam')
+    self.assertEqual(relevant_hparam_dict['non_client_value'], 0)
+    self.assertIsNone(relevant_hparam_dict['client_adam_param1'])
+    self.assertEqual(relevant_hparam_dict['client_adam_param2'], False)
 
 
 if __name__ == '__main__':

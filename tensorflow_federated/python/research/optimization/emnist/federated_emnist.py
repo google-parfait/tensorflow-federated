@@ -35,7 +35,7 @@ def run_federated(
     clients_per_round: int,
     max_batches_per_client: Optional[int] = -1,
     client_datasets_random_seed: Optional[int] = None,
-    emnist_model: Optional[str] = 'cnn',
+    model: Optional[str] = 'cnn',
     total_rounds: Optional[int] = 1500,
     experiment_name: Optional[str] = 'federated_emnist_cr',
     root_output_dir: Optional[str] = '/tmp/fed_opt',
@@ -73,7 +73,7 @@ def run_federated(
       used.
     client_datasets_random_seed: An optional int used to seed which clients are
       sampled at each round. If `None`, no seed is used.
-    emnist_model: A string specifying the model used for character recognition.
+    model: A string specifying the model used for character recognition.
       Can be one of `cnn` and `2nn`, corresponding to a CNN model and a densely
       connected 2-layer model (respectively).
     total_rounds: The number of federated training rounds.
@@ -103,16 +103,16 @@ def run_federated(
   input_spec = emnist_train.create_tf_dataset_for_client(
       emnist_train.client_ids[0]).element_spec
 
-  if emnist_model == 'cnn':
+  if model == 'cnn':
     model_builder = functools.partial(
         emnist_models.create_conv_dropout_model, only_digits=False)
-  elif emnist_model == '2nn':
+  elif model == '2nn':
     model_builder = functools.partial(
         emnist_models.create_two_hidden_layer_model, only_digits=False)
   else:
     raise ValueError(
         'Cannot handle model flag [{!s}], must be one of {!s}.'.format(
-            emnist_model, EMNIST_MODELS))
+            model, EMNIST_MODELS))
 
   loss_builder = tf.keras.losses.SparseCategoricalCrossentropy
   metrics_builder = lambda: [tf.keras.metrics.SparseCategoricalAccuracy()]

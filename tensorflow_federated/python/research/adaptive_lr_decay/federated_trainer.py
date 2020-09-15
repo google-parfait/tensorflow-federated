@@ -221,9 +221,7 @@ def main(argv):
 
   elif FLAGS.task == 'emnist_cr':
     federated_emnist.run_federated(
-        **shared_args,
-        emnist_model=FLAGS.emnist_cr_model,
-        hparam_dict=hparam_dict)
+        **shared_args, model=FLAGS.emnist_cr_model, hparam_dict=hparam_dict)
 
   elif FLAGS.task == 'emnist_ae':
     federated_emnist_ae.run_federated(**shared_args, hparam_dict=hparam_dict)

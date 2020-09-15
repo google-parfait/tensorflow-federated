@@ -87,21 +87,25 @@ with utils_impl.record_hparam_flags() as task_flags:
   flags.DEFINE_enum('task', None, _SUPPORTED_TASKS,
                     'Which task to perform federated training on.')
 
+with utils_impl.record_hparam_flags() as cifar100_flags:
   # CIFAR-100 flags
   flags.DEFINE_integer('cifar100_crop_size', 24, 'The height and width of '
                        'images after preprocessing.')
 
+with utils_impl.record_hparam_flags() as emnist_cr_flags:
   # EMNIST CR flags
   flags.DEFINE_enum(
       'emnist_cr_model', 'cnn', ['cnn', '2nn'], 'Which model to '
       'use. This can be a convolutional model (cnn) or a two '
       'hidden-layer densely connected network (2nn).')
 
+with utils_impl.record_hparam_flags() as shakespeare_flags:
   # Shakespeare flags
   flags.DEFINE_integer(
       'shakespeare_sequence_length', 80,
       'Length of character sequences to use for the RNN model.')
 
+with utils_impl.record_hparam_flags() as so_nwp_flags:
   # Stack Overflow NWP flags
   flags.DEFINE_integer('so_nwp_vocab_size', 10000, 'Size of vocab to use.')
   flags.DEFINE_integer('so_nwp_num_oov_buckets', 1,
@@ -123,6 +127,7 @@ with utils_impl.record_hparam_flags() as task_flags:
       'so_nwp_shared_embedding', False,
       'Boolean indicating whether to tie input and output embeddings.')
 
+with utils_impl.record_hparam_flags() as so_lr_flags:
   # Stack Overflow LR flags
   flags.DEFINE_integer('so_lr_vocab_tokens_size', 10000,
                        'Vocab tokens size used.')
@@ -135,6 +140,55 @@ with utils_impl.record_hparam_flags() as task_flags:
                        'sentences to use per user.')
 
 FLAGS = flags.FLAGS
+
+TASK_FLAGS = collections.OrderedDict(
+    cifar100=cifar100_flags,
+    emnist_cr=emnist_cr_flags,
+    shakespeare=shakespeare_flags,
+    stackoverflow_nwp=so_nwp_flags,
+    stackoverflow_lr=so_lr_flags)
+
+
+def _get_hparam_flags():
+  """Returns an ordered dictionary of pertinent hyperparameter flags."""
+  hparam_dict = utils_impl.lookup_flag_values(shared_flags)
+
+  # Update with optimizer flags corresponding to the chosen optimizers.
+  opt_flag_dict = utils_impl.lookup_flag_values(optimizer_flags)
+  opt_flag_dict = optimizer_utils.remove_unused_flags('client', opt_flag_dict)
+  opt_flag_dict = optimizer_utils.remove_unused_flags('server', opt_flag_dict)
+  hparam_dict.update(opt_flag_dict)
+
+  # Update with task-specific flags.
+  task_hparam_dict = utils_impl.lookup_flag_values(TASK_FLAGS[FLAGS.task])
+  hparam_dict.update(task_hparam_dict)
+
+  return hparam_dict
+
+
+def _get_task_args():
+  """Returns an ordered dictionary of task-specific arguments.
+
+  This method returns a dict of (arg_name, arg_value) pairs, where the
+  arg_name has had the task name removed as a prefix (if it exists), as well
+  as any leading `-` or `_` characters.
+
+  Returns:
+    An ordered dictionary of (arg_name, arg_value) pairs.
+  """
+  task_name = FLAGS.task
+
+  if task_name in TASK_FLAGS:
+    task_flag_list = TASK_FLAGS[task_name]
+    task_flag_dict = utils_impl.lookup_flag_values(task_flag_list)
+    for key in task_flag_dict:
+      if key.startswith(task_name):
+        value = task_flag_dict.pop(key)
+        key = key[len(task_name):].lstrip('_-')
+        task_flag_dict[key] = value
+    return task_flag_dict
+  else:
+    return collections.OrderedDict()
 
 
 def main(argv):
@@ -173,53 +227,29 @@ def main(argv):
         server_lr=server_lr_schedule,
         client_weight_fn=client_weight_fn)
 
-  hparam_dict = utils_impl.lookup_flag_values(utils_impl.get_hparam_flags())
-
   shared_args = utils_impl.lookup_flag_values(shared_flags)
   shared_args['iterative_process_builder'] = iterative_process_builder
+  task_args = _get_task_args()
+  hparam_dict = _get_hparam_flags()
 
   if FLAGS.task == 'cifar100':
-    hparam_dict['cifar100_crop_size'] = FLAGS.cifar100_crop_size
-    federated_cifar100.run_federated(
-        **shared_args,
-        crop_size=FLAGS.cifar100_crop_size,
-        hparam_dict=hparam_dict)
-
+    run_federated_fn = federated_cifar100.run_federated
   elif FLAGS.task == 'emnist_cr':
-    federated_emnist.run_federated(
-        **shared_args,
-        emnist_model=FLAGS.emnist_cr_model,
-        hparam_dict=hparam_dict)
-
+    run_federated_fn = federated_emnist.run_federated
   elif FLAGS.task == 'emnist_ae':
-    federated_emnist_ae.run_federated(**shared_args, hparam_dict=hparam_dict)
-
+    run_federated_fn = federated_emnist_ae.run_federated
   elif FLAGS.task == 'shakespeare':
-    federated_shakespeare.run_federated(
-        **shared_args,
-        sequence_length=FLAGS.shakespeare_sequence_length,
-        hparam_dict=hparam_dict)
-
+    run_federated_fn = federated_shakespeare.run_federated
   elif FLAGS.task == 'stackoverflow_nwp':
-    so_nwp_flags = collections.OrderedDict()
-    for flag_name in task_flags:
-      if flag_name.startswith('so_nwp_'):
-        so_nwp_flags[flag_name[7:]] = FLAGS[flag_name].value
-    federated_stackoverflow.run_federated(
-        **shared_args, **so_nwp_flags, hparam_dict=hparam_dict)
-
+    run_federated_fn = federated_stackoverflow.run_federated
   elif FLAGS.task == 'stackoverflow_lr':
-    so_lr_flags = collections.OrderedDict()
-    for flag_name in task_flags:
-      if flag_name.startswith('so_lr_'):
-        so_lr_flags[flag_name[6:]] = FLAGS[flag_name].value
-    federated_stackoverflow_lr.run_federated(
-        **shared_args, **so_lr_flags, hparam_dict=hparam_dict)
-
+    run_federated_fn = federated_stackoverflow_lr.run_federated
   else:
     raise ValueError(
         '--task flag {} is not supported, must be one of {}.'.format(
             FLAGS.task, _SUPPORTED_TASKS))
+
+  run_federated_fn(**shared_args, **task_args, hparam_dict=hparam_dict)
 
 
 if __name__ == '__main__':
