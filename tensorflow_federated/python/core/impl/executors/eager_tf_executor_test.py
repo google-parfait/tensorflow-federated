@@ -196,31 +196,10 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
                                   ('TPU', 'TPU'))
-  def test_embed_tensorflow_computation_succeeds_with_cpu(self, device_str):
+  def test_embed_tensorflow_computation_succeeds_on_devices(self, device_str):
     for device in tf.config.list_logical_devices(device_str):
       self.assertTrue(
           self._get_embed_tensorflow_computation_succeeds_with_device(
-              device).device.endswith(device.name))
-
-  def _get_to_representation_for_type_succeeds_on_device(self, device):
-
-    @computations.tf_computation(tf.int32)
-    def comp(x):
-      return tf.add(x, 1)
-
-    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
-
-    fn = eager_tf_executor.to_representation_for_type(
-        comp_proto, {}, comp.type_signature, device=device)
-    result = fn(tf.constant(20))
-    return result
-
-  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
-                                  ('TPU', 'TPU'))
-  def test_to_representation_for_type_succeeds_on_devices_cpu(self, device_str):
-    for device in tf.config.list_logical_devices(device_str):
-      self.assertTrue(
-          self._get_to_representation_for_type_succeeds_on_device(
               device).device.endswith(device.name))
 
   def _skip_in_multi_gpus(self):
@@ -303,6 +282,27 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(v, 10)
     self.assertEqual(v.dtype, tf.int32)
     self.assertTrue(v.device.endswith('CPU:0'))
+
+  def _get_to_representation_for_type_succeeds_on_device(self, device):
+
+    @computations.tf_computation(tf.int32)
+    def comp(x):
+      return tf.add(x, 1)
+
+    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+
+    fn = eager_tf_executor.to_representation_for_type(
+        comp_proto, {}, comp.type_signature, device=device)
+    result = fn(tf.constant(20))
+    return result
+
+  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
+                                  ('TPU', 'TPU'))
+  def test_to_representation_for_type_succeeds_on_device(self, device_str):
+    for device in tf.config.list_logical_devices(device_str):
+      self.assertTrue(
+          self._get_to_representation_for_type_succeeds_on_device(
+              device).device.endswith(device.name))
 
   def test_eager_value_constructor_with_int_constant(self):
     v = eager_tf_executor.EagerValue(10, {}, tf.int32)

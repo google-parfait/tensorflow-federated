@@ -67,7 +67,7 @@ def _check_dataset_reduce_in_multi_gpu(
         'Detected dataset reduce op in multi-GPU TFF simulation: '
         '`use_experimental_simulation_loop=True` for `tff.learning`; or '
         'use `for ... in iter(dataset)` for your own dataset iteration.'
-        'Reduce op will be functinoal after b/159180073.')
+        'Reduce op will be functional after b/159180073.')
 
 
 def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
