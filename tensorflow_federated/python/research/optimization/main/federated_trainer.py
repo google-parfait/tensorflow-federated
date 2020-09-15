@@ -160,8 +160,10 @@ def _get_hparam_flags():
   hparam_dict.update(opt_flag_dict)
 
   # Update with task-specific flags.
-  task_hparam_dict = utils_impl.lookup_flag_values(TASK_FLAGS[FLAGS.task])
-  hparam_dict.update(task_hparam_dict)
+  task_name = FLAGS.task
+  if task_name in TASK_FLAGS:
+    task_hparam_dict = utils_impl.lookup_flag_values(TASK_FLAGS[task_name])
+    hparam_dict.update(task_hparam_dict)
 
   return hparam_dict
 
