@@ -36,9 +36,9 @@ class AggregationProcessFactory(abc.ABC):
 
     The returned `tff.aggregators.AggregationProcess` will be created for
     aggregation of values matching `value_type`. That is, its `next` method will
-    expect type `<S@SERVER, value_type@CLIENTS, *>`, where `S` is the unplaced
+    expect type `<S@SERVER, {value_type}@CLIENTS, *>`, where `S` is the unplaced
     return type of its `initialize` method, and * stands for optional additional
-    input arguments.
+    placed input arguments.
 
     Args:
       value_type: A `tff.Type` without placement.
