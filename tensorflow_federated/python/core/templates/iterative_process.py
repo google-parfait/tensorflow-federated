@@ -11,69 +11,41 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defines functions and classes for constructing a TFF iterative process."""
+"""Defines a template for a stateful process."""
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.templates import errors
 
 
-class InvalidConstructorArgumentsError(TypeError):
-  pass
-
-
-class InitializeFnHasArgsError(InvalidConstructorArgumentsError):
-
-  def __init__(self, initialize_fn):
-    message = ('`initialize_fn` must be a no-arg `tff.Computation`, but found '
-               f'parameter type:\n{initialize_fn.type_signature.parameter}')
-    super().__init__(message)
-
-
-class NextMustAcceptStateFromInitializeError(InvalidConstructorArgumentsError):
-
-  def __init__(self, initialize_result_type, next_parameter_type):
-    message = (
-        'The return type of `initialize_fn` must be assignable to the first '
-        'parameter of `next_fn`, but \n'
-        f'`initialize_fn` returned type:\n{initialize_result_type}\n'
-        f'`next_fn`\'s argument type is:\n{next_parameter_type}')
-    super().__init__(message)
-
-
-class NextMustReturnStateError(InvalidConstructorArgumentsError):
-
-  def __init__(self, next_result_type, state_type):
-    message = (
-        'The return type of `next_fn` must be assignable to the state type\n'
-        'returned by `initialize_fn` and accepted by `next_fn` but found\n'
-        f'`next_fn` which returns type:\n`{next_result_type}`\n'
-        f'which does not match state type:\n`{state_type}`')
-    super().__init__(message)
-
-
-class IterativeProcess(object):
+class IterativeProcess:
   """A process that includes an initialization and iterated computation.
 
   An iterated process will usually be driven by a control loop like:
 
   ```python
-  def initialize():
+  def initialize_fn():
     ...
 
-  def next(state):
+  def next_fn(state):
     ...
 
-  iterative_process = IterativeProcess(initialize, next)
+  iterative_process = IterativeProcess(initialize_fn, next_fn)
   state = iterative_process.initialize()
   for round in range(num_rounds):
     state = iterative_process.next(state)
   ```
 
-  The iteration step can accept arguments in addition to `state` (which must be
-  the first argument), and return additional arguments:
+  The `initialize_fn` function must return an object which is expected as input
+  to and returned by the `next_fn` function. By convention, we refer to this
+  object as `state`.
+
+  The iteration step (`next_fn` function) can accept arguments in addition to
+  `state` (which must be the first argument), and return additional arguments,
+  with `state` being the first output argument:
 
   ```python
-  def next(state, item):
+  def next_fn(state, round_num):
     ...
 
   iterative_process = ...
@@ -83,25 +55,33 @@ class IterativeProcess(object):
   ```
   """
 
-  def __init__(self, initialize_fn, next_fn):
+  def __init__(self, initialize_fn: computation_base.Computation,
+               next_fn: computation_base.Computation):
     """Creates a `tff.templates.IterativeProcess`.
 
     Args:
       initialize_fn: A no-arg `tff.Computation` that creates the initial state
-        of the chained computation.
-      next_fn: A `tff.Computation` that defines an iterated function. If
-        `initialize_fn` returns a type `T`, then `next_fn` must return a type
-        `U` which is compatible with `T` or multiple values where the first type
-        is `U`, and accept either a single argument of type `U` or multiple
+        of the computation.
+      next_fn: A `tff.Computation` that represents the iterated function. If
+        `initialize_fn` returns a type `T`, then `next_fn` must either return a
+        type `U` which is compatible with `T` or multiple values where the first
+        type is `U`, and accept either a single argument of type `U` or multiple
         arguments where the first argument must be of type `U`.
 
     Raises:
-      TypeError: `initialize_fn` and `next_fn` are not compatible function
-        types.
+      TypeError: If `initialize_fn` and `next_fn` are not instances of
+        `tff.Computation`.
+      TemplateInitFnParamNotEmptyError: If `initialize_fn` has any input
+        arguments.
+      TemplateStateNotAssignableError: If the `state` returned by either
+        `initialize_fn` or `next_fn` is not assignable to the first input
+        argument of `next_fn`.
     """
     py_typecheck.check_type(initialize_fn, computation_base.Computation)
     if initialize_fn.type_signature.parameter is not None:
-      raise InitializeFnHasArgsError(initialize_fn)
+      raise errors.TemplateInitFnParamNotEmptyError(
+          f'Provided `initialize_fn` must be a no-arg function, but found '
+          f'input argument(s) {initialize_fn.type_signature.parameter}.')
     initialize_result_type = initialize_fn.type_signature.result
 
     py_typecheck.check_type(next_fn, computation_base.Computation)
@@ -117,8 +97,12 @@ class IterativeProcess(object):
       # The first argument is the state type
       state_type = next_parameter_type[0]
     else:
-      raise NextMustAcceptStateFromInitializeError(initialize_result_type,
-                                                   next_parameter_type)
+      raise errors.TemplateStateNotAssignableError(
+          f'The return type of `initialize_fn` must be assignable to '
+          f'the first input argument of `next_fn`, but:\n'
+          f'`initialize_fn` returned type:\n{initialize_result_type}\n'
+          f'and the first input argument of `next_fn` is:\n'
+          f'{next_parameter_type}')
 
     next_result_type = next_fn.type_signature.result
     if state_type.is_assignable_from(next_result_type):
@@ -129,17 +113,22 @@ class IterativeProcess(object):
       # The first return value is state type
       pass
     else:
-      raise NextMustReturnStateError(next_result_type, state_type)
+      raise errors.TemplateStateNotAssignableError(
+          f'The first return argument of `next_fn` must be '
+          f'assignable to its first input argument, but found\n'
+          f'`next_fn` which returns type:\n{next_result_type}\n'
+          f'which does not match its first input argument:\n{state_type}')
+
     self._initialize_fn = initialize_fn
     self._next_fn = next_fn
 
   @property
-  def initialize(self):
+  def initialize(self) -> computation_base.Computation:
     """A no-arg `tff.Computation` that returns the initial state."""
     return self._initialize_fn
 
   @property
-  def next(self):
+  def next(self) -> computation_base.Computation:
     """A `tff.Computation` that produces the next state.
 
     Its first argument should always be the current state (originally produced

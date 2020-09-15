@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import attr
+import collections
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
@@ -20,216 +20,156 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.api import values
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.executors import execution_context
-from tensorflow_federated.python.core.impl.executors import executor_stacks
-from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 
-
-def _build_initialize_comp(constant):
-
-  @computations.tf_computation
-  def initialize():
-    return tf.constant(constant)
-
-  return initialize
+MeasuredProcessOutput = measured_process.MeasuredProcessOutput
 
 
-@computations.tf_computation(tf.int32, tf.int32)
-def add_int32(current, val):
-  """Performs arbitrary Tensor math for testing."""
-  return measured_process.MeasuredProcessOutput(
-      state=current + val, result=val, measurements=[current / (val + 1)])
+@computations.tf_computation()
+def test_initialize_fn():
+  return tf.constant(0, tf.int32)
 
 
-@computations.tf_computation(tf.float32, tf.float32)
-def add_mul_int32(current, val):
-  """Performs arbitrary Tensor math for testing."""
-  return measured_process.MeasuredProcessOutput(
-      state=current + val,
-      result=current * val,
-      measurements=[current / (val + 1.0)])
-
-
-@computations.tf_computation(tf.int32)
-def count_int32(current):
-  """Performs arbitrary Tensor math for testing."""
-  # NOTE: the empty tuple () is the NoneType of TFF.
-  return measured_process.MeasuredProcessOutput(
-      state=current + 1, result=(), measurements=())
+@computations.tf_computation(tf.int32, tf.float32)
+def test_next_fn(state, value):
+  return MeasuredProcessOutput(state, value, ())
 
 
 class MeasuredProcessTest(test.TestCase):
 
-  def test_constructor_with_state_only(self):
-    ip = measured_process.MeasuredProcess(
-        _build_initialize_comp(0), count_int32)
+  def test_construction_does_not_raise(self):
+    try:
+      measured_process.MeasuredProcess(test_initialize_fn, test_next_fn)
+    except:  # pylint: disable=bare-except
+      self.fail('Could not construct a valid MeasuredProcess.')
 
-    state = ip.initialize()
-    iterations = 10
-    for _ in range(iterations):
-      state, result, measurements = attr.astuple(ip.next(state))
-      self.assertLen(result, 0)
-      self.assertLen(measurements, 0)
-    self.assertEqual(state, iterations)
+  def test_construction_with_empty_state_does_not_raise(self):
+    initialize_fn = computations.tf_computation()(lambda: ())
+    next_fn = computations.tf_computation(
+        ())(lambda x: MeasuredProcessOutput(x, (), ()))
+    try:
+      measured_process.MeasuredProcess(initialize_fn, next_fn)
+    except:  # pylint: disable=bare-except
+      self.fail('Could not construct an MeasuredProcess with empty state.')
 
-  def test_constructor_with_tensors_unknown_dimensions_succeeds(self):
-
-    @computations.tf_computation
-    def init():
-      return tf.constant([], dtype=tf.string)
+  def test_construction_with_unknown_dimension_does_not_raise(self):
+    initialize_fn = computations.tf_computation()(
+        lambda: tf.constant([], dtype=tf.string))
 
     @computations.tf_computation(
         computation_types.TensorType(shape=[None], dtype=tf.string))
     def next_fn(strings):
-      return measured_process.MeasuredProcessOutput(
-          state=tf.concat([strings, tf.constant(['abc'])], axis=0),
-          result=(),
-          measurements=())
+      return MeasuredProcessOutput(
+          tf.concat([strings, tf.constant(['abc'])], axis=0), (), ())
 
     try:
-      measured_process.MeasuredProcess(init, next_fn)
+      measured_process.MeasuredProcess(initialize_fn, next_fn)
     except:  # pylint: disable=bare-except
       self.fail('Could not construct an MeasuredProcess with parameter types '
-                'including unknown dimension tennsors.')
+                'with statically unknown shape.')
 
-  def test_constructor_with_state_tuple_arg(self):
-    ip = measured_process.MeasuredProcess(_build_initialize_comp(0), add_int32)
+  def test_init_not_tff_computation_raises(self):
+    with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
+      measured_process.MeasuredProcess(
+          initialize_fn=lambda: 0, next_fn=test_next_fn)
 
-    state = ip.initialize()
-    iterations = 10
-    for val in range(iterations):
-      output = ip.next(state, val)
-      state = output.state
-    self.assertEqual(output.state, sum(range(iterations)))
-    self.assertEqual(output.result, val)
-    expected_measurment = sum(range(iterations - 1)) / iterations
-    self.assertAllClose(output.measurements, [expected_measurment])
+  def test_next_not_tff_computation_raises(self):
+    with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
+      measured_process.MeasuredProcess(
+          initialize_fn=test_initialize_fn,
+          next_fn=lambda state: MeasuredProcessOutput(state, (), ()))
 
-  def test_constructor_with_state_multiple_return_values(self):
-    ip = measured_process.MeasuredProcess(
-        _build_initialize_comp(0.0), add_mul_int32)
+  def test_init_param_not_empty_raises(self):
+    one_arg_initialize_fn = computations.tf_computation(tf.int32)(lambda x: x)
+    with self.assertRaises(errors.TemplateInitFnParamNotEmptyError):
+      measured_process.MeasuredProcess(one_arg_initialize_fn, test_next_fn)
 
-    state = ip.initialize()
-    iterations = 10
-    for val in range(iterations):
-      output = ip.next(state, float(val))
-      state = output.state
-    self.assertEqual(output.state, sum(range(iterations)))
-    self.assertEqual(output.result,
-                     sum(range(iterations - 1)) * (iterations - 1))
-    expected_measurment = sum(range(iterations - 1)) / iterations
-    self.assertAllClose(output.measurements, [expected_measurment])
+  def test_init_state_not_assignable(self):
+    float_initialize_fn = computations.tf_computation()(lambda: 0.0)
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      measured_process.MeasuredProcess(float_initialize_fn, test_next_fn)
 
-  def test_constructor_with_next_federated_same_placed_struct_result(self):
+  def test_federated_init_state_not_assignable(self):
+    zero = lambda: intrinsics.federated_value(0, placements.SERVER)
+    initialize_fn = computations.federated_computation()(zero)
+    next_fn = computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))(
+            lambda state: MeasuredProcessOutput(state, zero(), zero()))
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      measured_process.MeasuredProcess(initialize_fn, next_fn)
 
-    @computations.federated_computation
-    def initialize_comp():
-      return intrinsics.federated_value(0, placements.SERVER)
+  def test_next_state_not_assignable(self):
+    float_next_fn = computations.tf_computation(tf.float32)(
+        lambda state: MeasuredProcessOutput(tf.cast(state, tf.float32), (), ()))
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      measured_process.MeasuredProcess(test_initialize_fn, float_next_fn)
 
-    # A `next` function that returns all the same placement and is zipped so
-    # the FederatedType is at the top of the type hierarchy.
-    @computations.federated_computation(initialize_comp.type_signature.result)
-    def next_comp(state):
+  def test_federated_next_state_not_assignable(self):
+    initialize_fn = computations.federated_computation()(
+        lambda: intrinsics.federated_value(0, placements.SERVER))
+
+    @computations.federated_computation(initialize_fn.type_signature.result)
+    def next_fn(state):
+      return MeasuredProcessOutput(
+          intrinsics.federated_broadcast(state), (), ())
+
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      measured_process.MeasuredProcess(initialize_fn, next_fn)
+
+  # Tests specific only for the MeasuredProcess contract below.
+
+  def test_measured_process_output_as_state_raises(self):
+    empty_output = lambda: MeasuredProcessOutput((), (), ())
+    initialize_fn = computations.tf_computation(empty_output)
+    next_fn = computations.tf_computation(
+        initialize_fn.type_signature.result)(lambda state: empty_output())
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      measured_process.MeasuredProcess(initialize_fn, next_fn)
+
+  def test_next_return_tensor_type_raises(self):
+    next_fn = computations.tf_computation(tf.int32)(lambda state: state)
+    with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
+      measured_process.MeasuredProcess(test_initialize_fn, next_fn)
+
+  def test_next_return_tuple_raises(self):
+    tuple_next_fn = computations.tf_computation(
+        tf.int32)(lambda state: (state, (), ()))
+    with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
+      measured_process.MeasuredProcess(test_initialize_fn, tuple_next_fn)
+
+  def test_next_return_namedtuple_raises(self):
+    measured_process_output = collections.namedtuple(
+        'MeasuredProcessOutput', ['state', 'result', 'measurements'])
+    namedtuple_next_fn = computations.tf_computation(
+        tf.int32)(lambda state: measured_process_output(state, (), ()))
+    with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
+      measured_process.MeasuredProcess(test_initialize_fn, namedtuple_next_fn)
+
+  def test_next_return_odict_raises(self):
+    odict_next_fn = computations.tf_computation(tf.int32)(
+        lambda s: collections.OrderedDict(state=s, result=(), measurements=()))
+    with self.assertRaises(errors.TemplateNotMeasuredProcessOutputError):
+      measured_process.MeasuredProcess(test_initialize_fn, odict_next_fn)
+
+  def test_federated_measured_process_output_raises(self):
+    initialize_fn = computations.federated_computation()(
+        lambda: intrinsics.federated_value(0, placements.SERVER))
+    empty = lambda: intrinsics.federated_value((), placements.SERVER)
+    state_type = initialize_fn.type_signature.result
+
+    # Using federated_zip to place FederatedType at the top of the hierarchy.
+    @computations.federated_computation(state_type)
+    def next_fn(state):
       return intrinsics.federated_zip(
-          measured_process.MeasuredProcessOutput(
-              state=state,
-              result=intrinsics.federated_value(0, placements.SERVER),
-              measurements=intrinsics.federated_value((), placements.SERVER))),
+          MeasuredProcessOutput(state, empty(), empty()))
 
-    with self.assertRaises(iterative_process.NextMustReturnStateError):
-      measured_process.MeasuredProcess(
-          initialize_fn=initialize_comp, next_fn=next_comp)
-
-  def test_constructor_with_next_struct_of_different_placedresult(self):
-
-    @computations.federated_computation
-    def initialize_comp():
-      return intrinsics.federated_value(0, placements.SERVER)
-
-    # A `next` function that returns different placements for the components.
-    @computations.federated_computation(initialize_comp.type_signature.result)
-    def next_comp(state):
-      return measured_process.MeasuredProcessOutput(
-          state=state,
-          result=intrinsics.federated_value(0, placements.CLIENTS),
-          measurements=intrinsics.federated_value((), placements.SERVER))
-
-    try:
-      measured_process.MeasuredProcess(
-          initialize_fn=initialize_comp, next_fn=next_comp)
-    except Exception as e:  # pylint: disable=broad-except
-      self.fail(f'Failed to construct MeasuredProcess: {e}')
-
-  def test_constructor_with_initialize_bad_type(self):
-    with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
-      measured_process.MeasuredProcess(initialize_fn=None, next_fn=add_int32)
-
-    with self.assertRaises(iterative_process.InitializeFnHasArgsError):
-
-      @computations.federated_computation(tf.int32)
-      def one_arg_initialize(one_arg):
-        del one_arg  # Unused.
-        return values.to_value(0)
-
-      measured_process.MeasuredProcess(
-          initialize_fn=one_arg_initialize, next_fn=add_int32)
-
-  def test_constructor_with_next_bad_type(self):
-    initialize = _build_initialize_comp(0)
-    with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
-      measured_process.MeasuredProcess(initialize_fn=initialize, next_fn=None)
-
-  def test_constructor_with_init_next_type_mismatch(self):
-    initialize = _build_initialize_comp(0)
-    with self.assertRaises(
-        iterative_process.NextMustAcceptStateFromInitializeError):
-
-      @computations.federated_computation(tf.float32, tf.float32)
-      def add_float32(current, val):
-        return current + val
-
-      measured_process.MeasuredProcess(
-          initialize_fn=initialize, next_fn=add_float32)
-
-  def test_constructor_with_next_result_param_type_mismatch(self):
-    initialize = _build_initialize_comp(0)
-    with self.assertRaises(iterative_process.NextMustReturnStateError):
-
-      @computations.federated_computation(tf.int32)
-      def add_bad_result(_):
-        return 0.0
-
-      measured_process.MeasuredProcess(
-          initialize_fn=initialize, next_fn=add_bad_result)
-
-  def test_constructor_with_next_result_not_measuredprocessoutput(self):
-    initialize = _build_initialize_comp(0)
-    with self.assertRaisesRegex(
-        TypeError, 'MeasuredProcess must return a MeasuredProcessOutput'):
-
-      @computations.federated_computation(tf.int32)
-      def add_not_tuple_result(_):
-        return 0
-
-      measured_process.MeasuredProcess(
-          initialize_fn=initialize, next_fn=add_not_tuple_result)
-
-    with self.assertRaisesRegex(
-        TypeError, 'MeasuredProcess must return a MeasuredProcessOutput'):
-
-      @computations.federated_computation(tf.int32)
-      def add_not_named_tuple_result(_):
-        return 0, 0, 0
-
-      measured_process.MeasuredProcess(
-          initialize_fn=initialize, next_fn=add_not_named_tuple_result)
+    # A MeasuredProcessOutput containing three `FederatedType`s is different
+    # than a `FederatedType` containing a MeasuredProcessOutput. Corrently, only
+    # the former is considered valid.
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      measured_process.MeasuredProcess(initialize_fn, next_fn)
 
 
 if __name__ == '__main__':
-  factory = executor_stacks.local_executor_factory(num_clients=3)
-  context = execution_context.ExecutionContext(factory)
-  context_stack_impl.context_stack.set_default_context(context)
   test.main()

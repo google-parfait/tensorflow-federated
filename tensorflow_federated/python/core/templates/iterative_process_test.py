@@ -17,63 +17,41 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import values
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.executors import execution_context
-from tensorflow_federated.python.core.impl.executors import executor_stacks
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 
 
-# Create two tff.Computations that perform sum on a sequence: initializes the
-# state to 0 and add each item in a sequence to the state.
-@computations.tf_computation
-def initialize():
-  return tf.constant(0)
-
-
-@computations.tf_computation(tf.int32, tf.int32)
-def add_int32(current, val):
-  return current + val
-
-
-@computations.tf_computation(tf.int32, tf.int32)
-def add_mul_int32(current, val):
-  return current + val, current * val
+@computations.tf_computation()
+def test_initialize_fn():
+  return tf.constant(0, tf.int32)
 
 
 @computations.tf_computation(tf.int32)
-def count_int32(current):
-  return current + 1
-
-
-@computations.tf_computation
-def initialize_empty_tuple():
-  return []
-
-
-@computations.tf_computation([])
-def next_empty_tuple(x):
-  return x
+def test_next_fn(state):
+  return state
 
 
 class IterativeProcessTest(test.TestCase):
 
-  def test_constructor_with_state_only(self):
-    ip = iterative_process.IterativeProcess(initialize, count_int32)
+  def test_construction_does_not_raise(self):
+    try:
+      iterative_process.IterativeProcess(test_initialize_fn, test_next_fn)
+    except:  # pylint: disable=bare-except
+      self.fail('Could not construct a valid IterativeProcess.')
 
-    state = ip.initialize()
-    iterations = 10
-    for _ in range(iterations):
-      # TODO(b/122321354): remove the .item() call on `state` once numpy.int32
-      # type is supported.
-      state = ip.next(state.item())
-    self.assertEqual(state, iterations)
+  def test_construction_with_empty_state_does_not_raise(self):
+    initialize_fn = computations.tf_computation()(lambda: ())
+    next_fn = computations.tf_computation(())(lambda x: (x, 1.0))
+    try:
+      iterative_process.IterativeProcess(initialize_fn, next_fn)
+    except:  # pylint: disable=bare-except
+      self.fail('Could not construct an IterativeProcess with empty state.')
 
-  def test_constructor_with_tensors_unknown_dimensions(self):
-
-    @computations.tf_computation
-    def init():
-      return tf.constant([], dtype=tf.string)
+  def test_construction_with_unknown_dimension_does_not_raise(self):
+    initialize_fn = computations.tf_computation()(
+        lambda: tf.constant([], dtype=tf.string))
 
     @computations.tf_computation(
         computation_types.TensorType(shape=[None], dtype=tf.string))
@@ -81,93 +59,62 @@ class IterativeProcessTest(test.TestCase):
       return tf.concat([strings, tf.constant(['abc'])], axis=0)
 
     try:
-      iterative_process.IterativeProcess(init, next_fn)
+      iterative_process.IterativeProcess(initialize_fn, next_fn)
     except:  # pylint: disable=bare-except
       self.fail('Could not construct an IterativeProcess with parameter types '
-                'including unknown dimension tennsors.')
+                'with statically unknown shape.')
 
-  def test_constructor_with_state_tuple_arg(self):
-    ip = iterative_process.IterativeProcess(initialize, add_int32)
-
-    state = ip.initialize()
-    iterations = 10
-    for val in range(iterations):
-      state = ip.next(state, val)
-    self.assertEqual(state, sum(range(iterations)))
-
-  def test_constructor_with_state_multiple_return_values(self):
-    ip = iterative_process.IterativeProcess(initialize, add_mul_int32)
-
-    state = ip.initialize()
-    iterations = 10
-    for val in range(iterations):
-      state, product = ip.next(state, val)
-    self.assertEqual(state, sum(range(iterations)))
-    self.assertEqual(product, sum(range(iterations - 1)) * (iterations - 1))
-
-  def test_constructor_with_empty_tuple(self):
-    ip = iterative_process.IterativeProcess(initialize_empty_tuple,
-                                            next_empty_tuple)
-
-    state = ip.initialize()
-    iterations = 2
-    for _ in range(iterations):
-      state = ip.next(state)
-    self.assertEqual(state, [])
-
-  def test_constructor_with_initialize_bad_type(self):
+  def test_init_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
-      iterative_process.IterativeProcess(initialize_fn=None, next_fn=add_int32)
-
-    with self.assertRaises(iterative_process.InitializeFnHasArgsError):
-
-      @computations.federated_computation(tf.int32)
-      def one_arg_initialize(one_arg):
-        del one_arg  # Unused.
-        return values.to_value(0)
-
       iterative_process.IterativeProcess(
-          initialize_fn=one_arg_initialize, next_fn=add_int32)
+          initialize_fn=lambda: 0, next_fn=test_next_fn)
 
-  def test_constructor_with_next_bad_type(self):
+  def test_next_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
-      iterative_process.IterativeProcess(initialize_fn=initialize, next_fn=None)
-
-  def test_constructor_with_type_mismatch(self):
-    with self.assertRaises(
-        iterative_process.NextMustAcceptStateFromInitializeError):
-
-      @computations.federated_computation(tf.float32, tf.float32)
-      def add_float32(current, val):
-        return current + val
-
       iterative_process.IterativeProcess(
-          initialize_fn=initialize, next_fn=add_float32)
+          initialize_fn=test_initialize_fn, next_fn=lambda state: state)
 
-    with self.assertRaises(iterative_process.NextMustReturnStateError):
+  def test_init_param_not_empty_raises(self):
+    one_arg_initialize_fn = computations.tf_computation(tf.int32)(lambda x: x)
+    with self.assertRaises(errors.TemplateInitFnParamNotEmptyError):
+      iterative_process.IterativeProcess(one_arg_initialize_fn, test_next_fn)
 
-      @computations.federated_computation(tf.int32)
-      def add_bad_result(_):
-        return 0.0
+  def test_init_state_not_assignable(self):
+    float_initialize_fn = computations.tf_computation()(lambda: 0.0)
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      iterative_process.IterativeProcess(float_initialize_fn, test_next_fn)
 
-      iterative_process.IterativeProcess(
-          initialize_fn=initialize, next_fn=add_bad_result)
+  def test_federated_init_state_not_assignable(self):
+    initialize_fn = computations.federated_computation()(
+        lambda: intrinsics.federated_value(0, placements.SERVER))
+    next_fn = computations.federated_computation(
+        computation_types.FederatedType(
+            tf.int32, placements.CLIENTS))(lambda state: state)
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      iterative_process.IterativeProcess(initialize_fn, next_fn)
 
-    with self.assertRaises(iterative_process.NextMustReturnStateError):
+  def test_next_state_not_assignable(self):
+    float_next_fn = computations.tf_computation(
+        tf.float32)(lambda state: tf.cast(state, tf.float32))
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      iterative_process.IterativeProcess(test_initialize_fn, float_next_fn)
 
-      @computations.federated_computation(tf.int32)
-      def add_bad_multi_result(_):
-        return 0.0, 0
+  def test_federated_next_state_not_assignable(self):
+    initialize_fn = computations.federated_computation()(
+        lambda: intrinsics.federated_value(0, placements.SERVER))
+    next_fn = computations.federated_computation(
+        initialize_fn.type_signature.result)(
+            intrinsics.federated_broadcast)
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      iterative_process.IterativeProcess(initialize_fn, next_fn)
 
-      iterative_process.IterativeProcess(
-          initialize_fn=initialize, next_fn=add_bad_multi_result)
+  def test_next_state_not_assignable_tuple_result(self):
+    float_next_fn = computations.tf_computation(
+        tf.float32,
+        tf.float32)(lambda state, x: (tf.cast(state, tf.float32), x))
+    with self.assertRaises(errors.TemplateStateNotAssignableError):
+      iterative_process.IterativeProcess(test_initialize_fn, float_next_fn)
 
 
 if __name__ == '__main__':
-  # Note: num_clients must be explicit here to correctly test the broadcast
-  # behavior. Otherwise TFF will infer there are zero clients, which is an
-  # error.
-  factory = executor_stacks.local_executor_factory(num_clients=3)
-  context = execution_context.ExecutionContext(factory)
-  context_stack_impl.context_stack.set_default_context(context)
   test.main()
