@@ -29,6 +29,7 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
+        "nokokoro",
         "nopresubmit",
     ],
     deps = [
@@ -68,6 +69,7 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
+        "nokokoro",
         "nopresubmit",
     ],
     deps = [
