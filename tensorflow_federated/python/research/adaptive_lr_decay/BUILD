@@ -20,10 +20,7 @@ py_test(
     srcs = ["adaptive_fed_avg_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "manual",
-        "nokokoro",
-    ],
+    tags = ["manual"],
     deps = [
         ":adaptive_fed_avg",
         ":callbacks",

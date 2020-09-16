@@ -10,7 +10,6 @@ py_library(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
     ],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -24,7 +23,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
     ],
     deps = [":backend_info"],
 )
@@ -35,7 +33,6 @@ py_library(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
     ],
     deps = [
         ":computation_module",
@@ -55,7 +52,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
     ],
     deps = [
         ":backend_info",
@@ -74,7 +70,6 @@ py_library(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
     ],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -90,7 +85,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
     ],
     deps = [
         ":computation_module",
@@ -104,7 +98,6 @@ py_library(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
     ],
     deps = [
         ":backend_info",
@@ -131,7 +124,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
     ],
     deps = [
         ":backend_info",
@@ -149,7 +141,6 @@ py_library(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
     ],
     deps = [
         ":backend_info",
@@ -166,7 +157,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
     ],
     deps = [
         ":backend_info",

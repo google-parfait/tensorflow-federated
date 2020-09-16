@@ -18,7 +18,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
         "nopresubmit",
     ],
     deps = [":cifar100_dataset"],
@@ -38,7 +37,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
         "nopresubmit",
     ],
     deps = [":emnist_dataset"],
@@ -58,7 +56,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
         "nopresubmit",
     ],
     deps = [":emnist_ae_dataset"],
@@ -78,7 +75,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
         "nopresubmit",
     ],
     deps = [":shakespeare_dataset"],
@@ -119,7 +115,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "manual",
-        "nokokoro",
         "notap",
     ],
     deps = [

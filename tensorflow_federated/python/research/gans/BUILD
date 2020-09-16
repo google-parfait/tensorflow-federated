@@ -58,7 +58,6 @@ py_test(
     # TODO(b/158558930): re-enable tests after removing change dectection.
     tags = [
         "manual",
-        "nokokoro",
         "notap",
     ],
     deps = [
