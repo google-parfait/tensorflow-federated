@@ -4,6 +4,13 @@ package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])
 
+# The targets in the `iree` package are tagged with `nopresubmit`; this excludes
+# these targets from the `tensorflow_federated` TAP project but does not exclude
+# them from the `tensorflow_federated.iree` TAP project. Changes to this package
+# do block on the `tensorflow_federated.iree` TAP project; therefore, changes to
+# the `iree` package **are** run as a presubmit for the `iree` package even
+# though they are labeled with "nopresubmit".
+
 py_library(
     name = "backend_info",
     srcs = ["backend_info.py"],
@@ -11,6 +18,7 @@ py_library(
     tags = [
         "manual",
         "nokokoro",
+        "nopresubmit",
     ],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -25,6 +33,7 @@ py_test(
     tags = [
         "manual",
         "nokokoro",
+        "nopresubmit",
     ],
     deps = [":backend_info"],
 )
@@ -36,6 +45,7 @@ py_library(
     tags = [
         "manual",
         "nokokoro",
+        "nopresubmit",
     ],
     deps = [
         ":computation_module",
@@ -56,6 +66,7 @@ py_test(
     tags = [
         "manual",
         "nokokoro",
+        "nopresubmit",
     ],
     deps = [
         ":backend_info",
@@ -75,6 +86,7 @@ py_library(
     tags = [
         "manual",
         "nokokoro",
+        "nopresubmit",
     ],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -91,6 +103,7 @@ py_test(
     tags = [
         "manual",
         "nokokoro",
+        "nopresubmit",
     ],
     deps = [
         ":computation_module",
@@ -105,6 +118,7 @@ py_library(
     tags = [
         "manual",
         "nokokoro",
+        "nopresubmit",
     ],
     deps = [
         ":backend_info",
@@ -132,6 +146,7 @@ py_test(
     tags = [
         "manual",
         "nokokoro",
+        "nopresubmit",
     ],
     deps = [
         ":backend_info",
@@ -150,6 +165,7 @@ py_library(
     tags = [
         "manual",
         "nokokoro",
+        "nopresubmit",
     ],
     deps = [
         ":backend_info",
@@ -167,6 +183,7 @@ py_test(
     tags = [
         "manual",
         "nokokoro",
+        "nopresubmit",
     ],
     deps = [
         ":backend_info",
