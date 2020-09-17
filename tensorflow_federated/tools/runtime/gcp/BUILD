@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:private"])
 
-licenses(["notice"])  # Apache 2.0 License
+licenses(["notice"])
 
 sh_binary(
     name = "deploy_endpoint",
