@@ -141,12 +141,17 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
     local_executor = executor_stacks.local_executor_factory(
         server_tf_device=server_tf_device, client_tf_devices=gpu_devices)
     with executor_test_utils.install_executor(local_executor):
+      parallel_client_run = _create_tff_parallel_clients_with_dataset_reduce()
+      client_data = [
+          tf.data.Dataset.range(10),
+          tf.data.Dataset.range(10).map(lambda x: x + 1)
+      ]
       # TODO(b/159180073): merge this one into iter dataset test when the
       # dataset reduce function can be correctly used for GPU device.
       with self.assertRaisesRegex(
           ValueError,
           'Detected dataset reduce op in multi-GPU TFF simulation.*'):
-        _create_tff_parallel_clients_with_dataset_reduce()
+        parallel_client_run(client_data)
 
 
 if __name__ == '__main__':
