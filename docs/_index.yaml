@@ -46,11 +46,14 @@ landing_page:
           foreground: theme
           background: grey
       - description: >
-          TFF enables developers to declaratively express federated computations, so they could be
+          <p>TFF enables developers to declaratively express federated computations, so they could be
           deployed to diverse runtime environments. Included with TFF is a single-machine
           simulation runtime for experiments. Please visit the
           <a href="/federated/tutorials/federated_learning_for_image_classification">tutorials</a>
-          and try it out yourself!
+          and try it out yourself!</p>
+          <p>For questions and support, find us at the
+          <a href="https://stackoverflow.com/questions/tagged/tensorflow-federated">tensorflow-federated tag</a>
+          on StackOverflow.</p>
       code_block: |
         <pre class = "prettyprint">
         import tensorflow as tf
