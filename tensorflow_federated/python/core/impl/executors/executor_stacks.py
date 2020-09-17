@@ -626,5 +626,6 @@ def remote_executor_factory(channels,
       unplaced_ex_factory=unplaced_ex_factory,
       flat_stack_fn=flat_stack_fn,
   )
+
   return executor_factory.ExecutorFactoryImpl(
       executor_stack_fn=composing_executor_factory.create_executor)

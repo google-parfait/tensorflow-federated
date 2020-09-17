@@ -10,6 +10,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":remote_runtime_test_utils",
         ":temperature_sensor_example",
         "//tensorflow_federated",
     ],
@@ -33,6 +34,25 @@ py_test(
     size = "medium",
     srcs = ["perf_regression_test.py"],
     python_version = "PY3",
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
+    name = "remote_runtime_integration_test",
+    srcs = ["remote_runtime_integration_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":remote_runtime_test_utils",
+        "//tensorflow_federated",
+    ],
+)
+
+py_library(
+    name = "remote_runtime_test_utils",
+    testonly = True,
+    srcs = ["remote_runtime_test_utils.py"],
     srcs_version = "PY3",
     deps = ["//tensorflow_federated"],
 )

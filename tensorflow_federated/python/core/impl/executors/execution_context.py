@@ -186,10 +186,16 @@ class ExecutionContext(context_base.Context):
       @contextlib.contextmanager
       def executor_closer(ex_factory, cardinalities):
         """Wraps an Executor into a closeable resource."""
+        # TODO(b/168744510): The lifecycles embedded here are confusing; unify
+        # or clarify the need for them.
+        ex = ex_factory.create_executor(cardinalities)
         try:
-          yield ex_factory.create_executor(cardinalities)
-        finally:
+          yield ex
+        except Exception as e:
           ex_factory.clean_up_executors()
+          raise e
+        finally:
+          ex.close()
 
       if arg is not None:
         py_typecheck.check_type(arg, ExecutionContextValue)
