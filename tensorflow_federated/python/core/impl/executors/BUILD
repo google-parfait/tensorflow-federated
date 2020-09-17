@@ -428,6 +428,26 @@ py_test(
     ],
 )
 
+py_test(
+    name = "executor_stacks_multi_gpu_test",
+    srcs = ["executor_stacks_multi_gpu_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    tags = [
+        "notap",
+        "requires-gpu-nvidia",
+    ],
+    deps = [
+        ":executor_base",
+        ":executor_stacks",
+        ":executor_test_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:type_factory",
+    ],
+)
+
 py_library(
     name = "executor_test_utils",
     testonly = True,
