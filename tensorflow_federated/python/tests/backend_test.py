@@ -267,7 +267,7 @@ class TensorFlowComputationTest(parameterized.TestCase):
     self.assertEqual(result, 10)
 
   @with_contexts
-  def test_returns_empyt_tuple(self):
+  def test_returns_empty_tuple(self):
 
     @tff.tf_computation
     def foo():
