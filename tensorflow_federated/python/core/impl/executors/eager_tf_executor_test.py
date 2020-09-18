@@ -237,6 +237,28 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
                                   ('device_gpu', 'GPU'))
+  def test_get_no_arg_wrapped_function_from_comp_with_iter_dataset(
+      self, device_type):
+
+    self._skip_in_multi_gpus()
+
+    @computations.tf_computation
+    @tf.function
+    def comp():
+      value = tf.constant(0, dtype=tf.int64)
+      for d in iter(tf.data.Dataset.range(10)):
+        value += d
+      return value
+
+    wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
+        computation_impl.ComputationImpl.get_proto(comp),
+        must_pin_function_to_cpu=False,
+        param_type=None,
+        device=_get_first_logical_device(device_type))
+    self.assertEqual(wrapped_fn(), np.int64(45))
+
+  @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
+                                  ('device_gpu', 'GPU'))
   def test_get_wrapped_function_from_comp_raises_with_incorrect_binding(
       self, device_type):
 
