@@ -15,14 +15,18 @@
 
 import collections
 import os
+from typing import Optional, Tuple
 
 import tensorflow as tf
 
+from tensorflow_federated.python.simulation import client_data
 from tensorflow_federated.python.simulation import from_tensor_slices_client_data
 from tensorflow_federated.python.simulation import hdf5_client_data
 
 
-def load_data(cache_dir=None):
+def load_data(
+    cache_dir: Optional[str] = None
+) -> Tuple[client_data.ClientData, client_data.ClientData]:
   """Loads the federated Shakespeare dataset.
 
   Downloads and caches the dataset locally. If previously downloaded, tries to
@@ -82,12 +86,22 @@ def load_data(cache_dir=None):
   return train_client_data, test_client_data
 
 
-def get_synthetic():
+def get_synthetic() -> client_data.ClientData:
+  """Creates `tff.simulation.ClientData` for a synthetic in-memory example of Shakespeare.
+
+  The returned `tff.simulation.ClientData` will have the same data schema as
+  `load_data()`, but uses a very small set of client data loaded in-memory.
+
+  This synthetic data is useful for validation in small tests.
+
+  Returns:
+    A `tff.simulation.ClientData` of synthentic Shakespeare text.
+  """
   return from_tensor_slices_client_data.FromTensorSlicesClientData(
       _SYNTHETIC_SHAKESPEARE_DATA)
 
 
-# A small sub-sample of snippets from the shakespeare dataset.
+# A small sub-sample of snippets from the Shakespeare dataset.
 _SYNTHETIC_SHAKESPEARE_DATA = {
     'THE_TRAGEDY_OF_KING_LEAR_MACBETH':
         collections.OrderedDict(snippets=[

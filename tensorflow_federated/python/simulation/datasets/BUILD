@@ -89,6 +89,7 @@ py_library(
     srcs = ["shakespeare.py"],
     srcs_version = "PY3",
     deps = [
+        "//tensorflow_federated/python/simulation:client_data",
         "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
         "//tensorflow_federated/python/simulation:hdf5_client_data",
     ],
