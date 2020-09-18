@@ -37,7 +37,7 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 ModelBuilder = Callable[[], tff.learning.Model]
 OptimizerBuilder = Callable[[float], tf.keras.optimizers.Optimizer]
 ClientWeightFn = Callable[..., float]
-LRScheduleFn = Callable[[int], float]
+LRScheduleFn = Callable[[Union[int, tf.Tensor]], Union[tf.Tensor, float]]
 
 
 def _initialize_optimizer_vars(model: tff.learning.Model,

@@ -213,7 +213,7 @@ def remove_unused_flags(prefix: str,
 
 
 def create_optimizer_fn_from_flags(
-    prefix: str) -> Callable[[float], tf.keras.optimizers.Optimizer]:
+    prefix: str) -> Callable[..., tf.keras.optimizers.Optimizer]:
   """Returns an optimizer function based on prefixed flags.
 
   This method is inteded to be paired with `define_optimizer_flags` using the
