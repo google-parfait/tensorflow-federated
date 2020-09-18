@@ -3120,6 +3120,73 @@ class RemoveDuplicateBlockLocals(test.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertTrue(modified)
 
+  def test_leaves_unbound_ref_alone(self):
+    ref_1 = building_blocks.Reference('a', tf.int32)
+    ref_2 = building_blocks.Reference('b', tf.int32)
+    tup = building_blocks.Struct([ref_2])
+    block = building_blocks.Block([(ref_2.name, ref_1)], tup)
+    comp = block
+
+    intermediate_comp, _ = tree_transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.remove_duplicate_block_locals(
+        intermediate_comp)
+
+    # pyformat: disable
+    self.assertEqual(
+        comp.formatted_representation(),
+        '(let\n'
+        '  b=a\n'
+        ' in <\n'
+        '  b\n'
+        '>)'
+    )
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var1=<\n'
+        '    a\n'
+        '  >\n'
+        ' in _var1)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
+  def test_strips_reference_chain_culminating_in_unbound_ref(self):
+    ref_1 = building_blocks.Reference('a', tf.int32)
+    ref_2 = building_blocks.Reference('b', tf.int32)
+    ref_3 = building_blocks.Reference('c', tf.int32)
+    tup = building_blocks.Struct([ref_3])
+    block = building_blocks.Block([(ref_2.name, ref_1), (ref_3.name, ref_2)],
+                                  tup)
+    comp = block
+
+    intermediate_comp, _ = tree_transformations.extract_computations(comp)
+    transformed_comp, modified = tree_transformations.remove_duplicate_block_locals(
+        intermediate_comp)
+
+    # pyformat: disable
+    self.assertEqual(
+        comp.formatted_representation(),
+        '(let\n'
+        '  b=a,\n'
+        '  c=b\n'
+        ' in <\n'
+        '  c\n'
+        '>)'
+    )
+    self.assertEqual(
+        transformed_comp.formatted_representation(),
+        '(let\n'
+        '  _var1=<\n'
+        '    a\n'
+        '  >\n'
+        ' in _var1)'
+    )
+    # pyformat: enable
+    self.assertEqual(transformed_comp.type_signature, comp.type_signature)
+    self.assertTrue(modified)
+
 
 class DeduplicateBuildingBlocksTest(test.TestCase):
 
