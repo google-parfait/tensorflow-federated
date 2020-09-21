@@ -210,6 +210,11 @@ py_test(
     srcs = ["eager_tf_executor_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    # TODO(b/154964982): enable Kokoro after one day to allow
+    # TF change propagate to TF nightly.
+    tags = [
+        "nokokoro",
+    ],
     deps = [
         ":eager_tf_executor",
         ":executor_factory",
@@ -230,7 +235,13 @@ py_test(
     srcs = ["eager_tf_executor_multi_gpu_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["requires-gpu-nvidia"],
+    # TODO(b/154964982): enable test on TAP and Kokoro
+    tags = [
+        "manual",
+        "nokokoro",
+        "notap",
+        "requires-gpu-nvidia",
+    ],
     deps = [
         ":eager_tf_executor",
         "//tensorflow_federated/python/core/api:computations",
@@ -429,7 +440,13 @@ py_test(
     srcs = ["executor_stacks_multi_gpu_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["requires-gpu-nvidia"],
+    # TODO(b/154964982): enable test on TAP and Kokoro
+    tags = [
+        "manual",
+        "nokokoro",
+        "notap",
+        "requires-gpu-nvidia",
+    ],
     deps = [
         ":executor_base",
         ":executor_stacks",
