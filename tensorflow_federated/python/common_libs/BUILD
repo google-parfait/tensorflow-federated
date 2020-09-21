@@ -17,6 +17,35 @@ py_library(
 )
 
 py_library(
+    name = "golden",
+    testonly = True,
+    srcs = ["golden.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "golden_test",
+    size = "small",
+    srcs = ["golden_test.py"],
+    args = [
+        "--golden",
+        "$(location golden_test_goldens/test_check_string_fails.expected)",
+        "--golden",
+        "$(location golden_test_goldens/test_check_string_succeeds.expected)",
+        "--golden",
+        "$(location golden_test_goldens/test_check_string_updates.expected)",
+    ],
+    data = [
+        "golden_test_goldens/test_check_string_fails.expected",
+        "golden_test_goldens/test_check_string_succeeds.expected",
+        "golden_test_goldens/test_check_string_updates.expected",
+    ],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":golden"],
+)
+
+py_library(
     name = "structure",
     srcs = ["structure.py"],
     srcs_version = "PY3",
