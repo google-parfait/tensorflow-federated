@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import placement_literals
@@ -928,6 +929,31 @@ def _replace_intrinsics_with_bodies(comp):
   return comp
 
 
+def _replace_lambda_body_with_call_dominant_form(
+    comp: building_blocks.Lambda) -> building_blocks.Lambda:
+  """Transforms the body of `comp` to call-dominant form.
+
+  Call-dominant form ensures that all higher-order functions are fully
+  resolved, as well that called intrinsics are pulled out into a top-level
+  let-binding. This combination of condition ensures first that pattern-matching
+  on calls to intrinsics is sufficient to identify communication operators in
+  `force_align_and_split_by_intrinsics`, and second that there are no nested
+  intrinsics which will cause that function to fail.
+
+  Args:
+    comp: `building_blocks.Lambda` the body of which to convert to call-dominant
+      form.
+
+  Returns:
+    A transformed version of `comp`, whose body is call-dominant.
+  """
+  lam_result = comp.result
+  result_as_call_dominant, _ = compiler_transformations.transform_to_call_dominant(
+      lam_result)
+  return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                result_as_call_dominant)
+
+
 def get_canonical_form_for_iterative_process(
     ip: iterative_process.IterativeProcess,
     grappler_config: Optional[
@@ -976,12 +1002,15 @@ def get_canonical_form_for_iterative_process(
 
   initialize_comp = _replace_intrinsics_with_bodies(initialize_comp)
   next_comp = _replace_intrinsics_with_bodies(next_comp)
+  next_comp = _replace_lambda_body_with_call_dominant_form(next_comp)
+
   tree_analysis.check_contains_only_reducible_intrinsics(initialize_comp)
   tree_analysis.check_contains_only_reducible_intrinsics(next_comp)
   tree_analysis.check_broadcast_not_dependent_on_aggregate(next_comp)
 
   if tree_analysis.contains_called_intrinsic(
       next_comp, intrinsic_defs.FEDERATED_BROADCAST.uri):
+
     before_broadcast, after_broadcast = (
         transformations.force_align_and_split_by_intrinsics(
             next_comp, [intrinsic_defs.FEDERATED_BROADCAST.uri]))

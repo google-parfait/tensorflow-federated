@@ -26,6 +26,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.context_stack import set_default_context
 from tensorflow_federated.python.core.impl.executors import execution_context
@@ -267,7 +268,9 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     ])
     sel = building_blocks.Selection(packed_broadcast, index=0)
     second_broadcast = building_block_factory.create_federated_broadcast(sel)
-    comp = building_blocks.Lambda('a', tf.int32, second_broadcast)
+    result, _ = compiler_transformations.transform_to_call_dominant(
+        second_broadcast)
+    comp = building_blocks.Lambda('a', tf.int32, result)
     uri = [intrinsic_defs.FEDERATED_BROADCAST.uri]
 
     before, after = transformations.force_align_and_split_by_intrinsics(

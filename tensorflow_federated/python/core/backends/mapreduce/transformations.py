@@ -324,6 +324,9 @@ def force_align_and_split_by_intrinsics(comp, uri):
      no external references), except for possibly a reference to the argument
      of `comp` in case `comp` is a lambda.
 
+  5. There are no called intrinsics of identity `uri` nested within the body of
+     another called intrinsic of identity `uri`.
+
   Under these conditions, this helper function must return a pair of building
   blocks `before` and `after` such that `comp` is semantically equivalent to
   the following expression:
@@ -374,7 +377,6 @@ def force_align_and_split_by_intrinsics(comp, uri):
   for x in uri:
     py_typecheck.check_type(x, str)
   _check_contains_called_intrinsics(comp, uri)
-
   comp = _force_align_intrinsics_to_top_level_lambda(comp, uri)
   return _split_by_intrinsics_in_top_level_lambda(comp)
 
@@ -560,9 +562,6 @@ def _inline_block_variables_required_to_align_intrinsics(comp, uri):
           'infinite loop. Expected to modify the AST by inlining the variable '
           'names: \'{}\', but no transformations to the AST: \n{}'.format(
               variable_names, comp.formatted_representation()))
-  comp, modified = tree_transformations.inline_selections_from_tuple(comp)
-  if modified:
-    comp, _ = tree_transformations.uniquify_reference_names(comp)
   return comp
 
 
@@ -602,9 +601,6 @@ def _extract_intrinsics_to_top_level_lambda(comp, uri):
     ValueError: If all the intrinsics for the given `uri` in `comp` are not
       exclusively bound by `comp`.
   """
-  # TODO(b/159060924): This function currently relies on not having structures
-  # of nested called intrinsics to extract intrinsics to the top level lambda.
-  # This is unnecessary, and should be removed.
   py_typecheck.check_type(comp, building_blocks.Lambda)
   py_typecheck.check_type(uri, list)
   for x in uri:

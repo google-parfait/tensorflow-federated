@@ -84,6 +84,60 @@ def get_iterative_process_for_sum_example():
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
+def get_iterative_process_with_nested_broadcasts():
+  """Returns an iterative process with nested federated broadcasts.
+
+  This iterative process contains all the components required to compile to
+  `canonical_form.CanonicalForm`.
+  """
+
+  @computations.federated_computation
+  def init_fn():
+    """The `init` function for `tff.templates.IterativeProcess`."""
+    return intrinsics.federated_value([0, 0], placements.SERVER)
+
+  @computations.tf_computation([tf.int32, tf.int32])
+  def prepare(server_state):
+    return server_state
+
+  @computations.tf_computation(tf.int32, [tf.int32, tf.int32])
+  def work(client_data, client_input):
+    del client_data  # Unused
+    del client_input  # Unused
+    return 1, 1
+
+  @computations.tf_computation([tf.int32, tf.int32], [tf.int32, tf.int32])
+  def update(server_state, global_update):
+    del server_state  # Unused
+    return global_update, []
+
+  @computations.federated_computation(
+      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER))
+  def broadcast_and_return_arg_and_result(x):
+    broadcasted = intrinsics.federated_broadcast(x)
+    return [broadcasted, x]
+
+  @computations.federated_computation([
+      computation_types.FederatedType([tf.int32, tf.int32], placements.SERVER),
+      computation_types.FederatedType(tf.int32, placements.CLIENTS),
+  ])
+  def next_fn(server_state, client_data):
+    """The `next` function for `tff.templates.IterativeProcess`."""
+    s2 = intrinsics.federated_map(prepare, server_state)
+    unused_client_input, to_broadcast = broadcast_and_return_arg_and_result(s2)
+    client_input = intrinsics.federated_broadcast(to_broadcast)
+    c3 = intrinsics.federated_zip([client_data, client_input])
+    client_updates = intrinsics.federated_map(work, c3)
+    unsecure_update = intrinsics.federated_sum(client_updates[0])
+    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    s6 = intrinsics.federated_zip(
+        [server_state, [unsecure_update, secure_update]])
+    new_server_state, server_output = intrinsics.federated_map(update, s6)
+    return new_server_state, server_output
+
+  return iterative_process.IterativeProcess(init_fn, next_fn)
+
+
 def get_iterative_process_for_sum_example_with_no_prepare():
   """Returns an iterative process for a sum example.
 
@@ -458,7 +512,7 @@ class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
 class CreateBeforeAndAfterBroadcastForNoBroadcastTest(test.TestCase):
 
   def test_returns_tree(self):
-    ip = get_iterative_process_for_sum_example_with_no_server_state()
+    ip = get_iterative_process_for_sum_example_with_no_broadcast()
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
 
@@ -515,17 +569,36 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(test.TestCase):
     )
     # pyformat: enable
 
+    # trees_equal will fail if computations refer to unbound references, so we
+    # create a new dummy computation to bind them.
+    unbound_refs_in_before_agg_result = transformation_utils.get_map_of_unbound_references(
+        before_aggregate.result[1])[before_aggregate.result[1]]
+    unbound_refs_in_before_secure_sum_result = transformation_utils.get_map_of_unbound_references(
+        before_federated_secure_sum.result)[before_federated_secure_sum.result]
+
+    dummy_data = building_blocks.Data('data',
+                                      computation_types.AbstractType('T'))
+
+    blk_binding_refs_in_before_agg = building_blocks.Block(
+        [(name, dummy_data) for name in unbound_refs_in_before_agg_result],
+        before_aggregate.result[1])
+    blk_binding_refs_in_before_secure_sum = building_blocks.Block([
+        (name, dummy_data) for name in unbound_refs_in_before_secure_sum_result
+    ], before_federated_secure_sum.result)
+
     self.assertTrue(
-        tree_analysis.trees_equal(before_aggregate.result[1],
-                                  before_federated_secure_sum.result))
+        tree_analysis.trees_equal(blk_binding_refs_in_before_agg,
+                                  blk_binding_refs_in_before_secure_sum))
 
     self.assertIsInstance(after_aggregate, building_blocks.Lambda)
     self.assertIsInstance(after_aggregate.result, building_blocks.Call)
-    actual_tree, _ = tree_transformations.uniquify_reference_names(
+    actual_after_aggregate_tree, _ = tree_transformations.uniquify_reference_names(
         after_aggregate.result.function)
-    expected_tree, _ = tree_transformations.uniquify_reference_names(
+    expected_after_aggregate_tree, _ = tree_transformations.uniquify_reference_names(
         after_federated_secure_sum)
-    self.assertTrue(tree_analysis.trees_equal(actual_tree, expected_tree))
+    self.assertTrue(
+        tree_analysis.trees_equal(actual_after_aggregate_tree,
+                                  expected_after_aggregate_tree))
 
     # pyformat: disable
     self.assertEqual(
@@ -721,6 +794,11 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
       canonical_form_utils.get_canonical_form_for_iterative_process(
           not_reducible_it)
 
+  def test_gets_canonical_form_for_nested_broadcast(self):
+    ip = get_iterative_process_with_nested_broadcasts()
+    cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
+    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+
   def test_constructs_canonical_form_from_mnist_training_example(self):
     it = canonical_form_utils.get_iterative_process_for_canonical_form(
         test_utils.get_mnist_training_example())
@@ -844,7 +922,6 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
       canonical_form_utils.get_canonical_form_for_iterative_process(ip)
 
   def test_returns_canonical_form_with_indirection_to_intrinsic(self):
-    self.skipTest('b/160865930')
     ip = test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation(
     )
 

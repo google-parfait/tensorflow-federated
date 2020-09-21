@@ -822,7 +822,7 @@ def transform_to_call_dominant(
         comp)
     comp, selections_inlined = tree_transformations.inline_selections_from_tuple(
         comp)
-    if selections_inlined:
+    if fns_resolved or selections_inlined:
       comp, _ = tree_transformations.uniquify_reference_names(comp)
     comp, fns_inlined = _inline_functions(comp)
     comp, locals_removed = tree_transformations.remove_unused_block_locals(comp)
