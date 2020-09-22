@@ -479,7 +479,7 @@ class CanonicalForm(object):
         ('merge', self.merge),
         ('report', self.report),
         ('bitwidth', self.bitwidth),
-        ('update', self.initialize),
+        ('update', self.update),
     ]
     for name, comp in computations:
       # Add sufficient padding to align first column; len('initialize') == 10

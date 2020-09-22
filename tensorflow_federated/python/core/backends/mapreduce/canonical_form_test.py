@@ -415,7 +415,7 @@ class CanonicalFormTest(absltest.TestCase):
         'merge     : (<accumulator1=<num_total=int32,num_over=int32>,accumulator2=<num_total=int32,num_over=int32>> -> <num_total=int32,num_over=int32>)\n'
         'report    : (<num_total=int32,num_over=int32> -> <ratio_over_threshold=float32>)\n'
         'bitwidth  : ( -> <>)\n'
-        'update    : ( -> <num_rounds=int32>)\n'
+        'update    : (<state=<num_rounds=int32>,update=<<ratio_over_threshold=float32>,<>>> -> <<num_rounds=int32>,<ratio_over_threshold=float32>>)\n'
     )
     # pyformat: enable
 
