@@ -178,7 +178,7 @@ py_library(
 
 py_test(
     name = "federated_aggregations_test",
-    timeout = "moderate",
+    timeout = "long",
     srcs = ["federated_aggregations_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

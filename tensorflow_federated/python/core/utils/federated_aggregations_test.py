@@ -331,6 +331,129 @@ class SecureQuantizedSumStaticAssertsTest(tf.test.TestCase,
 class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  def test_client_tensor_shift_int_range(self, int_type):
+    """Tests that client shift produces ints in expected range for SecAgg."""
+    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+        tf.constant([0, 1, 2, 3, 5, -254, -255, -256, 255, 256, 257],
+                    dtype=int_type), tf.constant(-255, dtype=int_type),
+        tf.constant(256, dtype=int_type))
+    self.assertAllEqual([255, 256, 257, 258, 260, 1, 0, 0, 510, 511, 511],
+                        encoded)
+
+  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  def test_client_tensor_shift_int_range_bounds_equal(self, int_type):
+    """Tests that ints are in expected range for SecAgg for equal bounds."""
+    # Ensure all outputs are exactly lower_bound == upper_bound and there are no
+    # off by 1 errors.
+    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+        tf.constant([-1, 0, 1, 2, 3, 5, -254, -255, -256, 255, 256, 257],
+                    dtype=int_type), tf.constant(0, dtype=int_type),
+        tf.constant(0, dtype=int_type))
+    self.assertAllEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], encoded)
+
+  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  def test_client_tensor_shift_int_range_shifted_bounds_equal(self, int_type):
+    """Tests that ints are in expected range for SecAgg for equal nonzero bounds."""
+    # Ensure all outputs are exactly lower_bound == upper_bound and there are no
+    # off by 1 errors.
+    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+        tf.constant([-1, 0, 1, 2, 3, 5, -254, -255, -256, 255, 256, 257],
+                    dtype=int_type), tf.constant(1, dtype=int_type),
+        tf.constant(1, dtype=int_type))
+    self.assertAllEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], encoded)
+
+  def test_client_tensor_shift_int64_bound_max(self):
+    """Tests that client shift handles edge-cases with tf.int64 properly."""
+    # Check upper_bound - lower_bound == _SECAGG_MAX doesn't cause off by
+    # 1 issue in calculating scale factor. We expect quantization with a scale
+    # factor of 2.
+    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+        tf.constant(
+            [-1, 0, 2**31, 2**32, 2**32 - 1, 2**32 - 2, 2**32 - 3, 2**63 - 1],
+            dtype=tf.int64), tf.constant(0, dtype=tf.int64),
+        tf.constant(2**32 - 1, dtype=tf.int64))
+    self.assertAllEqual(
+        [0, 0, 2**30, 2**31 - 1, 2**31 - 1, 2**31 - 1, 2**31 - 2, 2**31 - 1],
+        encoded)
+
+  def test_client_tensor_shift_int64_bound_max_decremented(self):
+    """Tests that client shift handles edge-cases with tf.int64 properly."""
+    # Check upper_bound - lower_bound == _SECAGG_MAX - 1 doesn't cause off by
+    # 1 issue in calculating scale factor. We expect exact results without
+    # scaling.
+    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+        tf.constant(
+            [-1, 0, 2**31, 2**32, 2**32 - 1, 2**32 - 2, 2**32 - 3, 2**63 - 1],
+            dtype=tf.int64), tf.constant(0, dtype=tf.int64),
+        tf.constant(2**32 - 2, dtype=tf.int64))
+    self.assertAllEqual(
+        [0, 0, 2**31, 2**32 - 2, 2**32 - 2, 2**32 - 2, 2**32 - 3, 2**32 - 2],
+        encoded)
+
+  def test_client_tensor_shift_int64_bound_max_incremented(self):
+    """Tests that client shift handles edge-cases with tf.int64 properly."""
+    # Check upper_bound - lower_bound == _SECAGG_MAX + 1 doesn't cause off by
+    # 1 issue in calculating scale factor. We expect exact results without
+    # scaling.
+    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+        tf.constant(
+            [-1, 0, 2**31, 2**32, 2**32 + 1, 2**32 - 2, 2**32 - 3, 2**63 - 1],
+            dtype=tf.int64), tf.constant(0, dtype=tf.int64),
+        tf.constant(2**32, dtype=tf.int64))
+    self.assertAllEqual(
+        [0, 0, 2**30, 2**31, 2**31, 2**31 - 1, 2**31 - 2, 2**31], encoded)
+
+  @parameterized.named_parameters(('float32', tf.float32),
+                                  ('float64', tf.float64))
+  def test_client_tensor_shift_float_range(self, float_type):
+    """Tests that float client shift produces ints in expected range for SecAgg."""
+    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+        tf.constant([-2.0, -1.0, 1.0, 2.0], dtype=float_type),
+        tf.constant(-1.0, dtype=float_type), tf.constant(1.0, dtype=float_type))
+    self.assertAllEqual([0, 0, 2**32 - 1, 2**32 - 1], encoded)
+
+  @parameterized.named_parameters(('float32', tf.float32),
+                                  ('float64', tf.float64))
+  def test_client_tensor_shift_float_range_bounds_equal(self, float_type):
+    """Tests that float client shift produces ints in expected range for SecAgg."""
+    # Ensure lower_bound == upper_bound doesn't cause division by zero issues.
+    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+        tf.constant([-1, 0, 1, 2, 3, 5, -254, -255, -256, 255, 256, 257],
+                    dtype=float_type), tf.constant(0.0, dtype=float_type),
+        tf.constant(0.0, dtype=float_type))
+    self.assertAllEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], encoded)
+
+  @parameterized.named_parameters(('float32', tf.float32),
+                                  ('float64', tf.float64))
+  def test_client_tensor_shift_float_shifted_range_bounds_equal(
+      self, float_type):
+    """Tests that float client shift produces ints in expected range for SecAgg."""
+    # Ensure lower_bound == upper_bound doesn't cause division by zero issues.
+    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+        tf.constant([-1, 0, 1, 2, 3, 5, -254, -255, -256, 255, 256, 257],
+                    dtype=float_type), tf.constant(1.1, dtype=float_type),
+        tf.constant(1.1, dtype=float_type))
+    self.assertAllEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], encoded)
+
+  @parameterized.named_parameters(('float32', tf.float32),
+                                  ('float64', tf.float64))
+  def test_client_tensor_shift_invalid_bounds_float(self, float_type):
+    """Ensures lower_bound > upper_bound causes error."""
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      federated_aggregations._client_tensor_shift_for_secure_sum(
+          tf.constant([-2.0, -1.0, 1.0, 2.0], dtype=float_type),
+          tf.constant(1.0, dtype=float_type),
+          tf.constant(-1.0, dtype=float_type))
+
+  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  def test_client_tensor_shift_invalid_bounds_int(self, int_type):
+    """Ensures lower_bound > upper_bound causes error."""
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      federated_aggregations._client_tensor_shift_for_secure_sum(
+          tf.constant([-2, -1, 1, 2], dtype=int_type),
+          tf.constant(1, dtype=int_type), tf.constant(-1, dtype=int_type))
+
+  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
   def test_scalar_int_type_py_range(self, int_type):
     """Tests value of integer scalar type and scalar np range."""
     call_secure_sum = _build_test_sum_fn_py_bounds(int_type,
@@ -671,6 +794,11 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(1.0, call_secure_sum([0.0]))
     self.assertEqual(1.0, call_secure_sum([1.0]))
     self.assertEqual(1.0, call_secure_sum([2.0]))
+    call_secure_sum = _build_test_sum_fn_py_bounds(float_type, np_val_fn(1.1),
+                                                   np_val_fn(1.1))
+    self.assertAlmostEqual(1.1, call_secure_sum([0.0]))
+    self.assertAlmostEqual(1.1, call_secure_sum([1.1]))
+    self.assertAlmostEqual(1.1, call_secure_sum([2.0]))
 
     # Ensure that even a large range leads to sum with a high accuracy.
     call_secure_sum = _build_test_sum_fn_py_bounds(float_type,
@@ -680,6 +808,198 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
                         call_secure_sum([10**6, 10**5, 10**4, 1000, 1]))
     self.assertAllClose(1011001.0,
                         call_secure_sum([10**6, 10**5, 10**4, 1000, 1, -10**5]))
+
+  @parameterized.named_parameters(('float32', tf.float32),
+                                  ('float64', tf.float64))
+  def test_numeric_precision_zeros_float(self, float_type):
+    """Ensure that 0's are represented exactly regardless of clipping range."""
+    np_val_fn = lambda v: np.array(v, float_type.as_numpy_dtype)
+
+    # Small symmetric clipping range. Test multiple summands as well to ensure
+    # dequantization shifting handles this without introducing additional
+    # precision errors.
+    call_secure_sum = _build_test_sum_fn_py_bounds(float_type, np_val_fn(-1.0),
+                                                   np_val_fn(1.0))
+    self.assertEqual(0.0, call_secure_sum([0.0]))
+    self.assertEqual(0.0, call_secure_sum([0.0, 0.0, 0.0]))
+    self.assertEqual(
+        call_secure_sum([0.552]), call_secure_sum([0.552, 0.0, 0.0]))
+
+    # Medium-size symmetric clipping range.
+    call_secure_sum = _build_test_sum_fn_py_bounds(float_type,
+                                                   np_val_fn(-100.0),
+                                                   np_val_fn(100.0))
+    self.assertEqual(0.0, call_secure_sum([0.0]))
+    self.assertEqual(0.0, call_secure_sum([0.0, 0.0, 0.0]))
+    # This ensures that any float precision errors introduced don't come from
+    # adding 0.0.
+    self.assertEqual(
+        call_secure_sum([0.552]), call_secure_sum([0.552, 0.0, 0.0]))
+
+    # Medium-size symmetric clipping range.
+    call_secure_sum = _build_test_sum_fn_py_bounds(float_type,
+                                                   np_val_fn(-10**6 * 1.0),
+                                                   np_val_fn(10**6 * 1.0))
+    self.assertEqual(0.0, call_secure_sum([0.0]))
+    self.assertEqual(0.0, call_secure_sum([0.0, 0.0, 0.0]))
+    # This ensures that any float precision errors introduced don't come from
+    # adding 0.0.
+    self.assertEqual(
+        call_secure_sum([0.552]), call_secure_sum([0.552, 0.0, 0.0]))
+
+    # Non-symmetric clipping range.
+    call_secure_sum = _build_test_sum_fn_py_bounds(float_type,
+                                                   np_val_fn(-100.0),
+                                                   np_val_fn(200.0))
+    self.assertEqual(0.0, call_secure_sum([0.0]))
+    self.assertEqual(0.0, call_secure_sum([0.0, 0.0, 0.0]))
+    # This ensures that any float precision errors introduced don't come from
+    # adding 0.0.
+    self.assertEqual(
+        call_secure_sum([0.552]), call_secure_sum([0.552, 0.0, 0.0]))
+
+    # Non-symmetric clipping range with lower bound close to 0.
+    call_secure_sum = _build_test_sum_fn_py_bounds(float_type, np_val_fn(-1e-5),
+                                                   np_val_fn(200.0))
+    self.assertEqual(0.0, call_secure_sum([0.0]))
+    self.assertEqual(0.0, call_secure_sum([0.0, 0.0, 0.0]))
+    # This ensures that any float precision errors introduced don't come from
+    # adding 0.0.
+    self.assertEqual(
+        call_secure_sum([0.552]), call_secure_sum([0.552, 0.0, 0.0]))
+
+    # Non-symmetric clipping range with lower bound very close to 0.
+    call_secure_sum = _build_test_sum_fn_py_bounds(float_type,
+                                                   np_val_fn(-1e-16),
+                                                   np_val_fn(200.0))
+    self.assertEqual(0.0, call_secure_sum([0.0]))
+    self.assertEqual(0.0, call_secure_sum([0.0, 0.0, 0.0]))
+    # This ensures that any float precision errors introduced don't come from
+    # adding 0.0.
+    self.assertEqual(
+        call_secure_sum([0.552]), call_secure_sum([0.552, 0.0, 0.0]))
+
+  @parameterized.named_parameters(('float32', tf.float32),
+                                  ('float64', tf.float64))
+  def test_numeric_precision_small_values_float(self, float_type):
+    """Ensure that small values are as accurate as expected."""
+    np_val_fn = lambda v: np.array(v, float_type.as_numpy_dtype)
+
+    def call_secure_sum_with_small_values(call_secure_sum_fn, orders):
+      """Checks sum with multiple orders of magnitude of small inputs."""
+      for i in range(1, orders + 1):
+        value = 10**-i
+        summed_value = call_secure_sum_fn([value, 0.0])
+        # Ensure relative tolerance is within 10%. This means the sum is within
+        # 0.1 * 10**-i of the expected value.
+        self.assertLessEqual(np.abs(summed_value - value) / value, 0.1)
+
+    # Small clipping range. Expect 9 significant figures relative to range, so
+    # values as small as 10**-9 should be captured.
+    call_secure_sum_fn = _build_test_sum_fn_py_bounds(float_type,
+                                                      np_val_fn(-1.0),
+                                                      np_val_fn(1.0))
+    call_secure_sum_with_small_values(call_secure_sum_fn, orders=9)
+
+    # Large clipping range. Expect 9 significant figures relative to range, so
+    # values as small as 10**-3 should be captured.
+    call_secure_sum_fn = _build_test_sum_fn_py_bounds(float_type,
+                                                      np_val_fn(-10**6 * 1.0),
+                                                      np_val_fn(10**6 * 1.0))
+    call_secure_sum_with_small_values(call_secure_sum_fn, orders=3)
+
+    # Asymmetric clipping range. Expect 9 significant figures relative to range,
+    # so values as small as 10**-7 should be captured.
+    call_secure_sum_fn = _build_test_sum_fn_py_bounds(float_type,
+                                                      np_val_fn(-1.0),
+                                                      np_val_fn(100.0))
+    call_secure_sum_with_small_values(call_secure_sum_fn, orders=7)
+
+  def test_numeric_precision_represent_sums_float32(self):
+    """Ensure that upper_bound + value for small float32 values is as accurate as expected."""
+    np_val_fn = lambda v: np.array(v, tf.float32.as_numpy_dtype)
+
+    def call_secure_sum_with_small_values(call_secure_sum_fn, orders,
+                                          upper_bound):
+      """Checks sum with multiple orders of magnitude of small inputs."""
+      for i in range(1, orders + 1):
+        # Test sums slightly above `upper_bound` since this uses additional bits
+        # of the float mantissa, which can be a problem for `tf.float32`
+        # especially in representing the final output.
+        value = 10**-i
+        summed_value = call_secure_sum_fn([value, upper_bound])
+        # Ensure relative tolerance is within 50% relative to value. Note
+        # that Python will incur numerical stability issues at 1e-16 but this
+        # isn't a problem for the larger orders we test.
+        self.assertLessEqual(
+            np.abs(summed_value - value - upper_bound) / value, 0.5)
+
+    # Small clipping range. Expect 7 significant figures relative to range, so
+    # values as small as 10**-7 should be captured.
+    call_secure_sum_fn = _build_test_sum_fn_py_bounds(tf.float32,
+                                                      np_val_fn(-1.0),
+                                                      np_val_fn(1.0))
+    call_secure_sum_with_small_values(
+        call_secure_sum_fn, orders=7, upper_bound=1.0)
+
+    # Large clipping range. Expect 7 significant figures relative to range, so
+    # values as small as 10**-1 should be captured.
+    call_secure_sum_fn = _build_test_sum_fn_py_bounds(tf.float32,
+                                                      np_val_fn(-10**6 * 1.0),
+                                                      np_val_fn(10**6 * 1.0))
+    call_secure_sum_with_small_values(
+        call_secure_sum_fn, orders=1, upper_bound=10**6 * 1.0)
+
+    # Asymmetric clipping range. Expect 7 significant figures relative to range,
+    # so values as small as 10**-5 should be captured.
+    call_secure_sum_fn = _build_test_sum_fn_py_bounds(tf.float32,
+                                                      np_val_fn(-1.0),
+                                                      np_val_fn(100.0))
+    call_secure_sum_with_small_values(
+        call_secure_sum_fn, orders=5, upper_bound=100.0)
+
+  def test_numeric_precision_represent_sums_float64(self):
+    """Ensure that upper_bound + value for small float64 values is as accurate as expected."""
+    np_val_fn = lambda v: np.array(v, tf.float64.as_numpy_dtype)
+
+    def call_secure_sum_with_small_values(call_secure_sum_fn, orders,
+                                          upper_bound):
+      """Checks sum with multiple orders of magnitude of small inputs."""
+      for i in range(1, orders + 1):
+        # Test sums slightly above `upper_bound` since this uses additional bits
+        # of the float mantissa, which can be a problem for `tf.float64` in
+        # representing the final output.
+        value = 10**-i
+        summed_value = call_secure_sum_fn([value, upper_bound])
+        # Ensure relative tolerance is within 50% relative to value. Note
+        # that Python will incur numerical stability issues at 1e-16 but this
+        # isn't a problem for the larger orders we test.
+        self.assertLessEqual(
+            np.abs(summed_value - value - upper_bound) / value, 0.5)
+
+    # Small clipping range. Expect 9 significant figures relative to range, so
+    # values as small as 10**-9 should be captured.
+    call_secure_sum_fn = _build_test_sum_fn_py_bounds(tf.float64,
+                                                      np_val_fn(-1.0),
+                                                      np_val_fn(1.0))
+    call_secure_sum_with_small_values(
+        call_secure_sum_fn, orders=9, upper_bound=1.0)
+
+    # Large clipping range. Expect 9 significant figures relative to range, so
+    # values as small as 10**-3 should be captured.
+    call_secure_sum_fn = _build_test_sum_fn_py_bounds(tf.float64,
+                                                      np_val_fn(-10**6 * 1.0),
+                                                      np_val_fn(10**6 * 1.0))
+    call_secure_sum_with_small_values(
+        call_secure_sum_fn, orders=3, upper_bound=10**6 * 1.0)
+
+    # Asymmetric clipping range. Expect 9 significant figures relative to range,
+    # so values as small as 10**-7 should be captured.
+    call_secure_sum_fn = _build_test_sum_fn_py_bounds(tf.float64,
+                                                      np_val_fn(-1.0),
+                                                      np_val_fn(100.0))
+    call_secure_sum_with_small_values(
+        call_secure_sum_fn, orders=7, upper_bound=100.0)
 
   @parameterized.named_parameters(('int8', tf.int8), ('int16', tf.int16),
                                   ('float16', tf.float16))

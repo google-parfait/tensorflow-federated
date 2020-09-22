@@ -465,6 +465,7 @@ def _client_tensor_shift_for_secure_sum(value, lower_bound, upper_bound):
   Returns:
     Shifted value of dtype `tf.int64`.
   """
+  tf.Assert(lower_bound <= upper_bound, [lower_bound, upper_bound])
   if value.dtype == tf.int32:
     clipped_val = tf.clip_by_value(value, lower_bound, upper_bound)
     # Cast BEFORE shift in order to avoid overflow if full int32 range is used.
@@ -482,10 +483,21 @@ def _client_tensor_shift_for_secure_sum(value, lower_bound, upper_bound):
     # This should be ensured earlier and thus not user-facing.
     assert value.dtype in [tf.float32, tf.float64]
     clipped_value = tf.clip_by_value(value, lower_bound, upper_bound)
-    shifted_value = clipped_value - lower_bound
-    scaled_value = tf.cast(shifted_value, tf.float64) * (
-        _SECAGG_MAX / tf.cast(upper_bound - lower_bound, tf.float64))
-    quantized_value = tf.cast(tf.round(scaled_value), tf.int64)
+    # Prevent NaNs if `lower_bound` and `upper_bound` are the same.
+    scale_factor = tf.math.divide_no_nan(
+        tf.constant(_SECAGG_MAX, tf.float64),
+        tf.cast(upper_bound - lower_bound, tf.float64))
+    scaled_value = tf.cast(clipped_value, tf.float64) * scale_factor
+    # Perform deterministic rounding here, which may introduce bias as every
+    # value may be rounded in the same direction for some input data.
+    rounded_value = tf.saturate_cast(tf.round(scaled_value), tf.int64)
+    # Perform shift in integer space to minimize float precision errors.
+    shifted_value = rounded_value - tf.saturate_cast(
+        tf.round(tf.cast(lower_bound, tf.float64) * scale_factor), tf.int64)
+    # Clip to expected range in case of numerical stability issues.
+    quantized_value = tf.clip_by_value(shifted_value,
+                                       tf.constant(0, dtype=tf.int64),
+                                       tf.constant(_SECAGG_MAX, dtype=tf.int64))
     return quantized_value
 
 
@@ -494,8 +506,8 @@ def _server_tensor_shift_for_secure_sum(num_summands, value, lower_bound,
                                         upper_bound, output_dtype):
   """Mapping to be applied to every tensor after secure sum.
 
-  This operation is performed on `tff.SERVER` to prepare values to format
-  compatible with `tff.federated_secure_sum` operator.
+  This operation is performed on `tff.SERVER` to dequantize outputs of the
+  `tff.federated_secure_sum` operator.
 
   It is reverse of `_client_tensor_shift_for_secure_sum` taking into account
   that `num_summands` elements were summed, so the inverse shift needs to be
@@ -524,11 +536,28 @@ def _server_tensor_shift_for_secure_sum(num_summands, value, lower_bound,
   else:
     # This should be ensured earlier and thus not user-facing.
     assert output_dtype in [tf.float32, tf.float64]
+    # Use exactly the same `scale_factor` as during client quantization so that
+    # float precision errors (which are deterministic) cancel out. This ensures
+    # that the sum of [0] is exactly 0 for any clipping range.
+    scale_factor = tf.math.divide_no_nan(
+        tf.constant(_SECAGG_MAX, tf.float64),
+        tf.cast(upper_bound - lower_bound, tf.float64))
+    # Scale the shift by `num_summands` as an integer to prevent additional
+    # float precision errors for multiple summands. This also ensures that the
+    # sum of [0] * num_summands is exactly 0 for any clipping range.
+    value = value + tf.saturate_cast(
+        tf.round(tf.cast(lower_bound, tf.float64) * scale_factor),
+        tf.int64) * tf.cast(num_summands, tf.int64)
     value = tf.cast(value, tf.float64)
     value = value * (
         tf.cast(upper_bound - lower_bound, tf.float64) / _SECAGG_MAX)
-    value = value + tf.cast(num_summands, tf.float64) * tf.cast(
+    # If `lower_bound` and `upper_bound` are the same, the above shift had no
+    # effect since `scale_factor` is 0. Shift here instead.
+    shifted_value = value + tf.cast(num_summands, tf.float64) * tf.cast(
         lower_bound, tf.float64)
+    value = tf.cond(
+        tf.equal(lower_bound, upper_bound), lambda: shifted_value,
+        lambda: value)
 
   return tf.cast(value, output_dtype)
 
@@ -554,13 +583,15 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   not, `client_value` will be quantized to precision of 32 bits, so the worst
   case error introduced for the value of each client will be approximately
   `(upper_bound - lower_bound) / 2**32`. Deterministic rounding to nearest value
-  is used in such case.
+  is used in such cases.
 
   If the dtype of `client_value` is `tf.float32` or `tf.float64`, the summation
   is generally *not* accurate up to full floating point precision. Instead, the
   values are first clipped to the `[lower_bound, upper_bound]` range. These
   values are then uniformly quantized to 32 bit resolution, using deterministic
-  rounding to round the values to the quantization points.
+  rounding to round the values to the quantization points. Rounding happens
+  roughly as follows (implementation is a bit more complex to mitigate numerical
+  stability issues):
 
   ```
   values = tf.round(
@@ -571,14 +602,16 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   is of the same dtype as the input `client_value`.
 
   In terms of accuracy, it is safe to assume accuracy within 7-8 significant
-  digits for `tf.float32` inputs, and 9-10 significant digits for `tf.float64`
+  digits for `tf.float32` inputs, and 8-9 significant digits for `tf.float64`
   inputs, where the significant digits refer to precision relative to the range
   of the provided bounds. Thus, these bounds should not be set extremely wide.
+  Accuracy losses arise due to (1) quantization within the given clipping range,
+  (2) float precision of final outputs (e.g. `tf.float32` has 23 bits in its
+  mantissa), and (3) precision losses that arise in doing math on `tf.float32`
+  and `tf.float64` inputs.
 
-  In a concrete example, if the range is `+/- 1,000,000`, erros up to `0.03` per
-  element should be expected for `tf.float32`, due to the `23` bits in mantissa
-  of `tf.float32` represeantaion, and up to `0.0005` should be expected for
-  `tf.float64`, due to the precision of `1/(2**32 - 1)`.
+  As a concrete example, if the range is `+/- 1000`, errors up to `1e-4` per
+  element should be expected for `tf.float32` and up to `1e-5` for `tf.float64`.
 
   Args:
     client_value: A `tff.Value` placed at `tff.CLIENTS`.
