@@ -1,0 +1,23 @@
+federated_map(<
+  (x -> <
+    a=x[0],
+    b=x[1],
+    c=x[2]
+  >),
+  federated_map(<
+    (zipped_tree -> <
+      zipped_tree[0][0],
+      zipped_tree[0][1],
+      zipped_tree[1]
+    >),
+    (let
+      value=v
+     in federated_zip_at_clients(<
+      federated_zip_at_clients(<
+        value[0],
+        value[1]
+      >),
+      value[2]
+    >))
+  >)
+>)

@@ -48,6 +48,8 @@ def _filename_to_golden_path(filename: str) -> str:
             f'{_filename_to_golden_map[name]}\n'
             'Golden file names in the same test target must be unique.')
       _filename_to_golden_map[name] = golden_path
+  if filename not in _filename_to_golden_map:
+    raise RuntimeError(f'No `--golden` files found with filename {filename}')
   return _filename_to_golden_map[filename]
 
 

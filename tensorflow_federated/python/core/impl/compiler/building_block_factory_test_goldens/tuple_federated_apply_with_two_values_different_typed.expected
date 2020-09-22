@@ -1,0 +1,12 @@
+(let
+  value=v
+ in <
+  federated_apply(<
+    (arg -> arg[0]),
+    value
+  >),
+  federated_apply(<
+    (arg -> arg[1]),
+    value
+  >)
+>)

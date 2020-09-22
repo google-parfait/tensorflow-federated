@@ -1,0 +1,12 @@
+(let
+  value=v
+ in <
+  a=federated_map(<
+    (arg -> arg[0]),
+    value
+  >),
+  b=federated_map(<
+    (arg -> arg[1]),
+    value
+  >)
+>)

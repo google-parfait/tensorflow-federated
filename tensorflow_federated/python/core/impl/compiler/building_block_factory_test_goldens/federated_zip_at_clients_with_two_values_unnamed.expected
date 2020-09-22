@@ -1,0 +1,12 @@
+federated_map(<
+  (x -> <
+    a=x[0],
+    b=x[1]
+  >),
+  federated_zip_at_clients((let
+    named=v
+   in <
+    named[0],
+    named[1]
+  >))
+>)

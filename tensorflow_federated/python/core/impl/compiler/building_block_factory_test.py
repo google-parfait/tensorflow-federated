@@ -17,6 +17,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -327,17 +328,8 @@ class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
     value_comp = building_blocks.Data('x', tf.int32)
     lam = building_block_factory.create_named_tuple_setattr_lambda(
         good_type, 'a', value_comp)
-    # pyformat: disable
-    self.assertEqual(
-        lam.formatted_representation(),
-        '(let\n'
-        '  value_comp_placeholder=x\n'
-        ' in (lambda_arg -> <\n'
-        '  a=value_comp_placeholder,\n'
-        '  b=lambda_arg[1]\n'
-        '>))'
-    )
-    # pyformat: enable
+    golden.check_string('replaces_single_element.expected',
+                        lam.formatted_representation())
 
   def test_skips_unnamed_element(self):
     good_type = computation_types.StructType([('a', tf.int32),
@@ -346,18 +338,8 @@ class CreateFederatedSetitemLambdaTest(parameterized.TestCase):
     value_comp = building_blocks.Data('x', tf.int32)
     lam = building_block_factory.create_named_tuple_setattr_lambda(
         good_type, 'a', value_comp)
-    # pyformat: disable
-    self.assertEqual(
-        lam.formatted_representation(),
-        '(let\n'
-        '  value_comp_placeholder=x\n'
-        ' in (lambda_arg -> <\n'
-        '  a=value_comp_placeholder,\n'
-        '  lambda_arg[1],\n'
-        '  b=lambda_arg[2]\n'
-        '>))'
-    )
-    # pyformat: enable
+    golden.check_string('skips_unnamed_element.expected',
+                        lam.formatted_representation())
 
   def test_leaves_type_signature_unchanged(self):
     good_type = computation_types.StructType([('a', tf.int32),
@@ -470,21 +452,8 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
 
     federated_setattr = building_block_factory.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
-    # pyformat: disable
-    self.assertEqual(
-        federated_setattr.formatted_representation(),
-        'federated_map(<\n'
-        '  (let\n'
-        '    value_comp_placeholder=x\n'
-        '   in (lambda_arg -> <\n'
-        '    a=value_comp_placeholder,\n'
-        '    lambda_arg[1],\n'
-        '    b=lambda_arg[2]\n'
-        '  >)),\n'
-        '  federated_comp\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string('constructs_correct_computation_clients.expected',
+                        federated_setattr.formatted_representation())
 
   def test_constructs_correct_computation_server(self):
     named_tuple_type = computation_types.StructType([('a', tf.int32),
@@ -497,21 +466,8 @@ class CreateFederatedSetatterCallTest(parameterized.TestCase):
 
     federated_setattr = building_block_factory.create_federated_setattr_call(
         federated_comp, 'a', value_comp)
-    # pyformat: disable
-    self.assertEqual(
-        federated_setattr.formatted_representation(),
-        'federated_apply(<\n'
-        '  (let\n'
-        '    value_comp_placeholder=x\n'
-        '   in (lambda_arg -> <\n'
-        '    a=value_comp_placeholder,\n'
-        '    lambda_arg[1],\n'
-        '    b=lambda_arg[2]\n'
-        '  >)),\n'
-        '  federated_comp\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string('constructs_correct_computation_server.expected',
+                        federated_setattr.formatted_representation())
 
 
 class CreateComputationAppendingTest(absltest.TestCase):
@@ -984,23 +940,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        '(let\n'
-        '  value=v\n'
-        ' in <\n'
-        '  federated_map(<\n'
-        '    (arg -> arg[0]),\n'
-        '    value\n'
-        '  >),\n'
-        '  federated_map(<\n'
-        '    (arg -> arg[1]),\n'
-        '    value\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string('tuple_federated_map_with_two_values_unnamed.expected',
+                        comp.formatted_representation())
     self.assertEqual(
         str(comp.type_signature), '<{int32}@CLIENTS,{int32}@CLIENTS>')
 
@@ -1011,23 +952,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        '(let\n'
-        '  value=v\n'
-        ' in <\n'
-        '  a=federated_map(<\n'
-        '    (arg -> arg[0]),\n'
-        '    value\n'
-        '  >),\n'
-        '  b=federated_map(<\n'
-        '    (arg -> arg[1]),\n'
-        '    value\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string('tuple_federated_map_with_two_values_named.expected',
+                        comp.formatted_representation())
     self.assertEqual(
         str(comp.type_signature), '<a={int32}@CLIENTS,b={int32}@CLIENTS>')
 
@@ -1036,23 +962,9 @@ class CreateFederatedUnzipTest(absltest.TestCase):
                                                  placement_literals.CLIENTS)
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        '(let\n'
-        '  value=v\n'
-        ' in <\n'
-        '  federated_map(<\n'
-        '    (arg -> arg[0]),\n'
-        '    value\n'
-        '  >),\n'
-        '  federated_map(<\n'
-        '    (arg -> arg[1]),\n'
-        '    value\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'tuple_federated_map_with_two_values_different_typed.expected',
+        comp.formatted_representation())
     self.assertEqual(
         str(comp.type_signature), '<{int32}@CLIENTS,{bool}@CLIENTS>')
 
@@ -1082,23 +994,9 @@ class CreateFederatedUnzipTest(absltest.TestCase):
                                                  placement_literals.SERVER)
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        '(let\n'
-        '  value=v\n'
-        ' in <\n'
-        '  federated_apply(<\n'
-        '    (arg -> arg[0]),\n'
-        '    value\n'
-        '  >),\n'
-        '  federated_apply(<\n'
-        '    (arg -> arg[1]),\n'
-        '    value\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'tuple_federated_apply_with_two_values_unnamed.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '<int32@SERVER,int32@SERVER>')
 
   def test_returns_tuple_federated_apply_with_two_values_named(self):
@@ -1108,23 +1006,8 @@ class CreateFederatedUnzipTest(absltest.TestCase):
                                                  placement_literals.SERVER)
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        '(let\n'
-        '  value=v\n'
-        ' in <\n'
-        '  a=federated_apply(<\n'
-        '    (arg -> arg[0]),\n'
-        '    value\n'
-        '  >),\n'
-        '  b=federated_apply(<\n'
-        '    (arg -> arg[1]),\n'
-        '    value\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string('tuple_federated_apply_with_two_values_named.expected',
+                        comp.formatted_representation())
     self.assertEqual(
         str(comp.type_signature), '<a=int32@SERVER,b=int32@SERVER>')
 
@@ -1133,23 +1016,9 @@ class CreateFederatedUnzipTest(absltest.TestCase):
                                                  placement_literals.SERVER)
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_unzip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        '(let\n'
-        '  value=v\n'
-        ' in <\n'
-        '  federated_apply(<\n'
-        '    (arg -> arg[0]),\n'
-        '    value\n'
-        '  >),\n'
-        '  federated_apply(<\n'
-        '    (arg -> arg[1]),\n'
-        '    value\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'tuple_federated_apply_with_two_values_different_typed.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '<int32@SERVER,bool@SERVER>')
 
 
@@ -1245,12 +1114,10 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.StructType((type_signature, type_signature))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
         'federated_zip_at_clients(v)'
     )
-    # pyformat: enable
     self.assertEqual(str(comp.type_signature), '{<int32,int32>}@CLIENTS')
 
   def test_returns_federated_zip_at_clients_with_two_values_unnamed_tuple(self):
@@ -1259,15 +1126,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value = building_blocks.Data('v', value_type)
     tup = building_blocks.Struct((value, value))
     comp = building_block_factory.create_federated_zip(tup)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_zip_at_clients(<\n'
-        '  v,\n'
-        '  v\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_clients_with_two_values_unnamed_tuple.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '{<int32,int32>}@CLIENTS')
 
   def test_returns_federated_zip_at_clients_with_two_values_named(self):
@@ -1277,23 +1138,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
         (('a', type_signature), ('b', type_signature)))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_map(<\n'
-        '  (x -> <\n'
-        '    a=x[0],\n'
-        '    b=x[1]\n'
-        '  >),\n'
-        '  federated_zip_at_clients((let\n'
-        '    named=v\n'
-        '   in <\n'
-        '    named[0],\n'
-        '    named[1]\n'
-        '  >))\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_clients_with_two_values_named.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '{<a=int32,b=int32>}@CLIENTS')
 
   def test_returns_federated_zip_at_clients_with_two_values_named_tuple(self):
@@ -1302,26 +1149,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value = building_blocks.Data('v', value_type)
     tup = building_blocks.Struct((('a', value), ('b', value)))
     comp = building_block_factory.create_federated_zip(tup)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_map(<\n'
-        '  (x -> <\n'
-        '    a=x[0],\n'
-        '    b=x[1]\n'
-        '  >),\n'
-        '  federated_zip_at_clients((let\n'
-        '    named=<\n'
-        '      a=v,\n'
-        '      b=v\n'
-        '    >\n'
-        '   in <\n'
-        '    named[0],\n'
-        '    named[1]\n'
-        '  >))\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_clients_with_two_values_named_tuple.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '{<a=int32,b=int32>}@CLIENTS')
 
   def test_returns_federated_zip_at_clients_with_three_values_unnamed(self):
@@ -1331,27 +1161,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
         (type_signature, type_signature, type_signature))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_map(<\n'
-        '  (zipped_tree -> <\n'
-        '    zipped_tree[0][0],\n'
-        '    zipped_tree[0][1],\n'
-        '    zipped_tree[1]\n'
-        '  >),\n'
-        '  (let\n'
-        '    value=v\n'
-        '   in federated_zip_at_clients(<\n'
-        '    federated_zip_at_clients(<\n'
-        '      value[0],\n'
-        '      value[1]\n'
-        '    >),\n'
-        '    value[2]\n'
-        '  >))\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_clients_with_three_values_unnamed.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '{<int32,int32,int32>}@CLIENTS')
 
   def test_returns_federated_zip_at_clients_with_three_values_unnamed_tuple(
@@ -1361,31 +1173,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value = building_blocks.Data('v', value_type)
     tup = building_blocks.Struct((value, value, value))
     comp = building_block_factory.create_federated_zip(tup)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_map(<\n'
-        '  (zipped_tree -> <\n'
-        '    zipped_tree[0][0],\n'
-        '    zipped_tree[0][1],\n'
-        '    zipped_tree[1]\n'
-        '  >),\n'
-        '  (let\n'
-        '    value=<\n'
-        '      v,\n'
-        '      v,\n'
-        '      v\n'
-        '    >\n'
-        '   in federated_zip_at_clients(<\n'
-        '    federated_zip_at_clients(<\n'
-        '      value[0],\n'
-        '      value[1]\n'
-        '    >),\n'
-        '    value[2]\n'
-        '  >))\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_clients_with_three_values_unnamed_tuple.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '{<int32,int32,int32>}@CLIENTS')
 
   def test_returns_federated_zip_at_clients_with_three_values_named(self):
@@ -1398,34 +1188,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
     ))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_map(<\n'
-        '  (x -> <\n'
-        '    a=x[0],\n'
-        '    b=x[1],\n'
-        '    c=x[2]\n'
-        '  >),\n'
-        '  federated_map(<\n'
-        '    (zipped_tree -> <\n'
-        '      zipped_tree[0][0],\n'
-        '      zipped_tree[0][1],\n'
-        '      zipped_tree[1]\n'
-        '    >),\n'
-        '    (let\n'
-        '      value=v\n'
-        '     in federated_zip_at_clients(<\n'
-        '      federated_zip_at_clients(<\n'
-        '        value[0],\n'
-        '        value[1]\n'
-        '      >),\n'
-        '      value[2]\n'
-        '    >))\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_clients_with_three_values_named.expected',
+        comp.formatted_representation())
     self.assertEqual(
         str(comp.type_signature), '{<a=int32,b=int32,c=int32>}@CLIENTS')
 
@@ -1439,38 +1204,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
         ('c', value),
     ))
     comp = building_block_factory.create_federated_zip(tup)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_map(<\n'
-        '  (x -> <\n'
-        '    a=x[0],\n'
-        '    b=x[1],\n'
-        '    c=x[2]\n'
-        '  >),\n'
-        '  federated_map(<\n'
-        '    (zipped_tree -> <\n'
-        '      zipped_tree[0][0],\n'
-        '      zipped_tree[0][1],\n'
-        '      zipped_tree[1]\n'
-        '    >),\n'
-        '    (let\n'
-        '      value=<\n'
-        '        a=v,\n'
-        '        b=v,\n'
-        '        c=v\n'
-        '      >\n'
-        '     in federated_zip_at_clients(<\n'
-        '      federated_zip_at_clients(<\n'
-        '        value[0],\n'
-        '        value[1]\n'
-        '      >),\n'
-        '      value[2]\n'
-        '    >))\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_clients_with_three_values_named_tuple.expected',
+        comp.formatted_representation())
     self.assertEqual(
         str(comp.type_signature), '{<a=int32,b=int32,c=int32>}@CLIENTS')
 
@@ -1486,27 +1222,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
         (type_signature1, type_signature2, type_signature3))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_map(<\n'
-        '  (zipped_tree -> <\n'
-        '    zipped_tree[0][0],\n'
-        '    zipped_tree[0][1],\n'
-        '    zipped_tree[1]\n'
-        '  >),\n'
-        '  (let\n'
-        '    value=v\n'
-        '   in federated_zip_at_clients(<\n'
-        '    federated_zip_at_clients(<\n'
-        '      value[0],\n'
-        '      value[1]\n'
-        '    >),\n'
-        '    value[2]\n'
-        '  >))\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_clients_with_three_values_different_typed.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '{<int32,float32,bool>}@CLIENTS')
 
   def test_returns_federated_zip_at_clients_with_three_values_different_typed_tuple(
@@ -1522,31 +1240,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value3 = building_blocks.Data('v3', value_type3)
     tup = building_blocks.Struct((value1, value2, value3))
     comp = building_block_factory.create_federated_zip(tup)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_map(<\n'
-        '  (zipped_tree -> <\n'
-        '    zipped_tree[0][0],\n'
-        '    zipped_tree[0][1],\n'
-        '    zipped_tree[1]\n'
-        '  >),\n'
-        '  (let\n'
-        '    value=<\n'
-        '      v1,\n'
-        '      v2,\n'
-        '      v3\n'
-        '    >\n'
-        '   in federated_zip_at_clients(<\n'
-        '    federated_zip_at_clients(<\n'
-        '      value[0],\n'
-        '      value[1]\n'
-        '    >),\n'
-        '    value[2]\n'
-        '  >))\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_clients_with_three_values_different_typed_tuple.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '{<int32,float32,bool>}@CLIENTS')
 
   @parameterized.named_parameters(('one_element', 1), ('two_elements', 2),
@@ -1591,12 +1287,10 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.StructType((type_signature, type_signature))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
     self.assertEqual(
         comp.formatted_representation(),
         'federated_zip_at_server(v)'
     )
-    # pyformat: enable
     self.assertEqual(str(comp.type_signature), '<int32,int32>@SERVER')
 
   def test_returns_federated_zip_at_server_with_two_values_named(self):
@@ -1606,23 +1300,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
         (('a', type_signature), ('b', type_signature)))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_apply(<\n'
-        '  (x -> <\n'
-        '    a=x[0],\n'
-        '    b=x[1]\n'
-        '  >),\n'
-        '  federated_zip_at_server((let\n'
-        '    named=v\n'
-        '   in <\n'
-        '    named[0],\n'
-        '    named[1]\n'
-        '  >))\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_server_with_two_values_named.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '<a=int32,b=int32>@SERVER')
 
   def test_returns_federated_zip_at_server_with_three_values_unnamed(self):
@@ -1632,27 +1312,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
         (type_signature, type_signature, type_signature))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_apply(<\n'
-        '  (zipped_tree -> <\n'
-        '    zipped_tree[0][0],\n'
-        '    zipped_tree[0][1],\n'
-        '    zipped_tree[1]\n'
-        '  >),\n'
-        '  (let\n'
-        '    value=v\n'
-        '   in federated_zip_at_server(<\n'
-        '    federated_zip_at_server(<\n'
-        '      value[0],\n'
-        '      value[1]\n'
-        '    >),\n'
-        '    value[2]\n'
-        '  >))\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_server_with_three_values_unnamed.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '<int32,int32,int32>@SERVER')
 
   def test_returns_federated_zip_at_server_with_three_values_named(self):
@@ -1665,34 +1327,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
     ))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_apply(<\n'
-        '  (x -> <\n'
-        '    a=x[0],\n'
-        '    b=x[1],\n'
-        '    c=x[2]\n'
-        '  >),\n'
-        '  federated_apply(<\n'
-        '    (zipped_tree -> <\n'
-        '      zipped_tree[0][0],\n'
-        '      zipped_tree[0][1],\n'
-        '      zipped_tree[1]\n'
-        '    >),\n'
-        '    (let\n'
-        '      value=v\n'
-        '     in federated_zip_at_server(<\n'
-        '      federated_zip_at_server(<\n'
-        '        value[0],\n'
-        '        value[1]\n'
-        '      >),\n'
-        '      value[2]\n'
-        '    >))\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_server_with_three_values_named.expected',
+        comp.formatted_representation())
     self.assertEqual(
         str(comp.type_signature), '<a=int32,b=int32,c=int32>@SERVER')
 
@@ -1708,27 +1345,9 @@ class CreateFederatedZipTest(parameterized.TestCase):
         (type_signature1, type_signature2, type_signature3))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_apply(<\n'
-        '  (zipped_tree -> <\n'
-        '    zipped_tree[0][0],\n'
-        '    zipped_tree[0][1],\n'
-        '    zipped_tree[1]\n'
-        '  >),\n'
-        '  (let\n'
-        '    value=v\n'
-        '   in federated_zip_at_server(<\n'
-        '    federated_zip_at_server(<\n'
-        '      value[0],\n'
-        '      value[1]\n'
-        '    >),\n'
-        '    value[2]\n'
-        '  >))\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string(
+        'federated_zip_at_server_with_three_values_different_typed.expected',
+        comp.formatted_representation())
     self.assertEqual(str(comp.type_signature), '<int32,float32,bool>@SERVER')
 
   def test_wide_zip_creates_minimum_depth_binary_tree(self):
@@ -1737,47 +1356,8 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.StructType([server_type for _ in range(8)])
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_map(<\n'
-        '  (zipped_tree -> <\n'
-        '    zipped_tree[0][0][0],\n'
-        '    zipped_tree[0][0][1],\n'
-        '    zipped_tree[0][1][0],\n'
-        '    zipped_tree[0][1][1],\n'
-        '    zipped_tree[1][0][0],\n'
-        '    zipped_tree[1][0][1],\n'
-        '    zipped_tree[1][1][0],\n'
-        '    zipped_tree[1][1][1]\n'
-        '  >),\n'
-        '  (let\n'
-        '    value=v\n'
-        '   in federated_zip_at_clients(<\n'
-        '    federated_zip_at_clients(<\n'
-        '      federated_zip_at_clients(<\n'
-        '        value[0],\n'
-        '        value[1]\n'
-        '      >),\n'
-        '      federated_zip_at_clients(<\n'
-        '        value[2],\n'
-        '        value[3]\n'
-        '      >)\n'
-        '    >),\n'
-        '    federated_zip_at_clients(<\n'
-        '      federated_zip_at_clients(<\n'
-        '        value[4],\n'
-        '        value[5]\n'
-        '      >),\n'
-        '      federated_zip_at_clients(<\n'
-        '        value[6],\n'
-        '        value[7]\n'
-        '      >)\n'
-        '    >)\n'
-        '  >))\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string('wide_zip_creates_minimum_depth_binary_tree.expected',
+                        comp.formatted_representation())
 
   def test_flat_raises_type_error_with_inconsistent_placement(self):
     client_type = computation_types.FederatedType(
@@ -1846,40 +1426,8 @@ class CreateFederatedZipTest(parameterized.TestCase):
 
     self.assertEqual(
         str(comp.type_signature), '{<a=int32,b=<c=int32,d=int32>>}@CLIENTS')
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_map(<\n'
-        '  (x -> <\n'
-        '    a=x[0],\n'
-        '    b=<\n'
-        '      c=x[1],\n'
-        '      d=x[2]\n'
-        '    >\n'
-        '  >),\n'
-        '  federated_map(<\n'
-        '    (zipped_tree -> <\n'
-        '      zipped_tree[0][0],\n'
-        '      zipped_tree[0][1],\n'
-        '      zipped_tree[1]\n'
-        '    >),\n'
-        '    (let\n'
-        '      value=<\n'
-        '        v[0],\n'
-        '        v[1][0],\n'
-        '        v[1][1]\n'
-        '      >\n'
-        '     in federated_zip_at_clients(<\n'
-        '      federated_zip_at_clients(<\n'
-        '        value[0],\n'
-        '        value[1]\n'
-        '      >),\n'
-        '      value[2]\n'
-        '    >))\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string('nested_returns_federated_zip_at_clients.expected',
+                        comp.formatted_representation())
 
   def test_nested_returns_federated_zip_at_server(self):
     value_type = computation_types.StructType([
@@ -1899,26 +1447,8 @@ class CreateFederatedZipTest(parameterized.TestCase):
     comp = building_block_factory.create_federated_zip(value)
 
     self.assertEqual(str(comp.type_signature), '<a=<b=<c=int32>>>@SERVER')
-    # pyformat: disable
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_apply(<\n'
-        '  (x -> <\n'
-        '    a=<\n'
-        '      b=x[0]\n'
-        '    >\n'
-        '  >),\n'
-        '  federated_apply(<\n'
-        '    (arg -> <\n'
-        '      arg\n'
-        '    >),\n'
-        '    <\n'
-        '      v[0][0]\n'
-        '    >[0]\n'
-        '  >)\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string('nested_returns_federated_zip_at_server.expected',
+                        comp.formatted_representation())
 
 
 class CreateGenericConstantTest(absltest.TestCase):
@@ -2262,38 +1792,8 @@ class CreateZipTest(absltest.TestCase):
     comp = tup_2
     new_comp = building_block_factory.create_zip(comp)
     self.assertEqual(comp.compact_representation(), '<<a,b,c>,<a,b,c>>')
-    # pyformat: disable
-    self.assertEqual(
-        new_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=<\n'
-        '    <\n'
-        '      a,\n'
-        '      b,\n'
-        '      c\n'
-        '    >,\n'
-        '    <\n'
-        '      a,\n'
-        '      b,\n'
-        '      c\n'
-        '    >\n'
-        '  >\n'
-        ' in <\n'
-        '  <\n'
-        '    _var1[0][0],\n'
-        '    _var1[1][0]\n'
-        '  >,\n'
-        '  <\n'
-        '    _var1[0][1],\n'
-        '    _var1[1][1]\n'
-        '  >,\n'
-        '  <\n'
-        '    _var1[0][2],\n'
-        '    _var1[1][2]\n'
-        '  >\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string('zips_tuple_unnamed.expected',
+                        comp.formatted_representation())
     self.assertEqual(
         str(comp.type_signature), '<<int32,float32,bool>,<int32,float32,bool>>')
     self.assertEqual(
@@ -2311,38 +1811,8 @@ class CreateZipTest(absltest.TestCase):
     new_comp = building_block_factory.create_zip(comp)
     self.assertEqual(comp.compact_representation(),
                      '<g=<d=a,e=b,f=c>,h=<d=a,e=b,f=c>>')
-    # pyformat: disable
-    self.assertEqual(
-        new_comp.formatted_representation(),
-        '(let\n'
-        '  _var1=<\n'
-        '    g=<\n'
-        '      d=a,\n'
-        '      e=b,\n'
-        '      f=c\n'
-        '    >,\n'
-        '    h=<\n'
-        '      d=a,\n'
-        '      e=b,\n'
-        '      f=c\n'
-        '    >\n'
-        '  >\n'
-        ' in <\n'
-        '  <\n'
-        '    _var1[0][0],\n'
-        '    _var1[1][0]\n'
-        '  >,\n'
-        '  <\n'
-        '    _var1[0][1],\n'
-        '    _var1[1][1]\n'
-        '  >,\n'
-        '  <\n'
-        '    _var1[0][2],\n'
-        '    _var1[1][2]\n'
-        '  >\n'
-        '>)'
-    )
-    # pyformat: enable
+    golden.check_string('zips_tuple_named.expected',
+                        comp.formatted_representation())
     self.assertEqual(
         str(comp.type_signature),
         '<g=<d=int32,e=float32,f=bool>,h=<d=int32,e=float32,f=bool>>')
@@ -2359,25 +1829,8 @@ class CreateZipTest(absltest.TestCase):
     comp = ref
     new_comp = building_block_factory.create_zip(comp)
     self.assertEqual(comp.compact_representation(), 'a')
-    # pyformat: disable
-    self.assertEqual(
-        new_comp.formatted_representation(),
-        '<\n'
-        '  <\n'
-        '    a[0][0],\n'
-        '    a[1][0]\n'
-        '  >,\n'
-        '  <\n'
-        '    a[0][1],\n'
-        '    a[1][1]\n'
-        '  >,\n'
-        '  <\n'
-        '    a[0][2],\n'
-        '    a[1][2]\n'
-        '  >\n'
-        '>'
-    )
-    # pyformat: enable
+    golden.check_string('zips_reference.expected',
+                        comp.formatted_representation())
     self.assertEqual(
         str(comp.type_signature), '<<int32,float32,bool>,<int32,float32,bool>>')
     self.assertEqual(

@@ -1,0 +1,6 @@
+(let
+  value_comp_placeholder=x
+ in (lambda_arg -> <
+  a=value_comp_placeholder,
+  b=lambda_arg[1]
+>))
