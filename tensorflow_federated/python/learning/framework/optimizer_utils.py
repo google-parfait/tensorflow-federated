@@ -30,7 +30,6 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
@@ -172,10 +171,12 @@ def state_with_new_model_weights(
   assert_weight_lists_match(server_state.model.trainable, trainable_weights)
   assert_weight_lists_match(server_state.model.non_trainable,
                             non_trainable_weights)
-  new_server_state = computation_utils.update_state(
-      server_state,
+  new_server_state = ServerState(
       model=model_utils.ModelWeights(
-          trainable=trainable_weights, non_trainable=non_trainable_weights))
+          trainable=trainable_weights, non_trainable=non_trainable_weights),
+      optimizer_state=server_state.optimizer_state,
+      delta_aggregate_state=server_state.delta_aggregate_state,
+      model_broadcast_state=server_state.model_broadcast_state)
   return new_server_state
 
 
@@ -505,57 +506,6 @@ def _is_valid_aggregation_process(
 NONE_SERVER_TYPE = computation_types.FederatedType((), placements.SERVER)
 
 
-def _wrap_in_measured_process(
-    stateful_fn: Union[computation_utils.StatefulBroadcastFn,
-                       computation_utils.StatefulAggregateFn],
-    input_type: computation_types.Type) -> measured_process.MeasuredProcess:
-  """Converts a `computation_utils.StatefulFn` to a `tff.templates.MeasuredProcess`."""
-  py_typecheck.check_type(stateful_fn, (computation_utils.StatefulBroadcastFn,
-                                        computation_utils.StatefulAggregateFn))
-
-  @computations.federated_computation()
-  def initialize_comp():
-    if not isinstance(stateful_fn.initialize, computation_base.Computation):
-      initialize = computations.tf_computation(stateful_fn.initialize)
-    else:
-      initialize = stateful_fn.initialize
-    return intrinsics.federated_eval(initialize, placements.SERVER)
-
-  state_type = initialize_comp.type_signature.result
-
-  if isinstance(stateful_fn, computation_utils.StatefulBroadcastFn):
-
-    @computations.federated_computation(
-        state_type,
-        computation_types.FederatedType(input_type, placements.SERVER),
-    )
-    def next_comp(state, value):
-      empty_metrics = intrinsics.federated_value((), placements.SERVER)
-      state, result = stateful_fn(state, value)
-      return measured_process.MeasuredProcessOutput(
-          state=state, result=result, measurements=empty_metrics)
-
-  elif isinstance(stateful_fn, computation_utils.StatefulAggregateFn):
-
-    @computations.federated_computation(
-        state_type,
-        computation_types.FederatedType(input_type, placements.CLIENTS),
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
-    def next_comp(state, value, weight):
-      empty_metrics = intrinsics.federated_value((), placements.SERVER)
-      state, result = stateful_fn(state, value, weight)
-      return measured_process.MeasuredProcessOutput(
-          state=state, result=result, measurements=empty_metrics)
-
-  else:
-    raise TypeError(
-        'Received a {t}, expected either a computation_utils.StatefulAggregateFn or a '
-        'computation_utils.StatefulBroadcastFn.'.format(t=type(stateful_fn)))
-
-  return measured_process.MeasuredProcess(
-      initialize_fn=initialize_comp, next_fn=next_comp)
-
-
 @computations.federated_computation()
 def _empty_server_initialization():
   return intrinsics.federated_value((), placements.SERVER)
@@ -607,10 +557,6 @@ def build_model_delta_optimizer_process(
     model_fn: _ModelConstructor,
     model_to_client_delta_fn: Callable[[model_lib.Model], ClientDeltaFn],
     server_optimizer_fn: _OptimizerConstructor,
-    stateful_delta_aggregate_fn: Optional[
-        computation_utils.StatefulAggregateFn] = None,
-    stateful_model_broadcast_fn: Optional[
-        computation_utils.StatefulBroadcastFn] = None,
     *,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
@@ -630,18 +576,6 @@ def build_model_delta_optimizer_process(
     server_optimizer_fn: a no-arg function that returns a `tf.Optimizer`. The
       `apply_gradients` method of this optimizer is used to apply client updates
       to the server model.
-    stateful_delta_aggregate_fn: a `tff.utils.StatefulAggregateFn` where the
-      `next_fn` performs a federated aggregation and updates state. That is, it
-      has TFF type `(state@SERVER, value@CLIENTS, weights@CLIENTS) ->
-      (state@SERVER, aggregate@SERVER)`, where the `value` type is
-      `tff.learning.framework.ModelWeights.trainable` corresponding to the
-      object returned by `model_fn`.
-    stateful_model_broadcast_fn: a `tff.utils.StatefulBroadcastFn` where the
-      `next_fn` performs a federated broadcast and updates state. That is, it
-      has TFF type `(state@SERVER, value@SERVER) -> (state@SERVER,
-      value@CLIENTS)`, where the `value` type is
-      `tff.learning.framework.ModelWeights` corresponding to the object returned
-      by `model_fn`.
     broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`.
@@ -662,64 +596,6 @@ def build_model_delta_optimizer_process(
   py_typecheck.check_callable(server_optimizer_fn)
 
   model_weights_type = model_utils.weights_type_from_model(model_fn)
-
-  # TODO(b/159138779): remove the StatefulFn arguments and these validation
-  # functions once all callers are migrated.
-  def validate_disjoint_optional_arguments(
-      stateful_fn: Optional[Union[computation_utils.StatefulBroadcastFn,
-                                  computation_utils.StatefulAggregateFn]],
-      process: Optional[measured_process.MeasuredProcess],
-      process_input_type: Union[computation_types.StructType,
-                                computation_types.TensorType],
-  ) -> Optional[measured_process.MeasuredProcess]:
-    """Validate that only one of two arguments is specified.
-
-    This validates that only the `tff.templates.MeasuredProcess` or the
-    `tff.utils.StatefulFn` is specified, and converts the `tff.utils.StatefulFn`
-    to a `tff.templates.MeasuredProcess` if possible.  This a bridge while
-    transition to `tff.templates.MeasuredProcess`.
-
-    Args:
-      stateful_fn: an optional `tff.utils.StatefulFn` that will be wrapped if
-        specified.
-      process: an optional `tff.templates.MeasuredProcess` that will be returned
-        as-is.
-      process_input_type: the input type used when wrapping `stateful_fn`.
-
-    Returns:
-      `None` if neither argument is specified, otherwise a
-      `tff.templates.MeasuredProcess`.
-
-    Raises:
-      DisjointArgumentError: if both `stateful_fn` and `process` are not `None`.
-    """
-    if stateful_fn is not None:
-      py_typecheck.check_type(stateful_fn,
-                              (computation_utils.StatefulBroadcastFn,
-                               computation_utils.StatefulAggregateFn))
-      if process is not None:
-        raise DisjointArgumentError(
-            'Specifying both arguments is an error. Only one may be used')
-      return _wrap_in_measured_process(
-          stateful_fn, input_type=process_input_type)
-    return process
-
-  try:
-    aggregation_process = validate_disjoint_optional_arguments(
-        stateful_delta_aggregate_fn, aggregation_process,
-        model_weights_type.trainable)
-  except DisjointArgumentError as e:
-    raise DisjointArgumentError(
-        'Specifying both `stateful_delta_aggregate_fn` and '
-        '`aggregation_process` is an error. Only one may be used') from e
-
-  try:
-    broadcast_process = validate_disjoint_optional_arguments(
-        stateful_model_broadcast_fn, broadcast_process, model_weights_type)
-  except DisjointArgumentError as e:
-    raise DisjointArgumentError(
-        'Specifying both `stateful_model_broadcast_fn` and '
-        '`broadcast_process` is an error. Only one may be used') from e
 
   if broadcast_process is None:
     broadcast_process = build_stateless_broadcaster(

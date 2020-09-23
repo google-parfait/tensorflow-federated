@@ -25,7 +25,6 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
@@ -69,24 +68,6 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
 @computations.tf_computation(tf.int32)
 def _add_one(x):
   return x + 1
-
-
-def _state_incrementing_mean_next(server_state, client_value, weight=None):
-  new_state = intrinsics.federated_map(_add_one, server_state)
-  return (new_state, intrinsics.federated_mean(client_value, weight=weight))
-
-
-state_incrementing_mean = computation_utils.StatefulAggregateFn(
-    lambda: tf.constant(0), _state_incrementing_mean_next)
-
-
-def _state_incrementing_broadcast_next(server_state, server_value):
-  new_state = intrinsics.federated_map(_add_one, server_state)
-  return (new_state, intrinsics.federated_broadcast(server_value))
-
-
-state_incrementing_broadcaster = computation_utils.StatefulBroadcastFn(
-    lambda: tf.constant(0), _state_incrementing_broadcast_next)
 
 
 def _build_test_measured_broadcast(
@@ -256,25 +237,6 @@ class ModelDeltaOptimizerTest(test.TestCase):
     self.assertLen(next_type.parameter[0].member.optimizer_state, 5)
     self.assertLen(next_type.result[0].member.optimizer_state, 5)
 
-  def test_construction_with_stateful_aggregate_fn(self):
-    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=model_examples.LinearRegression,
-        model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=tf.keras.optimizers.SGD,
-        stateful_delta_aggregate_fn=state_incrementing_mean)
-
-    expected_aggregate_state_type = computation_types.TensorType(tf.int32)
-
-    initialize_type = iterative_process.initialize.type_signature
-    self.assertEqual(initialize_type.result.member.delta_aggregate_state,
-                     expected_aggregate_state_type)
-
-    next_type = iterative_process.next.type_signature
-    self.assertEqual(next_type.parameter[0].member.delta_aggregate_state,
-                     expected_aggregate_state_type)
-    self.assertEqual(next_type.result[0].member.delta_aggregate_state,
-                     expected_aggregate_state_type)
-
   def test_construction_with_aggregation_process(self):
     model_update_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression).trainable
@@ -308,25 +270,6 @@ class ModelDeltaOptimizerTest(test.TestCase):
                                         placements.SERVER),
         aggregation_metrics_type)
 
-  def test_construction_with_broadcast_stateful_fn(self):
-    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=model_examples.LinearRegression,
-        model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=tf.keras.optimizers.SGD,
-        stateful_model_broadcast_fn=state_incrementing_broadcaster)
-
-    expected_broadcast_state_type = computation_types.TensorType(tf.int32)
-
-    initialize_type = iterative_process.initialize.type_signature
-    self.assertEqual(initialize_type.result.member.model_broadcast_state,
-                     expected_broadcast_state_type)
-
-    next_type = iterative_process.next.type_signature
-    self.assertEqual(next_type.parameter[0].member.model_broadcast_state,
-                     expected_broadcast_state_type)
-    self.assertEqual(next_type.result[0].member.model_broadcast_state,
-                     expected_broadcast_state_type)
-
   def test_construction_with_broadcast_process(self):
     model_weights_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression)
@@ -353,84 +296,6 @@ class ModelDeltaOptimizerTest(test.TestCase):
         computation_types.FederatedType(
             next_type.result[0].member.model_broadcast_state,
             placements.SERVER), expected_broadcast_state_type)
-
-  def test_fails_stateful_broadcast_and_process(self):
-    model_weights_type = model_utils.weights_type_from_model(
-        model_examples.LinearRegression)
-    with self.assertRaises(optimizer_utils.DisjointArgumentError):
-      optimizer_utils.build_model_delta_optimizer_process(
-          model_fn=model_examples.LinearRegression,
-          model_to_client_delta_fn=DummyClientDeltaFn,
-          server_optimizer_fn=tf.keras.optimizers.SGD,
-          stateful_model_broadcast_fn=computation_utils.StatefulBroadcastFn(
-              initialize_fn=lambda: (),
-              next_fn=lambda state, weights:  # pylint: disable=g-long-lambda
-              (state, intrinsics.federated_broadcast(weights))),
-          broadcast_process=optimizer_utils.build_stateless_broadcaster(
-              model_weights_type=model_weights_type))
-
-  def test_fails_stateful_aggregate_and_process(self):
-    model_weights_type = model_utils.weights_type_from_model(
-        model_examples.LinearRegression)
-    with self.assertRaises(optimizer_utils.DisjointArgumentError):
-      optimizer_utils.build_model_delta_optimizer_process(
-          model_fn=model_examples.LinearRegression,
-          model_to_client_delta_fn=DummyClientDeltaFn,
-          server_optimizer_fn=tf.keras.optimizers.SGD,
-          stateful_delta_aggregate_fn=computation_utils.StatefulAggregateFn(
-              initialize_fn=lambda: (),
-              next_fn=lambda state, value, weight=None:  # pylint: disable=g-long-lambda
-              (state, intrinsics.federated_mean(value, weight))),
-          aggregation_process=optimizer_utils.build_stateless_mean(
-              model_delta_type=model_weights_type.trainable))
-
-  def test_orchestration_execute_stateful_fn(self):
-    learning_rate = 1.0
-    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=model_examples.LinearRegression,
-        model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=functools.partial(
-            tf.keras.optimizers.SGD, learning_rate=learning_rate),
-        # A federated_mean that maintains an int32 state equal to the
-        # number of times the federated_mean has been executed,
-        # allowing us to test that a stateful aggregator's state
-        # is properly updated.
-        stateful_delta_aggregate_fn=state_incrementing_mean,
-        # Similarly, a broadcast with state that increments:
-        stateful_model_broadcast_fn=state_incrementing_broadcaster)
-
-    ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict([
-            ('x', [[1.0, 2.0], [3.0, 4.0]]),
-            ('y', [[5.0], [6.0]]),
-        ])).batch(2)
-    federated_ds = [ds] * 3
-
-    state = iterative_process.initialize()
-    # SGD keeps track of a single scalar for the number of iterations.
-    self.assertAllEqual(state.optimizer_state, [0])
-    self.assertAllClose(list(state.model.trainable), [np.zeros((2, 1)), 0.0])
-    self.assertAllClose(list(state.model.non_trainable), [0.0])
-    self.assertEqual(state.delta_aggregate_state, 0)
-    self.assertEqual(state.model_broadcast_state, 0)
-
-    state, outputs = iterative_process.next(state, federated_ds)
-    self.assertAllClose(
-        list(state.model.trainable), [-np.ones((2, 1)), -1.0 * learning_rate])
-    self.assertAllClose(list(state.model.non_trainable), [0.0])
-    self.assertAllEqual(state.optimizer_state, [1])
-    self.assertEqual(state.delta_aggregate_state, 1)
-    self.assertEqual(state.model_broadcast_state, 1)
-
-    expected_outputs = collections.OrderedDict(
-        # The StatefulFn output no metrics.
-        broadcast=(),
-        aggregation=(),
-        train=collections.OrderedDict(
-            loss=15.25,
-            num_examples=6,
-        ))
-    self.assertEqual(expected_outputs, outputs)
 
   def test_orchestration_execute_measured_process(self):
     model_weights_type = model_utils.weights_type_from_model(
