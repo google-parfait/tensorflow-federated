@@ -35,7 +35,7 @@ def build_stateless_robust_aggregation(model_type,
       1e-6.
 
   Returns:
-    An instance of `tff.utils.StatefulAggregateFn` which implements a
+    An instance of `tff.templates.MeasuredProcess` which implements a
   (stateless) robust aggregate.
   """
   py_typecheck.check_type(num_communication_passes, int)
@@ -51,24 +51,26 @@ def build_stateless_robust_aggregation(model_type,
     sqnorm = tf.reduce_sum(sqnorms)
     return weight / tf.math.maximum(tolerance, tf.math.sqrt(sqnorm))
 
-  client_model_type = tff.FederatedType(model_type, tff.CLIENTS)
-  client_weight_type = tff.FederatedType(tf.float32, tff.CLIENTS)
-
-  @tff.federated_computation(client_model_type, client_weight_type)
-  def robust_aggregation_fn(value, weight):
+  @tff.federated_computation(
+      tff.FederatedType((), tff.SERVER),
+      tff.FederatedType(model_type, tff.CLIENTS),
+      tff.FederatedType(tf.float32, tff.CLIENTS))
+  def _robust_aggregation_fn(state, value, weight):
     aggregate = tff.federated_mean(value, weight=weight)
     for _ in range(num_communication_passes - 1):
       aggregate_at_client = tff.federated_broadcast(aggregate)
       updated_weight = tff.federated_map(update_weight_fn,
                                          (weight, aggregate_at_client, value))
       aggregate = tff.federated_mean(value, weight=updated_weight)
-    return aggregate
+    no_metrics = tff.federated_value((), tff.SERVER)
+    return tff.templates.MeasuredProcessOutput(state, aggregate, no_metrics)
 
-  def _stateless_next(state, value, weight):
-    return state, robust_aggregation_fn(value, weight)
+  @tff.federated_computation
+  def stateless_init():
+    return tff.federated_value((), tff.SERVER)
 
-  return tff.utils.StatefulAggregateFn(
-      initialize_fn=lambda: (), next_fn=_stateless_next)
+  return tff.templates.MeasuredProcess(
+      initialize_fn=stateless_init, next_fn=_robust_aggregation_fn)
 
 
 def build_robust_federated_aggregation_process(model_fn,
@@ -94,4 +96,4 @@ def build_robust_federated_aggregation_process(model_fn,
       num_communication_passes=num_communication_passes,
       tolerance=tolerance)
   return tff.learning.build_federated_averaging_process(
-      model_fn, stateful_delta_aggregate_fn=robust_aggregation_fn)
+      model_fn, aggregation_process=robust_aggregation_fn)

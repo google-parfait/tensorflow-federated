@@ -143,12 +143,14 @@ def build_federated_process_for_test(model_fn, num_passes=5, tolerance=1e-6):
     # `model_fn`
     model_type = tff.framework.type_from_tensors(model_fn().weights.trainable)
 
-    stateful_delta_aggregate_fn = rfa.build_stateless_robust_aggregation(
+    aggregate_fn = rfa.build_stateless_robust_aggregation(
         model_type, num_communication_passes=num_passes, tolerance=tolerance)
 
     return tff.learning.framework.build_model_delta_optimizer_process(
-        model_fn, client_fed_avg, server_optimizer_fn,
-        stateful_delta_aggregate_fn)
+        model_fn,
+        client_fed_avg,
+        server_optimizer_fn,
+        aggregation_process=aggregate_fn)
 
 
 def get_mean(dataset):
