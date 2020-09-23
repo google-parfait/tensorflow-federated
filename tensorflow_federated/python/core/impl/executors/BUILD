@@ -210,11 +210,6 @@ py_test(
     srcs = ["eager_tf_executor_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    # TODO(b/154964982): enable Kokoro after one day to allow
-    # TF change propagate to TF nightly.
-    tags = [
-        "nokokoro",
-    ],
     deps = [
         ":eager_tf_executor",
         ":executor_factory",
