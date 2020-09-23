@@ -13,16 +13,32 @@
 # limitations under the License.
 
 import collections
+import io
+import re
+import traceback
 
 import attr
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
+
+
+def traceback_string():
+  exception_string_io = io.StringIO()
+  traceback.print_exc(file=exception_string_io)
+  exception_string = exception_string_io.getvalue()
+  # Strip path to TFF to normalize error messages
+  without_filepath = re.sub(r'\/\S*\/tensorflow_federated\/', '',
+                            exception_string)
+  # Strip line numbers to avoid churn
+  without_linenumber = re.sub(r', line \d*', '', without_filepath)
+  return without_linenumber
 
 
 class TensorflowWrapperTest(test.TestCase):
@@ -369,6 +385,22 @@ class TensorflowWrapperTest(test.TestCase):
       computation_wrapper_instances.tensorflow_wrapper(foo, tuple_on_function)
     # pylint: enable=anomalous-backslash-in-string
 
+  def test_stackframes_in_errors(self):
+
+    class DummyError(RuntimeError):
+      pass
+
+    try:
+
+      @computation_wrapper_instances.tensorflow_wrapper
+      def _():
+        raise DummyError()
+
+      self.fail('Tracing should throw `DummyError`')
+    except DummyError:
+      golden.check_string('tensorflow_wrapper_traceback.expected',
+                          traceback_string())
+
 
 class FederatedComputationWrapperTest(test.TestCase):
 
@@ -387,6 +419,22 @@ class FederatedComputationWrapperTest(test.TestCase):
         str(foo.to_building_block()),
         '(FEDERATED_arg -> (let fc_FEDERATED_symbol_0=FEDERATED_arg.f(FEDERATED_arg.x),fc_FEDERATED_symbol_1=FEDERATED_arg.f(fc_FEDERATED_symbol_0) in fc_FEDERATED_symbol_1))'
     )
+
+  def test_stackframes_in_errors(self):
+
+    class DummyError(RuntimeError):
+      pass
+
+    try:
+
+      @computation_wrapper_instances.federated_computation_wrapper
+      def _():
+        raise DummyError()
+
+      self.fail('Tracing should throw `DummyError`')
+    except DummyError:
+      golden.check_string('federated_computation_wrapper_traceback.expected',
+                          traceback_string())
 
 
 class AssertReturnsTest(test.TestCase):

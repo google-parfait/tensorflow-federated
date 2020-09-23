@@ -76,10 +76,21 @@ py_test(
     name = "computation_wrapper_instances_test",
     size = "small",
     srcs = ["computation_wrapper_instances_test.py"],
+    args = [
+        "--golden",
+        "$(location computation_wrapper_instances_test_goldens/tensorflow_wrapper_traceback.expected)",
+        "--golden",
+        "$(location computation_wrapper_instances_test_goldens/federated_computation_wrapper_traceback.expected)",
+    ],
+    data = [
+        "computation_wrapper_instances_test_goldens/federated_computation_wrapper_traceback.expected",
+        "computation_wrapper_instances_test_goldens/tensorflow_wrapper_traceback.expected",
+    ],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
         ":computation_wrapper_instances",
+        "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl:computation_impl",

@@ -41,11 +41,12 @@ def _filename_to_golden_path(filename: str) -> str:
     _filename_to_golden_map = {}
     for golden_path in FLAGS.golden:
       name = os.path.basename(golden_path)
-      if name in _filename_to_golden_map:
+      old_path = _filename_to_golden_map.get(name)
+      if old_path is not None and old_path != golden_path:
         raise RuntimeError(
             f'Multiple golden files provided for filename {name}:\n'
-            f'{golden_path} and\n'
-            f'{_filename_to_golden_map[name]}\n'
+            f'{old_path} and\n'
+            f'{golden_path}\n'
             'Golden file names in the same test target must be unique.')
       _filename_to_golden_map[name] = golden_path
   if filename not in _filename_to_golden_map:
