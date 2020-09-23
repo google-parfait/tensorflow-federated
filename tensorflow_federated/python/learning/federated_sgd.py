@@ -28,7 +28,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
@@ -144,10 +143,6 @@ def build_federated_sgd_process(
     server_optimizer_fn: Callable[
         [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
     client_weight_fn: Callable[[Any], tf.Tensor] = None,
-    stateful_delta_aggregate_fn: Optional[
-        computation_utils.StatefulAggregateFn] = None,
-    stateful_model_broadcast_fn: Optional[
-        computation_utils.StatefulBroadcastFn] = None,
     *,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
@@ -198,29 +193,12 @@ def build_federated_sgd_process(
       `model.report_local_outputs` and returns a tensor that provides the weight
       in the federated average of the aggregated gradients. If not provided, the
       default is the total number of examples processed on device.
-    stateful_delta_aggregate_fn: A `tff.utils.StatefulAggregateFn` where the
-      `next_fn` performs a federated aggregation and upates state. It must have
-      TFF type `(<state@SERVER, value@CLIENTS, weights@CLIENTS> ->
-      <state@SERVER, aggregate@SERVER>)`, where the `value` type is
-      `tff.learning.framework.ModelWeights.trainable` corresponding to the
-      object returned by `model_fn`. By default performs arithmetic mean
-      aggregation, weighted by `client_weight_fn`. Must be `None` if
-      `aggregation_process` is not `None`.
-    stateful_model_broadcast_fn: A `tff.utils.StatefulBroadcastFn` where the
-      `next_fn` performs a federated broadcast and upates state. It must have
-      TFF type `(<state@SERVER, value@SERVER> -> <state@SERVER,
-      value@CLIENTS>)`, where the `value` type is
-      `tff.learning.framework.ModelWeights` corresponding to the object returned
-      by `model_fn`. The default is the identity broadcast. Must be `None` if
-      `broadcast_process` is not `None`.
     broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
-      `(input_values@SERVER -> output_values@CLIENT)`. Must be `None` if
-      `stateful_model_broadcast_fn` is not `None`.
+      `(input_values@SERVER -> output_values@CLIENT)`.
     aggregation_process: a `tff.templates.MeasuredProcess` that aggregates the
       model updates on the clients back to the server. It must support the
-      signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
-      `None` if `stateful_delta_aggregate_fn` is not `None`.
+      signature `({input_values}@CLIENTS-> output_values@SERVER)`.
     use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
 
@@ -238,7 +216,5 @@ def build_federated_sgd_process(
       model_fn,
       model_to_client_delta_fn=client_sgd_avg,
       server_optimizer_fn=server_optimizer_fn,
-      stateful_delta_aggregate_fn=stateful_delta_aggregate_fn,
-      stateful_model_broadcast_fn=stateful_model_broadcast_fn,
       broadcast_process=broadcast_process,
       aggregation_process=aggregation_process)

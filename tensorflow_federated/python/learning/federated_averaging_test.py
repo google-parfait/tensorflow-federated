@@ -20,15 +20,12 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.core.utils import computation_utils
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
-from tensorflow_federated.python.learning.framework import optimizer_utils
 
 
 class NumExamplesCounter(tf.keras.metrics.Sum):
@@ -155,34 +152,6 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
       self.assertEqual(train_metrics['num_examples'], expected_num_examples)
       self.assertLess(train_metrics['loss'], prev_loss)
       prev_loss = train_metrics['loss']
-
-  def test_fails_stateful_broadcast_and_process(self):
-    model_weights_type = model_utils.weights_type_from_model(
-        model_examples.LinearRegression)
-    with self.assertRaises(optimizer_utils.DisjointArgumentError):
-      federated_averaging.build_federated_averaging_process(
-          model_fn=model_examples.LinearRegression,
-          client_optimizer_fn=tf.keras.optimizers.SGD,
-          stateful_model_broadcast_fn=computation_utils.StatefulBroadcastFn(
-              initialize_fn=lambda: (),
-              next_fn=lambda state, weights:  # pylint: disable=g-long-lambda
-              (state, intrinsics.federated_broadcast(weights))),
-          broadcast_process=optimizer_utils.build_stateless_broadcaster(
-              model_weights_type=model_weights_type))
-
-  def test_fails_stateful_aggregate_and_process(self):
-    model_weights_type = model_utils.weights_type_from_model(
-        model_examples.LinearRegression)
-    with self.assertRaises(optimizer_utils.DisjointArgumentError):
-      federated_averaging.build_federated_averaging_process(
-          model_fn=model_examples.LinearRegression,
-          client_optimizer_fn=tf.keras.optimizers.SGD,
-          stateful_delta_aggregate_fn=computation_utils.StatefulAggregateFn(
-              initialize_fn=lambda: (),
-              next_fn=lambda state, value, weight=None:  # pylint: disable=g-long-lambda
-              (state, intrinsics.federated_mean(value, weight))),
-          aggregation_process=optimizer_utils.build_stateless_mean(
-              model_delta_type=model_weights_type.trainable))
 
   def test_basic_orchestration_execute(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
