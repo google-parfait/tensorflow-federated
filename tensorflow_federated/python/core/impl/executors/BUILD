@@ -233,7 +233,6 @@ py_test(
     # TODO(b/154964982): enable test on TAP and Kokoro
     tags = [
         "manual",
-        "nokokoro",
         "notap",
         "requires-gpu-nvidia",
     ],
@@ -438,7 +437,6 @@ py_test(
     # TODO(b/154964982): enable test on TAP and Kokoro
     tags = [
         "manual",
-        "nokokoro",
         "notap",
         "requires-gpu-nvidia",
     ],
