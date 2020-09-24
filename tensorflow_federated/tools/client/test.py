@@ -33,7 +33,7 @@ def main(argv):
   ex = tff.framework.RemoteExecutor(channel)
   ex = tff.framework.CachingExecutor(ex)
   ex = tff.framework.ReferenceResolvingExecutor(ex)
-  factory = tff.framework.create_executor_factory(lambda _: ex)
+  factory = tff.framework.ResourceManagingExecutorFactory(lambda _: ex)
   context = tff.framework.ExecutionContext(factory)
   tff.framework.set_default_context(context)
 

@@ -59,7 +59,7 @@ py_test(
         ":caching_executor",
         ":eager_tf_executor",
         ":executor_base",
-        ":executor_factory",
+        ":executor_stacks",
         ":executor_test_utils",
         ":reference_resolving_executor",
         "//tensorflow_federated/python/common_libs:structure",
@@ -214,7 +214,7 @@ py_test(
     tags = ["nokokoro"],
     deps = [
         ":eager_tf_executor",
-        ":executor_factory",
+        ":executor_stacks",
         ":executor_test_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:serialization_utils",
@@ -297,23 +297,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_base",
-        ":sizing_executor",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
-    ],
-)
-
-py_test(
-    name = "executor_factory_test",
-    size = "small",
-    srcs = ["executor_factory_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":eager_tf_executor",
-        ":executor_base",
-        ":executor_factory",
-        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )
@@ -344,6 +327,7 @@ py_test(
         ":executor_factory",
         ":executor_service",
         ":executor_service_utils",
+        ":executor_stacks",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -420,6 +404,7 @@ py_cpu_and_gpu_test(
     shard_count = 5,
     srcs_version = "PY3",
     deps = [
+        ":eager_tf_executor",
         ":executor_base",
         ":executor_factory",
         ":executor_stacks",
@@ -619,7 +604,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":eager_tf_executor",
-        ":executor_factory",
+        ":executor_stacks",
         ":executor_test_utils",
         ":federated_resolving_strategy",
         ":federating_executor",
@@ -660,7 +645,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":execution_context",
-        ":executor_factory",
         ":executor_service",
         ":executor_service_utils",
         ":executor_stacks",

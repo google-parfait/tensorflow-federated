@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
@@ -37,7 +37,7 @@ def create_test_executor_factory():
   executor = eager_tf_executor.EagerTFExecutor()
   executor = caching_executor.CachingExecutor(executor)
   executor = reference_resolving_executor.ReferenceResolvingExecutor(executor)
-  return executor_factory.ExecutorFactoryImpl(lambda _: executor)
+  return executor_stacks.ResourceManagingExecutorFactory(lambda _: executor)
 
 
 def _make_executor_and_tracer_for_test():

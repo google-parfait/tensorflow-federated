@@ -15,8 +15,9 @@
 
 import asyncio
 import math
-from typing import Callable, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
+import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -32,6 +33,196 @@ from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
+
+
+def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
+  return tuple(sorted((str(k), v) for k, v in cardinalities.items()))
+
+
+class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
+  """Implementation of executor factory holding an executor per cardinality."""
+
+  def __init__(self,
+               executor_stack_fn: Callable[[executor_factory.CardinalitiesType],
+                                           executor_base.Executor]):
+    """Initializes `ResourceManagingExecutorFactory`.
+
+    `ResourceManagingExecutorFactory` manages a mapping from `cardinalities`
+    to `executor_base.Executors`, closing and destroying the executors in this
+    mapping when asked.
+
+    Args:
+      executor_stack_fn: Callable taking a mapping from
+        `placement_literals.PlacementLiteral` to integers, and returning an
+        `executor_base.Executor`. The returned executor will be configured to
+        handle these cardinalities.
+    """
+
+    py_typecheck.check_callable(executor_stack_fn)
+    self._executor_stack_fn = executor_stack_fn
+    self._executors = {}
+
+  def create_executor(
+      self, cardinalities: executor_factory.CardinalitiesType
+  ) -> executor_base.Executor:
+    """Constructs or gets existing executor.
+
+    Returns a previously-constructed executor if this method has already been
+    invoked with `cardinalities`. If not, invokes `self._executor_stack_fn`
+    with `cardinalities` and returns the result.
+
+    Args:
+      cardinalities: `dict` with `placement_literals.PlacementLiteral` keys and
+        integer values, specifying the population size at each placement. The
+        executor stacks returned from this method are not themselves
+        polymorphic; a concrete stack must have fixed sizes at each placement.
+
+    Returns:
+      Instance of `executor_base.Executor` as described above.
+    """
+    py_typecheck.check_type(cardinalities, dict)
+    key = _get_hashable_key(cardinalities)
+    ex = self._executors.get(key)
+    if ex is not None:
+      return ex
+    ex = self._executor_stack_fn(cardinalities)
+    py_typecheck.check_type(ex, executor_base.Executor)
+    self._executors[key] = ex
+    return ex
+
+  def clean_up_executors(self):
+    """Calls `close` on all constructed executors, resetting internal cache.
+
+    If a caller holds a name bound to any of the executors returned from
+    `create_executor`, this executor should be assumed to be in an invalid
+    state, and should not be used after this method is called. Instead, callers
+    should again invoke `create_executor`.
+    """
+    for _, ex in self._executors.items():
+      ex.close()
+    self._executors = {}
+
+
+@attr.s(auto_attribs=True, eq=False, order=False, frozen=True)
+class SizeInfo(object):
+  """Structure for size information from SizingExecutorFactory.get_size_info().
+
+  Attribues:
+    `broadcast_history`: 2D ragged list of 2-tuples which represents the
+      broadcast history.
+    `aggregate_history`: 2D ragged list of 2-tuples which represents the
+      aggregate history.
+    `broadcast_bits`: A list of shape [number_of_execs] representing the
+      number of broadcasted bits passed through each executor.
+    `aggregate_bits`: A list of shape [number_of_execs] representing the
+      number of aggregated bits passed through each executor.
+  """
+  broadcast_history: Dict[Any, sizing_executor.SizeAndDTypes]
+  aggregate_history: Dict[Any, sizing_executor.SizeAndDTypes]
+  broadcast_bits: List[int]
+  aggregate_bits: List[int]
+
+
+class SizingExecutorFactory(ResourceManagingExecutorFactory):
+  """A executor factory holding an executor per cardinality."""
+
+  def __init__(
+      self,
+      executor_stack_fn: Callable[[executor_factory.CardinalitiesType],
+                                  Tuple[executor_base.Executor,
+                                        List[sizing_executor.SizingExecutor]]]):
+    """Initializes `SizingExecutorFactory`.
+
+    Args:
+      executor_stack_fn: Similar to base class but the second return value of
+        the callable is used to expose the SizingExecutors.
+    """
+
+    super().__init__(executor_stack_fn)
+    self._sizing_executors = {}
+
+  def create_executor(
+      self, cardinalities: executor_factory.CardinalitiesType
+  ) -> executor_base.Executor:
+    """See base class."""
+
+    py_typecheck.check_type(cardinalities, dict)
+    key = _get_hashable_key(cardinalities)
+    ex = self._executors.get(key)
+    if ex is not None:
+      return ex
+    ex, sizing_executors = self._executor_stack_fn(cardinalities)
+    self._sizing_executors[key] = []
+    for executor in sizing_executors:
+      if not isinstance(executor, sizing_executor.SizingExecutor):
+        raise ValueError('Expected all input executors to be sizing executors')
+      self._sizing_executors[key].append(executor)
+    py_typecheck.check_type(ex, executor_base.Executor)
+    self._executors[key] = ex
+    return ex
+
+  def get_size_info(self) -> SizeInfo:
+    """Returns information about the transferred data of each SizingExecutor.
+
+    Returns the history of broadcast and aggregation for each executor as well
+    as the number of aggregated bits that has been passed through.
+
+    Returns:
+      An instance of `SizeInfo`.
+    """
+    size_ex_dict = self._sizing_executors
+
+    def _extract_history(sizing_exs: List[sizing_executor.SizingExecutor]):
+      broadcast_history, aggregate_history = [], []
+      for ex in sizing_exs:
+        broadcast_history.extend(ex.broadcast_history)
+        aggregate_history.extend(ex.aggregate_history)
+      return broadcast_history, aggregate_history
+
+    broadcast_history, aggregate_history = {}, {}
+    for key, size_exs in size_ex_dict.items():
+      current_broadcast_history, current_aggregate_history = _extract_history(
+          size_exs)
+      broadcast_history[key] = current_broadcast_history
+      aggregate_history[key] = current_aggregate_history
+
+    broadcast_bits = [
+        self._calculate_bit_size(hist) for hist in broadcast_history.values()
+    ]
+    aggregate_bits = [
+        self._calculate_bit_size(hist) for hist in aggregate_history.values()
+    ]
+    return SizeInfo(
+        broadcast_history=broadcast_history,
+        aggregate_history=aggregate_history,
+        broadcast_bits=broadcast_bits,
+        aggregate_bits=aggregate_bits)
+
+  def _bits_per_element(self, dtype: tf.DType) -> int:
+    """Returns the number of bits that a tensorflow DType uses per element."""
+    if dtype == tf.string:
+      return 8
+    elif dtype == tf.bool:
+      return 1
+    return dtype.size * 8
+
+  def _calculate_bit_size(self, history: sizing_executor.SizeAndDTypes) -> int:
+    """Takes a list of 2 element lists and calculates the number of bits represented.
+
+    The input list should follow the format of self.broadcast_history or
+    self.aggregate_history. That is, each 2 element list should be
+    [num_elements, dtype].
+
+    Args:
+      history: The history of values passed through the executor.
+
+    Returns:
+      The number of bits represented in the history.
+    """
+    bit_size = 0
+    for num_elements, dtype in history:
+      bit_size += num_elements * self._bits_per_element(dtype)
+    return bit_size
 
 
 def _wrap_executor_in_threading_stack(ex: executor_base.Executor,
@@ -424,8 +615,7 @@ def local_executor_factory(
       unplaced_ex_factory=unplaced_ex_factory,
       flat_stack_fn=flat_stack_fn,
   )
-  return executor_factory.ExecutorFactoryImpl(
-      full_stack_factory.create_executor)
+  return ResourceManagingExecutorFactory(full_stack_factory.create_executor)
 
 
 def thread_debugging_executor_factory(
@@ -494,7 +684,7 @@ def thread_debugging_executor_factory(
       num_clients=num_clients,
       use_sizing=False)
 
-  return executor_factory.ExecutorFactoryImpl(
+  return ResourceManagingExecutorFactory(
       federating_executor_factory.create_executor)
 
 
@@ -553,7 +743,7 @@ def sizing_executor_factory(
     sizing_executor_list = federating_executor_factory.sizing_executors
     return executor, sizing_executor_list
 
-  return executor_factory.SizingExecutorFactory(_factory_fn)
+  return SizingExecutorFactory(_factory_fn)
 
 
 def remote_executor_factory(channels,
@@ -587,6 +777,7 @@ def remote_executor_factory(channels,
   py_typecheck.check_type(channels, list)
   if not channels:
     raise ValueError('The list of channels cannot be empty.')
+
   remote_executors = [
       remote_executor.RemoteExecutor(channel, rpc_mode, thread_pool_executor,
                                      dispose_batch_size) for channel in channels
@@ -627,5 +818,5 @@ def remote_executor_factory(channels,
       flat_stack_fn=flat_stack_fn,
   )
 
-  return executor_factory.ExecutorFactoryImpl(
+  return ResourceManagingExecutorFactory(
       executor_stack_fn=composing_executor_factory.create_executor)

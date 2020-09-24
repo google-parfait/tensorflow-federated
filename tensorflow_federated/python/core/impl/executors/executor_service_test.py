@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_service_utils
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.types import placement_literals
 
@@ -122,7 +123,7 @@ class ExecutorServiceTest(absltest.TestCase):
         pass
 
     ex = SlowExecutor()
-    ex_factory = executor_factory.ExecutorFactoryImpl(lambda _: ex)
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
     env = TestEnv(ex_factory)
     self.assertEqual(ex.status, 'idle')
     value_proto, _ = executor_service_utils.serialize_value(10, tf.int32)
@@ -136,7 +137,7 @@ class ExecutorServiceTest(absltest.TestCase):
     self.assertEqual(value, 10)
 
   def test_executor_service_create_tensor_value(self):
-    ex_factory = executor_factory.ExecutorFactoryImpl(
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
         lambda _: eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
     value_proto, _ = executor_service_utils.serialize_value(
@@ -150,7 +151,7 @@ class ExecutorServiceTest(absltest.TestCase):
     del env
 
   def test_executor_service_create_no_arg_computation_value_and_call(self):
-    ex_factory = executor_factory.ExecutorFactoryImpl(
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
         lambda _: eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
 
@@ -171,7 +172,7 @@ class ExecutorServiceTest(absltest.TestCase):
     del env
 
   def test_executor_service_value_unavailable_after_dispose(self):
-    ex_factory = executor_factory.ExecutorFactoryImpl(
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
         lambda _: eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
     value_proto, _ = executor_service_utils.serialize_value(
@@ -195,7 +196,7 @@ class ExecutorServiceTest(absltest.TestCase):
       env.get_value_future_directly(value_id)
 
   def test_executor_service_create_one_arg_computation_value_and_call(self):
-    ex_factory = executor_factory.ExecutorFactoryImpl(
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
         lambda _: eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
 
@@ -225,7 +226,7 @@ class ExecutorServiceTest(absltest.TestCase):
     del env
 
   def test_executor_service_create_and_select_from_tuple(self):
-    ex_factory = executor_factory.ExecutorFactoryImpl(
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
         lambda _: eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
 

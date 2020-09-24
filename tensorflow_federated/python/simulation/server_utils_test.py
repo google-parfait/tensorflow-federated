@@ -19,7 +19,7 @@ import portpicker
 
 from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
-from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.simulation import server_utils
 
 
@@ -30,7 +30,7 @@ class ServerUtilsTest(test.TestCase):
       self, mock_logging_info):
 
     ex = eager_tf_executor.EagerTFExecutor()
-    ex_factory = executor_factory.ExecutorFactoryImpl(lambda _: ex)
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
 
     with server_utils.server_context(ex_factory, 1,
                                      portpicker.pick_unused_port()) as server:
@@ -47,7 +47,7 @@ class ServerUtilsTest(test.TestCase):
                                                         mock_logging_info):
 
     ex = eager_tf_executor.EagerTFExecutor()
-    ex_factory = executor_factory.ExecutorFactoryImpl(lambda _: ex)
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
 
     with self.assertRaises(TypeError):
       with server_utils.server_context(ex_factory, 1,

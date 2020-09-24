@@ -175,7 +175,7 @@ py_test(
         ":server_utils",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )
 

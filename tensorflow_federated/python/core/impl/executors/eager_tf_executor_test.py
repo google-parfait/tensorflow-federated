@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
-from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 
 
@@ -292,7 +292,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
 
 def _create_test_executor_factory():
   executor = eager_tf_executor.EagerTFExecutor()
-  return executor_factory.ExecutorFactoryImpl(lambda _: executor)
+  return executor_stacks.ResourceManagingExecutorFactory(lambda _: executor)
 
 
 class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):

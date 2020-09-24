@@ -23,14 +23,14 @@ from tensorflow_federated.python.core.impl.executors.caching_executor import Cac
 from tensorflow_federated.python.core.impl.executors.eager_tf_executor import EagerTFExecutor
 from tensorflow_federated.python.core.impl.executors.execution_context import ExecutionContext
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
-from tensorflow_federated.python.core.impl.executors.executor_factory import create_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
-from tensorflow_federated.python.core.impl.executors.executor_factory import SizeInfo
-from tensorflow_federated.python.core.impl.executors.executor_factory import SizingExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_service import ExecutorService
 from tensorflow_federated.python.core.impl.executors.executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import remote_executor_factory
+from tensorflow_federated.python.core.impl.executors.executor_stacks import ResourceManagingExecutorFactory
+from tensorflow_federated.python.core.impl.executors.executor_stacks import SizeInfo
 from tensorflow_federated.python.core.impl.executors.executor_stacks import sizing_executor_factory
+from tensorflow_federated.python.core.impl.executors.executor_stacks import SizingExecutorFactory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import thread_debugging_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_value_base import ExecutorValue
 from tensorflow_federated.python.core.impl.executors.federated_composing_strategy import FederatedComposingStrategy

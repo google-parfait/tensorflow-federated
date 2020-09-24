@@ -31,7 +31,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.executors import execution_context
-from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_service_utils
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -63,7 +62,7 @@ def test_context(rpc_mode='REQUEST_REPLY'):
     return tracer
 
   service = executor_service.ExecutorService(
-      executor_factory.ExecutorFactoryImpl(_tracer_fn))
+      executor_stacks.ResourceManagingExecutorFactory(_tracer_fn))
   executor_pb2_grpc.add_ExecutorServicer_to_server(service, server)
   server.start()
 

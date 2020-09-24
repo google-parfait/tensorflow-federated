@@ -67,9 +67,9 @@ def server_context(ex_factory,
     server_kwargs = {}
     if options is not None:
       server_kwargs['options'] = options
-    server = grpc.server(
-        concurrent.futures.ThreadPoolExecutor(max_workers=num_threads),
-        **server_kwargs)
+    thread_pool_executor = concurrent.futures.ThreadPoolExecutor(
+        max_workers=num_threads)
+    server = grpc.server(thread_pool_executor, **server_kwargs)
     full_port_string = '[::]:{}'.format(port)
     if credentials is not None:
       server.add_secure_port(full_port_string, credentials)
@@ -82,6 +82,7 @@ def server_context(ex_factory,
     logging.info('Server stopped by KeyboardInterrupt.')
   finally:
     logging.info('Shutting down server.')
+    thread_pool_executor.shutdown(wait=False)
     server.stop(None)
 
 
