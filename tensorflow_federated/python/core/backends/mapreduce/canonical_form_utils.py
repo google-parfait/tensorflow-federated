@@ -689,32 +689,13 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   signatures when compiling a given `tff.templates.IterativeProcess` into a
   `tff.backends.mapreduce.CanonicalForm` and returns a `collections.OrderedDict`
   whose keys and order match the explicit and intermediate componets of
-  `tff.backends.mapreduce.CanonicalForm` defined here:
+  `tff.backends.mapreduce.CanonicalForm` defined in the body of the
+  `next_computation` in `get_iterative_process_for_canonical_form`.
 
-  ```
-  s1 = arg[0]
-  c1 = arg[1]
-  s2 = intrinsics.federated_map(cf.prepare, s1)
-  c2 = intrinsics.federated_broadcast(s2)
-  c3 = intrinsics.federated_zip([c1, c2])
-  c4 = intrinsics.federated_map(cf.work, c3)
-  c5 = c4[0]
-  c6 = c4[1]
-  s3 = intrinsics.federated_aggregate(c5,
-                                      cf.zero(),
-                                      cf.accumulate,
-                                      cf.merge,
-                                      cf.report)
-  s4 = intrinsics.federated_secure_sum(c6, cf.bitwidth())
-  s5 = intrinsics.federated_zip([s3, s4])
-  s6 = intrinsics.federated_zip([s1, s5])
-  s7 = intrinsics.federated_map(cf.update, s6)
-  s8 = s7[0]
-  s9 = s7[1]
-  ```
-
-  Note that the type signatures for the `initalize` and `next` components of an
-  `tff.templates.IterativeProcess` are:
+  Note that the type signatures for the `initalize` and `next` components of the
+  `tff.templates.IterativeProcess` are (with the implicit understanding that
+  each component in the signatures below refers to the type of the referenced
+  building blocks):
 
   initalize:  `( -> s1)`
   next:       `(<s1,c1> -> <s8,s9>)`
