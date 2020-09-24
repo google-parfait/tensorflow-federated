@@ -210,6 +210,7 @@ py_test(
     srcs = ["eager_tf_executor_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = ["nokokoro"],
     deps = [
         ":eager_tf_executor",
         ":executor_factory",
@@ -233,6 +234,7 @@ py_test(
     # TODO(b/154964982): enable test on TAP and Kokoro
     tags = [
         "manual",
+        "nokokoro",
         "notap",
         "requires-gpu-nvidia",
     ],
@@ -437,6 +439,7 @@ py_test(
     # TODO(b/154964982): enable test on TAP and Kokoro
     tags = [
         "manual",
+        "nokokoro",
         "notap",
         "requires-gpu-nvidia",
     ],
