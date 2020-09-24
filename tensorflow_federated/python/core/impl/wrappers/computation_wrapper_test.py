@@ -32,8 +32,14 @@ class WrappedForTest(function_utils.ConcreteFunction):
 
   def __init__(self, fn, parameter_type, unpack, name=None):
     del name
-    self._fn = function_utils.wrap_as_zero_or_one_arg_callable(
+    unpack_args = function_utils.create_argument_unpacking_fn(
         fn, parameter_type, unpack)
+
+    def _wrapped_fn(arg):
+      args, kwargs = unpack_args(arg)
+      return fn(*args, **kwargs)
+
+    self._fn = _wrapped_fn
     super().__init__(
         computation_types.FunctionType(parameter_type, tf.string),
         context_stack_impl.context_stack)
@@ -49,7 +55,7 @@ class ContextForTest(context_base.Context):
     return val
 
   def invoke(self, comp, arg):
-    result = comp.fn(arg) if comp.type_signature.parameter else comp.fn()
+    result = comp.fn(arg)
     return '{} : {} -> {}'.format(
         str(arg), str(comp.type_signature.parameter), str(result))
 

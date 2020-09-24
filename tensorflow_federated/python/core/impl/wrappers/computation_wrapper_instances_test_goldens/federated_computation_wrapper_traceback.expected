@@ -8,11 +8,7 @@ Traceback (most recent call last):
   File "python/core/impl/wrappers/computation_wrapper.py", in _wrap_concrete
     concrete_fn = wrapper_fn(fn, parameter_type, unpack=None)
   File "python/core/impl/wrappers/computation_wrapper_instances.py", in _federated_computation_wrapper_fn
-    suggested_name=name))
-  File "python/core/impl/federated_context/federated_computation_utils.py", in zero_or_one_arg_fn_to_building_block
-    result = fn()
-  File "python/core/impl/utils/function_utils.py", in <lambda>
-    return lambda: fn()  # pylint: disable=unnecessary-lambda
+    result = target_fn(*args, **kwargs)
   File "python/core/impl/wrappers/computation_wrapper_instances_test.py", in _
     raise DummyError()
 FederatedComputationWrapperTest.test_stackframes_in_errors.<locals>.DummyError

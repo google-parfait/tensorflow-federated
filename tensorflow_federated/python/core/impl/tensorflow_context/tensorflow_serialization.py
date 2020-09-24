@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utilities for serializing TensorFlow computations."""
 
-import types
+from typing import Optional
 
 import tensorflow as tf
 
@@ -24,32 +24,27 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation_context
 from tensorflow_federated.python.core.impl.types import type_serialization
-from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 
-def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
-  """Serializes the 'target' as a TF computation with a given parameter type.
+def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
+                              context_stack):
+  """Serializes a TF computation with a given parameter type.
 
   Args:
-    target: The entity to convert into and serialize as a TF computation. This
-      can currently only be a Python function. In the future, we will add here
-      support for serializing the various kinds of non-eager and eager
-      functions, and eventually aim at full support for and compliance with TF
-      2.0. This function is currently required to declare either zero parameters
-      if `parameter_type` is `None`, or exactly one parameter if it's not
-      `None`.  The nested structure of this parameter must correspond to the
-      structure of the 'parameter_type'. In the future, we may support targets
-      with multiple args/keyword args (to be documented in the API and
-      referenced from here).
     parameter_type: The parameter type specification if the target accepts a
       parameter, or `None` if the target doesn't declare any parameters. Either
       an instance of `computation_types.Type`.
     context_stack: The context stack to use.
 
-  Returns:
-    A tuple of (`pb.Computation`, `tff.Type`), where the computation contains
+  Yields:
+    The first yielded value will be a Python object (such as a dataset,
+    a placeholder, or a `structure.Struct`) to be passed to the function to
+    serialize. The result of the function should then be passed to the
+    following `send` call.
+    The next yielded value will be
+    a tuple of (`pb.Computation`, `tff.Type`), where the computation contains
     the instance with the `pb.TensorFlow` variant set, and the type is an
     instance of `tff.Type`, potentially including Python container annotations,
     for use by TensorFlow computation wrappers.
@@ -64,35 +59,21 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
   # Document all accepted forms with examples in the API, and point to there
   # from here.
 
-  py_typecheck.check_type(target, types.FunctionType)
   py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   if parameter_type is not None:
     py_typecheck.check_type(parameter_type, computation_types.Type)
-  signature = function_utils.get_signature(target)
 
   with tf.Graph().as_default() as graph:
     if parameter_type is not None:
-      if len(signature.parameters) != 1:
-        raise ValueError(
-            'Expected the target to declare exactly one parameter, found {!r}.'
-            .format(signature.parameters))
-      parameter_name = next(iter(signature.parameters))
       parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-          parameter_name, parameter_type, graph)
+          'arg', parameter_type, graph)
     else:
-      if signature.parameters:
-        raise ValueError(
-            'Expected the target to declare no parameters, found {!r}.'.format(
-                signature.parameters))
       parameter_value = None
       parameter_binding = None
     context = tensorflow_computation_context.TensorFlowComputationContext(graph)
     with context_stack.install(context):
       with variable_utils.record_variable_creation_scope() as all_variables:
-        if parameter_value is not None:
-          result = target(parameter_value)
-        else:
-          result = target()
+        result = yield parameter_value
       initializer_ops = []
       if all_variables:
         # Use a readable but not-too-long name for the init_op.
@@ -129,6 +110,6 @@ def serialize_py_fn_as_tf_computation(target, parameter_type, context_stack):
       parameter=parameter_binding,
       result=result_binding,
       initialize_op=init_op_name)
-  return pb.Computation(
+  yield pb.Computation(
       type=type_serialization.serialize_type(type_signature),
       tensorflow=tensorflow), type_signature

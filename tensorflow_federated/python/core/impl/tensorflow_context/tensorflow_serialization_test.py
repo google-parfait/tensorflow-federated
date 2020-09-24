@@ -25,11 +25,19 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
+def _tf_computation_serializer(fn, parameter_type, context):
+  serializer = tensorflow_serialization.tf_computation_serializer(
+      parameter_type, context)
+  arg_to_fn = next(serializer)
+  result = fn(arg_to_fn)
+  return serializer.send(result)
+
+
 class TensorFlowSerializationTest(test.TestCase):
 
   def test_serialize_tensorflow_with_no_parameter(self):
-    comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-        lambda: tf.constant(99), None, context_stack_impl.context_stack)
+    comp, extra_type_spec = _tf_computation_serializer(
+        lambda _: tf.constant(99), None, context_stack_impl.context_stack)
     self.assertEqual(
         str(type_serialization.deserialize_type(comp.type)), '( -> int32)')
     self.assertEqual(str(extra_type_spec), '( -> int32)')
@@ -49,7 +57,7 @@ class TensorFlowSerializationTest(test.TestCase):
           num_oov_buckets=1)
       return table.lookup(word)
 
-    comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+    comp, extra_type_spec = _tf_computation_serializer(
         table_lookup,
         computation_types.TensorType(dtype=tf.string, shape=(None,)),
         context_stack_impl.context_stack)
@@ -74,7 +82,7 @@ class TensorFlowSerializationTest(test.TestCase):
 
   @test.graph_mode_test
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
-    comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+    comp, extra_type_spec = _tf_computation_serializer(
         lambda x: x + 3, computation_types.TensorType(tf.int32),
         context_stack_impl.context_stack)
     self.assertEqual(
@@ -93,7 +101,7 @@ class TensorFlowSerializationTest(test.TestCase):
   def test_serialize_tensorflow_with_structured_type_signature(self):
     batch_type = collections.namedtuple('BatchType', ['x', 'y'])
     output_type = collections.namedtuple('OutputType', ['A', 'B'])
-    comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+    comp, extra_type_spec = _tf_computation_serializer(
         lambda z: output_type(2.0 * tf.cast(z.x, tf.float32), 3.0 * z.y),
         computation_types.StructWithPythonType([('x', tf.int32),
                                                 ('y', (tf.float32, [2]))],
@@ -119,7 +127,7 @@ class TensorFlowSerializationTest(test.TestCase):
     def _legacy_dataset_reducer_example(ds):
       return ds.reduce(np.int64(0), lambda x, y: x + y)
 
-    comp, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
+    comp, extra_type_spec = _tf_computation_serializer(
         _legacy_dataset_reducer_example,
         computation_types.SequenceType(tf.int64),
         context_stack_impl.context_stack)

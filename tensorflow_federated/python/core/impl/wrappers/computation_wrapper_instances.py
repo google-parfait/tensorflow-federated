@@ -43,7 +43,7 @@ def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
   Documentation its arguments can be found inside the definition of that class.
   """
   del name  # Unused.
-  target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
+  unpack_arguments = function_utils.create_argument_unpacking_fn(
       target_fn, parameter_type, unpack)
   if not type_analysis.is_tensorflow_compatible_type(parameter_type):
     raise TypeError('`tf_computation`s can accept only parameter types with '
@@ -51,8 +51,11 @@ def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
                     'and `TensorType`; you have attempted to create one '
                     'with the type {}.'.format(parameter_type))
   ctx_stack = context_stack_impl.context_stack
-  comp_pb, extra_type_spec = tensorflow_serialization.serialize_py_fn_as_tf_computation(
-      target_fn, parameter_type, ctx_stack)
+  tf_serializer = tensorflow_serialization.tf_computation_serializer(
+      parameter_type, ctx_stack)
+  args, kwargs = unpack_arguments(next(tf_serializer))
+  result = target_fn(*args, **kwargs)
+  comp_pb, extra_type_spec = tf_serializer.send(result)
   return computation_impl.ComputationImpl(comp_pb, ctx_stack, extra_type_spec)
 
 
@@ -68,16 +71,24 @@ def _federated_computation_wrapper_fn(target_fn,
   This function is passed through `computation_wrapper.ComputationWrapper`.
   Documentation its arguments can be found inside the definition of that class.
   """
-  target_fn = function_utils.wrap_as_zero_or_one_arg_callable(
+  unpack_arguments = function_utils.create_argument_unpacking_fn(
       target_fn, parameter_type, unpack)
   ctx_stack = context_stack_impl.context_stack
-  target_lambda, extra_type_spec = (
-      federated_computation_utils.zero_or_one_arg_fn_to_building_block(
-          target_fn,
-          'arg' if parameter_type else None,
-          parameter_type,
-          ctx_stack,
-          suggested_name=name))
+  fn_generator = federated_computation_utils.federated_computation_serializer(
+      'arg' if parameter_type else None,
+      parameter_type,
+      ctx_stack,
+      suggested_name=name)
+  args, kwargs = unpack_arguments(next(fn_generator))
+  result = target_fn(*args, **kwargs)
+  if result is None:
+    line_number = target_fn.__code__.co_firstlineno
+    filename = target_fn.__code__.co_filename
+    raise ValueError(
+        f'The function defined on line {line_number} of file {filename} '
+        'returned `None`, but `federated_computation`s must return some '
+        'non-`None` value.')
+  target_lambda, extra_type_spec = fn_generator.send(result)
   return computation_impl.ComputationImpl(target_lambda.proto, ctx_stack,
                                           extra_type_spec)
 

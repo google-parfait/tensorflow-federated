@@ -56,10 +56,10 @@ def replace_intrinsics_with_callable(comp, uri, body, context_stack):
   def _transform(comp):
     if not _should_transform(comp):
       return comp, False
-    # We need 'wrapped_body' to accept exactly one argument.
-    wrapped_body = lambda x: body(x)  # pylint: disable=unnecessary-lambda
-    transformed_comp, _ = federated_computation_utils.zero_or_one_arg_fn_to_building_block(
-        wrapped_body, 'arg', comp.type_signature.parameter, context_stack, uri)
+    fn_generator = federated_computation_utils.federated_computation_serializer(
+        'arg', comp.type_signature.parameter, context_stack, uri)
+    result = body(next(fn_generator))
+    transformed_comp, _ = fn_generator.send(result)
     return transformed_comp, True
 
   return transformation_utils.transform_postorder(comp, _transform)
