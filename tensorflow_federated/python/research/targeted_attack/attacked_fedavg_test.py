@@ -18,9 +18,9 @@ import collections
 import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
+import tensorflow_privacy
 
 from tensorflow_federated.python.common_libs import test
-from tensorflow_federated.python.research.targeted_attack import aggregate_fn
 from tensorflow_federated.python.research.targeted_attack import attacked_fedavg
 from tensorflow_federated.python.research.targeted_attack.attacked_fedavg import build_federated_averaging_process_attacked
 
@@ -306,33 +306,18 @@ class AggregationTest(tf.test.TestCase):
     malicious_data = [batch]
     client_type_list = [tf.constant(False)]
     l2_norm = 0.01
-    dp_aggregate_fn = aggregate_fn.build_dp_aggregate(l2_norm, 0.0, 1.0)
+    query = tensorflow_privacy.GaussianAverageQuery(l2_norm, 0.0, 1.0)
+    dp_aggregate_fn = tff.utils.build_dp_aggregate_process(
+        tff.learning.framework.weights_type_from_model(_model_fn).trainable,
+        query)
     trainer = build_federated_averaging_process_attacked(
-        _model_fn, stateful_delta_aggregate_fn=dp_aggregate_fn)
+        _model_fn, aggregation_process=dp_aggregate_fn)
     state = trainer.initialize()
     initial_weights = state.model.trainable
     state, _ = trainer.next(state, train_data, malicious_data, client_type_list)
     weights_delta = tf.nest.map_structure(tf.subtract, state.model.trainable,
                                           initial_weights)
     self.assertLess(attacked_fedavg._get_norm(weights_delta), l2_norm * 1.1)
-
-  def test_aggregate_and_clip(self):
-    """Test whether the norm clipping is done successfully."""
-    client_data = create_client_data()
-    batch = client_data()
-    train_data = [batch]
-    malicious_data = [batch]
-    client_type_list = [tf.constant(False)]
-    l2_norm = 0.01
-    aggregate_clip = aggregate_fn.build_aggregate_and_clip(norm_bound=l2_norm)
-    trainer = build_federated_averaging_process_attacked(
-        _model_fn, stateful_delta_aggregate_fn=aggregate_clip)
-    state = trainer.initialize()
-    initial_weights = state.model.trainable
-    state, _ = trainer.next(state, train_data, malicious_data, client_type_list)
-    weights_delta = tf.nest.map_structure(tf.subtract, state.model.trainable,
-                                          initial_weights)
-    self.assertLess(attacked_fedavg._get_norm(weights_delta), l2_norm * 1.01)
 
 
 if __name__ == '__main__':

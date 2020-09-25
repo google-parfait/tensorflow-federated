@@ -35,7 +35,6 @@ import attr
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.research.targeted_attack.aggregate_fn import build_stateless_mean
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
@@ -229,14 +228,16 @@ class ClientExplicitBoosting:
         }))
 
 
-def build_server_init_fn(model_fn, server_optimizer_fn, delta_aggregate_state):
-  """Builds a `tff.tf_computation` that returns initial `ServerState`.
+def build_server_init_fn(model_fn, server_optimizer_fn,
+                         aggregation_process_init):
+  """Builds a `tff.Computation` that returns initial `ServerState`.
 
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`.
     server_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer`.
-    delta_aggregate_state: The initial state of the delta_aggregator.
+    aggregation_process_init: A `tff.Computation` that initializes the
+      aggregator state.
 
   Returns:
     A `tff.tf_computation` that returns initial `ServerState`.
@@ -249,12 +250,19 @@ def build_server_init_fn(model_fn, server_optimizer_fn, delta_aggregate_state):
     # Create optimizer variables so we have a place to assign the optimizer's
     # state.
     server_optimizer_vars = _create_optimizer_vars(model, server_optimizer)
-    return ServerState(
-        model=_get_weights(model),
-        optimizer_state=server_optimizer_vars,
-        delta_aggregate_state=delta_aggregate_state)
+    return _get_weights(model), server_optimizer_vars
 
-  return server_init_tf
+  @tff.federated_computation
+  def server_init():
+    initial_model, server_optimizer_state = tff.federated_eval(
+        server_init_tf, tff.SERVER)
+    return tff.federated_zip(
+        ServerState(
+            model=initial_model,
+            optimizer_state=server_optimizer_state,
+            delta_aggregate_state=aggregation_process_init()))
+
+  return server_init
 
 
 def build_server_update_fn(model_fn, server_optimizer_fn, server_state_type,
@@ -341,7 +349,7 @@ def build_client_update_fn(model_fn, optimizer_fn, client_update_tf,
 
 
 def build_run_one_round_fn_attacked(server_update_fn, client_update_fn,
-                                    stateful_delta_aggregate_fn,
+                                    aggregation_process,
                                     dummy_model_for_metadata,
                                     federated_server_state_type,
                                     federated_dataset_type):
@@ -350,8 +358,8 @@ def build_run_one_round_fn_attacked(server_update_fn, client_update_fn,
   Args:
     server_update_fn: A function for updates in the server.
     client_update_fn: A function for updates in the clients.
-    stateful_delta_aggregate_fn: A 'tff.computation'that takes in model deltas
-      placed@CLIENTS to an aggregated model delta placed@SERVER.
+    aggregation_process: A 'tff.templates.MeasuredProcess' that takes in model
+      deltas placed@CLIENTS to an aggregated model delta placed@SERVER.
     dummy_model_for_metadata: A dummy `tff.learning.Model`.
     federated_server_state_type: type_signature of federated server state.
     federated_dataset_type: type_signature of federated dataset.
@@ -389,10 +397,12 @@ def build_run_one_round_fn_attacked(server_update_fn, client_update_fn,
 
     weight_denom = client_outputs.weights_delta_weight
 
-    new_delta_aggregate_state, round_model_delta = stateful_delta_aggregate_fn(
+    aggregate_output = aggregation_process.next(
         server_state.delta_aggregate_state,
         client_outputs.weights_delta,
         weight=weight_denom)
+    new_delta_aggregate_state = aggregate_output.state
+    round_model_delta = aggregate_output.result
 
     server_state = tff.federated_map(
         server_update_fn,
@@ -412,7 +422,7 @@ def build_federated_averaging_process_attacked(
     model_fn,
     client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
     server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
-    stateful_delta_aggregate_fn=build_stateless_mean(),
+    aggregation_process=None,
     client_update_tf=ClientExplicitBoosting(boost_factor=1.0)):
   """Builds the TFF computations for optimization using federated averaging with potentially malicious clients.
 
@@ -422,19 +432,25 @@ def build_federated_averaging_process_attacked(
       `tf.keras.optimizers.Optimizer`, use during local client training.
     server_optimizer_fn: A no-arg function that returns a
       `tf.keras.optimizers.Optimizer`, use to apply updates to the global model.
-    stateful_delta_aggregate_fn: A 'tff.computation' that aggregates model
+    aggregation_process: A 'tff.templates.MeasuredProcess' that aggregates model
       deltas placed@CLIENTS to an aggregated model delta placed@SERVER.
     client_update_tf: a 'tf.function' computes the ClientOutput.
 
   Returns:
     A `tff.templates.IterativeProcess`.
   """
+  with tf.Graph().as_default():
+    dummy_model_for_metadata = model_fn()
+    weights_type = tff.learning.framework.weights_type_from_model(
+        dummy_model_for_metadata)
 
-  dummy_model_for_metadata = model_fn()
+  if aggregation_process is None:
+    aggregation_process = tff.learning.framework.build_stateless_mean(
+        model_delta_type=weights_type.trainable)
 
-  server_init_tf = build_server_init_fn(
-      model_fn, server_optimizer_fn, stateful_delta_aggregate_fn.initialize())
-  server_state_type = server_init_tf.type_signature.result
+  server_init = build_server_init_fn(model_fn, server_optimizer_fn,
+                                     aggregation_process.initialize)
+  server_state_type = server_init.type_signature.result.member
   server_update_fn = build_server_update_fn(model_fn, server_optimizer_fn,
                                             server_state_type,
                                             server_state_type.model)
@@ -449,14 +465,12 @@ def build_federated_averaging_process_attacked(
   federated_dataset_type = tff.FederatedType(tf_dataset_type, tff.CLIENTS)
 
   run_one_round_tff = build_run_one_round_fn_attacked(
-      server_update_fn, client_update_fn, stateful_delta_aggregate_fn,
+      server_update_fn, client_update_fn, aggregation_process,
       dummy_model_for_metadata, federated_server_state_type,
       federated_dataset_type)
 
   return tff.templates.IterativeProcess(
-      initialize_fn=tff.federated_computation(
-          lambda: tff.federated_value(server_init_tf(), tff.SERVER)),
-      next_fn=run_one_round_tff)
+      initialize_fn=server_init, next_fn=run_one_round_tff)
 
 
 class ClientProjectBoost:

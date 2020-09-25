@@ -22,8 +22,8 @@ import numpy as np
 from scipy import io
 import tensorflow as tf
 import tensorflow_federated as tff
+import tensorflow_privacy
 
-from tensorflow_federated.python.research.targeted_attack import aggregate_fn
 from tensorflow_federated.python.research.targeted_attack import attacked_fedavg
 
 FLAGS = flags.FLAGS
@@ -261,14 +261,14 @@ def main(argv):
       boost_factor=float(FLAGS.num_clients_per_round),
       norm_bound=FLAGS.norm_bound,
       round_num=FLAGS.client_round_num)
-  aggregation_function = aggregate_fn.build_dp_aggregate(
-      l2_norm=FLAGS.l2_norm_clip,
-      mul_factor=FLAGS.mul_factor,
-      num_clients=FLAGS.num_clients_per_round)
-
+  query = tensorflow_privacy.GaussianAverageQuery(FLAGS.l2_norm_clip,
+                                                  FLAGS.mul_factor,
+                                                  FLAGS.num_clients_per_round)
+  dp_aggregate_fn = tff.utils.build_dp_aggregate_process(
+      tff.learning.framework.weights_type_from_model(model_fn), query)
   iterative_process = attacked_fedavg.build_federated_averaging_process_attacked(
       model_fn=model_fn,
-      stateful_delta_aggregate_fn=aggregation_function,
+      aggregation_process=dp_aggregate_fn,
       client_update_tf=client_update_function,
       server_optimizer_fn=server_optimizer_fn)
   state = iterative_process.initialize()
