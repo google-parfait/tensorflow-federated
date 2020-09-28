@@ -205,7 +205,7 @@ py_library(
     ],
 )
 
-py_test(
+py_cpu_and_gpu_test(
     name = "eager_tf_executor_test",
     size = "small",
     srcs = ["eager_tf_executor_test.py"],

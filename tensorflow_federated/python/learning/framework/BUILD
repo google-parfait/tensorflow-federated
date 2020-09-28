@@ -1,4 +1,5 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_and_gpu_test")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package_group(
     name = "default_visibility",
@@ -44,7 +45,7 @@ py_library(
     ],
 )
 
-py_test(
+py_cpu_and_gpu_test(
     name = "encoding_utils_test",
     srcs = ["encoding_utils_test.py"],
     python_version = "PY3",
@@ -79,7 +80,7 @@ py_library(
     ],
 )
 
-py_test(
+py_cpu_and_gpu_test(
     name = "optimizer_utils_test",
     srcs = ["optimizer_utils_test.py"],
     python_version = "PY3",
@@ -104,7 +105,7 @@ py_library(
     srcs_version = "PY3",
 )
 
-py_test(
+py_cpu_and_gpu_test(
     name = "dataset_reduce_test",
     srcs = ["dataset_reduce_test.py"],
     python_version = "PY3",

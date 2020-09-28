@@ -1,3 +1,4 @@
+load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_and_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 # Packages that have visibility into the `learning` package.
@@ -50,7 +51,7 @@ py_library(
     ],
 )
 
-py_test(
+py_cpu_and_gpu_test(
     name = "federated_averaging_test",
     size = "medium",
     srcs = ["federated_averaging_test.py"],
@@ -82,7 +83,7 @@ py_library(
     ],
 )
 
-py_test(
+py_cpu_and_gpu_test(
     name = "federated_evaluation_test",
     srcs = ["federated_evaluation_test.py"],
     python_version = "PY3",
@@ -116,7 +117,7 @@ py_library(
     ],
 )
 
-py_test(
+py_cpu_and_gpu_test(
     name = "federated_sgd_test",
     size = "large",
     srcs = ["federated_sgd_test.py"],
@@ -241,7 +242,7 @@ py_test(
     ],
 )
 
-py_test(
+py_cpu_and_gpu_test(
     name = "personalization_eval_test",
     srcs = ["personalization_eval_test.py"],
     python_version = "PY3",
