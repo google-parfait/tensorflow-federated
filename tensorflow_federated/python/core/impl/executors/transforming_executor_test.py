@@ -85,7 +85,7 @@ class TransformingExecutorTest(absltest.TestCase):
       x, _ = tree_transformations.replace_selection_from_tuple_with_element(x)
       return x
 
-    self.assertIn('federated_zip_at_server(<FEDERATED_arg,FEDERATED_arg>)',
+    self.assertIn('federated_zip_at_server(<comp_arg,comp_arg>)',
                   _test_create_value(comp, transformation_fn))
 
 

@@ -2,13 +2,7 @@ Traceback (most recent call last):
   File "python/core/impl/wrappers/computation_wrapper_instances_test.py", in test_stackframes_in_errors
     @computation_wrapper_instances.federated_computation_wrapper
   File "python/core/impl/wrappers/computation_wrapper.py", in __call__
-    return _wrap(fn_to_wrap, provided_types, self._wrapper_fn)
-  File "python/core/impl/wrappers/computation_wrapper.py", in _wrap
-    wrapped_func = _wrap_concrete(fn, wrapper_fn, parameter_type)
-  File "python/core/impl/wrappers/computation_wrapper.py", in _wrap_concrete
-    concrete_fn = wrapper_fn(fn, parameter_type, unpack=None)
-  File "python/core/impl/wrappers/computation_wrapper_instances.py", in _federated_computation_wrapper_fn
-    result = target_fn(*args, **kwargs)
+    result = fn_to_wrap(*args, **kwargs)
   File "python/core/impl/wrappers/computation_wrapper_instances_test.py", in _
     raise DummyError()
 FederatedComputationWrapperTest.test_stackframes_in_errors.<locals>.DummyError

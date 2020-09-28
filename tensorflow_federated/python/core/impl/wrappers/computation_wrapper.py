@@ -14,6 +14,7 @@
 """Utilities for constructing decorators/wrappers for functions and tf.function."""
 
 import collections
+import functools
 import inspect
 import types
 from typing import Optional, Tuple
@@ -58,25 +59,14 @@ def _check_parameters(parameters):
       raise AssertionError(f'Unexpected parameter kind: {parameter.kind}')
 
 
-def _wrap_polymorphic(fn, wrapper_fn) -> function_utils.PolymorphicFunction:
-  """Wraps `fn` in `wrapper_fn` at invocation time."""
-  try:
-    fn_name = fn.__name__
-  except AttributeError:
-    fn_name = None
-
-  def _polymorphic_wrapper(parameter_type: computation_types.Type,
-                           unpack: Optional[bool]):
-    return wrapper_fn(fn, parameter_type, unpack=unpack, name=fn_name)
-
-  polymorphic_fn = function_utils.PolymorphicFunction(_polymorphic_wrapper)
-  return polymorphic_fn
-
-
-def _wrap_concrete(fn, wrapper_fn,
-                   parameter_type) -> function_utils.ConcreteFunction:
-  """Wraps `fn` in `wrapper_fn` given the provided `parameter_type`."""
-  concrete_fn = wrapper_fn(fn, parameter_type, unpack=None)
+def _wrap_concrete(fn_name: Optional[str],
+                   wrapper_fn,
+                   parameter_type,
+                   unpack=None) -> function_utils.ConcreteFunction:
+  """Wraps with `wrapper_fn` given the provided `parameter_type`."""
+  generator = wrapper_fn(parameter_type, fn_name)
+  result = yield next(generator)
+  concrete_fn = generator.send(result)
   py_typecheck.check_type(concrete_fn, function_utils.ConcreteFunction,
                           'value returned by the wrapper')
   result_parameter_type = concrete_fn.type_signature.parameter
@@ -86,7 +76,7 @@ def _wrap_concrete(fn, wrapper_fn,
         'Expected a concrete function that takes parameter {}, got one '
         'that takes {}.'.format(
             str(parameter_type), str(concrete_fn.type_signature.parameter)))
-  return concrete_fn
+  yield concrete_fn
 
 
 def _parameter_type(
@@ -143,88 +133,38 @@ def _parameter_type(
       list(zip(parameter_names, parameter_types)), collections.OrderedDict)
 
 
-def _wrap(fn, parameter_types: Tuple[computation_types.Type, ...], wrapper_fn):
-  """Wraps a possibly-polymorphic `fn` in `wrapper_fn`.
-
-  If `parameter_type` is `None` and `fn` takes any arguments (even with default
-  values), `fn` is inferred to be polymorphic and won't be passed to
-  `wrapper_fn` until invocation time (when concrete parameter types are
-  available).
-
-  `wrapper_fn` must accept three positional arguments and one defaulted argument
-  `name`:
-
-  * `target_fn`, the Python function to be wrapped.
-
-  * `parameter_types`, the user-provded list of parameter types.
-
-  * `unpack`, an argument which will be passed on to
-    `function_utils.wrap_as_zero_or_one_arg_callable` when wrapping `target_fn`.
-    See that function for details.
-
-  * Optional `name`, the name of the function that is being wrapped (only for
-    debugging purposes).
-
-  Args:
-    fn: The function or tf.function to wrap as a computation.
-    parameter_types: Types of any arguments to `fn`.
-    wrapper_fn: The Python callable that performs actual wrapping. The object to
-      be returned by this function should be an instance of a
-      `ConcreteFunction`.
-
-  Returns:
-    Either the result of wrapping (an object that represents the computation),
-    or a polymorphic callable that performs wrapping upon invocation based on
-    argument types. The returned function still may accept multiple
-    arguments (it has not yet had
-    `function_uils.wrap_as_zero_or_one_arg_callable` applied to it).
-
-  Raises:
-    TypeError: if the arguments are of the wrong types, or the `wrapper_fn`
-      constructs something that isn't a ConcreteFunction.
-  """
-  parameters = _parameters(fn)
-  # NOTE: many of the properties checked here are only necessary for
-  # non-polymorphic computations whose type signatures must be resolved
-  # prior to use. However, we continue to enforce these requirements even
-  # in the polymorphic case in order to avoid creating an inconsistency.
-  _check_parameters(parameters)
-
-  if (not parameter_types) and parameters:
-    # There is no TFF type specification, and the function/tf.function declares
-    # parameters. Create a polymorphic template.
-    wrapped_func = _wrap_polymorphic(fn, wrapper_fn)
-  else:
-    # Either we have a concrete parameter type, or this is no-arg function.
-    parameter_type = _parameter_type(parameters, parameter_types)
-    wrapped_func = _wrap_concrete(fn, wrapper_fn, parameter_type)
-
-  # When applying a decorator, the __doc__ attribute with the documentation
-  # in triple-quotes is not automatically transferred from the function on
-  wrapped_func.__doc__ = getattr(fn, '__doc__', None)
-  return wrapped_func
-
-
 def is_function(maybe_fn):
   return (isinstance(maybe_fn, (types.FunctionType, types.MethodType)) or
           function.is_tf_function(maybe_fn))
 
 
+class ComputationReturnedNoneError(ValueError):
+  """Error for computations which return `None` or do not return."""
+
+  def __init__(self, fn_to_wrap):
+    code = fn_to_wrap.__code__
+    line_number = code.co_firstlineno
+    filename = code.co_filename
+    message = (
+        f'The function defined on line {line_number} of file {filename} '
+        'returned `None` (or didn\'t explicitly `return` at all), but TFF '
+        'computations must return some non-`None` value.')
+    super().__init__(message)
+
+
 class ComputationWrapper(object):
   """A class for creating wrappers that convert functions into computations.
-
-  This class builds upon the _wrap() function defined above, adding on
-  functionality shared between the `tf_computation` and `federated_computation`
-  decorators. The shared functionality includes relating formal Python function
-  parameters and call arguments to TFF types, packing and unpacking arguments,
-  verifying types, and support for polymorphism.
 
   Here's how one can use `ComputationWrapper` to construct a decorator/wrapper
   named `xyz`:
 
   ```python
-  def my_wrapper_fn(target_fn, parameter_type, unpack, name=None):
-    ...
+  def my_wrapper_fn(parameter_type, name=None):
+    ...generate some stand-in argument structure matching `parameter_type`...
+    result_of_calling_function = yield argument_structure
+    ...postprocess the result and generate a function_utils.ConcreteFunction...
+    yield concrete_function
+
   xyz = computation_wrapper.ComputationWrapper(my_wrapper_fn)
   ```
 
@@ -381,16 +321,14 @@ class ComputationWrapper(object):
     py_typecheck.check_callable(wrapper_fn)
     self._wrapper_fn = wrapper_fn
 
-  def __call__(self, *args):
+  def __call__(self, *args, tff_internal_types=None):
     """Handles the different modes of usage of the decorator/wrapper.
-
-    This method only acts as a frontend that allows this class to be used as a
-    decorator or wrapper in a variety of ways. The actual wrapping is performed
-    by the private method `_wrap`.
 
     Args:
       *args: Positional arguments (the decorator at this point does not accept
         keyword arguments, although that might change in the future).
+      tff_internal_types: TFF internal usage only. This argument should be
+        considered private.
 
     Returns:
       Either a result of wrapping, or a callable that expects a function,
@@ -399,27 +337,80 @@ class ComputationWrapper(object):
 
     Raises:
       TypeError: if the arguments are of the wrong types.
+      ValueError: if the function to wrap returns `None`.
     """
-    if not args:
+    if not args or not is_function(args[0]):
       # If invoked as a decorator, and with an empty argument list as "@xyz()"
       # applied to a function definition, expect the Python function being
       # decorated to be passed in the subsequent call, and potentially create
       # a polymorphic callable. The parameter type is unspecified.
       # Deliberate wrapping with a lambda to prevent the caller from being able
       # to accidentally specify parameter type as a second argument.
-      provided_types = ()
-      return lambda fn: _wrap(fn, provided_types, self._wrapper_fn)
-    elif is_function(args[0]):
-      # If the first argument on the list is a Python function, instance method,
-      # or a tf.function, this is the one that's being wrapped. This is the case
-      # of either a decorator invocation without arguments as "@xyz" applied to
-      # a function definition, of an inline invocation as
-      # `... = xyz(lambda....).`
-      # Any of the following arguments, if present, are the arguments to the
-      # wrapper that are to be interpreted as the type specification.
-      fn_to_wrap = args[0]
-      provided_types = tuple(map(computation_types.to_type, args[1:]))
-      return _wrap(fn_to_wrap, provided_types, self._wrapper_fn)
-    else:
+      # The tricky partial recursion is needed to inline the logic in the
+      # "success" case below.
+      if tff_internal_types is not None:
+        raise TypeError(f'Expected a function to wrap, found {args}.')
       provided_types = tuple(map(computation_types.to_type, args))
-      return lambda fn: _wrap(fn, provided_types, self._wrapper_fn)
+      return functools.partial(self.__call__, tff_internal_types=provided_types)
+    # If the first argument on the list is a Python function, instance method,
+    # or a tf.function, this is the one that's being wrapped. This is the case
+    # of either a decorator invocation without arguments as "@xyz" applied to
+    # a function definition, of an inline invocation as
+    # `... = xyz(lambda....).`
+    # Any of the following arguments, if present, are the arguments to the
+    # wrapper that are to be interpreted as the type specification.
+    fn_to_wrap = args[0]
+    if not tff_internal_types:
+      tff_internal_types = tuple(map(computation_types.to_type, args[1:]))
+    else:
+      if len(args) > 1:
+        raise TypeError(f'Expected no further arguments, found {args[1:]}.')
+
+    parameter_types = tff_internal_types
+    parameters = _parameters(fn_to_wrap)
+
+    # NOTE: many of the properties checked here are only necessary for
+    # non-polymorphic computations whose type signatures must be resolved
+    # prior to use. However, we continue to enforce these requirements even
+    # in the polymorphic case in order to avoid creating an inconsistency.
+    _check_parameters(parameters)
+
+    try:
+      fn_name = fn_to_wrap.__name__
+    except AttributeError:
+      fn_name = None
+
+    if (not parameter_types) and parameters:
+      # There is no TFF type specification, and the function/tf.function
+      # declares parameters. Create a polymorphic template.
+      def _polymorphic_wrapper(parameter_type: computation_types.Type,
+                               unpack: Optional[bool]):
+        unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
+            fn_to_wrap, parameter_type, unpack=unpack)
+        wrapped_fn_generator = _wrap_concrete(fn_name, self._wrapper_fn,
+                                              parameter_type)
+        args, kwargs = unpack_arguments_fn(next(wrapped_fn_generator))
+        result = fn_to_wrap(*args, **kwargs)
+        if result is None:
+          raise ComputationReturnedNoneError(fn_to_wrap)
+        return wrapped_fn_generator.send(result)
+
+      wrapped_func = function_utils.PolymorphicFunction(_polymorphic_wrapper)
+    else:
+      # Either we have a concrete parameter type, or this is no-arg function.
+      parameter_type = _parameter_type(parameters, parameter_types)
+      unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
+          fn_to_wrap, parameter_type, unpack=None)
+      wrapped_fn_generator = _wrap_concrete(fn_name, self._wrapper_fn,
+                                            parameter_type)
+      args, kwargs = unpack_arguments_fn(next(wrapped_fn_generator))
+      result = fn_to_wrap(*args, **kwargs)
+      if result is None:
+        raise ComputationReturnedNoneError(fn_to_wrap)
+      wrapped_func = wrapped_fn_generator.send(result)
+
+    # Copy the __doc__ attribute with the documentation in triple-quotes from
+    # the decorated function.
+    wrapped_func.__doc__ = getattr(fn_to_wrap, '__doc__', None)
+
+    return wrapped_func

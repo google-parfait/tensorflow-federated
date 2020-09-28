@@ -45,6 +45,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_wrapper",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
@@ -68,7 +69,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_serialization",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/impl/utils:function_utils",
     ],
 )
 

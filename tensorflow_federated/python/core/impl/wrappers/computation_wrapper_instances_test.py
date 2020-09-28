@@ -417,7 +417,7 @@ class FederatedComputationWrapperTest(test.TestCase):
 
     self.assertEqual(
         str(foo.to_building_block()),
-        '(FEDERATED_arg -> (let fc_FEDERATED_symbol_0=FEDERATED_arg.f(FEDERATED_arg.x),fc_FEDERATED_symbol_1=FEDERATED_arg.f(fc_FEDERATED_symbol_0) in fc_FEDERATED_symbol_1))'
+        '(foo_arg -> (let fc_foo_symbol_0=foo_arg.f(foo_arg.x),fc_foo_symbol_1=foo_arg.f(fc_foo_symbol_0) in fc_foo_symbol_1))'
     )
 
   def test_stackframes_in_errors(self):

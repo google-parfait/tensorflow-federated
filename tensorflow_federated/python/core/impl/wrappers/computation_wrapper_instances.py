@@ -24,7 +24,6 @@ from tensorflow_federated.python.core.impl.federated_context import federated_co
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_serialization
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.impl.utils import function_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 
 # The documentation of the arguments and return values from the wrapper_fns
@@ -36,15 +35,13 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 # pylint:disable=g-doc-args,g-doc-return-or-yield
 
 
-def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
+def _tf_wrapper_fn(parameter_type, name):
   """Wrapper function to plug Tensorflow logic into the TFF framework.
 
   This function is passed through `computation_wrapper.ComputationWrapper`.
   Documentation its arguments can be found inside the definition of that class.
   """
   del name  # Unused.
-  unpack_arguments = function_utils.create_argument_unpacking_fn(
-      target_fn, parameter_type, unpack)
   if not type_analysis.is_tensorflow_compatible_type(parameter_type):
     raise TypeError('`tf_computation`s can accept only parameter types with '
                     'constituents `SequenceType`, `StructType` '
@@ -53,44 +50,30 @@ def _tf_wrapper_fn(target_fn, parameter_type, unpack, name=None):
   ctx_stack = context_stack_impl.context_stack
   tf_serializer = tensorflow_serialization.tf_computation_serializer(
       parameter_type, ctx_stack)
-  args, kwargs = unpack_arguments(next(tf_serializer))
-  result = target_fn(*args, **kwargs)
+  result = yield next(tf_serializer)
   comp_pb, extra_type_spec = tf_serializer.send(result)
-  return computation_impl.ComputationImpl(comp_pb, ctx_stack, extra_type_spec)
+  yield computation_impl.ComputationImpl(comp_pb, ctx_stack, extra_type_spec)
 
 
 tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
 
 
-def _federated_computation_wrapper_fn(target_fn,
-                                      parameter_type,
-                                      unpack,
-                                      name=None):
+def _federated_computation_wrapper_fn(parameter_type, name):
   """Wrapper function to plug orchestration logic into the TFF framework.
 
   This function is passed through `computation_wrapper.ComputationWrapper`.
   Documentation its arguments can be found inside the definition of that class.
   """
-  unpack_arguments = function_utils.create_argument_unpacking_fn(
-      target_fn, parameter_type, unpack)
   ctx_stack = context_stack_impl.context_stack
   fn_generator = federated_computation_utils.federated_computation_serializer(
       'arg' if parameter_type else None,
       parameter_type,
       ctx_stack,
       suggested_name=name)
-  args, kwargs = unpack_arguments(next(fn_generator))
-  result = target_fn(*args, **kwargs)
-  if result is None:
-    line_number = target_fn.__code__.co_firstlineno
-    filename = target_fn.__code__.co_filename
-    raise ValueError(
-        f'The function defined on line {line_number} of file {filename} '
-        'returned `None`, but `federated_computation`s must return some '
-        'non-`None` value.')
+  result = yield next(fn_generator)
   target_lambda, extra_type_spec = fn_generator.send(result)
-  return computation_impl.ComputationImpl(target_lambda.proto, ctx_stack,
-                                          extra_type_spec)
+  yield computation_impl.ComputationImpl(target_lambda.proto, ctx_stack,
+                                         extra_type_spec)
 
 
 federated_computation_wrapper = computation_wrapper.ComputationWrapper(

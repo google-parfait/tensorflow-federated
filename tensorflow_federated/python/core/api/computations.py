@@ -19,8 +19,9 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 check_returns_type = computation_wrapper_instances.check_returns_type
 
 
-def tf_computation(*args):
-  """Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
+tf_computation = computation_wrapper_instances.tensorflow_wrapper
+tf_computation.__doc__ = (
+    """Decorates/wraps Python functions and defuns as TFF TensorFlow computations.
 
   This symbol can be used as either a decorator or a wrapper applied to a
   function given to it as an argument. The supported patterns and examples of
@@ -150,12 +151,11 @@ def tf_computation(*args):
     in the typical decorator style of usage, returns a callable that expects
     to be called with the function definition supplied as a parameter; see the
     patterns and examples of usage above.
-  """
-  return computation_wrapper_instances.tensorflow_wrapper(*args)
+  """)
 
-
-def federated_computation(*args):
-  """Decorates/wraps Python functions as TFF federated/composite computations.
+federated_computation = computation_wrapper_instances.federated_computation_wrapper
+federated_computation.__doc__ = (
+    """Decorates/wraps Python functions as TFF federated/composite computations.
 
   The term *federated computation* as used here refers to any computation that
   uses TFF programming abstractions. Examples of such computations may include
@@ -197,5 +197,4 @@ def federated_computation(*args):
     in the typical decorator style of usage, returns a callable that expects
     to be called with the function definition supplied as a parameter. See
     also `tff.tf_computation` for an extended documentation.
-  """
-  return computation_wrapper_instances.federated_computation_wrapper(*args)
+  """)

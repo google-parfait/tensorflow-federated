@@ -49,8 +49,9 @@ class AstGenerationTest(test.TestCase):
         federated_five,
         # pyformat: disable
         '( -> (let\n'
-        '  fc_FEDERATED_symbol_0={}()\n'
-        ' in fc_FEDERATED_symbol_0))'.format(self.formatted_computation(five))
+        '  fc_federated_five_symbol_0={}()\n'
+        ' in fc_federated_five_symbol_0))'.format(
+            self.formatted_computation(five))
         # pyformat: enable
     )
 
@@ -69,10 +70,10 @@ class AstGenerationTest(test.TestCase):
         same_rand_tuple,
         # pyformat: disable
         '( -> (let\n'
-        '  fc_FEDERATED_symbol_0={}()\n'
+        '  fc_same_rand_tuple_symbol_0={}()\n'
         ' in <\n'
-        '  fc_FEDERATED_symbol_0,\n'
-        '  fc_FEDERATED_symbol_0\n'
+        '  fc_same_rand_tuple_symbol_0,\n'
+        '  fc_same_rand_tuple_symbol_0\n'
         '>))'.format(self.formatted_computation(rand))
         # pyformat: enable
     )
