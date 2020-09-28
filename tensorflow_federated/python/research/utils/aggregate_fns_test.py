@@ -29,48 +29,6 @@ def create_weights_delta(input_size=2, hidden_size=5, constant=0):
                                   ('dense/bias', bias)])
 
 
-class ClipNormAggregateFnTest(tf.test.TestCase):
-
-  def global_norm(self, value):
-    return tf.linalg.global_norm(tf.nest.flatten(value))
-
-  def test_clip_by_global_norm(self):
-    clip_norm = 20.0
-    aggregate_fn = aggregate_fns.build_clip_norm_aggregate_fn(clip_norm)
-    # Global l2 norms [17.74824, 53.99074].
-    deltas = [create_weights_delta(), create_weights_delta(constant=10)]
-    deltas_type = tff.framework.type_from_tensors(deltas[0])
-    weights = [1., 1.]
-
-    @tff.federated_computation(
-        tff.FederatedType(deltas_type, tff.CLIENTS),
-        tff.FederatedType(tf.float32, tff.CLIENTS))
-    def federated_aggregate_test(deltas, weights):
-      state = tff.federated_value(aggregate_fn.initialize(), tff.SERVER)
-      return aggregate_fn(state, deltas, weights)
-
-    federated_aggregate_test.type_signature.result.check_equivalent_to(
-        tff.StructType((
-            tff.FederatedType(
-                aggregate_fns.ClipNormAggregateState(
-                    clip_norm=tf.float32, max_norm=tf.float32), tff.SERVER),
-            tff.FederatedType(deltas_type, tff.SERVER),
-        )))
-
-    state, mean = federated_aggregate_test(deltas, weights)
-
-    expected_clipped = []
-    for delta in deltas:
-      flat = tf.nest.flatten(delta)
-      clipped, _ = tf.clip_by_global_norm(flat, clip_norm)
-      expected_clipped.append(tf.nest.pack_sequence_as(delta, clipped))
-    expected_mean = tf.nest.map_structure(lambda a, b: (a + b) / 2,
-                                          *expected_clipped)
-    self.assertEqual(state.clip_norm, tf.constant(20.0, tf.float32))
-    self.assertEqual(state.max_norm, tf.constant(53.99074, tf.float32))
-    tf.nest.map_structure(self.assertAllEqual, expected_mean, mean)
-
-
 class FixedClipNormProcessTest(tf.test.TestCase):
 
   def test_clip_by_global_norm(self):

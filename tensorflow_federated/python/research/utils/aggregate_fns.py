@@ -25,50 +25,6 @@ import tensorflow_federated as tff
 
 
 @attr.s(auto_attribs=True, eq=False, frozen=True)
-class ClipNormAggregateState(object):
-  """Structure for `tff.utils.StatefulBroadcastFn`.
-
-  Fields:
-  -   `clip_norm`: A float. The clipping ratio.
-  -   `max_norm`: A float. The maximum client global norm observed in a round.
-  """
-  clip_norm: float
-  max_norm: float
-
-
-def build_clip_norm_aggregate_fn(
-    clip_norm: float) -> tff.utils.StatefulAggregateFn:
-  """Returns `tff.utils.StatefulAggregateFn` that clips client deltas."""
-
-  @tff.tf_computation
-  def initialize_fn():
-    return ClipNormAggregateState(
-        clip_norm=tf.constant(clip_norm, tf.float32),
-        max_norm=tf.zeros((), tf.float32))
-
-  def next_fn(state, deltas, weights=None):
-
-    @tff.tf_computation(deltas.type_signature.member, tf.float32)
-    def clip_by_global_norm(delta, clip_norm):
-      clipped, global_norm = tf.clip_by_global_norm(
-          tf.nest.flatten(delta), clip_norm)
-      clipped_deltas = tf.nest.pack_sequence_as(delta, clipped)
-      return clipped_deltas, global_norm
-
-    client_clip_norm = tff.federated_broadcast(state.clip_norm)
-    clipped_deltas, client_norms = tff.federated_map(clip_by_global_norm,
-                                                     (deltas, client_clip_norm))
-    # clip_norm no-op update here but could be set using max_norm.
-    next_state = tff.federated_zip(
-        ClipNormAggregateState(
-            clip_norm=state.clip_norm,
-            max_norm=tff.utils.federated_max(client_norms)))
-    return next_state, tff.federated_mean(clipped_deltas, weight=weights)
-
-  return tff.utils.StatefulAggregateFn(initialize_fn, next_fn)
-
-
-@attr.s(auto_attribs=True, eq=False, frozen=True)
 class NormClippedAggregationMetrics(object):
   """Structure metrics returned by a norm clipped averaging prcoess.
 
