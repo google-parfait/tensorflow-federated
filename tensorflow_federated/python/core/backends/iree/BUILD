@@ -154,7 +154,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
-        "//tensorflow_federated/python/core/impl/executors:executor_factory",
+        "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )
 
