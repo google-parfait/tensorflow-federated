@@ -32,7 +32,6 @@ from tensorflow_federated.python.core.impl.executors import federated_resolving_
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -114,7 +113,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
         _create_middle_stack(raising_stacks),
     ])
 
-    @computations.federated_computation(type_factory.at_clients(tf.float32))
+    @computations.federated_computation(
+        computation_types.at_clients(tf.float32))
     def comp(x):
       return intrinsics.federated_mean(x)
 
@@ -395,7 +395,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
   def test_federated_mean(self):
 
-    @computations.federated_computation(type_factory.at_clients(tf.float32))
+    @computations.federated_computation(
+        computation_types.at_clients(tf.float32))
     def comp(x):
       return intrinsics.federated_mean(x)
 
@@ -407,8 +408,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
   def test_federated_weighted_mean(self):
 
     @computations.federated_computation(
-        type_factory.at_clients(tf.float32),
-        type_factory.at_clients(tf.float32))
+        computation_types.at_clients(tf.float32),
+        computation_types.at_clients(tf.float32))
     def comp(x, y):
       return intrinsics.federated_mean(x, y)
 

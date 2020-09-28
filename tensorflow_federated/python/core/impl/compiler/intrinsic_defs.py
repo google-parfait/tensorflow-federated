@@ -180,7 +180,7 @@ FEDERATED_AGGREGATE = IntrinsicDef(
     'FEDERATED_AGGREGATE', 'federated_aggregate',
     computation_types.FunctionType(
         parameter=[
-            type_factory.at_clients(computation_types.AbstractType('T')),
+            computation_types.at_clients(computation_types.AbstractType('T')),
             computation_types.AbstractType('U'),
             type_factory.reduction_op(
                 computation_types.AbstractType('U'),
@@ -190,7 +190,8 @@ FEDERATED_AGGREGATE = IntrinsicDef(
                 computation_types.AbstractType('U'),
                 computation_types.AbstractType('R'))
         ],
-        result=type_factory.at_server(computation_types.AbstractType('R'))))
+        result=computation_types.at_server(
+            computation_types.AbstractType('R'))))
 
 # Applies a given function to a value on the server.
 #
@@ -202,9 +203,10 @@ FEDERATED_APPLY = IntrinsicDef(
             computation_types.FunctionType(
                 computation_types.AbstractType('T'),
                 computation_types.AbstractType('U')),
-            type_factory.at_server(computation_types.AbstractType('T')),
+            computation_types.at_server(computation_types.AbstractType('T')),
         ],
-        result=type_factory.at_server(computation_types.AbstractType('U'))))
+        result=computation_types.at_server(
+            computation_types.AbstractType('U'))))
 
 # Broadcasts a server item to all clients.
 #
@@ -212,8 +214,9 @@ FEDERATED_APPLY = IntrinsicDef(
 FEDERATED_BROADCAST = IntrinsicDef(
     'FEDERATED_BROADCAST', 'federated_broadcast',
     computation_types.FunctionType(
-        parameter=type_factory.at_server(computation_types.AbstractType('T')),
-        result=type_factory.at_clients(
+        parameter=computation_types.at_server(
+            computation_types.AbstractType('T')),
+        result=computation_types.at_clients(
             computation_types.AbstractType('T'), all_equal=True)))
 
 # Materializes client items as a sequence on the server.
@@ -222,8 +225,9 @@ FEDERATED_BROADCAST = IntrinsicDef(
 FEDERATED_COLLECT = IntrinsicDef(
     'FEDERATED_COLLECT', 'federated_collect',
     computation_types.FunctionType(
-        parameter=type_factory.at_clients(computation_types.AbstractType('T')),
-        result=type_factory.at_server(
+        parameter=computation_types.at_clients(
+            computation_types.AbstractType('T')),
+        result=computation_types.at_server(
             computation_types.SequenceType(
                 computation_types.AbstractType('T')))))
 
@@ -235,7 +239,8 @@ FEDERATED_EVAL_AT_CLIENTS = IntrinsicDef(
     computation_types.FunctionType(
         parameter=computation_types.FunctionType(
             None, computation_types.AbstractType('T')),
-        result=type_factory.at_clients(computation_types.AbstractType('T'))))
+        result=computation_types.at_clients(
+            computation_types.AbstractType('T'))))
 
 # Evaluates a function at the server.
 #
@@ -245,7 +250,8 @@ FEDERATED_EVAL_AT_SERVER = IntrinsicDef(
     computation_types.FunctionType(
         parameter=computation_types.FunctionType(
             None, computation_types.AbstractType('T')),
-        result=type_factory.at_server(computation_types.AbstractType('T'))))
+        result=computation_types.at_server(
+            computation_types.AbstractType('T'))))
 
 # Maps member constituents of a client value pointwise using a given mapping
 # function that operates independently on each client.
@@ -258,9 +264,10 @@ FEDERATED_MAP = IntrinsicDef(
             computation_types.FunctionType(
                 computation_types.AbstractType('T'),
                 computation_types.AbstractType('U')),
-            type_factory.at_clients(computation_types.AbstractType('T')),
+            computation_types.at_clients(computation_types.AbstractType('T')),
         ],
-        result=type_factory.at_clients(computation_types.AbstractType('U'))))
+        result=computation_types.at_clients(
+            computation_types.AbstractType('U'))))
 
 # Maps member constituents of a client all equal value pointwise using a given
 # mapping function that operates independently on each client, as a result of
@@ -275,10 +282,10 @@ FEDERATED_MAP_ALL_EQUAL = IntrinsicDef(
             computation_types.FunctionType(
                 computation_types.AbstractType('T'),
                 computation_types.AbstractType('U')),
-            type_factory.at_clients(
+            computation_types.at_clients(
                 computation_types.AbstractType('T'), all_equal=True),
         ],
-        result=type_factory.at_clients(
+        result=computation_types.at_clients(
             computation_types.AbstractType('U'), all_equal=True)))
 
 # Computes a simple (equally weighted) mean of client items. Only supported
@@ -288,8 +295,10 @@ FEDERATED_MAP_ALL_EQUAL = IntrinsicDef(
 FEDERATED_MEAN = IntrinsicDef(
     'FEDERATED_MEAN', 'federated_mean',
     computation_types.FunctionType(
-        parameter=type_factory.at_clients(computation_types.AbstractType('T')),
-        result=type_factory.at_server(computation_types.AbstractType('T'))))
+        parameter=computation_types.at_clients(
+            computation_types.AbstractType('T')),
+        result=computation_types.at_server(
+            computation_types.AbstractType('T'))))
 
 # Reduces a set of member constituents of a client value using a given 'zero' in
 # the algebra (i.e., the result of reducing an empty set) and a given reduction
@@ -305,13 +314,14 @@ FEDERATED_REDUCE = IntrinsicDef(
     'FEDERATED_REDUCE', 'federated_reduce',
     computation_types.FunctionType(
         parameter=[
-            type_factory.at_clients(computation_types.AbstractType('T')),
+            computation_types.at_clients(computation_types.AbstractType('T')),
             computation_types.AbstractType('U'),
             type_factory.reduction_op(
                 computation_types.AbstractType('U'),
                 computation_types.AbstractType('T'))
         ],
-        result=type_factory.at_server(computation_types.AbstractType('U'))))
+        result=computation_types.at_server(
+            computation_types.AbstractType('U'))))
 
 # Computes the sum of client values on the server, securely. Only supported for
 # numeric types, or nested structures made up of numeric computation_types.
@@ -321,10 +331,11 @@ FEDERATED_SECURE_SUM = IntrinsicDef(
     'FEDERATED_SECURE_SUM', 'federated_secure_sum',
     computation_types.FunctionType(
         parameter=[
-            type_factory.at_clients(computation_types.AbstractType('V')),
+            computation_types.at_clients(computation_types.AbstractType('V')),
             computation_types.AbstractType('B'),
         ],
-        result=type_factory.at_server(computation_types.AbstractType('V'))))
+        result=computation_types.at_server(
+            computation_types.AbstractType('V'))))
 
 # Computes the sum of client values on the server. Only supported for numeric
 # types, or nested structures made up of numeric computation_types.
@@ -333,8 +344,10 @@ FEDERATED_SECURE_SUM = IntrinsicDef(
 FEDERATED_SUM = IntrinsicDef(
     'FEDERATED_SUM', 'federated_sum',
     computation_types.FunctionType(
-        parameter=type_factory.at_clients(computation_types.AbstractType('T')),
-        result=type_factory.at_server(computation_types.AbstractType('T'))))
+        parameter=computation_types.at_clients(
+            computation_types.AbstractType('T')),
+        result=computation_types.at_server(
+            computation_types.AbstractType('T'))))
 
 # Places a value at the clients.
 #
@@ -343,7 +356,7 @@ FEDERATED_VALUE_AT_CLIENTS = IntrinsicDef(
     'FEDERATED_VALUE_AT_CLIENTS', 'federated_value_at_clients',
     computation_types.FunctionType(
         parameter=computation_types.AbstractType('T'),
-        result=type_factory.at_clients(
+        result=computation_types.at_clients(
             computation_types.AbstractType('T'), True)))
 
 # Places a value at the server.
@@ -353,7 +366,8 @@ FEDERATED_VALUE_AT_SERVER = IntrinsicDef(
     'FEDERATED_VALUE_AT_SERVER', 'federated_value_at_server',
     computation_types.FunctionType(
         parameter=computation_types.AbstractType('T'),
-        result=type_factory.at_server(computation_types.AbstractType('T'))))
+        result=computation_types.at_server(
+            computation_types.AbstractType('T'))))
 
 # Computes a weighted mean of client items. Only supported for numeric tensor
 # types, or composite structures made up of numeric types. Weights must be
@@ -370,10 +384,11 @@ FEDERATED_WEIGHTED_MEAN = IntrinsicDef(
     'FEDERATED_WEIGHTED_MEAN', 'federated_weighted_mean',
     computation_types.FunctionType(
         parameter=[
-            type_factory.at_clients(computation_types.AbstractType('T')),
-            type_factory.at_clients(computation_types.AbstractType('U'))
+            computation_types.at_clients(computation_types.AbstractType('T')),
+            computation_types.at_clients(computation_types.AbstractType('U'))
         ],
-        result=type_factory.at_server(computation_types.AbstractType('T'))))
+        result=computation_types.at_server(
+            computation_types.AbstractType('T'))))
 
 # Zips a tuple of two federated types into a federated tuple.
 #
@@ -382,10 +397,10 @@ FEDERATED_ZIP_AT_CLIENTS = IntrinsicDef(
     'FEDERATED_ZIP_AT_CLIENTS', 'federated_zip_at_clients',
     computation_types.FunctionType(
         parameter=[
-            type_factory.at_clients(computation_types.AbstractType('T')),
-            type_factory.at_clients(computation_types.AbstractType('U'))
+            computation_types.at_clients(computation_types.AbstractType('T')),
+            computation_types.at_clients(computation_types.AbstractType('U'))
         ],
-        result=type_factory.at_clients([
+        result=computation_types.at_clients([
             computation_types.AbstractType('T'),
             computation_types.AbstractType('U')
         ])))
@@ -394,10 +409,10 @@ FEDERATED_ZIP_AT_SERVER = IntrinsicDef(
     'FEDERATED_ZIP_AT_SERVER', 'federated_zip_at_server',
     computation_types.FunctionType(
         parameter=[
-            type_factory.at_server(computation_types.AbstractType('T')),
-            type_factory.at_server(computation_types.AbstractType('U'))
+            computation_types.at_server(computation_types.AbstractType('T')),
+            computation_types.at_server(computation_types.AbstractType('U'))
         ],
-        result=type_factory.at_server([
+        result=computation_types.at_server([
             computation_types.AbstractType('T'),
             computation_types.AbstractType('U')
         ])))

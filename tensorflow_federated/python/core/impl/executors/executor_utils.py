@@ -222,10 +222,10 @@ async def compute_intrinsic_federated_weighted_mean(
       arg.type_signature)
   zip1_type = computation_types.FunctionType(
       computation_types.StructType([
-          type_factory.at_clients(arg.type_signature[0].member),
-          type_factory.at_clients(arg.type_signature[1].member)
+          computation_types.at_clients(arg.type_signature[0].member),
+          computation_types.at_clients(arg.type_signature[1].member)
       ]),
-      type_factory.at_clients(
+      computation_types.at_clients(
           computation_types.StructType(
               [arg.type_signature[0].member, arg.type_signature[1].member])))
 
@@ -235,19 +235,19 @@ async def compute_intrinsic_federated_weighted_mean(
   map_type = computation_types.FunctionType(
       computation_types.StructType(
           [multiply_blk.type_signature, zip1_type.result]),
-      type_factory.at_clients(multiply_blk.type_signature.result))
+      computation_types.at_clients(multiply_blk.type_signature.result))
 
   sum1_type = computation_types.FunctionType(
-      type_factory.at_clients(map_type.result.member),
-      type_factory.at_server(map_type.result.member))
+      computation_types.at_clients(map_type.result.member),
+      computation_types.at_server(map_type.result.member))
 
   sum2_type = computation_types.FunctionType(
-      type_factory.at_clients(arg.type_signature[1].member),
-      type_factory.at_server(arg.type_signature[1].member))
+      computation_types.at_clients(arg.type_signature[1].member),
+      computation_types.at_server(arg.type_signature[1].member))
 
   zip2_type = computation_types.FunctionType(
       computation_types.StructType([sum1_type.result, sum2_type.result]),
-      type_factory.at_server(
+      computation_types.at_server(
           computation_types.StructType(
               [sum1_type.result.member, sum2_type.result.member])))
 
@@ -314,7 +314,7 @@ async def compute_intrinsic_federated_weighted_mean(
     apply_type = computation_types.FunctionType(
         computation_types.StructType(
             [divide_blk.type_signature, zip2_type.result]),
-        type_factory.at_server(divide_blk.type_signature.result))
+        computation_types.at_server(divide_blk.type_signature.result))
     apply_comp = create_intrinsic_comp(intrinsic_defs.FEDERATED_APPLY,
                                        apply_type)
     return await executor.create_value(apply_comp, apply_type)

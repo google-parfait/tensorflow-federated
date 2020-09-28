@@ -20,7 +20,6 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
-from tensorflow_federated.python.core.impl.types import type_factory
 
 
 class CountTypesTest(parameterized.TestCase):
@@ -619,10 +618,12 @@ class TestCheckValidFederatedWeightedMeanArgumentTupleTypeTest(
 
   def test_raises_type_error(self):
     type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
-        computation_types.StructType([type_factory.at_clients(tf.float32)] * 2))
+        computation_types.StructType(
+            [computation_types.at_clients(tf.float32)] * 2))
     with self.assertRaises(TypeError):
       type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
-          computation_types.StructType([type_factory.at_clients(tf.int32)] * 2))
+          computation_types.StructType(
+              [computation_types.at_clients(tf.int32)] * 2))
 
 
 if __name__ == '__main__':

@@ -795,6 +795,26 @@ class FederatedType(Type, metaclass=_Intern):
             self.placement is source_type.placement)
 
 
+def at_server(type_spec: Type) -> Type:
+  """Constructs a federated type of the form `T@SERVER`."""
+  return FederatedType(type_spec, placement_literals.SERVER, all_equal=True)
+
+
+def at_clients(type_spec: Type, all_equal: bool = False) -> Type:
+  """Constructs a federated type of the form `{T}@CLIENTS`.
+
+  Args:
+    type_spec: A `Type`.
+    all_equal: The `all_equal` bit, `False` by default.
+
+  Returns:
+    The type of the form `{T}@CLIENTS` (by default) or `T@CLIENTS` (if specified
+    by setting the `all_equal` bit), where `T` is the `type_spec`.
+  """
+  return FederatedType(
+      type_spec, placement_literals.CLIENTS, all_equal=all_equal)
+
+
 def to_type(spec) -> Type:
   """Converts the argument into an instance of `tff.Type`.
 

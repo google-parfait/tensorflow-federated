@@ -17,13 +17,13 @@ import asyncio
 from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import transforming_executor
-from tensorflow_federated.python.core.impl.types import type_factory
 
 
 class FakeEx(executor_base.Executor):
@@ -58,7 +58,7 @@ class TransformingExecutorTest(absltest.TestCase):
 
   def test_with_removal_of_identity_mapping(self):
 
-    @computations.federated_computation(type_factory.at_server(tf.int32))
+    @computations.federated_computation(computation_types.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_map(_identity, x)
 
@@ -73,7 +73,7 @@ class TransformingExecutorTest(absltest.TestCase):
 
   def test_with_inlining_of_blocks(self):
 
-    @computations.federated_computation(type_factory.at_server(tf.int32))
+    @computations.federated_computation(computation_types.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_zip([x, x])
 

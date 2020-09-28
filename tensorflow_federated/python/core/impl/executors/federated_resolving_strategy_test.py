@@ -20,7 +20,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
-from tensorflow_federated.python.core.impl.types import type_factory
 
 
 class FederatedResolvingStrategyValueComputeTest(
@@ -42,7 +41,7 @@ class FederatedResolvingStrategyValueComputeTest(
         eager_tf_executor.EagerValue(11.0, None, tf.float32),
         eager_tf_executor.EagerValue(12.0, None, tf.float32),
     ]
-    type_signature = type_factory.at_clients(tf.float32)
+    type_signature = computation_types.at_clients(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
         value, type_signature)
 
@@ -52,7 +51,7 @@ class FederatedResolvingStrategyValueComputeTest(
 
   def test_returns_value_with_federated_type_at_clients_all_equal(self):
     value = [eager_tf_executor.EagerValue(10.0, None, tf.float32)]
-    type_signature = type_factory.at_clients(tf.float32, all_equal=True)
+    type_signature = computation_types.at_clients(tf.float32, all_equal=True)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
         value, type_signature)
 
@@ -62,7 +61,7 @@ class FederatedResolvingStrategyValueComputeTest(
 
   def test_returns_value_with_federated_type_at_server(self):
     value = [eager_tf_executor.EagerValue(10.0, None, tf.float32)]
-    type_signature = type_factory.at_server(tf.float32)
+    type_signature = computation_types.at_server(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
         value, type_signature)
 
@@ -87,7 +86,7 @@ class FederatedResolvingStrategyValueComputeTest(
 
   def test_raises_type_error_with_unembedded_federated_type(self):
     value = [10.0, 11.0, 12.0]
-    type_signature = type_factory.at_clients(tf.float32)
+    type_signature = computation_types.at_clients(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
         value, type_signature)
 

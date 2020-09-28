@@ -42,7 +42,6 @@ from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -1134,8 +1133,9 @@ class ReferenceContext(context_base.Context):
     unplaced_avg = multiply_by_scalar(
         ComputedValue(server_sum.value, server_sum.type_signature.member),
         1.0 / float(len(arg.value)))
-    return ComputedValue(unplaced_avg.value,
-                         type_factory.at_server(unplaced_avg.type_signature))
+    return ComputedValue(
+        unplaced_avg.value,
+        computation_types.at_server(unplaced_avg.type_signature))
 
   def _federated_zip_at_server(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)
@@ -1145,7 +1145,7 @@ class ReferenceContext(context_base.Context):
                                          placement_literals.SERVER, True)
     return ComputedValue(
         arg.value,
-        type_factory.at_server(
+        computation_types.at_server(
             computation_types.StructType([
                 (k, v.member) if k else v.member
                 for k, v in structure.iter_elements(arg.type_signature)
@@ -1168,7 +1168,8 @@ class ReferenceContext(context_base.Context):
     zipped_val = [structure.from_container(x) for x in zip(*zip_args)]
     return ComputedValue(
         zipped_val,
-        type_factory.at_clients(computation_types.StructType(zip_arg_types)))
+        computation_types.at_clients(
+            computation_types.StructType(zip_arg_types)))
 
   def _federated_aggregate(self, arg, context):
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
@@ -1194,7 +1195,8 @@ class ReferenceContext(context_base.Context):
         for v, w in zip(arg.value[0], arg.value[1])
     ]
     return self._federated_sum(
-        ComputedValue(products_val, type_factory.at_clients(v_type)), context)
+        ComputedValue(products_val, computation_types.at_clients(v_type)),
+        context)
 
   def _federated_broadcast(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)

@@ -29,7 +29,6 @@ from tensorflow_federated.python.core.impl.executors import federated_resolving_
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.core.impl.types import type_factory
 
 
 def create_test_executor_factory():
@@ -253,13 +252,13 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     def add_one(x):
       return x + 1
 
-    @computations.federated_computation(type_factory.at_server(tf.int32))
+    @computations.federated_computation(computation_types.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_map(add_one, x)
 
     v1 = loop.run_until_complete(ex.create_value(comp))
     v2 = loop.run_until_complete(
-        ex.create_value(10, type_factory.at_server(tf.int32)))
+        ex.create_value(10, computation_types.at_server(tf.int32)))
     v3 = loop.run_until_complete(ex.create_call(v1, v2))
     result = loop.run_until_complete(v3.compute())
     self.assertEqual(result.numpy(), 11)
@@ -278,14 +277,14 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     def add_one(x):
       return x + 1
 
-    @computations.federated_computation(type_factory.at_server(tf.int32))
+    @computations.federated_computation(computation_types.at_server(tf.int32))
     def comp(x):
       return intrinsics.federated_map(add_one,
                                       intrinsics.federated_broadcast(x))
 
     v1 = loop.run_until_complete(ex.create_value(comp))
     v2 = loop.run_until_complete(
-        ex.create_value(10, type_factory.at_server(tf.int32)))
+        ex.create_value(10, computation_types.at_server(tf.int32)))
     v3 = loop.run_until_complete(ex.create_call(v1, v2))
     result = loop.run_until_complete(v3.compute())
     self.assertCountEqual([x.numpy() for x in result], [11, 11, 11])
@@ -300,7 +299,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     loop = asyncio.get_event_loop()
 
     @computations.federated_computation(tf.int32,
-                                        type_factory.at_server(tf.int32))
+                                        computation_types.at_server(tf.int32))
     def foo(x, y):
 
       @computations.federated_computation(tf.int32)
@@ -314,7 +313,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     v2 = loop.run_until_complete(
         ex.create_value(
             structure.Struct([('x', 0), ('y', 0)]),
-            [tf.int32, type_factory.at_server(tf.int32)]))
+            [tf.int32, computation_types.at_server(tf.int32)]))
     with self.assertRaisesRegex(
         RuntimeError,
         'lambda passed to intrinsic contains references to captured variables'):

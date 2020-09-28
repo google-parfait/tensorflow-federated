@@ -24,7 +24,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import executor_service_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.core.impl.types import type_factory
 
 
 class ExecutorServiceUtilsTest(tf.test.TestCase):
@@ -234,7 +233,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
 
   def test_serialize_deserialize_federated_at_clients(self):
     x = [10, 20]
-    x_type = type_factory.at_clients(tf.int32)
+    x_type = computation_types.at_clients(tf.int32)
     value_proto, value_type = executor_service_utils.serialize_value(x, x_type)
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assertEqual(str(value_type), '{int32}@CLIENTS')
@@ -244,7 +243,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
 
   def test_serialize_deserialize_federated_at_server(self):
     x = 10
-    x_type = type_factory.at_server(tf.int32)
+    x_type = computation_types.at_server(tf.int32)
     value_proto, value_type = executor_service_utils.serialize_value(x, x_type)
     self.assertIsInstance(value_proto, executor_pb2.Value)
     self.assertEqual(str(value_type), 'int32@SERVER')

@@ -13,7 +13,6 @@
 """A library of contruction functions for computation type structures."""
 
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 def reduction_op(
@@ -56,32 +55,3 @@ def binary_op(type_spec: computation_types.Type) -> computation_types.Type:
     The type of the corresponding binary operator.
   """
   return reduction_op(type_spec, type_spec)
-
-
-def at_server(type_spec: computation_types.Type) -> computation_types.Type:
-  """Constructs a federated type of the form `T@SERVER`.
-
-  Args:
-    type_spec: A `computation_types.Type`.
-
-  Returns:
-    The type of the form `T@SERVER` where `T` is the `type_spec`.
-  """
-  return computation_types.FederatedType(
-      type_spec, placement_literals.SERVER, all_equal=True)
-
-
-def at_clients(type_spec: computation_types.Type,
-               all_equal: bool = False) -> computation_types.Type:
-  """Constructs a federated type of the form `{T}@CLIENTS`.
-
-  Args:
-    type_spec: A `computation_types.Type`.
-    all_equal: The `all_equal` bit, `False` by default.
-
-  Returns:
-    The type of the form `{T}@CLIENTS` (by default) or `T@CLIENTS` (if specified
-    by setting the `all_equal` bit), where `T` is the `type_spec`.
-  """
-  return computation_types.FederatedType(
-      type_spec, placement_literals.CLIENTS, all_equal=all_equal)

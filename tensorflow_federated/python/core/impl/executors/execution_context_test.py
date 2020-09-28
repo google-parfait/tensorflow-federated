@@ -25,7 +25,6 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
-from tensorflow_federated.python.core.impl.types import type_factory
 
 
 class RetryableErrorTest(absltest.TestCase):
@@ -124,8 +123,9 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       return ds.reduce(np.float32(0.0), lambda n, _: n + 1.0)
 
     @computations.federated_computation(
-        type_factory.at_clients(computation_types.SequenceType(tf.float32)),
-        type_factory.at_server(tf.float32))
+        computation_types.at_clients(
+            computation_types.SequenceType(tf.float32)),
+        computation_types.at_server(tf.float32))
     def comp(temperatures, threshold):
       return intrinsics.federated_mean(
           intrinsics.federated_map(
@@ -148,7 +148,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
 
   def test_changing_cardinalities_across_calls(self):
 
-    @computations.federated_computation(type_factory.at_clients(tf.int32))
+    @computations.federated_computation(computation_types.at_clients(tf.int32))
     def comp(x):
       return x
 
@@ -166,8 +166,8 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   def test_conflicting_cardinalities_within_call(self):
 
     @computations.federated_computation([
-        type_factory.at_clients(tf.int32),
-        type_factory.at_clients(tf.int32),
+        computation_types.at_clients(tf.int32),
+        computation_types.at_clients(tf.int32),
     ])
     def comp(x):
       return x

@@ -71,7 +71,6 @@ py_test(
     deps = [
         ":placement_literals",
         ":type_analysis",
-        ":type_factory",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
@@ -109,10 +108,7 @@ py_library(
     name = "type_factory",
     srcs = ["type_factory.py"],
     srcs_version = "PY3",
-    deps = [
-        ":placement_literals",
-        "//tensorflow_federated/python/core/api:computation_types",
-    ],
+    deps = ["//tensorflow_federated/python/core/api:computation_types"],
 )
 
 py_test(
@@ -122,7 +118,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":placement_literals",
         ":type_factory",
         "//tensorflow_federated/python/core/api:computation_types",
     ],

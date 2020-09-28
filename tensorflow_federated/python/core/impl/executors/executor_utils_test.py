@@ -15,6 +15,7 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import executor_utils
@@ -24,7 +25,6 @@ from tensorflow_federated.python.core.impl.executors import federated_resolving_
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.core.impl.types import type_factory
 
 
 def create_test_federated_stack(
@@ -106,7 +106,7 @@ class ComputeIntrinsicFederatedBroadcastTest(executor_test_utils.AsyncTestCase,
         executor_utils.compute_intrinsic_federated_broadcast(executor, value))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    expected_type = type_factory.at_clients(
+    expected_type = computation_types.at_clients(
         type_signature.member, all_equal=True)
     self.assertEqual(result.type_signature.compact_representation(),
                      expected_type.compact_representation())
@@ -159,7 +159,7 @@ class ComputeIntrinsicFederatedValueTest(executor_test_utils.AsyncTestCase,
             executor, value, placement_literals.CLIENTS))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    expected_type = type_factory.at_clients(type_signature, all_equal=True)
+    expected_type = computation_types.at_clients(type_signature, all_equal=True)
     self.assertEqual(result.type_signature.compact_representation(),
                      expected_type.compact_representation())
     actual_result = self.run_sync(result.compute())
@@ -174,7 +174,7 @@ class ComputeIntrinsicFederatedValueTest(executor_test_utils.AsyncTestCase,
             executor, value, placement_literals.SERVER))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    expected_type = type_factory.at_server(type_signature)
+    expected_type = computation_types.at_server(type_signature)
     self.assertEqual(result.type_signature.compact_representation(),
                      expected_type.compact_representation())
     actual_result = self.run_sync(result.compute())
@@ -219,7 +219,7 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
         executor_utils.compute_intrinsic_federated_weighted_mean(executor, arg))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
-    expected_type = type_factory.at_server(type_signature.member)
+    expected_type = computation_types.at_server(type_signature.member)
     self.assertEqual(result.type_signature.compact_representation(),
                      expected_type.compact_representation())
     actual_result = self.run_sync(result.compute())

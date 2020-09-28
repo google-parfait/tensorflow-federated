@@ -31,7 +31,6 @@ from tensorflow_federated.python.core.impl.executors import federated_resolving_
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
-from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -353,7 +352,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   def test_raises_value_error_with_unexpected_federated_type_at_clients(self):
     executor = create_test_executor()
     value = [10, 20]
-    type_signature = type_factory.at_clients(tf.int32)
+    type_signature = computation_types.at_clients(tf.int32)
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
@@ -362,7 +361,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
       self):
     executor = create_test_executor()
     value = [10] * 3
-    type_signature = type_factory.at_clients(tf.int32, all_equal=True)
+    type_signature = computation_types.at_clients(tf.int32, all_equal=True)
 
     with self.assertRaises(TypeError):
       self.run_sync(executor.create_value(value, type_signature))

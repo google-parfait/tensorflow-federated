@@ -113,7 +113,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -138,7 +137,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
 )
@@ -175,7 +173,6 @@ py_test(
         ":federated_resolving_strategy",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -280,7 +277,6 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -371,7 +367,6 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -413,7 +408,6 @@ py_cpu_and_gpu_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -436,7 +430,6 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -517,8 +510,8 @@ py_test(
         ":federated_resolving_strategy",
         ":federating_executor",
         ":reference_resolving_executor",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -571,7 +564,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
 )
@@ -615,7 +607,6 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 
@@ -742,10 +733,10 @@ py_test(
     deps = [
         ":executor_base",
         ":transforming_executor",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )

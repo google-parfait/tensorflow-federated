@@ -16,7 +16,6 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_factory
 
 
@@ -41,20 +40,6 @@ class TypeConstructorsTest(absltest.TestCase):
     actual_type = type_factory.binary_op(type_spec)
     expected_type = computation_types.FunctionType(
         computation_types.StructType([type_spec, type_spec]), type_spec)
-    self.assertEqual(actual_type, expected_type)
-
-  def test_at_server(self):
-    type_spec = computation_types.TensorType(tf.bool)
-    actual_type = type_factory.at_server(type_spec)
-    expected_type = computation_types.FederatedType(type_spec,
-                                                    placement_literals.SERVER)
-    self.assertEqual(actual_type, expected_type)
-
-  def test_at_clients(self):
-    type_spec = computation_types.TensorType(tf.bool)
-    actual_type = type_factory.at_clients(type_spec)
-    expected_type = computation_types.FederatedType(type_spec,
-                                                    placement_literals.CLIENTS)
     self.assertEqual(actual_type, expected_type)
 
 

@@ -23,7 +23,6 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
-from tensorflow_federated.python.core.impl.types import type_factory
 
 
 def _create_tff_parallel_clients_with_dataset_reduce():
@@ -42,7 +41,7 @@ def _create_tff_parallel_clients_with_dataset_reduce():
     return dataset_reduce_fn(ds, initial_val)
 
   @computations.federated_computation(
-      type_factory.at_clients(computation_types.SequenceType(tf.int64)))
+      computation_types.at_clients(computation_types.SequenceType(tf.int64)))
   def parallel_client_run(client_datasets):
     return intrinsics.federated_map(dataset_reduce_fn_wrapper, client_datasets)
 
@@ -67,7 +66,7 @@ def _create_tff_parallel_clients_with_iter_dataset():
     return dataset_reduce_fn(ds, initial_val)
 
   @computations.federated_computation(
-      type_factory.at_clients(computation_types.SequenceType(tf.int64)))
+      computation_types.at_clients(computation_types.SequenceType(tf.int64)))
   def parallel_client_run(client_datasets):
     return intrinsics.federated_map(dataset_reduce_fn_wrapper, client_datasets)
 

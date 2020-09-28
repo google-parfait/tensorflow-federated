@@ -433,6 +433,20 @@ class FederatedTypeTest(absltest.TestCase):
     self.assertFalse(t6.is_assignable_from(t3))
     self.assertFalse(t6.is_assignable_from(t4))
 
+  def test_at_server(self):
+    type_spec = computation_types.TensorType(tf.bool)
+    actual_type = computation_types.at_server(type_spec)
+    expected_type = computation_types.FederatedType(type_spec,
+                                                    placements.SERVER)
+    self.assertEqual(actual_type, expected_type)
+
+  def test_at_clients(self):
+    type_spec = computation_types.TensorType(tf.bool)
+    actual_type = computation_types.at_clients(type_spec)
+    expected_type = computation_types.FederatedType(type_spec,
+                                                    placements.CLIENTS)
+    self.assertEqual(actual_type, expected_type)
+
 
 class ToTypeTest(absltest.TestCase):
 
