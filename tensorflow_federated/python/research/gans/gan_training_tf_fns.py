@@ -69,7 +69,7 @@ class ServerState(object):
   generator_weights = attr.ib()
   discriminator_weights = attr.ib()
   counters = attr.ib()
-  dp_averaging_state = attr.ib(default=None)
+  dp_averaging_state = attr.ib(default=())
 
 
 # Set cmp=False to get a default hash function for tf.function.
@@ -154,7 +154,7 @@ def client_computation(
       counters={'num_discriminator_train_examples': num_examples})
 
 
-def server_initial_state(generator, discriminator, dp_averaging_state=None):
+def server_initial_state(generator, discriminator, dp_averaging_state=()):
   """Returns the initial state of the server."""
   return ServerState(
       generator_weights=_weights(generator),
