@@ -773,7 +773,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
   def test_broadcast_dependent_on_aggregate_fails_well(self):
     cf = test_utils.get_temperature_sensor_example()
     it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
-    next_comp = test_utils.computation_to_building_block(it.next)
+    next_comp = it.next.to_building_block()
     top_level_param = building_blocks.Reference(next_comp.parameter_name,
                                                 next_comp.parameter_type)
     first_result = building_blocks.Call(next_comp, top_level_param)
@@ -825,9 +825,9 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
                         collections.OrderedDict(ratio_over_threshold=0.75))
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
-            test_utils.computation_to_building_block(it.next)),
+            it.next.to_building_block()),
         tree_analysis.count_tensorflow_variables_under(
-            test_utils.computation_to_building_block(new_it.next)))
+            new_it.next.to_building_block()))
 
   def test_mnist_training_round_trip(self):
     it = canonical_form_utils.get_iterative_process_for_canonical_form(
@@ -850,9 +850,9 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     self.assertAllClose(metrics, alt_metrics)
     self.assertEqual(
         tree_analysis.count_tensorflow_variables_under(
-            test_utils.computation_to_building_block(it.next)),
+            it.next.to_building_block()),
         tree_analysis.count_tensorflow_variables_under(
-            test_utils.computation_to_building_block(new_it.next)))
+            new_it.next.to_building_block()))
 
   # pyformat: disable
   @parameterized.named_parameters(

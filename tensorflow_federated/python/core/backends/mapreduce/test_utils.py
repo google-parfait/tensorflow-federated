@@ -274,11 +274,6 @@ def get_mnist_training_example():
                                       update)
 
 
-def computation_to_building_block(comp):
-  return building_blocks.ComputationBuildingBlock.from_proto(
-      comp._computation_proto)  # pylint: disable=protected-access
-
-
 def get_iterative_process_for_example_with_unused_lambda_arg():
   """Returns an iterative process having a Lambda not referencing its arg."""
   server_state_type = collections.OrderedDict(num_clients=tf.int32)

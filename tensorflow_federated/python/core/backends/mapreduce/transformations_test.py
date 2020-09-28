@@ -61,7 +61,7 @@ class CheckExtractionResultTest(absltest.TestCase):
     return comp_to_return.function
 
   def compiled_computation_for_initialize(self, initialize):
-    block = mapreduce_test_utils.computation_to_building_block(initialize)
+    block = initialize.to_building_block()
     return self.get_function_from_first_symbol_binding_in_lambda_result(block)
 
   def test_raises_on_none_args(self):
@@ -136,7 +136,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
     init = canonical_form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
 
-    comp = mapreduce_test_utils.computation_to_building_block(init)
+    comp = init.to_building_block()
 
     result = transformations.consolidate_and_extract_local_processing(
         comp, DEFAULT_GRAPPLER_CONFIG)
