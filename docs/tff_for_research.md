@@ -107,12 +107,12 @@ in the
 [README](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples/simple_fedavg/README.md).
 
 A more general implementation of Federated Averaging can be found
-[here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/optimization/shared/fed_avg_schedule.py).
+[here](https://github.com/google-research/federated/blob/master/optimization/shared/fed_avg_schedule.py).
 This implementation allows for more sophisticated optimization techniques,
 including learning rate scheduling and the use of different optimizers on both
 the server and client. Code that applies this generalized Federated Averaging to
 various tasks and federated datasets can be found
-[here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/optimization).
+[here](https://github.com/google-research/federated/blob/master/optimization).
 
 ### Model and update compression
 
@@ -123,7 +123,7 @@ between the server and clients. For an example of training with server-to-client
 and client-to-server
 [compression using Federated Averaging](https://arxiv.org/abs/1812.07210)
 algorithm, see
-[this experiment](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/compression/run_experiment.py).
+[this experiment](https://github.com/google-research/federated/blob/master/compression/run_experiment.py).
 
 To implement a custom compression algorithm and apply it to the training loop,
 you can:
@@ -133,15 +133,15 @@ you can:
     or its more general variant,
     [`AdaptiveEncodingStageInterface`](https://github.com/tensorflow/model-optimization/blob/master/tensorflow_model_optimization/python/core/internal/tensor_encoding/core/encoding_stage.py#L274)
     following
-    [this example](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/compression/sparsity.py).
+    [this example](https://github.com/google-research/federated/blob/master/compression/sparsity.py).
 1.  Construct your new
     [`Encoder`](https://github.com/tensorflow/model-optimization/blob/master/tensorflow_model_optimization/python/core/internal/tensor_encoding/core/core_encoder.py#L38)
     and specialize it for
-    [model broadcast](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/compression/run_experiment.py#L118)
+    [model broadcast](https://github.com/google-research/federated/blob/master/compression/run_experiment.py#L118)
     or
-    [model update averaging](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/compression/run_experiment.py#L144).
+    [model update averaging](https://github.com/google-research/federated/blob/master/compression/run_experiment.py#L144).
 1.  Use those objects to build the entire
-    [training computation](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/compression/run_experiment.py#L247).
+    [training computation](https://github.com/google-research/federated/blob/master/compression/run_experiment.py#L247).
 
 ### Differential privacy
 
@@ -151,7 +151,7 @@ research in new algorithms for federated training of models with differential
 privacy. For an example of training with DP using
 [the basic DP-FedAvg algorithm](https://arxiv.org/abs/1710.06963) and
 [extensions](https://arxiv.org/abs/1812.06210), see
-[this experiment driver](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/differential_privacy/stackoverflow/run_federated.py).
+[this experiment driver](https://github.com/google-research/federated/blob/master/differential_privacy/stackoverflow/run_federated.py).
 
 If you want to implement a custom DP algorithm and apply it to the aggregate
 updates of federated averaging, you can:
@@ -163,11 +163,11 @@ updates of federated averaging, you can:
     [here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/utils/differential_privacy.py#L37-L134),
 1.  and pass your query instance into `tff.utils.build_dp_aggregate()` similarly
     to
-    [`run_federated`](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/differential_privacy/stackoverflow/run_federated.py#L199).
+    [`run_federated`](https://github.com/google-research/federated/blob/master/differential_privacy/stackoverflow/run_federated.py#L199).
 
 Federated GANs (described [below](#generative_adversarial_networks)) are another
 example of a TFF project implementing user-level differential privacy (e.g.,
-[here in code](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/gans/tff_gans.py#L293)).
+[here in code](https://github.com/google-research/federated/blob/master/gans/tff_gans.py#L293)).
 
 ### Robustness and attacks
 
@@ -176,26 +176,26 @@ systems and differential privacy based defenses considered in
 *[Can You Really Back door Federated Learning?](https://arxiv.org/abs/1911.07963)*.
 This is done by building an iterative process with potentially malicious clients
 (see
-[`build_federated_averaging_process_attacked`](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/tensorflow_federated/python/research/targeted_attack/attacked_fedavg.py#L412)).
+[`build_federated_averaging_process_attacked`](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/federated_research/targeted_attack/attacked_fedavg.py#L412)).
 The
-[targeted_attack](https://github.com/tensorflow/federated/tree/6477a3dba6e7d852191bfd733f651fad84b82eab/tensorflow_federated/python/research/targeted_attack)
+[targeted_attack](https://github.com/tensorflow/federated/tree/6477a3dba6e7d852191bfd733f651fad84b82eab/federated_research/targeted_attack)
 directory contains more details.
 
 *   New attacking algorithms can be implemented by writing a client update
     function which is a Tensorflow function, see
-    [`ClientProjectBoost`](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/tensorflow_federated/python/research/targeted_attack/attacked_fedavg.py#L460)
+    [`ClientProjectBoost`](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/federated_research/targeted_attack/attacked_fedavg.py#L460)
     for an example.
 *   New defenses can be implemented by customizing
     ['tff.utils.StatefulAggregateFn'](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/tensorflow_federated/python/core/utils/computation_utils.py#L103)
     which aggregates client outputs to get a global update.
 
 For an example script for simulation, see
-[`emnist_with_targeted_attack.py`](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/tensorflow_federated/python/research/targeted_attack/emnist_with_targeted_attack.py).
+[`emnist_with_targeted_attack.py`](https://github.com/tensorflow/federated/blob/6477a3dba6e7d852191bfd733f651fad84b82eab/federated_research/targeted_attack/emnist_with_targeted_attack.py).
 
 ### Generative Adversarial Networks
 
 GANs make for an interesting
-[federated orchestration pattern](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research/gans/tff_gans.py#L266-L316)
+[federated orchestration pattern](https://github.com/google-research/federated/blob/master/gans/tff_gans.py#L266-L316)
 that looks a little different than standard Federated Averaging. They involve
 two distinct networks (the generator and the discriminator) each trained with
 their own optimization step.
@@ -203,7 +203,7 @@ their own optimization step.
 TFF can be used for research on federated training of GANs. For example, the
 DP-FedAvg-GAN algorithm presented in
 [recent work](https://arxiv.org/abs/1911.06679) is
-[implemented in TFF](https://github.com/tensorflow/federated/tree/master/tensorflow_federated/python/research/gans).
+[implemented in TFF](https://github.com/tensorflow/federated/tree/master/federated_research/gans).
 This work demonstrates the effectiveness of combining federated learning,
 generative models, and [differential privacy](#differential_privacy).
 
