@@ -523,6 +523,17 @@ def _server_tensor_shift_for_secure_sum(num_summands, value, lower_bound,
   Returns:
     Shifted value of dtype `output_dtype`.
   """
+  # Ensure summed `value` is within the expected range given `num_summands`.
+  min_valid_value = tf.constant(0, tf.int64)
+  # Cast to tf.int64 before multiplication to prevent overflow.
+  max_valid_value = tf.constant(_SECAGG_MAX, tf.int64) * tf.cast(
+      num_summands, tf.int64)
+  tf.Assert(
+      tf.math.logical_and(
+          tf.math.reduce_min(value) >= min_valid_value,
+          tf.math.reduce_max(value) <= max_valid_value),
+      [value, min_valid_value, max_valid_value])
+
   if output_dtype == tf.int32:
     value = value + tf.cast(num_summands, tf.int64) * tf.cast(
         lower_bound, tf.int64)

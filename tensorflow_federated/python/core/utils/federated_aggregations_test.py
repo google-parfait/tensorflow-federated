@@ -453,6 +453,95 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
           tf.constant([-2, -1, 1, 2], dtype=int_type),
           tf.constant(1, dtype=int_type), tf.constant(-1, dtype=int_type))
 
+  @parameterized.named_parameters(('float32', tf.float32),
+                                  ('float64', tf.float64))
+  def test_server_tensor_shift_invalid_float_value_raises_error(
+      self, float_type):
+    """Ensures out-of-range summed values cause an error during server decode."""
+    num_summands = tf.constant(1, tf.int32)
+
+    # 2**32 is outside [0, 2**32 - 1], so expect an error.
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      federated_aggregations._server_tensor_shift_for_secure_sum(
+          num_summands, tf.constant(2**32, tf.int64),
+          tf.constant(-1.0, float_type), tf.constant(1.0, float_type),
+          float_type)
+
+    # -1 is outside [0, 2**32 - 1], so expect an error.
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      federated_aggregations._server_tensor_shift_for_secure_sum(
+          num_summands, tf.constant(-1,
+                                    tf.int64), tf.constant(-1.0, float_type),
+          tf.constant(1.0, float_type), float_type)
+
+  @parameterized.named_parameters(('float32', tf.float32),
+                                  ('float64', tf.float64))
+  def test_server_tensor_shift_invalid_float_value_multiple_summands_raises_error(
+      self, float_type):
+    """Ensures multiple summed values cause an error during server decode."""
+    num_summands = tf.constant(2, tf.int32)
+
+    # 2**33 - 1 is outside [0, (2**32 - 1) * 2], so expect an error.
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      federated_aggregations._server_tensor_shift_for_secure_sum(
+          num_summands, tf.constant(2**33 - 1, tf.int64),
+          tf.constant(-1.0, float_type), tf.constant(1.0, float_type),
+          float_type)
+
+    # -1 is outside [0, (2**32 - 1) * 2], so expect an error.
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      federated_aggregations._server_tensor_shift_for_secure_sum(
+          num_summands, tf.constant(-1,
+                                    tf.int64), tf.constant(-1.0, float_type),
+          tf.constant(1.0, float_type), float_type)
+
+    # This should work with 2 summands since 2**32 is within
+    # [0, (2**32 - 1) * 2]. Note that this would cause an error with 1 summand.
+    federated_aggregations._server_tensor_shift_for_secure_sum(
+        num_summands, tf.constant(2**32, tf.int64),
+        tf.constant(-1.0, float_type), tf.constant(1.0, float_type), float_type)
+
+  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  def test_server_tensor_shift_invalid_int_value_raises_error(self, int_type):
+    """Ensures out-of-range summed values cause an error during server decode."""
+    num_summands = tf.constant(1, tf.int32)
+
+    # 2**32 is outside [0, 2**32 - 1], so expect an error.
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      federated_aggregations._server_tensor_shift_for_secure_sum(
+          num_summands, tf.constant(2**32, tf.int64), tf.constant(-1, int_type),
+          tf.constant(1, int_type), int_type)
+
+    # -1 is outside [0, 2**32 - 1], so expect an error.
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      federated_aggregations._server_tensor_shift_for_secure_sum(
+          num_summands, tf.constant(-1, tf.int64), tf.constant(-1, int_type),
+          tf.constant(1, int_type), int_type)
+
+  @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
+  def test_server_tensor_shift_invalid_int_value_multiple_summands_raises_error(
+      self, int_type):
+    """Ensures multiple summed values cause an error during server decode."""
+    num_summands = tf.constant(2, tf.int32)
+
+    # 2**33 - 1 is outside [0, (2**32 - 1) * 2], so expect an error.
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      federated_aggregations._server_tensor_shift_for_secure_sum(
+          num_summands, tf.constant(2**33 - 1, tf.int64),
+          tf.constant(-1, int_type), tf.constant(1, int_type), int_type)
+
+    # -1 is outside [0, (2**32 - 1) * 2], so expect an error.
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      federated_aggregations._server_tensor_shift_for_secure_sum(
+          num_summands, tf.constant(-1, tf.int64), tf.constant(-1, int_type),
+          tf.constant(1, int_type), int_type)
+
+    # This should work with 2 summands since 2**32 is within
+    # [0, (2**32 - 1) * 2]. Note that this would cause an error with 1 summand.
+    federated_aggregations._server_tensor_shift_for_secure_sum(
+        num_summands, tf.constant(2**32, tf.int64), tf.constant(-1, int_type),
+        tf.constant(1, int_type), int_type)
+
   @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
   def test_scalar_int_type_py_range(self, int_type):
     """Tests value of integer scalar type and scalar np range."""
