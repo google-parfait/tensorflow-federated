@@ -231,9 +231,7 @@ py_test(
     srcs_version = "PY3",
     # TODO(b/154964982): enable test on TAP and Kokoro
     tags = [
-        "manual",
         "nokokoro",
-        "notap",
         "requires-gpu-nvidia",
     ],
     deps = [
