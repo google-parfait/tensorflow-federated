@@ -65,7 +65,6 @@ RUN ${PIP} install --no-cache-dir --upgrade \
     grpcio~=1.29.0 \
     h5py~=2.10.0 \
     numpy~=1.18.4 \
-    pandas~=0.24.2 \
     portpicker~=1.3.1 \
     retrying~=1.3.3 \
     semantic-version~=2.8.5 \
