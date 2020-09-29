@@ -1,13 +1,12 @@
 # TensorFlow Federated Research
 
-This directory contains research projects that use TFF.
+<!-- TODO(b/161814368): After other documentation in TFF about Research -->
 
-These research projects are intended to have a dependency on TFF but not other
-research projects. Similarly, TFF should not have a dependency on a research
-project. Additionally, each research projects may require depndencies that TFF
-does not require; these dependencies should be documented in the README of the
-individual research project.
+This directory contained research projects that use TFF. This directory is
+deprecated. Please check out the new
+[repository](https://github.com/google-research/federated) under google research
+deciated to federated research.
 
 See
 [Using TFF for Federated Learning Research](https://github.com/tensorflow/federated/blob/master/docs/tff_for_research.md)
-for more information about Federated Learning research in TFF.
+for information about Federated Learning research in TFF.
