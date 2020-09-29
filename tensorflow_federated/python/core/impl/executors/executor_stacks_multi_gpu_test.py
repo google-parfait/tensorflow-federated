@@ -17,6 +17,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -77,9 +78,7 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    # Have to create virtual devices in `setUp` as directly call
-    # `list_physical_devices` in `main` will cause a CUDA configuration error.
-    self._create_logical_multi_gpus()
+    test.create_logical_multi_gpus()
 
   def _create_logical_multi_gpus(self):
     # Multiple logical GPU devices will be created for tests in this module.

@@ -100,3 +100,19 @@ def skip_test_for_gpu(test_fn):
     test_fn(self)
 
   return wrapped_test_fn
+
+
+def create_logical_multi_gpus(memory_limit=128):
+  """Create a (virtual )multi-GPU environment for testing."""
+  # Multiple logical GPU devices will be created for TFF simulation. Only call
+  # this function once in a module as logical deviceds have to be created before
+  # listed in each indivisual test. Typically in `setUp` as
+  # `list_physical_devices` cannot be directly called in `main`.
+  gpu_devices = tf.config.list_physical_devices('GPU')
+  if not gpu_devices:
+    raise ValueError('Physical GPU is not detected.')
+  if len(gpu_devices) == 1:
+    tf.config.set_logical_device_configuration(gpu_devices[0], [
+        tf.config.LogicalDeviceConfiguration(memory_limit=memory_limit),
+        tf.config.LogicalDeviceConfiguration(memory_limit=memory_limit)
+    ])

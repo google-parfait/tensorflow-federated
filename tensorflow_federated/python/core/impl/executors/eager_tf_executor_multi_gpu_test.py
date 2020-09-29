@@ -15,32 +15,17 @@
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
-
-
-def _create_logical_multi_gpus():
-  # Multiple logical GPU devices will be created for tests in this module. Only
-  # call this function once as logical deviceds have to be created before listed
-  # in each indivisual test.
-  gpu_devices = tf.config.list_physical_devices('GPU')
-  if not gpu_devices:
-    raise ValueError('Physical GPU is not detected.')
-  if len(gpu_devices) == 1:
-    tf.config.set_logical_device_configuration(gpu_devices[0], [
-        tf.config.LogicalDeviceConfiguration(memory_limit=128),
-        tf.config.LogicalDeviceConfiguration(memory_limit=128)
-    ])
 
 
 class MultiGPUTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
-    # Have to create virtual devices in `setUp` as `list_physical_devices`
-    # cannot be directly called in `main`.
-    _create_logical_multi_gpus()
+    test.create_logical_multi_gpus()
 
   def test_check_dataset_reduce_in_multi_gpu_no_reduce_no_raise(self):
     with tf.Graph().as_default() as graph:

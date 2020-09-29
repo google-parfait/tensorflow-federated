@@ -236,6 +236,7 @@ py_test(
     ],
     deps = [
         ":eager_tf_executor",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl:computation_impl",
     ],
@@ -416,15 +417,14 @@ py_test(
     srcs_version = "PY3",
     # TODO(b/154964982): enable test on TAP and Kokoro
     tags = [
-        "manual",
         "nokokoro",
-        "notap",
         "requires-gpu-nvidia",
     ],
     deps = [
         ":executor_base",
         ":executor_stacks",
         ":executor_test_utils",
+        "//tensorflow_federated/python/common_libs:test",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
