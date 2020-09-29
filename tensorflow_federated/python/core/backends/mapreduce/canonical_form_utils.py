@@ -149,15 +149,27 @@ def _check_type(
         type_spec, type(target)))
 
 
-def _check_type_is_no_arg_fn(
-    target,
+def _check_type_is_fn(
+    target: computation_types.Type,
+    name: str,
     err_fn: Callable[[str],
                      Exception] = transformations.CanonicalFormCompilationError,
 ):
-  _check_type(target, computation_types.FunctionType, err_fn)
+  if not target.is_function():
+    raise err_fn(f'Expected {name} to be a function, but {name} had type '
+                 f'{target}.')
+
+
+def _check_type_is_no_arg_fn(
+    target: computation_types.Type,
+    name: str,
+    err_fn: Callable[[str],
+                     Exception] = transformations.CanonicalFormCompilationError,
+):
+  _check_type_is_fn(target, name, err_fn)
   if target.parameter is not None:
-    raise err_fn(('Expected function to take no argument, but found '
-                  'parameter of type {}.').format(target.parameter))
+    raise err_fn(f'Expected {name} to take no argument, but found '
+                 f'parameter of type {target.parameter}.')
 
 
 def _check_iterative_process_compatible_with_canonical_form(
@@ -180,22 +192,24 @@ def _check_iterative_process_compatible_with_canonical_form(
   """
   py_typecheck.check_type(initialize_tree,
                           building_blocks.ComputationBuildingBlock)
-  init_tree_ty = initialize_tree.type_signature
-  _check_type_is_no_arg_fn(init_tree_ty, TypeError)
-  _check_type(init_tree_ty.result, computation_types.FederatedType, TypeError)
-  _check_placement(init_tree_ty.result, placements.SERVER, TypeError)
   py_typecheck.check_type(next_tree, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(next_tree.type_signature,
-                          computation_types.FunctionType)
-  py_typecheck.check_type(next_tree.type_signature.parameter,
-                          computation_types.StructType)
-  py_typecheck.check_len(next_tree.type_signature.parameter, 2)
-  py_typecheck.check_type(next_tree.type_signature.result,
-                          computation_types.StructType)
-  py_typecheck.check_len(next_tree.type_signature.parameter, 2)
-  next_result_len = len(next_tree.type_signature.result)
-  if next_result_len != 2:
-    raise TypeError('Expected length of 2, found {}.'.format(next_result_len))
+
+  init_type = initialize_tree.type_signature
+  _check_type_is_no_arg_fn(init_type, '`initialize`', TypeError)
+  if (not init_type.result.is_federated() or
+      init_type.result.placement != placements.SERVER):
+    raise TypeError('Expected `initialize` to return a single federated value '
+                    'placed at server (type `T@SERVER`), found return type:\n'
+                    f'{init_type.result}')
+
+  next_type = next_tree.type_signature
+  _check_type_is_fn(next_type, '`next`', TypeError)
+  if not next_type.parameter.is_struct() or len(next_type.parameter) != 2:
+    raise TypeError('Expected `next` to take two arguments, found parameter '
+                    f' type:\n{next_type.parameter}')
+  if not next_type.result.is_struct() or len(next_type.result) != 2:
+    raise TypeError('Expected `next` to return two values, found result '
+                    f'type:\n{next_type.result}')
 
 
 def _create_before_and_after_broadcast_for_no_broadcast(tree):
@@ -736,7 +750,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
 
   # The type signature of `initalize` is: `( -> s1)`.
   init_tree_ty = initialize_tree.type_signature
-  _check_type_is_no_arg_fn(init_tree_ty)
+  _check_type_is_no_arg_fn(init_tree_ty, '`initialize`')
   _check_type(init_tree_ty.result, computation_types.FederatedType)
   _check_placement(init_tree_ty.result, placements.SERVER)
   # The named components of canonical form have no placement, so we must
@@ -946,16 +960,15 @@ def get_canonical_form_for_iterative_process(
 
   Args:
     ip: An instance of `tff.templates.IterativeProcess` that is compatible
-      with canonical form. Iterative processes are only compatible if:
-      - `initialize_fn` returns a single federated value placed at `SERVER`.
-      - `next` takes exactly two arguments. The first must be the state value
-        placed at `SERVER`.
-      - `next` returns exactly two values.
+      with canonical form. Iterative processes are only compatible if: -
+        `initialize_fn` returns a single federated value placed at `SERVER`. -
+        `next` takes exactly two arguments. The first must be the state value
+        placed at `SERVER`. - `next` returns exactly two values.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the TensorFlow graphs backing the
       resulting `tff.backends.mapreduce.CanonicalForm`. These options are
-      combined with a set of defaults that aggressively configure Grappler.
-      If `None`, Grappler is bypassed.
+      combined with a set of defaults that aggressively configure Grappler. If
+      `None`, Grappler is bypassed.
 
   Returns:
     An instance of `tff.backends.mapreduce.CanonicalForm` equivalent to this
