@@ -16,6 +16,7 @@
 import concurrent
 import contextlib
 import time
+from typing import Any, List, Optional, Tuple
 
 from absl import logging
 import grpc
@@ -29,11 +30,11 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
 @contextlib.contextmanager
-def server_context(ex_factory,
-                   num_threads,
-                   port,
-                   credentials=None,
-                   options=None):
+def server_context(ex_factory: executor_factory.ExecutorFactory,
+                   num_threads: int,
+                   port: int,
+                   credentials: Optional[grpc.ServerCredentials] = None,
+                   options: Optional[List[Tuple[Any, Any]]] = None):
   """Context manager yielding gRPC server hosting simulation component.
 
   Args:
@@ -86,13 +87,17 @@ def server_context(ex_factory,
     server.stop(None)
 
 
-def run_server(executor, num_threads, port, credentials=None, options=None):
+def run_server(ex_factory: executor_factory.ExecutorFactory,
+               num_threads: int,
+               port: int,
+               credentials: Optional[grpc.ServerCredentials] = None,
+               options: Optional[List[Tuple[Any, Any]]] = None):
   """Runs a gRPC server hosting a simulation component in this process.
 
   The server runs indefinitely, but can be stopped by a keyboard interrupt.
 
   Args:
-    executor: The executor to be hosted by the server.
+    ex_factory: The executor factory to be hosted by the server.
     num_threads: The number of network threads to use for handling gRPC calls.
     port: The port to listen on (for gRPC), must be a non-zero integer.
     credentials: The optional credentials to use for the secure connection if
@@ -105,6 +110,6 @@ def run_server(executor, num_threads, port, credentials=None, options=None):
   Raises:
     ValueError: If `num_threads` or `port` are invalid.
   """
-  with server_context(executor, num_threads, port, credentials, options):
+  with server_context(ex_factory, num_threads, port, credentials, options):
     while True:
       time.sleep(_ONE_DAY_IN_SECONDS)
