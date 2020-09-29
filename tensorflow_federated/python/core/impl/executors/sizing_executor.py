@@ -76,14 +76,26 @@ def get_type_information(value, type_spec):
 
 
 class SizingExecutor(executor_base.Executor):
-  """Tracing executor keeps a log of all calls for use in testing."""
+  """Executor to track size of data passed through."""
 
   def __init__(self, target):
-    """Creates a new instance of a tracing executor.
+    """Creates a new instance of a sizing executor.
 
-    The tracing executor keeps the trace of all calls. Entries in the trace
-    consist of the method name followed by arguments and the returned result,
-    with the executor values represented as integer indexes starting from 1.
+    The sizing executor tracks the total size of tensors passed through via
+    `create_value`. Generally, a `SizingExecutor` is intended to be placed
+    directly on top of each client executor in a federated stack.
+
+    For a `SizingExecutor` which is placed directly on top of a client stack,
+    the `broadcast_history` and `aggregate_history` will track all tensors
+    passed from the Python runtime to the clients and back, respectively.
+
+    This notion of "broadcast" and "aggregate" is somewhat specific to the TFF
+    runtime, and does not map exactly to the invocations of
+    `federated_broadcast` or `federated_aggregate` in the computation the TFF
+    runtime is currently interpreting. Each invocation of these intrinsics will
+    add data to the `broadcast_history` or `aggregate_history` as appropriate,
+    but these histories will additionally capture things like materializing
+    CLIENT-placed tensors back into the Python context for inspection.
 
     Args:
       target: An instance of `executor_base.Executor`.
@@ -134,13 +146,13 @@ class SizingExecutor(executor_base.Executor):
 
 
 class SizingExecutorValue(executor_value_base.ExecutorValue):
-  """A value managed by `TracingExecutor`."""
+  """A value managed by `SizingExecutor`."""
 
   def __init__(self, owner, value):
-    """Creates an instance of a value in the tracing executor.
+    """Creates an instance of a value in the sizing executor.
 
     Args:
-      owner: An instance of `TracingExecutor`.
+      owner: An instance of `SizingExecutor`.
       value: An embedded value from the target executor.
     """
     py_typecheck.check_type(owner, SizingExecutor)
