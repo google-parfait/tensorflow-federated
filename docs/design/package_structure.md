@@ -75,8 +75,9 @@ The **grey** nodes indicate directories or packages that are not part of the
 
 #### Research
 
-The [research](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/research)
-directory contains research projects that use TFF.
+The `research/` subdirectory has been moved to the
+[`federated_research`](https://github.com/google-research/federated) repository,
+which contains research projects that use TFF.
 
 #### Examples
 
