@@ -51,7 +51,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":adaptive_zeroing",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -74,7 +74,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_utils",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
     ],
 )
 
@@ -100,7 +100,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":differential_privacy",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -132,7 +132,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":encoding_utils",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -165,7 +165,7 @@ py_test(
     deps = [
         ":federated_aggregations",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -195,6 +195,6 @@ py_test(
     deps = [
         ":tf_computation_utils",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
     ],
 )

@@ -18,7 +18,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import serialization_utils
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_serialization
@@ -33,7 +33,7 @@ def _tf_computation_serializer(fn, parameter_type, context):
   return serializer.send(result)
 
 
-class TensorFlowSerializationTest(test.TestCase):
+class TensorFlowSerializationTest(test_utils.TestCase):
 
   def test_serialize_tensorflow_with_no_parameter(self):
     comp, extra_type_spec = _tf_computation_serializer(
@@ -80,7 +80,7 @@ class TensorFlowSerializationTest(test.TestCase):
           })
     self.assertAllEqual(results, [1, 2, 0])
 
-  @test.graph_mode_test
+  @test_utils.graph_mode_test
   def test_serialize_tensorflow_with_simple_add_three_lambda(self):
     comp, extra_type_spec = _tf_computation_serializer(
         lambda x: x + 3, computation_types.TensorType(tf.int32),
@@ -97,7 +97,7 @@ class TensorFlowSerializationTest(test.TestCase):
             [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [1003])
 
-  @test.graph_mode_test
+  @test_utils.graph_mode_test
   def test_serialize_tensorflow_with_structured_type_signature(self):
     batch_type = collections.namedtuple('BatchType', ['x', 'y'])
     output_type = collections.namedtuple('OutputType', ['A', 'B'])
@@ -121,7 +121,7 @@ class TensorFlowSerializationTest(test.TestCase):
                           computation_types.StructWithPythonType)
     self.assertIs(extra_type_spec.result.python_container, output_type)
 
-  @test.graph_mode_test
+  @test_utils.graph_mode_test
   def test_serialize_tensorflow_with_data_set_sum_lambda(self):
 
     def _legacy_dataset_reducer_example(ds):
@@ -147,4 +147,4 @@ class TensorFlowSerializationTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

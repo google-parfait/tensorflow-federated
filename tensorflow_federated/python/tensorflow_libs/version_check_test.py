@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.tensorflow_libs import version_check
 
 
@@ -33,7 +33,7 @@ class _FakeTFModule():
     return self._version
 
 
-class VersinCheckTest(test.TestCase):
+class VersinCheckTest(test_utils.TestCase):
 
   def test_is_tf_release(self):
     mock_tf_module = _FakeTFModule('2.2.2')
@@ -72,4 +72,4 @@ class VersinCheckTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

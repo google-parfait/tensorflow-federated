@@ -21,7 +21,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test as common_test
+from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -854,4 +854,4 @@ class IntrinsicsTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  common_test.main()
+  common_libs_test_utils.main()

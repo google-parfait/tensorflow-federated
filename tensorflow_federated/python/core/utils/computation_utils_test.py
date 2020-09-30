@@ -16,11 +16,11 @@ import collections
 
 import attr
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.utils import computation_utils
 
 
-class ComputationUtilsTest(test.TestCase):
+class ComputationUtilsTest(test_utils.TestCase):
 
   def test_update_state_namedtuple(self):
     my_tuple_type = collections.namedtuple('my_tuple_type', 'a b c')
@@ -70,4 +70,4 @@ class ComputationUtilsTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

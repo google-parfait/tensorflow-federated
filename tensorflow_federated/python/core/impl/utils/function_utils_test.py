@@ -20,7 +20,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
@@ -38,7 +38,7 @@ class NoopIngestContextForTest(context_base.Context):
     raise NotImplementedError
 
 
-class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
+class FunctionUtilsTest(test_utils.TestCase, parameterized.TestCase):
 
   def test_get_defun_argspec_with_typed_non_eager_defun(self):
     # In a tf.function with a defined input signature, **kwargs or default
@@ -365,7 +365,7 @@ class FunctionUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(actual_result, expected_result)
 
 
-class PolymorphicFunctionTest(test.TestCase):
+class PolymorphicFunctionTest(test_utils.TestCase):
 
   def test_call_returns_result(self):
 
@@ -445,4 +445,4 @@ class PolymorphicFunctionTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

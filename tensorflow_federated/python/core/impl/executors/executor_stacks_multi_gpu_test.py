@@ -17,7 +17,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -78,7 +78,7 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
-    test.create_logical_multi_gpus()
+    test_utils.create_logical_multi_gpus()
 
   def _create_logical_multi_gpus(self):
     # Multiple logical GPU devices will be created for tests in this module.

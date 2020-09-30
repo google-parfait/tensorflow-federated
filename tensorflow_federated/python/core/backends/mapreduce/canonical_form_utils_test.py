@@ -18,14 +18,14 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
-from tensorflow_federated.python.core.backends.mapreduce import test_utils
+from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.backends.reference import reference_context
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -477,7 +477,7 @@ def get_iterative_process_for_minimal_sum_example():
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
-class CanonicalFormTestCase(test.TestCase):
+class CanonicalFormTestCase(common_libs_test_utils.TestCase):
   """A base class that overrides evaluate to handle various executors."""
 
   def evaluate(self, value):
@@ -493,7 +493,7 @@ class CanonicalFormTestCase(test.TestCase):
 class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
 
   def test_with_temperature_sensor_example(self):
-    cf = test_utils.get_temperature_sensor_example()
+    cf = mapreduce_test_utils.get_temperature_sensor_example()
     it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
 
     state = it.initialize()
@@ -509,7 +509,8 @@ class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
                         collections.OrderedDict(ratio_over_threshold=0.75))
 
 
-class CreateBeforeAndAfterBroadcastForNoBroadcastTest(test.TestCase):
+class CreateBeforeAndAfterBroadcastForNoBroadcastTest(
+    common_libs_test_utils.TestCase):
 
   def test_returns_tree(self):
     ip = get_iterative_process_for_sum_example_with_no_broadcast()
@@ -539,7 +540,8 @@ class CreateBeforeAndAfterBroadcastForNoBroadcastTest(test.TestCase):
     # pyformat: enable
 
 
-class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(test.TestCase):
+class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
+    common_libs_test_utils.TestCase):
 
   def test_returns_tree(self):
     ip = get_iterative_process_for_sum_example_with_no_federated_aggregate()
@@ -611,7 +613,8 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(test.TestCase):
     # pyformat: enable
 
 
-class CreateBeforeAndAfterAggregateForNoSecureSumTest(test.TestCase):
+class CreateBeforeAndAfterAggregateForNoSecureSumTest(
+    common_libs_test_utils.TestCase):
 
   def test_returns_tree(self):
     ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum()
@@ -678,7 +681,7 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(test.TestCase):
     # pyformat: enable
 
 
-class GetTypeInfoTest(test.TestCase):
+class GetTypeInfoTest(common_libs_test_utils.TestCase):
 
   def test_returns_type_info_for_sum_example(self):
     ip = get_iterative_process_for_sum_example()
@@ -759,7 +762,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
                                               parameterized.TestCase):
 
   def test_next_computation_returning_tensor_fails_well(self):
-    cf = test_utils.get_temperature_sensor_example()
+    cf = mapreduce_test_utils.get_temperature_sensor_example()
     it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     init_result = it.initialize.type_signature.result
     lam = building_blocks.Lambda('x', init_result,
@@ -771,7 +774,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
       canonical_form_utils.get_canonical_form_for_iterative_process(bad_it)
 
   def test_broadcast_dependent_on_aggregate_fails_well(self):
-    cf = test_utils.get_temperature_sensor_example()
+    cf = mapreduce_test_utils.get_temperature_sensor_example()
     it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     next_comp = it.next.to_building_block()
     top_level_param = building_blocks.Reference(next_comp.parameter_name,
@@ -801,7 +804,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
 
   def test_constructs_canonical_form_from_mnist_training_example(self):
     it = canonical_form_utils.get_iterative_process_for_canonical_form(
-        test_utils.get_mnist_training_example())
+        mapreduce_test_utils.get_mnist_training_example())
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
     self.assertIsInstance(cf, canonical_form.CanonicalForm)
 
@@ -809,7 +812,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     # NOTE: the roundtrip through CanonicalForm->IterProc->CanonicalForm seems
     # to lose the python container annotations on the StructType.
     it = canonical_form_utils.get_iterative_process_for_canonical_form(
-        test_utils.get_temperature_sensor_example())
+        mapreduce_test_utils.get_temperature_sensor_example())
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
     new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     state = new_it.initialize()
@@ -831,7 +834,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
 
   def test_mnist_training_round_trip(self):
     it = canonical_form_utils.get_iterative_process_for_canonical_form(
-        test_utils.get_mnist_training_example())
+        mapreduce_test_utils.get_mnist_training_example())
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
     new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
     state1 = it.initialize()
@@ -873,9 +876,9 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
       ('minimal_sum_example',
        get_iterative_process_for_minimal_sum_example()),
       ('example_with_unused_lambda_arg',
-       test_utils.get_iterative_process_for_example_with_unused_lambda_arg()),
+       mapreduce_test_utils.get_iterative_process_for_example_with_unused_lambda_arg()),
       ('example_with_unused_tf_computation_arg',
-       test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()),
+       mapreduce_test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()),
   )
   # pyformat: enable
   def test_returns_canonical_form(self, ip):
@@ -902,9 +905,9 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
       ('minimal_sum_example',
        get_iterative_process_for_minimal_sum_example()),
       ('example_with_unused_lambda_arg',
-       test_utils.get_iterative_process_for_example_with_unused_lambda_arg()),
+       mapreduce_test_utils.get_iterative_process_for_example_with_unused_lambda_arg()),
       ('example_with_unused_tf_computation_arg',
-       test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()),
+       mapreduce_test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()),
   )
   # pyformat: enable
   def test_returns_canonical_form_with_grappler_disabled(self, ip):
@@ -922,7 +925,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
       canonical_form_utils.get_canonical_form_for_iterative_process(ip)
 
   def test_returns_canonical_form_with_indirection_to_intrinsic(self):
-    ip = test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation(
+    ip = mapreduce_test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation(
     )
 
     cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
@@ -934,4 +937,4 @@ if __name__ == '__main__':
   # The reference context is used here because it is currently the only context
   # which implements the `tff.federated_secure_sum` intrinsic.
   reference_context.set_reference_context()
-  test.main()
+  common_libs_test_utils.main()

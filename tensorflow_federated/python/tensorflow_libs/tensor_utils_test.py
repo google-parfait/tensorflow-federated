@@ -17,11 +17,11 @@ import collections
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-class TensorUtilsTest(test.TestCase):
+class TensorUtilsTest(test_utils.TestCase):
 
   def test_check_nested_equal(self):
     nested_dict = {
@@ -224,4 +224,4 @@ class TensorUtilsTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

@@ -20,14 +20,14 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import compiled_computation_transforms
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_transformations
-from tensorflow_federated.python.core.impl.compiler import test_utils
+from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -40,7 +40,8 @@ def _create_compiled_computation(py_fn, parameter_type):
       proto, type_signature=type_signature)
 
 
-class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
+class CompiledComputationTransformsTest(common_libs_test_utils.TestCase,
+                                        parameterized.TestCase):
 
   def test_select_graph_output_with_none_comp_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -391,17 +392,20 @@ class CompiledComputationTransformsTest(test.TestCase, parameterized.TestCase):
         ('a', 0),
         ('c', True),
     ])
-    result = test_utils.run_tensorflow(flipped_inputs.proto, [1.0, 0, True])
+    result = compiler_test_utils.run_tensorflow(flipped_inputs.proto,
+                                                [1.0, 0, True])
     self.assertEqual(result, expected_result)
-    result = test_utils.run_tensorflow(flipped_inputs.proto, structure_input)
+    result = compiler_test_utils.run_tensorflow(flipped_inputs.proto,
+                                                structure_input)
     self.assertEqual(result, expected_result)
     with self.assertRaises(TypeError):
-      test_utils.run_tensorflow(flipped_inputs.proto, [0, 1.0, True])
+      compiler_test_utils.run_tensorflow(flipped_inputs.proto, [0, 1.0, True])
     with self.assertRaises(TypeError):
-      test_utils.run_tensorflow(flipped_inputs.proto, expected_result)
+      compiler_test_utils.run_tensorflow(flipped_inputs.proto, expected_result)
 
 
-class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
+class WrapParameterAsTupleTest(common_libs_test_utils.TestCase,
+                               parameterized.TestCase):
 
   def test_bind_graph_parameter_as_tuple_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -425,8 +429,9 @@ class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
     expected_type_signature = computation_types.FunctionType(
         parameter_type, foo.type_signature.result)
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
-    actual_result = test_utils.run_tensorflow(wrapped_inputs.proto, [[1]])
-    expected_result = test_utils.run_tensorflow(foo.proto, [1])
+    actual_result = compiler_test_utils.run_tensorflow(wrapped_inputs.proto,
+                                                       [[1]])
+    expected_result = compiler_test_utils.run_tensorflow(foo.proto, [1])
     self.assertEqual(actual_result, expected_result)
 
   def assertSequenceEqual(self, a, b):
@@ -454,8 +459,9 @@ class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
     expected_type_signature = computation_types.FunctionType(
         parameter_type, foo.type_signature.result)
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
-    actual_result = test_utils.run_tensorflow(wrapped_inputs.proto, [[1]])
-    expected_result = test_utils.run_tensorflow(foo.proto, [1])
+    actual_result = compiler_test_utils.run_tensorflow(wrapped_inputs.proto,
+                                                       [[1]])
+    expected_result = compiler_test_utils.run_tensorflow(foo.proto, [1])
     self.assertSequenceEqual(actual_result, expected_result)
 
   def test_bind_graph_parameter_as_tuple_wraps_tensor(self):
@@ -470,8 +476,9 @@ class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
     expected_type_signature = computation_types.FunctionType(
         parameter_type, foo.type_signature.result)
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
-    actual_result = test_utils.run_tensorflow(wrapped_inputs.proto, [1])
-    expected_result = test_utils.run_tensorflow(foo.proto, 1)
+    actual_result = compiler_test_utils.run_tensorflow(wrapped_inputs.proto,
+                                                       [1])
+    expected_result = compiler_test_utils.run_tensorflow(foo.proto, 1)
     self.assertEqual(actual_result, expected_result)
 
   def test_bind_graph_parameter_as_tuple_adds_name(self):
@@ -487,12 +494,14 @@ class WrapParameterAsTupleTest(test.TestCase, parameterized.TestCase):
             foo.type_signature.parameter,
         )), foo.type_signature.result)
     self.assertEqual(wrapped_inputs.type_signature, expected_type_signature)
-    actual_result = test_utils.run_tensorflow(wrapped_inputs.proto, [1])
-    expected_result = test_utils.run_tensorflow(foo.proto, 1)
+    actual_result = compiler_test_utils.run_tensorflow(wrapped_inputs.proto,
+                                                       [1])
+    expected_result = compiler_test_utils.run_tensorflow(foo.proto, 1)
     self.assertEqual(actual_result, expected_result)
 
 
-class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
+class WrapResultAsTupleTest(common_libs_test_utils.TestCase,
+                            parameterized.TestCase):
 
   def test_bind_graph_result_as_tuple_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -515,8 +524,9 @@ class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
         foo.type_signature.parameter,
         computation_types.StructType([foo.type_signature.result]))
     self.assertEqual(wrapped_output.type_signature, expected_type_signature)
-    actual_result = test_utils.run_tensorflow(wrapped_output.proto, [1])
-    expected_result = test_utils.run_tensorflow(foo.proto, [1])
+    actual_result = compiler_test_utils.run_tensorflow(wrapped_output.proto,
+                                                       [1])
+    expected_result = compiler_test_utils.run_tensorflow(foo.proto, [1])
     self.assertEqual(actual_result[0], expected_result)
 
   def test_bind_graph_result_as_tuple_wraps_sequence(self):
@@ -530,8 +540,9 @@ class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
         foo.type_signature.parameter,
         computation_types.StructType([foo.type_signature.result]))
     self.assertEqual(wrapped_output.type_signature, expected_type_signature)
-    actual_result = test_utils.run_tensorflow(wrapped_output.proto, [1])
-    expected_result = test_utils.run_tensorflow(foo.proto, [1])
+    actual_result = compiler_test_utils.run_tensorflow(wrapped_output.proto,
+                                                       [1])
+    expected_result = compiler_test_utils.run_tensorflow(foo.proto, [1])
     self.assertSequenceEqual(actual_result[0], expected_result)
 
   def test_bind_graph_result_as_tuple_wraps_tensor(self):
@@ -545,8 +556,9 @@ class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
         foo.type_signature.parameter,
         computation_types.StructType([foo.type_signature.result]))
     self.assertEqual(wrapped_output.type_signature, expected_type_signature)
-    actual_result = test_utils.run_tensorflow(wrapped_output.proto, [1])
-    expected_result = test_utils.run_tensorflow(foo.proto, [1])
+    actual_result = compiler_test_utils.run_tensorflow(wrapped_output.proto,
+                                                       [1])
+    expected_result = compiler_test_utils.run_tensorflow(foo.proto, [1])
     self.assertEqual(actual_result[0], expected_result)
 
   def test_bind_graph_result_as_tuple_adds_name(self):
@@ -563,12 +575,13 @@ class WrapResultAsTupleTest(test.TestCase, parameterized.TestCase):
             foo.type_signature.result,
         )))
     self.assertEqual(wrapped_output.type_signature, expected_type_signature)
-    actual_result = test_utils.run_tensorflow(wrapped_output.proto, 1)
-    expected_result = test_utils.run_tensorflow(foo.proto, 1)
+    actual_result = compiler_test_utils.run_tensorflow(wrapped_output.proto, 1)
+    expected_result = compiler_test_utils.run_tensorflow(foo.proto, 1)
     self.assertEqual(actual_result[0], expected_result)
 
 
-class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
+class GraphInputPaddingTest(common_libs_test_utils.TestCase,
+                            parameterized.TestCase):
 
   def test_pad_graph_inputs_to_match_type_raises_on_none(self):
     with self.assertRaisesRegex(TypeError, r'Expected.*CompiledComputation'):
@@ -656,9 +669,11 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
         foo, computation_types.StructType([tf.int32, tf.float32]))
 
     expected_result = structure.Struct([(None, 1)])
-    actual_result = test_utils.run_tensorflow(padded_inputs.proto, [1, 0.0])
+    actual_result = compiler_test_utils.run_tensorflow(padded_inputs.proto,
+                                                       [1, 0.0])
     self.assertEqual(actual_result, expected_result)
-    actual_result = test_utils.run_tensorflow(padded_inputs.proto, [1, 10.0])
+    actual_result = compiler_test_utils.run_tensorflow(padded_inputs.proto,
+                                                       [1, 10.0])
     self.assertEqual(actual_result, expected_result)
 
   def test_pad_graph_inputs_to_match_type_adds_names_to_unnamed_tuple_and_executes(
@@ -670,19 +685,20 @@ class GraphInputPaddingTest(test.TestCase, parameterized.TestCase):
         foo, computation_types.StructType([('a', tf.int32), ('b', tf.float32)]))
 
     expected_result = structure.Struct([(None, 1)])
-    actual_result = test_utils.run_tensorflow(padded_inputs.proto, {
+    actual_result = compiler_test_utils.run_tensorflow(padded_inputs.proto, {
         'a': 1,
         'b': 0.0,
     })
     self.assertEqual(actual_result, expected_result)
-    actual_result = test_utils.run_tensorflow(padded_inputs.proto, {
+    actual_result = compiler_test_utils.run_tensorflow(padded_inputs.proto, {
         'a': 1,
         'b': 10.0,
     })
     self.assertEqual(actual_result, expected_result)
 
 
-class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
+class ConcatenateTFBlocksTest(common_libs_test_utils.TestCase,
+                              parameterized.TestCase):
 
   def test_concatenenate_tensorflow_blocks_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -749,7 +765,7 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
                                                        [tf.float32, tf.float32])
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
-    actual_result = test_utils.run_tensorflow(merged_comp.proto, None)
+    actual_result = compiler_test_utils.run_tensorflow(merged_comp.proto, None)
     expected_result = structure.Struct([(None, 0.0), (None, 1.0)])
     self.assertAlmostEqual(actual_result, expected_result)
 
@@ -783,7 +799,7 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
                                                        [tf.float32, tf.float32])
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
-    actual_result = test_utils.run_tensorflow(merged_comp.proto, 0.0)
+    actual_result = compiler_test_utils.run_tensorflow(merged_comp.proto, 0.0)
     expected_result = structure.Struct([(None, 0.0), (None, 1.0)])
     self.assertAlmostEqual(actual_result, expected_result)
 
@@ -801,10 +817,12 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
                                                        [tf.float32, tf.float32])
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
-    actual_result = test_utils.run_tensorflow(merged_comp.proto, [1.0, 0.0])
+    actual_result = compiler_test_utils.run_tensorflow(merged_comp.proto,
+                                                       [1.0, 0.0])
     expected_result = structure.Struct([(None, 1.0), (None, 1.0)])
     self.assertAlmostEqual(actual_result, expected_result)
-    actual_result = test_utils.run_tensorflow(merged_comp.proto, [2.0, 2.0])
+    actual_result = compiler_test_utils.run_tensorflow(merged_comp.proto,
+                                                       [2.0, 2.0])
     expected_result = structure.Struct([(None, 2.0), (None, 3.0)])
     self.assertAlmostEqual(actual_result, expected_result)
 
@@ -825,12 +843,12 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
         [[tf.float32, tf.float32], [tf.float32, tf.float32]])
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     merged_comp.type_signature.check_equivalent_to(concatenated_type)
-    actual_result = test_utils.run_tensorflow(merged_comp.proto,
-                                              [[1.0, 0.0], [0.0, 1.0]])
+    actual_result = compiler_test_utils.run_tensorflow(merged_comp.proto,
+                                                       [[1.0, 0.0], [0.0, 1.0]])
     expected_result = structure.Struct([(None, 1.0), (None, 1.0)])
     self.assertEqual(actual_result[0], expected_result)
-    actual_result = test_utils.run_tensorflow(merged_comp.proto,
-                                              [[1.0, 0.0], [0.0, 1.0]])
+    actual_result = compiler_test_utils.run_tensorflow(merged_comp.proto,
+                                                       [[1.0, 0.0], [0.0, 1.0]])
     expected_result = structure.Struct([(None, 1.0), (None, 2.0)])
     self.assertEqual(actual_result[1], expected_result)
 
@@ -852,8 +870,8 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
         [[('a', tf.float32),
           ('b', tf.float32)], [('c', tf.float32), ('d', tf.float32)]])
     self.assertEqual(str(merged_comp.type_signature), str(concatenated_type))
-    actual_result = test_utils.run_tensorflow(merged_comp.proto,
-                                              [[1.0, 0.0], [0.0, 1.0]])
+    actual_result = compiler_test_utils.run_tensorflow(merged_comp.proto,
+                                                       [[1.0, 0.0], [0.0, 1.0]])
     expected_result = structure.Struct([('a', 1.), ('b', 0.)])
     self.assertEqual(actual_result[0], expected_result)
     expected_result = structure.Struct([('c', 0.), ('d', 1.)])
@@ -882,9 +900,9 @@ class ConcatenateTFBlocksTest(test.TestCase, parameterized.TestCase):
         merged_input_comps.type_signature)
     concat_reduce_type_signature.check_equivalent_to(
         merged_reduce_comps.type_signature)
-    input_result = test_utils.run_tensorflow(merged_input_comps.proto)
-    actual_result = test_utils.run_tensorflow(merged_reduce_comps.proto,
-                                              input_result)
+    input_result = compiler_test_utils.run_tensorflow(merged_input_comps.proto)
+    actual_result = compiler_test_utils.run_tensorflow(
+        merged_reduce_comps.proto, input_result)
     self.assertEqual(actual_result[0], 10)
     self.assertEqual(actual_result[1], 10)
 
@@ -897,7 +915,7 @@ def _create_simple_selection_from_called_graph():
   return selected_result
 
 
-class SelectionFromCalledTensorFlowBlockTest(test.TestCase,
+class SelectionFromCalledTensorFlowBlockTest(common_libs_test_utils.TestCase,
                                              parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
@@ -937,7 +955,7 @@ class SelectionFromCalledTensorFlowBlockTest(test.TestCase,
     )
     parsed_zero, mutated = output_selector.transform(selected_zero)
 
-    result = test_utils.run_tensorflow(parsed_zero.function.proto)
+    result = compiler_test_utils.run_tensorflow(parsed_zero.function.proto)
     self.assertEqual(result, 0.0)
     self.assertTrue(mutated)
 
@@ -951,7 +969,7 @@ class SelectionFromCalledTensorFlowBlockTest(test.TestCase,
     )
     parsed_one, mutated = output_selector.transform(selected_one)
 
-    result = test_utils.run_tensorflow(parsed_one.function.proto)
+    result = compiler_test_utils.run_tensorflow(parsed_one.function.proto)
     self.assertEqual(result, 1.0)
     self.assertTrue(mutated)
 
@@ -965,7 +983,7 @@ class SelectionFromCalledTensorFlowBlockTest(test.TestCase,
     )
     parsed_a, mutated = output_selector.transform(selected_a)
 
-    result = test_utils.run_tensorflow(parsed_a.function.proto)
+    result = compiler_test_utils.run_tensorflow(parsed_a.function.proto)
     self.assertEqual(result, 0.0)
     self.assertTrue(mutated)
 
@@ -990,7 +1008,8 @@ def _create_simple_lambda_calling_graph_with_arg_thrown_on_floor():
   return lambda_wrap
 
 
-class LambdaWrappingGraphTest(test.TestCase, parameterized.TestCase):
+class LambdaWrappingGraphTest(common_libs_test_utils.TestCase,
+                              parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
     pattern = _create_simple_lambda_wrapping_graph()
@@ -1045,7 +1064,7 @@ class LambdaWrappingGraphTest(test.TestCase, parameterized.TestCase):
     unwrapped_function, mutated = lambda_unwrapper.transform(integer_identity)
 
     for k in range(5):
-      result = test_utils.run_tensorflow(unwrapped_function.proto, k)
+      result = compiler_test_utils.run_tensorflow(unwrapped_function.proto, k)
       self.assertEqual(result, k)
     self.assertTrue(mutated)
 
@@ -1060,7 +1079,7 @@ class LambdaWrappingGraphTest(test.TestCase, parameterized.TestCase):
     unwrapped_function, mutated = lambda_unwrapper.transform(lambda_wrap)
 
     for k in range(5):
-      result = test_utils.run_tensorflow(unwrapped_function.proto, k)
+      result = compiler_test_utils.run_tensorflow(unwrapped_function.proto, k)
       self.assertEqual(result, k * k)
     self.assertTrue(mutated)
 
@@ -1073,7 +1092,8 @@ def _create_simple_tuple_of_called_graphs():
   return tuple_of_called_graphs
 
 
-class StructCalledGraphsTest(test.TestCase, parameterized.TestCase):
+class StructCalledGraphsTest(common_libs_test_utils.TestCase,
+                             parameterized.TestCase):
 
   def test_empty_tuple(self):
     pattern = building_blocks.Struct([])
@@ -1143,9 +1163,9 @@ class StructCalledGraphsTest(test.TestCase, parameterized.TestCase):
                      tuple_of_called_graphs.type_signature)
     self.assertEqual(parsed_tuple.type_signature,
                      tuple_of_called_graphs.type_signature)
-    result = test_utils.run_tensorflow(parsed_tuple.function.proto, 10)
+    result = compiler_test_utils.run_tensorflow(parsed_tuple.function.proto, 10)
     self.assertEqual(result[0], 0.0)
-    result = test_utils.run_tensorflow(parsed_tuple.function.proto, 0)
+    result = compiler_test_utils.run_tensorflow(parsed_tuple.function.proto, 0)
     self.assertEqual(result[1], 1)
     self.assertTrue(mutated)
 
@@ -1166,7 +1186,8 @@ class StructCalledGraphsTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(parsed_tuple.type_signature,
                      tuple_of_called_graphs.type_signature)
     for k in range(5):
-      result = test_utils.run_tensorflow(parsed_tuple.function.proto, k)
+      result = compiler_test_utils.run_tensorflow(parsed_tuple.function.proto,
+                                                  k)
       self.assertEqual(result[0], 0.0)
       self.assertEqual(result[1], k**2)
     self.assertTrue(mutated)
@@ -1191,8 +1212,8 @@ class StructCalledGraphsTest(test.TestCase, parameterized.TestCase):
     self.assertRegexMatch(parsed_tuple.compact_representation(),
                           [r'comp#[a-zA-Z0-9]*\(<y,x>\)'])
     for k in range(5):
-      result = test_utils.run_tensorflow(parsed_tuple.function.proto,
-                                         [k * 1.0, k])
+      result = compiler_test_utils.run_tensorflow(parsed_tuple.function.proto,
+                                                  [k * 1.0, k])
       self.assertEqual(result[0], (k * 1.0)**3)
       self.assertEqual(result[1], k**2)
     self.assertTrue(mutated)
@@ -1218,8 +1239,8 @@ class StructCalledGraphsTest(test.TestCase, parameterized.TestCase):
     self.assertRegexMatch(parsed_tuple.compact_representation(),
                           [r'comp#[a-zA-Z0-9]*\(<y,x>\)'])
     for k in range(5):
-      result = test_utils.run_tensorflow(parsed_tuple.function.proto,
-                                         [[k * 1.0, k * 2.0], k])
+      result = compiler_test_utils.run_tensorflow(parsed_tuple.function.proto,
+                                                  [[k * 1.0, k * 2.0], k])
       self.assertEqual(result[0], k * 1.0)
       self.assertEqual(result[1], k**2)
     self.assertTrue(mutated)
@@ -1246,8 +1267,8 @@ class StructCalledGraphsTest(test.TestCase, parameterized.TestCase):
     self.assertRegexMatch(parsed_tuple.compact_representation(),
                           [r'comp#[a-zA-Z0-9]*\(<y,x>\)'])
     for k in range(5):
-      result = test_utils.run_tensorflow(parsed_tuple.function.proto,
-                                         [[k * 1.0, k * 2.0], k])
+      result = compiler_test_utils.run_tensorflow(parsed_tuple.function.proto,
+                                                  [[k * 1.0, k * 2.0], k])
       self.assertEqual(result[0], k * 1.0)
       self.assertEqual(result[1], k**2)
     self.assertTrue(mutated)
@@ -1320,7 +1341,8 @@ def _construct_permutation_tuple_collection(max_length):
   return permutation_tuples
 
 
-class RemapGraphInputsTest(test.TestCase, parameterized.TestCase):
+class RemapGraphInputsTest(common_libs_test_utils.TestCase,
+                           parameterized.TestCase):
 
   def test_raises_on_bad_computation(self):
     tuple_type = computation_types.StructType([tf.int32])
@@ -1469,7 +1491,8 @@ def _create_simple_lambda_call_selection_from_arg():
   return lambda_wrapping_call
 
 
-class LambdaCallSelectionFromArgTest(test.TestCase, parameterized.TestCase):
+class LambdaCallSelectionFromArgTest(common_libs_test_utils.TestCase,
+                                     parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
     pattern = _create_simple_lambda_call_selection_from_arg()
@@ -1530,7 +1553,8 @@ class LambdaCallSelectionFromArgTest(test.TestCase, parameterized.TestCase):
     parsed, mutated = logic.transform(lambda_wrapping_call)
 
     for k in range(5):
-      result = test_utils.run_tensorflow(parsed.proto, [k * 1.0, k, True])
+      result = compiler_test_utils.run_tensorflow(parsed.proto,
+                                                  [k * 1.0, k, True])
       self.assertEqual(result, k)
     self.assertTrue(mutated)
 
@@ -1567,7 +1591,7 @@ class LambdaCallSelectionFromArgTest(test.TestCase, parameterized.TestCase):
     parsed, mutated = logic.transform(lambda_wrapping_call)
 
     for k in range(5):
-      result = test_utils.run_tensorflow(parsed.proto, {
+      result = compiler_test_utils.run_tensorflow(parsed.proto, {
           'a': k * 1.0,
           'b': k,
           'c': True,
@@ -1591,8 +1615,8 @@ def _create_simple_lambda_call_tuple_of_selections_from_arg():
   return lambda_wrapping_call
 
 
-class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
-                                                 parameterized.TestCase):
+class LambdaToCalledTupleOfSelectionsFromArgTest(
+    common_libs_test_utils.TestCase, parameterized.TestCase):
 
   def test_transform_raises_on_wrong_lengths(self):
     tuple_type = computation_types.StructType([tf.int32] * 3)
@@ -1684,7 +1708,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     )
     parsed, mutated = logic.transform(lambda_wrapping_call)
 
-    result = test_utils.run_tensorflow(parsed.proto, [0.0, 1, True])
+    result = compiler_test_utils.run_tensorflow(parsed.proto, [0.0, 1, True])
     self.assertEqual(result[0], 1)
     self.assertEqual(result[1], 0.0)
     self.assertTrue(mutated)
@@ -1728,7 +1752,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     )
     parsed, mutated = logic.transform(lambda_wrapping_call)
 
-    result = test_utils.run_tensorflow(parsed.proto, [0., 1, True])
+    result = compiler_test_utils.run_tensorflow(parsed.proto, [0., 1, True])
     self.assertEqual(result[0], True)
     self.assertEqual(result[1], 1)
     self.assertEqual(result[2], 0.)
@@ -1772,7 +1796,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     )
     parsed, mutated = logic.transform(lambda_wrapping_call)
 
-    result = test_utils.run_tensorflow(parsed.proto, {
+    result = compiler_test_utils.run_tensorflow(parsed.proto, {
         'a': 0.0,
         'b': 1,
         'c': False,
@@ -1818,7 +1842,7 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     )
     parsed, mutated = logic.transform(lambda_wrapping_call)
 
-    result = test_utils.run_tensorflow(parsed.proto, {
+    result = compiler_test_utils.run_tensorflow(parsed.proto, {
         'a': 0.,
         'b': 1,
         'c': False,
@@ -1828,7 +1852,8 @@ class LambdaToCalledTupleOfSelectionsFromArgTest(test.TestCase,
     self.assertTrue(mutated)
 
 
-class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
+class ComposeTensorFlowBlocksTest(common_libs_test_utils.TestCase,
+                                  parameterized.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -1875,7 +1900,7 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
     composed_fn = compiled_computation_transforms.compose_tensorflow_blocks(
         [add_one_fn, noarg_fn.function])
 
-    result = test_utils.run_tensorflow(composed_fn.proto)
+    result = compiler_test_utils.run_tensorflow(composed_fn.proto)
     self.assertEqual(result, 1)
 
   def test_composes_tensor_functions_types_correctly(self):
@@ -1900,7 +1925,7 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
         [float_to_float_fn, int_to_float_fn])
 
     for k in range(5):
-      result = test_utils.run_tensorflow(composed_fn.proto, k)
+      result = compiler_test_utils.run_tensorflow(composed_fn.proto, k)
       self.assertEqual(result, k * 4.0)
 
   def test_compose_integer_identities_executes_correctly(self):
@@ -1910,7 +1935,7 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
     composed = compiled_computation_transforms.compose_tensorflow_blocks(
         [identity, identity])
 
-    result = test_utils.run_tensorflow(composed.proto, 0)
+    result = compiler_test_utils.run_tensorflow(composed.proto, 0)
     self.assertEqual(result, 0)
 
   def test_composes_unnamed_tuple_functions_types_correctly(self):
@@ -1945,7 +1970,8 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
     composed_fn_float_int = compiled_computation_transforms.compose_tensorflow_blocks(
         [int_float_flip, float_int_flip])
 
-    result = test_utils.run_tensorflow(composed_fn_float_int.proto, [10.0, 0])
+    result = compiler_test_utils.run_tensorflow(composed_fn_float_int.proto,
+                                                [10.0, 0])
     self.assertEqual(result[0], 10.0)
     self.assertEqual(result[1], 0)
     self.assertLen(result, 2)
@@ -1953,7 +1979,8 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
     composed_fn_int_float = compiled_computation_transforms.compose_tensorflow_blocks(
         [float_int_flip, int_float_flip])
 
-    result = test_utils.run_tensorflow(composed_fn_int_float.proto, [10, 0.0])
+    result = compiler_test_utils.run_tensorflow(composed_fn_int_float.proto,
+                                                [10, 0.0])
     self.assertEqual(result[0], 10)
     self.assertEqual(result[1], 0.0)
     self.assertLen(result, 2)
@@ -1984,7 +2011,10 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
         unamed_types)
     composed = compiled_computation_transforms.compose_tensorflow_blocks(
         [unnamed_identity, drop_names])
-    result = test_utils.run_tensorflow(composed.proto, {'a': 0, 'b': 1.0})
+    result = compiler_test_utils.run_tensorflow(composed.proto, {
+        'a': 0,
+        'b': 1.0
+    })
     self.assertEqual(result[0], 0)
     self.assertEqual(result[1], 1.0)
     self.assertLen(result, 2)
@@ -2016,7 +2046,7 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
     composed = compiled_computation_transforms.compose_tensorflow_blocks(
         [identity, flip_order])
 
-    result = test_utils.run_tensorflow(
+    result = compiler_test_utils.run_tensorflow(
         composed.proto, collections.OrderedDict({
             'a': 0,
             'b': 1.0,
@@ -2048,7 +2078,7 @@ class ComposeTensorFlowBlocksTest(test.TestCase, parameterized.TestCase):
     integer_result = compiled_computation_transforms.compose_tensorflow_blocks(
         [reduce_ds, produce_ds])
 
-    result = test_utils.run_tensorflow(integer_result.proto)
+    result = compiler_test_utils.run_tensorflow(integer_result.proto)
     self.assertEqual(result, 10)
 
 
@@ -2061,7 +2091,7 @@ def _create_simple_called_composition_of_tf_blocks():
   return one
 
 
-class CalledCompositionOfTensorFlowBlocksTest(test.TestCase,
+class CalledCompositionOfTensorFlowBlocksTest(common_libs_test_utils.TestCase,
                                               parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
@@ -2143,11 +2173,11 @@ class CalledCompositionOfTensorFlowBlocksTest(test.TestCase,
     )
     parsed, _ = logic.transform(pattern)
 
-    result = test_utils.run_tensorflow(parsed.function.proto, 0)
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, 0)
     self.assertEqual(result, 1)
-    result = test_utils.run_tensorflow(parsed.function.proto, 1)
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, 1)
     self.assertEqual(result, 1)
-    result = test_utils.run_tensorflow(parsed.function.proto, 2)
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, 2)
     self.assertEqual(result, 1)
 
   def test_constructs_correct_type_signature_named_tuple_argument(self):
@@ -2189,12 +2219,12 @@ class CalledCompositionOfTensorFlowBlocksTest(test.TestCase,
     )
     parsed, _ = logic.transform(called_integer_selection)
 
-    result = test_utils.run_tensorflow(parsed.function.proto, {
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, {
         'a': 1,
         'b': 0.0
     })
     self.assertEqual(result, 1)
-    result = test_utils.run_tensorflow(parsed.function.proto, {
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, {
         'a': 0,
         'b': 1.0
     })
@@ -2233,12 +2263,12 @@ class CalledCompositionOfTensorFlowBlocksTest(test.TestCase,
     )
     parsed, _ = logic.transform(called_namer)
 
-    result = test_utils.run_tensorflow(parsed.function.proto, [1, 0.0])
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, [1, 0.0])
     self.assertEqual(result[0], 1)
     self.assertEqual(result.a, 1)
     self.assertEqual(result[1], 0.)
     self.assertEqual(result.b, 0.)
-    result = test_utils.run_tensorflow(parsed.function.proto, [0, 1.0])
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, [0, 1.0])
     self.assertEqual(result[0], 0)
     self.assertEqual(result.a, 0)
     self.assertEqual(result[1], 1.0)
@@ -2254,7 +2284,7 @@ def _create_simple_called_graph_on_replicated_arg(n_replicates=2):
   return called_tuple_id
 
 
-class CalledGraphOnReplicatedArgTest(test.TestCase):
+class CalledGraphOnReplicatedArgTest(common_libs_test_utils.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
     pattern = _create_simple_called_graph_on_replicated_arg()
@@ -2308,11 +2338,11 @@ class CalledGraphOnReplicatedArgTest(test.TestCase):
     logic = compiled_computation_transforms.CalledGraphOnReplicatedArg()
     parsed, _ = logic.transform(pattern)
 
-    result = test_utils.run_tensorflow(parsed.function.proto, 0)
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, 0)
     self.assertEqual(result, structure.Struct([(None, 0), (None, 0)]))
-    result = test_utils.run_tensorflow(parsed.function.proto, 1)
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, 1)
     self.assertEqual(result, structure.Struct([(None, 1), (None, 1)]))
-    result = test_utils.run_tensorflow(parsed.function.proto, 2)
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, 2)
     self.assertEqual(result, structure.Struct([(None, 2), (None, 2)]))
 
   def test_executes_correctly_several_replicates(self):
@@ -2321,11 +2351,11 @@ class CalledGraphOnReplicatedArgTest(test.TestCase):
     logic = compiled_computation_transforms.CalledGraphOnReplicatedArg()
     parsed, _ = logic.transform(pattern)
 
-    result = test_utils.run_tensorflow(parsed.function.proto, 0)
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, 0)
     for k in range(5):
       self.assertEqual(result[k], 0)
     self.assertLen(result, 5)
-    result = test_utils.run_tensorflow(parsed.function.proto, 1)
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, 1)
     for k in range(5):
       self.assertEqual(result[k], 1)
     self.assertLen(result, 5)
@@ -2372,10 +2402,10 @@ class CalledGraphOnReplicatedArgTest(test.TestCase):
     logic = compiled_computation_transforms.CalledGraphOnReplicatedArg()
     parsed, _ = logic.transform(called_slicer)
 
-    result = test_utils.run_tensorflow(parsed.function.proto, [0, 1.0])
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, [0, 1.0])
     self.assertEqual(result[0], 0)
     self.assertEqual(result[1], 1.0)
-    result = test_utils.run_tensorflow(parsed.function.proto, [1, 0.0])
+    result = compiler_test_utils.run_tensorflow(parsed.function.proto, [1, 0.0])
     self.assertEqual(result[0], 1)
     self.assertEqual(result[1], 0.)
 
@@ -2387,7 +2417,8 @@ def _create_simple_lambda_wrapping_noarg_graph():
   return building_blocks.Lambda('x', tf.float32, embedded_constant)
 
 
-class LambdaWrappingNoArgGraphTest(test.TestCase, parameterized.TestCase):
+class LambdaWrappingNoArgGraphTest(common_libs_test_utils.TestCase,
+                                   parameterized.TestCase):
 
   def test_should_transform_identifies_correct_pattern(self):
     pattern = _create_simple_lambda_wrapping_noarg_graph()
@@ -2450,11 +2481,11 @@ class LambdaWrappingNoArgGraphTest(test.TestCase, parameterized.TestCase):
     logic = compiled_computation_transforms.LambdaWrappingNoArgGraph()
     parsed, _ = logic.transform(pattern)
 
-    result = test_utils.run_tensorflow(parsed.proto, arg)
+    result = compiler_test_utils.run_tensorflow(parsed.proto, arg)
     self.assertEqual(result, 0)
 
 
-class TensorFlowOptimizerTest(test.TestCase):
+class TensorFlowOptimizerTest(common_libs_test_utils.TestCase):
 
   def test_should_transform_compiled_computation(self):
     tuple_type = computation_types.TensorType(tf.int32)
@@ -2489,11 +2520,12 @@ class TensorFlowOptimizerTest(test.TestCase):
     transformed_comp, mutated = tf_optimizer.transform(compiled_computation)
     self.assertTrue(mutated)
     self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
-    zero_before_transform = test_utils.run_tensorflow(
+    zero_before_transform = compiler_test_utils.run_tensorflow(
         compiled_computation.proto, 0)
-    zero_after_transform = test_utils.run_tensorflow(transformed_comp.proto, 0)
+    zero_after_transform = compiler_test_utils.run_tensorflow(
+        transformed_comp.proto, 0)
     self.assertEqual(zero_before_transform, zero_after_transform)
 
 
 if __name__ == '__main__':
-  test.main()
+  common_libs_test_utils.main()

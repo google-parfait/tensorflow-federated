@@ -19,7 +19,7 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 
 
 def construct_example_training_comp():
@@ -51,7 +51,7 @@ def construct_example_training_comp():
       client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
 
 
-class CanonicalFormTest(test.TestCase):
+class CanonicalFormTest(test_utils.TestCase):
 
   def test_canonical_form_with_learning_structure_contains_only_one_broadcast_and_one_aggregate(
       self):
@@ -103,7 +103,7 @@ class CanonicalFormTest(test.TestCase):
     # pyformat: enable
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test.skip_test_for_gpu
+  @test_utils.skip_test_for_gpu
   def test_canonical_form_with_learning_structure_does_not_change_execution_of_iterative_process(
       self):
     ip_1 = construct_example_training_comp()
@@ -148,4 +148,4 @@ class CanonicalFormTest(test.TestCase):
 
 if __name__ == '__main__':
   tff.backends.reference.set_reference_context()
-  test.main()
+  test_utils.main()

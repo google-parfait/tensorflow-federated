@@ -15,7 +15,7 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
@@ -25,7 +25,7 @@ class MultiGPUTest(tf.test.TestCase):
 
   def setUp(self):
     super().setUp()
-    test.create_logical_multi_gpus()
+    test_utils.create_logical_multi_gpus()
 
   def test_check_dataset_reduce_in_multi_gpu_no_reduce_no_raise(self):
     with tf.Graph().as_default() as graph:

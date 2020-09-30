@@ -17,8 +17,8 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.aggregators import test_utils
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.aggregators import test_utils as aggregators_test_utils
+from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -26,12 +26,13 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 
-class SumPlusOneFactoryComputationTest(test.TestCase, parameterized.TestCase):
+class SumPlusOneFactoryComputationTest(common_libs_test_utils.TestCase,
+                                       parameterized.TestCase):
 
   @parameterized.named_parameters(('float', tf.float32),
                                   ('struct', ((tf.float32, (2,)), tf.int32)))
   def test_type_properties(self, value_type):
-    sum_f = test_utils.SumPlusOneFactory()
+    sum_f = aggregators_test_utils.SumPlusOneFactory()
     self.assertIsInstance(sum_f, factory.AggregationProcessFactory)
     value_type = computation_types.to_type(value_type)
     process = sum_f.create(value_type)
@@ -66,15 +67,15 @@ class SumPlusOneFactoryComputationTest(test.TestCase, parameterized.TestCase):
       ('function_type', computation_types.FunctionType(None, ())),
       ('sequence_type', computation_types.SequenceType(tf.float32)))
   def test_incorrect_value_type_raises(self, bad_value_type):
-    sum_f = test_utils.SumPlusOneFactory()
+    sum_f = aggregators_test_utils.SumPlusOneFactory()
     with self.assertRaises(TypeError):
       sum_f.create(bad_value_type)
 
 
-class SumPlusOneFactoryExecutionTest(test.TestCase):
+class SumPlusOneFactoryExecutionTest(common_libs_test_utils.TestCase):
 
   def test_sum_scalar(self):
-    sum_f = test_utils.SumPlusOneFactory()
+    sum_f = aggregators_test_utils.SumPlusOneFactory()
     value_type = computation_types.to_type(tf.float32)
     process = sum_f.create(value_type)
 
@@ -88,7 +89,7 @@ class SumPlusOneFactoryExecutionTest(test.TestCase):
     self.assertEqual(42, output.measurements)
 
   def test_sum_structure(self):
-    sum_f = test_utils.SumPlusOneFactory()
+    sum_f = aggregators_test_utils.SumPlusOneFactory()
     value_type = computation_types.to_type(((tf.float32, (2,)), tf.int32))
     process = sum_f.create(value_type)
 
@@ -104,4 +105,4 @@ class SumPlusOneFactoryExecutionTest(test.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test.main()
+  common_libs_test_utils.main()

@@ -21,14 +21,14 @@ import tensorflow as tf
 import tensorflow_privacy as tfp
 
 from tensorflow_federated.python.aggregators import quantile_estimation
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
-class PrivateQEComputationTest(test.TestCase, parameterized.TestCase):
+class PrivateQEComputationTest(test_utils.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('private', True), ('non_private', False))
   def test_process_type_signature(self, private):
@@ -97,7 +97,7 @@ class PrivateQEComputationTest(test.TestCase, parameterized.TestCase):
           record_aggregation_factory="I'm not a record_aggregation_factory.")
 
 
-class PrivateQEExecutionTest(test.TestCase, parameterized.TestCase):
+class PrivateQEExecutionTest(test_utils.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('arithmetic', False), ('geometric', True))
   def test_adaptation(self, geometric_update):
@@ -131,4 +131,4 @@ class PrivateQEExecutionTest(test.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test.main()
+  test_utils.main()

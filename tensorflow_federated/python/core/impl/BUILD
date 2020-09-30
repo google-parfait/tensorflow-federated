@@ -44,7 +44,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_impl",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
     ],
@@ -101,7 +101,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_serialization",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
     ],
@@ -134,7 +134,7 @@ py_test(
     deps = [
         ":intrinsic_bodies",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
@@ -200,7 +200,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":tensorflow_deserialization",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
     ],
@@ -225,7 +225,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":tree_to_cc_transformations",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
@@ -260,7 +260,7 @@ py_test(
     deps = [
         ":type_utils",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
     ],

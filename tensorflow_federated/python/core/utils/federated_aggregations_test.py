@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.test import static_assert
 from tensorflow_federated.python.core.utils import federated_aggregations
 
 
-class FederatedMinTest(test.TestCase):
+class FederatedMinTest(test_utils.TestCase):
 
   def test_federated_min_single_value(self):
 
@@ -84,7 +84,7 @@ class FederatedMinTest(test.TestCase):
       call_federated_min([1, 2, 3])
 
 
-class FederatedMaxTest(test.TestCase):
+class FederatedMaxTest(test_utils.TestCase):
 
   def test_federated_max_tensor_value(self):
 
@@ -1253,4 +1253,4 @@ def _np_val_fn(value, tf_dtype):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test.main()
+  test_utils.main()

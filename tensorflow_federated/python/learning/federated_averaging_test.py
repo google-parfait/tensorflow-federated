@@ -19,7 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
@@ -38,7 +38,7 @@ class NumExamplesCounter(tf.keras.metrics.Sum):
     return super().update_state(tf.shape(y_pred)[0], sample_weight)
 
 
-class FederatedAveragingClientWithModelTest(test.TestCase,
+class FederatedAveragingClientWithModelTest(test_utils.TestCase,
                                             parameterized.TestCase):
   """Tests of ClientFedAvg that use a common model and data."""
 
@@ -137,7 +137,8 @@ class FederatedAveragingClientWithModelTest(test.TestCase,
       mock_method.assert_called()
 
 
-class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
+class FederatedAveragingModelTffTest(test_utils.TestCase,
+                                     parameterized.TestCase):
 
   def _run_test(self, process, *, datasets, expected_num_examples):
     state = process.initialize()
@@ -248,4 +249,4 @@ class FederatedAveragingModelTffTest(test.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test.main()
+  test_utils.main()

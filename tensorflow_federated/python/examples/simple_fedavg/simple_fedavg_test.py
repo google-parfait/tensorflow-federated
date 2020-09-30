@@ -21,7 +21,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.common_libs import test as common_test
+from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tf
 from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tff
 
@@ -397,7 +397,7 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
 
   # TODO(b/139707270): enable GPU tests after Keras fix GPU kernel for
   # sparse ops in optimizers.
-  @common_test.skip_test_for_gpu
+  @common_libs_test_utils.skip_test_for_gpu
   def test_client_adagrad_train(self):
     it_process = simple_fedavg_tff.build_federated_averaging_process(
         _rnn_model_fn,

@@ -15,7 +15,7 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.tensorflow_libs import graph_optimizations
 from tensorflow_federated.python.tensorflow_libs import graph_spec
 
@@ -65,7 +65,7 @@ def _make_manual_reduce_graph(dataset_construction_graph, return_element):
   return graph, '', out.name
 
 
-class GraphOptTest(test.TestCase):
+class GraphOptTest(test_utils.TestCase):
 
   def test_reduces_bytesize_for_simple_graphdef(self):
     graph, in_name, out_name = _make_redundant_add_one_graph()
@@ -296,4 +296,4 @@ class GraphOptTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

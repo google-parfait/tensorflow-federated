@@ -51,7 +51,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":tensorflow_computation_context",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -85,7 +85,7 @@ py_test(
     deps = [
         ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:type_serialization",

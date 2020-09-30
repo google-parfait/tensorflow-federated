@@ -99,7 +99,7 @@ py_test(
         ":placements",
         ":value_base",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
     ],
 )

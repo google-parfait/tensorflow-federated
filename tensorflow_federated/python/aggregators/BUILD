@@ -49,7 +49,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":quantile_estimation",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -85,7 +85,7 @@ py_test(
         ":factory",
         ":mean_factory",
         ":test_utils",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -119,7 +119,7 @@ py_test(
     deps = [
         ":factory",
         ":sum_factory",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
@@ -154,7 +154,7 @@ py_test(
     deps = [
         ":factory",
         ":test_utils",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",

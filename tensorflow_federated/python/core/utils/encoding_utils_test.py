@@ -16,7 +16,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -30,7 +30,7 @@ _bad_encoder_named_parameters = [('float', 1.0), ('string', 'str'),
                                  ('encoder', te.encoders.identity())]
 
 
-class EncodedBroadcastProcessTest(test.TestCase, parameterized.TestCase):
+class EncodedBroadcastProcessTest(test_utils.TestCase, parameterized.TestCase):
   """Tests for build_encoded_broadcast_process method."""
 
   @parameterized.named_parameters(
@@ -85,7 +85,7 @@ class EncodedBroadcastProcessTest(test.TestCase, parameterized.TestCase):
       encoding_utils.build_encoded_broadcast_process(value_type, encoder)
 
 
-class EncodedSumProcessTest(test.TestCase, parameterized.TestCase):
+class EncodedSumProcessTest(test_utils.TestCase, parameterized.TestCase):
   """Tests for build_encoded_sum_process method."""
 
   @parameterized.named_parameters(
@@ -156,7 +156,7 @@ class EncodedSumProcessTest(test.TestCase, parameterized.TestCase):
       encoding_utils.build_encoded_sum_process(value_type, encoder)
 
 
-class EncodedMeanProcessTest(test.TestCase, parameterized.TestCase):
+class EncodedMeanProcessTest(test_utils.TestCase, parameterized.TestCase):
   """Tests for build_encoded_mean_process method."""
 
   @parameterized.named_parameters(
@@ -228,7 +228,7 @@ class EncodedMeanProcessTest(test.TestCase, parameterized.TestCase):
       encoding_utils.build_encoded_mean_process(value_type, encoder)
 
 
-class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
+class EncodingUtilsTest(test_utils.TestCase, parameterized.TestCase):
   """Tests for utilities for building StatefulFns."""
 
   @parameterized.named_parameters(
@@ -436,4 +436,4 @@ class StateUpdateTensorsEncodingStage(te.core.AdaptiveEncodingStageInterface):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test.main()
+  test_utils.main()

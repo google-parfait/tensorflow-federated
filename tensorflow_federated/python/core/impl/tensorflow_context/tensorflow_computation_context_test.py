@@ -14,7 +14,7 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -22,7 +22,7 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 
-class TensorFlowComputationContextTest(test.TestCase):
+class TensorFlowComputationContextTest(test_utils.TestCase):
 
   def test_invoke_raises_value_error_with_federated_computation(self):
 
@@ -73,4 +73,4 @@ class TensorFlowComputationContextTest(test.TestCase):
     self.assertEqual(result, 13)
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 
 
-class TestUtilsTest(test.TestCase):
+class TestUtilsTest(test_utils.TestCase):
 
   def test_nested_structures_are_same_where_they_are_same(self):
-    test.assert_nested_struct_eq({'a': 10}, {'a': 10})
+    test_utils.assert_nested_struct_eq({'a': 10}, {'a': 10})
 
   def test_nested_structures_are_same_where_nesting_differs(self):
     with self.assertRaises(ValueError):  # pylint: disable=g-error-prone-assert-raises
-      test.assert_nested_struct_eq({'a': 10}, 10)
+      test_utils.assert_nested_struct_eq({'a': 10}, 10)
 
   def test_nested_structures_are_same_where_values_differ(self):
     with self.assertRaises(ValueError):  # pylint: disable=g-error-prone-assert-raises
-      test.assert_nested_struct_eq({'a': 10}, {'a': False})
+      test_utils.assert_nested_struct_eq({'a': 10}, {'a': False})
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

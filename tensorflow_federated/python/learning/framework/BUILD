@@ -53,7 +53,7 @@ py_cpu_and_gpu_test(
     deps = [
         ":encoding_utils",
         ":optimizer_utils",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
@@ -87,7 +87,7 @@ py_cpu_and_gpu_test(
     srcs_version = "PY3",
     deps = [
         ":optimizer_utils",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",

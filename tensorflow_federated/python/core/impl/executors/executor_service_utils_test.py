@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.proto.v0 import executor_pb2
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import executor_service_utils
@@ -74,7 +74,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
           5, computation_types.SequenceType(tf.float32))
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test.skip_test_for_gpu
+  @test_utils.skip_test_for_gpu
   def test_serialize_deserialize_sequence_of_scalars(self):
     ds = tf.data.Dataset.range(5).map(lambda x: x * 2)
     value_proto, value_type = executor_service_utils.serialize_value(
@@ -86,7 +86,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
     self.assertAllEqual(list(y), [x * 2 for x in range(5)])
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test.skip_test_for_gpu
+  @test_utils.skip_test_for_gpu
   def test_serialize_deserialize_sequence_of_tuples(self):
     ds = tf.data.Dataset.range(5).map(
         lambda x: (x * 2, tf.cast(x, tf.int32), tf.cast(x - 1, tf.float32)))
@@ -104,7 +104,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
         self.evaluate(list(y)), [(x * 2, x, x - 1.) for x in range(5)])
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test.skip_test_for_gpu
+  @test_utils.skip_test_for_gpu
   def test_serialize_deserialize_sequence_of_namedtuples(self):
     test_tuple_type = collections.namedtuple('TestTuple', ['a', 'b', 'c'])
 
@@ -135,7 +135,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
       self.assertAllClose(actual, expected)
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test.skip_test_for_gpu
+  @test_utils.skip_test_for_gpu
   def test_serialize_deserialize_sequence_of_nested_structures(self):
     test_tuple_type = collections.namedtuple('TestTuple', ['u', 'v'])
 
@@ -252,7 +252,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
     self.assertEqual(y, 10)
 
 
-class DatasetSerializationTest(test.TestCase):
+class DatasetSerializationTest(test_utils.TestCase):
 
   def test_serialize_sequence_not_a_dataset(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*Dataset.* found int'):

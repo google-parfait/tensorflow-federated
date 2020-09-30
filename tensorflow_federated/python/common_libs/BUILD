@@ -46,22 +46,6 @@ py_test(
 )
 
 py_library(
-    name = "structure",
-    srcs = ["structure.py"],
-    srcs_version = "PY3",
-    deps = [":py_typecheck"],
-)
-
-py_test(
-    name = "structure_test",
-    size = "small",
-    srcs = ["structure_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":structure"],
-)
-
-py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
     srcs_version = "PY3",
@@ -102,19 +86,35 @@ py_test(
 )
 
 py_library(
-    name = "test",
+    name = "structure",
+    srcs = ["structure.py"],
+    srcs_version = "PY3",
+    deps = [":py_typecheck"],
+)
+
+py_test(
+    name = "structure_test",
+    size = "small",
+    srcs = ["structure_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":structure"],
+)
+
+py_library(
+    name = "test_utils",
     testonly = True,
-    srcs = ["test.py"],
+    srcs = ["test_utils.py"],
     srcs_version = "PY3",
 )
 
 py_test(
-    name = "test_test",
+    name = "test_utils_test",
     size = "small",
-    srcs = ["test_test.py"],
+    srcs = ["test_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":test"],
+    deps = [":test_utils"],
 )
 
 py_library(

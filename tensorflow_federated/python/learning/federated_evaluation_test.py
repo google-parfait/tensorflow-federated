@@ -19,7 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.backends.native import execution_contexts
@@ -105,7 +105,7 @@ def _model_fn_from_keras():
       metrics=[tf.keras.metrics.Accuracy()])
 
 
-class FederatedEvaluationTest(test.TestCase, parameterized.TestCase):
+class FederatedEvaluationTest(test_utils.TestCase, parameterized.TestCase):
 
   def test_federated_evaluation(self):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
@@ -189,4 +189,4 @@ class FederatedEvaluationTest(test.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test.main()
+  test_utils.main()

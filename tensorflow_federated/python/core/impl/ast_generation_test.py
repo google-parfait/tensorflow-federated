@@ -14,7 +14,7 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -22,7 +22,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 # TODO(b/146086870) Move more tests into this file
 
 
-class AstGenerationTest(test.TestCase):
+class AstGenerationTest(test_utils.TestCase):
 
   def formatted_computation(self, comp):
     self.assertIsInstance(comp, computation_impl.ComputationImpl)
@@ -80,4 +80,4 @@ class AstGenerationTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

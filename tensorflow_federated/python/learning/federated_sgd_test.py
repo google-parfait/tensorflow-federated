@@ -19,7 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning import federated_sgd
 from tensorflow_federated.python.learning import keras_utils
@@ -28,7 +28,7 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 
 
-class FederatedSgdTest(test.TestCase, parameterized.TestCase):
+class FederatedSgdTest(test_utils.TestCase, parameterized.TestCase):
 
   def dataset(self):
     # Create a dataset with 4 examples:
@@ -121,7 +121,7 @@ class FederatedSgdTest(test.TestCase, parameterized.TestCase):
       mock_method.assert_called()
 
 
-class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
+class FederatedSGDTffTest(test_utils.TestCase, parameterized.TestCase):
 
   def test_orchestration_execute(self):
     iterative_process = federated_sgd.build_federated_sgd_process(
@@ -219,4 +219,4 @@ class FederatedSGDTffTest(test.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test.main()
+  test_utils.main()

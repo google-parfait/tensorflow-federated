@@ -14,7 +14,7 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -46,7 +46,7 @@ def parse_tff_to_tf(comp):
   return new_comp, transformed
 
 
-class ParseTFFToTFTest(test.TestCase):
+class ParseTFFToTFTest(test_utils.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -362,4 +362,4 @@ if __name__ == '__main__':
   factory = executor_stacks.local_executor_factory()
   context = execution_context.ExecutionContext(executor_fn=factory)
   set_default_context.set_default_context(context)
-  test.main()
+  test_utils.main()

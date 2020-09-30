@@ -53,7 +53,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":execution_contexts",
-        "//tensorflow_federated/python/common_libs:test",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computations",
     ],
 )

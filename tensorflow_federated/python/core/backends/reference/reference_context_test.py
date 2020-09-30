@@ -19,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -31,7 +31,7 @@ from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks as bb
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import test_utils
+from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import placement_literals
@@ -46,7 +46,8 @@ def zero_for(type_spec, context_stack):
       context_stack)
 
 
-class ReferenceContextTest(parameterized.TestCase, test.TestCase):
+class ReferenceContextTest(common_libs_test_utils.TestCase,
+                           parameterized.TestCase):
 
   def test_computed_value(self):
     v = reference_context.ComputedValue(10, tf.int32)
@@ -1294,7 +1295,7 @@ class ReferenceContextTest(parameterized.TestCase, test.TestCase):
     self.assertEqual(add_one(v), 11.0)
 
 
-class UnwrapPlacementIntegrationTest(test.TestCase):
+class UnwrapPlacementIntegrationTest(common_libs_test_utils.TestCase):
 
   def test_unwrap_placement_with_federated_map_executes_correctly(self):
     int_ref = bb.Reference('x', tf.int32)
@@ -1398,7 +1399,7 @@ class UnwrapPlacementIntegrationTest(test.TestCase):
           executable_unwrapped([[k, k * 1., k, k * 1.]]))
 
 
-class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
+class MergeTupleIntrinsicsIntegrationTest(common_libs_test_utils.TestCase):
 
   def test_merge_tuple_intrinsics_executes_with_federated_aggregate(self):
     value_type = computation_types.FederatedType(tf.int32,
@@ -1436,7 +1437,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     ref_type = computation_types.FederatedType(tf.int32,
                                                placement_literals.SERVER)
     ref = bb.Reference('a', ref_type)
-    fn = test_utils.create_identity_function('b')
+    fn = compiler_test_utils.create_identity_function('b')
     arg = ref
     called_intrinsic = building_block_factory.create_federated_apply(fn, arg)
     tup = bb.Struct((called_intrinsic, called_intrinsic))
@@ -1473,7 +1474,7 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
     ref_type = computation_types.FederatedType(tf.int32,
                                                placement_literals.CLIENTS)
     ref = bb.Reference('a', ref_type)
-    fn = test_utils.create_identity_function('b')
+    fn = compiler_test_utils.create_identity_function('b')
     arg = ref
     called_intrinsic = building_block_factory.create_federated_map(fn, arg)
     tup = bb.Struct((called_intrinsic, called_intrinsic))
@@ -1504,4 +1505,4 @@ class MergeTupleIntrinsicsIntegrationTest(test.TestCase):
 
 if __name__ == '__main__':
   reference_context.set_reference_context()
-  test.main()
+  common_libs_test_utils.main()

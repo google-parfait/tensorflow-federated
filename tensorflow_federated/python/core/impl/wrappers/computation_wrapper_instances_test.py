@@ -21,7 +21,7 @@ import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -41,7 +41,7 @@ def traceback_string():
   return without_linenumber
 
 
-class TensorflowWrapperTest(test.TestCase):
+class TensorflowWrapperTest(test_utils.TestCase):
 
   def test_invoke_with_typed_lambda(self):
     foo = lambda x: x > 10
@@ -402,7 +402,7 @@ class TensorflowWrapperTest(test.TestCase):
                           traceback_string())
 
 
-class FederatedComputationWrapperTest(test.TestCase):
+class FederatedComputationWrapperTest(test_utils.TestCase):
 
   def test_federated_computation_wrapper(self):
 
@@ -437,7 +437,7 @@ class FederatedComputationWrapperTest(test.TestCase):
                           traceback_string())
 
 
-class AssertReturnsTest(test.TestCase):
+class AssertReturnsTest(test_utils.TestCase):
 
   def test_basic_non_tff_function_as_decorator_succeeds(self):
 
@@ -549,7 +549,7 @@ class AssertReturnsTest(test.TestCase):
       return MyAttrs(a=0, b=0)
 
 
-class ToComputationImplTest(test.TestCase):
+class ToComputationImplTest(test_utils.TestCase):
 
   def test_raises_on_none(self):
     with self.assertRaises(TypeError):
@@ -565,4 +565,4 @@ class ToComputationImplTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

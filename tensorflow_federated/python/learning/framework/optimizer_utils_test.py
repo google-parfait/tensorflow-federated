@@ -18,7 +18,7 @@ import functools
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -122,7 +122,7 @@ def _build_test_measured_mean(
       initialize_fn=initialize_comp, next_fn=next_comp)
 
 
-class UtilsTest(test.TestCase):
+class UtilsTest(test_utils.TestCase):
 
   def test_state_with_new_model_weights(self):
     trainable = [np.array([1.0, 2.0]), np.array([[1.0]])]
@@ -171,7 +171,7 @@ class UtilsTest(test.TestCase):
           non_trainable_weights=[np.array(3)])
 
 
-class ModelDeltaOptimizerTest(test.TestCase):
+class ModelDeltaOptimizerTest(test_utils.TestCase):
 
   def test_construction(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
@@ -345,4 +345,4 @@ class ModelDeltaOptimizerTest(test.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test.main()
+  test_utils.main()

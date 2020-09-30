@@ -18,7 +18,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_examples
@@ -27,7 +27,7 @@ from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 
-class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
+class EncodingUtilsTest(test_utils.TestCase, parameterized.TestCase):
   """Tests for utilities for building StatefulFns."""
 
   def test_mean_process_from_model(self):
@@ -50,7 +50,7 @@ class EncodingUtilsTest(test.TestCase, parameterized.TestCase):
     self.assertIsInstance(broadcast_process, measured_process.MeasuredProcess)
 
 
-class IterativeProcessTest(test.TestCase, parameterized.TestCase):
+class IterativeProcessTest(test_utils.TestCase, parameterized.TestCase):
   """End-to-end tests using `tff.templates.IterativeProcess`."""
 
   def _verify_iterative_process(self, iterative_process):
@@ -130,4 +130,4 @@ def _test_encoder_fn(top_level_encoder):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test.main()
+  test_utils.main()

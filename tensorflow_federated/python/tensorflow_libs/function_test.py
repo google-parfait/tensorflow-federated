@@ -14,11 +14,11 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.tensorflow_libs import function
 
 
-class FunctionTest(test.TestCase):
+class FunctionTest(test_utils.TestCase):
 
   def test_is_tf_function(self):
     self.assertTrue(function.is_tf_function(tf.function(lambda x: None)))
@@ -30,4 +30,4 @@ class FunctionTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

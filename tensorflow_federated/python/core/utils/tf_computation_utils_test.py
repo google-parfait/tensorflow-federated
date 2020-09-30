@@ -15,11 +15,11 @@
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.utils import tf_computation_utils
 
 
-class TfComputationUtilsTest(test.TestCase):
+class TfComputationUtilsTest(test_utils.TestCase):
 
   def _assertMatchesVariable(self, var, expected_name, expected_shape,
                              expected_dtype):
@@ -112,4 +112,4 @@ class TfComputationUtilsTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

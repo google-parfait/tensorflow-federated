@@ -15,11 +15,11 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.tensorflow_libs import variable_utils
 
 
-class VariableUtilsTest(test.TestCase):
+class VariableUtilsTest(test_utils.TestCase):
 
   def test_variable_capture(self):
     with variable_utils.record_variable_creation_scope() as variable_list:
@@ -39,4 +39,4 @@ class VariableUtilsTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

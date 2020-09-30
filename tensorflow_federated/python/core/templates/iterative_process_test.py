@@ -14,7 +14,7 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -33,7 +33,7 @@ def test_next_fn(state):
   return state
 
 
-class IterativeProcessTest(test.TestCase):
+class IterativeProcessTest(test_utils.TestCase):
 
   def test_construction_does_not_raise(self):
     try:
@@ -117,4 +117,4 @@ class IterativeProcessTest(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  test_utils.main()

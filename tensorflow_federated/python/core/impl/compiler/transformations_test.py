@@ -14,14 +14,14 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test
+from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.compiler import test_utils
+from tensorflow_federated.python.core.impl.compiler import test_utils as compiler_test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
@@ -29,7 +29,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 
-class RemoveLambdasAndBlocksTest(test.TestCase):
+class RemoveLambdasAndBlocksTest(common_libs_test_utils.TestCase):
 
   def assertNoLambdasOrBlocks(self, comp):
 
@@ -150,7 +150,7 @@ class RemoveLambdasAndBlocksTest(test.TestCase):
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
 
 
-class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
+class TensorFlowCallingLambdaOnConcreteArgTest(common_libs_test_utils.TestCase):
 
   def test_raises_wrong_arguments(self):
     good_param = building_blocks.Reference('x', tf.int32)
@@ -210,7 +210,7 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
         int_constant_type, 0)
     tf_block = transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
         param, body, int_constant)
-    result = test_utils.run_tensorflow(tf_block.function.proto)
+    result = compiler_test_utils.run_tensorflow(tf_block.function.proto)
     self.assertLen(result, 2)
     self.assertEqual(result[0], 0)
     self.assertEqual(result[1], 0)
@@ -226,7 +226,7 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
         int_constant_type, 1)
     tf_block = transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
         param, body, int_constant)
-    result = test_utils.run_tensorflow(tf_block.function.proto)
+    result = compiler_test_utils.run_tensorflow(tf_block.function.proto)
     self.assertLen(result, 2)
     self.assertEqual(result[0], 1.)
     self.assertEqual(result[1], 1)
@@ -239,12 +239,13 @@ class TensorFlowCallingLambdaOnConcreteArgTest(test.TestCase):
         'y', computation_types.SequenceType(tf.int32))
     tf_block = transformations.construct_tensorflow_calling_lambda_on_concrete_arg(
         param, body, sequence_ref)
-    result = test_utils.run_tensorflow(tf_block.function.proto, list(range(5)))
+    result = compiler_test_utils.run_tensorflow(tf_block.function.proto,
+                                                list(range(5)))
     self.assertLen(result, 1)
     self.assertAllEqual(result[0], list(range(5)))
 
 
-class BlockLocalsTFGraphTest(test.TestCase):
+class BlockLocalsTFGraphTest(common_libs_test_utils.TestCase):
 
   def test_raises_with_naked_graph_as_block_local(self):
     tensor_type = computation_types.TensorType(tf.int32)
@@ -315,10 +316,10 @@ class BlockLocalsTFGraphTest(test.TestCase):
         building_blocks.Struct([ref_to_second_call, ref_to_second_call]))
     tf_representing_block, _ = transformations.create_tensorflow_representing_block(
         block)
-    result_ones = test_utils.run_tensorflow(
+    result_ones = compiler_test_utils.run_tensorflow(
         tf_representing_block.function.proto, 1)
     self.assertAllEqual(result_ones, [1, 1])
-    result_zeros = test_utils.run_tensorflow(
+    result_zeros = compiler_test_utils.run_tensorflow(
         tf_representing_block.function.proto, 0)
     self.assertAllEqual(result_zeros, [0, 0])
 
@@ -370,7 +371,8 @@ class BlockLocalsTFGraphTest(test.TestCase):
         building_blocks.Struct([ref_to_second_call, ref_to_second_call]))
     tf_representing_block, _ = transformations.create_tensorflow_representing_block(
         block)
-    result = test_utils.run_tensorflow(tf_representing_block.function.proto)
+    result = compiler_test_utils.run_tensorflow(
+        tf_representing_block.function.proto)
     self.assertAllEqual(result, [1, 1])
 
   def test_returns_single_called_graph_with_selection_in_result(self):
@@ -434,10 +436,10 @@ class BlockLocalsTFGraphTest(test.TestCase):
     block = building_blocks.Block(block_locals, ref_to_second_call)
     tf_representing_block, _ = transformations.create_tensorflow_representing_block(
         block)
-    result_one = test_utils.run_tensorflow(tf_representing_block.function.proto,
-                                           1)
+    result_one = compiler_test_utils.run_tensorflow(
+        tf_representing_block.function.proto, 1)
     self.assertEqual(result_one, 1)
-    result_zero = test_utils.run_tensorflow(
+    result_zero = compiler_test_utils.run_tensorflow(
         tf_representing_block.function.proto, 0)
     self.assertEqual(result_zero, 0)
 
@@ -491,7 +493,7 @@ class BlockLocalsTFGraphTest(test.TestCase):
     self.assertEqual((tuple_ops_with_10_ids - tuple_ops_with_5_ids) / 5, 2)
 
 
-class DeduplicateCalledGraphsTest(test.TestCase):
+class DeduplicateCalledGraphsTest(common_libs_test_utils.TestCase):
 
   def test_raises_bad_type(self):
     with self.assertRaises(TypeError):
@@ -599,12 +601,12 @@ class DeduplicateCalledGraphsTest(test.TestCase):
     self.assertEqual(first_factor, second_factor)
 
 
-class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
+class DedupeAndMergeTupleIntrinsicsTest(common_libs_test_utils.TestCase):
 
   def test_noops_in_case_of_distinct_maps(self):
-    called_intrinsic1 = test_utils.create_dummy_called_federated_map(
+    called_intrinsic1 = compiler_test_utils.create_dummy_called_federated_map(
         parameter_name='a', parameter_type=tf.int32)
-    called_intrinsic2 = test_utils.create_dummy_called_federated_map(
+    called_intrinsic2 = compiler_test_utils.create_dummy_called_federated_map(
         parameter_name='a', parameter_type=tf.float32)
     calls = building_blocks.Struct((called_intrinsic1, called_intrinsic2))
     comp = calls
@@ -620,9 +622,9 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
                      directly_merged_comp.compact_representation())
 
   def test_noops_in_case_of_distinct_applies(self):
-    called_intrinsic1 = test_utils.create_dummy_called_federated_apply(
+    called_intrinsic1 = compiler_test_utils.create_dummy_called_federated_apply(
         parameter_name='a', parameter_type=tf.int32)
-    called_intrinsic2 = test_utils.create_dummy_called_federated_apply(
+    called_intrinsic2 = compiler_test_utils.create_dummy_called_federated_apply(
         parameter_name='a', parameter_type=tf.float32)
     calls = building_blocks.Struct((called_intrinsic1, called_intrinsic2))
     comp = calls
@@ -638,7 +640,8 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
                      directly_merged_comp.compact_representation())
 
   def test_constructs_broadcast_of_tuple_with_one_element(self):
-    called_intrinsic = test_utils.create_dummy_called_federated_broadcast()
+    called_intrinsic = compiler_test_utils.create_dummy_called_federated_broadcast(
+    )
     calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
 
@@ -685,9 +688,9 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         '>)))')
 
   def test_dedupe_noops_in_case_of_distinct_broadcasts(self):
-    called_intrinsic1 = test_utils.create_dummy_called_federated_broadcast(
+    called_intrinsic1 = compiler_test_utils.create_dummy_called_federated_broadcast(
         tf.int32)
-    called_intrinsic2 = test_utils.create_dummy_called_federated_broadcast(
+    called_intrinsic2 = compiler_test_utils.create_dummy_called_federated_broadcast(
         tf.float32)
     calls = building_blocks.Struct((called_intrinsic1, called_intrinsic2))
     comp = calls
@@ -704,7 +707,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
                      directly_merged_comp.compact_representation())
 
   def test_constructs_aggregate_of_tuple_with_one_element(self):
-    called_intrinsic = test_utils.create_dummy_called_federated_aggregate(
+    called_intrinsic = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -786,13 +789,13 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         '>)))')
 
   def test_identical_to_merge_tuple_intrinsics_with_different_intrinsics(self):
-    called_intrinsic1 = test_utils.create_dummy_called_federated_aggregate(
+    called_intrinsic1 = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c',
         value_type=tf.int32)
     # These compare as not equal.
-    called_intrinsic2 = test_utils.create_dummy_called_federated_aggregate(
+    called_intrinsic2 = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='x',
         merge_parameter_name='y',
         report_parameter_name='z',
@@ -903,7 +906,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test.TestCase):
         '{<int32>}@CLIENTS')
 
 
-class TensorFlowGeneratorTest(test.TestCase):
+class TensorFlowGeneratorTest(common_libs_test_utils.TestCase):
 
   def test_passes_on_tf(self):
     tf_comp = building_block_factory.create_compiled_identity(
@@ -1065,7 +1068,7 @@ class TensorFlowGeneratorTest(test.TestCase):
     self.assertEqual(first_factor, second_factor)
 
 
-class TestTransformToCallDominantForm(test.TestCase):
+class TestTransformToCallDominantForm(common_libs_test_utils.TestCase):
 
   def test_handles_called_lambda_returning_function(self):
     lower_level_lambda = building_blocks.Lambda(
@@ -1105,7 +1108,7 @@ class TestTransformToCallDominantForm(test.TestCase):
                           [r'\(let _([a-z]{3})1=a in _(\1)1\)'])
 
   def test_extracts_called_intrinsics_to_block(self):
-    called_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    called_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -1126,11 +1129,11 @@ class TestTransformToCallDominantForm(test.TestCase):
             intrinsic_defs.FEDERATED_AGGREGATE.uri))
 
   def test_deduplicates_called_intrinsics(self):
-    called_aggregate1 = test_utils.create_dummy_called_federated_aggregate(
+    called_aggregate1 = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    called_aggregate2 = test_utils.create_dummy_called_federated_aggregate(
+    called_aggregate2 = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -1151,12 +1154,12 @@ class TestTransformToCallDominantForm(test.TestCase):
             intrinsic_defs.FEDERATED_AGGREGATE.uri))
 
   def test_hoists_aggregations_packed_in_tuple(self):
-    called_aggregate1 = test_utils.create_dummy_called_federated_aggregate(
+    called_aggregate1 = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c',
         value_type=tf.int32)
-    called_aggregate2 = test_utils.create_dummy_called_federated_aggregate(
+    called_aggregate2 = compiler_test_utils.create_dummy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c',
@@ -1212,4 +1215,4 @@ class TestTransformToCallDominantForm(test.TestCase):
 
 
 if __name__ == '__main__':
-  test.main()
+  common_libs_test_utils.main()
