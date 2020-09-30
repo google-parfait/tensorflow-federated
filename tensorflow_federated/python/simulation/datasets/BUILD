@@ -38,10 +38,15 @@ py_test(
     name = "cifar100_test",
     size = "medium",
     srcs = ["cifar100_test.py"],
-    local = True,
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = ["nopresubmit"],
+    tags = [
+        "external",
+        "guitar",
+        "manual",
+        "nokokoro",
+        "notap",
+    ],
     deps = [":cifar100"],
 )
 
