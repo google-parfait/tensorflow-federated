@@ -310,9 +310,14 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       py_typecheck.check_type(v, executor_value_base.ExecutorValue)
     self._check_strategy_compatible_with_placement(val_type.placement)
     children = self._target_executors[val_type.placement]
-    fns = await asyncio.gather(*[c.create_value(fn, fn_type) for c in children])
+
+    async def _map_child(fn, fn_type, value, child):
+      fn_at_child = await child.create_value(fn, fn_type)
+      return await child.create_call(fn_at_child, value)
+
     results = await asyncio.gather(*[
-        c.create_call(f, v) for c, (f, v) in zip(children, list(zip(fns, val)))
+        _map_child(fn, fn_type, value, child)
+        for (value, child) in zip(val, children)
     ])
     return FederatedResolvingStrategyValue(
         results,
@@ -493,7 +498,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     async def _move(v):
       return await child.create_value(await v.compute(), item_type)
 
-    items = await asyncio.gather(*[_move(v) for v in val])
+    item_futures = asyncio.as_completed([_move(v) for v in val])
 
     zero = await child.create_value(
         await (await self._executor.create_selection(arg, index=1)).compute(),
@@ -501,7 +506,8 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     op = await child.create_value(arg.internal_representation[2], op_type)
 
     result = zero
-    for item in items:
+    for item_future in item_futures:
+      item = await item_future
       result = await child.create_call(
           op, await
           child.create_struct(structure.Struct([(None, result), (None, item)])))
