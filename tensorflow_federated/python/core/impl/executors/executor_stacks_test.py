@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -259,6 +260,7 @@ class ExecutorStacksTest(parameterized.TestCase):
       ('sizing_executor_three_clients',
        executor_stacks.sizing_executor_factory(num_clients=3)),
   )
+  @test_utils.skip_test_for_multi_gpu
   def test_execution_of_temperature_sensor_example(self, executor):
     comp = _temperature_sensor_example_next_fn()
     to_float = lambda x: tf.cast(x, tf.float32)

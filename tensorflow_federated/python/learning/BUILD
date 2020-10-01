@@ -247,6 +247,9 @@ py_cpu_and_gpu_test(
     srcs = ["personalization_eval_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    # TODO(b/160896627): Kokoro GPU tests provide multi-GPU environment by default,
+    # bring back the Kokoro tests after we fix the dataset.reduce issue
+    tags = ["nokokoro"],
     deps = [
         ":keras_utils",
         ":model_examples",

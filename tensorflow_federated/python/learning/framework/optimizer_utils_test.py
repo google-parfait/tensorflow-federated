@@ -297,6 +297,7 @@ class ModelDeltaOptimizerTest(test_utils.TestCase):
             next_type.result[0].member.model_broadcast_state,
             placements.SERVER), expected_broadcast_state_type)
 
+  @test_utils.skip_test_for_multi_gpu
   def test_orchestration_execute_measured_process(self):
     model_weights_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression)

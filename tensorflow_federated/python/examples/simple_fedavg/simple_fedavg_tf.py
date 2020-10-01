@@ -207,7 +207,10 @@ def client_update(model, dataset, server_message, client_optimizer):
 
   num_examples = tf.constant(0, dtype=tf.int32)
   loss_sum = tf.constant(0, dtype=tf.float32)
-  for batch in dataset:
+  # Explicit use `iter` for dataset is a trick that makes TFF more robust in
+  # GPU simulation and slightly more performant in the unconventional usage
+  # of large number of small datasets.
+  for batch in iter(dataset):
     with tf.GradientTape() as tape:
       outputs = model.forward_pass(batch)
     grads = tape.gradient(outputs.loss, model_weights.trainable)

@@ -65,6 +65,7 @@ class FederatedAveragingClientWithModelTest(test_utils.TestCase,
 
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))
+  @test_utils.skip_test_for_multi_gpu
   def test_client_tf(self, simulation):
     model = self.create_model()
     dataset = self.create_dataset()
@@ -123,6 +124,7 @@ class FederatedAveragingClientWithModelTest(test_utils.TestCase,
       dataset_reduce,
       '_dataset_reduce_fn',
       wraps=dataset_reduce._dataset_reduce_fn)
+  @test_utils.skip_test_for_multi_gpu
   def test_client_tf_dataset_reduce_fn(self, simulation, mock_method):
     model = self.create_model()
     dataset = self.create_dataset()

@@ -400,6 +400,7 @@ py_cpu_and_gpu_test(
         ":executor_factory",
         ":executor_stacks",
         ":executor_test_utils",
+        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",

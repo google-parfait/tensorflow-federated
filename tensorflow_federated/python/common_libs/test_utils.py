@@ -116,3 +116,25 @@ def create_logical_multi_gpus(memory_limit=128):
         tf.config.LogicalDeviceConfiguration(memory_limit=memory_limit),
         tf.config.LogicalDeviceConfiguration(memory_limit=memory_limit)
     ])
+
+
+# TODO(b/160896627): Kokoro GPU tests provide multi-GPU environment by default,
+# we use this decorator to skip dataset.reduce in multi-GPU environment.
+def skip_test_for_multi_gpu(test_fn):
+  """Decorator for a test to be skipped in multi GPU environment.
+
+  Args:
+    test_fn: A test function to be decorated.
+
+  Returns:
+    The decorated test_fn.
+  """
+
+  @functools.wraps(test_fn)
+  def wrapped_test_fn(self, *args, **kwargs):
+    gpu_devices = tf.config.list_logical_devices('GPU')
+    if len(gpu_devices) > 1:
+      self.skipTest('skip GPU test')
+    test_fn(self, *args, **kwargs)
+
+  return wrapped_test_fn

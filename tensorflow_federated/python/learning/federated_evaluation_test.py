@@ -132,6 +132,7 @@ class FederatedEvaluationTest(test_utils.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))
+  @test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_with_keras(self, simulation):
 
     evaluate_comp = federated_evaluation.build_federated_evaluation(
@@ -162,6 +163,7 @@ class FederatedEvaluationTest(test_utils.TestCase, parameterized.TestCase):
       dataset_reduce,
       '_dataset_reduce_fn',
       wraps=dataset_reduce._dataset_reduce_fn)
+  @test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_dataset_reduce(self, simulation, mock_method):
     evaluate_comp = federated_evaluation.build_federated_evaluation(
         _model_fn_from_keras, use_experimental_simulation_loop=simulation)
