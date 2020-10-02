@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import collections
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -624,6 +625,51 @@ class TestCheckValidFederatedWeightedMeanArgumentTupleTypeTest(
       type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(
           computation_types.StructType(
               [computation_types.at_clients(tf.int32)] * 2))
+
+
+class CountTensorsInTypeTest(absltest.TestCase):
+
+  def test_raises_non_type(self):
+    with self.assertRaises(TypeError):
+      type_analysis.count_tensors_in_type(0)
+
+  def test_counts_all_tensors_no_filter(self):
+    struct_type = computation_types.StructType([
+        ('a', computation_types.TensorType(tf.int32, shape=[2, 2])),
+        ('b', computation_types.TensorType(tf.int32, shape=[2, 1]))
+    ])
+
+    tensors_and_param_count = type_analysis.count_tensors_in_type(struct_type)
+
+    expected_tensors_and_param_count = collections.OrderedDict(
+        num_tensors=2, parameters=6, num_unspecified_tensors=0)
+    self.assertEqual(tensors_and_param_count, expected_tensors_and_param_count)
+
+  def test_skips_unspecified_params(self):
+    struct_type = computation_types.StructType([
+        ('a', computation_types.TensorType(tf.int32, shape=[2, 2])),
+        ('b', computation_types.TensorType(tf.int32, shape=[None, 1]))
+    ])
+
+    tensors_and_param_count = type_analysis.count_tensors_in_type(struct_type)
+
+    expected_tensors_and_param_count = collections.OrderedDict(
+        num_tensors=2, parameters=4, num_unspecified_tensors=1)
+    self.assertEqual(tensors_and_param_count, expected_tensors_and_param_count)
+
+  def test_tensor_filter_only_counts_matching_tensors(self):
+    struct_type = computation_types.StructType([
+        ('a', computation_types.TensorType(tf.float32, shape=[2, 2])),
+        ('b', computation_types.TensorType(tf.int32, shape=[2, 1]))
+    ])
+    tensor_filter = lambda tensor_type: tensor_type.dtype == tf.float32
+
+    tensors_and_param_count = type_analysis.count_tensors_in_type(
+        struct_type, tensor_filter)
+
+    expected_tensors_and_param_count = collections.OrderedDict(
+        num_tensors=1, parameters=4, num_unspecified_tensors=0)
+    self.assertEqual(tensors_and_param_count, expected_tensors_and_param_count)
 
 
 if __name__ == '__main__':

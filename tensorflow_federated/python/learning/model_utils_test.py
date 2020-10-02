@@ -15,6 +15,7 @@
 
 These tests also serve as examples for users who are familiar with Keras.
 """
+import collections
 
 import tensorflow as tf
 
@@ -148,6 +149,28 @@ class WeightsTypeFromModelTest(test_utils.TestCase):
               computation_types.StructWithPythonType([
                   computation_types.TensorType(tf.int32),
               ], list))], model_utils.ModelWeights), weights_type)
+
+
+class ParamCountFromModelTest(test_utils.TestCase):
+
+  def test_fails_not_model(self):
+    with self.assertRaises(TypeError):
+      model_utils.parameter_count_from_model(0)
+    with self.assertRaises(TypeError):
+      model_utils.parameter_count_from_model(lambda: 0)
+
+  def test_returns_model_weights_for_model(self):
+    model = TestModel()
+    parameter_count_dict = model_utils.parameter_count_from_model(model)
+    expected_parameter_count = collections.OrderedDict(
+        num_tensors=2, parameters=4, num_unspecified_tensors=0)
+    self.assertEqual(expected_parameter_count, parameter_count_dict)
+
+  def test_returns_model_weights_for_model_callable(self):
+    parameter_count_dict = model_utils.parameter_count_from_model(TestModel)
+    expected_parameter_count = collections.OrderedDict(
+        num_tensors=2, parameters=4, num_unspecified_tensors=0)
+    self.assertEqual(expected_parameter_count, parameter_count_dict)
 
 
 if __name__ == '__main__':

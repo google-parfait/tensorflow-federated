@@ -22,6 +22,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
 
@@ -99,6 +100,17 @@ def weights_type_from_model(
       model = model()
   py_typecheck.check_type(model, model_lib.Model)
   return type_conversions.type_from_tensors(ModelWeights.from_model(model))
+
+
+def parameter_count_from_model(
+    model: Union[model_lib.Model, Callable[[], model_lib.Model]]
+) -> collections.OrderedDict:
+  """Computes count of trainable parameters for a `model`."""
+  weights_type = weights_type_from_model(model)
+  trainable_weights_type = weights_type.trainable
+  tensors_and_params = type_analysis.count_tensors_in_type(
+      trainable_weights_type)
+  return tensors_and_params
 
 
 def enhance(model):

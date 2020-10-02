@@ -638,3 +638,48 @@ def check_valid_federated_weighted_mean_argument_tuple_type(
   py_typecheck.check_type(w_type, computation_types.TensorType)
   if w_type.shape.ndims != 0:
     raise TypeError('Expected scalar weight, got {}.'.format(w_type))
+
+
+def count_tensors_in_type(
+    type_spec: computation_types.Type,
+    tensor_filter: Optional[Callable[[computation_types.TensorType],
+                                     bool]] = None
+) -> collections.OrderedDict:
+  """Counts tensors and fully-specified elements under `type_spec`.
+
+  Args:
+    type_spec: Instance of `computation_types.Type` to count tensors under.
+    tensor_filter: Optional filtering function. Callable which takes an argument
+      of type `computation_types.TensorType` and returns a boolean. If
+      specified, only tensor type which pass this filter (IE, on which this
+      function returns `True`) will be counted.
+
+  Returns:
+    A `collections.OrderedDict` with three parameters. The first, `tensors`, is
+    the count of all `computation_types.TensorType` (passing `tensor_filter`
+    if this argument is specified). The second, `parameters`, is the count
+    of all fully-specified parameters of these tensors. Note that this implies
+    any tensor with a `None` dimension (IE, of unspecified size) will not be
+    counted. The third counts how many tensors fall into this category (that
+    is, now many have unspecified size).
+  """
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  if tensor_filter is None:
+    tensor_filter = lambda _: True
+  py_typecheck.check_callable(tensor_filter)
+
+  tensors_and_params = collections.OrderedDict(
+      num_tensors=0, parameters=0, num_unspecified_tensors=0)
+
+  def _capture_tensors(type_signature):
+    if type_signature.is_tensor() and tensor_filter(type_signature):
+      tensors_and_params['num_tensors'] += 1
+      num_parameters = type_signature.shape.num_elements()
+      if num_parameters is not None:
+        tensors_and_params['parameters'] += num_parameters
+      else:
+        tensors_and_params['num_unspecified_tensors'] += 1
+    return type_signature, False
+
+  type_transformations.transform_type_postorder(type_spec, _capture_tensors)
+  return tensors_and_params
