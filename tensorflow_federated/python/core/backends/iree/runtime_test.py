@@ -44,7 +44,7 @@ class RuntimeTest(tf.test.TestCase):
     with tempfile.TemporaryDirectory() as model_dir:
       save_options = tf.saved_model.SaveOptions(save_debug_info=True)
       tf.saved_model.save(tf_module, model_dir, options=save_options)
-      iree_compiler_module = iree_compiler.tf_load_saved_model(
+      iree_compiler_module = iree_compiler.tf_saved_model_to_compiler_module(
           model_dir, exported_names=['foo'])
     my_computation_module = computation_module.ComputationModule(
         iree_compiler_module, 'foo',

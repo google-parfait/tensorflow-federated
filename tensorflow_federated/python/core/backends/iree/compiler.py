@@ -124,6 +124,6 @@ def import_tensorflow_computation(comp, name='fn'):
             legacy_init_op=initializer,
             strip_default_attrs=True)
         builder.save()
-      iree_module = iree_compiler.tf_load_signature_def_saved_model(
-          model_dir, tags=set(['unused']), exported_names=[name])
+      iree_module = iree_compiler.tf_signature_def_saved_model_to_compiler_module(
+          model_dir, saved_model_tags=set(['unused']), exported_names=[name])
       return computation_module.ComputationModule(iree_module, name, type_spec)
