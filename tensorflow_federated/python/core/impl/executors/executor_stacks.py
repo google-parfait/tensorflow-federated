@@ -226,7 +226,7 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
 
 
 def _wrap_executor_in_threading_stack(ex: executor_base.Executor,
-                                      use_caching: Optional[bool] = True,
+                                      use_caching: Optional[bool] = False,
                                       can_resolve_references=True):
   threaded_ex = thread_delegating_executor.ThreadDelegatingExecutor(ex)
   if use_caching:
@@ -600,7 +600,7 @@ def local_executor_factory(
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   unplaced_ex_factory = UnplacedExecutorFactory(
-      use_caching=True,
+      use_caching=False,
       server_device=server_tf_device,
       client_devices=client_tf_devices)
   federating_executor_factory = FederatingExecutorFactory(
@@ -723,7 +723,7 @@ def sizing_executor_factory(
     py_typecheck.check_type(num_clients, int)
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
-  unplaced_ex_factory = UnplacedExecutorFactory(use_caching=True)
+  unplaced_ex_factory = UnplacedExecutorFactory(use_caching=False)
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
@@ -811,7 +811,7 @@ def remote_executor_factory(channels,
     return [_wrap_executor_in_threading_stack(e) for e in remote_executors]
 
   flat_stack_fn = _configure_remote_workers
-  unplaced_ex_factory = UnplacedExecutorFactory(use_caching=True)
+  unplaced_ex_factory = UnplacedExecutorFactory(use_caching=False)
   composing_executor_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
