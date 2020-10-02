@@ -35,26 +35,28 @@ class AdaptiveZeroingMetrics(object):
   """Structure metrics returned by adaptive zeroing mean prcoess.
 
   Attributes:
-    current_threshold: A float. The current zeroing threshold.
+    zeroing_threshold: A float. The value of the norm over which updates will
+      be zeroed.
     num_zeroed: An integer. The number of updates that were zeroed this round.
   """
-  current_threshold: float
+  zeroing_threshold: float
   num_zeroed: int
 
 
 def build_adaptive_zeroing_mean_process(
     value_type: ValueType,
-    initial_threshold: float,
+    initial_quantile_estimate: float,
     target_quantile: float,
     multiplier: float,
+    increment: float,
     learning_rate: float,
     norm_order: float,
 ):
   """Builds `tff.templates.MeasuredProcess` for averaging with adaptive zeroing.
 
   The returned `MeasuredProcess` averages values after zeroing out any values
-  whose norm is greater than `C * r` where C is adapted to approximate the q'th
-  quantile of the distribution of value norms. Its `next` function has the
+  whose norm is greater than `C * r + i` where C is adapted to approximate the
+  q'th quantile of the distribution of value norms. Its `next` function has the
   following type signature:
 
   (<{state_type}@SERVER,{value_type}@CLIENTS,{float32}@CLIENTS> ->
@@ -65,15 +67,17 @@ def build_adaptive_zeroing_mean_process(
     value_type: The type of values to be averaged by the `MeasuredProcess`. Can
       be a `tff.TensorType` or a nested structure of `tff.StructType` that
       bottoms out in `tff.TensorType`.
-    initial_threshold: The initial value of C * r. Values with norm greater than
-      this will be zeroed out.
-    target_quantile: The target quantile q. The adaptive process ensures that C
-      will approximate the q'th quantile of the distribution of value norms.
-    multiplier: The multiplier r of the quantile estimate C.
-    learning_rate: The learning rate l for the adaptive process. If the observed
-      fraction of values whose norm is less than C on a given round is p, then C
-      will be updated according to C *= exp(l * (q - p)). It follows that the
-      maximum possible update is multiplying or dividing by a factor of exp(l).
+    initial_quantile_estimate: The initial value of `C`.
+    target_quantile: The target quantile `q`. The adaptive process ensures that
+      `C` will approximate the `q`'th quantile of the distribution of value
+      norms.
+    multiplier: The multiplier `r` of the quantile estimate `C`.
+    increment: The increment `i` in the computation of the zeroing threshold.
+    learning_rate: The learning rate `l` for the adaptive process. If the
+      observed fraction of values whose norm is less than `C` on a given round
+      is `p`, then `C` will be updated according to `C *= exp(l * (q - p))`. It
+      follows that the maximum possible update is multiplying or dividing by a
+      factor of `exp(l)`.
     norm_order: The order of the norm. May be 1, 2, or np.inf.
 
   Returns:
@@ -87,9 +91,7 @@ def build_adaptive_zeroing_mean_process(
 
   if isinstance(value_type, computation_types.StructType):
     if not value_type:
-      raise ValueError("value_type cannot be empty.")
-
-  initial_quantile_estimate = initial_threshold / multiplier
+      raise ValueError('value_type cannot be empty.')
 
   quantile_query = tensorflow_privacy.NoPrivacyQuantileEstimatorQuery(
       initial_estimate=initial_quantile_estimate,
@@ -120,7 +122,7 @@ def build_adaptive_zeroing_mean_process(
     norm = tf.norm(tf.concat(tree.flatten(vectors), axis=0), ord=norm_order)
     quantile_record = quantile_query.preprocess_record(params, norm)
 
-    threshold = params.current_estimate * multiplier
+    threshold = params.current_estimate * multiplier + increment
     too_large = (norm > threshold)
     adj_weight = tf.cond(too_large, lambda: tf.constant(0.0), lambda: weight)
 
@@ -136,7 +138,7 @@ def build_adaptive_zeroing_mean_process(
   def next_quantile(quantile_sum, global_state):
     new_estimate, new_global_state = quantile_query.get_noised_result(
         quantile_sum, global_state)
-    new_threshold = new_estimate * multiplier
+    new_threshold = new_estimate * multiplier + increment
     return new_threshold, new_global_state
 
   @computations.tf_computation(value_type, tf.float32)

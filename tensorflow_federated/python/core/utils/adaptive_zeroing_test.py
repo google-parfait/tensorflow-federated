@@ -54,7 +54,13 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
   def test_process_type_signature(self, value_template):
     value_type = type_conversions.type_from_tensors(value_template)
     mean_process = adaptive_zeroing.build_adaptive_zeroing_mean_process(
-        value_type, 100.0, 0.99, 2.0, 1.0, np.inf)
+        value_type=value_type,
+        initial_quantile_estimate=100.0,
+        target_quantile=0.99,
+        multiplier=2.0,
+        increment=1.0,
+        learning_rate=1.0,
+        norm_order=np.inf)
 
     dummy_quantile_query = tensorflow_privacy.NoPrivacyQuantileEstimatorQuery(
         50.0, 0.99, 1.0, True)
@@ -76,7 +82,7 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
         value_type, placements.SERVER)
     server_metrics_type = computation_types.FederatedType(
         adaptive_zeroing.AdaptiveZeroingMetrics(
-            current_threshold=tf.float32, num_zeroed=tf.int32),
+            zeroing_threshold=tf.float32, num_zeroed=tf.int32),
         placements.SERVER)
     self.assertTrue(
         mean_process.next.type_signature.is_equivalent_to(
@@ -95,14 +101,26 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     value_type = type_conversions.type_from_tensors(())
     with self.assertRaises(ValueError):
       adaptive_zeroing.build_adaptive_zeroing_mean_process(
-          value_type, 100.0, 0.99, 2.0, 1.0, np.inf)
+          value_type=value_type,
+          initial_quantile_estimate=100.0,
+          target_quantile=0.99,
+          multiplier=2.0,
+          increment=1.0,
+          learning_rate=1.0,
+          norm_order=np.inf)
 
   @parameterized.named_parameters(test_value_types)
   def test_simple_average(self, shapes):
 
     value_type = type_conversions.type_from_tensors(_make_value(0, shapes))
     mean_process = adaptive_zeroing.build_adaptive_zeroing_mean_process(
-        value_type, 100.0, 1.0, 1.0, 0.0, np.inf)
+        value_type=value_type,
+        initial_quantile_estimate=100.0,
+        target_quantile=1.0,
+        multiplier=1.0,
+        increment=0.0,
+        learning_rate=0.0,
+        norm_order=np.inf)
 
     # Basic average.
     global_state = mean_process.initialize()
@@ -110,6 +128,7 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     output = mean_process.next(global_state, values, [1, 1, 1])
     self._check_result(output, 1, shapes)
     metrics = output.measurements
+    self.assertEqual(metrics.zeroing_threshold, 100.0)
     self.assertEqual(metrics.num_zeroed, 0)
 
     # Weighted average.
@@ -118,6 +137,7 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     output = mean_process.next(global_state, values, [1, 2, 3, 2])
     self._check_result(output, 2, shapes)
     metrics = output.measurements
+    self.assertEqual(metrics.zeroing_threshold, 100.0)
     self.assertEqual(metrics.num_zeroed, 0)
 
     # One value zeroed.
@@ -126,6 +146,7 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     output = mean_process.next(global_state, values, [1, 1])
     self._check_result(output, 50, shapes)
     metrics = output.measurements
+    self.assertEqual(metrics.zeroing_threshold, 100.0)
     self.assertEqual(metrics.num_zeroed, 1)
 
     # Both values zeroed.
@@ -134,13 +155,20 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     output = mean_process.next(global_state, values, [1, 1])
     self._check_result(output, 0, shapes)
     metrics = output.measurements
+    self.assertEqual(metrics.zeroing_threshold, 100.0)
     self.assertEqual(metrics.num_zeroed, 2)
 
   @parameterized.named_parameters(test_value_types)
   def test_adaptation_down(self, shapes):
     value_type = type_conversions.type_from_tensors(_make_value(0, shapes))
     mean_process = adaptive_zeroing.build_adaptive_zeroing_mean_process(
-        value_type, 100.0, 0.0, 1.0, np.log(2.0), np.inf)
+        value_type=value_type,
+        initial_quantile_estimate=100.0,
+        target_quantile=0.0,
+        multiplier=1.0,
+        increment=1.0,
+        learning_rate=np.log(2.0),
+        norm_order=np.inf)
 
     global_state = mean_process.initialize()
 
@@ -149,21 +177,27 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     self._check_result(output, 1, shapes)
     global_state = output.state
     metrics = output.measurements
-    self.assertAllClose(metrics.current_threshold, 50.0)
+    self.assertAllClose(metrics.zeroing_threshold, 51.0)
     self.assertEqual(metrics.num_zeroed, 0)
 
     output = mean_process.next(global_state, values, [1, 1, 1])
     self._check_result(output, 1, shapes)
     global_state = output.state
     metrics = output.measurements
-    self.assertAllClose(metrics.current_threshold, 25.0)
+    self.assertAllClose(metrics.zeroing_threshold, 26.0)
     self.assertEqual(metrics.num_zeroed, 0)
 
   @parameterized.named_parameters(test_value_types)
   def test_adaptation_up(self, shapes):
     value_type = type_conversions.type_from_tensors(_make_value(0, shapes))
     mean_process = adaptive_zeroing.build_adaptive_zeroing_mean_process(
-        value_type, 1.0, 1.0, 1.0, np.log(2.0), np.inf)
+        value_type=value_type,
+        initial_quantile_estimate=1.0,
+        target_quantile=1.0,
+        multiplier=1.0,
+        increment=1.0,
+        learning_rate=np.log(2.0),
+        norm_order=np.inf)
 
     global_state = mean_process.initialize()
 
@@ -172,21 +206,27 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     self._check_result(output, 0, shapes)
     global_state = output.state
     metrics = output.measurements
-    self.assertAllClose(metrics.current_threshold, 2.0)
+    self.assertAllClose(metrics.zeroing_threshold, 3.0)
     self.assertEqual(metrics.num_zeroed, 3)
 
     output = mean_process.next(global_state, values, [1, 1, 1])
     self._check_result(output, 0, shapes)
     global_state = output.state
     metrics = output.measurements
-    self.assertAllClose(metrics.current_threshold, 4.0)
+    self.assertAllClose(metrics.zeroing_threshold, 5.0)
     self.assertEqual(metrics.num_zeroed, 3)
 
   @parameterized.named_parameters(test_value_types)
   def test_adaptation_achieved(self, shapes):
     value_type = type_conversions.type_from_tensors(_make_value(0, shapes))
     mean_process = adaptive_zeroing.build_adaptive_zeroing_mean_process(
-        value_type, 100.0, 0.5, 1.0, np.log(4.0), np.inf)
+        value_type=value_type,
+        initial_quantile_estimate=100.0,
+        target_quantile=0.5,
+        multiplier=1.0,
+        increment=5.0,
+        learning_rate=np.log(4.0),
+        norm_order=np.inf)
 
     global_state = mean_process.initialize()
 
@@ -198,7 +238,7 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     self._check_result(output, 45, shapes)
     global_state = output.state
     metrics = output.measurements
-    self.assertAllClose(metrics.current_threshold, 50.0)
+    self.assertAllClose(metrics.zeroing_threshold, 55.0)
     self.assertEqual(metrics.num_zeroed, 0)
 
     # In second round, target is achieved, no adaptation occurs, but one update
@@ -207,14 +247,20 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     self._check_result(output, 30, shapes)
     global_state = output.state
     metrics = output.measurements
-    self.assertAllClose(metrics.current_threshold, 50.0)
+    self.assertAllClose(metrics.zeroing_threshold, 55.0)
     self.assertEqual(metrics.num_zeroed, 1)
 
   @parameterized.named_parameters(test_value_types)
   def test_adaptation_achieved_with_multiplier(self, shapes):
     value_type = type_conversions.type_from_tensors(_make_value(0, shapes))
     mean_process = adaptive_zeroing.build_adaptive_zeroing_mean_process(
-        value_type, 200.0, 0.5, 2.0, np.log(4.0), np.inf)
+        value_type=value_type,
+        initial_quantile_estimate=100.0,
+        target_quantile=0.5,
+        multiplier=2.0,
+        increment=10.0,
+        learning_rate=np.log(4.0),
+        norm_order=np.inf)
 
     global_state = mean_process.initialize()
 
@@ -226,7 +272,7 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     self._check_result(output, 45, shapes)
     global_state = output.state
     metrics = output.measurements
-    self.assertAllClose(metrics.current_threshold, 100.0)
+    self.assertAllClose(metrics.zeroing_threshold, 110.0)
     self.assertEqual(metrics.num_zeroed, 0)
 
     # In second round, target is achieved, no adaptation occurs, and no updates
@@ -235,7 +281,7 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
     self._check_result(output, 45, shapes)
     global_state = output.state
     metrics = output.measurements
-    self.assertAllClose(metrics.current_threshold, 100.0)
+    self.assertAllClose(metrics.zeroing_threshold, 110.0)
     self.assertEqual(metrics.num_zeroed, 0)
 
 
