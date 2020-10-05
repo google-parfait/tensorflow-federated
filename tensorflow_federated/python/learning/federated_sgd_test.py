@@ -125,6 +125,7 @@ class FederatedSgdTest(test_utils.TestCase, parameterized.TestCase):
 
 class FederatedSGDTffTest(test_utils.TestCase, parameterized.TestCase):
 
+  @test_utils.skip_test_for_multi_gpu
   def test_orchestration_execute(self):
     iterative_process = federated_sgd.build_federated_sgd_process(
         model_fn=model_examples.LinearRegression)
