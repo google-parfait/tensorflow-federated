@@ -26,8 +26,7 @@ class PerfRegressionTest(absltest.TestCase):
     num_clients = 10
     model_size = 10**6
     client_models = [tf.ones([model_size]) for _ in range(num_clients)]
-    client_data_type = tff.FederatedType((tf.float32, [model_size]),
-                                         tff.CLIENTS)
+    client_data_type = tff.type_at_clients((tf.float32, [model_size]))
 
     @tff.federated_computation(client_data_type)
     def comp(client_data):

@@ -50,7 +50,7 @@ tff.backends.native.set_local_execution_context()
 def add_one(x):
   return x + 1
 
-@tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENT))
+@tff.federated_computation(tff.type_at_clients(tf.int32))
 def add_one_to_all_clients(values):
   return tff.federated_map(add_one, values)
 

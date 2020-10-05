@@ -53,7 +53,7 @@ class RemoteRuntimeIntegrationTest(parameterized.TestCase):
     def add_one(x):
       return x + 1
 
-    @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
+    @tff.federated_computation(tff.type_at_clients(tf.int32))
     def map_add_one(federated_arg):
       return tff.federated_map(add_one, federated_arg)
 

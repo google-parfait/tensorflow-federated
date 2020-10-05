@@ -30,8 +30,8 @@ def count_total(ds):
 
 
 @tff.federated_computation(
-    tff.FederatedType(tff.SequenceType(tf.float32), tff.CLIENTS),
-    tff.FederatedType(tf.float32, tff.SERVER))
+    tff.type_at_clients(tff.SequenceType(tf.float32)),
+    tff.type_at_server(tf.float32))
 def mean_over_threshold(temperatures, threshold):
   client_data = tff.federated_broadcast(threshold)
   client_data = tff.federated_zip([temperatures, client_data])

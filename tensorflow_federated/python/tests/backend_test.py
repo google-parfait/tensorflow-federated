@@ -170,7 +170,7 @@ class FederatedComputationTest(parameterized.TestCase):
   @with_contexts
   def test_federated_zip(self):
 
-    @tff.federated_computation([tff.FederatedType(tf.int32, tff.CLIENTS)] * 2)
+    @tff.federated_computation([tff.type_at_clients(tf.int32)] * 2)
     def foo(x):
       return tff.federated_zip(x)
 
@@ -184,8 +184,7 @@ class FederatedComputationTest(parameterized.TestCase):
     num_element = 20
     num_clients = 2
 
-    @tff.federated_computation([tff.FederatedType(tf.int32, tff.CLIENTS)] *
-                               num_element)
+    @tff.federated_computation([tff.type_at_clients(tf.int32)] * num_element)
     def foo(x):
       return tff.federated_zip(x)
 
@@ -200,7 +199,7 @@ class FederatedComputationTest(parameterized.TestCase):
     def add_one(x):
       return x + 1
 
-    @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
+    @tff.federated_computation(tff.type_at_clients(tf.int32))
     def map_add_one(federated_arg):
       return tff.federated_map(add_one, federated_arg)
 
@@ -217,7 +216,7 @@ class FederatedComputationTest(parameterized.TestCase):
     def add_one(x):
       return x + 1
 
-    @tff.federated_computation(tff.FederatedType(tf.int32, tff.CLIENTS))
+    @tff.federated_computation(tff.type_at_clients(tf.int32))
     def map_add_one(federated_arg):
       return tff.federated_map(add_one, federated_arg)
 
@@ -226,6 +225,7 @@ class FederatedComputationTest(parameterized.TestCase):
 
     self.assertIsNotNone(result1)
     self.assertIsNotNone(result2)
+
     self.assertLen(result1, 2)
     self.assertLen(result2, 3)
 
