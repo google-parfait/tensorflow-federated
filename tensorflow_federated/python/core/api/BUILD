@@ -60,11 +60,25 @@ py_test(
     name = "computation_types_test",
     size = "small",
     srcs = ["computation_types_test.py"],
+    args = [
+        "--golden",
+        "$(location computation_types_test_goldens/container_types_full_repr.expected)",
+        "--golden",
+        "$(location computation_types_test_goldens/long_formatted_with_diff.expected)",
+        "--golden",
+        "$(location computation_types_test_goldens/short_compact_repr.expected)",
+    ],
+    data = [
+        "computation_types_test_goldens/container_types_full_repr.expected",
+        "computation_types_test_goldens/long_formatted_with_diff.expected",
+        "computation_types_test_goldens/short_compact_repr.expected",
+    ],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
         ":computation_types",
         ":placements",
+        "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
     ],
 )

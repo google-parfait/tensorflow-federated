@@ -1,0 +1,60 @@
+Type
+`<
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32
+>`
+is not equivalent to type
+`<
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32,
+  int32
+>`
+
+Diff:
+--- 
+
++++ 
+
+@@ -1,4 +1,5 @@
+
+ <
++  int32,
+   int32,
+   int32,
+   int32,

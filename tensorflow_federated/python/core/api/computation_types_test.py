@@ -19,9 +19,35 @@ from absl.testing import parameterized
 import attr
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
+
+
+class TypeMismatchErrorTest(absltest.TestCase):
+
+  def test_short_compact_repr(self):
+    first = computation_types.TensorType(tf.int32)
+    second = computation_types.TensorType(tf.bool)
+    actual = computation_types._type_mismatch_error_message(
+        first, second, computation_types._TypeRelation.EQUIVALENT)
+    golden.check_string('short_compact_repr.expected', actual)
+
+  def test_long_formatted_with_diff(self):
+    int32 = computation_types.TensorType(tf.int32)
+    first = computation_types.StructType([(None, int32)] * 20)
+    second = computation_types.StructType([(None, int32)] * 21)
+    actual = computation_types._type_mismatch_error_message(
+        first, second, computation_types._TypeRelation.EQUIVALENT)
+    golden.check_string('long_formatted_with_diff.expected', actual)
+
+  def test_container_types_full_repr(self):
+    first = computation_types.StructWithPythonType([], list)
+    second = computation_types.StructWithPythonType([], tuple)
+    actual = computation_types._type_mismatch_error_message(
+        first, second, computation_types._TypeRelation.EQUIVALENT)
+    golden.check_string('container_types_full_repr.expected', actual)
 
 
 class TestCheckEquivalentTypesTest(absltest.TestCase):

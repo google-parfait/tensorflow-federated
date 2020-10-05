@@ -1,0 +1,1 @@
+Type `StructType([]) as list` is not equivalent to type `StructType([]) as tuple`

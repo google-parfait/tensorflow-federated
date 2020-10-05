@@ -15,6 +15,8 @@
 
 import abc
 import collections
+import difflib
+import enum
 import typing
 from typing import Any, Dict, Optional, Type as TypingType, TypeVar
 import weakref
@@ -37,6 +39,56 @@ class UnexpectedTypeError(TypeError):
     super().__init__(message)
     self.actual = actual
     self.expected = expected
+
+
+# Prevent wrapping on a 100-character terminal.
+MAX_LINE_LEN = 100
+
+
+@enum.unique
+class _TypeRelation(enum.Enum):
+  EQUIVALENT = 'equivalent'
+  IDENTICAL = 'identical'
+  ASSIGNABLE = 'assignable'
+
+
+def _type_mismatch_error_message(
+    first: 'Type',
+    second: 'Type',
+    relation: _TypeRelation,
+) -> str:
+  """Returns an error message describing the mismatch between two types."""
+  first_str = first.compact_representation()
+  second_str = second.compact_representation()
+  diff = None
+  if first_str == second_str:
+    # The two only differ in container types or some other property not
+    # visible via the compact representation, so show `repr` instead.
+    # No diff is used because `repr` prints to a single line.
+    first_str = repr(first)
+    second_str = repr(second)
+    diff = None
+  elif (len(first_str) > MAX_LINE_LEN or len(second_str) > MAX_LINE_LEN):
+    # The types are large structures, and so the formatted representation is
+    # used and a summary diff is added. The logic here is that large types
+    # may be easier to diff visually with a more structured representation,
+    # and logical line breaks are required to make diff output useful.
+    first_str = first.formatted_representation()
+    second_str = second.formatted_representation()
+    split_first = first_str.split('\n')
+    split_second = second_str.split('\n')
+    diff = '\n'.join(difflib.unified_diff(split_first, split_second))
+  message = [
+      'Type', f'`{first_str}`', f'is not {relation.value} to type',
+      f'`{second_str}`'
+  ]
+  if diff:
+    message += [f'\nDiff:\n{diff}']
+  single_line = ' '.join(message)
+  if len(single_line) > MAX_LINE_LEN or '\n' in single_line:
+    return '\n'.join(message)
+  else:
+    return single_line
 
 
 class Type(object, metaclass=abc.ABCMeta):
@@ -167,8 +219,9 @@ class Type(object, metaclass=abc.ABCMeta):
   def check_assignable_from(self, source_type: 'Type'):
     """Raises if values of `source_type` cannot be cast to this type."""
     if not self.is_assignable_from(source_type):
-      raise TypeError('Values of type {} cannot be cast to type {}.'.format(
-          source_type, self))
+      raise TypeError(
+          _type_mismatch_error_message(self, source_type,
+                                       _TypeRelation.ASSIGNABLE))
 
   @abc.abstractmethod
   def is_assignable_from(self, source_type: 'Type') -> bool:
@@ -178,7 +231,8 @@ class Type(object, metaclass=abc.ABCMeta):
   def check_equivalent_to(self, other: 'Type'):
     """Raises if values of 'other' cannot be cast to and from this type."""
     if not self.is_equivalent_to(other):
-      raise TypeError('Types {} and {} are not equivalent.'.format(self, other))
+      raise TypeError(
+          _type_mismatch_error_message(self, other, _TypeRelation.EQUIVALENT))
 
   def is_equivalent_to(self, other: 'Type') -> bool:
     """Returns whether values of `other` can be cast to and from this type."""
@@ -187,7 +241,8 @@ class Type(object, metaclass=abc.ABCMeta):
   def check_identical_to(self, other: 'Type'):
     """Raises if `other` and `Type` are not exactly identical."""
     if not self.is_identical_to(other):
-      raise TypeError(f'Type {self} and {other} are not identical')
+      raise TypeError(
+          _type_mismatch_error_message(self, other, _TypeRelation.IDENTICAL))
 
   def is_identical_to(self, other: 'Type'):
     """Returns whether or not `self` and `other` are exactly identical."""
@@ -459,7 +514,7 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
 
   def __repr__(self):
     members = _format_struct_type_members(self)
-    return 'StructType([{}])'.format(members)
+    return f'StructType([{members}])'
 
   def __hash__(self):
     # Salt to avoid overlap.
