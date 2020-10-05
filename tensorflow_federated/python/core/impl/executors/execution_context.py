@@ -152,6 +152,10 @@ class ExecutionContext(context_base.Context):
     """
     py_typecheck.check_type(executor_fn, executor_factory.ExecutorFactory)
     self._executor_factory = executor_fn
+
+    self._event_loop = asyncio.new_event_loop()
+    self._event_loop.set_task_factory(
+        tracing.propagate_trace_context_task_factory)
     if compiler_fn is not None:
       py_typecheck.check_callable(compiler_fn)
       self._compiler_pipeline = compiler_pipeline.CompilerPipeline(compiler_fn)
@@ -186,16 +190,12 @@ class ExecutionContext(context_base.Context):
       @contextlib.contextmanager
       def executor_closer(ex_factory, cardinalities):
         """Wraps an Executor into a closeable resource."""
-        # TODO(b/168744510): The lifecycles embedded here are confusing; unify
-        # or clarify the need for them.
         ex = ex_factory.create_executor(cardinalities)
         try:
           yield ex
         except Exception as e:
           ex_factory.clean_up_executors()
           raise e
-        finally:
-          ex.close()
 
       if arg is not None:
         py_typecheck.check_type(arg, ExecutionContextValue)
@@ -208,19 +208,11 @@ class ExecutionContext(context_base.Context):
       with executor_closer(self._executor_factory, cardinalities) as executor:
         py_typecheck.check_type(executor, executor_base.Executor)
 
-        def get_event_loop():
-          new_loop = asyncio.new_event_loop()
-          new_loop.set_task_factory(
-              tracing.propagate_trace_context_task_factory)
-          return new_loop
-
-        event_loop = get_event_loop()
-
         if arg is not None:
-          arg = event_loop.run_until_complete(
+          arg = self._event_loop.run_until_complete(
               tracing.wrap_coroutine_in_current_trace_context(
                   _ingest(executor, unwrapped_arg, arg.type_signature)))
 
-        return event_loop.run_until_complete(
+        return self._event_loop.run_until_complete(
             tracing.wrap_coroutine_in_current_trace_context(
                 _invoke(executor, comp, arg, result_type)))
