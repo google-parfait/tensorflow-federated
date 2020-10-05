@@ -98,7 +98,7 @@ def compose_dataset_computation_with_computation(
   comp_body_param_type = computation_body.type_signature.parameter
 
   def is_desired_federated_sequence(t):
-    return t.is_federated() and t.member.is_equivalent_to(dataset_return_type)
+    return t.is_federated() and t.member.is_assignable_from(dataset_return_type)
 
   if is_desired_federated_sequence(comp_body_param_type):
     # Single argument that matches, we compose in a straightforward manner.

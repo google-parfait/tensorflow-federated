@@ -83,10 +83,49 @@ def _create_stateless_int_dataset_reduction_iterative_process():
   return iterative_process.IterativeProcess(initialize_fn=init, next_fn=next_fn)
 
 
+def _create_stateless_int_vector_unknown_dim_dataset_reduction_iterative_process(
+):
+
+  @computations.tf_computation()
+  def make_zero():
+    return tf.reshape(tf.cast(0, tf.int64), shape=[1])
+
+  @computations.federated_computation()
+  def init():
+    return intrinsics.federated_eval(make_zero, placement_literals.SERVER)
+
+  @computations.tf_computation(
+      computation_types.SequenceType(
+          computation_types.TensorType(tf.int64, shape=[None])))
+  def reduce_dataset(x):
+    return x.reduce(tf.cast(tf.constant([0]), tf.int64), lambda x, y: x + y)
+
+  @computations.federated_computation(
+      computation_types.FederatedType(
+          computation_types.TensorType(tf.int64, shape=[None]),
+          placement_literals.SERVER),
+      computation_types.FederatedType(
+          computation_types.SequenceType(
+              computation_types.TensorType(tf.int64, shape=[None])),
+          placement_literals.CLIENTS))
+  def next_fn(server_state, client_data):
+    del server_state  # Unused
+    return intrinsics.federated_sum(
+        intrinsics.federated_map(reduce_dataset, client_data))
+
+  return iterative_process.IterativeProcess(initialize_fn=init, next_fn=next_fn)
+
+
 @computations.tf_computation(tf.string)
 def int_dataset_computation(x):
   del x  # Unused
   return tf.data.Dataset.range(5)
+
+
+@computations.tf_computation(tf.string)
+def vector_int_dataset_computation(x):
+  del x  # Unused
+  return tf.data.Dataset.range(5).map(lambda x: tf.reshape(x, shape=[1]))
 
 
 @computations.tf_computation(tf.string)
@@ -234,6 +273,26 @@ class ConstructDatasetsOnClientsIterativeProcessTest(absltest.TestCase):
 
     new_iterproc = iterative_process_compositions.compose_dataset_computation_with_iterative_process(
         int_dataset_computation, iterproc)
+
+    expected_new_next_type_signature.check_equivalent_to(
+        new_iterproc.next.type_signature)
+
+  def test_mutates_iterproc_with_parameter_assignable_from_result(self):
+    iterproc = _create_stateless_int_vector_unknown_dim_dataset_reduction_iterative_process(
+    )
+    expected_new_next_type_signature = computation_types.FunctionType(
+        collections.OrderedDict(
+            server_state=computation_types.FederatedType(
+                computation_types.TensorType(tf.int64, shape=[None]),
+                placement_literals.SERVER),
+            client_data=computation_types.FederatedType(
+                tf.string, placement_literals.CLIENTS)),
+        computation_types.FederatedType(
+            computation_types.TensorType(tf.int64, shape=[None]),
+            placement_literals.SERVER))
+
+    new_iterproc = iterative_process_compositions.compose_dataset_computation_with_iterative_process(
+        vector_int_dataset_computation, iterproc)
 
     expected_new_next_type_signature.check_equivalent_to(
         new_iterproc.next.type_signature)
