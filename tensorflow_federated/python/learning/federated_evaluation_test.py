@@ -107,6 +107,7 @@ def _model_fn_from_keras():
 
 class FederatedEvaluationTest(test_utils.TestCase, parameterized.TestCase):
 
+  @test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation(self):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
     self.assertEqual(

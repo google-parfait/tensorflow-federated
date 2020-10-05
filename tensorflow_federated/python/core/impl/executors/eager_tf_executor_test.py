@@ -79,6 +79,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(result, tf.Tensor)
     self.assertEqual(result, 1000)
 
+  @test_utils.skip_test_for_multi_gpu
   def test_embed_tensorflow_computation_with_dataset_arg_and_int_result(self):
 
     @computations.tf_computation(computation_types.SequenceType(tf.int32))

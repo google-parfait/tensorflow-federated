@@ -156,6 +156,7 @@ class FederatedAveragingModelTffTest(test_utils.TestCase,
       self.assertLess(train_metrics['loss'], prev_loss)
       prev_loss = train_metrics['loss']
 
+  @test_utils.skip_test_for_multi_gpu
   def test_basic_orchestration_execute(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.LinearRegression,
@@ -179,6 +180,7 @@ class FederatedAveragingModelTffTest(test_utils.TestCase,
       ('sequential_model',
        model_examples.build_linear_regression_keras_sequential_model),
   ])
+  @test_utils.skip_test_for_multi_gpu
   def test_orchestration_execute_from_keras(self, build_keras_model_fn):
     ds = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
@@ -204,6 +206,7 @@ class FederatedAveragingModelTffTest(test_utils.TestCase,
         datasets=[ds] * num_clients,
         expected_num_examples=2 * num_clients)
 
+  @test_utils.skip_test_for_multi_gpu
   def test_orchestration_execute_from_keras_with_lookup(self):
     ds = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
@@ -227,6 +230,7 @@ class FederatedAveragingModelTffTest(test_utils.TestCase,
         datasets=[ds] * num_clients,
         expected_num_examples=3 * num_clients)
 
+  @test_utils.skip_test_for_multi_gpu
   def test_execute_empty_data(self):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.LinearRegression,

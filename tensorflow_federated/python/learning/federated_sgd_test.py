@@ -163,6 +163,7 @@ class FederatedSGDTffTest(test_utils.TestCase, parameterized.TestCase):
       ('sequential_model',
        model_examples.build_linear_regression_keras_sequential_model),
   ])
+  @test_utils.skip_test_for_multi_gpu
   def test_orchestration_execute_from_keras(self, build_keras_model_fn):
     # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
     # kernel = [1, 2], bias = [3].
@@ -196,6 +197,7 @@ class FederatedSGDTffTest(test_utils.TestCase, parameterized.TestCase):
       self.assertLess(metrics.train.loss, prev_loss)
       prev_loss = metrics.train.loss
 
+  @test_utils.skip_test_for_multi_gpu
   def test_execute_empty_data(self):
     iterative_process = federated_sgd.build_federated_sgd_process(
         model_fn=model_examples.LinearRegression)
