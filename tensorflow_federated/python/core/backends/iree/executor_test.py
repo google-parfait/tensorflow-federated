@@ -52,7 +52,9 @@ class ExecutorTest(tf.test.TestCase):
     self.assertIsInstance(comp_val, executor.IreeValue)
     self.assertEqual(str(comp_val.type_signature), '( -> float32)')
     self.assertTrue(callable(comp_val.internal_representation))
-    result = comp_val.internal_representation()
+    # NOTE: The internal representation is a functions that takes a parameter
+    # kwarg and returns a dict with a 'result' key.
+    result = comp_val.internal_representation()['result']
     self.assertEqual(result, 1000.0)
 
     with self.assertRaises(TypeError):
@@ -79,7 +81,10 @@ class ExecutorTest(tf.test.TestCase):
 
     self.assertEqual(str(comp_val.type_signature), '(float32 -> float32)')
     self.assertTrue(callable(comp_val.internal_representation))
-    result = comp_val.internal_representation(np.float32(5.0))
+    # NOTE: The internal representation is a functions that takes a parameter
+    # kwarg and returns a dict with a 'result' key.
+    result = comp_val.internal_representation(
+        parameter=np.float32(5.0))['result']
     self.assertEqual(result, 6.0)
 
     arg_val = asyncio.get_event_loop().run_until_complete(

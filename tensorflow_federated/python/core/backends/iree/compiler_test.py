@@ -41,7 +41,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %0',
         '}',
     ])
-    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV)
+    result = runtime.compile_and_run_on_args(
+        module, backend_info.VULKAN_SPIRV)['result']
     self.assertEqual(result, 99.0)
 
   def test_import_tf_comp_with_one_variable_constant(self):
@@ -60,7 +61,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %2',
         '}',
     ])
-    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV)
+    result = runtime.compile_and_run_on_args(
+        module, backend_info.VULKAN_SPIRV)['result']
     self.assertEqual(result, 99.0)
 
   def test_import_tf_comp_with_add_one(self):
@@ -77,8 +79,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %1',
         '}',
     ])
-    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV,
-                                             np.float32(5.0))
+    result = runtime.compile_and_run_on_args(
+        module, backend_info.VULKAN_SPIRV, parameter=np.float32(5.0))['result']
     self.assertEqual(result, 6.0)
 
   def test_import_tf_comp_with_variable_add_one(self):
@@ -100,8 +102,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %3',
         '}',
     ])
-    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV,
-                                             np.float32(5.0))
+    result = runtime.compile_and_run_on_args(
+        module, backend_info.VULKAN_SPIRV, parameter=np.float32(5.0))['result']
     self.assertEqual(result, 6.0)
 
   def test_import_tf_comp_with_variable_assign_add_one(self):
@@ -130,8 +132,8 @@ class CompilerTest(tf.test.TestCase):
         '  return %4',
         '}',
     ])
-    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV,
-                                             np.float32(5.0))
+    result = runtime.compile_and_run_on_args(
+        module, backend_info.VULKAN_SPIRV, parameter=np.float32(5.0))['result']
     self.assertEqual(result, 6.0)
 
   def test_import_tf_comp_with_while_loop(self):
@@ -156,8 +158,8 @@ class CompilerTest(tf.test.TestCase):
     self._assert_mlir_contains_pattern(
         mlir, ['func @fn(%arg0: tensor<f32>) -> tensor<f32>'])
 
-    result = runtime.compile_and_run_on_args(module, backend_info.VULKAN_SPIRV,
-                                             np.float32(5.0))
+    result = runtime.compile_and_run_on_args(
+        module, backend_info.VULKAN_SPIRV, parameter=np.float32(5.0))['result']
     self.assertEqual(result, 32.0)
 
   def test_import_tf_comp_fails_with_non_tf_comp(self):

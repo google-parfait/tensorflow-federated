@@ -186,10 +186,13 @@ class IreeExecutor(executor_base.Executor):
     py_typecheck.check_type(comp.type_signature, computation_types.FunctionType)
     py_typecheck.check_callable(comp.internal_representation)
     if comp.type_signature.parameter is not None:
-      result = comp.internal_representation(arg.internal_representation)
+      result_struct = comp.internal_representation(
+          parameter=arg.internal_representation)
     else:
-      result = comp.internal_representation()
-    return IreeValue(result, comp.type_signature.result, self._backend_info)
+      result_struct = comp.internal_representation()
+
+    return IreeValue(result_struct['result'], comp.type_signature.result,
+                     self._backend_info)
 
   # TODO(b/153499219): Implement tuples and selections below.
 
