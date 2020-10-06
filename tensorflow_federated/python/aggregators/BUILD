@@ -2,7 +2,10 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
     name = "default_visibility",
-    packages = ["//tensorflow_federated/python/aggregators/..."],
+    packages = [
+        "//tensorflow_federated/python/aggregators/...",
+        "//tensorflow_federated/python/learning/...",
+    ],
 )
 
 package(default_visibility = [":default_visibility"])

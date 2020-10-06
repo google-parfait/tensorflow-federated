@@ -21,6 +21,8 @@ import attr
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import mean_factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
@@ -553,6 +555,8 @@ def build_stateless_broadcaster(
       initialize_fn=_empty_server_initialization, next_fn=stateless_broadcast)
 
 
+# TODO(b/170208719): remove `aggregation_process` after migration to
+# `model_update_aggregation_factory`.
 def build_model_delta_optimizer_process(
     model_fn: _ModelConstructor,
     model_to_client_delta_fn: Callable[[model_lib.Model], ClientDeltaFn],
@@ -560,6 +564,8 @@ def build_model_delta_optimizer_process(
     *,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
+    model_update_aggregation_factory: Optional[
+        factory.AggregationProcessFactory] = None,
 ) -> iterative_process.IterativeProcess:
   """Constructs `tff.templates.IterativeProcess` for Federated Averaging or SGD.
 
@@ -571,25 +577,34 @@ def build_model_delta_optimizer_process(
   any variables or ops created in constructors are placed in the correct graph.
 
   Args:
-    model_fn: a no-arg function that returns a `tff.learning.Model`.
-    model_to_client_delta_fn: a function from a `model_fn` to a `ClientDeltaFn`.
-    server_optimizer_fn: a no-arg function that returns a `tf.Optimizer`. The
+    model_fn: A no-arg function that returns a `tff.learning.Model`.
+    model_to_client_delta_fn: A function from a `model_fn` to a `ClientDeltaFn`.
+    server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
       `apply_gradients` method of this optimizer is used to apply client updates
       to the server model.
-    broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
+    broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`.
-    aggregation_process: a `tff.templates.MeasuredProcess` that aggregates the
+    aggregation_process: A `tff.templates.MeasuredProcess` that aggregates the
       model updates on the clients back to the server. It must support the
-      signature `({input_values}@CLIENTS-> output_values@SERVER)`.
+      signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
+      `None` if `model_update_aggregation_factory` is not `None.`
+    model_update_aggregation_factory: An optional
+      `tff.aggregators.AggregationProcessFactory` that contstructs
+      `tff.templates.AggregationProcess` for aggregating the client model
+      updates on the server. If `None`, uses a default constructed
+      `tff.aggregators.MeanFactory`, creating a stateless mean aggregation. Must
+      be `None` if `aggregation_process` is not `None.`
 
   Returns:
     A `tff.templates.IterativeProcess`.
 
   Raises:
     ProcessTypeError: if `broadcast_process` or `aggregation_process` do not
-    conform to the signature of broadcast (SERVER->CLIENTS) or aggregation
-    (CLIENTS->SERVER).
+      conform to the signature of broadcast (SERVER->CLIENTS) or aggregation
+      (CLIENTS->SERVER).
+    DisjointArgumentError: if both `aggregation_process` and
+      `model_update_aggregation_factory` are not `None`.
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(model_to_client_delta_fn)
@@ -605,6 +620,19 @@ def build_model_delta_optimizer_process(
         'broadcast_process type signature does not conform to expected '
         'signature (<state@S, input@S> -> <state@S, result@C, measurements@S>).'
         ' Got: {t}'.format(t=broadcast_process.next.type_signature))
+
+  if (model_update_aggregation_factory is not None and
+      aggregation_process is not None):
+    raise DisjointArgumentError(
+        'Must specify only one of `model_update_aggregation_factory` and '
+        '`AggregationProcess`.')
+
+  if model_update_aggregation_factory is None and aggregation_process is None:
+    model_update_aggregation_factory = mean_factory.MeanFactory()
+
+  if model_update_aggregation_factory is not None:
+    aggregation_process = model_update_aggregation_factory.create(
+        model_weights_type.trainable)
 
   if aggregation_process is None:
     aggregation_process = build_stateless_mean(

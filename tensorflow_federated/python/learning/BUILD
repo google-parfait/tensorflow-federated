@@ -42,6 +42,7 @@ py_library(
     deps = [
         ":model",
         ":model_utils",
+        "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/templates:measured_process",
@@ -108,6 +109,7 @@ py_library(
     deps = [
         ":model",
         ":model_utils",
+        "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/templates:iterative_process",
         "//tensorflow_federated/python/core/templates:measured_process",

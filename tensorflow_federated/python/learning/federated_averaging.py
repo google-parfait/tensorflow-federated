@@ -26,6 +26,7 @@ from typing import Any, Callable, Optional
 
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
@@ -128,6 +129,8 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
 
+# TODO(b/170208719): remove `aggregation_process` after migration to
+# `model_update_aggregation_factory`.
 def build_federated_averaging_process(
     model_fn: Callable[[], model_lib.Model],
     client_optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer],
@@ -137,6 +140,8 @@ def build_federated_averaging_process(
     *,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
+    model_update_aggregation_factory: Optional[
+        factory.AggregationProcessFactory] = None,
     use_experimental_simulation_loop: bool = False
 ) -> iterative_process.IterativeProcess:
   """Builds an iterative process that performs federated averaging.
@@ -192,7 +197,14 @@ def build_federated_averaging_process(
       `(input_values@SERVER -> output_values@CLIENT)`.
     aggregation_process: a `tff.templates.MeasuredProcess` that aggregates the
       model updates on the clients back to the server. It must support the
-      signature `({input_values}@CLIENTS-> output_values@SERVER)`
+      signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
+      `None` if `model_update_aggregation_factory` is not `None.`
+    model_update_aggregation_factory: An optional
+      `tff.aggregators.AggregationProcessFactory` that contstructs
+      `tff.templates.AggregationProcess` for aggregating the client model
+      updates on the server. If `None`, uses a default constructed
+      `tff.aggregators.MeanFactory`, creating a stateless mean aggregation. Must
+      be `None` if `aggregation_process` is not `None.`
     use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
 
@@ -209,4 +221,5 @@ def build_federated_averaging_process(
       model_to_client_delta_fn=client_fed_avg,
       server_optimizer_fn=server_optimizer_fn,
       broadcast_process=broadcast_process,
-      aggregation_process=aggregation_process)
+      aggregation_process=aggregation_process,
+      model_update_aggregation_factory=model_update_aggregation_factory)

@@ -150,7 +150,9 @@ class FederatedAveragingModelTffTest(test_utils.TestCase,
       self.assertEqual(
           list(metric_outputs.keys()), ['broadcast', 'aggregation', 'train'])
       self.assertEmpty(metric_outputs['broadcast'])
-      self.assertEmpty(metric_outputs['aggregation'])
+      self.assertEqual(
+          metric_outputs['aggregation'],
+          collections.OrderedDict(value_sum_process=(), weight_sum_process=()))
       train_metrics = metric_outputs['train']
       self.assertEqual(train_metrics['num_examples'], expected_num_examples)
       self.assertLess(train_metrics['loss'], prev_loss)

@@ -65,7 +65,6 @@ class CanonicalFormTest(test_utils.TestCase):
     # for the TFF compiler pipeline.
     # pyformat: disable
     self.assertEqual(
-        cf.work.type_signature.formatted_representation(),
         '(<\n'
         '  <\n'
         '    x=float32[?,2],\n'
@@ -81,12 +80,10 @@ class CanonicalFormTest(test_utils.TestCase):
         '> -> <\n'
         '  <\n'
         '    <\n'
-        '      <\n'
-        '        float32[2,1],\n'
-        '        float32[1]\n'
-        '      >,\n'
-        '      float32\n'
+        '      float32[2,1],\n'
+        '      float32[1]\n'
         '    >,\n'
+        '    float32,\n'
         '    <\n'
         '      sparse_categorical_accuracy=<\n'
         '        float32,\n'
@@ -99,7 +96,8 @@ class CanonicalFormTest(test_utils.TestCase):
         '    >\n'
         '  >,\n'
         '  <>\n'
-        '>)')
+        '>)',
+        cf.work.type_signature.formatted_representation())
     # pyformat: enable
 
   # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
@@ -135,7 +133,6 @@ class CanonicalFormTest(test_utils.TestCase):
     server_state_2_arrays = structure.flatten(server_state_2)
     server_output_2_arrays = structure.flatten(server_output_2)
 
-    self.assertEmpty(server_state_1.delta_aggregate_state)
     self.assertEmpty(server_state_1.model_broadcast_state)
     # Note that we cannot simply use assertEqual because the values may differ
     # due to floating point issues.

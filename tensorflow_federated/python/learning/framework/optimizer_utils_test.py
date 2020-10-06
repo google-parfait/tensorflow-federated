@@ -188,7 +188,8 @@ class ModelDeltaOptimizerTest(test_utils.TestCase):
                 ],
                 non_trainable=[computation_types.TensorType(tf.float32)]),
             optimizer_state=[tf.int64],
-            delta_aggregate_state=(),
+            delta_aggregate_state=collections.OrderedDict(
+                value_sum_process=(), weight_sum_process=()),
             model_broadcast_state=()), placements.SERVER)
 
     self.assertEqual(
@@ -207,7 +208,8 @@ class ModelDeltaOptimizerTest(test_utils.TestCase):
     metrics_type = computation_types.FederatedType(
         collections.OrderedDict(
             broadcast=(),
-            aggregation=(),
+            aggregation=collections.OrderedDict(
+                value_sum_process=(), weight_sum_process=()),
             train=collections.OrderedDict(
                 loss=computation_types.TensorType(tf.float32),
                 num_examples=computation_types.TensorType(tf.int32))),

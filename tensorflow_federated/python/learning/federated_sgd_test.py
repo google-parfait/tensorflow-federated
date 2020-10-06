@@ -217,7 +217,9 @@ class FederatedSGDTffTest(test_utils.TestCase, parameterized.TestCase):
     self.assertEqual(
         list(metric_outputs.keys()), ['broadcast', 'aggregation', 'train'])
     self.assertEmpty(metric_outputs['broadcast'])
-    self.assertEmpty(metric_outputs['aggregation'])
+    self.assertEqual(
+        metric_outputs['aggregation'],
+        collections.OrderedDict(value_sum_process=(), weight_sum_process=()))
     self.assertEqual(metric_outputs['train']['num_examples'], 0)
     self.assertTrue(tf.math.is_nan(metric_outputs['train']['loss']))
 
