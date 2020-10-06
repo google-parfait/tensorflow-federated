@@ -244,15 +244,15 @@ class TypeToTfDtypesAndShapesTest(test_utils.TestCase):
     type_signature = computation_types.TensorType(tf.int32)
     dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
         type_signature)
-    test_utils.assert_nested_struct_eq(dtypes, tf.int32)
-    test_utils.assert_nested_struct_eq(shapes, tf.TensorShape([]))
+    self.assert_nested_struct_eq(dtypes, tf.int32)
+    self.assert_nested_struct_eq(shapes, tf.TensorShape([]))
 
   def test_with_int_vector(self):
     type_signature = computation_types.TensorType(tf.int32, [10])
     dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
         type_signature)
-    test_utils.assert_nested_struct_eq(dtypes, tf.int32)
-    test_utils.assert_nested_struct_eq(shapes, tf.TensorShape([10]))
+    self.assert_nested_struct_eq(dtypes, tf.int32)
+    self.assert_nested_struct_eq(shapes, tf.TensorShape([10]))
 
   def test_with_tensor_triple(self):
     type_signature = computation_types.StructWithPythonType([
@@ -262,12 +262,12 @@ class TypeToTfDtypesAndShapesTest(test_utils.TestCase):
     ], collections.OrderedDict)
     dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
         type_signature)
-    test_utils.assert_nested_struct_eq(dtypes, {
+    self.assert_nested_struct_eq(dtypes, {
         'a': tf.int32,
         'b': tf.bool,
         'c': tf.float32
     })
-    test_utils.assert_nested_struct_eq(shapes, {
+    self.assert_nested_struct_eq(shapes, {
         'a': tf.TensorShape([5]),
         'b': tf.TensorShape([]),
         'c': tf.TensorShape([3])
@@ -285,7 +285,7 @@ class TypeToTfDtypesAndShapesTest(test_utils.TestCase):
     ], collections.OrderedDict)
     dtypes, shapes = type_conversions.type_to_tf_dtypes_and_shapes(
         type_signature)
-    test_utils.assert_nested_struct_eq(dtypes, {
+    self.assert_nested_struct_eq(dtypes, {
         'a': tf.bool,
         'b': {
             'c': tf.float32,
@@ -293,7 +293,7 @@ class TypeToTfDtypesAndShapesTest(test_utils.TestCase):
         },
         'e': (),
     })
-    test_utils.assert_nested_struct_eq(
+    self.assert_nested_struct_eq(
         shapes, {
             'a': tf.TensorShape([]),
             'b': {
@@ -309,14 +309,12 @@ class TypeToTfTensorSpecsTest(test_utils.TestCase):
   def test_with_int_scalar(self):
     type_signature = computation_types.TensorType(tf.int32)
     tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
-    test_utils.assert_nested_struct_eq(tensor_specs, tf.TensorSpec([],
-                                                                   tf.int32))
+    self.assert_nested_struct_eq(tensor_specs, tf.TensorSpec([], tf.int32))
 
   def test_with_int_vector(self):
     type_signature = computation_types.TensorType(tf.int32, [10])
     tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
-    test_utils.assert_nested_struct_eq(tensor_specs,
-                                       tf.TensorSpec([10], tf.int32))
+    self.assert_nested_struct_eq(tensor_specs, tf.TensorSpec([10], tf.int32))
 
   def test_with_tensor_triple(self):
     type_signature = computation_types.StructWithPythonType([
@@ -325,7 +323,7 @@ class TypeToTfTensorSpecsTest(test_utils.TestCase):
         ('c', computation_types.TensorType(tf.float32, [3])),
     ], collections.OrderedDict)
     tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
-    test_utils.assert_nested_struct_eq(
+    self.assert_nested_struct_eq(
         tensor_specs, {
             'a': tf.TensorSpec([5], tf.int32),
             'b': tf.TensorSpec([], tf.bool),
@@ -343,7 +341,7 @@ class TypeToTfTensorSpecsTest(test_utils.TestCase):
         ('e', computation_types.StructType([])),
     ], collections.OrderedDict)
     tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
-    test_utils.assert_nested_struct_eq(
+    self.assert_nested_struct_eq(
         tensor_specs, {
             'a': tf.TensorSpec([], tf.bool),
             'b': {
@@ -360,8 +358,7 @@ class TypeToTfTensorSpecsTest(test_utils.TestCase):
   def test_with_unnamed_element(self):
     type_signature = computation_types.StructType([tf.int32])
     tensor_specs = type_conversions.type_to_tf_tensor_specs(type_signature)
-    test_utils.assert_nested_struct_eq(tensor_specs,
-                                       (tf.TensorSpec([], tf.int32),))
+    self.assert_nested_struct_eq(tensor_specs, (tf.TensorSpec([], tf.int32),))
 
 
 class TypeToTfStructureTest(test_utils.TestCase):
