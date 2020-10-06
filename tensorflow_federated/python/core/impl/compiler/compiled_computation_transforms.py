@@ -1291,61 +1291,6 @@ def _remap_graph_inputs(graph, list_of_indices, tuple_type):
   return permute_graph_inputs(graph_with_appended_inputs, permutation)
 
 
-class LambdaCallSelectionFromArg(transformation_utils.TransformSpec):
-  r"""Identifies a lambda to a called TF graph on a selection from the lambda's argument.
-
-  Transforms the pattern:
-
-                              Lambda(arg)
-                                  |
-                                Call
-                               /    \
-            CompiledComputation      Selection(x)
-                                          |
-                                      Ref(arg)
-
-  into:
-
-                       CompiledComputation
-
-  By pushing the selection logic into the CompiledComputation.
-
-  Notice that we cannot simply transform the logic strictly under the
-  Lambda before encountering the Lambda, as we must still bind the
-  Reference to the parameter of the Lambda.
-  """
-
-  def should_transform(self, comp):
-    return (comp.is_lambda() and comp.parameter_type.is_struct() and
-            comp.result.is_call() and
-            comp.result.function.is_compiled_computation() and
-            comp.result.argument.is_selection() and
-            comp.result.argument.source.is_reference() and
-            comp.result.argument.source.name == comp.parameter_name)
-
-  def transform(self, comp):
-    if not self.should_transform(comp):
-      return comp, False
-    parameter_type_elements = structure.to_elements(comp.parameter_type)
-    if comp.result.argument.name is None:
-      index_of_selection = comp.result.argument.index
-    else:
-      index_of_selection = [x[0] for x in parameter_type_elements
-                           ].index(comp.result.argument.name)
-
-    name = parameter_type_elements[index_of_selection][0]
-
-    graph_with_wrapped_parameter = bind_graph_parameter_as_tuple(
-        comp.result.function, name=name)
-    remapped = _remap_graph_inputs(graph_with_wrapped_parameter,
-                                   [index_of_selection], comp.parameter_type)
-    pruned = building_blocks.CompiledComputation(
-        tensorflow_computation_transformations.prune_tensorflow_proto(
-            remapped.proto),
-        type_signature=comp.type_signature)
-    return pruned, True
-
-
 class TensorFlowOptimizer(transformation_utils.TransformSpec):
   """Applies TF graph optimizations to `building_blocks.CompiledComputations`.
 
