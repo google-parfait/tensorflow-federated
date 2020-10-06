@@ -103,7 +103,6 @@ py_test(
 
 py_library(
     name = "test_utils",
-    testonly = True,
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
 )
