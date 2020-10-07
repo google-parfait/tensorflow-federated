@@ -18,16 +18,15 @@ These tests also serve as examples for users who are familiar with Keras.
 import collections
 
 import tensorflow as tf
-
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 
 
-class ModelUtilsTest(test_utils.TestCase):
+class ModelUtilsTest(test_case.TestCase):
 
   def test_model_initializer(self):
     with tf.Graph().as_default() as g:
@@ -113,7 +112,7 @@ class TestModel(model_lib.Model):
     return computations.federated_computation(lambda x: x)
 
 
-class WeightsTypeFromModelTest(test_utils.TestCase):
+class WeightsTypeFromModelTest(test_case.TestCase):
 
   def test_fails_not_callable_or_model(self):
     with self.assertRaises(TypeError):
@@ -151,7 +150,7 @@ class WeightsTypeFromModelTest(test_utils.TestCase):
               ], list))], model_utils.ModelWeights), weights_type)
 
 
-class ParamCountFromModelTest(test_utils.TestCase):
+class ParamCountFromModelTest(test_case.TestCase):
 
   def test_fails_not_model(self):
     with self.assertRaises(TypeError):
@@ -174,4 +173,4 @@ class ParamCountFromModelTest(test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  test_utils.main()
+  test_case.main()

@@ -64,6 +64,7 @@ py_cpu_gpu_test(
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
     ],
@@ -97,6 +98,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
     ],
@@ -131,6 +133,7 @@ py_cpu_gpu_test(
         ":model_examples",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
     ],
@@ -162,9 +165,9 @@ py_test(
         ":keras_utils",
         ":model_examples",
         ":model_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
 )
@@ -194,8 +197,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":model_examples",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
 )
@@ -239,9 +242,9 @@ py_test(
         ":model",
         ":model_examples",
         ":model_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:test_case",
     ],
 )
 
@@ -258,8 +261,8 @@ py_cpu_gpu_test(
         ":model_examples",
         ":model_utils",
         ":personalization_eval",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
 )

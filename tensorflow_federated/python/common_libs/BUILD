@@ -107,15 +107,6 @@ py_library(
     srcs_version = "PY3",
 )
 
-py_test(
-    name = "test_utils_test",
-    size = "small",
-    srcs = ["test_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":test_utils"],
-)
-
 py_library(
     name = "tracing",
     srcs = ["tracing.py"],

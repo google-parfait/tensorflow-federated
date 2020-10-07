@@ -51,9 +51,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":adaptive_zeroing",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
@@ -74,7 +74,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/core/api:test_case",
     ],
 )
 
@@ -100,9 +100,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":differential_privacy",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:measured_process",
@@ -132,9 +132,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":encoding_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:measured_process",
@@ -165,11 +165,11 @@ py_test(
     deps = [
         ":federated_aggregations",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/test:static_assert",
     ],
@@ -195,6 +195,6 @@ py_test(
     deps = [
         ":tf_computation_utils",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/core/api:test_case",
     ],
 )

@@ -111,9 +111,9 @@ py_test(
         ":computations",
         ":intrinsics",
         ":placements",
+        ":test_case",
         ":value_base",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
     ],
 )
@@ -123,6 +123,23 @@ py_library(
     srcs = ["placements.py"],
     srcs_version = "PY3",
     deps = ["//tensorflow_federated/python/core/impl/types:placement_literals"],
+)
+
+py_library(
+    name = "test_case",
+    srcs = ["test_case.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "test_case_test",
+    size = "small",
+    srcs = ["test_case_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":test_case",
+    ],
 )
 
 py_library(

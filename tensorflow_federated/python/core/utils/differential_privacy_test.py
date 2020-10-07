@@ -17,17 +17,16 @@ import collections
 from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_privacy
-
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.utils import differential_privacy
 
 
-class BuildDpQueryTest(test_utils.TestCase):
+class BuildDpQueryTest(test_case.TestCase):
 
   def test_build_dp_query_basic(self):
     query = differential_privacy.build_dp_query(1.0, 2.0, 3.0)
@@ -99,7 +98,7 @@ class BuildDpQueryTest(test_utils.TestCase):
     self.assertAlmostEqual(effective_noise_multiplier, 2.0)
 
 
-class BuildDpAggregateProcessTest(test_utils.TestCase, parameterized.TestCase):
+class BuildDpAggregateProcessTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('float', 0.0), ('list', [0.0, 0.0]),
@@ -302,4 +301,4 @@ class BuildDpAggregateProcessTest(test_utils.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test_utils.main()
+  test_case.main()

@@ -20,6 +20,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_serialization
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -33,7 +34,7 @@ def _tf_computation_serializer(fn, parameter_type, context):
   return serializer.send(result)
 
 
-class TensorFlowSerializationTest(test_utils.TestCase):
+class TensorFlowSerializationTest(test_case.TestCase):
 
   def test_serialize_tensorflow_with_no_parameter(self):
     comp, extra_type_spec = _tf_computation_serializer(
@@ -147,4 +148,4 @@ class TensorFlowSerializationTest(test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  test_utils.main()
+  test_case.main()

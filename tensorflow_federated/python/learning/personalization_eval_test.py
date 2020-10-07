@@ -16,9 +16,8 @@ import collections
 
 import numpy as np
 import tensorflow as tf
-
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
@@ -135,7 +134,7 @@ def _create_zero_model_weights(model_fn):
   return tf.nest.map_structure(tf.zeros_like, dummy_model.weights)
 
 
-class PersonalizationEvalTest(test_utils.TestCase):
+class PersonalizationEvalTest(test_case.TestCase):
 
   def test_failure_with_invalid_model_fn(self):
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
@@ -437,4 +436,4 @@ class PersonalizationEvalTest(test_utils.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test_utils.main()
+  test_case.main()

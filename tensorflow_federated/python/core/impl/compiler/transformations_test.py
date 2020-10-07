@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import tensorflow as tf
-
-from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -29,7 +28,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 
-class RemoveLambdasAndBlocksTest(common_libs_test_utils.TestCase):
+class RemoveLambdasAndBlocksTest(test_case.TestCase):
 
   def assertNoLambdasOrBlocks(self, comp):
 
@@ -150,7 +149,7 @@ class RemoveLambdasAndBlocksTest(common_libs_test_utils.TestCase):
     self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
 
 
-class TensorFlowCallingLambdaOnConcreteArgTest(common_libs_test_utils.TestCase):
+class TensorFlowCallingLambdaOnConcreteArgTest(test_case.TestCase):
 
   def test_raises_wrong_arguments(self):
     good_param = building_blocks.Reference('x', tf.int32)
@@ -245,7 +244,7 @@ class TensorFlowCallingLambdaOnConcreteArgTest(common_libs_test_utils.TestCase):
     self.assertAllEqual(result[0], list(range(5)))
 
 
-class BlockLocalsTFGraphTest(common_libs_test_utils.TestCase):
+class BlockLocalsTFGraphTest(test_case.TestCase):
 
   def test_raises_with_naked_graph_as_block_local(self):
     tensor_type = computation_types.TensorType(tf.int32)
@@ -493,7 +492,7 @@ class BlockLocalsTFGraphTest(common_libs_test_utils.TestCase):
     self.assertEqual((tuple_ops_with_10_ids - tuple_ops_with_5_ids) / 5, 2)
 
 
-class DeduplicateCalledGraphsTest(common_libs_test_utils.TestCase):
+class DeduplicateCalledGraphsTest(test_case.TestCase):
 
   def test_raises_bad_type(self):
     with self.assertRaises(TypeError):
@@ -601,7 +600,7 @@ class DeduplicateCalledGraphsTest(common_libs_test_utils.TestCase):
     self.assertEqual(first_factor, second_factor)
 
 
-class DedupeAndMergeTupleIntrinsicsTest(common_libs_test_utils.TestCase):
+class DedupeAndMergeTupleIntrinsicsTest(test_case.TestCase):
 
   def test_noops_in_case_of_distinct_maps(self):
     called_intrinsic1 = compiler_test_utils.create_dummy_called_federated_map(
@@ -906,7 +905,7 @@ class DedupeAndMergeTupleIntrinsicsTest(common_libs_test_utils.TestCase):
         '{<int32>}@CLIENTS')
 
 
-class TensorFlowGeneratorTest(common_libs_test_utils.TestCase):
+class TensorFlowGeneratorTest(test_case.TestCase):
 
   def test_passes_on_tf(self):
     tf_comp = building_block_factory.create_compiled_identity(
@@ -1068,7 +1067,7 @@ class TensorFlowGeneratorTest(common_libs_test_utils.TestCase):
     self.assertEqual(first_factor, second_factor)
 
 
-class TestTransformToCallDominantForm(common_libs_test_utils.TestCase):
+class TestTransformToCallDominantForm(test_case.TestCase):
 
   def test_handles_called_lambda_returning_function(self):
     lower_level_lambda = building_blocks.Lambda(
@@ -1215,4 +1214,4 @@ class TestTransformToCallDominantForm(common_libs_test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  common_libs_test_utils.main()
+  test_case.main()

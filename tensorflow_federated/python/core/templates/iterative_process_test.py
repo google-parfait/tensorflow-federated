@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import tensorflow as tf
-
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 
@@ -33,7 +32,7 @@ def test_next_fn(state):
   return state
 
 
-class IterativeProcessTest(test_utils.TestCase):
+class IterativeProcessTest(test_case.TestCase):
 
   def test_construction_does_not_raise(self):
     try:
@@ -117,4 +116,4 @@ class IterativeProcessTest(test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  test_utils.main()
+  test_case.main()

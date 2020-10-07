@@ -16,11 +16,12 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 
 
-class TensorFlowDeserializationTest(test_utils.TestCase):
+class TensorFlowDeserializationTest(test_case.TestCase):
 
   @test_utils.graph_mode_test
   def test_deserialize_and_call_tf_computation_with_add_one(self):
@@ -37,4 +38,4 @@ class TensorFlowDeserializationTest(test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  test_utils.main()
+  test_case.main()

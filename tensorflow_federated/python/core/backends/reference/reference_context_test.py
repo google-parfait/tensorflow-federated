@@ -19,10 +19,10 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.reference import reference_context
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl import intrinsic_bodies
@@ -46,8 +46,7 @@ def zero_for(type_spec, context_stack):
       context_stack)
 
 
-class ReferenceContextTest(common_libs_test_utils.TestCase,
-                           parameterized.TestCase):
+class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
 
   def test_computed_value(self):
     v = reference_context.ComputedValue(10, tf.int32)
@@ -1295,7 +1294,7 @@ class ReferenceContextTest(common_libs_test_utils.TestCase,
     self.assertEqual(add_one(v), 11.0)
 
 
-class UnwrapPlacementIntegrationTest(common_libs_test_utils.TestCase):
+class UnwrapPlacementIntegrationTest(test_case.TestCase):
 
   def test_unwrap_placement_with_federated_map_executes_correctly(self):
     int_ref = bb.Reference('x', tf.int32)
@@ -1399,7 +1398,7 @@ class UnwrapPlacementIntegrationTest(common_libs_test_utils.TestCase):
           executable_unwrapped([[k, k * 1., k, k * 1.]]))
 
 
-class MergeTupleIntrinsicsIntegrationTest(common_libs_test_utils.TestCase):
+class MergeTupleIntrinsicsIntegrationTest(test_case.TestCase):
 
   def test_merge_tuple_intrinsics_executes_with_federated_aggregate(self):
     value_type = computation_types.FederatedType(tf.int32,
@@ -1505,4 +1504,4 @@ class MergeTupleIntrinsicsIntegrationTest(common_libs_test_utils.TestCase):
 
 if __name__ == '__main__':
   reference_context.set_reference_context()
-  common_libs_test_utils.main()
+  test_case.main()

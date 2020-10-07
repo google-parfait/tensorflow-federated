@@ -18,13 +18,13 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 
 
-class TypeUtilsTest(test_utils.TestCase, parameterized.TestCase):
+class TypeUtilsTest(test_case.TestCase, parameterized.TestCase):
 
   def test_to_canonical_value_with_none(self):
     self.assertIsNone(type_utils.to_canonical_value(None))

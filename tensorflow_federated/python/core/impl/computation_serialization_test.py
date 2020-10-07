@@ -13,10 +13,9 @@
 # limitations under the License.
 
 import tensorflow as tf
-
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl import computation_serialization
 
 
@@ -25,7 +24,7 @@ def add_int32(current, val):
   return current + val
 
 
-class ComputationSerializationTest(test_utils.TestCase):
+class ComputationSerializationTest(test_case.TestCase):
 
   def test_serialize_deserialize_round_trip(self):
     serialized_comp = computation_serialization.serialize_computation(add_int32)
@@ -36,4 +35,4 @@ class ComputationSerializationTest(test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  test_utils.main()
+  test_case.main()

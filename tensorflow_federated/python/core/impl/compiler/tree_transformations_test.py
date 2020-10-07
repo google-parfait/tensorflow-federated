@@ -16,8 +16,8 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -88,7 +88,7 @@ def _create_complex_computation():
   return building_blocks.Lambda('b', tf.int32, tup)
 
 
-class ExtractComputationsTest(common_libs_test_utils.TestCase):
+class ExtractComputationsTest(test_case.TestCase):
 
   def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
@@ -500,7 +500,7 @@ class ExtractComputationsTest(common_libs_test_utils.TestCase):
     self.assertTrue(modified)
 
 
-class ExtractIntrinsicsTest(common_libs_test_utils.TestCase):
+class ExtractIntrinsicsTest(test_case.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -1265,7 +1265,7 @@ class ExtractIntrinsicsTest(common_libs_test_utils.TestCase):
     self.assertFalse(modified)
 
 
-class InlineBlockLocalsTest(common_libs_test_utils.TestCase):
+class InlineBlockLocalsTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
@@ -1415,7 +1415,7 @@ class InlineBlockLocalsTest(common_libs_test_utils.TestCase):
     self.assertFalse(modified)
 
 
-class InlineSelectionsFromTuplesTest(common_libs_test_utils.TestCase):
+class InlineSelectionsFromTuplesTest(test_case.TestCase):
 
   def test_should_transform_selection_from_tuple(self):
     tup = building_blocks.Struct([building_blocks.Data('x', tf.int32)])
@@ -1492,7 +1492,7 @@ class InlineSelectionsFromTuplesTest(common_libs_test_utils.TestCase):
                      expected_blk.compact_representation())
 
 
-class MergeChainedBlocksTest(common_libs_test_utils.TestCase):
+class MergeChainedBlocksTest(test_case.TestCase):
 
   def test_fails_on_none(self):
     with self.assertRaises(TypeError):
@@ -1606,7 +1606,7 @@ class MergeChainedBlocksTest(common_libs_test_utils.TestCase):
     self.assertTrue(modified)
 
 
-class MergeChainedFederatedMapOrApplysTest(common_libs_test_utils.TestCase):
+class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -1854,7 +1854,7 @@ class MergeChainedFederatedMapOrApplysTest(common_libs_test_utils.TestCase):
     self.assertFalse(modified)
 
 
-class MergeTupleIntrinsicsTest(common_libs_test_utils.TestCase):
+class MergeTupleIntrinsicsTest(test_case.TestCase):
 
   def test_raises_type_error_with_none_comp(self):
     with self.assertRaises(TypeError):
@@ -2931,7 +2931,7 @@ class MergeTupleIntrinsicsTest(common_libs_test_utils.TestCase):
     self.assertFalse(modified)
 
 
-class RemoveDuplicateBlockLocals(common_libs_test_utils.TestCase):
+class RemoveDuplicateBlockLocals(test_case.TestCase):
 
   def test_raises_type_error_with_none(self):
     with self.assertRaises(TypeError):
@@ -3194,7 +3194,7 @@ class RemoveDuplicateBlockLocals(common_libs_test_utils.TestCase):
     self.assertTrue(modified)
 
 
-class DeduplicateBuildingBlocksTest(common_libs_test_utils.TestCase):
+class DeduplicateBuildingBlocksTest(test_case.TestCase):
 
   def test_removes_multiple_selections(self):
     id_lam = building_blocks.Lambda(
@@ -3329,7 +3329,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     self.assertFalse(modified)
 
 
-class RemoveUnusedBlockLocalsTest(common_libs_test_utils.TestCase):
+class RemoveUnusedBlockLocalsTest(test_case.TestCase):
 
   def setUp(self):
     super().setUp()
@@ -3417,7 +3417,7 @@ class RemoveUnusedBlockLocalsTest(common_libs_test_utils.TestCase):
     self.assertEqual(transformed_blk.compact_representation(), '(let y=b in y)')
 
 
-class ReplaceCalledLambdaWithBlockTest(common_libs_test_utils.TestCase):
+class ReplaceCalledLambdaWithBlockTest(test_case.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -3518,7 +3518,7 @@ class ReplaceCalledLambdaWithBlockTest(common_libs_test_utils.TestCase):
     self.assertFalse(modified)
 
 
-class ReplaceSelectionFromTupleWithElementTest(common_libs_test_utils.TestCase):
+class ReplaceSelectionFromTupleWithElementTest(test_case.TestCase):
 
   def test_fails_on_none_comp(self):
     with self.assertRaises(TypeError):
@@ -3642,7 +3642,7 @@ class UniquifyCompiledComputationNamesTest(parameterized.TestCase):
     self.assertFalse(modified)
 
 
-class ResolveHigherOrderFunctionsTest(common_libs_test_utils.TestCase):
+class ResolveHigherOrderFunctionsTest(test_case.TestCase):
 
   def _apply_resolution_and_remove_unused_block_locals(self, comp):
     fns_resolved, modified = tree_transformations.resolve_higher_order_functions(
@@ -3966,7 +3966,7 @@ class ResolveHigherOrderFunctionsTest(common_libs_test_utils.TestCase):
     )
 
 
-class UniquifyReferenceNamesTest(common_libs_test_utils.TestCase):
+class UniquifyReferenceNamesTest(test_case.TestCase):
 
   def test_raises_type_error(self):
     with self.assertRaises(TypeError):
@@ -4122,7 +4122,7 @@ def _is_called_graph_pattern(comp):
           comp.argument.is_reference())
 
 
-class InsertTensorFlowIdentityAtLeavesTest(common_libs_test_utils.TestCase):
+class InsertTensorFlowIdentityAtLeavesTest(test_case.TestCase):
 
   def test_rasies_on_none(self):
     with self.assertRaises(TypeError):
@@ -4604,7 +4604,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
                      computation_types.FunctionType(tf.int32, tf.int32))
 
 
-class GroupBlockLocalsByNamespaceTest(common_libs_test_utils.TestCase):
+class GroupBlockLocalsByNamespaceTest(test_case.TestCase):
 
   def test_raises_non_block(self):
     ref = building_blocks.Reference('x', tf.int32)
@@ -4695,7 +4695,7 @@ class GroupBlockLocalsByNamespaceTest(common_libs_test_utils.TestCase):
     self.assertEqual(classes[1][0][1], ref_to_x)
 
 
-class GroupBlockLocalsByDependencyTest(common_libs_test_utils.TestCase):
+class GroupBlockLocalsByDependencyTest(test_case.TestCase):
 
   def test_create_groups_of_block_locals_empty_list(self):
     data = building_blocks.Data('b', tf.int32)
@@ -4868,4 +4868,4 @@ class GroupBlockLocalsByDependencyTest(common_libs_test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  common_libs_test_utils.main()
+  test_case.main()

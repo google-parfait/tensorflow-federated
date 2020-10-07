@@ -15,47 +15,7 @@
 
 import functools
 
-from absl.testing import absltest
 import tensorflow as tf
-
-
-class TestCase(tf.test.TestCase, absltest.TestCase):
-  """Base class for TensroFlow Federated tests."""
-
-  def setUp(self):
-    super().setUp()
-    tf.keras.backend.clear_session()
-
-  def assert_nested_struct_eq(self, x, y):
-    """Asserts that nested structures 'x' and 'y' are the same.
-
-    Args:
-      x: One nested structure.
-      y: Another nested structure.
-
-    Raises:
-      ValueError: if the structures are not the same.
-    """
-    try:
-      tf.nest.assert_same_structure(x, y)
-    except ValueError:
-      self.fail('Expected structures to have the same shape.')
-    xl = tf.nest.flatten(x)
-    yl = tf.nest.flatten(y)
-    if len(xl) != len(yl):
-      self.fail('The sizes of structures {} and {} mismatch.'.format(
-          str(len(xl)), str(len(yl))))
-    for xe, ye in zip(xl, yl):
-      if xe != ye:
-        self.fail('Mismatching elements {} and {}.'.format(str(xe), str(ye)))
-
-
-def main():
-  """Runs all unit tests with TF 2.0 features enabled.
-
-  This function should only be used if TensorFlow code is being tested.
-  """
-  tf.test.main()
 
 
 def graph_mode_test(test_fn):

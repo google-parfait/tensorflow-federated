@@ -62,10 +62,10 @@ py_test(
     deps = [
         ":reference_context",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl:computation_impl",
         "//tensorflow_federated/python/core/impl:intrinsic_bodies",
         "//tensorflow_federated/python/core/impl:intrinsic_factory",

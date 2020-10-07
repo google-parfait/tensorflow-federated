@@ -14,14 +14,13 @@
 
 from absl.testing import parameterized
 import tensorflow as tf
-
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.learning import model_examples
 
 
-class ModelExamplesTest(test_utils.TestCase, parameterized.TestCase):
+class ModelExamplesTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('', 1), ('_three_features', 3))
   def test_linear_regression(self, feature_dim):
@@ -78,4 +77,4 @@ class ModelExamplesTest(test_utils.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test_utils.main()
+  test_case.main()

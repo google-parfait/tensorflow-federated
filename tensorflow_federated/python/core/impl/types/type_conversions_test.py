@@ -20,8 +20,8 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -238,7 +238,7 @@ class InferTypeTest(parameterized.TestCase):
     self.assertEqual(t, computation_types.StructWithPythonType([], tuple))
 
 
-class TypeToTfDtypesAndShapesTest(test_utils.TestCase):
+class TypeToTfDtypesAndShapesTest(test_case.TestCase):
 
   def test_with_int_scalar(self):
     type_signature = computation_types.TensorType(tf.int32)
@@ -304,7 +304,7 @@ class TypeToTfDtypesAndShapesTest(test_utils.TestCase):
         })
 
 
-class TypeToTfTensorSpecsTest(test_utils.TestCase):
+class TypeToTfTensorSpecsTest(test_case.TestCase):
 
   def test_with_int_scalar(self):
     type_signature = computation_types.TensorType(tf.int32)
@@ -361,7 +361,7 @@ class TypeToTfTensorSpecsTest(test_utils.TestCase):
     self.assert_nested_struct_eq(tensor_specs, (tf.TensorSpec([], tf.int32),))
 
 
-class TypeToTfStructureTest(test_utils.TestCase):
+class TypeToTfStructureTest(test_case.TestCase):
 
   def test_with_names(self):
     expected_structure = collections.OrderedDict([
@@ -416,7 +416,7 @@ class TypeToTfStructureTest(test_utils.TestCase):
       type_conversions.type_to_tf_structure(computation_types.StructType([]))
 
 
-class TypeFromTensorsTest(test_utils.TestCase):
+class TypeFromTensorsTest(test_case.TestCase):
 
   def test_with_single(self):
     v = tf.Variable(0.0, name='a', dtype=tf.float32, shape=[])
@@ -454,7 +454,7 @@ class TypeFromTensorsTest(test_utils.TestCase):
     self.assertEqual(str(result), '<x=float32,y=int32>')
 
 
-class TypeToPyContainerTest(test_utils.TestCase):
+class TypeToPyContainerTest(test_case.TestCase):
 
   def test_not_anon_tuple_passthrough(self):
     value = (1, 2.0)
@@ -634,7 +634,7 @@ class TypeToPyContainerTest(test_utils.TestCase):
     self.assertAllEqual(actual_elements, expected_elements)
 
 
-class TypeToNonAllEqualTest(test_utils.TestCase):
+class TypeToNonAllEqualTest(test_case.TestCase):
 
   def test_with_bool(self):
     for x in [True, False]:

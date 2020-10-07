@@ -17,12 +17,11 @@ import collections
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
-
-from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form
 from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
@@ -477,7 +476,7 @@ def get_iterative_process_for_minimal_sum_example():
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
-class CanonicalFormTestCase(common_libs_test_utils.TestCase):
+class CanonicalFormTestCase(test_case.TestCase):
   """A base class that overrides evaluate to handle various executors."""
 
   def evaluate(self, value):
@@ -509,8 +508,7 @@ class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
                         collections.OrderedDict(ratio_over_threshold=0.75))
 
 
-class CreateBeforeAndAfterBroadcastForNoBroadcastTest(
-    common_libs_test_utils.TestCase):
+class CreateBeforeAndAfterBroadcastForNoBroadcastTest(test_case.TestCase):
 
   def test_returns_tree(self):
     ip = get_iterative_process_for_sum_example_with_no_broadcast()
@@ -541,7 +539,7 @@ class CreateBeforeAndAfterBroadcastForNoBroadcastTest(
 
 
 class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
-    common_libs_test_utils.TestCase):
+    test_case.TestCase):
 
   def test_returns_tree(self):
     ip = get_iterative_process_for_sum_example_with_no_federated_aggregate()
@@ -613,8 +611,7 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
     # pyformat: enable
 
 
-class CreateBeforeAndAfterAggregateForNoSecureSumTest(
-    common_libs_test_utils.TestCase):
+class CreateBeforeAndAfterAggregateForNoSecureSumTest(test_case.TestCase):
 
   def test_returns_tree(self):
     ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum()
@@ -681,7 +678,7 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(
     # pyformat: enable
 
 
-class GetTypeInfoTest(common_libs_test_utils.TestCase):
+class GetTypeInfoTest(test_case.TestCase):
 
   def test_returns_type_info_for_sum_example(self):
     ip = get_iterative_process_for_sum_example()
@@ -937,4 +934,4 @@ if __name__ == '__main__':
   # The reference context is used here because it is currently the only context
   # which implements the `tff.federated_secure_sum` intrinsic.
   reference_context.set_reference_context()
-  common_libs_test_utils.main()
+  test_case.main()

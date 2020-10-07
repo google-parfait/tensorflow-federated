@@ -18,15 +18,15 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import test_utils as aggregators_test_utils
-from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 
-class SumPlusOneFactoryComputationTest(common_libs_test_utils.TestCase,
+class SumPlusOneFactoryComputationTest(test_case.TestCase,
                                        parameterized.TestCase):
 
   @parameterized.named_parameters(('float', tf.float32),
@@ -72,7 +72,7 @@ class SumPlusOneFactoryComputationTest(common_libs_test_utils.TestCase,
       sum_f.create(bad_value_type)
 
 
-class SumPlusOneFactoryExecutionTest(common_libs_test_utils.TestCase):
+class SumPlusOneFactoryExecutionTest(test_case.TestCase):
 
   def test_sum_scalar(self):
     sum_f = aggregators_test_utils.SumPlusOneFactory()
@@ -105,4 +105,4 @@ class SumPlusOneFactoryExecutionTest(common_libs_test_utils.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  common_libs_test_utils.main()
+  test_case.main()

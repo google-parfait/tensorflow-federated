@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.core.api import test_case
 
 
-class TestUtilsTest(test_utils.TestCase):
+class TestUtilsTest(test_case.TestCase):
 
   def test_nested_structures_are_same_where_they_are_same(self):
     self.assert_nested_struct_eq({'a': 10}, {'a': 10})
@@ -30,4 +30,4 @@ class TestUtilsTest(test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  test_utils.main()
+  test_case.main()

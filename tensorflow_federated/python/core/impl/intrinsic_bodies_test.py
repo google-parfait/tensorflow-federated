@@ -16,9 +16,9 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
@@ -27,8 +27,7 @@ from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 @executor_test_utils.executors
-class IntrinsicBodiesTest(common_libs_test_utils.TestCase,
-                          parameterized.TestCase):
+class IntrinsicBodiesTest(test_case.TestCase, parameterized.TestCase):
 
   def test_federated_sum(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -138,8 +137,7 @@ class IntrinsicBodiesTest(common_libs_test_utils.TestCase,
 
 
 @executor_test_utils.executors
-class GenericDivideTest(common_libs_test_utils.TestCase,
-                        parameterized.TestCase):
+class GenericDivideTest(test_case.TestCase, parameterized.TestCase):
 
   def test_generic_divide_unplaced_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -287,8 +285,7 @@ class GenericDivideTest(common_libs_test_utils.TestCase,
 
 
 @executor_test_utils.executors
-class GenericMultiplyTest(common_libs_test_utils.TestCase,
-                          parameterized.TestCase):
+class GenericMultiplyTest(test_case.TestCase, parameterized.TestCase):
 
   def test_generic_multiply_federated_named_tuple_by_tensor(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -442,7 +439,7 @@ class GenericMultiplyTest(common_libs_test_utils.TestCase,
 
 
 @executor_test_utils.executors
-class GenericAddTest(common_libs_test_utils.TestCase, parameterized.TestCase):
+class GenericAddTest(test_case.TestCase, parameterized.TestCase):
 
   def test_federated_generic_add_with_ints(self):
     bodies = intrinsic_bodies.get_intrinsic_bodies(
@@ -582,4 +579,4 @@ class GenericAddTest(common_libs_test_utils.TestCase, parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  common_libs_test_utils.main()
+  test_case.main()

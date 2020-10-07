@@ -51,7 +51,7 @@ def construct_example_training_comp():
       client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
 
 
-class CanonicalFormTest(test_utils.TestCase):
+class CanonicalFormTest(tff.test.TestCase):
 
   def test_canonical_form_with_learning_structure_contains_only_one_broadcast_and_one_aggregate(
       self):
@@ -145,4 +145,4 @@ class CanonicalFormTest(test_utils.TestCase):
 
 if __name__ == '__main__':
   tff.backends.reference.set_reference_context()
-  test_utils.main()
+  tff.test.main()

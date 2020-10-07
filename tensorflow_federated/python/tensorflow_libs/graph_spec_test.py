@@ -15,7 +15,6 @@
 
 import tensorflow as tf
 
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.tensorflow_libs import graph_spec
 
 
@@ -27,7 +26,7 @@ def _make_add_one_graph():
   return graph, input_val.name, out.name
 
 
-class GraphSpecTest(test_utils.TestCase):
+class GraphSpecTest(tf.test.TestCase):
 
   def test_graph_spec_constructs_dummy_data(self):
     graph_def = _make_add_one_graph()[0].as_graph_def()
@@ -101,7 +100,7 @@ def _make_manual_reduce_graph(dataset_construction_graph, return_element):
   return graph, '', out.name
 
 
-class ToMetaGraphDefTest(test_utils.TestCase):
+class ToMetaGraphDefTest(tf.test.TestCase):
 
   def test_graph_spec_to_meta_graph_def_simplest_case(self):
     graph, in_name, out_name = _make_add_one_graph()
@@ -184,4 +183,4 @@ class ToMetaGraphDefTest(test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  test_utils.main()
+  tf.test.main()

@@ -22,6 +22,7 @@ from tensorflow_federated.proto.v0 import executor_pb2
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.executors import executor_service_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
 
@@ -252,7 +253,7 @@ class ExecutorServiceUtilsTest(tf.test.TestCase):
     self.assertEqual(y, 10)
 
 
-class DatasetSerializationTest(test_utils.TestCase):
+class DatasetSerializationTest(test_case.TestCase):
 
   def test_serialize_sequence_not_a_dataset(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*Dataset.* found int'):

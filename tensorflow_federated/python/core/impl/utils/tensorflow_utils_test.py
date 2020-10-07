@@ -22,11 +22,12 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
-class GraphUtilsTest(test_utils.TestCase):
+class GraphUtilsTest(test_case.TestCase):
 
   def _assert_binding_matches_type_and_value(self, binding, type_spec, val,
                                              graph):
@@ -1073,4 +1074,4 @@ class GraphUtilsTest(test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  test_utils.main()
+  test_case.main()

@@ -19,10 +19,9 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 import tensorflow_privacy
-
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.utils import adaptive_zeroing
@@ -38,7 +37,7 @@ test_value_types = [('scalar', [()]), ('vector', [(2,)]), ('matrix', [(3, 4)]),
                     ('complex', [(), (2,), (3, 4)])]
 
 
-class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
+class AdaptiveZeroingTest(test_case.TestCase, parameterized.TestCase):
 
   def _check_result(self, output, expected, shapes):
     for res, exp in zip(output.result, _make_value(expected, shapes)):
@@ -287,4 +286,4 @@ class AdaptiveZeroingTest(test_utils.TestCase, parameterized.TestCase):
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
-  test_utils.main()
+  test_case.main()

@@ -23,10 +23,7 @@ py_test(
     srcs = ["function_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":function",
-        "//tensorflow_federated/python/common_libs:test_utils",
-    ],
+    deps = [":function"],
 )
 
 py_library(
@@ -44,7 +41,6 @@ py_test(
     deps = [
         ":graph_merge",
         ":graph_spec",
-        "//tensorflow_federated/python/common_libs:test_utils",
     ],
 )
 
@@ -63,7 +59,6 @@ py_test(
     deps = [
         ":graph_optimizations",
         ":graph_spec",
-        "//tensorflow_federated/python/common_libs:test_utils",
     ],
 )
 
@@ -78,10 +73,7 @@ py_test(
     srcs = ["graph_spec_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":graph_spec",
-        "//tensorflow_federated/python/common_libs:test_utils",
-    ],
+    deps = [":graph_spec"],
 )
 
 py_library(
@@ -97,10 +89,7 @@ py_test(
     srcs = ["tensor_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":tensor_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
-    ],
+    deps = [":tensor_utils"],
 )
 
 py_library(
@@ -115,10 +104,7 @@ py_test(
     srcs = ["variable_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":variable_utils",
-        "//tensorflow_federated/python/common_libs:test_utils",
-    ],
+    deps = [":variable_utils"],
 )
 
 py_library(
@@ -133,8 +119,5 @@ py_test(
     srcs = ["version_check_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":version_check",
-        "//tensorflow_federated/python/common_libs:test_utils",
-    ],
+    deps = [":version_check"],
 )

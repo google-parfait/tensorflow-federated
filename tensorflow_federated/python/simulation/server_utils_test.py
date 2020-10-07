@@ -17,13 +17,13 @@ from unittest import mock
 
 import portpicker
 
-from tensorflow_federated.python.common_libs import test_utils
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.simulation import server_utils
 
 
-class ServerUtilsTest(test_utils.TestCase):
+class ServerUtilsTest(test_case.TestCase):
 
   @mock.patch('absl.logging.info')
   def test_server_context_shuts_down_under_keyboard_interrupt(
@@ -59,4 +59,4 @@ class ServerUtilsTest(test_utils.TestCase):
 
 
 if __name__ == '__main__':
-  test_utils.main()
+  test_case.main()

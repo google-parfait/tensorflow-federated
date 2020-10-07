@@ -16,8 +16,8 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_serialization
 
@@ -30,7 +30,7 @@ def _shape_to_dims(shape):
   return [s if s is not None else -1 for s in shape]
 
 
-class TypeSerializationTest(test_utils.TestCase, parameterized.TestCase):
+class TypeSerializationTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('scalar_int', tf.int32, []),
