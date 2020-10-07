@@ -184,9 +184,9 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     result = fn(tf.constant(10))
     return result
 
-  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
-                                  ('TPU', 'TPU'))
+  @parameterized.named_parameters(('cpu', 'CPU'), ('gpu', 'GPU'))
   def test_wrap_function_on_all_available_logical_devices(self, device_type):
+    # This function is not tested for TPU because of `placeholder`.
     for device in tf.config.list_logical_devices(device_type):
       self.assertTrue(
           self._get_wrap_function_on_device(device).device.endswith(
@@ -205,8 +205,8 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     result = fn(tf.constant(20))
     return result
 
-  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
-                                  ('TPU', 'TPU'))
+  @parameterized.named_parameters(('cpu', 'CPU'), ('gpu', 'GPU'),
+                                  ('tpu', 'TPU'))
   def test_embed_tensorflow_computation_succeeds_on_devices(self, device_type):
     for device in tf.config.list_logical_devices(device_type):
       self.assertTrue(
@@ -219,7 +219,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
       self.skipTest('Skip the test if multi-GPUs, checkout the MultiGPUTests')
 
   @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
-                                  ('device_gpu', 'GPU'))
+                                  ('device_gpu', 'GPU'), ('device_tpu', 'TPU'))
   def test_get_no_arg_wrapped_function_from_comp_with_dataset_reduce(
       self, device_type):
 
@@ -237,7 +237,7 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(wrapped_fn(), np.int64(45))
 
   @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
-                                  ('device_gpu', 'GPU'))
+                                  ('device_gpu', 'GPU'), ('device_tpu', 'TPU'))
   def test_get_no_arg_wrapped_function_from_comp_with_iter_dataset(
       self, device_type):
 
@@ -338,8 +338,8 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     result = fn(tf.constant(20))
     return result
 
-  @parameterized.named_parameters(('CPU', 'CPU'), ('GPU', 'GPU'),
-                                  ('TPU', 'TPU'))
+  @parameterized.named_parameters(('cpu', 'CPU'), ('gpu', 'GPU'),
+                                  ('tpu', 'TPU'))
   def test_to_representation_for_type_succeeds_on_device(self, device_type):
     for device in tf.config.list_logical_devices(device_type):
       self.assertTrue(

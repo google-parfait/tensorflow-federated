@@ -378,51 +378,51 @@ class UnplacedExecutorFactoryTest(parameterized.TestCase):
       unplaced_factory.create_executor(
           cardinalities={placement_literals.SERVER: 1})
 
-  @parameterized.named_parameters(
-      ('server_on_cpu', 'CPU'),
-      ('server_on_gpu', 'GPU'),
-  )
+  @parameterized.named_parameters(('server_on_cpu', 'CPU'),
+                                  ('server_on_gpu', 'GPU'),
+                                  ('server_on_tpu', 'TPU'))
   def test_create_executor_with_server_device(self, tf_device):
     tf_devices = tf.config.list_logical_devices(tf_device)
     server_tf_device = None if not tf_devices else tf_devices[0]
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(
-        use_caching=True, server_device=server_tf_device)
+        use_caching=False, server_device=server_tf_device)
     unplaced_executor = unplaced_factory.create_executor()
     self.assertIsInstance(unplaced_executor, executor_base.Executor)
 
-  @parameterized.named_parameters(
-      ('clients_on_cpu', 'CPU'),
-      ('clients_on_gpu', 'GPU'),
-  )
+  @parameterized.named_parameters(('clients_on_cpu', 'CPU'),
+                                  ('clients_on_gpu', 'GPU'),
+                                  ('clients_on_tpu', 'TPU'))
   def test_create_executor_with_client_devices(self, tf_device):
     tf_devices = tf.config.list_logical_devices(tf_device)
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(
-        use_caching=True, client_devices=tf_devices)
+        use_caching=False, client_devices=tf_devices)
     unplaced_executor = unplaced_factory.create_executor()
     self.assertIsInstance(unplaced_executor, executor_base.Executor)
 
-  @parameterized.named_parameters(
-      ('server_clients_on_cpu', 'CPU'),
-      ('server_clients_on_gpu', 'GPU'),
-  )
+  @parameterized.named_parameters(('server_clients_on_cpu', 'CPU'),
+                                  ('server_clients_on_gpu', 'GPU'),
+                                  ('server_clients_on_tpu', 'TPU'))
   def test_create_executor_with_server_client_devices(self, tf_device):
     tf_devices = tf.config.list_logical_devices(tf_device)
     server_tf_device = None if not tf_devices else tf_devices[0]
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(
-        use_caching=True,
+        use_caching=False,
         server_device=server_tf_device,
         client_devices=tf_devices)
     unplaced_executor = unplaced_factory.create_executor()
     self.assertIsInstance(unplaced_executor, executor_base.Executor)
 
-  def test_create_executor_with_server_cpu_client_gpu(self):
+  @parameterized.named_parameters(('clients_on_cpu', 'CPU'),
+                                  ('clients_on_gpu', 'GPU'),
+                                  ('clients_on_tpu', 'TPU'))
+  def test_create_executor_with_server_cpu_client_devices(self, tf_device):
     cpu_devices = tf.config.list_logical_devices('CPU')
-    gpu_devices = tf.config.list_logical_devices('GPU')
+    client_devices = tf.config.list_logical_devices(tf_device)
     server_tf_device = None if not cpu_devices else cpu_devices[0]
     unplaced_factory = executor_stacks.UnplacedExecutorFactory(
-        use_caching=True,
+        use_caching=False,
         server_device=server_tf_device,
-        client_devices=gpu_devices)
+        client_devices=client_devices)
     unplaced_executor = unplaced_factory.create_executor()
     self.assertIsInstance(unplaced_executor, executor_base.Executor)
 
