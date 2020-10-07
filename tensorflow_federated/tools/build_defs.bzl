@@ -2,7 +2,7 @@
 
 load("@rules_python//python:defs.bzl", "py_test")
 
-def py_cpu_and_gpu_test(name, main = None, tags = [], **kwargs):
+def py_cpu_gpu_test(name, main = None, tags = [], **kwargs):
     """A version of `py_test` that tests both cpu and gpu.
 
     It accepts all `py_test` arguments.

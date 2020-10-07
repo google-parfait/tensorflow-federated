@@ -1,4 +1,4 @@
-load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_and_gpu_test")
+load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -202,7 +202,7 @@ py_library(
     ],
 )
 
-py_cpu_and_gpu_test(
+py_cpu_gpu_test(
     name = "eager_tf_executor_test",
     size = "small",
     srcs = ["eager_tf_executor_test.py"],
@@ -388,7 +388,7 @@ py_library(
     ],
 )
 
-py_cpu_and_gpu_test(
+py_cpu_gpu_test(
     name = "executor_stacks_test",
     size = "small",
     srcs = ["executor_stacks_test.py"],
