@@ -98,11 +98,12 @@ landing_page:
   - classname: devsite-landing-row-cards
     items:
     - heading: "Federated Learning Workshop using TensorFlow Federated"
-      image_path: /resources/images/tf-logo-card-16x9.png
-      path: https://bit.ly/3jbiE5M
+      youtube_id: JBNas6Yd30A
       buttons:
-      - label: "Register now"
-        path: https://bit.ly/3jbiE5M
+      - label: "Watch the video"
+        path: https://www.youtube.com/watch?v=JBNas6Yd30A
+      - label: "Visit the workshop site"
+        path: https://events.withgoogle.com/demostutorials-workshop-on-federated-learning-and-analytics-2020
     - heading: "TensorFlow Federated (TFF): Machine Learning on Decentralized Data"
       youtube_id: 1YbPmkChcbo
       buttons:
@@ -117,35 +118,38 @@ landing_page:
 
   - classname: devsite-landing-row-cards
     items:
-    - heading: "Federated Learning: Collaborative Machine Learning without Centralized Training Data"
-      image_path: /resources/images/google-research-card-16x9.png
-      path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html
-      buttons:
-      - label: "Read on Google AI blog"
-        path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html
-    - heading: "Making every phone smarter with Federated Learning"
-      youtube_id: gbRJPa9d-VU
-      buttons:
-      - label: "Watch the video"
-        path: https://www.youtube.com/watch?v=gbRJPa9d-VU
     - heading: "TF Federated on GitHub"
       image_path: /resources/images/github-card-16x9.png
       path: https://github.com/tensorflow/federated
       buttons:
       - label: "View on GitHub"
         path: https://github.com/tensorflow/federated
+    - heading: "Federated Learning: Collaborative Machine Learning without Centralized Training Data"
+      image_path: /resources/images/google-research-card-16x9.png
+      path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html
+      buttons:
+      - label: "Read on Google AI blog"
+        path: https://ai.googleblog.com/2017/04/federated-learning-collaborative.html
+    - heading: "Federated Analytics: Collaborative Data Science without Data Collection"
+      image_path: /resources/images/google-research-card-16x9.png
+      path: https://ai.googleblog.com/2020/05/federated-analytics-collaborative-data.html
+      buttons:
+      - label: "Read on Google AI blog"
+        path: https://ai.googleblog.com/2020/05/federated-analytics-collaborative-data.html
 
   - classname: devsite-landing-row-cards
     items:
+    - heading: "Making every phone smarter with Federated Learning"
+      youtube_id: gbRJPa9d-VU
+      buttons:
+      - label: "Watch the video"
+        path: https://www.youtube.com/watch?v=gbRJPa9d-VU
     - heading: "Federated learning comic book from Google AI"
       image_path: /resources/images/federated-learning-promo-card-16x9.png
       path: https://federated.withgoogle.com
       buttons:
       - label: "View the comic online"
         path: https://federated.withgoogle.com
-    - heading: ""
-      options:
-      - hidden
     - heading: ""
       options:
       - hidden
