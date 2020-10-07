@@ -178,7 +178,9 @@ class _BidiStream:
     self._is_initialized = False
 
 
+@tracing.trace(span=True)
 def _request(rpc_func, request):
+  """Populates trace context and reraises gRPC errors with retryable info."""
   with tracing.wrap_rpc_in_trace_context():
     try:
       return rpc_func(request)
