@@ -1,7 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-# TODO(b/163856734): Fix visibility.
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//tensorflow_federated:internal"])
 
 licenses(["notice"])
 
@@ -80,6 +79,8 @@ py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
     srcs_version = "PY3",
+    # TODO(b/163856734): Fix the visibility of the `common_libs`.
+    visibility = ["//tensorflow_federated:internal"],
     deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
 
