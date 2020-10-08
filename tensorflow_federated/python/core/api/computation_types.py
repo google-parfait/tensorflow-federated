@@ -91,6 +91,36 @@ def _type_mismatch_error_message(
     return single_line
 
 
+class TypeNotAssignableError(TypeError):
+
+  def __init__(self, source_type, target_type):
+    self.message = _type_mismatch_error_message(source_type, target_type,
+                                                _TypeRelation.ASSIGNABLE)
+    super().__init__(self.message)
+    self.source_type = source_type
+    self.target_type = target_type
+
+
+class TypesNotEquivalentError(TypeError):
+
+  def __init__(self, first_type, second_type):
+    self.message = _type_mismatch_error_message(first_type, second_type,
+                                                _TypeRelation.EQUIVALENT)
+    super().__init__(self.message)
+    self.first_type = first_type
+    self.second_type = second_type
+
+
+class TypesNotIdenticalError(TypeError):
+
+  def __init__(self, first_type, second_type):
+    self.message = _type_mismatch_error_message(first_type, second_type,
+                                                _TypeRelation.IDENTICAL)
+    super().__init__(self.message)
+    self.first_type = first_type
+    self.second_type = second_type
+
+
 class Type(object, metaclass=abc.ABCMeta):
   """An abstract interface for all classes that represent TFF types."""
 
@@ -219,9 +249,7 @@ class Type(object, metaclass=abc.ABCMeta):
   def check_assignable_from(self, source_type: 'Type'):
     """Raises if values of `source_type` cannot be cast to this type."""
     if not self.is_assignable_from(source_type):
-      raise TypeError(
-          _type_mismatch_error_message(self, source_type,
-                                       _TypeRelation.ASSIGNABLE))
+      raise TypeNotAssignableError(source_type=source_type, target_type=self)
 
   @abc.abstractmethod
   def is_assignable_from(self, source_type: 'Type') -> bool:
@@ -231,8 +259,7 @@ class Type(object, metaclass=abc.ABCMeta):
   def check_equivalent_to(self, other: 'Type'):
     """Raises if values of 'other' cannot be cast to and from this type."""
     if not self.is_equivalent_to(other):
-      raise TypeError(
-          _type_mismatch_error_message(self, other, _TypeRelation.EQUIVALENT))
+      raise TypesNotEquivalentError(self, other)
 
   def is_equivalent_to(self, other: 'Type') -> bool:
     """Returns whether values of `other` can be cast to and from this type."""
@@ -241,8 +268,7 @@ class Type(object, metaclass=abc.ABCMeta):
   def check_identical_to(self, other: 'Type'):
     """Raises if `other` and `Type` are not exactly identical."""
     if not self.is_identical_to(other):
-      raise TypeError(
-          _type_mismatch_error_message(self, other, _TypeRelation.IDENTICAL))
+      raise TypesNotIdenticalError(self, other)
 
   def is_identical_to(self, other: 'Type'):
     """Returns whether or not `self` and `other` are exactly identical."""

@@ -129,6 +129,7 @@ py_library(
     name = "test_case",
     srcs = ["test_case.py"],
     srcs_version = "PY3",
+    deps = [":computation_types"],
 )
 
 py_test(
@@ -138,6 +139,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":computation_types",
         ":test_case",
     ],
 )
