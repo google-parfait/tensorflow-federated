@@ -13,9 +13,6 @@
 # limitations under the License.
 
 import collections
-import io
-import re
-import traceback
 
 import attr
 import tensorflow as tf
@@ -27,18 +24,6 @@ from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
-
-
-def traceback_string():
-  exception_string_io = io.StringIO()
-  traceback.print_exc(file=exception_string_io)
-  exception_string = exception_string_io.getvalue()
-  # Strip path to TFF to normalize error messages
-  without_filepath = re.sub(r'\/\S*\/tensorflow_federated\/', '',
-                            exception_string)
-  # Strip line numbers to avoid churn
-  without_linenumber = re.sub(r', line \d*', '', without_filepath)
-  return without_linenumber
 
 
 class TensorflowWrapperTest(test_case.TestCase):
@@ -390,16 +375,12 @@ class TensorflowWrapperTest(test_case.TestCase):
     class DummyError(RuntimeError):
       pass
 
-    try:
+    with golden.check_raises_traceback('tensorflow_wrapper_traceback.expected',
+                                       DummyError):
 
       @computation_wrapper_instances.tensorflow_wrapper
       def _():
         raise DummyError()
-
-      self.fail('Tracing should throw `DummyError`')
-    except DummyError:
-      golden.check_string('tensorflow_wrapper_traceback.expected',
-                          traceback_string())
 
 
 class FederatedComputationWrapperTest(test_case.TestCase):
@@ -425,16 +406,12 @@ class FederatedComputationWrapperTest(test_case.TestCase):
     class DummyError(RuntimeError):
       pass
 
-    try:
+    with golden.check_raises_traceback(
+        'federated_computation_wrapper_traceback.expected', DummyError):
 
       @computation_wrapper_instances.federated_computation_wrapper
       def _():
         raise DummyError()
-
-      self.fail('Tracing should throw `DummyError`')
-    except DummyError:
-      golden.check_string('federated_computation_wrapper_traceback.expected',
-                          traceback_string())
 
 
 class AssertReturnsTest(test_case.TestCase):

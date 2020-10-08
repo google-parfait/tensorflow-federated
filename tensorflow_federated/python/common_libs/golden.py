@@ -1,4 +1,4 @@
-# Copyright 2020, The TensorFlow Federated Authors.
+## Copyright 2020, The TensorFlow Federated Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +13,12 @@
 # limitations under the License.
 """Utilities for asserting against golden files."""
 
+import contextlib
 import difflib
+import io
 import os.path
+import re
+import traceback
 from typing import Dict, Optional
 
 from absl import flags
@@ -82,3 +86,44 @@ def check_string(filename: str, value: str):
     message += 'To see the full diff, rerun this target with:\n'
     message += '`--test_arg=--verbose\n'
   raise MismatchedGoldenError(message)
+
+
+def traceback_string(exc_type, exc_value, tb) -> str:
+  exception_string_io = io.StringIO()
+  traceback.print_exception(exc_type, exc_value, tb, file=exception_string_io)
+  exception_string = exception_string_io.getvalue()
+  # Strip path to TFF to normalize error messages
+  without_filepath = re.sub(r'\/\S*\/tensorflow_federated\/', '',
+                            exception_string)
+  # Strip line numbers to avoid churn
+  without_linenumber = re.sub(r', line \d*', '', without_filepath)
+  return without_linenumber
+
+
+def check_raises_traceback(filename: str,
+                           exception) -> contextlib.AbstractContextManager:
+  """Check for `exception` to be raised, generating a golden traceback."""
+  # Note: does not use `@contextlib.contextmanager` because that adds
+  # this function to the traceback.
+  return _TracebackManager(filename, exception)
+
+
+class _TracebackManager():
+  """Context manager for collecting tracebacks and comparing them to goldens."""
+
+  def __init__(self, filename, exception):
+    self._filename = filename
+    self._exception = exception
+
+  def __enter__(self):
+    pass
+
+  def __exit__(self, exc_type, exc_value, tb):
+    if not issubclass(exc_type, self._exception):
+      message = f'Exception `{self._exception.__name__}` was not thrown.'
+      if exc_value is not None:
+        message += ' A different exception was thrown, and can be seen above.'
+      raise RuntimeError(message)
+    traceback_str = traceback_string(exc_type, exc_value, tb)
+    check_string(self._filename, traceback_str)
+    return True

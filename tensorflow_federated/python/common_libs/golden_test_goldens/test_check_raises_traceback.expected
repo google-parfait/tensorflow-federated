@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "python/common_libs/golden_test.py", in test_check_raises_traceback
+    raise RuntimeError()
+RuntimeError
