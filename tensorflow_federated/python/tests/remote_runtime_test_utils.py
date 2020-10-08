@@ -17,13 +17,13 @@ import grpc
 import tensorflow_federated as tff
 
 
-def create_localhost_remote_context(ports):
+def create_localhost_remote_context(ports, rpc_mode='REQUEST_REPLY'):
   """Connects remote executors to `ports`."""
   channels = [
       grpc.insecure_channel('localhost:{}'.format(port)) for port in ports
   ]
   context = tff.backends.native.create_remote_execution_context(
-      channels, rpc_mode='REQUEST_REPLY')
+      channels, rpc_mode=rpc_mode)
   return context
 
 
@@ -38,7 +38,9 @@ def create_localhost_worker_contexts(ports):
   return server_contexts
 
 
-def create_localhost_aggregator_contexts(worker_ports, aggregator_ports):
+def create_localhost_aggregator_contexts(worker_ports,
+                                         aggregator_ports,
+                                         rpc_mode='REQUEST_REPLY'):
   """Constructs 2-tiered executor service; returns list of contextmanagers."""
 
   worker_contexts = create_localhost_worker_contexts(worker_ports)
@@ -48,7 +50,7 @@ def create_localhost_aggregator_contexts(worker_ports, aggregator_ports):
   for target_port, server_port in zip(worker_ports, aggregator_ports):
     channel = [grpc.insecure_channel('localhost:{}'.format(target_port))]
     ex_factory = tff.framework.remote_executor_factory(
-        channel, rpc_mode='REQUEST_REPLY')
+        channel, rpc_mode=rpc_mode)
     server_context = tff.simulation.server_context(
         ex_factory, num_threads=1, port=server_port)
     aggregator_contexts.append(server_context)

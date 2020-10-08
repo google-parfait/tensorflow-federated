@@ -105,6 +105,7 @@ class _BidiStream:
         if val:
           py_typecheck.check_type(val[0], executor_pb2.ExecuteRequest)
           py_typecheck.check_type(val[1], threading.Event)
+
           req = val[0]
           req.sequence_number = seq
           logging.debug(
@@ -137,6 +138,16 @@ class _BidiStream:
         self._stream_closed_event.set()
       except grpc.RpcError as error:
         logging.exception('Error calling remote executor: %s', error)
+        if _is_retryable_grpc_error(error):  # pytype: disable=attribute-error
+          logging.info('gRPC error is retryable')
+          error = execution_context.RetryableError(error)
+        # Set all response events to errors. This is heavy-handed and
+        # potentially can be scaled back.
+        for _, response_event in self._response_event_dict.items():
+          if not response_event.isSet():
+            response_event.response = error
+            response_event.set()
+        self._stream_closed_event.set()
 
     response_thread = threading.Thread(target=response_thread_fn)
     response_thread.daemon = True
@@ -207,7 +218,7 @@ def _is_retryable_grpc_error(error):
       grpc.StatusCode.UNAUTHENTICATED,
   }
   return (isinstance(error, grpc.RpcError) and
-          error.code() not in non_retryable_errors)
+          error.code() not in non_retryable_errors)  # pytype: disable=attribute-error
 
 
 class RemoteExecutor(executor_base.Executor):
