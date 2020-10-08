@@ -6,6 +6,18 @@ licenses(["notice"])
 
 exports_files(["LICENSE"])
 
+package_group(
+    name = "internal",
+    packages = [
+        "//tensorflow_federated/python/...",
+        "//tensorflow_federated/tools/development/...",
+
+        # The examples and tests in TFF should depend on the public API.
+        "-//tensorflow_federated/python/examples/...",
+        "-//tensorflow_federated/python/tests/...",
+    ],
+)
+
 py_library(
     name = "tensorflow_federated",
     srcs = ["__init__.py"],

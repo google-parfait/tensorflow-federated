@@ -1,6 +1,6 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package(default_visibility = ["//visibility:public"])
+package(default_visibility = ["//tensorflow_federated:internal"])
 
 licenses(["notice"])
 
@@ -49,6 +49,8 @@ py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
     srcs_version = "PY3",
+    # TODO(b/163856734): Fix the visibility of the `common_libs`.
+    visibility = ["//tensorflow_federated:internal"],
 )
 
 py_test(
@@ -67,6 +69,8 @@ py_library(
     name = "serialization_utils",
     srcs = ["serialization_utils.py"],
     srcs_version = "PY3",
+    # TODO(b/163856734): Fix the visibility of the `common_libs`.
+    visibility = ["//tensorflow_federated:internal"],
     deps = [
         ":py_typecheck",
         "@com_google_protobuf//:protobuf_python",
@@ -89,6 +93,11 @@ py_library(
     name = "structure",
     srcs = ["structure.py"],
     srcs_version = "PY3",
+    # TODO(b/163856734): Fix the visibility of the `common_libs`.
+    visibility = [
+        "//tensorflow_federated:internal",
+        "//tensorflow_federated/python/tests:__pkg__",
+    ],
     deps = [":py_typecheck"],
 )
 
@@ -105,12 +114,20 @@ py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
+    # TODO(b/163856734): Fix the visibility of the `common_libs`.
+    visibility = [
+        "//tensorflow_federated:internal",
+        "//tensorflow_federated/python/examples/simple_fedavg:__pkg__",
+        "//tensorflow_federated/python/tests:__pkg__",
+    ],
 )
 
 py_library(
     name = "tracing",
     srcs = ["tracing.py"],
     srcs_version = "PY3",
+    # TODO(b/163856734): Fix the visibility of the `common_libs`.
+    visibility = ["//tensorflow_federated:internal"],
     deps = [":py_typecheck"],
 )
 
