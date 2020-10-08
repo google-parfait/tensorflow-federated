@@ -259,6 +259,60 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(wrapped_fn(), np.int64(45))
 
   @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
+                                  ('device_gpu', 'GPU'), ('device_tpu', 'TPU'))
+  def test_get_no_arg_wrapped_function_with_variables(self, device_type):
+
+    self._skip_in_multi_gpus()
+
+    @computations.tf_computation
+    def comp():
+      initial_val = tf.Variable(np.int64(1.0))
+      return tf.data.Dataset.range(10).map(lambda x: x + 1).reduce(
+          initial_val, lambda p, q: p + q)
+
+    wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
+        computation_impl.ComputationImpl.get_proto(comp),
+        must_pin_function_to_cpu=False,
+        param_type=None,
+        device=_get_first_logical_device(device_type))
+    self.assertEqual(wrapped_fn(), np.int64(56))
+
+  @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
+                                  ('device_gpu', 'GPU'), ('device_tpu', 'TPU'))
+  def test_get_no_arg_wrapped_function_with_composed_fn_and_variables(
+      self, device_type):
+
+    self._skip_in_multi_gpus()
+
+    @tf.function
+    def reduce_fn(x, y):
+      return x + y
+
+    @tf.function
+    def dataset_reduce_fn(ds, initial_val):
+      return ds.reduce(initial_val, reduce_fn)
+
+    @computations.tf_computation(
+        computation_types.SequenceType(tf.int64),
+        computation_types.TensorType(tf.int64))
+    def dataset_reduce_fn_wrapper(ds, dummy_val):
+      initial_val = tf.Variable(np.int64(1.0)) + dummy_val
+      return dataset_reduce_fn(ds, initial_val)
+
+    @computations.tf_computation
+    def comp():
+      ds = tf.data.Dataset.range(10).map(lambda x: x + 1)
+      dummy_val = tf.Variable(np.int64(1.0))
+      return dataset_reduce_fn_wrapper(ds, dummy_val)
+
+    wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
+        computation_impl.ComputationImpl.get_proto(comp),
+        must_pin_function_to_cpu=False,
+        param_type=None,
+        device=_get_first_logical_device(device_type))
+    self.assertEqual(wrapped_fn(), np.int64(57))
+
+  @parameterized.named_parameters(('device_none', None), ('device_cpu', 'CPU'),
                                   ('device_gpu', 'GPU'))
   def test_get_wrapped_function_from_comp_raises_with_incorrect_binding(
       self, device_type):
