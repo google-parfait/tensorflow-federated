@@ -184,6 +184,16 @@ class RemoteValueTest(absltest.TestCase):
 )
 class RemoteExecutorTest(absltest.TestCase):
 
+  def test_set_cardinalities_returns_none(self, mock_stub):
+    response = executor_pb2.SetCardinalitiesResponse()
+    instance = mock_stub.return_value
+    instance.SetCardinalities = mock.Mock(side_effect=[response])
+    executor = create_remote_executor()
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(
+        executor.set_cardinalities({placement_literals.CLIENTS: 3}))
+    self.assertIsNone(result)
+
   def test_create_value_returns_remote_value(self, mock_stub):
     response = executor_pb2.CreateValueResponse()
     instance = mock_stub.return_value
@@ -457,6 +467,15 @@ def _setup_mock_streaming_executor(mock_stub, response, error_fn=None):
     'tensorflow_federated.proto.v0.executor_pb2_grpc.ExecutorStub',
 )
 class RemoteExecutorStreamingTest(absltest.TestCase):
+
+  def test_set_cardinalities_returns_none(self, mock_stub):
+    response = executor_pb2.ExecuteResponse(
+        set_cardinalities=executor_pb2.SetCardinalitiesResponse())
+    executor = _setup_mock_streaming_executor(mock_stub, response)
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(
+        executor.set_cardinalities({placement_literals.CLIENTS: 3}))
+    self.assertIsNone(result)
 
   def test_create_value_returns_remote_value(self, mock_stub):
     response = executor_pb2.ExecuteResponse(
