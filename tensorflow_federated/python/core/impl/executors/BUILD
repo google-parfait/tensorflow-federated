@@ -634,7 +634,6 @@ py_test(
     deps = [
         ":execution_context",
         ":executor_service",
-        ":executor_service_utils",
         ":executor_stacks",
         ":executor_test_utils",
         ":reference_resolving_executor",

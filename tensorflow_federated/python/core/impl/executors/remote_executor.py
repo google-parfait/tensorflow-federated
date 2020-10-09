@@ -136,10 +136,10 @@ class _BidiStream:
           response_event.set()
         # Set the event indicating the stream has been closed
         self._stream_closed_event.set()
-      except grpc.RpcError as error:
+      except Exception as error:  # pylint: disable=broad-except
         logging.exception('Error calling remote executor: %s', error)
-        if _is_retryable_grpc_error(error):  # pytype: disable=attribute-error
-          logging.info('gRPC error is retryable')
+        if _is_retryable_grpc_error(error):
+          logging.exception('gRPC error is retryable')
           error = execution_context.RetryableError(error)
         # Set all response events to errors. This is heavy-handed and
         # potentially can be scaled back.
