@@ -22,6 +22,7 @@ py_library(
         ":cifar100",
         ":dataset_utils",
         ":emnist",
+        ":gldv2",
         ":shakespeare",
         ":stackoverflow",
     ],
@@ -126,4 +127,23 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":stackoverflow"],
+)
+
+py_library(
+    name = "gldv2",
+    srcs = ["gldv2.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/simulation:client_data",
+        "//tensorflow_federated/python/simulation:file_per_user_client_data",
+    ],
+)
+
+py_test(
+    name = "gldv2_test",
+    size = "small",
+    srcs = ["gldv2_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":gldv2"],
 )

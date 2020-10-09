@@ -15,6 +15,7 @@
 
 from tensorflow_federated.python.simulation.datasets import cifar100
 from tensorflow_federated.python.simulation.datasets import emnist
+from tensorflow_federated.python.simulation.datasets import gldv2
 from tensorflow_federated.python.simulation.datasets import shakespeare
 from tensorflow_federated.python.simulation.datasets import stackoverflow
 from tensorflow_federated.python.simulation.datasets.dataset_utils import build_dataset_mixture
