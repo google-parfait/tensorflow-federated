@@ -14,10 +14,12 @@
 """A collection of constructors for basic types of executor stacks."""
 
 import asyncio
+from concurrent import futures
 import math
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import attr
+import grpc
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -746,11 +748,12 @@ def sizing_executor_factory(
   return SizingExecutorFactory(_factory_fn)
 
 
-def remote_executor_factory(channels,
-                            rpc_mode='REQUEST_REPLY',
-                            thread_pool_executor=None,
-                            dispose_batch_size=20,
-                            max_fanout=100) -> executor_factory.ExecutorFactory:
+def remote_executor_factory(
+    channels: List[grpc.Channel],
+    rpc_mode: str = 'REQUEST_REPLY',
+    thread_pool_executor: Optional[futures.Executor] = None,
+    dispose_batch_size: int = 20,
+    max_fanout: int = 100) -> executor_factory.ExecutorFactory:
   """Create an executor backed by remote workers.
 
   Args:
@@ -777,11 +780,20 @@ def remote_executor_factory(channels,
   py_typecheck.check_type(channels, list)
   if not channels:
     raise ValueError('The list of channels cannot be empty.')
+  py_typecheck.check_type(rpc_mode, str)
+  if thread_pool_executor is not None:
+    py_typecheck.check_type(thread_pool_executor, futures.Executor)
+  py_typecheck.check_type(dispose_batch_size, int)
+  py_typecheck.check_type(max_fanout, int)
 
-  remote_executors = [
-      remote_executor.RemoteExecutor(channel, rpc_mode, thread_pool_executor,
-                                     dispose_batch_size) for channel in channels
-  ]
+  remote_executors = []
+  for channel in channels:
+    remote_executors.append(
+        remote_executor.RemoteExecutor(
+            channel=channel,
+            rpc_mode=rpc_mode,
+            thread_pool_executor=thread_pool_executor,
+            dispose_batch_size=dispose_batch_size))
 
   def _configure_remote_executor(ex, cardinalities, loop):
     """Configures `ex` to run the appropriate number of clients."""
