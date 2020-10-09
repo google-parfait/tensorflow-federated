@@ -925,6 +925,16 @@ def to_type(spec) -> Type:
   ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
   ```
 
+  Custom `attr` classes can also be converted to a nested `tff.Type` by using
+  `attr.ib(type=...)` annotations:
+
+  ```python
+  @attr.s
+  class MyDataClass:
+    int_scalar = attr.ib(type=tf.int32)
+    string_array = attr.ib(type=tff.TensorType(dtype=tf.string, shape=[3]))
+  ```
+
   Args:
     spec: Either an instance of `tff.Type`, or an argument convertible to
       `tff.Type`.
