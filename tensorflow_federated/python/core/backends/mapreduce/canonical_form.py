@@ -297,6 +297,16 @@ class CanonicalForm(object):
   def client_data_label(self):
     return self._client_data_label
 
+  @property
+  def securely_aggregates_tensors(self) -> bool:
+    """Whether the `CanonicalForm` uses secure aggregation."""
+    # Tensors aggregated over `federated_secure_sum` are output in the second
+    # tuple element from `work()`.
+    work_result_type = self.work.type_signature.result
+    assert len(work_result_type) == 2
+    return not work_result_type[1].is_equivalent_to(
+        computation_types.StructType([]))
+
   def summary(self, print_fn=print):
     """Prints a string summary of the `CanonicalForm`.
 

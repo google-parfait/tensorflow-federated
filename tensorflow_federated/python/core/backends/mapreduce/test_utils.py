@@ -123,6 +123,84 @@ def get_temperature_sensor_example():
                                       update)
 
 
+def get_federated_sum_example(*,
+                              secure_sum: bool = False
+                             ) -> canonical_form.CanonicalForm:
+  """Constructs `canonical_form.CanonicalForm` which performs a sum aggregation.
+
+  Args:
+    secure_sum: Whether to use `federated_secure_sum`. Defaults to
+      `federated_sum`.
+
+  Returns:
+    An instance of `canonical_form.CanonicalForm`.
+  """
+
+  @computations.tf_computation
+  def initialize():
+    return ()
+
+  server_state_type = initialize.type_signature.result
+
+  @computations.tf_computation(server_state_type)
+  def prepare(state):
+    return state
+
+  @computations.tf_computation(
+      computation_types.SequenceType(tf.int32), prepare.type_signature.result)
+  def work(data, _):
+    client_sum = data.reduce(initial_state=0, reduce_func=tf.add)
+    if secure_sum:
+      return [], client_sum
+    else:
+      return client_sum, []
+
+  @computations.tf_computation
+  def zero():
+    if secure_sum:
+      return ()
+    else:
+      return 0
+
+  client_update_type = work.type_signature.result[0]
+  accumulator_type = zero.type_signature.result
+
+  @computations.tf_computation(accumulator_type, client_update_type)
+  def accumulate(accumulator, update):
+    if secure_sum:
+      return ()
+    else:
+      return accumulator + update
+
+  @computations.tf_computation(accumulator_type, accumulator_type)
+  def merge(accumulator1, accumulator2):
+    if secure_sum:
+      return ()
+    else:
+      return accumulator1 + accumulator2
+
+  @computations.tf_computation(merge.type_signature.result)
+  def report(accumulator):
+    return accumulator
+
+  @computations.tf_computation
+  def bitwidth():
+    return 32
+
+  update_type = (merge.type_signature.result, work.type_signature.result[1])
+
+  @computations.tf_computation(server_state_type, update_type)
+  def update(state, update):
+    if secure_sum:
+      return state, update[1]
+    else:
+      return state, update[0]
+
+  return canonical_form.CanonicalForm(initialize, prepare, work, zero,
+                                      accumulate, merge, report, bitwidth,
+                                      update)
+
+
 def get_mnist_training_example():
   """Constructs `canonical_form.CanonicalForm` for mnist training.
 

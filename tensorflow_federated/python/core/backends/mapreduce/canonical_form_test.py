@@ -391,6 +391,15 @@ class CanonicalFormTest(absltest.TestCase):
       canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
                                    merge, report, bitwidth, update)
 
+  def test_securely_aggregates_tensors_true(self):
+    cf_with_secure_sum = test_utils.get_federated_sum_example(secure_sum=True)
+    self.assertTrue(cf_with_secure_sum.securely_aggregates_tensors)
+
+  def test_securely_aggregates_tensors_false(self):
+    cf_with_no_secure_sum = test_utils.get_federated_sum_example(
+        secure_sum=False)
+    self.assertFalse(cf_with_no_secure_sum.securely_aggregates_tensors)
+
   def test_summary(self):
     cf = test_utils.get_temperature_sensor_example()
 
