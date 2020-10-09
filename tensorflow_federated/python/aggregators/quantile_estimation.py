@@ -23,11 +23,11 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.templates import iterative_process
+from tensorflow_federated.python.core.templates import estimation_process
 
 
-class PrivateQuantileEstimatorProcess(iterative_process.IterativeProcess):
-  """A `tff.templates.IterativeProcess for estimating private quantiles.
+class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
+  """A `tff.templates.EstimationProcess` for estimating private quantiles.
 
   This iterative process uses a `tensorflow_privacy.QuantileEstimatorQuery` to
   maintain an estimate of the target quantile that is updated after each round.
@@ -43,7 +43,7 @@ class PrivateQuantileEstimatorProcess(iterative_process.IterativeProcess):
       self,
       quantile_estimator_query: tfp.QuantileEstimatorQuery,
       record_aggregation_factory: factory.AggregationProcessFactory = None):
-    """Initializes `PrivateQuantileEstimatorProcess`.
+    """Initializes `PrivateQuantileEstimationProcess`.
 
     Args:
       quantile_estimator_query: A `tfp.QuantileEstimatorQuery` for estimating
@@ -106,23 +106,7 @@ class PrivateQuantileEstimatorProcess(iterative_process.IterativeProcess):
 
       return intrinsics.federated_zip((new_quantile_query_state, new_agg_state))
 
-    super().__init__(init_fn, next_fn)
+    get_estimate_fn = computations.federated_computation(
+        lambda state: state[0].current_estimate, init_fn.type_signature.result)
 
-    self._current_estimate_fn = computations.tf_computation(
-        lambda state: state[0].current_estimate,
-        init_fn.type_signature.result.member)
-
-  @property
-  def get_current_estimate(self):
-    """A `tff.Computation` that computes the current estimate from `state`.
-
-    Given a `state` controlled by this process, computes and returns the most
-    recent estimate of the given quantile.
-
-    Note that this computation operates on types without placements, and thus
-    can be used with `state` residing either on `SERVER` or `CLIENTS`.
-
-    Returns:
-      A `tff.Computation`.
-    """
-    return self._current_estimate_fn
+    super().__init__(init_fn, next_fn, get_estimate_fn)

@@ -47,7 +47,7 @@ class PrivateQEComputationTest(test_case.TestCase, parameterized.TestCase):
           learning_rate=1.0,
           geometric_update=True)
 
-    process = quantile_estimation.PrivateQuantileEstimatorProcess(
+    process = quantile_estimation.PrivateQuantileEstimationProcess(
         quantile_estimator_query)
 
     query_state = quantile_estimator_query.initial_global_state()
@@ -61,11 +61,14 @@ class PrivateQEComputationTest(test_case.TestCase, parameterized.TestCase):
         computation_types.FunctionType(
             parameter=None, result=server_state_type),
         process.initialize.type_signature)
+
+    estimate_type = computation_types.FederatedType(tf.float32,
+                                                    placements.SERVER)
+
     self.assertEqual(
         computation_types.FunctionType(
-            parameter=server_state_type.member,
-            result=computation_types.to_type(tf.float32)),
-        process.get_current_estimate.type_signature)
+            parameter=server_state_type, result=estimate_type),
+        process.get_estimate.type_signature)
 
     client_value_type = computation_types.FederatedType(tf.float32,
                                                         placements.CLIENTS)
@@ -81,7 +84,7 @@ class PrivateQEComputationTest(test_case.TestCase, parameterized.TestCase):
         l2_norm_clip=1.0, stddev=1.0)
 
     with self.assertRaises(TypeError):
-      quantile_estimation.PrivateQuantileEstimatorProcess(
+      quantile_estimation.PrivateQuantileEstimationProcess(
           non_quantile_estimator_query)
 
   def test_bad_aggregation_factory(self):
@@ -92,7 +95,7 @@ class PrivateQEComputationTest(test_case.TestCase, parameterized.TestCase):
         geometric_update=True)
 
     with self.assertRaises(TypeError):
-      quantile_estimation.PrivateQuantileEstimatorProcess(
+      quantile_estimation.PrivateQuantileEstimationProcess(
           quantile_estimator_query=quantile_estimator_query,
           record_aggregation_factory="I'm not a record_aggregation_factory.")
 
@@ -111,11 +114,11 @@ class PrivateQEExecutionTest(test_case.TestCase, parameterized.TestCase):
         learning_rate=learning_rate,
         geometric_update=geometric_update)
 
-    process = quantile_estimation.PrivateQuantileEstimatorProcess(
+    process = quantile_estimation.PrivateQuantileEstimationProcess(
         quantile_estimator_query)
 
     state = process.initialize()
-    self.assertAllClose(process.get_current_estimate(state), initial_estimate)
+    self.assertAllClose(process.get_estimate(state), initial_estimate)
 
     # Run on two records greater than estimate.
     state = process.next(state, [initial_estimate + 1, initial_estimate + 2])
@@ -126,7 +129,7 @@ class PrivateQEExecutionTest(test_case.TestCase, parameterized.TestCase):
     else:
       expected_estimate = initial_estimate + learning_rate * target_quantile
 
-    self.assertAllClose(process.get_current_estimate(state), expected_estimate)
+    self.assertAllClose(process.get_estimate(state), expected_estimate)
 
 
 if __name__ == '__main__':

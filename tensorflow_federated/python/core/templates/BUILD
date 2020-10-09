@@ -69,6 +69,35 @@ py_library(
 )
 
 py_library(
+    name = "estimation_process",
+    srcs = ["estimation_process.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":errors",
+        ":iterative_process",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computations",
+    ],
+)
+
+py_test(
+    name = "estimation_process_test",
+    size = "small",
+    srcs = ["estimation_process_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":errors",
+        ":estimation_process",
+        ":iterative_process",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+    ],
+)
+
+py_library(
     name = "iterative_process",
     srcs = ["iterative_process.py"],
     srcs_version = "PY3",
@@ -76,6 +105,7 @@ py_library(
         ":errors",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computation_types",
     ],
 )
 

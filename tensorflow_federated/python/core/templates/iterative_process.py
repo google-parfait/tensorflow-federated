@@ -15,6 +15,7 @@
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.templates import errors
 
 
@@ -119,6 +120,7 @@ class IterativeProcess:
           f'`next_fn` which returns type:\n{next_result_type}\n'
           f'which does not match its first input argument:\n{state_type}')
 
+    self._state_type = state_type
     self._initialize_fn = initialize_fn
     self._next_fn = next_fn
 
@@ -139,3 +141,8 @@ class IterativeProcess:
       A `tff.Computation`.
     """
     return self._next_fn
+
+  @property
+  def state_type(self) -> computation_types.Type:
+    """The `tff.Type` of the state of the process."""
+    return self._state_type
