@@ -16,6 +16,7 @@ from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import grpc
 import numpy as np
 import tensorflow as tf
 
@@ -78,19 +79,19 @@ def _create_concurrent_maxthread_tuples():
 
 class ExecutorMock(mock.MagicMock, executor_base.Executor):
 
-  def create_value(self, *args):
+  async def create_value(self, *args):
     pass
 
-  def create_call(self, *args):
+  async def create_call(self, *args):
     pass
 
-  def create_selection(self, *args):
+  async def create_selection(self, *args):
     pass
 
-  def create_struct(self, *args):
+  async def create_struct(self, *args):
     pass
 
-  def close(self, *args):
+  async def close(self, *args):
     pass
 
 
@@ -614,6 +615,54 @@ class ComposingExecutorFactoryTest(absltest.TestCase):
     args_list = composing_strategy_mock.call_args_list
     # 5 at the first layer, 1 at the second
     self.assertLen(args_list, 6)
+
+
+class RemoteExecutorFactoryTest(absltest.TestCase):
+
+  def _make_set_cardinalities_patch(self, mock_obj):
+
+    async def set_cardinalities_patch(self, *args, **kwargs):
+      del self  # Unused
+      return mock_obj(*args, **kwargs)
+
+    return set_cardinalities_patch
+
+  def setUp(self):
+    super().setUp()
+    self.coro_mock = mock.Mock()
+    self.patcher = mock.patch(
+        'tensorflow_federated.python.core.impl.executors.remote_executor.RemoteExecutor.set_cardinalities',
+        new=self._make_set_cardinalities_patch(self.coro_mock))
+    self.patcher.start()
+
+  def tearDown(self):
+    self.patcher.stop()
+    super().tearDown()
+
+  def test_fewer_clients_than_workers_only_passes_one_client(self):
+    channels = [
+        grpc.insecure_channel('localhost:1'),
+        grpc.insecure_channel('localhost:2')
+    ]
+    remote_ex_factory = executor_stacks.remote_executor_factory(channels)
+    remote_ex_factory.create_executor({placement_literals.CLIENTS: 1})
+    self.assertLen(self.coro_mock.call_args_list, 1)
+    self.coro_mock.assert_called_once_with({placement_literals.CLIENTS: 1})
+
+  @mock.patch(
+      'tensorflow_federated.python.core.impl.executors.executor_stacks.ComposingExecutorFactory._aggregate_stacks',
+      return_value=ExecutorMock())
+  def test_fewer_clients_than_workers_returns_only_one_live_worker(
+      self, mock_obj):
+    channels = [
+        grpc.insecure_channel('localhost:1'),
+        grpc.insecure_channel('localhost:2')
+    ]
+    remote_ex_factory = executor_stacks.remote_executor_factory(channels)
+    remote_ex_factory.create_executor({placement_literals.CLIENTS: 1})
+    self.assertLen(mock_obj.call_args_list, 1)
+    # Assert that aggregate stacks was passed only one executor.
+    mock_obj.assert_called_once_with([mock.ANY])
 
 
 if __name__ == '__main__':

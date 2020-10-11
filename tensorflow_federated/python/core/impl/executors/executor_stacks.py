@@ -336,8 +336,8 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
     self._unplaced_executor_factory = unplaced_ex_factory
     if num_clients is not None:
       py_typecheck.check_type(num_clients, int)
-      if num_clients < 0:
-        raise ValueError('Number of clients cannot be negative.')
+      if num_clients <= 0:
+        raise ValueError('Number of clients must be positive.')
     self._num_clients = num_clients
     self._use_sizing = use_sizing
     if self._use_sizing:
@@ -809,18 +809,18 @@ def remote_executor_factory(
         return [_wrap_executor_in_threading_stack(e) for e in remote_executors]
 
       remaining_clients = cardinalities[placement_literals.CLIENTS]
-      clients_per_most_executors = remaining_clients // len(remote_executors)
-
-      for ex in remote_executors[:-1]:
-        _configure_remote_executor(
-            ex, {placement_literals.CLIENTS: clients_per_most_executors}, loop)
-        remaining_clients -= clients_per_most_executors
-      _configure_remote_executor(
-          remote_executors[-1], {placement_literals.CLIENTS: remaining_clients},
-          loop)
+      live_workers = []
+      for ex_idx, ex in enumerate(remote_executors):
+        remaining_executors = len(remote_executors) - ex_idx
+        num_clients_to_host = remaining_clients // remaining_executors
+        remaining_clients -= num_clients_to_host
+        if num_clients_to_host > 0:
+          _configure_remote_executor(
+              ex, {placement_literals.CLIENTS: num_clients_to_host}, loop)
+          live_workers.append(ex)
     finally:
       loop.close()
-    return [_wrap_executor_in_threading_stack(e) for e in remote_executors]
+    return [_wrap_executor_in_threading_stack(e) for e in live_workers]
 
   flat_stack_fn = _configure_remote_workers
   unplaced_ex_factory = UnplacedExecutorFactory(use_caching=False)
