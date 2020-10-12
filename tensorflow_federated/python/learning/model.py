@@ -14,23 +14,25 @@
 """Abstractions for models used in federated learning."""
 
 import abc
-import collections
+import attr
 
 
-class BatchOutput(
-    collections.namedtuple('BatchOutput',
-                           ['loss', 'predictions', 'num_examples'])):
+@attr.s(frozen=True, slots=True, eq=False)
+class BatchOutput():
   """A structure that holds the output of a `tff.learning.Model`.
 
   Note: All fields are optional (may be None).
 
-  -   `loss`: The scalar mean loss on the examples in the batch. If the model
+  Attributes:
+    loss: The scalar mean loss on the examples in the batch. If the model
       has multiple losses, it is the sum of all the individual losses.
-  -   `predictions`: Tensor of predictions on the examples. The first dimension
+    predictions: Tensor of predictions on the examples. The first dimension
       must be the same size (the size of the batch).
-  -   `num_examples`: Number of examples seen in the batch.
+    num_examples: Number of examples seen in the batch.
   """
-  __slots__ = ()
+  loss = attr.ib()
+  predictions = attr.ib()
+  num_examples = attr.ib()
 
 
 class Model(object, metaclass=abc.ABCMeta):
