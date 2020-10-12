@@ -52,8 +52,6 @@ py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
     srcs_version = "PY3",
-    # TODO(b/163856734): Fix the visibility of the `common_libs`.
-    visibility = ["//tensorflow_federated:internal"],
 )
 
 py_test(
