@@ -62,6 +62,8 @@ py_test(
     srcs = ["computation_types_test.py"],
     args = [
         "--golden",
+        "$(location computation_types_test_goldens/constructor_argument_normalization_error.expected)",
+        "--golden",
         "$(location computation_types_test_goldens/container_types_full_repr.expected)",
         "--golden",
         "$(location computation_types_test_goldens/long_formatted_with_diff.expected)",
@@ -69,6 +71,7 @@ py_test(
         "$(location computation_types_test_goldens/short_compact_repr.expected)",
     ],
     data = [
+        "computation_types_test_goldens/constructor_argument_normalization_error.expected",
         "computation_types_test_goldens/container_types_full_repr.expected",
         "computation_types_test_goldens/long_formatted_with_diff.expected",
         "computation_types_test_goldens/short_compact_repr.expected",

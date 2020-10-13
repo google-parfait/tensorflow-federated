@@ -62,6 +62,11 @@ class TestCheckEquivalentTypesTest(absltest.TestCase):
 
 class TensorTypeTest(absltest.TestCase):
 
+  def test_constructor_argument_normalization_error(self):
+    with golden.check_raises_traceback(
+        'constructor_argument_normalization_error.expected', TypeError):
+      computation_types.TensorType()
+
   def test_unknown_tensorshape(self):
     t = computation_types.TensorType(tf.int32, tf.TensorShape(None))
     self.assertEqual(t.dtype, tf.int32)

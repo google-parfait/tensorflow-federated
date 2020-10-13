@@ -337,7 +337,14 @@ class _Intern(abc.ABCMeta):
     return hash(args)
 
   def __call__(cls, *args, **kwargs):
-    normalized_args = cls._normalize_init_args(*args, **kwargs)  # pytype: disable=attribute-error
+    try:
+      normalized_args = cls._normalize_init_args(*args, **kwargs)  # pytype: disable=attribute-error
+    except Exception as e:
+      # We want to hide the existence of `_normalize_init_args` from end users.
+      message = str(e).replace('_normalize_init_args', cls.__name__)
+      raise TypeError(
+          f'Invalid arguments to `{cls.__name__}` constructor:\n{message}'
+      ) from None
     hashable_args = _ValueWithHash(normalized_args,
                                    cls._hash_normalized_args(*normalized_args))
     intern_pool_for_cls = _intern_pool[cls]
