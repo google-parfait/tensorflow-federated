@@ -12,3 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Libraries for constructing federated aggregation."""
+
+from tensorflow_federated.python.aggregators.factory import AggregationProcessFactory
+from tensorflow_federated.python.aggregators.mean_factory import MeanFactory
+from tensorflow_federated.python.aggregators.quantile_estimation import PrivateQuantileEstimationProcess
+from tensorflow_federated.python.aggregators.sum_factory import SumFactory
