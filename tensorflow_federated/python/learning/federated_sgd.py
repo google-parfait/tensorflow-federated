@@ -168,8 +168,9 @@ def build_federated_sgd_process(
       of `initialize`, and `{B*}@CLIENTS` represents the client datasets, where
       `B` is the type of a single batch. This computation returns a
       `tff.learning.framework.ServerState` representing the updated server state
-      and training metrics that are the result of
-      `tff.learning.Model.federated_output_computation` during client training.
+      and metrics that are the result of
+      `tff.learning.Model.federated_output_computation` during client training
+      and any other metrics from broadcast and aggregation processes.
 
   Each time the `next` method is called, the server model is broadcast to each
   client using a broadcast function. Each client sums the gradients at each
@@ -206,7 +207,7 @@ def build_federated_sgd_process(
       signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
       `None` if `model_update_aggregation_factory` is not `None.`
     model_update_aggregation_factory: An optional
-      `tff.aggregators.AggregationProcessFactory` that contstructs
+      `tff.aggregators.AggregationProcessFactory` that constructs
       `tff.templates.AggregationProcess` for aggregating the client model
       updates on the server. If `None`, uses a default constructed
       `tff.aggregators.MeanFactory`, creating a stateless mean aggregation. Must
