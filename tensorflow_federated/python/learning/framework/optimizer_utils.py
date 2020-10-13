@@ -559,7 +559,8 @@ def build_stateless_broadcaster(
 # `model_update_aggregation_factory`.
 def build_model_delta_optimizer_process(
     model_fn: _ModelConstructor,
-    model_to_client_delta_fn: Callable[[model_lib.Model], ClientDeltaFn],
+    model_to_client_delta_fn: Callable[[Callable[[], model_lib.Model]],
+                                       ClientDeltaFn],
     server_optimizer_fn: _OptimizerConstructor,
     *,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,

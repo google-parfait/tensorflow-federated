@@ -219,7 +219,7 @@ def build_federated_sgd_process(
     A `tff.templates.IterativeProcess`.
   """
 
-  def client_sgd_avg(model_fn):
+  def client_sgd_avg(model_fn: Callable[[], model_lib.Model]) -> ClientSgd:
     return ClientSgd(
         model_fn(),
         client_weight_fn,

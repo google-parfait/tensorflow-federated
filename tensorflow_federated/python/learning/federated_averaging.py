@@ -213,7 +213,7 @@ def build_federated_averaging_process(
     A `tff.templates.IterativeProcess`.
   """
 
-  def client_fed_avg(model_fn):
+  def client_fed_avg(model_fn: Callable[[], model_lib.Model]) -> ClientFedAvg:
     return ClientFedAvg(model_fn(), client_optimizer_fn(), client_weight_fn,
                         use_experimental_simulation_loop)
 
