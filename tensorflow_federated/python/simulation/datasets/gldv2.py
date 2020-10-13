@@ -395,9 +395,10 @@ def _load_tfrecord(fname: str) -> tf.data.Dataset:
   ds = raw_dataset.map(_parse)
 
   def _transform(item):
-    return collections.OrderedDict([(KEY_IMAGE_DECODED,
-                                     tf.io.decode_jpeg(item[KEY_IMAGE_BYTES])),
-                                    (KEY_CLASS, item[KEY_CLASS])])
+    return collections.OrderedDict([
+        (KEY_IMAGE_DECODED, tf.io.decode_jpeg(item[KEY_IMAGE_BYTES])),
+        (KEY_CLASS, tf.reshape(item[KEY_CLASS], [1]))
+    ])
 
   ds = ds.map(_transform)
   logger.info('Finished loading dataset for file %s', fname)
@@ -442,7 +443,8 @@ def load_data(num_worker: int = 1,
     -   `'image/decoded'`: A `tf.Tensor` with `dtype=tf.uint8` that
         corresponds to the pixels of the landmark images.
     -   `'class'`: A `tf.Tensor` with `dtype=tf.int64` and shape [1],
-        corresponding to the class label of the landmark.
+        corresponding to the class label of the landmark ([0, 203) for gld23k,
+        [0, 2028) for gld160k).
 
   Two flavors of GLD datasets are available. When gld23k is true, a minimum
   version of the federated Google landmark dataset will be provided for faster
