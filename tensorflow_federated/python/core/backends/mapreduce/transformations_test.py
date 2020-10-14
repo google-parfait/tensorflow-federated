@@ -18,7 +18,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
+from tensorflow_federated.python.core.backends.mapreduce import form_utils
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -82,7 +82,7 @@ class CheckExtractionResultTest(absltest.TestCase):
       transformations.check_extraction_result(function, call)
 
   def test_raises_non_function_and_compiled_computation(self):
-    init = canonical_form_utils.get_iterative_process_for_canonical_form(
+    init = form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = self.compiled_computation_for_initialize(init)
     integer_ref = building_blocks.Reference('x', tf.int32)
@@ -91,7 +91,7 @@ class CheckExtractionResultTest(absltest.TestCase):
       transformations.check_extraction_result(integer_ref, compiled_computation)
 
   def test_raises_function_and_compiled_computation_of_different_type(self):
-    init = canonical_form_utils.get_iterative_process_for_canonical_form(
+    init = form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference(
@@ -110,7 +110,7 @@ class CheckExtractionResultTest(absltest.TestCase):
       transformations.check_extraction_result(ref_to_int, called_fn)
 
   def test_passes_function_and_compiled_computation_of_same_type(self):
-    init = canonical_form_utils.get_iterative_process_for_canonical_form(
+    init = form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference('f',
@@ -133,7 +133,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
           ref, DEFAULT_GRAPPLER_CONFIG)
 
   def test_already_reduced_case(self):
-    init = canonical_form_utils.get_iterative_process_for_canonical_form(
+    init = form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
 
     comp = init.to_building_block()

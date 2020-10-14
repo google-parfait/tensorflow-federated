@@ -19,30 +19,30 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
     deps = [
-        ":canonical_form",
-        ":canonical_form_utils",
+        ":form_utils",
+        ":forms",
     ],
 )
 
 py_library(
-    name = "canonical_form",
-    srcs = ["canonical_form.py"],
+    name = "forms",
+    srcs = ["forms.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:computation_impl",
     ],
 )
 
 py_test(
-    name = "canonical_form_test",
-    srcs = ["canonical_form_test.py"],
+    name = "forms_test",
+    srcs = ["forms_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":canonical_form",
+        ":forms",
         ":test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -50,11 +50,11 @@ py_test(
 )
 
 py_library(
-    name = "canonical_form_utils",
-    srcs = ["canonical_form_utils.py"],
+    name = "form_utils",
+    srcs = ["form_utils.py"],
     srcs_version = "PY3",
     deps = [
-        ":canonical_form",
+        ":forms",
         ":transformations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -77,14 +77,14 @@ py_library(
 )
 
 py_test(
-    name = "canonical_form_utils_test",
+    name = "form_utils_test",
     size = "large",
-    srcs = ["canonical_form_utils_test.py"],
+    srcs = ["form_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":canonical_form",
-        ":canonical_form_utils",
+        ":form_utils",
+        ":forms",
         ":test_utils",
         ":transformations",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -109,7 +109,7 @@ py_library(
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
     deps = [
-        ":canonical_form",
+        ":forms",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -145,7 +145,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":canonical_form_utils",
+        ":form_utils",
         ":test_utils",
         ":transformations",
         "//tensorflow_federated/proto/v0:computation_py_pb2",

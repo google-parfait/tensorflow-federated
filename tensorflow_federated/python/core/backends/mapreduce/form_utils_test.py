@@ -22,8 +22,8 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.backends.mapreduce import canonical_form
-from tensorflow_federated.python.core.backends.mapreduce import canonical_form_utils
+from tensorflow_federated.python.core.backends.mapreduce import form_utils
+from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import test_utils as mapreduce_test_utils
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.backends.reference import reference_context
@@ -40,7 +40,7 @@ def get_iterative_process_for_sum_example():
   """Returns an iterative process for a sum example.
 
   This iterative process contains all the components required to compile to
-  `canonical_form.CanonicalForm`.
+  `forms.CanonicalForm`.
   """
 
   @computations.federated_computation
@@ -87,7 +87,7 @@ def get_iterative_process_with_nested_broadcasts():
   """Returns an iterative process with nested federated broadcasts.
 
   This iterative process contains all the components required to compile to
-  `canonical_form.CanonicalForm`.
+  `forms.CanonicalForm`.
   """
 
   @computations.federated_computation
@@ -405,7 +405,7 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
 
   This iterative process does not have a call to `federated_aggregate` or
   `federated_secure_sum` and as a result it should fail to compile to
-  `canonical_form.CanonicalForm`.
+  `forms.CanonicalForm`.
   """
 
   @computations.federated_computation
@@ -441,7 +441,7 @@ def get_iterative_process_for_minimal_sum_example():
   """Returns an iterative process for a sum example.
 
   This iterative process contains the fewest components required to compile to
-  `canonical_form.CanonicalForm`.
+  `forms.CanonicalForm`.
   """
 
   @computations.federated_computation
@@ -493,7 +493,7 @@ class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
 
   def test_with_temperature_sensor_example(self):
     cf = mapreduce_test_utils.get_temperature_sensor_example()
-    it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
+    it = form_utils.get_iterative_process_for_canonical_form(cf)
 
     state = it.initialize()
     self.assertAllEqual(state, collections.OrderedDict(num_rounds=0))
@@ -515,7 +515,7 @@ class CreateBeforeAndAfterBroadcastForNoBroadcastTest(test_case.TestCase):
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
 
-    before_broadcast, after_broadcast = canonical_form_utils._create_before_and_after_broadcast_for_no_broadcast(
+    before_broadcast, after_broadcast = form_utils._create_before_and_after_broadcast_for_no_broadcast(
         next_tree)
 
     # pyformat: disable
@@ -546,7 +546,7 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
 
-    before_aggregate, after_aggregate = canonical_form_utils._create_before_and_after_aggregate_for_no_federated_aggregate(
+    before_aggregate, after_aggregate = form_utils._create_before_and_after_aggregate_for_no_federated_aggregate(
         next_tree)
 
     before_federated_secure_sum, after_federated_secure_sum = (
@@ -617,9 +617,9 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(test_case.TestCase):
     ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum()
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
-    next_tree = canonical_form_utils._replace_intrinsics_with_bodies(next_tree)
+    next_tree = form_utils._replace_intrinsics_with_bodies(next_tree)
 
-    before_aggregate, after_aggregate = canonical_form_utils._create_before_and_after_aggregate_for_no_federated_secure_sum(
+    before_aggregate, after_aggregate = form_utils._create_before_and_after_aggregate_for_no_federated_secure_sum(
         next_tree)
 
     before_federated_aggregate, after_federated_aggregate = (
@@ -686,9 +686,9 @@ class GetTypeInfoTest(test_case.TestCase):
         ip.initialize._computation_proto)
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
-    initialize_tree = canonical_form_utils._replace_intrinsics_with_bodies(
+    initialize_tree = form_utils._replace_intrinsics_with_bodies(
         initialize_tree)
-    next_tree = canonical_form_utils._replace_intrinsics_with_bodies(next_tree)
+    next_tree = form_utils._replace_intrinsics_with_bodies(next_tree)
     before_broadcast, after_broadcast = (
         transformations.force_align_and_split_by_intrinsics(
             next_tree, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
@@ -699,11 +699,9 @@ class GetTypeInfoTest(test_case.TestCase):
                 intrinsic_defs.FEDERATED_SECURE_SUM.uri,
             ]))
 
-    type_info = canonical_form_utils._get_type_info(initialize_tree,
-                                                    before_broadcast,
-                                                    after_broadcast,
-                                                    before_aggregate,
-                                                    after_aggregate)
+    type_info = form_utils._get_type_info(initialize_tree, before_broadcast,
+                                          after_broadcast, before_aggregate,
+                                          after_aggregate)
 
     actual = collections.OrderedDict([
         (label, type_signature.compact_representation())
@@ -711,7 +709,7 @@ class GetTypeInfoTest(test_case.TestCase):
     ])
     # Note: THE CONTENTS OF THIS DICTIONARY IS NOT IMPORTANT. The purpose of
     # this test is not to assert that this value returned by
-    # `canonical_form_utils._get_type_info`, but instead to act as a signal when
+    # `form_utils._get_type_info`, but instead to act as a signal when
     # refactoring the code involved in compiling an
     # `tff.templates.IterativeProcess` into a
     # `tff.backends.mapreduce.CanonicalForm`. If you are sure this needs to be
@@ -760,7 +758,7 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
 
   def test_next_computation_returning_tensor_fails_well(self):
     cf = mapreduce_test_utils.get_temperature_sensor_example()
-    it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
+    it = form_utils.get_iterative_process_for_canonical_form(cf)
     init_result = it.initialize.type_signature.result
     lam = building_blocks.Lambda('x', init_result,
                                  building_blocks.Reference('x', init_result))
@@ -768,11 +766,11 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
         it.initialize,
         computation_wrapper_instances.building_block_to_computation(lam))
     with self.assertRaises(TypeError):
-      canonical_form_utils.get_canonical_form_for_iterative_process(bad_it)
+      form_utils.get_canonical_form_for_iterative_process(bad_it)
 
   def test_broadcast_dependent_on_aggregate_fails_well(self):
     cf = mapreduce_test_utils.get_temperature_sensor_example()
-    it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
+    it = form_utils.get_iterative_process_for_canonical_form(cf)
     next_comp = it.next.to_building_block()
     top_level_param = building_blocks.Reference(next_comp.parameter_name,
                                                 next_comp.parameter_type)
@@ -791,27 +789,26 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
             not_reducible))
 
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):
-      canonical_form_utils.get_canonical_form_for_iterative_process(
-          not_reducible_it)
+      form_utils.get_canonical_form_for_iterative_process(not_reducible_it)
 
   def test_gets_canonical_form_for_nested_broadcast(self):
     ip = get_iterative_process_with_nested_broadcasts()
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
-    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+    cf = form_utils.get_canonical_form_for_iterative_process(ip)
+    self.assertIsInstance(cf, forms.CanonicalForm)
 
   def test_constructs_canonical_form_from_mnist_training_example(self):
-    it = canonical_form_utils.get_iterative_process_for_canonical_form(
+    it = form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_mnist_training_example())
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
-    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+    cf = form_utils.get_canonical_form_for_iterative_process(it)
+    self.assertIsInstance(cf, forms.CanonicalForm)
 
   def test_temperature_example_round_trip(self):
     # NOTE: the roundtrip through CanonicalForm->IterProc->CanonicalForm seems
     # to lose the python container annotations on the StructType.
-    it = canonical_form_utils.get_iterative_process_for_canonical_form(
+    it = form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example())
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
-    new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
+    cf = form_utils.get_canonical_form_for_iterative_process(it)
+    new_it = form_utils.get_iterative_process_for_canonical_form(cf)
     state = new_it.initialize()
     self.assertEqual(state.num_rounds, 0)
 
@@ -830,10 +827,10 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
             new_it.next.to_building_block()))
 
   def test_mnist_training_round_trip(self):
-    it = canonical_form_utils.get_iterative_process_for_canonical_form(
+    it = form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_mnist_training_example())
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(it)
-    new_it = canonical_form_utils.get_iterative_process_for_canonical_form(cf)
+    cf = form_utils.get_canonical_form_for_iterative_process(it)
+    new_it = form_utils.get_iterative_process_for_canonical_form(cf)
     state1 = it.initialize()
     state2 = new_it.initialize()
     self.assertAllClose(state1, state2)
@@ -879,9 +876,9 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
   )
   # pyformat: enable
   def test_returns_canonical_form(self, ip):
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
+    cf = form_utils.get_canonical_form_for_iterative_process(ip)
 
-    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+    self.assertIsInstance(cf, forms.CanonicalForm)
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -908,9 +905,9 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
   )
   # pyformat: enable
   def test_returns_canonical_form_with_grappler_disabled(self, ip):
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip, None)
+    cf = form_utils.get_canonical_form_for_iterative_process(ip, None)
 
-    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+    self.assertIsInstance(cf, forms.CanonicalForm)
 
   def test_raises_value_error_for_sum_example_with_no_aggregation(self):
     ip = get_iterative_process_for_sum_example_with_no_aggregation()
@@ -919,15 +916,15 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
         ValueError,
         r'Expected .* containing at least one `federated_aggregate` or '
         r'`federated_secure_sum`'):
-      canonical_form_utils.get_canonical_form_for_iterative_process(ip)
+      form_utils.get_canonical_form_for_iterative_process(ip)
 
   def test_returns_canonical_form_with_indirection_to_intrinsic(self):
     ip = mapreduce_test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation(
     )
 
-    cf = canonical_form_utils.get_canonical_form_for_iterative_process(ip)
+    cf = form_utils.get_canonical_form_for_iterative_process(ip)
 
-    self.assertIsInstance(cf, canonical_form.CanonicalForm)
+    self.assertIsInstance(cf, forms.CanonicalForm)
 
 
 if __name__ == '__main__':

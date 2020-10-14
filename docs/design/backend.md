@@ -95,11 +95,11 @@ that can be executed on MapReduce-like runtimes.
 ### `CanonicalForm`
 
 A
-[canonical_form.CanonicalForm](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/mapreduce/canonical_form.py)
+[forms.CanonicalForm](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/mapreduce/forms.py)
 is a data structure defining the representation of logic that can be executed on
 MapReduce-like runtimes. This logic is organized as a collection of TensorFlow
 functions, see the
-[canonical_form](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/mapreduce/canonical_form.py)
+[forms](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/mapreduce/forms.py)
 module for more information about the nature of these functions.
 
 ### Compiler
@@ -111,7 +111,7 @@ module contains [Building Block](compilation.md#building-block) and
 required to compile an AST to a [CanonicalForm](#canonicalform).
 
 The
-[canonical_form_utils](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/mapreduce/canonical_form_utils.py)
+[form_utils](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/mapreduce/form_utils.py)
 module contains the compiler for the MapReduce backend and constructs a
 [CanonicalForm](#canonicalform).
 

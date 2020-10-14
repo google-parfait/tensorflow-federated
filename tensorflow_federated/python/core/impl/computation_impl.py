@@ -26,7 +26,7 @@ class ComputationImpl(function_utils.ConcreteFunction):
   """An implementation of the base interface cb.Computation."""
 
   @classmethod
-  def get_proto(cls, value):
+  def get_proto(cls, value: 'ComputationImpl') -> pb.Computation:
     py_typecheck.check_type(value, cls)
     return value._computation_proto  # pylint: disable=protected-access
 

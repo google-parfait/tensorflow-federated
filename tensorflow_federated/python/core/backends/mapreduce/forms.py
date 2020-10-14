@@ -13,10 +13,113 @@
 # limitations under the License.
 """Standardized representation of logic deployable to MapReduce-like systems."""
 
-from tensorflow_federated.proto.v0 import computation_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl import computation_impl
+
+
+def _check_tensorflow_computation(label, comp):
+  py_typecheck.check_type(comp, computation_base.Computation, label)
+  comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+  which_comp = comp_proto.WhichOneof('computation')
+  if which_comp != 'tensorflow':
+    raise TypeError('Expected all computations supplied as arguments to '
+                    'be plain TensorFlow, found {}.'.format(which_comp))
+
+
+def _is_assignable_from_or_both_none(first, second):
+  if first is None:
+    return second is None
+  return first.is_assignable_from(second)
+
+
+def _is_two_tuple(t: computation_types.Type) -> bool:
+  return t.is_struct() and len(t) == 2
+
+
+def _check_accepts_two_tuple(label: str, comp: computation_base.Computation):
+  param_type = comp.type_signature.parameter
+  if not _is_two_tuple(param_type):
+    raise TypeError(
+        f'The `{label}` computation accepts a parameter of type\n{param_type}\n'
+        'that is not a two-tuple.')
+
+
+def _check_returns_two_tuple(label: str, comp: computation_base.Computation):
+  result_type = comp.type_signature.result
+  if not _is_two_tuple(result_type):
+    raise TypeError(
+        f'The `{label}` computation returns a result of type\n{result_type}\n'
+        'that is not a two-tuple.')
+
+
+class BroadcastForm(object):
+  """Standardized representation of server-to-client logic.
+
+  This class is designed to represent computations of the form:
+
+  ```
+  @tff.federated_computation(
+    self.compute_server_context.type_signature.parameter
+    self.client_processing.type_signature.parameter[0])
+  def _(server_data, client_data):
+    # Select out the bit of server context to send to the clients.
+    context_at_server = tff.federated_map(
+      self.compute_server_context, server_data)
+
+    # Broadcast the context to the clients.
+    context_at_clients = tff.federated_broadcast(context_at_server)
+
+    # Compute some value on the clients based on the server context and
+    # the client data.
+    return tff.federated_map(
+      self.client_processing, (context_at_clients, client_data))
+  ```
+  """
+
+  def __init__(self, compute_server_context, client_processing):
+    for label, comp in (
+        ('compute_server_context', compute_server_context),
+        ('client_processing', client_processing),
+    ):
+      _check_tensorflow_computation(label, comp)
+    _check_accepts_two_tuple('client_processing', client_processing)
+    client_2nd_arg_type = client_processing.type_signature.parameter[1]
+    select_result_type = compute_server_context.type_signature.result
+    if not _is_assignable_from_or_both_none(client_2nd_arg_type,
+                                            select_result_type):
+      raise TypeError(
+          'The `client_processing` computation expects an argument tuple with '
+          f'type\n{client_2nd_arg_type}\nas the second element (the context '
+          'type from the server), which does not match the result type\n'
+          f'{select_result_type}\n of `compute_server_context`.')
+    self._compute_server_context = compute_server_context
+    self._client_processing = client_processing
+
+  @property
+  def compute_server_context(self):
+    return self._compute_server_context
+
+  @property
+  def client_processing(self):
+    return self._client_processing
+
+  def summary(self, print_fn=print):
+    """Prints a string summary of the `BroadcastForm`.
+
+    Arguments:
+      print_fn: Print function to use. It will be called on each line of the
+        summary in order to capture the string summary.
+    """
+    for label, comp in (
+        ('compute_server_context', self.compute_server_context),
+        ('client_processing', self.client_processing),
+    ):
+      # Add sufficient padding to align first column;
+      # len('compute_server_context') == 22
+      print_fn('{:<22}: {}'.format(
+          label, comp.type_signature.compact_representation()))
 
 
 class CanonicalForm(object):
@@ -111,7 +214,7 @@ class CanonicalForm(object):
         are represented by TFF does not match what this code is expecting (this
         is an internal error that requires code update).
     """
-    for label, comp in [
+    for label, comp in (
         ('initialize', initialize),
         ('prepare', prepare),
         ('work', work),
@@ -121,67 +224,37 @@ class CanonicalForm(object):
         ('report', report),
         ('bitwidth', bitwidth),
         ('update', update),
-    ]:
-      py_typecheck.check_type(comp, computation_base.Computation, label)
-
-      # TODO(b/130633916): Remove private access once an appropriate API for it
-      # becomes available.
-      comp_proto = comp._computation_proto  # pylint: disable=protected-access
-
-      if not isinstance(comp_proto, computation_pb2.Computation):
-        # Explicitly raised to force it to be done in non-debug mode as well.
-        raise AssertionError('Cannot find the embedded computation definition.')
-      which_comp = comp_proto.WhichOneof('computation')
-      if which_comp != 'tensorflow':
-        raise TypeError('Expected all computations supplied as arguments to '
-                        'be plain TensorFlow, found {}.'.format(which_comp))
-
-    def is_assignable_from_or_both_none(first, second):
-      if first is None:
-        return second is None
-      return first.is_assignable_from(second)
+    ):
+      _check_tensorflow_computation(label, comp)
 
     prepare_arg_type = prepare.type_signature.parameter
     init_result_type = initialize.type_signature.result
-    if not is_assignable_from_or_both_none(prepare_arg_type, init_result_type):
+    if not _is_assignable_from_or_both_none(prepare_arg_type, init_result_type):
       raise TypeError(
           'The `prepare` computation expects an argument of type {}, '
           'which does not match the result type {} of `initialize`.'.format(
               prepare_arg_type, init_result_type))
 
-    if (not work.type_signature.parameter.is_struct() or
-        len(work.type_signature.parameter) != 2):
-      raise TypeError(
-          'The `work` computation expects an argument of type {} that is not '
-          'a two-tuple.'.format(work.type_signature.parameter))
-
+    _check_accepts_two_tuple('work', work)
     work_2nd_arg_type = work.type_signature.parameter[1]
     prepare_result_type = prepare.type_signature.result
-    if not is_assignable_from_or_both_none(work_2nd_arg_type,
-                                           prepare_result_type):
+    if not _is_assignable_from_or_both_none(work_2nd_arg_type,
+                                            prepare_result_type):
       raise TypeError(
           'The `work` computation expects an argument tuple with type {} as '
           'the second element (the initial client state from the server), '
           'which does not match the result type {} of `prepare`.'.format(
               work_2nd_arg_type, prepare_result_type))
 
-    if (not work.type_signature.result.is_struct() or
-        len(work.type_signature.result) != 2):
-      raise TypeError(
-          'The `work` computation returns a result  of type {} that is not a '
-          'two-tuple.'.format(work.type_signature.result))
+    _check_returns_two_tuple('work', work)
 
-    py_typecheck.check_type(zero.type_signature, computation_types.FunctionType)
-
-    py_typecheck.check_type(accumulate.type_signature,
-                            computation_types.FunctionType)
     py_typecheck.check_len(accumulate.type_signature.parameter, 2)
     accumulate.type_signature.parameter[0].check_assignable_from(
         zero.type_signature.result)
     accumulate_2nd_arg_type = accumulate.type_signature.parameter[1]
     work_client_update_type = work.type_signature.result[0]
-    if not is_assignable_from_or_both_none(accumulate_2nd_arg_type,
-                                           work_client_update_type):
+    if not _is_assignable_from_or_both_none(accumulate_2nd_arg_type,
+                                            work_client_update_type):
 
       raise TypeError(
           'The `accumulate` computation expects a second argument of type {}, '
@@ -191,8 +264,6 @@ class CanonicalForm(object):
     accumulate.type_signature.parameter[0].check_assignable_from(
         accumulate.type_signature.result)
 
-    py_typecheck.check_type(merge.type_signature,
-                            computation_types.FunctionType)
     py_typecheck.check_len(merge.type_signature.parameter, 2)
     merge.type_signature.parameter[0].check_assignable_from(
         accumulate.type_signature.result)
@@ -201,31 +272,22 @@ class CanonicalForm(object):
     merge.type_signature.parameter[0].check_assignable_from(
         merge.type_signature.result)
 
-    py_typecheck.check_type(report.type_signature,
-                            computation_types.FunctionType)
     report.type_signature.parameter.check_assignable_from(
         merge.type_signature.result)
-
-    py_typecheck.check_type(bitwidth.type_signature,
-                            computation_types.FunctionType)
 
     expected_update_parameter_type = computation_types.to_type([
         initialize.type_signature.result,
         [report.type_signature.result, work.type_signature.result[1]],
     ])
-    if not is_assignable_from_or_both_none(update.type_signature.parameter,
-                                           expected_update_parameter_type):
+    if not _is_assignable_from_or_both_none(update.type_signature.parameter,
+                                            expected_update_parameter_type):
       raise TypeError(
           'The `update` computation expects an argument of type {}, '
           'which does not match the expected {} as implied by the type '
           'signatures of `initialize`, `report`, and `work`.'.format(
               update.type_signature.parameter, expected_update_parameter_type))
 
-    if (not update.type_signature.result.is_struct() or
-        len(update.type_signature.result) != 2):
-      raise TypeError(
-          'The `update` computation returns a result  of type {} that is not '
-          'a two-tuple.'.format(update.type_signature.result))
+    _check_returns_two_tuple('update', update)
 
     updated_state_type = update.type_signature.result[0]
     if not prepare_arg_type.is_assignable_from(updated_state_type):
@@ -314,7 +376,7 @@ class CanonicalForm(object):
       print_fn: Print function to use. It will be called on each line of the
         summary in order to capture the string summary.
     """
-    computations = [
+    for label, comp in (
         ('initialize', self.initialize),
         ('prepare', self.prepare),
         ('work', self.work),
@@ -324,8 +386,7 @@ class CanonicalForm(object):
         ('report', self.report),
         ('bitwidth', self.bitwidth),
         ('update', self.update),
-    ]
-    for name, comp in computations:
+    ):
       # Add sufficient padding to align first column; len('initialize') == 10
       print_fn('{:<10}: {}'.format(
-          name, comp.type_signature.compact_representation()))
+          label, comp.type_signature.compact_representation()))

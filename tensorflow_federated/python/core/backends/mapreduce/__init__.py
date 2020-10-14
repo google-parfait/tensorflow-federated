@@ -104,7 +104,7 @@ For a concise representation of the logic embedded in the discussion below,
 specifying the manner in which an instance `cf` of `CanonicalForm` maps to
 a single federated round, see the definitions of `init_computation` and
 `next_computation` in
-`canonical_form_utils.get_iterative_process_for_canonical_form`.
+`form_utils.get_iterative_process_for_canonical_form`.
 
 ```python
 @tff.federated_computation
@@ -229,6 +229,7 @@ abstract types in addition to those defined earlier:
 
 # TODO(b/138261370): Cover this in the general set of guidelines for deployment.
 
-from tensorflow_federated.python.core.backends.mapreduce.canonical_form import CanonicalForm
-from tensorflow_federated.python.core.backends.mapreduce.canonical_form_utils import get_canonical_form_for_iterative_process
-from tensorflow_federated.python.core.backends.mapreduce.canonical_form_utils import get_iterative_process_for_canonical_form
+from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_canonical_form_for_iterative_process
+from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_iterative_process_for_canonical_form
+from tensorflow_federated.python.core.backends.mapreduce.forms import BroadcastForm
+from tensorflow_federated.python.core.backends.mapreduce.forms import CanonicalForm

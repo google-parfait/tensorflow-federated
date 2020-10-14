@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.backends.mapreduce import canonical_form
+from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -63,7 +63,7 @@ def get_iterative_process_for_canonical_form(cf):
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  py_typecheck.check_type(cf, canonical_form.CanonicalForm)
+  py_typecheck.check_type(cf, forms.CanonicalForm)
 
   @computations.federated_computation
   def init_computation():
@@ -486,7 +486,7 @@ def _extract_prepare(before_broadcast, grappler_config):
       Grappler graph optimization.
 
   Returns:
-    `prepare` as specified by `canonical_form.CanonicalForm`, an instance of
+    `prepare` as specified by `forms.CanonicalForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
@@ -516,7 +516,7 @@ def _extract_work(before_aggregate, grappler_config):
       Grappler graph optimization.
 
   Returns:
-    `work` as specified by `canonical_form.CanonicalForm`, an instance of
+    `work` as specified by `forms.CanonicalForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
@@ -557,7 +557,7 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
 
   Returns:
     `zero`, `accumulate`, `merge` and `report` as specified by
-    `canonical_form.CanonicalForm`. All are instances of
+    `forms.CanonicalForm`. All are instances of
     `building_blocks.CompiledComputation`.
 
   Raises:
@@ -607,7 +607,7 @@ def _extract_federated_secure_sum_functions(before_aggregate, grappler_config):
       Grappler graph optimization.
 
   Returns:
-    `bitwidth` as specified by `canonical_form.CanonicalForm`, an instance of
+    `bitwidth` as specified by `forms.CanonicalForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
@@ -641,7 +641,7 @@ def _extract_update(after_aggregate, grappler_config):
       Grappler graph optimization.
 
   Returns:
-    `update` as specified by `canonical_form.CanonicalForm`, an instance of
+    `update` as specified by `forms.CanonicalForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
@@ -1070,7 +1070,7 @@ def get_canonical_form_for_iterative_process(
       name for (name,
                 _) in structure.iter_elements(ip.next.type_signature.parameter))
   server_state_label, client_data_label = next_parameter_names
-  return canonical_form.CanonicalForm(
+  return forms.CanonicalForm(
       computation_wrapper_instances.building_block_to_computation(initialize),
       computation_wrapper_instances.building_block_to_computation(prepare),
       computation_wrapper_instances.building_block_to_computation(work),

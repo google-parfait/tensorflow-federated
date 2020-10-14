@@ -17,8 +17,27 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.backends.mapreduce import canonical_form
+from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
+
+
+def _dummy_broadcast_form_computations():
+  server_data_type = (tf.int32, tf.int32)
+  context_type = tf.int32
+  client_data_type = computation_types.SequenceType(tf.float32)
+
+  @computations.tf_computation(server_data_type)
+  def compute_server_context(server_data):
+    context_for_clients = server_data[0]
+    return context_for_clients
+
+  @computations.tf_computation(client_data_type, context_type)
+  def client_processing(client_data, context):
+    del context
+    del client_data
+    return 'some string output on the clients'
+
+  return (compute_server_context, client_processing)
 
 
 def _dummy_canonical_form_computations():
@@ -75,6 +94,34 @@ def _dummy_canonical_form_computations():
           update)
 
 
+class BroadcastFormTest(absltest.TestCase):
+
+  def test_init_does_not_raise_type_error(self):
+    (compute_server_context,
+     client_processing) = _dummy_broadcast_form_computations()
+    try:
+      forms.BroadcastForm(compute_server_context, client_processing)
+    except TypeError:
+      self.fail('Raised TypeError unexpectedly.')
+
+  def test_raises_type_error_with_mismatched_context_type(self):
+
+    @computations.tf_computation(tf.int32)
+    def compute_server_context(x):
+      return x
+
+    # Note: `tf.float32` here is mismatched with the context type `tf.int32`
+    # returned above.
+    @computations.tf_computation(tf.int32, tf.float32)
+    def client_processing(client_data, context):
+      del context
+      del client_data
+      return 'some string output on the clients'
+
+    with self.assertRaises(TypeError):
+      forms.BroadcastForm(compute_server_context, client_processing)
+
+
 class CanonicalFormTest(absltest.TestCase):
 
   def test_init_does_not_raise_type_error(self):
@@ -82,8 +129,8 @@ class CanonicalFormTest(absltest.TestCase):
      update) = _dummy_canonical_form_computations()
 
     try:
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -149,8 +196,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant([1]), []
 
     try:
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
@@ -163,8 +210,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(0.0)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_prepare_parameter_type(self):
     (initialize, _, work, zero, accumulate, merge, report, bitwidth,
@@ -176,8 +223,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1.0)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_prepare_result_type(self):
     (initialize, _, work, zero, accumulate, merge, report, bitwidth,
@@ -189,8 +236,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_work_second_parameter_type(self):
     (initialize, prepare, _, zero, accumulate, merge, report, bitwidth,
@@ -204,8 +251,8 @@ class CanonicalFormTest(absltest.TestCase):
       return True, []
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_work_result_type(self):
     (initialize, prepare, _, zero, accumulate, merge, report, bitwidth,
@@ -219,8 +266,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant('abc'), []
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_zero_result_type(self):
     (initialize, prepare, work, _, accumulate, merge, report, bitwidth,
@@ -231,8 +278,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(0.0), tf.constant(0)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_accumulate_first_parameter_type(
       self):
@@ -246,8 +293,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_accumulate_second_parameter_type(
       self):
@@ -261,8 +308,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_accumulate_result_type(self):
     (initialize, prepare, work, zero, _, merge, report, bitwidth,
@@ -275,8 +322,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1.0), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_merge_first_parameter_type(self):
     (initialize, prepare, work, zero, accumulate, _, report, bitwidth,
@@ -289,8 +336,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_merge_second_parameter_type(self):
     (initialize, prepare, work, zero, accumulate, _, report, bitwidth,
@@ -303,8 +350,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_merge_result_type(self):
     (initialize, prepare, work, zero, accumulate, _, report, bitwidth,
@@ -317,8 +364,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1.0), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_report_parameter_type(self):
     (initialize, prepare, work, zero, accumulate, merge, _, bitwidth,
@@ -330,8 +377,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1.0)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_report_result_type(self):
     (initialize, prepare, work, zero, accumulate, merge, _, bitwidth,
@@ -343,8 +390,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1)
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_update_first_parameter_type(self):
     (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
@@ -358,8 +405,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), []
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_update_second_parameter_type(self):
     (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
@@ -373,8 +420,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), []
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_update_result_type(self):
     (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
@@ -388,8 +435,8 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1.0), []
 
     with self.assertRaises(TypeError):
-      canonical_form.CanonicalForm(initialize, prepare, work, zero, accumulate,
-                                   merge, report, bitwidth, update)
+      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+                          report, bitwidth, update)
 
   def test_securely_aggregates_tensors_true(self):
     cf_with_secure_sum = test_utils.get_federated_sum_example(secure_sum=True)
