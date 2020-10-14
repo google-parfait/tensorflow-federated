@@ -176,7 +176,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
           type_spec, comp_type))
   else:
     type_spec = comp_type
-  # TODO(b/155198591): Currently, TF will raise on any function returning a
+  # TODO(b/156302055): Currently, TF will raise on any function returning a
   # `tf.data.Dataset` not pinned to CPU. We should follow up here and remove
   # this gating when we can.
   must_pin_function_to_cpu = type_analysis.contains(type_spec.result,
