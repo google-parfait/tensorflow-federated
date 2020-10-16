@@ -68,7 +68,7 @@ class PrivateQEComputationTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(
         computation_types.FunctionType(
             parameter=server_state_type, result=estimate_type),
-        process.get_estimate.type_signature)
+        process.report.type_signature)
 
     client_value_type = computation_types.FederatedType(tf.float32,
                                                         placements.CLIENTS)
@@ -118,7 +118,7 @@ class PrivateQEExecutionTest(test_case.TestCase, parameterized.TestCase):
         quantile_estimator_query)
 
     state = process.initialize()
-    self.assertAllClose(process.get_estimate(state), initial_estimate)
+    self.assertAllClose(process.report(state), initial_estimate)
 
     # Run on two records greater than estimate.
     state = process.next(state, [initial_estimate + 1, initial_estimate + 2])
@@ -129,7 +129,7 @@ class PrivateQEExecutionTest(test_case.TestCase, parameterized.TestCase):
     else:
       expected_estimate = initial_estimate + learning_rate * target_quantile
 
-    self.assertAllClose(process.get_estimate(state), expected_estimate)
+    self.assertAllClose(process.report(state), expected_estimate)
 
 
 if __name__ == '__main__':

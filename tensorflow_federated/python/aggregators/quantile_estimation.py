@@ -106,7 +106,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
 
       return intrinsics.federated_zip((new_quantile_query_state, new_agg_state))
 
-    get_estimate_fn = computations.federated_computation(
+    report_fn = computations.federated_computation(
         lambda state: state[0].current_estimate, init_fn.type_signature.result)
 
-    super().__init__(init_fn, next_fn, get_estimate_fn)
+    super().__init__(init_fn, next_fn, report_fn)
