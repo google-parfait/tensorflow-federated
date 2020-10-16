@@ -460,7 +460,12 @@ def from_container(value: Any, recursive=False) -> Struct:
               value, dict_factory=collections.OrderedDict, recurse=False),
           recursive, must_be_container)
     elif py_typecheck.is_named_tuple(value):
-      return _convert(value._asdict(), recursive, must_be_container)
+      return _convert(
+          # In Python 3.8 and later `_asdict` no longer return OrdereDict,
+          # rather a regular `dict`.
+          collections.OrderedDict(value._asdict()),
+          recursive,
+          must_be_container)
     elif isinstance(value, collections.OrderedDict):
       items = value.items()
       if recursive:

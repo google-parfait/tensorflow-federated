@@ -38,7 +38,9 @@ def update_state(state, **kwargs):
                     'dict, attrs class, collections.namedtuple), '
                     'but found {}'.format(type(state)))
   if py_typecheck.is_named_tuple(state):
-    d = state._asdict()
+    # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather a
+    # regular `dict`.
+    d = collections.OrderedDict(state._asdict())
   elif py_typecheck.is_attrs(state):
     d = attr.asdict(state, dict_factory=collections.OrderedDict)
   else:
@@ -51,4 +53,3 @@ def update_state(state, **kwargs):
   if isinstance(state, collections.Mapping):
     return d
   return type(state)(**d)
-

@@ -731,7 +731,9 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
     elements = structure.to_elements(type_spec)
     if isinstance(nested, collections.OrderedDict):
       if py_typecheck.is_named_tuple(value):
-        value = value._asdict()  # pytype: disable=attribute-error
+        # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather
+        # a regular `dict`.
+        value = collections.OrderedDict(value._asdict())  # pytype: disable=attribute-error
       if isinstance(value, dict):
         if set(value.keys()) != set(k for k, _ in elements):
           raise TypeError('Value {} does not match type {}.'.format(

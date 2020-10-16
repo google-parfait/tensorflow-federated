@@ -75,7 +75,9 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
     return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items.items()], type(arg))
   elif py_typecheck.is_named_tuple(arg):
-    items = arg._asdict()
+    # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather a
+    # regular `dict`.
+    items = collections.OrderedDict(arg._asdict())
     return computation_types.StructWithPythonType(
         [(k, infer_type(v)) for k, v in items.items()], type(arg))
   elif isinstance(arg, dict):
