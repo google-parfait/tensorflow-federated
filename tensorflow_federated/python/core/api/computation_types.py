@@ -19,6 +19,7 @@ import difflib
 import enum
 import typing
 from typing import Any, Dict, Optional, Type as TypingType, TypeVar
+import warnings
 import weakref
 
 import attr
@@ -935,7 +936,7 @@ def to_type(spec) -> Type:
   ```
 
   Custom `attr` classes can also be converted to a nested `tff.Type` by using
-  `attr.ib(type=...)` annotations:
+  `attr.ib(type=...)` annotations (deprecated):
 
   ```python
   @attr.s
@@ -943,6 +944,10 @@ def to_type(spec) -> Type:
     int_scalar = attr.ib(type=tf.int32)
     string_array = attr.ib(type=tff.TensorType(dtype=tf.string, shape=[3]))
   ```
+
+  Support for converting `attr` classes is deprecated and will be removed in a
+  future release. Please use one of the other supported forms instead.
+  TODO(b/170486248): Deprecate support for converting `attr` classes.
 
   Args:
     spec: Either an instance of `tff.Type`, or an argument convertible to
@@ -1010,6 +1015,12 @@ def _to_type_from_attrs(spec) -> Type:
   else:
     # attrs class instance, inspect the field values for instances convertible
     # to types.
+
+    # TODO(b/170486248): Deprecate support for converting `attr` classes.
+    warnings.warn(
+        'Deprecation warning: Converting `attr` classes to a federated type is '
+        'deprecated, use one of the other forms described in `tff.to_type()` '
+        'instead.', DeprecationWarning)
     elements = attr.asdict(
         spec, dict_factory=collections.OrderedDict, recurse=False)
     the_type = type(spec)
