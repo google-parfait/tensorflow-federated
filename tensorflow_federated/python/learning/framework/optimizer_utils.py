@@ -340,42 +340,37 @@ def _build_one_round_computation(
 
   @computations.tf_computation(model_weights_type, model_weights_type.trainable,
                                optimizer_variable_type)
-  def server_update(global_model, model_delta, optimizer_state):
-    """Converts args to correct python types and calls server_update_model."""
-    # Construct variables first.
-    model = model_fn()
-    optimizer = server_optimizer_fn()
-    # We must force variable creation for momentum and adaptive optimizers.
-    _eagerly_create_optimizer_variables(model=model, optimizer=optimizer)
-
-    @tf.function
-    def update_model_inner(weights_delta):
-      """Applies the update to the global model."""
-      model_variables = model_utils.ModelWeights.from_model(model)
-      optimizer_variables = optimizer.variables()
-      # We might have a NaN value e.g. if all of the clients processed
-      # had no data, so the denominator in the federated_mean is zero.
-      # If we see any NaNs, zero out the whole update.
-      no_nan_weights_delta, _ = tensor_utils.zero_all_if_any_non_finite(
-          weights_delta)
-
-      # TODO(b/124538167): We should increment a server counter to
-      # track the fact a non-finite weights_delta was encountered.
-
-      # Set the variables to the current global model (before update).
-      tf.nest.map_structure(lambda a, b: a.assign(b),
-                            (model_variables, optimizer_variables),
-                            (global_model, optimizer_state))
-      # Update the variables with the delta, and return the new global model.
-      _apply_delta(optimizer=optimizer, model=model, delta=no_nan_weights_delta)
-      return model_variables, optimizer_variables
-
-    return update_model_inner(model_delta)
+  @tf.function
+  def server_update(global_model, mean_model_delta, optimizer_state):
+    """Updates the global model with the mean model update from clients."""
+    with tf.init_scope():
+      model = model_fn()
+      optimizer = server_optimizer_fn()
+      # We must force variable creation for momentum and adaptive optimizers.
+      _eagerly_create_optimizer_variables(model=model, optimizer=optimizer)
+    model_variables = model_utils.ModelWeights.from_model(model)
+    optimizer_variables = optimizer.variables()
+    # Set the variables to the current global model, the optimizer will
+    # update these variables.
+    tf.nest.map_structure(lambda a, b: a.assign(b),
+                          (model_variables, optimizer_variables),
+                          (global_model, optimizer_state))
+    # We might have a NaN value e.g. if all of the clients processed had no
+    # data, so the denominator in the federated_mean is zero. If we see any
+    # NaNs, zero out the whole update.
+    # TODO(b/124538167): We should increment a server counter to
+    # track the fact a non-finite weights_delta was encountered.
+    finite_weights_delta, _ = tensor_utils.zero_all_if_any_non_finite(
+        mean_model_delta)
+    # Update the global model variables with the delta as a pseudo-gradient.
+    _apply_delta(optimizer=optimizer, model=model, delta=finite_weights_delta)
+    return model_variables, optimizer_variables
 
   dataset_type = computation_types.SequenceType(
       dummy_model_for_metadata.input_spec)
 
   @computations.tf_computation(dataset_type, model_weights_type)
+  @tf.function
   def _compute_local_training_and_client_delta(dataset, initial_model_weights):
     """Performs client local model optimization.
 
@@ -387,7 +382,8 @@ def _build_one_round_computation(
     Returns:
       A `ClientOutput` structure.
     """
-    client_delta_fn = model_to_client_delta_fn(model_fn)
+    with tf.init_scope():
+      client_delta_fn = model_to_client_delta_fn(model_fn)
     client_output = client_delta_fn(dataset, initial_model_weights)
     return client_output
 

@@ -45,6 +45,10 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
                use_experimental_simulation_loop: bool = False):
     """Constructs the client computation for Federated SGD.
 
+    Note: All variable creation required for the client computation (e.g. model
+    variable construction) must occur in during construction, and not during
+    `__call__`.
+
     Args:
       model: A `learning.Model` for which gradients are computed.
       batch_weight_fn: A function that takes a batch (as passed to forward_pass)
@@ -83,7 +87,6 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
                           initial_weights)
     flat_trainable_weights = tuple(tf.nest.flatten(model.weights.trainable))
 
-    @tf.function
     def reduce_fn(state, batch):
       """Runs forward_pass on batch and sums the weighted gradients."""
       flat_accumulated_grads, batch_weight_sum = state

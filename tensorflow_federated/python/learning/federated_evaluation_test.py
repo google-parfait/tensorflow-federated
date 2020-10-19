@@ -54,10 +54,8 @@ class TestModel(model.Model):
 
   @property
   def input_spec(self):
-    return collections.OrderedDict([('temp', tf.TensorSpec([None],
-                                                           tf.float32))])
+    return collections.OrderedDict(temp=tf.TensorSpec([None], tf.float32))
 
-  @tf.function
   def forward_pass(self, batch, training=True):
     assert not training
     num_over = tf.reduce_sum(
@@ -71,9 +69,8 @@ class TestModel(model.Model):
         predictions=predictions,
         num_examples=tf.shape(predictions)[0])
 
-  @tf.function
   def report_local_outputs(self):
-    return collections.OrderedDict([('num_over', self._variables.num_over)])
+    return collections.OrderedDict(num_over=self._variables.num_over)
 
   @property
   def federated_output_computation(self):

@@ -47,6 +47,10 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
                use_experimental_simulation_loop: bool = False):
     """Creates the client computation for Federated Averaging.
 
+    Note: All variable creation required for the client computation (e.g. model
+    variable creation) must occur in during construction, and not during
+    `__call__`.
+
     Args:
       model: A `tff.learning.Model` instance.
       optimizer: A `tf.keras.Optimizer` instance.
@@ -82,7 +86,6 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     tf.nest.map_structure(lambda a, b: a.assign(b), model.weights,
                           initial_weights)
 
-    @tf.function
     def reduce_fn(num_examples_sum, batch):
       """Train `tff.learning.Model` on local client batch."""
       with tf.GradientTape() as tape:
