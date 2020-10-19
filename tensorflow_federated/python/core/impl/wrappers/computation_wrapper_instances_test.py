@@ -414,7 +414,6 @@ class FederatedComputationWrapperTest(test_case.TestCase):
         raise DummyError()
 
   def test_empty_tuple_arg(self):
-    self.skipTest('b/171254001')
 
     @computation_wrapper_instances.federated_computation_wrapper(
         computation_types.StructType([]))

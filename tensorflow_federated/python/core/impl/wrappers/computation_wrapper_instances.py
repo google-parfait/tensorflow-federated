@@ -65,10 +65,14 @@ def _federated_computation_wrapper_fn(parameter_type, name):
   Documentation its arguments can be found inside the definition of that class.
   """
   ctx_stack = context_stack_impl.context_stack
+  if parameter_type is None:
+    parameter_name = None
+  else:
+    parameter_name = 'arg'
   fn_generator = federated_computation_utils.federated_computation_serializer(
-      'arg' if parameter_type else None,
-      parameter_type,
-      ctx_stack,
+      parameter_name=parameter_name,
+      parameter_type=parameter_type,
+      context_stack=ctx_stack,
       suggested_name=name)
   result = yield next(fn_generator)
   target_lambda, extra_type_spec = fn_generator.send(result)
