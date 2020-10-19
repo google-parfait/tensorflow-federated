@@ -413,6 +413,19 @@ class FederatedComputationWrapperTest(test_case.TestCase):
       def _():
         raise DummyError()
 
+  def test_empty_tuple_arg(self):
+    self.skipTest('b/171254001')
+
+    @computation_wrapper_instances.federated_computation_wrapper(
+        computation_types.StructType([]))
+    def foo(x):
+      return x
+
+    self.assertIsInstance(foo, computation_impl.ComputationImpl)
+    self.assertEqual(str(foo.type_signature), '(<> -> <>)')
+
+    self.assertEqual(str(foo.to_building_block()), '(foo_arg -> foo_arg)')
+
 
 class AssertReturnsTest(test_case.TestCase):
 
