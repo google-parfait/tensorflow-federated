@@ -383,7 +383,7 @@ def build_multiple_outputs_regularized_keras_model(
 
 
 def build_lookup_table_keras_model():
-  """Builds a test model with three outputs."""
+  """Builds a test model with embedding feature columns."""
   l = tf.keras.layers
   a = l.Input(shape=(1,), dtype=tf.string)
   embedded_lookup_feature = tf.feature_column.embedding_column(
@@ -393,3 +393,11 @@ def build_lookup_table_keras_model():
   dense_features = l.DenseFeatures([embedded_lookup_feature])({'colors': a})
   output = l.Dense(1)(dense_features)
   return tf.keras.Model(inputs=[a], outputs=[output])
+
+
+def build_preprocessing_lookup_keras_model():
+  """Builds a test model using processing layers."""
+  l = tf.keras.layers
+  a = l.Input(shape=(1,), dtype=tf.string)
+  encoded = l.experimental.preprocessing.StringLookup(vocabulary=['A', 'B'])(a)
+  return tf.keras.Model(inputs=[a], outputs=[encoded])

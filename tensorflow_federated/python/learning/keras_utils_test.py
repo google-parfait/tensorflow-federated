@@ -799,6 +799,49 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         self.evaluate(orig_model_output.loss),
         self.evaluate(loaded_model_output.loss))
 
+  def test_keras_model_preprocessing(self):
+    self.skipTest('b/171254807')
+    model = model_examples.build_preprocessing_lookup_keras_model()
+    input_spec = collections.OrderedDict(
+        x=tf.TensorSpec(shape=[None, 1], dtype=tf.string),
+        y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))
+    tff_model = keras_utils.from_keras_model(
+        keras_model=model,
+        input_spec=input_spec,
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+
+    batch_size = 3
+    batch = collections.OrderedDict(
+        x=tf.constant([['A'], ['B'], ['A']], dtype=tf.string),
+        y=tf.constant([[0], [1], [1]], dtype=tf.float32))
+
+    num_train_steps = 2
+    for _ in range(num_train_steps):
+      self.evaluate(tff_model.forward_pass(batch))
+
+    metrics = self.evaluate(tff_model.report_local_outputs())
+    self.assertEqual(metrics['num_batches'], [num_train_steps])
+    self.assertEqual(metrics['num_examples'], [batch_size * num_train_steps])
+    self.assertGreater(metrics['loss'][0], 0.0)
+    self.assertEqual(metrics['loss'][1], batch_size * num_train_steps)
+
+    # Ensure we can assign the FL trained model weights to a new model.
+    tff_weights = model_utils.ModelWeights.from_model(tff_model)
+    keras_model = model_examples.build_lookup_table_keras_model()
+    tff_weights.assign_weights_to(keras_model)
+    loaded_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=input_spec,
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=[NumBatchesCounter(), NumExamplesCounter()])
+
+    orig_model_output = tff_model.forward_pass(batch)
+    loaded_model_output = loaded_model.forward_pass(batch)
+    self.assertAlmostEqual(
+        self.evaluate(orig_model_output.loss),
+        self.evaluate(loaded_model_output.loss))
+
   def test_keras_model_fails_compiled(self):
     feature_dims = 3
     keras_model = model_examples.build_linear_regression_keras_functional_model(
