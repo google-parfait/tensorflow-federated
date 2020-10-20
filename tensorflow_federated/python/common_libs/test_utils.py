@@ -54,11 +54,11 @@ def skip_test_for_gpu(test_fn):
   """
 
   @functools.wraps(test_fn)
-  def wrapped_test_fn(self):
+  def wrapped_test_fn(self, *args, **kwargs):
     gpu_devices = tf.config.list_logical_devices('GPU')
     if gpu_devices:
       self.skipTest('skip GPU test')
-    test_fn(self)
+    test_fn(self, *args, **kwargs)
 
   return wrapped_test_fn
 
