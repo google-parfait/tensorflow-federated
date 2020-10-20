@@ -13,6 +13,7 @@
 # limitations under the License.
 """Libraries for constructing federated aggregation."""
 
+from tensorflow_federated.python.aggregators.dp_factory import DifferentiallyPrivateFactory
 from tensorflow_federated.python.aggregators.factory import AggregationProcessFactory
 from tensorflow_federated.python.aggregators.mean_factory import MeanFactory
 from tensorflow_federated.python.aggregators.quantile_estimation import PrivateQuantileEstimationProcess

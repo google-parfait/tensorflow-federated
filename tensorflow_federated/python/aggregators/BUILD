@@ -18,6 +18,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        ":dp_factory",
         ":factory",
         ":mean_factory",
         ":quantile_estimation",
