@@ -64,26 +64,32 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
         non_trainable=[0.0],
     )
 
-  @parameterized.named_parameters(('non-simulation', False),
-                                  ('simulation', True))
+  @parameterized.named_parameters(
+      ('non-simulation_noclip', False, {}, 0.1),
+      ('simulation_noclip', True, {}, 0.1),
+      ('non-simulation_clipnorm', False, {
+          'clipnorm': 0.2
+      }, 0.05),
+      ('non-simulation_clipvalue', False, {
+          'clipvalue': 0.1
+      }, 0.02),
+  )
   @test_utils.skip_test_for_multi_gpu
-  def test_client_tf(self, simulation):
+  def test_client_tf(self, simulation, optimizer_kwargs, expected_norm):
     model = self.create_model()
     dataset = self.create_dataset()
     client_tf = federated_averaging.ClientFedAvg(
         model,
-        tf.keras.optimizers.SGD(learning_rate=0.1),
+        tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs),
         use_experimental_simulation_loop=simulation)
     client_outputs = self.evaluate(client_tf(dataset, self.initial_weights()))
-
-    # Both trainable parameters should have been updated,
-    # and we don't return the non-trainable variable.
+    # Both trainable parameters should have been updated, and we don't return
+    # the non-trainable variable.
     self.assertAllGreater(
-        np.linalg.norm(client_outputs.weights_delta, axis=-1), 0.1)
+        np.linalg.norm(client_outputs.weights_delta, axis=-1), expected_norm)
     self.assertEqual(client_outputs.weights_delta_weight, 8.0)
     self.assertEqual(client_outputs.optimizer_output['num_examples'], 8)
     self.assertEqual(client_outputs.optimizer_output['has_non_finite_delta'], 0)
-
     self.assertDictContainsSubset(
         {
             'num_examples': 8,
