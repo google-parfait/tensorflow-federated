@@ -192,7 +192,7 @@ class ReferenceResolvingExecutorValue(executor_value_base.ExecutorValue):
     super().__init__()
     if isinstance(value, executor_value_base.ExecutorValue):
       py_typecheck.check_none(type_spec)
-      type_spec = value.type_signature  # pytype: disable=attribute-error
+      type_spec = value.type_signature
     elif isinstance(value, ScopedLambda):
       py_typecheck.check_type(type_spec, computation_types.FunctionType)
     else:
@@ -328,7 +328,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       py_typecheck.check_none(arg)
     else:
       py_typecheck.check_type(arg, ReferenceResolvingExecutorValue)
-      arg_type = arg.type_signature  # pytype: disable=attribute-error
+      arg_type = arg.type_signature
       if not param_type.is_assignable_from(arg_type):
         raise TypeError('ReferenceResolvingExecutor asked to create call with '
                         'incompatible type specifications. Function '

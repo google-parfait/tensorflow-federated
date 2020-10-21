@@ -2299,9 +2299,8 @@ class GroupBlockLocalsByDependency(transformation_utils.TransformSpec):
   ):
     """Creates mapping from old symbol names to replacement computations."""
     if isinstance(new_comp, building_blocks.Struct):
-      tup_type_spec_names_stripped = computation_types.StructType([
-          x[1] for x in structure.iter_elements(new_comp.type_signature)  # pytype: disable=attribute-error
-      ])
+      tup_type_spec_names_stripped = computation_types.StructType(
+          [x[1] for x in structure.iter_elements(new_comp.type_signature)])
       ref_to_tuple = building_blocks.Reference(new_symbol,
                                                tup_type_spec_names_stripped)
       elem_iterable = enumerate(structure.iter_elements(new_comp))

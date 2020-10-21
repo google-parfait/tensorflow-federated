@@ -427,7 +427,7 @@ def to_value(
             for k, v in structure.iter_elements(arg)
         ]), context_stack)
   elif py_typecheck.is_named_tuple(arg):
-    items = arg._asdict().items()  # pytype: disable=attribute-error
+    items = arg._asdict().items()
     result = _dictlike_items_to_value(items, context_stack, type(arg))
   elif py_typecheck.is_attrs(arg):
     items = attr.asdict(

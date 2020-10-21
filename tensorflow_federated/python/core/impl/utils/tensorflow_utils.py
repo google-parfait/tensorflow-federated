@@ -726,14 +726,14 @@ def append_to_list_structure_for_element_type_spec(nested, value, type_spec):
     # Convert the members to tensors to ensure that they are properly
     # typed and grouped before being passed to
     # tf.data.Dataset.from_tensor_slices.
-    nested.append(tf.convert_to_tensor(value, type_spec.dtype))  # pytype: disable=attribute-error
+    nested.append(tf.convert_to_tensor(value, type_spec.dtype))
   elif type_spec.is_struct():
     elements = structure.to_elements(type_spec)
     if isinstance(nested, collections.OrderedDict):
       if py_typecheck.is_named_tuple(value):
         # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather
         # a regular `dict`.
-        value = collections.OrderedDict(value._asdict())  # pytype: disable=attribute-error
+        value = collections.OrderedDict(value._asdict())
       if isinstance(value, dict):
         if set(value.keys()) != set(k for k, _ in elements):
           raise TypeError('Value {} does not match type {}.'.format(

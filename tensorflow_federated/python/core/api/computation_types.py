@@ -339,7 +339,7 @@ class _Intern(abc.ABCMeta):
 
   def __call__(cls, *args, **kwargs):
     try:
-      normalized_args = cls._normalize_init_args(*args, **kwargs)  # pytype: disable=attribute-error
+      normalized_args = cls._normalize_init_args(*args, **kwargs)
     except Exception as e:
       # We want to hide the existence of `_normalize_init_args` from end users.
       message = str(e).replace('_normalize_init_args', cls.__name__)

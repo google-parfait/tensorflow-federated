@@ -175,8 +175,7 @@ class _BidiStream:
 
     await asyncio.get_event_loop().run_in_executor(self._thread_pool_executor,
                                                    response_event.wait)
-
-    response = response_event.response  # pytype: disable=attribute-error
+    response = response_event.response
     if isinstance(response, Exception):
       raise response
 
@@ -228,7 +227,7 @@ def _is_retryable_grpc_error(error):
       grpc.StatusCode.UNAUTHENTICATED,
   }
   return (isinstance(error, grpc.RpcError) and
-          error.code() not in non_retryable_errors)  # pytype: disable=attribute-error
+          error.code() not in non_retryable_errors)
 
 
 class RemoteExecutor(executor_base.Executor):

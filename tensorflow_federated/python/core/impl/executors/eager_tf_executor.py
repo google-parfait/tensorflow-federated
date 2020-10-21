@@ -534,10 +534,8 @@ class EagerTFExecutor(executor_base.Executor):
           comp.type_signature))
     if comp.type_signature.parameter is not None:
       return EagerValue(
-          comp.internal_representation(arg.internal_representation),  # pytype: disable=attribute-error
-          self._tf_function_cache,
-          comp.type_signature.result,
-          self._device)
+          comp.internal_representation(arg.internal_representation),
+          self._tf_function_cache, comp.type_signature.result, self._device)
     elif arg is None:
       return EagerValue(comp.internal_representation(), self._tf_function_cache,
                         comp.type_signature.result, self._device)

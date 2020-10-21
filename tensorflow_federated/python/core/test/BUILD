@@ -29,6 +29,7 @@ py_library(
 py_library(
     name = "static_assert",
     srcs = ["static_assert.py"],
+    srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl:computation_impl",
