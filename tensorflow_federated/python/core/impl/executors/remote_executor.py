@@ -14,7 +14,6 @@
 """A local proxy for a remote executor service hosted on a separate machine."""
 
 import asyncio
-import itertools
 import queue
 import threading
 from typing import Mapping
@@ -93,31 +92,19 @@ class _BidiStream:
     logging.debug('Initializing bidi stream')
 
     self._request_queue = queue.Queue()
+    self._response_event_lock = threading.Lock()
     self._response_event_dict = {}
     self._stream_closed_event = threading.Event()
+    self._stream_error = None
+    self._request_num = 0
+    self._request_num_lock = threading.Lock()
 
     def request_iter():
       """Iterator that blocks on the request Queue."""
-
-      for seq in itertools.count():
-        logging.debug('Request thread: blocking for next request')
-        val = self._request_queue.get()
-        if val:
-          py_typecheck.check_type(val[0], executor_pb2.ExecuteRequest)
-          py_typecheck.check_type(val[1], threading.Event)
-
-          req = val[0]
-          req.sequence_number = seq
-          logging.debug(
-              'Request thread: processing request of type %s, seq_no %s',
-              val[0].WhichOneof('request'), seq)
-          self._response_event_dict[seq] = val[1]
-          yield val[0]
-        else:
-          logging.debug(
-              'Request thread: Final request received. Stream will close.')
-          # None means we are done processing
-          return
+      request = self._request_queue.get()
+      while request is not None:
+        yield request
+        request = self._request_queue.get()
 
     response_iter = self._stub.Execute(request_iter())
 
@@ -141,12 +128,12 @@ class _BidiStream:
         if _is_retryable_grpc_error(error):
           logging.exception('gRPC error is retryable')
           error = execution_context.RetryableError(error)
-        # Set all response events to errors. This is heavy-handed and
-        # potentially can be scaled back.
-        for _, response_event in self._response_event_dict.items():
-          if not response_event.isSet():
-            response_event.response = error
-            response_event.set()
+        with self._response_event_lock:
+          self._stream_error = error
+          for _, response_event in self._response_event_dict.items():
+            if not response_event.isSet():
+              response_event.response = error
+              response_event.set()
         self._stream_closed_event.set()
 
     response_thread = threading.Thread(target=response_thread_fn)
@@ -163,13 +150,36 @@ class _BidiStream:
     py_typecheck.check_type(request, executor_pb2.ExecuteRequest)
     request_type = request.WhichOneof('request')
     response_event = threading.Event()
-    # Enqueue a tuple of request and an Event used to return the response
-    self._request_queue.put((request, response_event))
+
+    py_typecheck.check_type(request, executor_pb2.ExecuteRequest)
+    py_typecheck.check_type(response_event, threading.Event)
+
+    with self._request_num_lock:
+      seq = self._request_num
+      self._request_num += 1
+
+    with self._response_event_lock:
+      if self._stream_error is not None:
+        logging.debug('Stream failed before msg enqueued')
+        response_event.response = self._stream_error
+        response_event.set()
+      else:
+        request.sequence_number = seq
+        logging.debug(
+            'Request thread: processing request of type %s, seq_no %s',
+            request.WhichOneof('request'), seq)
+        self._response_event_dict[seq] = response_event
+
+        # Enqueue a tuple of request and an Event used to return the response
+        self._request_queue.put(request)
+
     await asyncio.get_event_loop().run_in_executor(self._thread_pool_executor,
                                                    response_event.wait)
+
     response = response_event.response  # pytype: disable=attribute-error
     if isinstance(response, Exception):
       raise response
+
     py_typecheck.check_type(response, executor_pb2.ExecuteResponse)
     response_type = response.WhichOneof('response')
     if response_type != request_type:

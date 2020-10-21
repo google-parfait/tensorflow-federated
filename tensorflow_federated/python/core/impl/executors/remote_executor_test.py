@@ -411,8 +411,11 @@ class RemoteExecutorTest(absltest.TestCase):
       loop.run_until_complete(executor.create_selection(source, index=0))
 
 
-def execute_mock(request_iter, return_value, error_fn=None):
+def execute_mock(request_iter, return_value, error_fn=None, fail_fast=False):
   """Minimal stub Execute implementation, always yielding `return_value`."""
+  if fail_fast:
+    error_fn()
+
   response_queue = queue.Queue()
 
   class RequestIterFinished:
@@ -452,11 +455,15 @@ def execute_mock(request_iter, return_value, error_fn=None):
       raise ValueError('Illegal response: {}'.format(response))
 
 
-def _setup_mock_streaming_executor(mock_stub, response, error_fn=None):
+def _setup_mock_streaming_executor(mock_stub,
+                                   response,
+                                   error_fn=None,
+                                   fail_fast=False):
   instance = mock_stub.return_value
 
   def _execute(iterator):
-    return execute_mock(iterator, return_value=response, error_fn=error_fn)
+    return execute_mock(
+        iterator, return_value=response, error_fn=error_fn, fail_fast=fail_fast)
 
   instance.Execute = _execute
   executor = create_remote_executor('STREAMING')
@@ -560,6 +567,16 @@ class RemoteExecutorStreamingTest(absltest.TestCase):
     result = loop.run_until_complete(executor.create_selection(source, index=0))
 
     self.assertIsInstance(result, remote_executor.RemoteValue)
+
+  def test_error_raises_when_conn_fails_before_first_msg(self, mock_stub):
+    """Ensure errors are raised when gRPC stream fails before first message."""
+    loop = asyncio.get_event_loop()
+
+    executor = _setup_mock_streaming_executor(
+        mock_stub, None, error_fn=_raise_grpc_error_unavailable, fail_fast=True)
+
+    with self.assertRaises(execution_context.RetryableError):
+      loop.run_until_complete(executor.create_value(1, tf.int32))
 
 
 class RemoteExecutorIntegrationTest(parameterized.TestCase):
