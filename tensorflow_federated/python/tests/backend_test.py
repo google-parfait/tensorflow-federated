@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import contextlib
 import functools
 
@@ -411,6 +412,50 @@ class SizingExecutionContextTest(parameterized.TestCase):
     self.assertEqual(size_info.aggregate_history, expected_aggregate_history)
     self.assertEqual(size_info.broadcast_bits, expected_broadcast_bits)
     self.assertEqual(size_info.aggregate_bits, expected_aggregate_bits)
+
+
+class KerasIntegrationTest(parameterized.TestCase):
+
+  @with_contexts
+  def test_keras_model_with_activity_regularization_runs_fedavg(self):
+    self.skipTest('b/171358068')
+
+    num_clients = 5
+
+    x_train = np.zeros([100, 100]).astype(np.float16)
+    x_train_clients = np.array_split(x_train, num_clients)
+
+    def map_fn(example):
+      return collections.OrderedDict(x=example, y=example)
+
+    def client_data(n):
+      ds = tf.data.Dataset.from_tensor_slices(x_train_clients[n])
+      return ds.batch(128).map(map_fn)
+
+    train_data = [client_data(n) for n in range(num_clients)]
+    input_spec = train_data[0].element_spec
+    input_dim = x_train.shape[1]
+
+    def model_fn():
+      model = tf.keras.models.Sequential([
+          tf.keras.layers.Input(shape=(input_dim,)),
+          tf.keras.layers.Dense(
+              50, activity_regularizer=tf.keras.regularizers.l1(.1)),
+          tf.keras.layers.Dense(input_dim, activation='sigmoid'),
+      ])
+      tff_model = tff.learning.from_keras_model(
+          keras_model=model,
+          input_spec=input_spec,
+          loss=tf.keras.losses.MeanSquaredError(),
+      )
+      return tff_model
+
+    trainer = tff.learning.build_federated_averaging_process(
+        model_fn, client_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1))
+
+    state = trainer.initialize()
+    for _ in range(2):
+      state, _ = trainer.next(state, train_data)
 
 
 if __name__ == '__main__':
