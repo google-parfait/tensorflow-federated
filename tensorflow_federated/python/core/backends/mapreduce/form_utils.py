@@ -18,12 +18,13 @@ variable names used in this module.
 """
 
 import collections
-from typing import Callable, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -34,8 +35,10 @@ from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -51,7 +54,32 @@ _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.loop_optimization = _AGGR
 _GRAPPLER_DEFAULT_CONFIG.graph_options.rewrite_options.function_optimization = _AGGRESSIVE
 
 
-def get_iterative_process_for_canonical_form(cf):
+def get_computation_for_broadcast_form(
+    bf: forms.BroadcastForm) -> computation_base.Computation:
+  """Creates `tff.Computation` from a broadcast form."""
+  py_typecheck.check_type(bf, forms.BroadcastForm)
+  server_data_type = bf.compute_server_context.type_signature.parameter
+  client_data_type = bf.client_processing.type_signature.parameter[1]
+  comp_parameter_type = computation_types.StructType([
+      (bf.server_data_label, computation_types.at_server(server_data_type)),
+      (bf.client_data_label, computation_types.at_clients(client_data_type)),
+  ])
+
+  @computations.federated_computation(comp_parameter_type)
+  def computation(arg):
+    server_data, client_data = arg
+    context_at_server = intrinsics.federated_map(bf.compute_server_context,
+                                                 server_data)
+    context_at_clients = intrinsics.federated_broadcast(context_at_server)
+    client_processing_arg = intrinsics.federated_zip(
+        (context_at_clients, client_data))
+    return intrinsics.federated_map(bf.client_processing, client_processing_arg)
+
+  return computation
+
+
+def get_iterative_process_for_canonical_form(
+    cf: forms.CanonicalForm) -> iterative_process.IterativeProcess:
   """Creates `tff.templates.IterativeProcess` from a canonical form.
 
   Args:
@@ -172,6 +200,37 @@ def _check_type_is_no_arg_fn(
                  f'parameter of type {target.parameter}.')
 
 
+def _check_function_signature_compatible_with_broadcast_form(
+    function_type: computation_types.FunctionType):
+  """Tests compatibility with `tff.backends.mapreduce.BroadcastForm`."""
+  py_typecheck.check_type(function_type, computation_types.FunctionType)
+  if not (function_type.parameter.is_struct() and
+          len(function_type.parameter) == 2):
+    raise TypeError(
+        '`BroadcastForm` requires a computation which accepts two arguments '
+        '(server data and client data) but found parameter type:\n'
+        f'{function_type.parameter}')
+  server_data_type, client_data_type = function_type.parameter
+  if not (server_data_type.is_federated() and
+          server_data_type.placement.is_server()):
+    raise TypeError(
+        '`BroadcastForm` expects a computation whose first parameter is server '
+        'data (a federated type placed at server) but found first parameter of '
+        f'type:\n{server_data_type}')
+  if not (client_data_type.is_federated() and
+          client_data_type.placement.is_clients()):
+    raise TypeError(
+        '`BroadcastForm` expects a computation whose first parameter is client '
+        'data (a federated type placed at clients) but found first parameter '
+        f'of type:\n{client_data_type}')
+  result_type = function_type.result
+  if not (result_type.is_federated() and result_type.placement.is_clients()):
+    raise TypeError(
+        '`BroadcastForm` expects a computation whose result is client data '
+        '(a federated type placed at clients) but found result type:\n'
+        f'{result_type}')
+
+
 def _check_iterative_process_compatible_with_canonical_form(
     initialize_tree, next_tree):
   """Tests compatibility with `tff.backends.mapreduce.CanonicalForm`.
@@ -265,18 +324,82 @@ def _create_before_and_after_broadcast_for_no_broadcast(tree):
   before_broadcast = building_blocks.Lambda(parameter_name,
                                             tree.type_signature.parameter,
                                             value)
+  broadcasted_type = empty_tuple.type_signature
+  broadcast_input = computation_types.at_server(broadcasted_type)
+  broadcast_output = computation_types.at_clients(broadcasted_type)
+  before_broadcast.type_signature.result.check_identical_to(broadcast_input)
 
   parameter_name = next(name_generator)
-  type_signature = computation_types.FederatedType(
-      before_broadcast.type_signature.result.member, placements.CLIENTS)
   parameter_type = computation_types.StructType(
-      [tree.type_signature.parameter, type_signature])
+      [tree.type_signature.parameter, broadcast_output])
   ref = building_blocks.Reference(parameter_name, parameter_type)
   arg = building_blocks.Selection(ref, index=0)
   call = building_blocks.Call(tree, arg)
   after_broadcast = building_blocks.Lambda(ref.name, ref.type_signature, call)
 
   return before_broadcast, after_broadcast
+
+
+def _split_ast_on_broadcast(bb):
+  """Splits an AST on the `broadcast` intrinsic.
+
+  Args:
+    bb: An AST of arbitrary shape, potentially containing a broadcast.
+
+  Returns:
+    Two ASTs, the first of which maps comp's input to the
+    argument of broadcast, and the second of which maps comp's input and
+    broadcast's output to comp's output.
+  """
+  if tree_analysis.contains_called_intrinsic(
+      bb, intrinsic_defs.FEDERATED_BROADCAST.uri):
+    before_broadcast, after_broadcast = (
+        transformations.force_align_and_split_by_intrinsics(
+            bb, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
+  else:
+    before_broadcast, after_broadcast = (
+        _create_before_and_after_broadcast_for_no_broadcast(bb))
+  return before_broadcast, after_broadcast
+
+
+def _split_ast_on_aggregate(bb):
+  """Splits an AST on reduced aggregation intrinsics.
+
+  Args:
+    bb: An AST containing `federated_aggregate` or `federated_secure_sum`
+      aggregations.
+
+  Returns:
+    Two ASTs, the first of which maps comp's input to the arguments
+    to `federated_aggregate` and `federated_secure_sum`, and the second of which
+    maps comp's input and the output of `federated_aggregate` and
+    `federated_secure_sum` to comp's output.
+  """
+  contains_federated_aggregate = tree_analysis.contains_called_intrinsic(
+      bb, intrinsic_defs.FEDERATED_AGGREGATE.uri)
+  contains_federated_secure_sum = tree_analysis.contains_called_intrinsic(
+      bb, intrinsic_defs.FEDERATED_SECURE_SUM.uri)
+  if not (contains_federated_aggregate or contains_federated_secure_sum):
+    raise ValueError(
+        'Expected an `tff.templates.IterativeProcess` containing at least one '
+        '`federated_aggregate` or `federated_secure_sum`, found none.')
+
+  if contains_federated_aggregate and contains_federated_secure_sum:
+    before_aggregate, after_aggregate = (
+        transformations.force_align_and_split_by_intrinsics(
+            bb, [
+                intrinsic_defs.FEDERATED_AGGREGATE.uri,
+                intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+            ]))
+  elif contains_federated_secure_sum:
+    assert not contains_federated_aggregate
+    before_aggregate, after_aggregate = (
+        _create_before_and_after_aggregate_for_no_federated_aggregate(bb))
+  else:
+    assert contains_federated_aggregate and not contains_federated_secure_sum
+    before_aggregate, after_aggregate = (
+        _create_before_and_after_aggregate_for_no_federated_secure_sum(bb))
+  return before_aggregate, after_aggregate
 
 
 def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
@@ -471,6 +594,203 @@ def _create_before_and_after_aggregate_for_no_federated_secure_sum(tree):
   return before_aggregate, after_aggregate
 
 
+def _prepare_for_rebinding(bb):
+  """Replaces `bb` with semantically equivalent version for rebinding."""
+  all_equal_normalized = transformations.normalize_all_equal_bit(bb)
+  identities_removed, _ = tree_transformations.remove_mapped_or_applied_identity(
+      all_equal_normalized)
+  for_rebind, _ = compiler_transformations.prepare_for_rebinding(
+      identities_removed)
+  return for_rebind
+
+
+def _construct_selection_from_federated_tuple(
+    federated_tuple: building_blocks.ComputationBuildingBlock, index: int,
+    name_generator) -> building_blocks.ComputationBuildingBlock:
+  """Selects the index `selected_index` from `federated_tuple`."""
+  federated_tuple.type_signature.check_federated()
+  member_type = federated_tuple.type_signature.member
+  member_type.check_struct()
+  param_name = next(name_generator)
+  selecting_function = building_blocks.Lambda(
+      param_name, member_type,
+      building_blocks.Selection(
+          building_blocks.Reference(param_name, member_type),
+          index=index,
+      ))
+  return building_block_factory.create_federated_map_or_apply(
+      selecting_function, federated_tuple)
+
+
+def _replace_selections(
+    bb: building_blocks.ComputationBuildingBlock,
+    ref_name: str,
+    path_to_replacement: Dict[Tuple[int, ...],
+                              building_blocks.ComputationBuildingBlock],
+) -> building_blocks.ComputationBuildingBlock:
+  """Identifies selection pattern and replaces with new binding.
+
+  Note that this function is somewhat brittle in that it only replaces AST
+  fragments of exactly the form `ref_name[i][j][k]` (for path `(i, j, k)`).
+  That is, it will not detect `let x = ref_name[i][j] in x[k]` or similar.
+
+  This is only sufficient because, at the point this function has been called,
+  called lambdas have been replaced with blocks and blocks have been inlined,
+  so there are no reference chains that must be traced back. Any reference which
+  would eventually resolve to a part of a lambda's parameter instead refers to
+  the parameter directly. Similarly, selections from tuples have been collapsed.
+  The remaining concern would be selections via calls to opaque compiled
+  compuations, which we error on.
+
+  Args:
+    bb: Instance of `building_blocks.ComputationBuildingBlock` in which we wish
+      to replace the selections from reference `ref_name` with any path in
+      `paths_to_replacement` with the corresponding building block.
+    ref_name: Name of the reference to look for selectiosn from.
+    path_to_replacement: A map from selection path to the building block with
+      which to replace the selection. Note; it is not valid to specify
+      overlapping selection paths (where one path encompasses another).
+
+  Returns:
+    A possibly transformed version of `bb` with nodes matching the
+    selection patterns replaced.
+  """
+
+  def _replace(inner_bb):
+    # Start with an empty selection
+    path = []
+    selection = inner_bb
+    while selection.is_selection():
+      path.append(selection.as_index())
+      selection = selection.source
+    # In ASTs like x[0][1], we'll see the last (outermost) selection first.
+    path.reverse()
+    path = tuple(path)
+    if (selection.is_reference() and selection.name == ref_name and
+        path in path_to_replacement):
+      return path_to_replacement[path], True
+    if (inner_bb.is_call() and inner_bb.function.is_compiled_computation() and
+        inner_bb.argument is not None and inner_bb.argument.is_reference() and
+        inner_bb.argument.name == ref_name):
+      raise ValueError('Encountered called graph on reference pattern in TFF '
+                       'AST; this means relying on pattern-matching when '
+                       'rebinding arguments may be insufficient. Ensure that '
+                       'arguments are rebound before decorating references '
+                       'with called identity graphs.')
+    return inner_bb, False
+
+  result, _ = transformation_utils.transform_postorder(bb, _replace)
+  return result
+
+
+def _as_function_of_single_subparameter(bb: building_blocks.Lambda,
+                                        index: int) -> building_blocks.Lambda:
+  """Turns `x -> ...only uses x_i...` into `x_i -> ...only uses x_i`."""
+  tree_analysis.check_has_unique_names(bb)
+  bb = _prepare_for_rebinding(bb)
+  new_name = next(building_block_factory.unique_name_generator(bb))
+  new_ref = building_blocks.Reference(new_name,
+                                      bb.type_signature.parameter[index])
+  new_lambda_body = _replace_selections(bb.result, bb.parameter_name,
+                                        {(index,): new_ref})
+  new_lambda = building_blocks.Lambda(new_ref.name, new_ref.type_signature,
+                                      new_lambda_body)
+  tree_analysis.check_contains_no_new_unbound_references(bb, new_lambda)
+  return new_lambda
+
+
+class _ParameterSelectionError(TypeError):
+  pass
+
+
+class _NonFederatedSelectionError(TypeError):
+  pass
+
+
+class _MismatchedSelectionPlacementError(TypeError):
+  pass
+
+
+def _as_function_of_some_federated_subparameters(
+    bb: building_blocks.Lambda,
+    paths: List[Tuple[int, ...]],
+) -> building_blocks.Lambda:
+  """Turns `x -> ...only uses parts of x...` into `parts_of_x -> ...`."""
+  tree_analysis.check_has_unique_names(bb)
+  bb = _prepare_for_rebinding(bb)
+  name_generator = building_block_factory.unique_name_generator(bb)
+
+  type_list = []
+  for path in paths:
+    selected_type = bb.parameter_type
+    for index in path:
+      if not (selected_type.is_struct() and len(selected_type) > index):
+        raise _ParameterSelectionError(
+            'Attempted to rebind references to parameter selection path '
+            f'{path}, which is not a valid selection from type '
+            f'{bb.parameter_type}. Original AST:\n{bb}')
+      selected_type = selected_type[index]
+    if not selected_type.is_federated():
+      raise _NonFederatedSelectionError(
+          'Attempted to rebind references to parameter selection path '
+          f'{path} from type {bb.parameter_type}, but the value at that path '
+          f'was of non-federated type {selected_type}. Selections must all '
+          f'be of federated type. Original AST:\n{bb}')
+
+    type_list.append(selected_type)
+
+  placement = type_list[0].placement
+  if not all(x.placement is placement for x in type_list):
+    raise _MismatchedSelectionPlacementError(
+        'In order to zip the argument to the lower-level lambda together, all '
+        'selected arguments should be at the same placement. Your selections '
+        f'have resulted in the list of types:\n{type_list}')
+
+  zip_type = computation_types.FederatedType([x.member for x in type_list],
+                                             placement=placement)
+  ref_to_zip = building_blocks.Reference(next(name_generator), zip_type)
+  path_to_replacement = {}
+  for i, path in enumerate(paths):
+    path_to_replacement[path] = _construct_selection_from_federated_tuple(
+        ref_to_zip, i, name_generator)
+
+  new_lambda_body = _replace_selections(bb.result, bb.parameter_name,
+                                        path_to_replacement)
+  lambda_with_zipped_param = building_blocks.Lambda(ref_to_zip.name,
+                                                    ref_to_zip.type_signature,
+                                                    new_lambda_body)
+  tree_analysis.check_contains_no_new_unbound_references(
+      bb, lambda_with_zipped_param)
+
+  return lambda_with_zipped_param
+
+
+def _extract_compute_server_context(before_broadcast, grappler_config):
+  """Extracts `compute_server_config` from `before_broadcast`."""
+  server_data_index_in_before_broadcast = 0
+  compute_server_context = _as_function_of_single_subparameter(
+      before_broadcast, server_data_index_in_before_broadcast)
+  return transformations.consolidate_and_extract_local_processing(
+      compute_server_context, grappler_config)
+
+
+def _extract_client_processing(after_broadcast, grappler_config):
+  """Extracts `client_processing` from `after_broadcast`."""
+  context_from_server_index_in_after_broadcast = (1,)
+  client_data_index_in_after_broadcast = (0, 1)
+  # NOTE: the order of parameters here is different from `work`.
+  # `work` is odd in that it takes its parameters as `(data, params)` rather
+  # than `(params, data)` (the order of the iterative process / computation).
+  # Here, we use the same `(params, data)` ordering as in the input computation.
+  client_processing = _as_function_of_some_federated_subparameters(
+      after_broadcast, [
+          context_from_server_index_in_after_broadcast,
+          client_data_index_in_after_broadcast
+      ])
+  return transformations.consolidate_and_extract_local_processing(
+      client_processing, grappler_config)
+
+
 def _extract_prepare(before_broadcast, grappler_config):
   """extracts `prepare` from `before_broadcast`.
 
@@ -480,7 +800,7 @@ def _extract_prepare(before_broadcast, grappler_config):
   caller is expected to perform these checks before calling this function.
 
   Args:
-    before_broadcast: The first result of splitting `next_comp` on
+    before_broadcast: The first result of splitting `next_bb` on
       `intrinsic_defs.FEDERATED_BROADCAST`.
     grappler_config: An instance of `tf.compat.v1.ConfigProto` to configure
       Grappler graph optimization.
@@ -494,9 +814,8 @@ def _extract_prepare(before_broadcast, grappler_config):
       wrong type.
   """
   s1_index_in_before_broadcast = 0
-  s1_to_s2_computation = (
-      transformations.bind_single_selection_as_argument_to_lower_level_lambda(
-          before_broadcast, s1_index_in_before_broadcast)).result.function
+  s1_to_s2_computation = _as_function_of_single_subparameter(
+      before_broadcast, s1_index_in_before_broadcast)
   return transformations.consolidate_and_extract_local_processing(
       s1_to_s2_computation, grappler_config)
 
@@ -523,11 +842,9 @@ def _extract_work(before_aggregate, grappler_config):
     transformations.CanonicalFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  c3_elements_in_before_aggregate_parameter = [[0, 1], [1]]
-  c3_to_before_aggregate_computation = (
-      transformations.zip_selection_as_argument_to_lower_level_lambda(
-          before_aggregate,
-          c3_elements_in_before_aggregate_parameter).result.function)
+  c3_elements_in_before_aggregate_parameter = [(0, 1), (1,)]
+  c3_to_before_aggregate_computation = _as_function_of_some_federated_subparameters(
+      before_aggregate, c3_elements_in_before_aggregate_parameter)
   c4_index_in_before_aggregate_result = [[0, 0], [1, 0]]
   c3_to_unzipped_c4_computation = transformations.select_output_from_lambda(
       c3_to_before_aggregate_computation, c4_index_in_before_aggregate_result)
@@ -654,11 +971,13 @@ def _extract_update(after_aggregate, grappler_config):
   s7_output_zipped = building_blocks.Lambda(
       s7_output_extracted.parameter_name, s7_output_extracted.parameter_type,
       building_block_factory.create_federated_zip(s7_output_extracted.result))
-  s6_elements_in_after_aggregate_parameter = [[0, 0, 0], [1, 0], [1, 1]]
-  s6_to_s7_computation = (
-      transformations.zip_selection_as_argument_to_lower_level_lambda(
-          s7_output_zipped,
-          s6_elements_in_after_aggregate_parameter).result.function)
+  # `create_federated_zip` doesn't have unique reference names, but we need
+  # them for `as_function_of_some_federated_subparameters`.
+  s7_output_zipped, _ = tree_transformations.uniquify_reference_names(
+      s7_output_zipped)
+  s6_elements_in_after_aggregate_parameter = [(0, 0, 0), (1, 0), (1, 1)]
+  s6_to_s7_computation = _as_function_of_some_federated_subparameters(
+      s7_output_zipped, s6_elements_in_after_aggregate_parameter)
 
   # TODO(b/148942011): The transformation
   # `zip_selection_as_argument_to_lower_level_lambda` does not support selecting
@@ -949,21 +1268,88 @@ def _replace_lambda_body_with_call_dominant_form(
                                 result_as_call_dominant)
 
 
+def _merge_grappler_config_with_default(
+    grappler_config: tf.compat.v1.ConfigProto) -> tf.compat.v1.ConfigProto:
+  py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
+  overridden_grappler_config = tf.compat.v1.ConfigProto()
+  overridden_grappler_config.CopyFrom(_GRAPPLER_DEFAULT_CONFIG)
+  overridden_grappler_config.MergeFrom(grappler_config)
+  return overridden_grappler_config
+
+
+def get_broadcast_form_for_computation(
+    comp: computation_base.Computation,
+    grappler_config: Optional[
+        tf.compat.v1.ConfigProto] = _GRAPPLER_DEFAULT_CONFIG
+) -> forms.BroadcastForm:
+  """Constructs `tff.backends.mapreduce.BroadcastForm` given a computation.
+
+  Args:
+    comp: An instance of `tff.Computation` that is compatible with broadcast
+      form. Computations are only compatible if they take in a single value
+      placed at server, return a single value placed at clients, and do not
+      contain any aggregations.
+    grappler_config: AN optional instance of `tf.compat.v1.ConfigProto` to
+      configure Grappler graph optimization of the Tensorflow graphs backing the
+      resulting `tff.backends.mapreduce.BroadcastForm`. These options are
+      combined with a set of defaults that aggressively configure Grappler. If
+      `None`, grappler is bypassed.
+
+  Returns:
+    An instance of `tff.backends.mapreduce.BroadcastForm` equivalent to the
+    provided `tff.Computation`.
+  """
+  py_typecheck.check_type(comp, computation_base.Computation)
+  _check_function_signature_compatible_with_broadcast_form(comp.type_signature)
+  if grappler_config is not None:
+    grappler_config = _merge_grappler_config_with_default(grappler_config)
+
+  bb = comp.to_building_block()
+  bb = _replace_intrinsics_with_bodies(bb)
+  bb = _replace_lambda_body_with_call_dominant_form(bb)
+
+  tree_analysis.check_contains_only_reducible_intrinsics(bb)
+  aggregations = tree_analysis.find_aggregations_in_tree(bb)
+  if aggregations:
+    raise ValueError(
+        f'`get_broadcast_form_for_computation` called with computation '
+        f'containing {len(aggregations)} aggregations, but broadcast form '
+        'does not allow aggregation. Full list of aggregations:\n{aggregations}'
+    )
+
+  before_broadcast, after_broadcast = _split_ast_on_broadcast(bb)
+  compute_server_context = _extract_compute_server_context(
+      before_broadcast, grappler_config)
+  client_processing = _extract_client_processing(after_broadcast,
+                                                 grappler_config)
+
+  compute_server_context, client_processing = (
+      computation_wrapper_instances.building_block_to_computation(bb)
+      for bb in (compute_server_context, client_processing))
+
+  comp_param_names = structure.name_list_with_nones(
+      comp.type_signature.parameter)
+  server_data_label, client_data_label = comp_param_names
+  return forms.BroadcastForm(
+      compute_server_context,
+      client_processing,
+      server_data_label=server_data_label,
+      client_data_label=client_data_label)
+
+
 def get_canonical_form_for_iterative_process(
     ip: iterative_process.IterativeProcess,
     grappler_config: Optional[
-        tf.compat.v1.ConfigProto] = _GRAPPLER_DEFAULT_CONFIG):
+        tf.compat.v1.ConfigProto] = _GRAPPLER_DEFAULT_CONFIG
+) -> forms.CanonicalForm:
   """Constructs `tff.backends.mapreduce.CanonicalForm` given iterative process.
 
-  This function transforms computations from the input `ip` into
-  an instance of `tff.backends.mapreduce.CanonicalForm`.
-
   Args:
-    ip: An instance of `tff.templates.IterativeProcess` that is compatible
-      with canonical form. Iterative processes are only compatible if: -
-        `initialize_fn` returns a single federated value placed at `SERVER`. -
-        `next` takes exactly two arguments. The first must be the state value
-        placed at `SERVER`. - `next` returns exactly two values.
+    ip: An instance of `tff.templates.IterativeProcess` that is compatible with
+      canonical form. Iterative processes are only compatible if `initialize_fn`
+      returns a single federated value placed at `SERVER` and `next` takes
+      exactly two arguments. The first must be the state value placed at
+      `SERVER`. - `next` returns exactly two values.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the TensorFlow graphs backing the
       resulting `tff.backends.mapreduce.CanonicalForm`. These options are
@@ -971,8 +1357,8 @@ def get_canonical_form_for_iterative_process(
       `None`, Grappler is bypassed.
 
   Returns:
-    An instance of `tff.backends.mapreduce.CanonicalForm` equivalent to this
-    process.
+    An instance of `tff.backends.mapreduce.CanonicalForm` equivalent to the
+    provided `tff.templates.IterativeProcess`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
@@ -981,69 +1367,29 @@ def get_canonical_form_for_iterative_process(
   """
   py_typecheck.check_type(ip, iterative_process.IterativeProcess)
   if grappler_config is not None:
-    py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
-    overridden_grappler_config = tf.compat.v1.ConfigProto()
-    overridden_grappler_config.CopyFrom(_GRAPPLER_DEFAULT_CONFIG)
-    overridden_grappler_config.MergeFrom(grappler_config)
-    grappler_config = overridden_grappler_config
+    grappler_config = _merge_grappler_config_with_default(grappler_config)
 
-  initialize_comp = building_blocks.ComputationBuildingBlock.from_proto(
-      ip.initialize._computation_proto)  # pylint: disable=protected-access
-  next_comp = building_blocks.ComputationBuildingBlock.from_proto(
-      ip.next._computation_proto)  # pylint: disable=protected-access
+  initialize_bb = ip.initialize.to_building_block()
+  next_bb = ip.next.to_building_block()
   _check_iterative_process_compatible_with_canonical_form(
-      initialize_comp, next_comp)
+      initialize_bb, next_bb)
 
-  initialize_comp = _replace_intrinsics_with_bodies(initialize_comp)
-  next_comp = _replace_intrinsics_with_bodies(next_comp)
-  next_comp = _replace_lambda_body_with_call_dominant_form(next_comp)
+  initialize_bb = _replace_intrinsics_with_bodies(initialize_bb)
+  next_bb = _replace_intrinsics_with_bodies(next_bb)
+  next_bb = _replace_lambda_body_with_call_dominant_form(next_bb)
 
-  tree_analysis.check_contains_only_reducible_intrinsics(initialize_comp)
-  tree_analysis.check_contains_only_reducible_intrinsics(next_comp)
-  tree_analysis.check_broadcast_not_dependent_on_aggregate(next_comp)
+  tree_analysis.check_contains_only_reducible_intrinsics(initialize_bb)
+  tree_analysis.check_contains_only_reducible_intrinsics(next_bb)
+  tree_analysis.check_broadcast_not_dependent_on_aggregate(next_bb)
 
-  if tree_analysis.contains_called_intrinsic(
-      next_comp, intrinsic_defs.FEDERATED_BROADCAST.uri):
+  before_broadcast, after_broadcast = _split_ast_on_broadcast(next_bb)
+  before_aggregate, after_aggregate = _split_ast_on_aggregate(after_broadcast)
 
-    before_broadcast, after_broadcast = (
-        transformations.force_align_and_split_by_intrinsics(
-            next_comp, [intrinsic_defs.FEDERATED_BROADCAST.uri]))
-  else:
-    before_broadcast, after_broadcast = (
-        _create_before_and_after_broadcast_for_no_broadcast(next_comp))
-
-  contains_federated_aggregate = tree_analysis.contains_called_intrinsic(
-      next_comp, intrinsic_defs.FEDERATED_AGGREGATE.uri)
-  contains_federated_secure_sum = tree_analysis.contains_called_intrinsic(
-      next_comp, intrinsic_defs.FEDERATED_SECURE_SUM.uri)
-  if not (contains_federated_aggregate or contains_federated_secure_sum):
-    raise ValueError(
-        'Expected an `tff.templates.IterativeProcess` containing at least one '
-        '`federated_aggregate` or `federated_secure_sum`, found none.')
-
-  if contains_federated_aggregate and contains_federated_secure_sum:
-    before_aggregate, after_aggregate = (
-        transformations.force_align_and_split_by_intrinsics(
-            after_broadcast, [
-                intrinsic_defs.FEDERATED_AGGREGATE.uri,
-                intrinsic_defs.FEDERATED_SECURE_SUM.uri,
-            ]))
-  elif contains_federated_secure_sum:
-    assert not contains_federated_aggregate
-    before_aggregate, after_aggregate = (
-        _create_before_and_after_aggregate_for_no_federated_aggregate(
-            after_broadcast))
-  else:
-    assert contains_federated_aggregate and not contains_federated_secure_sum
-    before_aggregate, after_aggregate = (
-        _create_before_and_after_aggregate_for_no_federated_secure_sum(
-            after_broadcast))
-
-  type_info = _get_type_info(initialize_comp, before_broadcast, after_broadcast,
+  type_info = _get_type_info(initialize_bb, before_broadcast, after_broadcast,
                              before_aggregate, after_aggregate)
 
   initialize = transformations.consolidate_and_extract_local_processing(
-      initialize_comp, grappler_config)
+      initialize_bb, grappler_config)
   _check_type_equal(initialize.type_signature, type_info['initialize_type'])
 
   prepare = _extract_prepare(before_broadcast, grappler_config)
@@ -1066,19 +1412,14 @@ def get_canonical_form_for_iterative_process(
   update = _extract_update(after_aggregate, grappler_config)
   _check_type_equal(update.type_signature, type_info['update_type'])
 
-  next_parameter_names = (
-      name for (name,
-                _) in structure.iter_elements(ip.next.type_signature.parameter))
+  next_parameter_names = structure.name_list_with_nones(
+      ip.next.type_signature.parameter)
   server_state_label, client_data_label = next_parameter_names
+  comps = (
+      computation_wrapper_instances.building_block_to_computation(bb)
+      for bb in (initialize, prepare, work, zero, accumulate, merge, report,
+                 bitwidth, update))
   return forms.CanonicalForm(
-      computation_wrapper_instances.building_block_to_computation(initialize),
-      computation_wrapper_instances.building_block_to_computation(prepare),
-      computation_wrapper_instances.building_block_to_computation(work),
-      computation_wrapper_instances.building_block_to_computation(zero),
-      computation_wrapper_instances.building_block_to_computation(accumulate),
-      computation_wrapper_instances.building_block_to_computation(merge),
-      computation_wrapper_instances.building_block_to_computation(report),
-      computation_wrapper_instances.building_block_to_computation(bitwidth),
-      computation_wrapper_instances.building_block_to_computation(update),
+      *comps,
       server_state_label=server_state_label,
       client_data_label=client_data_label)

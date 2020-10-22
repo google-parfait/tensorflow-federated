@@ -415,16 +415,23 @@ class Selection(ComputationBuildingBlock):
     return True
 
   @property
-  def source(self):
+  def source(self) -> ComputationBuildingBlock:
     return self._source
 
   @property
-  def name(self):
+  def name(self) -> Optional[str]:
     return self._name
 
   @property
-  def index(self):
+  def index(self) -> Optional[int]:
     return self._index
+
+  def as_index(self) -> int:
+    if self._index is not None:
+      return self._index
+    else:
+      field_to_index = structure.name_to_index_map(self.source.type_signature)
+      return field_to_index[self._name]
 
   def __repr__(self):
     if self._name is not None:
@@ -880,6 +887,15 @@ class Intrinsic(ComputationBuildingBlock):
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         intrinsic=pb.Intrinsic(uri=self._uri))
+
+  def intrinsic_def(self) -> intrinsic_defs.IntrinsicDef:
+    intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(self._uri)
+    if intrinsic_def is None:
+      raise ValueError(
+          'Failed to retrieve definition of intrinsic with URI '
+          f'`{self._uri}`. Perhaps a definition needs to be added to '
+          '`intrinsic_defs.py`?')
+    return intrinsic_def
 
   def _uncached_hash(self):
     return hash((self._uri, self.type_signature))

@@ -35,6 +35,12 @@ class PlacementLiteral(object):
   def default_all_equal(self):
     return self._default_all_equal
 
+  def is_server(self):
+    return self is SERVER
+
+  def is_clients(self):
+    return self is CLIENTS
+
   def __doc__(self):
     return self._description
 

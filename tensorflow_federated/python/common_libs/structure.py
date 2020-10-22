@@ -202,6 +202,11 @@ def name_list(struct: Struct) -> List[str]:
   return [n for n in names if n is not None]
 
 
+def name_list_with_nones(struct: Struct) -> List[Optional[str]]:
+  """Returns an iterator over the names of all fields in `struct`."""
+  return struct._name_array  # pylint: disable=protected-access
+
+
 def to_elements(struct: Struct) -> List[Tuple[Optional[str], Any]]:
   """Retrieves the list of (name, value) pairs from a `Struct`.
 

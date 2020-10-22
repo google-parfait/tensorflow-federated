@@ -31,8 +31,8 @@ def _dummy_broadcast_form_computations():
     context_for_clients = server_data[0]
     return context_for_clients
 
-  @computations.tf_computation(client_data_type, context_type)
-  def client_processing(client_data, context):
+  @computations.tf_computation(context_type, client_data_type)
+  def client_processing(context, client_data):
     del context
     del client_data
     return 'some string output on the clients'
@@ -112,8 +112,8 @@ class BroadcastFormTest(absltest.TestCase):
 
     # Note: `tf.float32` here is mismatched with the context type `tf.int32`
     # returned above.
-    @computations.tf_computation(tf.int32, tf.float32)
-    def client_processing(client_data, context):
+    @computations.tf_computation(tf.float32, tf.int32)
+    def client_processing(context, client_data):
       del context
       del client_data
       return 'some string output on the clients'

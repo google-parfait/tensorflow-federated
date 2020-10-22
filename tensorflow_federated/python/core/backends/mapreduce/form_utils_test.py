@@ -927,6 +927,296 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
     self.assertIsInstance(cf, forms.CanonicalForm)
 
 
+class BroadcastFormTest(test_case.TestCase):
+
+  def test_roundtrip(self):
+    add = computations.tf_computation(lambda x, y: x + y)
+    server_data_type = computation_types.at_server(tf.int32)
+    client_data_type = computation_types.at_clients(tf.int32)
+
+    @computations.federated_computation(server_data_type, client_data_type)
+    def add_server_number_plus_one(server_number, client_numbers):
+      one = intrinsics.federated_value(1, placements.SERVER)
+      server_context = intrinsics.federated_map(add, (one, server_number))
+      client_context = intrinsics.federated_broadcast(server_context)
+      return intrinsics.federated_map(add, (client_context, client_numbers))
+
+    bf = form_utils.get_broadcast_form_for_computation(
+        add_server_number_plus_one)
+    self.assertEqual(bf.server_data_label, 'server_number')
+    self.assertEqual(bf.client_data_label, 'client_numbers')
+    self.assert_types_equivalent(
+        bf.compute_server_context.type_signature,
+        computation_types.FunctionType(tf.int32, tf.int32))
+    self.assertEqual(2, bf.compute_server_context(1))
+    self.assert_types_equivalent(
+        bf.client_processing.type_signature,
+        computation_types.FunctionType((tf.int32, tf.int32), tf.int32))
+    self.assertEqual(3, bf.client_processing(1, 2))
+
+    round_trip_comp = form_utils.get_computation_for_broadcast_form(bf)
+    self.assert_types_equivalent(round_trip_comp.type_signature,
+                                 add_server_number_plus_one.type_signature)
+    # 2 (server data) + 1 (constant in comp) + 2 (client data) = 5 (output)
+    self.assertEqual([5, 6, 7], round_trip_comp(2, [2, 3, 4]))
+
+  def test_roundtrip_no_broadcast(self):
+    add_five = computations.tf_computation(lambda x: x + 5)
+    server_data_type = computation_types.at_server(())
+    client_data_type = computation_types.at_clients(tf.int32)
+
+    @computations.federated_computation(server_data_type, client_data_type)
+    def add_five_at_clients(naught_at_server, client_numbers):
+      del naught_at_server
+      return intrinsics.federated_map(add_five, client_numbers)
+
+    bf = form_utils.get_broadcast_form_for_computation(add_five_at_clients)
+    self.assertEqual(bf.server_data_label, 'naught_at_server')
+    self.assertEqual(bf.client_data_label, 'client_numbers')
+    self.assert_types_equivalent(bf.compute_server_context.type_signature,
+                                 computation_types.FunctionType((), ()))
+    self.assert_types_equivalent(
+        bf.client_processing.type_signature,
+        computation_types.FunctionType(((), tf.int32), tf.int32))
+    self.assertEqual(6, bf.client_processing((), 1))
+
+    round_trip_comp = form_utils.get_computation_for_broadcast_form(bf)
+    self.assert_types_equivalent(round_trip_comp.type_signature,
+                                 add_five_at_clients.type_signature)
+    self.assertEqual([10, 11, 12], round_trip_comp((), [5, 6, 7]))
+
+
+class AsFunctionOfSingleSubparameterTest(test_case.TestCase):
+
+  def assert_selected_param_to_result_type(self, old_lam, new_lam, index):
+    old_type = old_lam.type_signature
+    new_type = new_lam.type_signature
+    old_type.check_function()
+    new_type.check_function()
+    self.assert_types_equivalent(
+        new_type,
+        computation_types.FunctionType(old_type.parameter[index],
+                                       old_type.result))
+
+  def test_selection(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType(
+        [fed_at_clients, fed_at_server])
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), index=0))
+    new_lam = form_utils._as_function_of_single_subparameter(lam, 0)
+    self.assert_selected_param_to_result_type(lam, new_lam, 0)
+
+  def test_named_element_selection(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType([
+        (None, fed_at_server),
+        ('a', fed_at_clients),
+    ])
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), name='a'))
+    new_lam = form_utils._as_function_of_single_subparameter(lam, 1)
+    self.assert_selected_param_to_result_type(lam, new_lam, 1)
+
+
+class AsFunctionOfSomeSubparametersTest(test_case.TestCase):
+
+  def test_raises_on_non_tuple_parameter(self):
+    lam = building_blocks.Lambda('x', tf.int32,
+                                 building_blocks.Reference('x', tf.int32))
+    with self.assertRaises(form_utils._ParameterSelectionError):
+      form_utils._as_function_of_some_federated_subparameters(lam, [(0,)])
+
+  def test_raises_on_selection_from_non_tuple(self):
+    lam = building_blocks.Lambda('x', [tf.int32],
+                                 building_blocks.Reference('x', [tf.int32]))
+    with self.assertRaises(form_utils._ParameterSelectionError):
+      form_utils._as_function_of_some_federated_subparameters(lam, [(0, 0)])
+
+  def test_raises_on_non_federated_selection(self):
+    lam = building_blocks.Lambda('x', [tf.int32],
+                                 building_blocks.Reference('x', [tf.int32]))
+    with self.assertRaises(form_utils._NonFederatedSelectionError):
+      form_utils._as_function_of_some_federated_subparameters(lam, [(0,)])
+
+  def test_raises_on_selections_at_different_placements(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType(
+        [fed_at_clients, fed_at_server])
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), index=0))
+    with self.assertRaises(form_utils._MismatchedSelectionPlacementError):
+      form_utils._as_function_of_some_federated_subparameters(lam, [(0,), (1,)])
+
+  def test_single_element_selection(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType(
+        [fed_at_clients, fed_at_server])
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), index=0))
+
+    new_lam = form_utils._as_function_of_some_federated_subparameters(
+        lam, [(0,)])
+    expected_parameter_type = computation_types.at_clients((tf.int32,))
+    self.assert_types_equivalent(
+        new_lam.type_signature,
+        computation_types.FunctionType(expected_parameter_type,
+                                       lam.result.type_signature))
+
+  def test_single_named_element_selection(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType([
+        ('a', fed_at_clients), ('b', fed_at_server)
+    ])
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), name='a'))
+
+    new_lam = form_utils._as_function_of_some_federated_subparameters(
+        lam, [(0,)])
+    expected_parameter_type = computation_types.at_clients((tf.int32,))
+    self.assert_types_equivalent(
+        new_lam.type_signature,
+        computation_types.FunctionType(expected_parameter_type,
+                                       lam.result.type_signature))
+
+  def test_single_element_selection_leaves_no_unbound_references(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType(
+        [fed_at_clients, fed_at_server])
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), index=0))
+    new_lam = form_utils._as_function_of_some_federated_subparameters(
+        lam, [(0,)])
+    unbound_references = transformation_utils.get_map_of_unbound_references(
+        new_lam)[new_lam]
+    self.assertEmpty(unbound_references)
+
+  def test_single_nested_element_selection(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType([[fed_at_clients],
+                                                             fed_at_server])
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Selection(
+            building_blocks.Selection(
+                building_blocks.Reference('x', tuple_of_federated_types),
+                index=0),
+            index=0))
+
+    new_lam = form_utils._as_function_of_some_federated_subparameters(
+        lam, [(0, 0)])
+    expected_parameter_type = computation_types.at_clients((tf.int32,))
+    self.assert_types_equivalent(
+        new_lam.type_signature,
+        computation_types.FunctionType(expected_parameter_type,
+                                       lam.result.type_signature))
+
+  def test_multiple_nested_element_selection(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType([[fed_at_clients],
+                                                             fed_at_server,
+                                                             [fed_at_clients]])
+    first_selection = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), index=0),
+        index=0)
+    second_selection = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), index=2),
+        index=0)
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Struct([first_selection, second_selection]))
+
+    new_lam = form_utils._as_function_of_some_federated_subparameters(
+        lam, [(0, 0), (2, 0)])
+
+    expected_parameter_type = computation_types.at_clients((tf.int32, tf.int32))
+    self.assert_types_equivalent(
+        new_lam.type_signature,
+        computation_types.FunctionType(expected_parameter_type,
+                                       lam.result.type_signature))
+
+  def test_multiple_nested_named_element_selection(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType([
+        ('a', [('a', fed_at_clients)]), ('b', fed_at_server),
+        ('c', [('c', fed_at_clients)])
+    ])
+    first_selection = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), name='a'),
+        name='a')
+    second_selection = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), name='c'),
+        name='c')
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Struct([first_selection, second_selection]))
+
+    new_lam = form_utils._as_function_of_some_federated_subparameters(
+        lam, [(0, 0), (2, 0)])
+
+    expected_parameter_type = computation_types.at_clients((tf.int32, tf.int32))
+    self.assert_types_equivalent(
+        new_lam.type_signature,
+        computation_types.FunctionType(expected_parameter_type,
+                                       lam.result.type_signature))
+
+  def test_binding_multiple_args_results_in_unique_names(self):
+    fed_at_clients = computation_types.FederatedType(tf.int32,
+                                                     placements.CLIENTS)
+    fed_at_server = computation_types.FederatedType(tf.int32, placements.SERVER)
+    tuple_of_federated_types = computation_types.StructType([[fed_at_clients],
+                                                             fed_at_server,
+                                                             [fed_at_clients]])
+    first_selection = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), index=0),
+        index=0)
+    second_selection = building_blocks.Selection(
+        building_blocks.Selection(
+            building_blocks.Reference('x', tuple_of_federated_types), index=2),
+        index=0)
+    lam = building_blocks.Lambda(
+        'x', tuple_of_federated_types,
+        building_blocks.Struct([first_selection, second_selection]))
+    new_lam = form_utils._as_function_of_some_federated_subparameters(
+        lam, [(0, 0), (2, 0)])
+    tree_analysis.check_has_unique_names(new_lam)
+
+
 if __name__ == '__main__':
   # The reference context is used here because it is currently the only context
   # which implements the `tff.federated_secure_sum` intrinsic.

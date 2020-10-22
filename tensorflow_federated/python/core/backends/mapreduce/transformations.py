@@ -67,7 +67,6 @@ import collections
 from absl import logging
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -306,7 +305,7 @@ def parse_tff_to_tf(comp, grappler_config_proto):
   return tf_parsed
 
 
-def force_align_and_split_by_intrinsics(comp, uri):
+def force_align_and_split_by_intrinsics(comp, uris):
   """Splits the logic of `comp` into before-and-after of calls to an intrinsic.
 
   The input computation `comp` must have the following properties:
@@ -365,7 +364,7 @@ def force_align_and_split_by_intrinsics(comp, uri):
   Args:
     comp: The instance of `building_blocks.Lambda` that serves as the input to
       this transformation, as described above.
-    uri: A Python `list` of URI of intrinsics to force align and split.
+    uris: A Python `list` of URI of intrinsics to force align and split.
 
   Returns:
     A pair of the form `(before, after)`, where each of `before` and `after`
@@ -373,11 +372,11 @@ def force_align_and_split_by_intrinsics(comp, uri):
     part of the result as specified above.
   """
   py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(uri, list)
-  for x in uri:
-    py_typecheck.check_type(x, str)
-  _check_contains_called_intrinsics(comp, uri)
-  comp = _force_align_intrinsics_to_top_level_lambda(comp, uri)
+  py_typecheck.check_type(uris, list)
+  for uri in uris:
+    py_typecheck.check_type(uri, str)
+  _check_contains_called_intrinsics(comp, uris)
+  comp = _force_align_intrinsics_to_top_level_lambda(comp, uris)
   return _split_by_intrinsics_in_top_level_lambda(comp)
 
 
@@ -842,324 +841,6 @@ def _split_by_intrinsics_in_top_level_lambda(comp):
   return before, after
 
 
-def _construct_selection_from_federated_tuple(federated_tuple, selected_index,
-                                              name_generator):
-  """Selects the index `selected_index` from `federated_tuple`.
-
-  Args:
-    federated_tuple: Instance of `building_blocks.ComputationBuildingBlock` of
-      federated named tuple type from which we wish to select one of the tuple's
-      elements.
-    selected_index: Integer index we wish to select from `federated_tuple`.
-    name_generator: `generator` to generate unique names in the construction.
-
-  Returns:
-    An instance of `building_blocks.ComputationBuildingBlock` representing index
-    `selected_index` from `federated_tuple`, still federated at the same
-    placement.
-  """
-  py_typecheck.check_type(federated_tuple,
-                          building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(selected_index, int)
-  py_typecheck.check_type(federated_tuple.type_signature,
-                          computation_types.FederatedType)
-  py_typecheck.check_type(federated_tuple.type_signature.member,
-                          computation_types.StructType)
-  unique_reference_name = next(name_generator)
-  selection_function_ref = building_blocks.Reference(
-      unique_reference_name, federated_tuple.type_signature.member)
-  selected_building_block = building_blocks.Selection(
-      selection_function_ref, index=selected_index)
-  constructed_selection_function = building_blocks.Lambda(
-      unique_reference_name, federated_tuple.type_signature.member,
-      selected_building_block)
-  return building_block_factory.create_federated_map_or_apply(
-      constructed_selection_function, federated_tuple)
-
-
-def _prepare_for_rebinding(comp):
-  """Replaces `comp` with semantically equivalent version for rebinding."""
-  all_equal_normalized = normalize_all_equal_bit(comp)
-  identities_removed, _ = tree_transformations.remove_mapped_or_applied_identity(
-      all_equal_normalized)
-  for_rebind, _ = transformations.prepare_for_rebinding(identities_removed)
-  return for_rebind
-
-
-def _check_for_missed_binding(comp, newly_bound_lambda):
-  """Raises if `newly_bound_lambda` has unbound references not in `comp`."""
-  # TODO(b/135608876): Consider whether this pattern is sufficiently pervasive
-  # to warrant symbol other than `get_map_of_unbound_references`, even if it
-  # has the same underlying implementation.
-  unbound_references_in_comp = transformation_utils.get_map_of_unbound_references(
-      comp)[comp]
-  new_lambda_unbound = transformation_utils.get_map_of_unbound_references(
-      newly_bound_lambda)[newly_bound_lambda]
-  newly_unbound_references = new_lambda_unbound.difference(
-      unbound_references_in_comp)
-  if newly_unbound_references:
-    raise ValueError(
-        'We have failed to bind args to our lower-level lambda correctly; our '
-        'original comp was {}, but we have left the unbound reference {} in '
-        'the comp {}'.format(comp, newly_unbound_references,
-                             newly_bound_lambda))
-
-
-def bind_single_selection_as_argument_to_lower_level_lambda(comp, index):
-  r"""Binds selection from the param of `comp` as param to lower-level lambda.
-
-  The returned pattern is quite important here; given an input lambda `comp`,
-  we will return an equivalent structure of the form:
-
-
-                                    Lambda(x)
-                                       |
-                                      Call
-                                    /      \
-                              Lambda        Selection from x
-
-  WARNING: Currently, this function must be called before we insert called
-  graphs over references (see
-  `tree_transformations.insert_called_tf_identity_at_leaves`), due to the
-  reliance on pattern-matching of selections from references below.
-
-  Args:
-    comp: Instance of `building_blocks.Lambda`, whose parameters we wish to
-      rebind to a different lambda. This lambda must have unique names.
-    index: `int` representing the index to bind as an argument to the
-      lower-level lambda.
-
-  Returns:
-    An instance of `building_blocks.Lambda`, equivalent to `comp`, satisfying
-    the pattern above.
-
-  Raises:
-    ValueError: If a called graph with reference argument is detected in
-      `comp`.
-  """
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(index, int)
-  tree_analysis.check_has_unique_names(comp)
-  comp = _prepare_for_rebinding(comp)
-  name_generator = building_block_factory.unique_name_generator(comp)
-  parameter_name = comp.parameter_name
-  new_name = next(name_generator)
-  new_ref = building_blocks.Reference(new_name,
-                                      comp.type_signature.parameter[index])
-  elem_name_iterator = enumerate(structure.iter_elements(comp.parameter_type))
-  # We keep our own name to index map to handle potentially unnamed fields.
-  old_ref_name_to_index = {
-      name: idx for idx, (name, _) in elem_name_iterator if name is not None
-  }
-
-  def _is_correct_selection(sel):
-    # Only a single possible index here, no need to parameterize.
-    if sel.index is not None:
-      return sel.index == index
-    else:
-      return old_ref_name_to_index.get(sel.name) == index
-
-  def _remove_selection_from_ref(inner_comp):
-    """Pattern-matches selection from references."""
-    if (inner_comp.is_selection() and inner_comp.source.is_reference() and
-        _is_correct_selection(inner_comp) and
-        inner_comp.source.name == parameter_name):
-      return new_ref, True
-    return inner_comp, False
-
-  references_rebound_in_result, _ = transformation_utils.transform_postorder(
-      comp.result, _remove_selection_from_ref)
-  newly_bound_lambda = building_blocks.Lambda(new_ref.name,
-                                              new_ref.type_signature,
-                                              references_rebound_in_result)
-  _check_for_missed_binding(comp, newly_bound_lambda)
-  original_ref = building_blocks.Reference(comp.parameter_name,
-                                           comp.parameter_type)
-  selection = building_blocks.Selection(original_ref, index=index)
-  called_rebound = building_blocks.Call(newly_bound_lambda, selection)
-  return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
-                                called_rebound)
-
-
-def zip_selection_as_argument_to_lower_level_lambda(comp, selected_index_lists):
-  r"""Binds selections from the param of `comp` as params to lower-level lambda.
-
-  Notice that `comp` must be a `building_blocks.Lambda`.
-
-  The returned pattern is quite important here; given an input lambda `Comp`,
-  we will return an equivalent structure of the form:
-
-
-                                    Lambda(x)
-                                       |
-                                      Call
-                                    /      \
-                              Lambda        <Selections from x>
-
-  Where <Selections from x> represents a tuple of selections from the parameter
-  `x`, as specified by `selected_index_lists`. This transform is necessary in
-  order to isolate spurious dependence on arguments that are not in fact used,
-  for example after we have separated processing on the server from that which
-  happens on the clients, but the server-processing still declares some
-  parameters placed at the clients.
-
-  `selected_index_lists` must be a list of lists. Each list represents a
-  sequence of selections to the parameter of `comp`. For example, if `x` is the
-  parameter of `comp`, the list `[0, 1, 0]` would represent the selection
-  `x[0][1][0]`. The elements of these inner lists must be integers; that is, the
-  selections must be positional. Notice we do not allow for tuples due to
-  automatic unwrapping.
-
-  WARNING: Currently, this function must be called before we insert called
-  graphs over references (see
-  `tree_transformations.insert_called_tf_identity_at_leaves`), due to the
-  reliance on pattern-matching of selections from references below.
-
-  Args:
-    comp: Instance of `building_blocks.Lambda`, whose parameters we wish to
-      rebind to a different lambda.
-    selected_index_lists: 2-d list of `int`s, specifying the parameters of
-      `comp` which we wish to rebind as the parameter to a lower-level lambda.
-
-  Returns:
-    An instance of `building_blocks.Lambda`, equivalent to `comp`, satisfying
-    the pattern above.
-
-  Raises:
-    ValueError: If a called graph with reference argument is detected in
-      `comp`.
-  """
-  # TODO(b/165022229): This code has been tagged for a long time as potentially
-  # brittle, and it is difficult to read. Refactor this function for clarity.
-  py_typecheck.check_type(comp, building_blocks.Lambda)
-  py_typecheck.check_type(selected_index_lists, list)
-  for selection_list in selected_index_lists:
-    py_typecheck.check_type(selection_list, list)
-    for selected_element in selection_list:
-      py_typecheck.check_type(selected_element, int)
-  original_comp = comp
-  comp = _prepare_for_rebinding(comp)
-
-  top_level_parameter_type = comp.type_signature.parameter
-  name_generator = building_block_factory.unique_name_generator(comp)
-  top_level_parameter_name = comp.parameter_name
-  top_level_parameter_reference = building_blocks.Reference(
-      top_level_parameter_name, comp.parameter_type)
-
-  def _is_correct_selection(sel, index, type_spec):
-    if sel.index is not None:
-      return sel.index == index
-    else:
-      for idx, (name, _) in enumerate(structure.iter_elements(type_spec)):
-        if name == sel.name:
-          return idx == index
-    return False
-
-  type_list = []
-  for selection_list in selected_index_lists:
-    try:
-      selected_type = top_level_parameter_type
-      for selection in selection_list:
-        selected_type = selected_type[selection]
-      type_list.append(selected_type)
-    except TypeError as e:
-      raise TypeError(
-          'You have tried to bind a variable to a nonexistent index in your '
-          'lambda parameter type; the selection defined by {} is inadmissible '
-          'for the lambda parameter type {}, in the comp {}.'.format(
-              selection_list, top_level_parameter_type, original_comp)) from e
-
-  if not all(x.is_federated() for x in type_list):
-    raise TypeError(
-        'All selected arguments should be of federated type; your selections '
-        'have resulted in the list of types {}'.format(type_list))
-  placement = type_list[0].placement
-  if not all(x.placement is placement for x in type_list):
-    raise ValueError(
-        'In order to zip the argument to the lower-level lambda together, all '
-        'selected arguments should be at the same placement. Your selections '
-        'have resulted in the list of types {}'.format(type_list))
-
-  arg_to_lower_level_lambda_list = []
-  for selection_tuple in selected_index_lists:
-    selected_comp = top_level_parameter_reference
-    for selection in selection_tuple:
-      selected_comp = building_blocks.Selection(selected_comp, index=selection)
-    arg_to_lower_level_lambda_list.append(selected_comp)
-  zip_arg = building_block_factory.create_federated_zip(
-      building_blocks.Struct(arg_to_lower_level_lambda_list))
-
-  zip_type = computation_types.FederatedType([x.member for x in type_list],
-                                             placement=placement)
-  ref_to_zip = building_blocks.Reference(next(name_generator), zip_type)
-
-  selections_from_zip = [
-      _construct_selection_from_federated_tuple(ref_to_zip, x, name_generator)
-      for x in range(len(selected_index_lists))
-  ]
-
-  def _replace_selections_with_new_bindings(inner_comp):
-    """Identifies selection pattern and replaces with new binding.
-
-    Detecting this pattern is the most brittle part of this rebinding function.
-    It relies on pattern-matching, and right now we cannot guarantee that this
-    pattern is present in every situation we wish to replace with a new
-    binding.
-
-    Args:
-      inner_comp: Instance of `building_blocks.ComputationBuildingBlock` in
-        which we wish to replace the selections specified by
-        `selected_index_lists` with the parallel new bindings from
-        `selections_from_zip`.
-
-    Returns:
-      A possibly transformed version of `inner_comp` with nodes matching the
-      selection patterns replaced by their new bindings.
-    """
-    # TODO(b/135541729): Either come up with a preprocessing way to enforce
-    # this is sufficient, or rework the should_transform predicate.
-    for idx, tup in enumerate(selected_index_lists):
-      selection = inner_comp  # Empty selection
-      tuple_pattern_matched = True
-      for index in tup[::-1]:
-        if selection.is_selection() and _is_correct_selection(
-            selection, index, selection.source.type_signature):
-          selection = selection.source
-        else:
-          tuple_pattern_matched = False
-          break
-      if tuple_pattern_matched:
-        if (selection.is_reference() and
-            selection.name == top_level_parameter_name):
-          return selections_from_zip[idx], True
-    if (inner_comp.is_call() and
-        inner_comp.function.is_compiled_computation() and
-        inner_comp.argument is not None and
-        inner_comp.argument.is_reference() and
-        inner_comp.argument.name == top_level_parameter_name):
-      raise ValueError('Encountered called graph on reference pattern in TFF '
-                       'AST; this means relying on pattern-matching when '
-                       'rebinding arguments may be insufficient. Ensure that '
-                       'arguments are rebound before decorating references '
-                       'with called identity graphs.')
-
-    return inner_comp, False
-
-  variables_rebound_in_result, _ = transformation_utils.transform_postorder(
-      comp.result, _replace_selections_with_new_bindings)
-  lambda_with_zipped_param = building_blocks.Lambda(
-      ref_to_zip.name, ref_to_zip.type_signature, variables_rebound_in_result)
-  _check_for_missed_binding(comp, lambda_with_zipped_param)
-
-  zipped_lambda_called = building_blocks.Call(lambda_with_zipped_param, zip_arg)
-  constructed_lambda = building_blocks.Lambda(comp.parameter_name,
-                                              comp.parameter_type,
-                                              zipped_lambda_called)
-  names_uniquified, _ = tree_transformations.uniquify_reference_names(
-      constructed_lambda)
-  return names_uniquified
-
-
 def select_output_from_lambda(comp, indices):
   """Constructs a new function with result of selecting `indices` from `comp`.
 
@@ -1171,8 +852,7 @@ def select_output_from_lambda(comp, indices):
       wish to select from the result of `comp`. If `indices` is an `int`, the
       result of the returned `comp` will be of type at index `indices` in
       `comp.type_signature.result`. If `indices` is a `list` or `tuple`, the
-      result type will be a `tff.StructType` wrapping the specified
-      selections.
+      result type will be a `tff.StructType` wrapping the specified selections.
 
   Returns:
     A transformed version of `comp` with result value the selection from the
@@ -1223,8 +903,8 @@ def concatenate_function_outputs(first_function, second_function):
   these functions in parallel and concatenating the outputs in a tuple.
 
   Args:
-    first_function: Instance of `building_blocks.Lambda` whose result we wish
-      to concatenate with the result of `second_function`.
+    first_function: Instance of `building_blocks.Lambda` whose result we wish to
+      concatenate with the result of `second_function`.
     second_function: Instance of `building_blocks.Lambda` whose result we wish
       to concatenate with the result of `first_function`.
 

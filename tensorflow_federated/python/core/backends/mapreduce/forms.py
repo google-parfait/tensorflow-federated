@@ -60,9 +60,9 @@ class BroadcastForm(object):
   This class is designed to represent computations of the form:
 
   ```
-  @tff.federated_computation(
-    self.compute_server_context.type_signature.parameter
-    self.client_processing.type_signature.parameter[0])
+  server_data_type = self.compute_server_context.type_signature.parameter
+  client_data_type = self.client_processing.type_signature.parameter[1]
+  @tff.federated_computation(server_data_type, client_data_type)
   def _(server_data, client_data):
     # Select out the bit of server context to send to the clients.
     context_at_server = tff.federated_map(
@@ -78,24 +78,34 @@ class BroadcastForm(object):
   ```
   """
 
-  def __init__(self, compute_server_context, client_processing):
+  def __init__(self,
+               compute_server_context,
+               client_processing,
+               server_data_label=None,
+               client_data_label=None):
     for label, comp in (
         ('compute_server_context', compute_server_context),
         ('client_processing', client_processing),
     ):
       _check_tensorflow_computation(label, comp)
     _check_accepts_two_tuple('client_processing', client_processing)
-    client_2nd_arg_type = client_processing.type_signature.parameter[1]
-    select_result_type = compute_server_context.type_signature.result
-    if not _is_assignable_from_or_both_none(client_2nd_arg_type,
-                                            select_result_type):
+    client_first_arg_type = client_processing.type_signature.parameter[0]
+    server_context_type = compute_server_context.type_signature.result
+    if not _is_assignable_from_or_both_none(client_first_arg_type,
+                                            server_context_type):
       raise TypeError(
           'The `client_processing` computation expects an argument tuple with '
-          f'type\n{client_2nd_arg_type}\nas the second element (the context '
+          f'type\n{client_first_arg_type}\nas the first element (the context '
           'type from the server), which does not match the result type\n'
-          f'{select_result_type}\n of `compute_server_context`.')
+          f'{server_context_type}\n of `compute_server_context`.')
     self._compute_server_context = compute_server_context
     self._client_processing = client_processing
+    if server_data_label is not None:
+      py_typecheck.check_type(server_data_label, str)
+    self._server_data_label = server_data_label
+    if client_data_label is not None:
+      py_typecheck.check_type(server_data_label, str)
+    self._client_data_label = client_data_label
 
   @property
   def compute_server_context(self):
@@ -104,6 +114,14 @@ class BroadcastForm(object):
   @property
   def client_processing(self):
     return self._client_processing
+
+  @property
+  def server_data_label(self):
+    return self._server_data_label
+
+  @property
+  def client_data_label(self):
+    return self._client_data_label
 
   def summary(self, print_fn=print):
     """Prints a string summary of the `BroadcastForm`.

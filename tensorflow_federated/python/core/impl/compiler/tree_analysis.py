@@ -13,7 +13,7 @@
 # limitations under the License.
 """A library of static analysis functions for ASTs."""
 
-from typing import AbstractSet, Callable, List, Optional, Tuple, Type, Union
+from typing import Callable, List, Optional, Tuple, Type, Union
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
@@ -41,11 +41,12 @@ def _visit_postorder(
   transformation_utils.transform_postorder(tree, _visit)
 
 
-def count(
-    tree: building_blocks.ComputationBuildingBlock,
-    predicate: Optional[Callable[[building_blocks.ComputationBuildingBlock],
-                                 bool]] = None
-) -> int:
+_BuildingBlockPredicate = Callable[[building_blocks.ComputationBuildingBlock],
+                                   bool]
+
+
+def count(tree: building_blocks.ComputationBuildingBlock,
+          predicate: Optional[_BuildingBlockPredicate] = None) -> int:
   """Returns the number of building blocks in `tree` matching `predicate`.
 
   Args:
@@ -62,6 +63,12 @@ def count(
 
   _visit_postorder(tree, _function)
   return counter
+
+
+def contains(tree: building_blocks.ComputationBuildingBlock,
+             predicate: _BuildingBlockPredicate) -> bool:
+  """Returns whether or not a building block in `tree` matches `predicate`."""
+  return count(tree, predicate) != 0
 
 
 def count_types(tree: building_blocks.ComputationBuildingBlock,
@@ -278,12 +285,10 @@ def check_broadcast_not_dependent_on_aggregate(tree):
   py_typecheck.check_type(tree, building_blocks.ComputationBuildingBlock)
 
   def aggregate_predicate(x):
-    return (x.is_intrinsic() and
-            x.uri == intrinsic_defs.FEDERATED_AGGREGATE.uri)
+    return x.is_intrinsic() and x.intrinsic_def().aggregation_kind
 
   def broadcast_predicate(x):
-    return (x.is_intrinsic() and
-            x.uri == intrinsic_defs.FEDERATED_BROADCAST.uri)
+    return x.is_intrinsic() and x.intrinsic_def().broadcast_kind
 
   nodes_dependent_on_aggregate = extract_nodes_consuming(
       tree, aggregate_predicate)
@@ -379,6 +384,19 @@ def check_contains_no_unbound_references(tree, excluding=None):
   if not contains_no_unbound_references(tree, excluding):
     raise ValueError('The AST contains unbound references: {}.'.format(
         tree.formatted_representation()))
+
+
+def check_contains_no_new_unbound_references(old_tree, new_tree):
+  """Checks that `new_tree` contains no unbound references not in `old_tree`."""
+  old_unbound = transformation_utils.get_map_of_unbound_references(
+      old_tree)[old_tree]
+  new_unbound = transformation_utils.get_map_of_unbound_references(
+      new_tree)[new_tree]
+  diff = new_unbound - old_unbound
+  if diff:
+    raise ValueError('Expected no new unbounded references. '
+                     f'Old tree:\n{old_tree}\nNew tree:\n{new_tree}\n'
+                     f'New unbound references: {diff}')
 
 
 def contains_called_intrinsic(tree, uri=None):
@@ -544,9 +562,12 @@ def trees_equal(comp_1, comp_2):
   return _trees_equal(comp_1, comp_2, [])
 
 
-def _find_aggregation_in_tree(
-    comp, aggregation_uris: AbstractSet[str]) -> List[building_blocks.Call]:
-  """Finds aggregating calls to `aggregation_uris` in `comp`.
+def find_aggregations_in_tree(
+    comp,
+    kind_predicate: Callable[[intrinsic_defs.AggregationKind],
+                             bool] = lambda k: k is not None,
+) -> List[building_blocks.Call]:
+  """Finds aggregating calls with kind matching `kind_predicate` in `comp`.
 
   An "aggregating call" for the purpose of this function is a call to an
   intrinsic which takes values at CLIENT and materializes some result at
@@ -554,12 +575,11 @@ def _find_aggregation_in_tree(
 
   Args:
     comp: An AST to search.
-    aggregation_uris: A list of URIs for aggregation intrinsics to look for
-      calls to.
+    kind_predicate: A filter for kind of aggregation to search for.
 
   Returns:
-    A list of child ASTs which are calls to aggregating intrinsics found
-    in the `aggregation_uris` list.
+    A list of child ASTs which are calls to aggregating intrinsics with kinds
+    matching `aggregation_kind`.
 
   Raises:
     ValueError if `comp` contains a call whose target function cannot be
@@ -600,7 +620,7 @@ def _find_aggregation_in_tree(
         comp.argument.type_signature):
       return
 
-    if comp.function.uri in aggregation_uris:
+    if kind_predicate(comp.function.intrinsic_def().aggregation_kind):
       aggregation_calls.append(comp)
 
   _visit_postorder(comp, record_intrinsic_calls)
@@ -611,20 +631,13 @@ def find_secure_aggregation_in_tree(
     comp: building_blocks.ComputationBuildingBlock
 ) -> List[building_blocks.Call]:
   """See documentation on `tree_contains_aggregation` for details."""
-  secagg_intrinsics = set([intrinsic_defs.FEDERATED_SECURE_SUM.uri])
-  return _find_aggregation_in_tree(comp, secagg_intrinsics)
+  return find_aggregations_in_tree(
+      comp, lambda kind: kind == intrinsic_defs.AggregationKind.SECURE)
 
 
 def find_unsecure_aggregation_in_tree(
     comp: building_blocks.ComputationBuildingBlock
 ) -> List[building_blocks.Call]:
   """See documentation on `tree_contains_aggregation` for details."""
-  unsecagg_intrinsics = set([
-      intrinsic_defs.FEDERATED_AGGREGATE.uri,
-      intrinsic_defs.FEDERATED_COLLECT.uri,
-      intrinsic_defs.FEDERATED_MEAN.uri,
-      intrinsic_defs.FEDERATED_REDUCE.uri,
-      intrinsic_defs.FEDERATED_SUM.uri,
-      intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri,
-  ])
-  return _find_aggregation_in_tree(comp, unsecagg_intrinsics)
+  return find_aggregations_in_tree(
+      comp, lambda kind: kind == intrinsic_defs.AggregationKind.DEFAULT)
