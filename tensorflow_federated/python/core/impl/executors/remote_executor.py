@@ -30,7 +30,7 @@ from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.executors import executor_service_utils
+from tensorflow_federated.python.core.impl.executors import executor_serialization
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.types import placement_literals
 
@@ -298,7 +298,7 @@ class RemoteExecutor(executor_base.Executor):
   @tracing.trace(span=True)
   async def set_cardinalities(
       self, cardinalities: Mapping[placement_literals.PlacementLiteral, int]):
-    serialized_cardinalities = executor_service_utils.serialize_cardinalities(
+    serialized_cardinalities = executor_serialization.serialize_cardinalities(
         cardinalities)
     request = executor_pb2.SetCardinalitiesRequest(
         cardinalities=serialized_cardinalities)
@@ -315,7 +315,7 @@ class RemoteExecutor(executor_base.Executor):
 
     @tracing.trace
     def serialize_value():
-      return executor_service_utils.serialize_value(value, type_spec)
+      return executor_serialization.serialize_value(value, type_spec)
 
     value_proto, type_spec = serialize_value()
     create_value_request = executor_pb2.CreateValueRequest(value=value_proto)
@@ -399,5 +399,5 @@ class RemoteExecutor(executor_base.Executor):
       response = (await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(compute=request))).compute
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
-    value, _ = executor_service_utils.deserialize_value(response.value)
+    value, _ = executor_serialization.deserialize_value(response.value)
     return value

@@ -300,7 +300,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":executor_factory",
-        ":executor_service_utils",
+        ":executor_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -318,8 +318,8 @@ py_test(
         ":eager_tf_executor",
         ":executor_base",
         ":executor_factory",
+        ":executor_serialization",
         ":executor_service",
-        ":executor_service_utils",
         ":executor_stacks",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
@@ -330,8 +330,8 @@ py_test(
 )
 
 py_library(
-    name = "executor_service_utils",
-    srcs = ["executor_service_utils.py"],
+    name = "executor_serialization",
+    srcs = ["executor_serialization.py"],
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -351,13 +351,13 @@ py_library(
 )
 
 py_test(
-    name = "executor_service_utils_test",
+    name = "executor_serialization_test",
     size = "small",
-    srcs = ["executor_service_utils_test.py"],
+    srcs = ["executor_serialization_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":executor_service_utils",
+        ":executor_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:test_utils",
@@ -614,7 +614,7 @@ py_library(
     deps = [
         ":execution_context",
         ":executor_base",
-        ":executor_service_utils",
+        ":executor_serialization",
         ":executor_value_base",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",

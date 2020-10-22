@@ -27,8 +27,8 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
+from tensorflow_federated.python.core.impl.executors import executor_serialization
 from tensorflow_federated.python.core.impl.executors import executor_service
-from tensorflow_federated.python.core.impl.executors import executor_service_utils
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.types import placement_literals
@@ -51,7 +51,7 @@ class TestEnv(object):
     self._channel = grpc.insecure_channel('localhost:{}'.format(port))
     self._stub = executor_pb2_grpc.ExecutorStub(self._channel)
 
-    serialized_cards = executor_service_utils.serialize_cardinalities(
+    serialized_cards = executor_serialization.serialize_cardinalities(
         {placement_literals.CLIENTS: num_clients})
     self._stub.SetCardinalities(
         executor_pb2.SetCardinalitiesRequest(cardinalities=serialized_cards))
@@ -70,7 +70,7 @@ class TestEnv(object):
         executor_pb2.ComputeRequest(
             value_ref=executor_pb2.ValueRef(id=value_id)))
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
-    value, _ = executor_service_utils.deserialize_value(response.value)
+    value, _ = executor_serialization.deserialize_value(response.value)
     return value
 
   def get_value_future_directly(self, value_id: str):
@@ -126,7 +126,7 @@ class ExecutorServiceTest(absltest.TestCase):
     ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
     env = TestEnv(ex_factory)
     self.assertEqual(ex.status, 'idle')
-    value_proto, _ = executor_service_utils.serialize_value(10, tf.int32)
+    value_proto, _ = executor_serialization.serialize_value(10, tf.int32)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(value=value_proto))
     ex.busy.wait()
@@ -140,7 +140,7 @@ class ExecutorServiceTest(absltest.TestCase):
     ex_factory = executor_stacks.ResourceManagingExecutorFactory(
         lambda _: eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
-    value_proto, _ = executor_service_utils.serialize_value(
+    value_proto, _ = executor_serialization.serialize_value(
         tf.constant(10.0).numpy(), tf.float32)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(value=value_proto))
@@ -159,7 +159,7 @@ class ExecutorServiceTest(absltest.TestCase):
     def comp():
       return tf.constant(10)
 
-    value_proto, _ = executor_service_utils.serialize_value(comp)
+    value_proto, _ = executor_serialization.serialize_value(comp)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
@@ -175,7 +175,7 @@ class ExecutorServiceTest(absltest.TestCase):
     ex_factory = executor_stacks.ResourceManagingExecutorFactory(
         lambda _: eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
-    value_proto, _ = executor_service_utils.serialize_value(
+    value_proto, _ = executor_serialization.serialize_value(
         tf.constant(10.0).numpy(), tf.float32)
     # Create the value
     response = env.stub.CreateValue(
@@ -204,13 +204,13 @@ class ExecutorServiceTest(absltest.TestCase):
     def comp(x):
       return tf.add(x, 1)
 
-    value_proto, _ = executor_service_utils.serialize_value(comp)
+    value_proto, _ = executor_serialization.serialize_value(comp)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     comp_ref = response.value_ref
 
-    value_proto, _ = executor_service_utils.serialize_value(10, tf.int32)
+    value_proto, _ = executor_serialization.serialize_value(10, tf.int32)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
@@ -230,14 +230,14 @@ class ExecutorServiceTest(absltest.TestCase):
         lambda _: eager_tf_executor.EagerTFExecutor())
     env = TestEnv(ex_factory)
 
-    value_proto, _ = executor_service_utils.serialize_value(10, tf.int32)
+    value_proto, _ = executor_serialization.serialize_value(10, tf.int32)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)
     ten_ref = response.value_ref
     self.assertEqual(env.get_value(ten_ref.id), 10)
 
-    value_proto, _ = executor_service_utils.serialize_value(20, tf.int32)
+    value_proto, _ = executor_serialization.serialize_value(20, tf.int32)
     response = env.stub.CreateValue(
         executor_pb2.CreateValueRequest(value=value_proto))
     self.assertIsInstance(response, executor_pb2.CreateValueResponse)

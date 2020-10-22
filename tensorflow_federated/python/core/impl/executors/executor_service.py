@@ -32,7 +32,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.impl.executors import executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_service_utils
+from tensorflow_federated.python.core.impl.executors import executor_serialization
 
 
 def _set_invalid_arg_err(context: grpc.ServicerContext, err):
@@ -183,7 +183,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     """Sets the cartinality for the executor service."""
     py_typecheck.check_type(request, executor_pb2.SetCardinalitiesRequest)
     try:
-      cardinalities_dict = executor_service_utils.deserialize_cardinalities(
+      cardinalities_dict = executor_serialization.deserialize_cardinalities(
           request.cardinalities)
       self._executor = self._ex_factory.create_executor(cardinalities_dict)
       return executor_pb2.SetCardinalitiesResponse()
@@ -201,7 +201,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
     try:
       with tracing.span('ExecutorService.CreateValue', 'deserialize_value'):
         value, value_type = (
-            executor_service_utils.deserialize_value(request.value))
+            executor_serialization.deserialize_value(request.value))
       value_id = str(uuid.uuid4())
       coro = self.executor.create_value(value, value_type)
       future_val = self._run_coro_threadsafe_with_tracing(coro)
@@ -328,7 +328,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       val = await future_val
       result_val = await val.compute()
       val_type = val.type_signature
-      value_proto, _ = executor_service_utils.serialize_value(
+      value_proto, _ = executor_serialization.serialize_value(
           result_val, val_type)
       return executor_pb2.ComputeResponse(value=value_proto)
     except (ValueError, TypeError) as err:
