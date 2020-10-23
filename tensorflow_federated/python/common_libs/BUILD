@@ -96,6 +96,7 @@ py_library(
     srcs_version = "PY3",
     # TODO(b/163856734): Fix the visibility of the `common_libs`.
     visibility = [
+        "//intelligence/federated/aggregators:__pkg__",
         "//tensorflow_federated:internal",
         "//tensorflow_federated/python/tests:__pkg__",
     ],
