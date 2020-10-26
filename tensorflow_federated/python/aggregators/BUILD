@@ -18,11 +18,51 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        ":clipping_factory",
         ":dp_factory",
         ":factory",
         ":mean_factory",
         ":quantile_estimation",
         ":sum_factory",
+    ],
+)
+
+py_library(
+    name = "clipping_factory",
+    srcs = ["clipping_factory.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":factory",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:estimation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)
+
+py_test(
+    name = "clipping_factory_test",
+    srcs = ["clipping_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":clipping_factory",
+        ":mean_factory",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:estimation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
     ],
 )
 

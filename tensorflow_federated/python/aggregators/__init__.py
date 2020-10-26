@@ -13,6 +13,9 @@
 # limitations under the License.
 """Libraries for constructing federated aggregation."""
 
+from tensorflow_federated.python.aggregators.clipping_factory import ClippingFactory
+from tensorflow_federated.python.aggregators.clipping_factory import ZeroingClippingFactory
+from tensorflow_federated.python.aggregators.clipping_factory import ZeroingFactory
 from tensorflow_federated.python.aggregators.dp_factory import DifferentiallyPrivateFactory
 from tensorflow_federated.python.aggregators.factory import AggregationProcessFactory
 from tensorflow_federated.python.aggregators.mean_factory import MeanFactory
