@@ -95,6 +95,24 @@ class ExecutorMock(mock.MagicMock, executor_base.Executor):
     pass
 
 
+class ResourceManagingExecutorFactoryTest(absltest.TestCase):
+
+  @mock.patch(
+      'tensorflow_federated.python.core.impl.executors.eager_tf_executor.EagerTFExecutor',
+      return_value=ExecutorMock())
+  def test_ensure_closed_closes_executor_passed_at_initialization(
+      self, mock_ex):
+
+    def _stack_fn(x):
+      del x  # Unused
+      return ExecutorMock()
+
+    resource_manager = executor_stacks.ResourceManagingExecutorFactory(
+        _stack_fn, ensure_closed=[mock_ex])
+    resource_manager.clean_up_executors()
+    mock_ex.close.assert_called_once()
+
+
 class ConcreteExecutorFactoryTest(parameterized.TestCase):
 
   def _maybe_wrap_stack_fn(self, stack_fn, ex_factory):

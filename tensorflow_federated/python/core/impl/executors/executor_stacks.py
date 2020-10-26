@@ -44,9 +44,11 @@ def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
 class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
   """Implementation of executor factory holding an executor per cardinality."""
 
-  def __init__(self,
-               executor_stack_fn: Callable[[executor_factory.CardinalitiesType],
-                                           executor_base.Executor]):
+  def __init__(
+      self,
+      executor_stack_fn: Callable[[executor_factory.CardinalitiesType],
+                                  executor_base.Executor],
+      ensure_closed: Optional[Sequence[executor_base.Executor]] = None):
     """Initializes `ResourceManagingExecutorFactory`.
 
     `ResourceManagingExecutorFactory` manages a mapping from `cardinalities`
@@ -58,11 +60,16 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
         `placement_literals.PlacementLiteral` to integers, and returning an
         `executor_base.Executor`. The returned executor will be configured to
         handle these cardinalities.
+      ensure_closed: Optional sequence of `executor_base.Excutors` which should
+        always be closed on a `clean_up_executors` call. Defaults to empty.
     """
 
     py_typecheck.check_callable(executor_stack_fn)
     self._executor_stack_fn = executor_stack_fn
     self._executors = {}
+    if ensure_closed is None:
+      ensure_closed = ()
+    self._ensure_closed = ensure_closed
 
   def create_executor(
       self, cardinalities: executor_factory.CardinalitiesType
@@ -101,6 +108,8 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
     should again invoke `create_executor`.
     """
     for _, ex in self._executors.items():
+      ex.close()
+    for ex in self._ensure_closed:
       ex.close()
     self._executors = {}
 
@@ -831,4 +840,5 @@ def remote_executor_factory(
   )
 
   return ResourceManagingExecutorFactory(
-      executor_stack_fn=composing_executor_factory.create_executor)
+      executor_stack_fn=composing_executor_factory.create_executor,
+      ensure_closed=remote_executors)
