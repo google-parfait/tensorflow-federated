@@ -77,19 +77,12 @@ class CompiledComputationTransformsTest(test_case.TestCase,
     computation_arg_type = computation_types.StructType([tf.int32, tf.float32])
 
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
-    foo_pruned_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
-        foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, index=0)
     second_element_selected = compiled_computation_transforms.select_graph_output(
         foo, index=1)
 
-    self.assertProtoEquals(
-        serialization_utils.unpack_graph_def(
-            first_element_selected.proto.tensorflow.graph_def),
-        serialization_utils.unpack_graph_def(
-            foo_pruned_proto.tensorflow.graph_def))
     self.assertEqual(first_element_selected.type_signature.result,
                      foo.type_signature.result[0])
     self.assertEqual(foo.proto.tensorflow.parameter,
@@ -99,11 +92,6 @@ class CompiledComputationTransformsTest(test_case.TestCase,
     self.assertEqual(foo.proto.tensorflow.result.struct.element[0].tensor,
                      first_element_selected.proto.tensorflow.result.tensor)
 
-    self.assertProtoEquals(
-        serialization_utils.unpack_graph_def(
-            second_element_selected.proto.tensorflow.graph_def),
-        serialization_utils.unpack_graph_def(
-            foo_pruned_proto.tensorflow.graph_def))
     self.assertEqual(second_element_selected.type_signature.result,
                      foo.type_signature.result[1])
     self.assertEqual(foo.proto.tensorflow.parameter,
@@ -118,8 +106,6 @@ class CompiledComputationTransformsTest(test_case.TestCase,
                                                          ('b', tf.float32)])
 
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
-    foo_pruned_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
-        foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, name='a')
@@ -131,11 +117,6 @@ class CompiledComputationTransformsTest(test_case.TestCase,
     self.assertEqual(second_element_selected.type_signature.result,
                      computation_types.TensorType(tf.float32))
 
-    self.assertProtoEquals(
-        serialization_utils.unpack_graph_def(
-            first_element_selected.proto.tensorflow.graph_def),
-        serialization_utils.unpack_graph_def(
-            foo_pruned_proto.tensorflow.graph_def))
     self.assertEqual(foo.proto.tensorflow.parameter,
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -143,11 +124,6 @@ class CompiledComputationTransformsTest(test_case.TestCase,
     self.assertEqual(foo.proto.tensorflow.result.struct.element[0].tensor,
                      first_element_selected.proto.tensorflow.result.tensor)
 
-    self.assertProtoEquals(
-        serialization_utils.unpack_graph_def(
-            second_element_selected.proto.tensorflow.graph_def),
-        serialization_utils.unpack_graph_def(
-            foo_pruned_proto.tensorflow.graph_def))
     self.assertEqual(second_element_selected.type_signature.result,
                      foo.type_signature.result[1])
     self.assertEqual(foo.proto.tensorflow.parameter,
@@ -168,8 +144,6 @@ class CompiledComputationTransformsTest(test_case.TestCase,
                                                          ('y', nested_type2)])
 
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
-    foo_pruned_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
-        foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, index=0)
@@ -180,11 +154,6 @@ class CompiledComputationTransformsTest(test_case.TestCase,
     self.assertEqual(second_element_selected.type_signature.result,
                      nested_type2)
 
-    self.assertProtoEquals(
-        serialization_utils.unpack_graph_def(
-            first_element_selected.proto.tensorflow.graph_def),
-        serialization_utils.unpack_graph_def(
-            foo_pruned_proto.tensorflow.graph_def))
     self.assertEqual(foo.proto.tensorflow.parameter,
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -192,11 +161,6 @@ class CompiledComputationTransformsTest(test_case.TestCase,
     self.assertEqual(foo.proto.tensorflow.result.struct.element[0].struct,
                      first_element_selected.proto.tensorflow.result.struct)
 
-    self.assertProtoEquals(
-        serialization_utils.unpack_graph_def(
-            second_element_selected.proto.tensorflow.graph_def),
-        serialization_utils.unpack_graph_def(
-            foo_pruned_proto.tensorflow.graph_def))
     self.assertEqual(second_element_selected.type_signature.result,
                      foo.type_signature.result[1])
     self.assertEqual(foo.proto.tensorflow.parameter,
@@ -215,8 +179,6 @@ class CompiledComputationTransformsTest(test_case.TestCase,
     computation_arg_type = computation_types.StructType([('x', nested_type1),
                                                          ('y', nested_type2)])
     foo = building_block_factory.create_compiled_identity(computation_arg_type)
-    foo_pruned_proto = tensorflow_computation_transformations.prune_tensorflow_proto(
-        foo.proto)
 
     first_element_selected = compiled_computation_transforms.select_graph_output(
         foo, name='x')
@@ -227,11 +189,6 @@ class CompiledComputationTransformsTest(test_case.TestCase,
     self.assertEqual(second_element_selected.type_signature.result,
                      nested_type2)
 
-    self.assertProtoEquals(
-        serialization_utils.unpack_graph_def(
-            first_element_selected.proto.tensorflow.graph_def),
-        serialization_utils.unpack_graph_def(
-            foo_pruned_proto.tensorflow.graph_def))
     self.assertEqual(foo.proto.tensorflow.parameter,
                      first_element_selected.proto.tensorflow.parameter)
     self.assertEqual(foo.proto.tensorflow.initialize_op,
@@ -239,11 +196,6 @@ class CompiledComputationTransformsTest(test_case.TestCase,
     self.assertEqual(foo.proto.tensorflow.result.struct.element[0].struct,
                      first_element_selected.proto.tensorflow.result.struct)
 
-    self.assertProtoEquals(
-        serialization_utils.unpack_graph_def(
-            second_element_selected.proto.tensorflow.graph_def),
-        serialization_utils.unpack_graph_def(
-            foo_pruned_proto.tensorflow.graph_def))
     self.assertEqual(second_element_selected.type_signature.result,
                      foo.type_signature.result[1])
     self.assertEqual(foo.proto.tensorflow.parameter,

@@ -486,10 +486,10 @@ class BlockLocalsTFGraphTest(test_case.TestCase):
     tuple_ops_with_10_ids = tree_analysis.count_tensorflow_ops_under(
         naively_generated_tf_with_10_ids)
 
-    # asserting that block ops are linear in k with slope 1.
-    self.assertEqual((block_ops_with_10_ids - block_ops_with_5_ids) / 5, 1)
-    # asserting that tuple ops are linear in k with slope 2.
-    self.assertEqual((tuple_ops_with_10_ids - tuple_ops_with_5_ids) / 5, 2)
+    # asserting that block ops are linear in k with slope 2.
+    self.assertEqual((block_ops_with_10_ids - block_ops_with_5_ids) / 5, 2)
+    # asserting that tuple ops are linear in k with slope 4.
+    self.assertEqual((tuple_ops_with_10_ids - tuple_ops_with_5_ids) / 5, 4)
 
 
 class DeduplicateCalledGraphsTest(test_case.TestCase):

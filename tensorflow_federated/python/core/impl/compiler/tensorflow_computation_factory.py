@@ -291,10 +291,17 @@ def create_identity(type_signature: computation_types.Type) -> ProtoAndType:
   """
   type_analysis.check_tensorflow_compatible_type(type_signature)
   parameter_type = type_signature
+  if parameter_type is None:
+    raise TypeError('TensorFlow identity cannot be created for NoneType.')
 
   with tf.Graph().as_default() as graph:
     parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
         'x', parameter_type, graph)
+    # TF relies on feeds not-identical to fetches in certain circumstances.
+    if type_signature.is_tensor():
+      parameter_value = tf.identity(parameter_value)
+    elif type_signature.is_struct():
+      parameter_value = structure.map_structure(tf.identity, parameter_value)
     result_type, result_binding = tensorflow_utils.capture_result_from_graph(
         parameter_value, graph)
 

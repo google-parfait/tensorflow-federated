@@ -269,6 +269,11 @@ class CreateIdentityTest(parameterized.TestCase):
     with self.assertRaises(TypeError):
       tensorflow_computation_factory.create_identity(type_signature)
 
+  def test_feeds_and_fetches_different(self):
+    proto, _ = tensorflow_computation_factory.create_identity(
+        computation_types.TensorType(tf.int32))
+    self.assertNotEqual(proto.tensorflow.parameter, proto.tensorflow.result)
+
 
 class CreateReplicateInputTest(parameterized.TestCase):
 
