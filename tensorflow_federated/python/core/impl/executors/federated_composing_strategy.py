@@ -172,7 +172,6 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       py_typecheck.check_type(e, executor_base.Executor)
     self._server_executor = server_executor
     self._target_executors = target_executors
-    self._cardinalities_task = None
 
   def close(self):
     self._server_executor.close()
