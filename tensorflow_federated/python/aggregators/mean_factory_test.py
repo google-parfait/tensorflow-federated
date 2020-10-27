@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import math
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -179,6 +180,29 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(2.0, process.next(state, client_data, weights).result)
     weights = [6.0, 3.0, 1.0]
     self.assertEqual(1.5, process.next(state, client_data, weights).result)
+
+  def test_weight_arg_all_zeros_nan_division(self):
+    mean_f = mean_factory.MeanFactory(no_nan_division=False)
+    value_type = computation_types.to_type(tf.float32)
+    process = mean_f.create(value_type)
+
+    state = process.initialize()
+    client_data = [1.0, 2.0, 3.0]
+    weights = [0.0, 0.0, 0.0]
+    # Division by zero resulting in NaN/Inf *should* occur.
+    self.assertFalse(
+        math.isfinite(process.next(state, client_data, weights).result))
+
+  def test_weight_arg_all_zeros_no_nan_division(self):
+    mean_f = mean_factory.MeanFactory(no_nan_division=True)
+    value_type = computation_types.to_type(tf.float32)
+    process = mean_f.create(value_type)
+
+    state = process.initialize()
+    client_data = [1.0, 2.0, 3.0]
+    weights = [0.0, 0.0, 0.0]
+    # Division by zero resulting in NaN/Inf *should not* occur.
+    self.assertEqual(0.0, process.next(state, client_data, weights).result)
 
   def test_inner_value_sum_factory(self):
     sum_factory = aggregators_test_utils.SumPlusOneFactory()

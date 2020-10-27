@@ -47,6 +47,9 @@ class MeanFactory(factory.AggregationProcessFactory):
       realize the sum of weighted values and weights.
     - Division of summed weighted values and summed weights at `SERVER`.
 
+  Note that the the division at `SERVER` can protect against division by 0, as
+  specified by `no_nan_division` constructor argument.
+
   The `state` is the composed `state` of the aggregation processes created by
   the two inner aggregation factories. The same holds for `measurements`.
   """
@@ -54,7 +57,8 @@ class MeanFactory(factory.AggregationProcessFactory):
   def __init__(
       self,
       value_sum_factory: Optional[factory.AggregationProcessFactory] = None,
-      weight_sum_factory: Optional[factory.AggregationProcessFactory] = None):
+      weight_sum_factory: Optional[factory.AggregationProcessFactory] = None,
+      no_nan_division: Optional[bool] = False):
     """Initializes `MeanFactory`.
 
     Args:
@@ -64,6 +68,8 @@ class MeanFactory(factory.AggregationProcessFactory):
       weight_sum_factory: An optional
         `tff.aggregators.AggregationProcessFactory` responsible for summation of
         weights. If not specified, `tff.aggregators.SumFactory` is used.
+      no_nan_division: A bool. If True, the computed mean is 0 if sum of weights
+        is equal to 0.
 
     Raises:
       TypeError: If provided `value_sum_factory` or `weight_sum_factory` is not
@@ -80,6 +86,9 @@ class MeanFactory(factory.AggregationProcessFactory):
     py_typecheck.check_type(weight_sum_factory,
                             factory.AggregationProcessFactory)
     self._weight_sum_factory = weight_sum_factory
+
+    py_typecheck.check_type(no_nan_division, bool)
+    self._no_nan_division = no_nan_division
 
   def create(
       self,
@@ -136,8 +145,12 @@ class MeanFactory(factory.AggregationProcessFactory):
                                               weight)
 
       # Server computation.
-      weighted_mean_value = intrinsics.federated_map(
-          _div, (value_output.result, weight_output.result))
+      if self._no_nan_division:
+        weighted_mean_value = intrinsics.federated_map(
+            _div_no_nan, (value_output.result, weight_output.result))
+      else:
+        weighted_mean_value = intrinsics.federated_map(
+            _div, (value_output.result, weight_output.result))
 
       # Output preparation.
       state = collections.OrderedDict(
@@ -160,5 +173,13 @@ def _mul(value, weight):
 
 @computations.tf_computation()
 def _div(weighted_value_sum, weight_sum):
-  return tf.nest.map_structure(lambda x: x / tf.cast(weight_sum, x.dtype),
-                               weighted_value_sum)
+  return tf.nest.map_structure(
+      lambda x: tf.math.divide(x, tf.cast(weight_sum, x.dtype)),
+      weighted_value_sum)
+
+
+@computations.tf_computation()
+def _div_no_nan(weighted_value_sum, weight_sum):
+  return tf.nest.map_structure(
+      lambda x: tf.math.divide_no_nan(x, tf.cast(weight_sum, x.dtype)),
+      weighted_value_sum)
