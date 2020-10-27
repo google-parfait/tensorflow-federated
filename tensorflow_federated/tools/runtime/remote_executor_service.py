@@ -48,9 +48,8 @@ def main(argv):
           'Private key has been specified, but the certificate chain missing.')
   else:
     credentials = None
-  tff.simulation.run_server(
-      executor_factory.create_executor({}), FLAGS.threads, FLAGS.port,
-      credentials)
+  tff.simulation.run_server(executor_factory, FLAGS.threads, FLAGS.port,
+                            credentials)
 
 
 if __name__ == '__main__':
