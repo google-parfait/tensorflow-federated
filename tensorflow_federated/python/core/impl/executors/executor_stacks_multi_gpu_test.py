@@ -80,20 +80,6 @@ class MultiGPUTest(tf.test.TestCase, parameterized.TestCase):
     super().setUp()
     test_utils.create_logical_multi_gpus()
 
-  def _create_logical_multi_gpus(self):
-    # Multiple logical GPU devices will be created for tests in this module.
-    # Only call this function once as logical deviceds have to be created before
-    # listed in each indivisual test.
-    gpu_devices = tf.config.list_physical_devices('GPU')
-    if not gpu_devices:
-      # TODO(b/168138878): switch to raise and move out of MultiGPUTest
-      self.skipTest('Skip GPU tests when no GPU is provided')
-    if len(gpu_devices) == 1:
-      tf.config.set_logical_device_configuration(gpu_devices[0], [
-          tf.config.LogicalDeviceConfiguration(memory_limit=128),
-          tf.config.LogicalDeviceConfiguration(memory_limit=128)
-      ])
-
   @parameterized.named_parameters(
       ('server_on_cpu', 'CPU'),
       ('server_on_gpu', 'GPU'),
