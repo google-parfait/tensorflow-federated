@@ -1,3 +1,59 @@
+# Release 0.17.0
+
+## Major Features and Improvements
+
+*   New `tff.aggregators` package with interfaces for stateful aggregation
+    compositions.
+*   New Google Landmark Dataset `tff.simulations.dataset.gldv2`
+*   New convenience APIs `tff.type_clients` and `tff.type_at_server`
+*   Invert control of computation tracing methods to produce clearer Python
+    stack traces on error.
+*   Move executor creation to a factory pattern in executor service, allowing
+    distributed runtimes to be agnostic to number of clients.
+*   Significant improvements of type serialization/deserialization
+*   New `tff.simulations.compose_dataset_computation_with_iterative_process` API
+    to move execution of client dataset construction to executor stack leaves.
+*   Extend parameterization of `tff.learning.build_federated_averaging_process`
+    with `use_experimental_simulation_loop` argument to better utilize multi-GPU
+    setups.
+
+## Breaking Changes
+
+*   Removed `tff.utils.StatefulFn`, replaced by `tff.templates.MeasuredProcess`.
+*   Removed `tff.learning.assign_weights_to_keras_model`
+*   Stop removing `OptimizeDataset` ops from `tff.tf_computation`s.
+*   The `research/` directory has been moved to
+    http://github.com/google-research/federated.
+*   Updates to `input_spec` argument for `tff.learning.from_keras_model`.
+*   Updated TensorFlow dependency to `2.3.0`.
+*   Updated TensorFlow Model Optimization dependency to `0.4.0`.
+
+## Bug Fixes
+
+*   Fixed streaming mode hang in remote executor.
+*   Wrap `collections.namedtuple._asdict` calls in `collections.OrderedDict` to
+    support Python 3.8.
+*   Correctly serialize/deserialize `tff.TensorType` with unknown shapes.
+*   Cleanup TF lookup HashTable resources in TFF execution.
+*   Fix bug in Shakespeare dataset where OOV and last vocab character were the
+    same.
+*   Fix TFF ingestion of Keras models with shared embeddings.
+*   Closed hole in compilation to CanonicalForm.
+
+## Known Bugs
+
+*   "Federated Learning for Image Classification" tutorial fails to load
+    `projector` plugin for tensorboard.
+    (https://github.com/tensorflow/federated/issues/914)
+*   Certain Keras models with activity regularization fail in execution with
+    unliftable error (https://github.com/tensorflow/federated/issues/913).
+
+## Thanks to our Contributors
+
+This release contains contributions from many people at Google, as well as:
+
+amitport, ronaldseoh
+
 # Release 0.16.1
 
 ## Bug Fixes
