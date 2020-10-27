@@ -11,54 +11,54 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""An example of personalization strategy.
-
-A personalization strategy defines the process of training and evaluating a
-personalized model. It is a `tf.function`-decorated function, which accepts a
-`tff.learning.Model` (with weights already initialized to the initial model
-weights when users invoke the `tff.Computation`), an unbatched `tf.data.Dataset`
-for train, an unbatched `tf.data.Dataset` for test, and an arbitrary `context`
-object (which is used to hold any extra information that a personalization
-strategy may use), trains a personalized model, and returns the evaluation
-metrics.
-
-The `personalze_fn` below is an example of personalization strategy. It trains a
-personalized model for `max_num_epochs` epochs, and evaluates the model every
-`num_epochs_per_eval` epoch, and records the metrics. The final evaluation
-metrics are represented as a nested `OrderedDict` of string metric names to
-scalar `tf.Tensor`s.
-"""
+"""An example of personalization strategy."""
 
 import collections
+from typing import Any, Callable, Dict, Optional
 
 import tensorflow as tf
+import tensorflow_federated as tff
+
+# pylint: disable=invalid-name
+_OPTIMIZER_FN_TYPE = Callable[[], tf.keras.optimizers.Optimizer]
+_PERSONALIZE_FN_TYPE = Callable[
+    [tff.learning.Model, tf.data.Dataset, tf.data.Dataset, Any],
+    Dict[str, tf.Tensor]]
+_EVAL_BATCH_SIZE = 1  # Batch size used when evaluating a dataset.
+_SHUFFLE_BUFFER_SIZE = 1000  # Buffer size used when shuffling a dataset.
+# pylint: enable=invalid-name
 
 
-def build_personalize_fn(optimizer_fn,
-                         train_batch_size,
-                         max_num_epochs,
-                         num_epochs_per_eval,
-                         test_batch_size,
-                         shuffle=True,
-                         shuffle_buffer_size=1000):
-  """Example of a builder function that constructs a `personalize_fn`.
+def build_personalize_fn(optimizer_fn: _OPTIMIZER_FN_TYPE,
+                         batch_size: int,
+                         num_epochs: int,
+                         num_epochs_per_eval: int,
+                         shuffle: bool = True) -> _PERSONALIZE_FN_TYPE:
+  """Builds a `tf.function` that represents a personalization strategy.
 
-  The returned function represents the optimization algorithm to run on each
-  client in order to personalize a model for those clients.
+  The returned `tf.function` represents the optimization algorithm to run on
+  a client in order to personalize a given model. It takes a
+  `tff.learning.Model` (with weights already initialized to the desired initial
+  model weights), an unbatched training dataset, an unbatched test dataset, and
+  an optional `context` (e.g., extra datasets) as input, trains a personalized
+  model on the training dataset for `num_epochs`, evaluates the model on the
+  test dataset every `num_epochs_per_eval`, and returns the evaluation metrics.
+  The evaluation metrics are computed by `evaluate_fn` (see its docstring for
+  more details).
+
+  This builder function only serves as an example. Customers are allowed to
+  write any personalization strategy as long as it satisfies the function
+  signature specified by `_PERSONALIZE_FN_TYPE`.
 
   Args:
     optimizer_fn: A no-argument function that returns a
       `tf.keras.optimizers.Optimizer`.
-    train_batch_size: An `int` specifying the batch size used in training the
+    batch_size: An `int` specifying the batch size used in training.
+    num_epochs: An `int` specifying the number of epochs used in training a
       personalized model.
-    max_num_epochs: An `int` specifying the maximum number of epochs used in
-      training a personalized model.
     num_epochs_per_eval: An `int` specifying the frequency that a personalized
       model gets evaluated during the process of training.
-    test_batch_size: An `int` specifying the batch size used in evaluation.
     shuffle: A `bool` specifying whether to shuffle train data in every epoch.
-    shuffle_buffer_size: An `int` specifying the buffer size used in shuffling
-      the train data when `shuffle=True`.
 
   Returns:
     A `tf.function` that trains a personalized model, evaluates the model every
@@ -69,7 +69,10 @@ def build_personalize_fn(optimizer_fn,
   optimizer = optimizer_fn()
 
   @tf.function
-  def personalize_fn(model, train_data, test_data, context=None):
+  def personalize_fn(model: tff.learning.Model,
+                     train_data: tf.data.Dataset,
+                     test_data: tf.data.Dataset,
+                     context: Optional[Any] = None) -> Dict[str, tf.Tensor]:
     """A personalization strategy that trains a model and returns the metrics.
 
     Args:
@@ -84,69 +87,32 @@ def build_personalize_fn(optimizer_fn,
     """
     del context  # This example does not use extra context.
 
-    def train_one_batch(state, batch):
+    def train_one_batch(num_examples_sum, batch):
       """Run gradient descent on a batch."""
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch)
-
       grads = tape.gradient(output.loss, model.trainable_variables)
       optimizer.apply_gradients(
           zip(
               tf.nest.flatten(grads),
               tf.nest.flatten(model.trainable_variables)))
-      # Update the number of examples and the number of batches.
-      next_state = (state[0] + output.num_examples, state[1] + 1)
-      return next_state
-
-    def train_several_epochs(num_epochs, state):
-      """Train the model for several epochs on `train_data`."""
-      data = train_data.repeat(num_epochs)
-      if shuffle:
-        data = data.shuffle(shuffle_buffer_size)
-      data = data.batch(train_batch_size)
-      return data.reduce(initial_state=state, reduce_func=train_one_batch)
+      # Update the number of examples.
+      return num_examples_sum + output.num_examples
 
     # Start training.
-    training_state = (0, 0)  # (number of examples, number of batches)
-
-    # Compute the number of times that the model gets evaluated during training.
-    num_evals, remainder_epochs = divmod(max_num_epochs, num_epochs_per_eval)
-
-    # Create a nested structure of `tf.TensorArray`s that has the same nested
-    # strucutre of the evaluation metrics returned by the `evaluate_fn`. In this
-    # case, the nested strucutre is an `OrderedDict` that maps names to values.
-    metrics_tensorarrays = tf.nest.map_structure(
-        lambda v: tf.TensorArray(v.dtype, size=num_evals),
-        evaluate_fn(model, test_data, test_batch_size))
-
-    for i in tf.range(num_evals):
-      training_state = train_several_epochs(num_epochs_per_eval, training_state)
-      # Evaluate the current trained model.
-      current_metrics = evaluate_fn(model, test_data, test_batch_size)
-      # Write the current result to the corresponding `tf.TensorArray`s.
-      metrics_tensorarrays = tf.nest.map_structure(
-          lambda ta, v: ta.write(i, v),  # pylint: disable=cell-var-from-loop
-          metrics_tensorarrays,
-          current_metrics)
-
-    # Finish the remaining training epochs.
-    training_state = train_several_epochs(remainder_epochs, training_state)
-
-    # Convert the nested `tf.TensorArray`s to the desired structure: here we
-    # create a dict by grouping the metric values at the same epoch together.
+    training_state = 0  # Number of total examples used in training.
     metrics_dict = collections.OrderedDict()
-    for j in range(num_evals):
-      epoch_idx = (j + 1) * num_epochs_per_eval
-      metrics_dict[f'epoch_{epoch_idx}'] = tf.nest.map_structure(
-          lambda ta: ta.read(j),  # pylint: disable=cell-var-from-loop
-          metrics_tensorarrays)
+    for epoch_idx in range(1, num_epochs + 1):
+      if shuffle:
+        train_data = train_data.shuffle(_SHUFFLE_BUFFER_SIZE)
+      training_state = train_data.batch(batch_size).reduce(
+          initial_state=training_state, reduce_func=train_one_batch)
+      # Evaluate the trained model every `num_epochs_per_eval` epochs.
+      if (epoch_idx % num_epochs_per_eval == 0) or (epoch_idx == num_epochs):
+        metrics_dict[f'epoch_{epoch_idx}'] = evaluate_fn(model, test_data)
 
     # Save the training statistics.
-    metrics_dict['num_examples'] = training_state[0]
-    metrics_dict['num_batches'] = training_state[1]
-
-    # Evaluate the final model.
-    metrics_dict['final_model'] = evaluate_fn(model, test_data, test_batch_size)
+    metrics_dict['num_train_examples'] = training_state
 
     return metrics_dict
 
@@ -154,50 +120,62 @@ def build_personalize_fn(optimizer_fn,
 
 
 @tf.function
-def evaluate_fn(model, dataset, batch_size):
-  """Evaluate a model on the given dataset.
+def evaluate_fn(model: tff.learning.Model,
+                dataset: tf.data.Dataset) -> Dict[str, tf.Tensor]:
+  """Evaluates a model on the given dataset.
 
-  Note: The returned metrics are defined in `model.report_local_outputs`, which
-  can be specified by the `metrics` argument when using
-  `tff.learning.from_keras_model` to build the input `tff.learning.Model`.
+  The returned metrics include those given by `model.report_local_outputs`.
+  These are specified by the `loss` and `metrics` arguments when the model is
+  created by `tff.learning.from_keras_model`. The returned metrics also contain
+  an integer metric with name 'num_test_examples'.
 
   Args:
-    model: A `tff.learning.Model`.
+    model: A `tff.learning.Model` created by `tff.learning.from_keras_model`.
     dataset: An unbatched `tf.data.Dataset`.
-    batch_size: An `int` specifying the batch size used in evaluation.
 
   Returns:
-    An `OrderedDict` of metric names to scalar `tf.Tensor`s containing the
-    evaluation metrics defined in `model.report_local_outputs`.
+    An `OrderedDict` of metric names to scalar `tf.Tensor`s.
   """
-  # Reset the model's local variables. This is necessary because
+  # Resets the model's local variables. This is necessary because
   # `model.report_local_outputs()` aggregates the metrics from *all* previous
   # calls to `forward_pass` (which include the metrics computed in training).
   # Resetting ensures that the returned metrics are computed on test data.
-  # Similar to the `reset_states` method of `tf.metrics.Metric`.
+  # Similar to the `reset_states` method of `tf.keras.metrics.Metric`.
   for var in model.local_variables:
     if var.initial_value is not None:
       var.assign(var.initial_value)
     else:
       var.assign(tf.zeros_like(var))
 
-  def reduce_fn(dummy_input, batch):
-    model.forward_pass(batch, training=False)
-    return dummy_input
+  def reduce_fn(num_examples_sum, batch):
+    output = model.forward_pass(batch, training=False)
+    return num_examples_sum + output.num_examples
 
-  batched_dataset = dataset.batch(batch_size)
-  # Running `reduce_fn` over the input dataset. The aggregated metrics can be
-  # accessed via `model.report_local_outputs()`.
-  batched_dataset.reduce(initial_state=tf.constant(0), reduce_func=reduce_fn)
-
-  results = collections.OrderedDict()
+  # Runs `reduce_fn` over the input dataset. The final metrics can be accessed
+  # by `model.report_local_outputs()`.
+  num_examples_sum = dataset.batch(_EVAL_BATCH_SIZE).reduce(
+      initial_state=0, reduce_func=reduce_fn)
+  eval_metrics = collections.OrderedDict()
+  eval_metrics['num_test_examples'] = num_examples_sum
   local_outputs = model.report_local_outputs()
+  # Postprocesses the metric values. This is needed because the values returned
+  # by `model.report_local_outputs()` are values of the state variables in each
+  # `tf.keras.metrics.Metric`. These values should be processed in the same way
+  # as the `result()` method of a `tf.keras.metrics.Metric`.
   for name, metric in local_outputs.items():
-    if isinstance(metric, list) and (len(metric) == 2):
-      # Some metrics returned by `report_local_outputs()` can have two scalars:
-      # one represents `sum`, and the other represents `count`. Ideally we want
-      # to return a single scalar for each metric.
-      results[name] = metric[0] / metric[1]
+    if not isinstance(metric, list):
+      raise TypeError(f'The metric value returned by `report_local_outputs` is '
+                      f'expected to be a list, but found an instance of '
+                      f'{type(metric)}. Please check that your TFF model is '
+                      'built from a keras model.')
+    if len(metric) == 2:
+      # The loss and accuracy metrics used in this p13n example has two values:
+      # one represents `sum`, and the other represents `count`.
+      eval_metrics[name] = metric[0] / metric[1]
+    elif len(metric) == 1:
+      eval_metrics[name] = metric[0]
     else:
-      results[name] = metric[0] if isinstance(metric, list) else metric
-  return results
+      raise ValueError(f'The metric value returned by `report_local_outputs` '
+                       f'is expected to be a list of length 1 or 2, but found '
+                       f'one with length {len(metric)}.')
+  return eval_metrics

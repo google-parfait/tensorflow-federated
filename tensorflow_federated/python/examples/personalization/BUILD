@@ -8,6 +8,7 @@ py_library(
     name = "p13n_utils",
     srcs = ["p13n_utils.py"],
     srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
 )
 
 py_test(

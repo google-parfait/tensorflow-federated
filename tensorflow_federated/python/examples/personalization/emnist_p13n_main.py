@@ -15,6 +15,7 @@
 
 import collections
 import functools
+from typing import Dict, List, Tuple
 
 from absl import app
 import numpy as np
@@ -25,7 +26,8 @@ from tensorflow_federated.python.examples.personalization.p13n_utils import buil
 from tensorflow_federated.python.examples.personalization.p13n_utils import evaluate_fn
 
 
-def _get_emnist_datasets():
+def _get_emnist_datasets(
+) -> Tuple[List[tf.data.Dataset], List[Dict[str, tf.data.Dataset]]]:
   """Pre-process EMNIST-62 dataset for FedAvg and personalization."""
 
   def element_fn(element):
@@ -77,7 +79,7 @@ def _get_emnist_datasets():
   return federated_train_data, federated_p13n_data
 
 
-def _create_conv_dropout_model(only_digits=True):
+def _create_conv_dropout_model(only_digits: bool = True) -> tf.keras.Model:
   """A convolutional model to use for EMNIST experiments.
 
   Args:
@@ -118,7 +120,7 @@ def main(argv):
   # Create datasets for training global and personalized models.
   federated_train_data, federated_p13n_data = _get_emnist_datasets()
 
-  def model_fn():
+  def model_fn() -> tff.learning.Model:
     """Build a `tff.learning.Model` for training EMNIST."""
     keras_model = _create_conv_dropout_model(only_digits=False)
     return tff.learning.from_keras_model(
@@ -153,18 +155,16 @@ def main(argv):
   personalize_fn_dict['sgd'] = functools.partial(
       build_personalize_fn,
       optimizer_fn=sgd_opt,
-      train_batch_size=20,
-      max_num_epochs=3,
-      num_epochs_per_eval=1,
-      test_batch_size=20)
+      batch_size=20,
+      num_epochs=3,
+      num_epochs_per_eval=1)
   adam_opt = lambda: tf.keras.optimizers.Adam(learning_rate=0.002)
   personalize_fn_dict['adam'] = functools.partial(
       build_personalize_fn,
       optimizer_fn=adam_opt,
-      train_batch_size=20,
-      max_num_epochs=3,
-      num_epochs_per_eval=1,
-      test_batch_size=20)
+      batch_size=20,
+      num_epochs=3,
+      num_epochs_per_eval=1)
 
   # Build the `tff.Computation` for evaluating the personalization strategies.
   # Here `p13n_eval` is a `tff.Computation` with the following type signature:
@@ -172,7 +172,7 @@ def main(argv):
   p13n_eval = tff.learning.build_personalization_eval(
       model_fn=model_fn,
       personalize_fn_dict=personalize_fn_dict,
-      baseline_evaluate_fn=functools.partial(evaluate_fn, batch_size=10),
+      baseline_evaluate_fn=evaluate_fn,
       max_num_samples=100)  # Metrics from at most 100 clients will be returned.
 
   # Train a global model using the standard FedAvg algorithm.
