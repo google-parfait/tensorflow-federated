@@ -85,6 +85,7 @@ def server_context(ex_factory: executor_factory.ExecutorFactory,
     logging.info('Shutting down server.')
     thread_pool_executor.shutdown(wait=False)
     server.stop(None)
+    ex_factory.clean_up_executors()
 
 
 def run_server(ex_factory: executor_factory.ExecutorFactory,

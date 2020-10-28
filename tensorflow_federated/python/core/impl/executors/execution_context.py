@@ -190,9 +190,8 @@ class ExecutionContext(context_base.Context):
       @contextlib.contextmanager
       def executor_closer(ex_factory, cardinalities):
         """Wraps an Executor into a closeable resource."""
-        ex = ex_factory.create_executor(cardinalities)
         try:
-          yield ex
+          yield ex_factory.create_executor(cardinalities)
         except Exception as e:
           ex_factory.clean_up_executors()
           raise e

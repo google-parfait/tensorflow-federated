@@ -161,6 +161,7 @@ class _BidiStream:
     with self._response_event_lock:
       if self._stream_error is not None:
         logging.debug('Stream failed before msg enqueued')
+        logging.debug('%s', self._stream_error)
         response_event.response = self._stream_error
         response_event.set()
       else:

@@ -48,8 +48,11 @@ def _get_all_contexts():
   return [
       ('native_local', tff.backends.native.create_local_execution_context()),
       ('native_local_caching', _create_native_local_caching_context()),
-      ('native_remote',
-       remote_runtime_test_utils.create_localhost_remote_context(_WORKER_PORTS),
+      ('native_remote_request_reply',
+       remote_runtime_test_utils.create_localhost_remote_context(_WORKER_PORTS, rpc_mode='REQUEST_REPLY'),
+       remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS)),
+      ('native_remote_streaming',
+       remote_runtime_test_utils.create_localhost_remote_context(_WORKER_PORTS, rpc_mode='STREAMING'),
        remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS)),
       ('native_remote_intermediate_aggregator',
        remote_runtime_test_utils.create_localhost_remote_context(_AGGREGATOR_PORTS),
