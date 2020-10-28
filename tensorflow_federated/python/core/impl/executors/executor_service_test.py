@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import queue
 import threading
 
 from absl.testing import absltest
@@ -41,8 +42,8 @@ class TestEnv(object):
                ex_factory: executor_factory.ExecutorFactory,
                num_clients: int = 0):
     port = portpicker.pick_unused_port()
-    server_pool = logging_pool.pool(max_workers=1)
-    self._server = grpc.server(server_pool)
+    self._server_pool = logging_pool.pool(max_workers=1)
+    self._server = grpc.server(self._server_pool)
     self._server.add_insecure_port('[::]:{}'.format(port))
     self._service = executor_service.ExecutorService(ex_factory=ex_factory)
     executor_pb2_grpc.add_ExecutorServicer_to_server(self._service,
@@ -58,6 +59,7 @@ class TestEnv(object):
 
   def __del__(self):
     self._channel.close()
+    self._server_pool.shutdown(wait=False)
     self._server.stop(None)
 
   @property
@@ -77,6 +79,9 @@ class TestEnv(object):
     """Retrieves value by reaching inside the service object."""
     with self._service._lock:
       return self._service._values[value_id]
+
+  def close_channel(self):
+    self._channel.close()
 
 
 class ExecutorServiceTest(absltest.TestCase):
@@ -265,6 +270,103 @@ class ExecutorServiceTest(absltest.TestCase):
       self.assertEqual(env.get_value(selection_ref.id), result_val)
 
     del env
+
+
+class CallNoArgFnIterator():
+
+  def __init__(self):
+    self.queue = queue.Queue()
+
+  def iterator(self):
+
+    @computations.tf_computation()
+    def comp():
+      return 1
+
+    value_proto, _ = executor_serialization.serialize_value(comp)
+    request = executor_pb2.ExecuteRequest(
+        create_value=executor_pb2.CreateValueRequest(value=value_proto))
+    yield request
+    response = self.queue.get()
+    create_call_proto = executor_pb2.CreateCallRequest(
+        function_ref=response.create_value.value_ref, argument_ref=None)
+    request = executor_pb2.ExecuteRequest(create_call=create_call_proto)
+    yield request
+    response = self.queue.get()
+    compute_proto = executor_pb2.ComputeRequest(
+        value_ref=response.create_call.value_ref)
+    request = executor_pb2.ExecuteRequest(compute=compute_proto)
+    yield request
+
+
+class StreamingModeExecutorServiceTest(absltest.TestCase):
+
+  def test_executor_service_execute_create_value(self):
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
+        lambda _: eager_tf_executor.EagerTFExecutor())
+    env = TestEnv(ex_factory)
+
+    def _iterator():
+
+      @computations.tf_computation(tf.int32)
+      def comp(x):
+        return tf.add(x, 1)
+
+      value_proto, _ = executor_serialization.serialize_value(comp)
+      request = executor_pb2.ExecuteRequest(
+          create_value=executor_pb2.CreateValueRequest(value=value_proto))
+      yield request
+
+    response_iterator = env.stub.Execute(_iterator())
+    return_value_count = 0
+    for response in response_iterator:
+      self.assertIsInstance(response, executor_pb2.ExecuteResponse)
+      self.assertIsInstance(response.create_value,
+                            executor_pb2.CreateValueResponse)
+      return_value_count += 1
+
+    self.assertEqual(return_value_count, 1)
+
+  def test_executor_service_execute_failure_in_processing(self):
+
+    class _RaisingExecutor(eager_tf_executor.EagerTFExecutor):
+
+      async def create_value(self, *args, **kwargs):
+        # Unknown exception on server
+        raise Exception
+
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
+        lambda _: _RaisingExecutor())
+    env = TestEnv(ex_factory)
+
+    iter_obj = CallNoArgFnIterator()
+    response_iterator = env.stub.Execute(iter_obj.iterator())
+
+    return_value_count = 0
+    with self.assertRaises(grpc.RpcError):  # pylint: disable=g-error-prone-assert-raises
+      # We disable the linter here because we should raise on the final
+      # iteration. The return_value_count assertion below ensures that we have
+      # as many return values as expected.
+      for response in response_iterator:
+        iter_obj.queue.put(response)
+        self.assertIsInstance(response, executor_pb2.ExecuteResponse)
+        return_value_count += 1
+
+    self.assertEqual(return_value_count, 3)
+
+  def test_executor_service_execute_failure_in_connection(self):
+
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
+        lambda _: eager_tf_executor.EagerTFExecutor())
+    env = TestEnv(ex_factory)
+
+    iter_obj = CallNoArgFnIterator()
+    response_iterator = env.stub.Execute(iter_obj.iterator())
+
+    with self.assertRaises(grpc.RpcError):
+      for response in response_iterator:
+        iter_obj.queue.put(response)
+        env.close_channel()
 
 
 if __name__ == '__main__':

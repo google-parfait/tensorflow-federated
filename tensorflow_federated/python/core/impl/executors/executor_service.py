@@ -41,6 +41,12 @@ def _set_invalid_arg_err(context: grpc.ServicerContext, err):
   context.set_details(str(err))
 
 
+def _set_unknown_err(context: grpc.ServicerContext, err):
+  logging.error(traceback.format_exc())
+  context.set_code(grpc.StatusCode.UNKNOWN)
+  context.set_details(str(err))
+
+
 class ExecutorService(executor_pb2_grpc.ExecutorServicer):
   """A wrapper around a target executor that makes it into a gRPC service."""
 
@@ -96,37 +102,43 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       context: grpc.ServicerContext,
       response_queue: queue.Queue,
   ):
-    which = req.WhichOneof('request')
-    logging.debug('Received request of type %s, seq_no %s', which,
-                  req.sequence_number)
-    if not which:
-      raise RuntimeError('Must set a request type')
-    if which == 'create_value':
-      response = executor_pb2.ExecuteResponse(
-          create_value=self.CreateValue(req.create_value, context))
-    elif which == 'create_call':
-      response = executor_pb2.ExecuteResponse(
-          create_call=self.CreateCall(req.create_call, context))
-    elif which == 'create_struct':
-      response = executor_pb2.ExecuteResponse(
-          create_struct=self.CreateStruct(req.create_struct, context))
-    elif which == 'create_selection':
-      response = executor_pb2.ExecuteResponse(
-          create_selection=self.CreateSelection(req.create_selection, context))
-    elif which == 'compute':
-      response = executor_pb2.ExecuteResponse(
-          compute=await self._Compute(req.compute, context))
-    elif which == 'dispose':
-      response = executor_pb2.ExecuteResponse(
-          dispose=self.Dispose(req.dispose, context))
-    elif which == 'set_cardinalities':
-      response = executor_pb2.ExecuteResponse(
-          set_cardinalities=self.SetCardinalities(req.set_cardinalities,
+    try:
+      which = req.WhichOneof('request')
+      logging.debug('Received request of type %s, seq_no %s', which,
+                    req.sequence_number)
+      if not which:
+        raise RuntimeError('Must set a request type')
+      if which == 'create_value':
+        response = executor_pb2.ExecuteResponse(
+            create_value=self.CreateValue(req.create_value, context))
+      elif which == 'create_call':
+        response = executor_pb2.ExecuteResponse(
+            create_call=self.CreateCall(req.create_call, context))
+      elif which == 'create_struct':
+        response = executor_pb2.ExecuteResponse(
+            create_struct=self.CreateStruct(req.create_struct, context))
+      elif which == 'create_selection':
+        response = executor_pb2.ExecuteResponse(
+            create_selection=self.CreateSelection(req.create_selection,
                                                   context))
-    else:
-      raise RuntimeError('Unknown request type')
-    response.sequence_number = req.sequence_number
-    response_queue.put_nowait(response)
+      elif which == 'compute':
+        response = executor_pb2.ExecuteResponse(
+            compute=await self._Compute(req.compute, context))
+      elif which == 'dispose':
+        response = executor_pb2.ExecuteResponse(
+            dispose=self.Dispose(req.dispose, context))
+      elif which == 'set_cardinalities':
+        response = executor_pb2.ExecuteResponse(
+            set_cardinalities=self.SetCardinalities(req.set_cardinalities,
+                                                    context))
+      else:
+        raise RuntimeError('Unknown request type')
+      response.sequence_number = req.sequence_number
+      response_queue.put_nowait(response)
+    except Exception as err:  # pylint:disable=broad-except
+      _set_unknown_err(context, err)
+      response = executor_pb2.ExecuteResponse()
+      response_queue.put_nowait(response)
 
   def Execute(
       self,
@@ -147,15 +159,26 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       def get_n_reqs(self):
         return self._n_reqs
 
+    class RequestIterBroken:
+      """Marker object indicating breakage in the request iterator."""
+      pass
+
     def request_thread_fn():
       n_reqs = 0
-      for req in request_iter:
-        n_reqs += 1
-        asyncio.run_coroutine_threadsafe(
-            self._HandleRequest(req, context, response_queue), self._event_loop)
-      response_queue.put_nowait(RequestIterFinished(n_reqs))
+      try:
+        for req in request_iter:
+          asyncio.run_coroutine_threadsafe(
+              self._HandleRequest(req, context, response_queue),
+              self._event_loop)
+          n_reqs += 1
+        response_queue.put_nowait(RequestIterFinished(n_reqs))
+      except Exception as e:  # pylint: disable=broad-except
+        logging.exception(
+            'Exception %s caught in request thread; closing stream.', e)
+        response_queue.put_nowait(RequestIterBroken())
+      return
 
-    threading.Thread(target=request_thread_fn).start()
+    threading.Thread(target=request_thread_fn, daemon=True).start()
 
     # This generator is finished when the request iterator is finished and we
     # have yielded a response for every request.
@@ -170,6 +193,11 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         yield response
       elif isinstance(response, RequestIterFinished):
         target_responses = response.get_n_reqs()
+      elif isinstance(response, RequestIterBroken):
+        # If the request iterator is broken, we want to break out of the loop
+        # without waiting for the remainder of the responses; the executors can
+        # be in an arbitrary state at this point.
+        break
       else:
         raise ValueError('Illegal response object: {}'.format(response))
 
