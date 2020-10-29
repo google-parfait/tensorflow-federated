@@ -58,7 +58,7 @@ class MeanFactory(factory.AggregationProcessFactory):
       self,
       value_sum_factory: Optional[factory.AggregationProcessFactory] = None,
       weight_sum_factory: Optional[factory.AggregationProcessFactory] = None,
-      no_nan_division: Optional[bool] = False):
+      no_nan_division: bool = False):
     """Initializes `MeanFactory`.
 
     Args:
