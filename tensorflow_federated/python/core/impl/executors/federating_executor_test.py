@@ -590,8 +590,10 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     executor = create_test_executor()
     comp, comp_type = executor_test_utils.create_dummy_intrinsic_def_federated_secure_sum(
     )
-    arg_1, arg_1_type = executor_test_utils.create_dummy_value_at_clients()
-    arg_2, arg_2_type = executor_test_utils.create_dummy_value_unplaced()
+    arg_1 = [10, 11, 12]
+    arg_1_type = computation_types.at_clients(tf.int32, all_equal=False)
+    arg_2 = 10
+    arg_2_type = computation_types.TensorType(tf.int32)
 
     comp = self.run_sync(executor.create_value(comp, comp_type))
     arg_1 = self.run_sync(executor.create_value(arg_1, arg_1_type))

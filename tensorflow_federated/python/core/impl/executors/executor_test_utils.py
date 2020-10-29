@@ -336,9 +336,9 @@ def create_dummy_intrinsic_def_federated_reduce():
 def create_dummy_intrinsic_def_federated_secure_sum():
   value = intrinsic_defs.FEDERATED_SECURE_SUM
   type_signature = computation_types.FunctionType([
-      computation_types.at_clients(tf.float32),
-      tf.float32,
-  ], computation_types.at_server(tf.float32))
+      computation_types.at_clients(tf.int32),
+      tf.int32,
+  ], computation_types.at_server(tf.int32))
   return value, type_signature
 
 

@@ -61,6 +61,7 @@ def _get_all_contexts():
       ('native_thread_debug',
        tff.backends.native.create_thread_debugging_execution_context()),
       ('reference', tff.backends.reference.create_reference_context()),
+      ('test', tff.backends.test.create_test_execution_context()),
   ]
   # pyformat: enable
 

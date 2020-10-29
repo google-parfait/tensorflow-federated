@@ -338,7 +338,9 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
                clients_per_thread: int,
                unplaced_ex_factory: UnplacedExecutorFactory,
                num_clients: Optional[int] = None,
-               use_sizing: bool = False):
+               use_sizing: bool = False,
+               federated_strategy_factory=federated_resolving_strategy
+               .FederatedResolvingStrategy.factory):
     py_typecheck.check_type(clients_per_thread, int)
     py_typecheck.check_type(unplaced_ex_factory, UnplacedExecutorFactory)
     self._clients_per_thread = clients_per_thread
@@ -353,6 +355,7 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
       self._sizing_executors = []
     else:
       self._sizing_executors = None
+    self._federated_strategy_factory = federated_strategy_factory
 
   @property
   def sizing_executors(self) -> List[sizing_executor.SizingExecutor]:
@@ -398,16 +401,14 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
       ]
       self._sizing_executors.extend(client_stacks)
 
-    federating_strategy_factory = federated_resolving_strategy.FederatedResolvingStrategy.factory(
-        {
-            placement_literals.CLIENTS: [
-                client_stacks[k % len(client_stacks)]
-                for k in range(num_clients)
-            ],
-            placement_literals.SERVER:
-                self._unplaced_executor_factory.create_executor(
-                    placement=placement_literals.SERVER),
-        })
+    federating_strategy_factory = self._federated_strategy_factory({
+        placement_literals.CLIENTS: [
+            client_stacks[k % len(client_stacks)] for k in range(num_clients)
+        ],
+        placement_literals.SERVER:
+            self._unplaced_executor_factory.create_executor(
+                placement=placement_literals.SERVER),
+    })
     unplaced_executor = self._unplaced_executor_factory.create_executor()
     executor = federating_executor.FederatingExecutor(
         federating_strategy_factory, unplaced_executor)
