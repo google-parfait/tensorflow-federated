@@ -14,8 +14,10 @@
 """Tests for ClippingFactory, ZeroingFactory and ZeroingClippingFactory."""
 
 import collections
+import itertools
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import clipping_factory
@@ -37,15 +39,16 @@ def _make_test_struct_value(x):
   return [tf.constant(x, dtype=tf.float32, shape=(3,)), x]
 
 
-def _clip_cons(clip=2.):
+def _clip_cons(clip=2.0):
   return clipping_factory.ClippingFactory(clip, mean_factory.MeanFactory())
 
 
-def _zero_cons(clip=2.):
-  return clipping_factory.ZeroingFactory(clip, mean_factory.MeanFactory())
+def _zero_cons(clip=2.0, norm_order=2.0):
+  return clipping_factory.ZeroingFactory(clip, mean_factory.MeanFactory(),
+                                         norm_order)
 
 
-def _zero_clip_cons(clip=2.):
+def _zero_clip_cons(clip=2.0):
   zeroing_norm_fn = computations.tf_computation(lambda x: x + 3, tf.float32)
   return clipping_factory.ZeroingClippingFactory(clip, zeroing_norm_fn,
                                                  mean_factory.MeanFactory())
@@ -82,22 +85,20 @@ class ClippingFactoryComputationTest(test_case.TestCase,
                                      parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('clip_float', tf.float32, _clip_cons),
-      ('clip_struct', _test_struct_type, _clip_cons),
-      ('zero_float', tf.float32, _zero_cons),
-      ('zero_struct', _test_struct_type, _zero_cons),
-      ('zero_clip_float', tf.float32, _zero_clip_cons),
-      ('zero_clip_struct', _test_struct_type, _zero_clip_cons),
+      ('float', tf.float32),
+      ('struct', _test_struct_type),
   )
-  def test_type_properties(self, value_type, factory_cons):
-    factory = factory_cons()
+  def test_clip_type_properties(self, value_type):
+    factory = _clip_cons()
     value_type = computation_types.to_type(value_type)
     process = factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
+    mean_state_type = collections.OrderedDict(
+        value_sum_process=(), weight_sum_process=())
     server_state_type = computation_types.at_server(
-        ((),
-         collections.OrderedDict(value_sum_process=(), weight_sum_process=())))
+        collections.OrderedDict(
+            clipping_norm=(), inner_agg=mean_state_type, clipped_count_agg=()))
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=server_state_type)
     self.assertTrue(
@@ -105,7 +106,94 @@ class ClippingFactoryComputationTest(test_case.TestCase,
             expected_initialize_type))
 
     expected_measurements_type = computation_types.at_server(
-        collections.OrderedDict(value_sum_process=(), weight_sum_process=()))
+        collections.OrderedDict(
+            agg_process=collections.OrderedDict(
+                value_sum_process=(), weight_sum_process=()),
+            clipping_norm=clipping_factory.NORM_TF_TYPE,
+            clipped_count=clipping_factory.COUNT_TF_TYPE))
+    expected_next_type = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            state=server_state_type,
+            value=computation_types.at_clients(value_type),
+            weight=computation_types.at_clients(tf.float32)),
+        result=measured_process.MeasuredProcessOutput(
+            state=server_state_type,
+            result=computation_types.at_server(value_type),
+            measurements=expected_measurements_type))
+    self.assertTrue(
+        process.next.type_signature.is_equivalent_to(expected_next_type))
+
+  @parameterized.named_parameters(
+      ('float', tf.float32),
+      ('struct', _test_struct_type),
+  )
+  def test_zero_type_properties(self, value_type):
+    factory = _zero_cons()
+    value_type = computation_types.to_type(value_type)
+    process = factory.create(value_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+
+    mean_state_type = collections.OrderedDict(
+        value_sum_process=(), weight_sum_process=())
+    server_state_type = computation_types.at_server(
+        collections.OrderedDict(
+            zeroing_norm=(), inner_agg=mean_state_type, zeroed_count_agg=()))
+    expected_initialize_type = computation_types.FunctionType(
+        parameter=None, result=server_state_type)
+    self.assertTrue(
+        process.initialize.type_signature.is_equivalent_to(
+            expected_initialize_type))
+
+    expected_measurements_type = computation_types.at_server(
+        collections.OrderedDict(
+            agg_process=collections.OrderedDict(
+                value_sum_process=(), weight_sum_process=()),
+            zeroing_norm=clipping_factory.NORM_TF_TYPE,
+            zeroed_count=clipping_factory.COUNT_TF_TYPE))
+    expected_next_type = computation_types.FunctionType(
+        parameter=collections.OrderedDict(
+            state=server_state_type,
+            value=computation_types.at_clients(value_type),
+            weight=computation_types.at_clients(tf.float32)),
+        result=measured_process.MeasuredProcessOutput(
+            state=server_state_type,
+            result=computation_types.at_server(value_type),
+            measurements=expected_measurements_type))
+    self.assertTrue(
+        process.next.type_signature.is_equivalent_to(expected_next_type))
+
+  @parameterized.named_parameters(
+      ('float', tf.float32),
+      ('struct', _test_struct_type),
+  )
+  def test_zero_clip_type_properties(self, value_type):
+    factory = _zero_clip_cons()
+    value_type = computation_types.to_type(value_type)
+    process = factory.create(value_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+
+    mean_state_type = collections.OrderedDict(
+        value_sum_process=(), weight_sum_process=())
+    server_state_type = computation_types.at_server(
+        collections.OrderedDict(
+            clipping_norm=(),
+            inner_agg=mean_state_type,
+            clipped_count_agg=(),
+            zeroed_count_agg=()))
+    expected_initialize_type = computation_types.FunctionType(
+        parameter=None, result=server_state_type)
+    self.assertTrue(
+        process.initialize.type_signature.is_equivalent_to(
+            expected_initialize_type))
+
+    expected_measurements_type = computation_types.at_server(
+        collections.OrderedDict(
+            agg_process=collections.OrderedDict(
+                value_sum_process=(), weight_sum_process=()),
+            clipping_norm=clipping_factory.NORM_TF_TYPE,
+            zeroing_norm=clipping_factory.NORM_TF_TYPE,
+            clipped_count=clipping_factory.COUNT_TF_TYPE,
+            zeroed_count=clipping_factory.COUNT_TF_TYPE))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -134,7 +222,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
     norm = _test_norm_process(report_fn=report_fn)
 
     with self.assertRaisesRegex(
-        TypeError, r'Result type .* assignable to NORM_TYPE@SERVER'):
+        TypeError, r'Result type .* assignable to NORM_TF_TYPE@SERVER'):
       factory_cons(norm)
 
   @parameterized.named_parameters(
@@ -177,7 +265,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
     norm = _test_norm_process(next_fn=next_fn)
 
     with self.assertRaisesRegex(
-        TypeError, 'Second argument .* assignable from NORM_TYPE@CLIENTS'):
+        TypeError, 'Second argument .* assignable from NORM_TF_TYPE@CLIENTS'):
       factory_cons(norm)
 
   @parameterized.named_parameters(
@@ -224,6 +312,8 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     client_weight = [1.0, 2.0, 1.0]
     output = process.next(state, client_data, client_weight)
     self.assertAllClose(7 / 4, output.result)
+    self.assertAllClose(2.0, output.measurements['clipping_norm'])
+    self.assertEqual(2, output.measurements['clipped_count'])
 
   def test_fixed_clip_mean_struct(self):
     factory = _clip_cons(4.0)
@@ -238,6 +328,8 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     client_weight = [1.0, 2.0, 1.0]
     output = process.next(state, client_data, client_weight)
     self._check_result(7 / 4, output.result)
+    self.assertAllClose(4.0, output.measurements['clipping_norm'])
+    self.assertEqual(1, output.measurements['clipped_count'])
 
   def test_increasing_clip_mean(self):
     factory = _clip_cons(_test_norm_process())
@@ -250,13 +342,19 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     client_data = [1.0, 3.0, 5.0]
     client_weight = [1.0, 2.0, 1.0]
     output = process.next(state, client_data, client_weight)
-    self.assertAllClose(1, output.result)
+    self.assertAllClose(1.0, output.result)
+    self.assertAllClose(1.0, output.measurements['clipping_norm'])
+    self.assertEqual(2, output.measurements['clipped_count'])
 
     output = process.next(output.state, client_data, client_weight)
     self.assertAllClose(7 / 4, output.result)
+    self.assertAllClose(2.0, output.measurements['clipping_norm'])
+    self.assertEqual(2, output.measurements['clipped_count'])
 
     output = process.next(output.state, client_data, client_weight)
     self.assertAllClose(10 / 4, output.result)
+    self.assertAllClose(3.0, output.measurements['clipping_norm'])
+    self.assertEqual(1, output.measurements['clipped_count'])
 
   def test_fixed_zero_mean(self):
     factory = _zero_cons()
@@ -270,9 +368,11 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     client_weight = [1.0, 2.0, 2.0]
     output = process.next(state, client_data, client_weight)
     self.assertAllClose(5 / 5, output.result)
+    self.assertAllClose(2.0, output.measurements['zeroing_norm'])
+    self.assertEqual(1, output.measurements['zeroed_count'])
 
   def test_fixed_zero_mean_struct(self):
-    factory = _zero_cons()
+    factory = _zero_cons(4.0)
 
     value_type = computation_types.to_type(_test_struct_type)
     process = factory.create(value_type)
@@ -283,6 +383,23 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     client_weight = [1.0, 2.0, 2.0]
     output = process.next(state, client_data, client_weight)
     self._check_result(5 / 5, output.result)
+    self.assertAllClose(4.0, output.measurements['zeroing_norm'])
+    self.assertEqual(1, output.measurements['zeroed_count'])
+
+  def test_fixed_zero_mean_struct_inf_norm(self):
+    factory = _zero_cons(2.0, np.inf)
+
+    value_type = computation_types.to_type(_test_struct_type)
+    process = factory.create(value_type)
+
+    state = process.initialize()
+
+    client_data = [_make_test_struct_value(v) for v in [1.0, 2.0, 5.0]]
+    client_weight = [1.0, 2.0, 2.0]
+    output = process.next(state, client_data, client_weight)
+    self._check_result(5 / 5, output.result)
+    self.assertAllClose(2.0, output.measurements['zeroing_norm'])
+    self.assertEqual(1, output.measurements['zeroed_count'])
 
   def test_increasing_zero_mean(self):
     factory = _zero_cons(_test_norm_process())
@@ -296,12 +413,18 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     client_weight = [1.0, 2.0, 1.0]
     output = process.next(state, client_data, client_weight)
     self.assertAllClose(0.5 / 4, output.result)
+    self.assertAllClose(1.0, output.measurements['zeroing_norm'])
+    self.assertAllClose(2.0, output.measurements['zeroed_count'])
 
     output = process.next(output.state, client_data, client_weight)
     self.assertAllClose(3.5 / 4, output.result)
+    self.assertAllClose(2.0, output.measurements['zeroing_norm'])
+    self.assertAllClose(1.0, output.measurements['zeroed_count'])
 
     output = process.next(output.state, client_data, client_weight)
     self.assertAllClose(6 / 4, output.result)
+    self.assertAllClose(3.0, output.measurements['zeroing_norm'])
+    self.assertEqual(0, output.measurements['zeroed_count'])
 
   def test_fixed_zero_clip_mean(self):
     factory = _zero_clip_cons()
@@ -317,6 +440,10 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     # Zeroing norm is 5.0, clipping norm is 2.0
     output = process.next(state, client_data, client_weight)
     self.assertAllClose(5 / 4, output.result)
+    self.assertAllClose(2.0, output.measurements['clipping_norm'])
+    self.assertAllClose(5.0, output.measurements['zeroing_norm'])
+    self.assertAllClose(2, output.measurements['clipped_count'])
+    self.assertAllClose(1, output.measurements['zeroed_count'])
 
   def test_fixed_zero_clip_mean_struct(self):
     factory = _zero_clip_cons(4.0)
@@ -333,6 +460,10 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     # Norms are 2.0, 6.0, 8.0
     output = process.next(state, client_data, client_weight)
     self._check_result(5 / 4, output.result)
+    self.assertAllClose(4.0, output.measurements['clipping_norm'])
+    self.assertAllClose(7.0, output.measurements['zeroing_norm'])
+    self.assertAllClose(2, output.measurements['clipped_count'])
+    self.assertAllClose(1, output.measurements['zeroed_count'])
 
   def test_increasing_zero_clip_mean(self):
     factory = _zero_clip_cons(_test_norm_process())
@@ -348,14 +479,36 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     # Zeroing norm is 4.0, clipping norm is 1.0
     output = process.next(state, client_data, client_weight)
     self.assertAllClose(2 / 5, output.result)
+    self.assertAllClose(1.0, output.measurements['clipping_norm'])
+    self.assertAllClose(4.0, output.measurements['zeroing_norm'])
+    self.assertAllClose(3, output.measurements['clipped_count'])
+    self.assertAllClose(2, output.measurements['zeroed_count'])
 
     # Zeroing norm is 5.0, clipping norm is 2.0
     output = process.next(output.state, client_data, client_weight)
     self.assertAllClose(8 / 5, output.result)
+    self.assertAllClose(2.0, output.measurements['clipping_norm'])
+    self.assertAllClose(5.0, output.measurements['zeroing_norm'])
+    self.assertAllClose(2, output.measurements['clipped_count'])
+    self.assertAllClose(1, output.measurements['zeroed_count'])
 
     # Zeroing norm is 6.0, clipping norm is 3.0
     output = process.next(output.state, client_data, client_weight)
     self.assertAllClose(13 / 5, output.result)
+    self.assertAllClose(3.0, output.measurements['clipping_norm'])
+    self.assertAllClose(6.0, output.measurements['zeroing_norm'])
+    self.assertAllClose(2, output.measurements['clipped_count'])
+    self.assertAllClose(0, output.measurements['zeroed_count'])
+
+
+class NormTest(test_case.TestCase):
+
+  def test_norms(self):
+    values = [1.0, -2.0, 3.0, -4.0]
+    for l in itertools.permutations(values):
+      v = [tf.constant(l[0]), (tf.constant([l[1], l[2]]), tf.constant([l[3]]))]
+      self.assertAllClose(4.0, clipping_factory._global_inf_norm(v).numpy())
+      self.assertAllClose(10.0, clipping_factory._global_l1_norm(v).numpy())
 
 
 if __name__ == '__main__':
