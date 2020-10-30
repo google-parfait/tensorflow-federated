@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import math
 from unittest import mock
 
@@ -695,6 +696,21 @@ class RemoteExecutorFactoryTest(absltest.TestCase):
     remote_ex_factory = executor_stacks.remote_executor_factory(channels)
     remote_ex_factory.create_executor({placement_literals.CLIENTS: 10})
     mock_obj.assert_called_once()
+
+  def test_configuration_succeeds_while_event_loop_is_running(self):
+    loop = asyncio.get_event_loop()
+    channels = [
+        grpc.insecure_channel('localhost:1'),
+        grpc.insecure_channel('localhost:2')
+    ]
+
+    async def coro_func():
+      remote_ex_factory = executor_stacks.remote_executor_factory(channels)
+      remote_ex_factory.create_executor({placement_literals.CLIENTS: 1})
+
+    loop.run_until_complete(coro_func())
+    loop.stop()
+    loop.close()
 
 
 if __name__ == '__main__':

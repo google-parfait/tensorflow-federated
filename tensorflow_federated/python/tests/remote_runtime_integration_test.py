@@ -29,11 +29,18 @@ _AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 # TODO(b/168744510): This module is intended to be short-lived, and the
 # coverage here should be moved down to unit tests when we have a better mocking
 # infrastructure deeper in the runtime.
-class RemoteRuntimeIntegrationTest(parameterized.TestCase):
+class WorkerFailureTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('native_remote',
+      ('native_remote_request_reply',
        remote_runtime_test_utils.create_localhost_remote_context(_WORKER_PORTS),
+       remote_runtime_test_utils.create_localhost_worker_contexts(
+           _WORKER_PORTS),
+       remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS)
+      ),
+      ('native_remote_streaming',
+       remote_runtime_test_utils.create_localhost_remote_context(
+           _WORKER_PORTS, rpc_mode='STREAMING'),
        remote_runtime_test_utils.create_localhost_worker_contexts(
            _WORKER_PORTS),
        remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS)
@@ -75,6 +82,35 @@ class RemoteRuntimeIntegrationTest(parameterized.TestCase):
           stack.enter_context(server_context)
         result = map_add_one([0, 1])
         self.assertEqual(result, [1, 2])
+
+
+# TODO(b/172025644): Promote streaming plus intermediate aggregation to a
+# proper backend test when the final cleanup issues are diagnosed and fixed.
+class StreamingWithIntermediateAggTest(absltest.TestCase):
+
+  def test_runs_computation_streaming_with_intermediate_agg(self):
+
+    @tff.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @tff.federated_computation(tff.type_at_clients(tf.int32))
+    def map_add_one_and_sum(federated_arg):
+      return tff.federated_sum(tff.federated_map(add_one, federated_arg))
+
+    execution_context = remote_runtime_test_utils.create_localhost_remote_context(
+        _AGGREGATOR_PORTS, rpc_mode='STREAMING')
+    worker_contexts = remote_runtime_test_utils.create_localhost_aggregator_contexts(
+        _WORKER_PORTS, _AGGREGATOR_PORTS, rpc_mode='STREAMING')
+
+    context_stack = tff.framework.get_context_stack()
+    with context_stack.install(execution_context):
+
+      with contextlib.ExitStack() as stack:
+        for server_context in worker_contexts:
+          stack.enter_context(server_context)
+        result = map_add_one_and_sum([0, 1])
+        self.assertEqual(result, 3)
 
 
 if __name__ == '__main__':

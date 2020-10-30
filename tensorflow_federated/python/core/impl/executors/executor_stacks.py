@@ -815,13 +815,29 @@ def remote_executor_factory(
             thread_pool_executor=thread_pool_executor,
             dispose_batch_size=dispose_batch_size))
 
+  def _get_event_loop():
+    should_close_loop = False
+    try:
+      loop = asyncio.get_event_loop()
+      if loop.is_closed():
+        loop = asyncio.new_event_loop()
+        should_close_loop = True
+    except RuntimeError:
+      loop = asyncio.new_event_loop()
+      should_close_loop = True
+    return loop, should_close_loop
+
   def _configure_remote_executor(ex, cardinalities, loop):
     """Configures `ex` to run the appropriate number of clients."""
-    loop.run_until_complete(ex.set_cardinalities(cardinalities))
+    if loop.is_running():
+      asyncio.run_coroutine_threadsafe(
+          ex.set_cardinalities(cardinalities), loop)
+    else:
+      loop.run_until_complete(ex.set_cardinalities(cardinalities))
     return
 
   def _configure_remote_workers(cardinalities):
-    loop = asyncio.new_event_loop()
+    loop, must_close_loop = _get_event_loop()
     try:
       if not cardinalities.get(placement_literals.CLIENTS):
         for ex in remote_executors:
@@ -839,7 +855,9 @@ def remote_executor_factory(
               ex, {placement_literals.CLIENTS: num_clients_to_host}, loop)
           live_workers.append(ex)
     finally:
-      loop.close()
+      if must_close_loop:
+        loop.stop()
+        loop.close()
     return [_wrap_executor_in_threading_stack(e) for e in live_workers]
 
   flat_stack_fn = _configure_remote_workers
