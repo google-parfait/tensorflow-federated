@@ -288,6 +288,80 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     return lambda: fn_to_return(None)
 
 
+@tracing.trace
+def _to_computation_internal_rep(*, value: pb.Computation,
+                                 tf_function_cache: MutableMapping[str, Any],
+                                 type_spec: computation_types.StructType,
+                                 device: tf.config.LogicalDevice):
+  """Converts a `pb.Computation` to a `tf.function`."""
+  key = (value.SerializeToString(), str(type_spec),
+         device.name if device else None)
+  cached_fn = tf_function_cache.get(key)
+  if cached_fn is not None:
+    return cached_fn
+  embedded_fn = embed_tensorflow_computation(value, type_spec, device)
+  tf_function_cache[key] = embedded_fn
+  return embedded_fn
+
+
+@tracing.trace
+def _to_struct_internal_rep(
+    *, value: Any, tf_function_cache: MutableMapping[str, Any],
+    type_spec: computation_types.StructType,
+    device: tf.config.LogicalDevice) -> structure.Struct:
+  """Converts a python container to internal representation for TF executor."""
+  type_elem = structure.to_elements(type_spec)
+  value_elem = (structure.to_elements(structure.from_container(value)))
+  result_elem = []
+  if len(type_elem) != len(value_elem):
+    raise TypeError('Expected a {}-element tuple, found {} elements.'.format(
+        len(type_elem), len(value_elem)))
+  for (type_name, elem_type), (val_name,
+                               elem_val) in zip(type_elem, value_elem):
+    if type_name != val_name:
+      raise TypeError(
+          'Mismatching element names in type vs. value: {} vs. {}.'.format(
+              type_name, val_name))
+    elem_repr = to_representation_for_type(elem_val, tf_function_cache,
+                                           elem_type, device)
+    result_elem.append((type_name, elem_repr))
+  return structure.Struct(result_elem)
+
+
+@tracing.trace
+def _to_tensor_internal_rep(*, value: Any,
+                            type_spec: computation_types.Type) -> tf.Tensor:
+  """Normalizes tensor-like value to a tf.Tensor."""
+  if not tf.is_tensor(value):
+    value = tf.convert_to_tensor(value, dtype=type_spec.dtype)
+  elif hasattr(value, 'read_value'):
+    # a tf.Variable-like result, get a proper tensor.
+    value = value.read_value()
+  value_type = (
+      computation_types.TensorType(value.dtype.base_dtype, value.shape))
+  if not type_spec.is_assignable_from(value_type):
+    raise TypeError(
+        'The apparent type {} of a tensor {} does not match the expected '
+        'type {}.'.format(value_type, value, type_spec))
+  return value
+
+
+@tracing.trace
+def _to_sequence_internal_rep(
+    *, value: Any, type_spec: computation_types.Type) -> tf.data.Dataset:
+  """Ingests `value`, converting to an eager dataset."""
+  if isinstance(value, list):
+    value = tensorflow_utils.make_data_set_from_elements(
+        None, value, type_spec.element)
+  py_typecheck.check_type(value,
+                          type_conversions.TF_DATASET_REPRESENTATION_TYPES)
+  element_type = computation_types.to_type(value.element_spec)
+  value_type = computation_types.SequenceType(element_type)
+  type_spec.check_assignable_from(value_type)
+  return value
+
+
+@tracing.trace
 def to_representation_for_type(
     value: Any,
     tf_function_cache: MutableMapping[str, Any],
@@ -328,30 +402,17 @@ def to_representation_for_type(
         computation_impl.ComputationImpl.get_proto(value), tf_function_cache,
         type_spec, device)
   elif isinstance(value, pb.Computation):
-    key = (value.SerializeToString(), str(type_spec),
-           device.name if device else None)
-    cached_fn = tf_function_cache.get(key)
-    if cached_fn is not None:
-      return cached_fn
-    embedded_fn = embed_tensorflow_computation(value, type_spec, device)
-    tf_function_cache[key] = embedded_fn
-    return embedded_fn
+    return _to_computation_internal_rep(
+        value=value,
+        tf_function_cache=tf_function_cache,
+        type_spec=type_spec,
+        device=device)
   elif type_spec.is_struct():
-    type_elem = structure.to_elements(type_spec)
-    value_elem = (structure.to_elements(structure.from_container(value)))
-    result_elem = []
-    if len(type_elem) != len(value_elem):
-      raise TypeError('Expected a {}-element tuple, found {} elements.'.format(
-          len(type_elem), len(value_elem)))
-    for (t_name, el_type), (v_name, el_val) in zip(type_elem, value_elem):
-      if t_name != v_name:
-        raise TypeError(
-            'Mismatching element names in type vs. value: {} vs. {}.'.format(
-                t_name, v_name))
-      el_repr = to_representation_for_type(el_val, tf_function_cache, el_type,
-                                           device)
-      result_elem.append((t_name, el_repr))
-    return structure.Struct(result_elem)
+    return _to_struct_internal_rep(
+        value=value,
+        tf_function_cache=tf_function_cache,
+        type_spec=type_spec,
+        device=device)
   elif device is not None:
     py_typecheck.check_type(device, tf.config.LogicalDevice)
     with tf.device(device.name):
@@ -363,28 +424,9 @@ def to_representation_for_type(
     raise TypeError(
         'Cannot accept a value embedded within a non-eager executor.')
   elif type_spec.is_tensor():
-    if not tf.is_tensor(value):
-      value = tf.convert_to_tensor(value, dtype=type_spec.dtype)
-    elif hasattr(value, 'read_value'):
-      # a tf.Variable-like result, get a proper tensor.
-      value = value.read_value()
-    value_type = (
-        computation_types.TensorType(value.dtype.base_dtype, value.shape))
-    if not type_spec.is_assignable_from(value_type):
-      raise TypeError(
-          'The apparent type {} of a tensor {} does not match the expected '
-          'type {}.'.format(value_type, value, type_spec))
-    return value
+    return _to_tensor_internal_rep(value=value, type_spec=type_spec)
   elif type_spec.is_sequence():
-    if isinstance(value, list):
-      value = tensorflow_utils.make_data_set_from_elements(
-          None, value, type_spec.element)
-    py_typecheck.check_type(value,
-                            type_conversions.TF_DATASET_REPRESENTATION_TYPES)
-    element_type = computation_types.to_type(value.element_spec)
-    value_type = computation_types.SequenceType(element_type)
-    type_spec.check_assignable_from(value_type)
-    return value
+    return _to_sequence_internal_rep(value=value, type_spec=type_spec)
   else:
     raise TypeError('Unexpected type {}.'.format(type_spec))
 
