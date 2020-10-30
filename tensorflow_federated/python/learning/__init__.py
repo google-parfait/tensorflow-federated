@@ -19,6 +19,7 @@ from tensorflow_federated.python.learning.federated_averaging import ClientFedAv
 from tensorflow_federated.python.learning.federated_evaluation import build_federated_evaluation
 from tensorflow_federated.python.learning.federated_sgd import build_federated_sgd_process
 from tensorflow_federated.python.learning.framework.optimizer_utils import state_with_new_model_weights
+from tensorflow_federated.python.learning.keras_utils import federated_aggregate_keras_metric
 from tensorflow_federated.python.learning.keras_utils import from_keras_model
 from tensorflow_federated.python.learning.model import BatchOutput
 from tensorflow_federated.python.learning.model import Model

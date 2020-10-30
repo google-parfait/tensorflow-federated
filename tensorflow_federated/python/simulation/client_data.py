@@ -197,6 +197,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
         additionally a `tff.Computation`, the constructed `ClientData`
         will expose a `dataset_computation` attribute which can be used for
         high-performance distributed simulations.
+
     Returns:
       A `ClientData`.
     """
