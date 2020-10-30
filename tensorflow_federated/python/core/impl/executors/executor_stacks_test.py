@@ -342,10 +342,12 @@ class ExecutorStacksTest(parameterized.TestCase):
       return_value=ExecutorMock())
   def test_limiting_concurrency_constructs_one_eager_executor(
       self, ex_factory, clients_per_thread, tf_executor_mock):
-    ex_factory.create_executor({placement_literals.CLIENTS: 10})
-    concurrency_level = math.ceil(10 / clients_per_thread)
+    num_clients = 10
+    ex_factory.create_executor({placement_literals.CLIENTS: num_clients})
+    concurrency_level = math.ceil(num_clients / clients_per_thread)
     args_list = tf_executor_mock.call_args_list
-    # One for server, one for `None`-placed, concurrency_level for clients.
+    # One for server executor, one for unplaced executor, concurrency_level for
+    # clients.
     self.assertLen(args_list, concurrency_level + 2)
 
   @mock.patch(
@@ -681,6 +683,18 @@ class RemoteExecutorFactoryTest(absltest.TestCase):
     self.assertLen(mock_obj.call_args_list, 1)
     # Assert that aggregate stacks was passed only one executor.
     mock_obj.assert_called_once_with([mock.ANY])
+
+  @mock.patch(
+      'tensorflow_federated.python.core.impl.executors.federating_executor.FederatingExecutor',
+      return_value=ExecutorMock())
+  def test_single_worker_construction_invokes_federating_executor(
+      self, mock_obj):
+    channels = [
+        grpc.insecure_channel('localhost:1'),
+    ]
+    remote_ex_factory = executor_stacks.remote_executor_factory(channels)
+    remote_ex_factory.create_executor({placement_literals.CLIENTS: 10})
+    mock_obj.assert_called_once()
 
 
 if __name__ == '__main__':

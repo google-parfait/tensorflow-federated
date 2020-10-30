@@ -510,9 +510,10 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     pass
 
   def _create_composing_stack(
-      self, *, server_executor: executor_base.Executor,
-      target_executors: Sequence[executor_base.Executor]
+      self, *, target_executors: Sequence[executor_base.Executor]
   ) -> executor_base.Executor:
+    server_executor = self._unplaced_ex_factory.create_executor(
+        placement=placement_literals.SERVER)
     composing_strategy_factory = federated_composing_strategy.FederatedComposingStrategy.factory(
         server_executor, target_executors)
     unplaced_executor = self._unplaced_ex_factory.create_executor()
@@ -544,16 +545,16 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     Raises:
       RuntimeError: If hierarchy construction fails.
     """
+    if len(executors) == 1:
+      return self._create_composing_stack(target_executors=executors)
     while len(executors) > 1:
       new_executors = []
       offset = 0
       while offset < len(executors):
         new_offset = offset + self._max_fanout
-        server_executor = self._unplaced_ex_factory.create_executor(
-            placement=placement_literals.SERVER)
         target_executors = executors[offset:new_offset]
         composing_executor = self._create_composing_stack(
-            server_executor=server_executor, target_executors=target_executors)
+            target_executors=target_executors)
         new_executors.append(composing_executor)
         offset = new_offset
       executors = new_executors
@@ -627,7 +628,13 @@ def local_executor_factory(
       unplaced_ex_factory=unplaced_ex_factory,
       flat_stack_fn=flat_stack_fn,
   )
-  return ResourceManagingExecutorFactory(full_stack_factory.create_executor)
+
+  def _factory_fn(cardinalities):
+    if cardinalities.get(placement_literals.CLIENTS, 0) < max_fanout:
+      return federating_executor_factory.create_executor(cardinalities)
+    return full_stack_factory.create_executor(cardinalities)
+
+  return ResourceManagingExecutorFactory(_factory_fn)
 
 
 def thread_debugging_executor_factory(
@@ -751,7 +758,10 @@ def sizing_executor_factory(
   def _factory_fn(
       cardinalities: executor_factory.CardinalitiesType
   ) -> executor_base.Executor:
-    executor = full_stack_factory.create_executor(cardinalities)
+    if cardinalities.get(placement_literals.CLIENTS, 0) < max_fanout:
+      executor = federating_executor_factory.create_executor(cardinalities)
+    else:
+      executor = full_stack_factory.create_executor(cardinalities)
     sizing_executor_list = federating_executor_factory.sizing_executors
     return executor, sizing_executor_list
 
