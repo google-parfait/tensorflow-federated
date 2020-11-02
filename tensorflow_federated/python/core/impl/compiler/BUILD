@@ -1,3 +1,4 @@
+load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -366,7 +367,7 @@ py_library(
     ],
 )
 
-py_test(
+py_cpu_gpu_test(
     name = "tensorflow_computation_factory_test",
     srcs = ["tensorflow_computation_factory_test.py"],
     python_version = "PY3",

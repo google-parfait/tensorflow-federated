@@ -126,6 +126,20 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assert_type(foo, '(int32@CLIENTS -> {bool}@CLIENTS)')
 
+  def test_federated_map_with_client_dataset_reduce(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            computation_types.SequenceType(tf.int32), placements.CLIENTS, True))
+    def foo(ds):
+      val = intrinsics.federated_map(
+          computations.tf_computation(
+              lambda ds: ds.reduce(np.int32(0), lambda x, y: x + y)), ds)
+      self.assertIsInstance(val, value_base.Value)
+      return val
+
+    self.assert_type(foo, '(int32*@CLIENTS -> {int32}@CLIENTS)')
+
   def test_federated_map_with_client_non_all_equal_int(self):
 
     @computations.federated_computation(
