@@ -15,6 +15,7 @@
 
 import math
 import numbers
+import warnings
 
 import numpy as np
 import tensorflow as tf
@@ -77,11 +78,14 @@ def build_dp_query(clip,
       estimating clipped counts.
     expected_clients_per_round: The expected number of clients for estimating
       clipped fractions.
-    per_vector_clipping: If True, clip each weight tensor independently.
-      Otherwise, global clipping is used. The clipping norm for each vector (or
-      the initial clipping norm, in the case of adaptive clipping) is
-      proportional to the sqrt of the vector dimensionality such that the root
-      sum squared of the individual clips equals `clip`.
+    per_vector_clipping: Note that this option is not recommended because it
+      has been shown experimentally and theoretically to be inferior from a
+      privacy/utility standpoint. It will be removed in a future release. If
+      True, clip each weight tensor independently. Otherwise, global clipping is
+      used. The clipping norm for each vector (or the initial clipping norm, in
+      the case of adaptive clipping) is proportional to the sqrt of the vector
+      dimensionality such that the root sum squared of the individual clips
+      equals `clip`.
     geometric_clip_update: If True, use geometric updating of the clip.
     model: A `tff.learning.Model` to determine the structure of model weights.
       Required only if per_vector_clipping is True.
@@ -97,6 +101,11 @@ def build_dp_query(clip,
                           'expected_total_weight')
 
   if per_vector_clipping:
+    warnings.warn(
+        'Per-vector clipping is not recommended because it has been shown '
+        'experimentally and theoretically to be inferior from a '
+        'privacy/utility standpoint. It will be removed in a future release.')
+
     # Note we need to keep the structure of vectors (not just the num_vectors)
     # to create the subqueries below, when per_vector_clipping is True.
     vectors = model.weights.trainable
@@ -120,6 +129,19 @@ def build_dp_query(clip,
 
     # Clipped count sensitivity is 0.5.
     clipped_count_stddev = 0.5 * clipped_count_noise_multiplier
+  else:
+    if target_unclipped_quantile is not None:
+      warnings.warn(
+          'target_unclipped_quantile is specified but '
+          'adaptive_clip_learning_rate is zero. No adaptive clipping will be '
+          'performed. Use adaptive_clip_learning_rate > 0 if you want '
+          'adaptive clipping.')
+    elif clipped_count_budget_allocation is not None:
+      warnings.warn(
+          'clipped_count_budget_allocation is specified but '
+          'adaptive_clip_learning_rate is zero. No adaptive clipping will be '
+          'performed. Use adaptive_clip_learning_rate > 0 if you want '
+          'adaptive clipping.')
 
   def make_single_vector_query(vector_clip):
     """Makes a `DPQuery` for a single vector."""
