@@ -1,17 +1,17 @@
 # Requirements for TensorFlow Federated development. If you add a requirement
 # here, also add it to the Dockerfile and (if it is needed by the PIP package)
 # to tools/development/setup.py.
-absl-py~=0.9.0
+absl-py~=0.11.0
 attrs~=19.3.0
 cachetools~=3.1.1
 dm-tree~=0.1.1
-grpcio~=1.29.0
+grpcio~=1.32.0
 h5py~=2.10.0
 numpy~=1.18.4
 portpicker~=1.3.1
 retrying~=1.3.3
 semantic-version~=2.8.5
-tensorflow-model-optimization~=0.4.0
+tensorflow-model-optimization~=0.5.0
 tensorflow-privacy~=0.5.0
 tf-nightly
 tfa-nightly
