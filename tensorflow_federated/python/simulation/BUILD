@@ -202,6 +202,5 @@ py_test(
     deps = [
         ":hdf5_client_data",
         ":transforming_client_data",
-        "//tensorflow_federated",
     ],
 )

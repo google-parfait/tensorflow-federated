@@ -60,7 +60,6 @@ class HDF5ClientData(client_data.ClientData):
 
     @computations.tf_computation(tf.string)
     def dataset_computation(client_id):
-      # We must be in a tf function here i think o/w we need to specify spec
       client_datasets = collections.OrderedDict()
       for key in self._client_keys:
         client_datasets[key] = tfio.IODataset.from_hdf5(
@@ -76,9 +75,6 @@ class HDF5ClientData(client_data.ClientData):
                 collections.OrderedDict((name, ds[()]) for name, ds in sorted(
                                 self._h5_file[HDF5ClientData._EXAMPLES_GROUP][client_id].items())))
 
-  def _create_dataset(self, client_id):
-    return self._dataset_computation(client_id)
-
   @property
   def client_ids(self):
     return self._client_ids
@@ -89,7 +85,7 @@ class HDF5ClientData(client_data.ClientData):
           "ID [{i}] is not a client in this ClientData. See "
           "property `client_ids` for the list of valid ids.".format(
               i=client_id))
-    tf_dataset = self._create_dataset(client_id)
+    tf_dataset = self._dataset_computation(client_id)
     return tf_dataset
 
   @property
