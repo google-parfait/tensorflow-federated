@@ -17,8 +17,10 @@ import collections
 
 import h5py
 import tensorflow as tf
+import tensorflow_io as tfio
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.simulation import client_data
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
@@ -49,18 +51,33 @@ class HDF5ClientData(client_data.ClientData):
     self._h5_file = h5py.File(self._filepath, "r")
     self._client_ids = sorted(
         list(self._h5_file[HDF5ClientData._EXAMPLES_GROUP].keys()))
+    self._client_keys = self._h5_file[HDF5ClientData._EXAMPLES_GROUP][self._client_ids[0]].keys()
 
     # Get the types and shapes from the first client. We do it once during
     # initialization so we can get both properties in one go.
-    g = tf.Graph()
-    with g.as_default():
-      tf_dataset = self._create_dataset(self._client_ids[0])
-      self._element_type_structure = tf_dataset.element_spec
+    tf_dataset = self._create_python_dataset(self._client_ids[0])
+    self._element_type_structure = tf_dataset.element_spec
+
+    @computations.tf_computation(tf.string)
+    def dataset_computation(client_id):
+      # We must be in a tf function here i think o/w we need to specify spec
+      client_datasets = collections.OrderedDict()
+      for key in self._client_keys:
+        client_datasets[key] = tfio.IODataset.from_hdf5(
+            filename=self._filepath,
+            dataset=tf.strings.join(separator="/", inputs=("", HDF5ClientData._EXAMPLES_GROUP,  client_id,  key)),
+            spec=self._element_type_structure[key])
+      return tf.data.Dataset.zip(client_datasets)
+
+    self._dataset_computation = dataset_computation
+
+  def _create_python_dataset(self, client_id):
+    return tf.data.Dataset.from_tensor_slices(
+                collections.OrderedDict((name, ds[()]) for name, ds in sorted(
+                                self._h5_file[HDF5ClientData._EXAMPLES_GROUP][client_id].items())))
 
   def _create_dataset(self, client_id):
-    return tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict((name, ds[()]) for name, ds in sorted(
-            self._h5_file[HDF5ClientData._EXAMPLES_GROUP][client_id].items())))
+    return self._dataset_computation(client_id)
 
   @property
   def client_ids(self):
@@ -73,8 +90,6 @@ class HDF5ClientData(client_data.ClientData):
           "property `client_ids` for the list of valid ids.".format(
               i=client_id))
     tf_dataset = self._create_dataset(client_id)
-    tensor_utils.check_nested_equal(tf_dataset.element_spec,
-                                    self._element_type_structure)
     return tf_dataset
 
   @property
@@ -83,4 +98,4 @@ class HDF5ClientData(client_data.ClientData):
 
   @property
   def dataset_computation(self):
-    raise NotImplementedError("b/162106885")
+    return self._dataset_computation

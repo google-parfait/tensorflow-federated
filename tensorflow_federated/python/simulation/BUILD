@@ -108,6 +108,7 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
@@ -118,7 +119,10 @@ py_test(
     srcs = ["hdf5_client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":hdf5_client_data"],
+    deps = [
+        ":hdf5_client_data",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+    ],
 )
 
 py_library(
@@ -198,5 +202,6 @@ py_test(
     deps = [
         ":hdf5_client_data",
         ":transforming_client_data",
+        "//tensorflow_federated",
     ],
 )

@@ -15,3 +15,4 @@ tensorflow-model-optimization~=0.5.0
 tensorflow-privacy~=0.5.0
 tf-nightly
 tfa-nightly
+tensorflow-io
