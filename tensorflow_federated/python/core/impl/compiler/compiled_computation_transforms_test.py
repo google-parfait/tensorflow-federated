@@ -387,8 +387,8 @@ class WrapParameterAsTupleTest(test_case.TestCase, parameterized.TestCase):
 
   def assertSequenceEqual(self, a, b):
     """Assert two tff.SequenceType values are the same."""
-    if (isinstance(a, collections.Sequence) and
-        isinstance(b, collections.Sequence)):
+    if (isinstance(a, collections.abc.Sequence) and
+        isinstance(b, collections.abc.Sequence)):
       sequence = zip(a, b)
     elif isinstance(a, tf.data.Dataset) and isinstance(b, tf.data.Dataset):
       sequence = tf.data.Dataset.zip(a, b)

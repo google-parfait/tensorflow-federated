@@ -133,7 +133,7 @@ def enhance(model):
 
 
 def _check_iterable_of_variables(variables):
-  py_typecheck.check_type(variables, collections.Iterable)
+  py_typecheck.check_type(variables, collections.abc.Iterable)
   for v in variables:
     py_typecheck.check_type(v, tf.Variable)
   return variables

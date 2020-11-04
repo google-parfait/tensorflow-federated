@@ -489,7 +489,7 @@ class StructType(structure.Struct, Type, metaclass=_Intern):
 
   @staticmethod
   def _normalize_init_args(elements, convert=True):
-    py_typecheck.check_type(elements, collections.Iterable)
+    py_typecheck.check_type(elements, collections.abc.Iterable)
     if convert:
       if py_typecheck.is_named_tuple(elements):
         elements = typing.cast(Any, elements)
@@ -986,7 +986,7 @@ def to_type(spec) -> Type:
     return StructWithPythonType(spec, type(spec))
   elif py_typecheck.is_attrs(spec):
     return _to_type_from_attrs(spec)
-  elif isinstance(spec, collections.Mapping):
+  elif isinstance(spec, collections.abc.Mapping):
     # This is an unsupported mapping, likely a `dict`. StructType adds an
     # ordering, which the original container did not have.
     raise TypeError(

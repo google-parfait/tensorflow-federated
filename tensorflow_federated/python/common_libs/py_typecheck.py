@@ -174,7 +174,7 @@ def is_name_value_pair(element, name_required=True, value_type=None):
   Returns:
     `True` if `element` is a named tuple element, otherwise `False`.
   """
-  if not isinstance(element, collections.Sequence) or len(element) != 2:
+  if not isinstance(element, collections.abc.Sequence) or len(element) != 2:
     return False
   if ((name_required or element[0] is not None) and
       not isinstance(element[0], str)):

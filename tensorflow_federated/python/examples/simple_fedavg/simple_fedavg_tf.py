@@ -56,8 +56,8 @@ class KerasModelWrapper(object):
     """Forward pass of the model to get loss for a batch of data.
 
     Args:
-      batch_input: A `collections.Mapping` with two keys, `x` for inputs and `y`
-        for labels.
+      batch_input: A `collections.abc.Mapping` with two keys, `x` for inputs and
+        `y` for labels.
       training: Boolean scalar indicating training or inference mode.
 
     Returns:

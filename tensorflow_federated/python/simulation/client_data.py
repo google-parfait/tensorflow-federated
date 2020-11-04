@@ -350,7 +350,7 @@ class ConcreteClientData(ClientData):
         will expose a `dataset_computation` attribute which can be used for
         high-performance distributed simulations.
     """
-    py_typecheck.check_type(client_ids, collections.Iterable)
+    py_typecheck.check_type(client_ids, collections.abc.Iterable)
     py_typecheck.check_callable(create_tf_dataset_for_client_fn)
 
     if not client_ids:

@@ -153,8 +153,8 @@ def state_with_new_model_weights(
         raise TypeError('Element is not the same tensor type. old '
                         f'({old_value.dtype}, {old_value.shape}) != '
                         f'new ({new_value.dtype}, {new_value.shape})')
-    elif (isinstance(new_value, collections.Sequence) and
-          isinstance(old_value, collections.Sequence)):
+    elif (isinstance(new_value, collections.abc.Sequence) and
+          isinstance(old_value, collections.abc.Sequence)):
       if len(old_value) != len(new_value):
         raise TypeError('Model weights have different lengths: '
                         f'(old) {len(old_value)} != (new) {len(new_value)})\n'
@@ -166,7 +166,7 @@ def state_with_new_model_weights(
                       'handled.\nOld weights structure: {old}\n'
                       'New weights structure: {new}\n'
                       'Must be one of (int, float, np.ndarray, tf.Tensor, '
-                      'collections.Sequence)'.format(
+                      'collections.abc.Sequence)'.format(
                           old=tf.nest.map_structure(type, old_value),
                           new=tf.nest.map_structure(type, new_value)))
 

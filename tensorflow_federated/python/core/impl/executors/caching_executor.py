@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 
 
-class HashableWrapper(collections.Hashable):
+class HashableWrapper(collections.abc.Hashable):
   """A wrapper around non-hashable objects to be compared by identity."""
 
   def __init__(self, target):
@@ -80,17 +80,17 @@ def _get_hashable_key(value, type_spec):
   elif isinstance(value, np.ndarray):
     return ('<dtype={},shape={}>'.format(value.dtype,
                                          value.shape), value.tobytes())
-  elif (isinstance(value, collections.Hashable) and
+  elif (isinstance(value, collections.abc.Hashable) and
         not isinstance(value, (tf.Tensor, tf.Variable))):
     # TODO(b/139200385): Currently Tensor and Variable returns True for
-    #   `isinstance(value, collections.Hashable)` even when it's not hashable.
-    #   Hence this workaround.
+    # `isinstance(value, collections.abc.Hashable)` even when it's not hashable.
+    # Hence this workaround.
     return value
   else:
     return HashableWrapper(value)
 
 
-class CachedValueIdentifier(collections.Hashable):
+class CachedValueIdentifier(collections.abc.Hashable):
   """An identifier for a cached value."""
 
   def __init__(self, identifier):
@@ -132,7 +132,7 @@ class CachedValue(executor_value_base.ExecutorValue):
       TypeError: If the arguments are of the wrong types.
     """
     py_typecheck.check_type(identifier, CachedValueIdentifier)
-    py_typecheck.check_type(hashable_key, collections.Hashable)
+    py_typecheck.check_type(hashable_key, collections.abc.Hashable)
     py_typecheck.check_type(type_spec, computation_types.Type)
     if not asyncio.isfuture(target_future):
       raise TypeError('Expected an asyncio future, got {}'.format(

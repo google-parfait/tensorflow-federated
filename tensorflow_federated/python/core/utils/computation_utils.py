@@ -33,7 +33,7 @@ def update_state(state, **kwargs):
   """
   # TODO(b/129569441): Support Struct as well.
   if not (py_typecheck.is_named_tuple(state) or py_typecheck.is_attrs(state) or
-          isinstance(state, collections.Mapping)):
+          isinstance(state, collections.abc.Mapping)):
     raise TypeError('state must be a structure with named fields (e.g. '
                     'dict, attrs class, collections.namedtuple), '
                     'but found {}'.format(type(state)))
@@ -50,6 +50,6 @@ def update_state(state, **kwargs):
             'state does not contain a field named "{!s}"'.format(key))
     d = state
   d.update(kwargs)
-  if isinstance(state, collections.Mapping):
+  if isinstance(state, collections.abc.Mapping):
     return d
   return type(state)(**d)

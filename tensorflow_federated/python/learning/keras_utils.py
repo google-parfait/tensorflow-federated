@@ -127,15 +127,15 @@ def from_keras_model(
   else:
     for type_elem in input_spec:
       py_typecheck.check_type(type_elem, computation_types.TensorType)
-  if isinstance(input_spec, collections.Mapping):
+  if isinstance(input_spec, collections.abc.Mapping):
     if 'x' not in input_spec:
       raise ValueError(
-          'The `input_spec` is a collections.Mapping (e.g., a dict), so it '
+          'The `input_spec` is a collections.abc.Mapping (e.g., a dict), so it '
           'must contain an entry with key `\'x\'`, representing the input(s) '
           'to the Keras model.')
     if 'y' not in input_spec:
       raise ValueError(
-          'The `input_spec` is a collections.Mapping (e.g., a dict), so it '
+          'The `input_spec` is a collections.abc.Mapping (e.g., a dict), so it '
           'must contain an entry with key `\'y\'`, representing the label(s) '
           'to be used in the Keras loss(es).')
 
@@ -312,7 +312,7 @@ class _KerasModel(model_lib.Model):
   def _forward_pass(self, batch_input, training=True):
     if hasattr(batch_input, '_asdict'):
       batch_input = batch_input._asdict()
-    if isinstance(batch_input, collections.Mapping):
+    if isinstance(batch_input, collections.abc.Mapping):
       inputs = batch_input.get('x')
     else:
       inputs = batch_input[0]
@@ -321,7 +321,7 @@ class _KerasModel(model_lib.Model):
                      'Instead have keys {}'.format(list(batch_input.keys())))
     predictions = self._keras_model(inputs, training=training)
 
-    if isinstance(batch_input, collections.Mapping):
+    if isinstance(batch_input, collections.abc.Mapping):
       y_true = batch_input.get('y')
     else:
       y_true = batch_input[1]

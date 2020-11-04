@@ -98,7 +98,7 @@ def get_tf_typespec_and_binding(parameter_type, arg_names, unpack=None):
     pack_in_struct = False
     arg_types, kwarg_types = [parameter_type], {}
 
-  py_typecheck.check_type(arg_names, collections.Iterable)
+  py_typecheck.check_type(arg_names, collections.abc.Iterable)
   if len(arg_names) < len(arg_types):
     raise ValueError(
         'If provided, arg_names must be a list of at least {} strings to '
@@ -357,7 +357,7 @@ def capture_result_from_graph(result, graph):
   elif isinstance(result, structure.Struct):
     return _get_bindings_for_elements(
         structure.to_elements(result), graph, computation_types.StructType)
-  elif isinstance(result, collections.Mapping):
+  elif isinstance(result, collections.abc.Mapping):
     if isinstance(result, collections.OrderedDict):
       name_value_pairs = result.items()
     else:

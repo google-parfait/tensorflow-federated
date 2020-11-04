@@ -71,7 +71,7 @@ class Struct(object):
       TypeError: if the `elements` are not a list, or if any of the items on
         the list is not a pair with a string at the first position.
     """
-    py_typecheck.check_type(elements, collections.Iterable)
+    py_typecheck.check_type(elements, collections.abc.Iterable)
     values = []
     names = []
     name_to_index = {}

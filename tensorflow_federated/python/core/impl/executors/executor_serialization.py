@@ -182,9 +182,9 @@ def _serialize_sequence_value(
         .format(value_type, type_spec if type_spec is not None else 'unknown'))
 
   # TFF must store the type spec here because TF will lose the ordering of the
-  # names for `tf.data.Dataset` that return elements of `collections.Mapping`
-  # type. This allows TFF to preserve and restore the key ordering upon
-  # deserialization.
+  # names for `tf.data.Dataset` that return elements of
+  # `collections.abc.Mapping` type. This allows TFF to preserve and restore the
+  # key ordering upon deserialization.
   element_type = computation_types.to_type(value.element_spec)
   return executor_pb2.Value(
       sequence=executor_pb2.Value.Sequence(

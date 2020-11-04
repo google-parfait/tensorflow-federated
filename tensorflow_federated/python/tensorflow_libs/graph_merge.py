@@ -89,7 +89,7 @@ def concatenate_inputs_and_outputs(arg_list):
       out_name_maps: Similar to `in_name_maps`.
 
   """
-  if not isinstance(arg_list, collections.Iterable):
+  if not isinstance(arg_list, collections.abc.Iterable):
     raise TypeError('Please pass an iterable to '
                     '`concatenate_inputs_and_outputs`.')
   (graph_def_list, init_op_names_list, in_names_list, out_names_list,

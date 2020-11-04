@@ -72,7 +72,7 @@ def infer_cardinalities(value, type_spec):
   if type_spec.is_federated():
     if type_spec.all_equal:
       return {}
-    py_typecheck.check_type(value, collections.Sized)
+    py_typecheck.check_type(value, collections.abc.Sized)
     return {type_spec.placement: len(value)}
   elif type_spec.is_struct():
     structure_value = structure.from_container(value, recursive=False)
