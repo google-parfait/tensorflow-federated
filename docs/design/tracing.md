@@ -188,9 +188,9 @@ Several other solutions to the general problem of "hide TFF functions from user
 error messages" were attempted, including catching and reraising exceptions
 (failed due to the inability to create an exception whose stack included only
 the lowest level of user code without also including the code that called it),
-catching exceptions and replacing their traceback with a filtered one (filtering
-tracebacks is hacky, CPython-specific and unsupported by the Python language),
-and replacing the exception handler (fails because `sys.excepthook` isn't used
-by `absltest` and is overriden by other frameworks). In the end, the
-generator-based inversion-of-control allowed for the best end-user experience at
-the cost of some TFF implementation complexity.
+catching exceptions and replacing their traceback with a filtered one (which is
+CPython-specific and unsupported by the Python language), and replacing the
+exception handler (fails because `sys.excepthook` isn't used by `absltest` and
+is overriden by other frameworks). In the end, the generator-based
+inversion-of-control allowed for the best end-user experience at the cost of
+some TFF implementation complexity.
