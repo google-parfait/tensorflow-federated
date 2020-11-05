@@ -1,5 +1,5 @@
 # TensorFlow Federated Aggregators
 
-Contact: konkey@google.com, zachgarret@google.com
+Contact: @prachetit, @zacharygarrett
 
 TBW
