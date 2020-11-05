@@ -105,9 +105,20 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
     return computation_types.TensorType(
         tf.dtypes.as_dtype(arg.dtype), arg.shape)
   else:
-    dtype = {bool: tf.bool, int: tf.int32, float: tf.float32}.get(type(arg))
-    if dtype:
-      return computation_types.TensorType(dtype)
+    arg_type = type(arg)
+    if arg_type is bool:
+      return computation_types.TensorType(tf.bool)
+    elif arg_type is int:
+      # Chose the integral type based on value.
+      if arg > tf.int64.max or arg < tf.int64.min:
+        raise TypeError('No integral type support for values outside range '
+                        f'[{tf.int64.min}, {tf.int64.max}]. Got: {arg}')
+      elif arg > tf.int32.max or arg < tf.int32.min:
+        return computation_types.TensorType(tf.int64)
+      else:
+        return computation_types.TensorType(tf.int32)
+    elif arg_type is float:
+      return computation_types.TensorType(tf.float32)
     else:
       # Now fall back onto the heavier-weight processing, as all else failed.
       # Use make_tensor_proto() to make sure to handle it consistently with

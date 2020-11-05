@@ -45,6 +45,14 @@ class InferTypeTest(parameterized.TestCase):
 
   def test_with_scalar_int_tensor(self):
     self.assertEqual(str(type_conversions.infer_type(tf.constant(1))), 'int32')
+    self.assertEqual(
+        str(type_conversions.infer_type(tf.constant(2**40))), 'int64')
+    self.assertEqual(
+        str(type_conversions.infer_type(tf.constant(-2**40))), 'int64')
+    with self.assertRaises(ValueError):
+      type_conversions.infer_type(tf.constant(-2**64 + 1))
+    with self.assertRaises(ValueError):
+      type_conversions.infer_type(tf.constant(2**64))
 
   def test_with_scalar_bool_tensor(self):
     self.assertEqual(
@@ -53,6 +61,11 @@ class InferTypeTest(parameterized.TestCase):
   def test_with_int_array_tensor(self):
     self.assertEqual(
         str(type_conversions.infer_type(tf.constant([10, 20]))), 'int32[2]')
+    self.assertEqual(
+        str(type_conversions.infer_type(tf.constant([0, 2**40, -2**60, 0]))),
+        'int64[4]')
+    with self.assertRaises(ValueError):
+      type_conversions.infer_type(tf.constant([2**64, 0]))
 
   def test_with_scalar_int_variable_tensor(self):
     self.assertEqual(str(type_conversions.infer_type(tf.Variable(10))), 'int32')
