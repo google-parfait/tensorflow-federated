@@ -70,8 +70,6 @@ py_library(
     name = "serialization_utils",
     srcs = ["serialization_utils.py"],
     srcs_version = "PY3",
-    # TODO(b/163856734): Fix the visibility of the `common_libs`.
-    visibility = ["//tensorflow_federated:internal"],
     deps = [
         ":py_typecheck",
         "@com_google_protobuf//:protobuf_python",
