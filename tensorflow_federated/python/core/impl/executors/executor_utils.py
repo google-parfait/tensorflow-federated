@@ -137,6 +137,25 @@ async def embed_tf_binary_operator(executor, type_spec, op):
   return await executor.create_value(proto, type_signature)
 
 
+async def embed_tf_binary_operator_with_upcast(executor, type_spec, op):
+  """Embeds a binary operator `op` on `type_spec`-typed values in `executor`.
+
+  Args:
+    executor: An instance of `tff.framework.Executor`.
+    type_spec: An instance of `tff.StructType` with two elements, the types of
+      the first and second argument to the binary operator.
+    op: An operator function (such as `tf.add` or `tf.multiply`) to apply to the
+      tensor-level constituents of the values, pointwise.
+
+  Returns:
+    An instance of `tff.framework.ExecutorValue` representing the operator in
+    a form embedded into the executor.
+  """
+  proto, type_signature = tensorflow_computation_factory.create_binary_operator_with_upcast(
+      operator=op, type_signature=type_spec)
+  return await executor.create_value(proto, type_signature)
+
+
 def create_intrinsic_comp(intrinsic_def, type_spec):
   """Creates an intrinsic `pb.Computation`.
 

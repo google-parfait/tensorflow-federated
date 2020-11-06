@@ -204,6 +204,19 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
        ]),
        [[np.array([1])], 2],
        structure.Struct([(None, 0.5)])),
+      ('divide_int_same_structure', tf.math.divide,
+       computation_types.StructType([
+           computation_types.StructType([
+               computation_types.TensorType(tf.int32, shape=[1]),
+               computation_types.TensorType(tf.int32, shape=[1]),
+           ]),
+           computation_types.StructType([
+               computation_types.TensorType(tf.int32),
+               computation_types.TensorType(tf.int32),
+           ]),
+       ]),
+       [[np.array([1]), np.array([2])], [2, 8]],
+       structure.Struct([(None, 0.5), (None, 0.25)])),
   )
   # pyformat: enable
   def test_returns_computation(self, operator, type_signature, operands,
@@ -226,6 +239,23 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
     self.assertEqual(actual_type.parameter, expected_parameter_type)
     actual_result = test_utils.run_tensorflow(proto, operands)
     self.assertEqual(actual_result, expected_result)
+
+  @parameterized.named_parameters(
+      ('different_structures', tf.math.add,
+       computation_types.StructType([
+           computation_types.StructType([
+               computation_types.TensorType(tf.int32),
+           ]),
+           computation_types.StructType([
+               computation_types.TensorType(tf.int32),
+               computation_types.TensorType(tf.int32)
+           ]),
+       ]), [1, [2, 3]]))
+  def test_fails(self, operator, type_signature, operands):
+    operands = tf.nest.map_structure(tf.constant, operands)
+    with self.assertRaises(TypeError):
+      tensorflow_computation_factory.create_binary_operator_with_upcast(
+          type_signature, operator)
 
 
 class CreateEmptyTupleTest(absltest.TestCase):

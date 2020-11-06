@@ -189,10 +189,11 @@ def create_binary_operator_with_upcast(
   """Creates TF computation upcasting its argument and applying `operator`.
 
   Args:
-    type_signature: A `computation_types.StructType` with two elements, both of
-      the same type or the second able to be upcast to the first, as explained
-      in `apply_binary_operator_with_upcast`, and both containing only tuples
-      and tensors in their type tree.
+    type_signature: A `computation_types.StructType` with two elements, both
+      only containing structs or tensors in their type tree. The first and
+      second element must match in structure, or the second element may be a
+      single tensor type that is broadcasted (upcast) to the leaves of the
+      structure of the first type.
     operator: Callable defining the operator.
 
   Returns:
@@ -228,7 +229,19 @@ def create_binary_operator_with_upcast(
         'x', type_signature[0], graph)
     operand_2_value, operand_2_binding = tensorflow_utils.stamp_parameter_in_graph(
         'y', type_signature[1], graph)
-    if type_signature[0].is_equivalent_to(type_signature[1]):
+
+    if type_signature[0].is_struct() and type_signature[1].is_struct():
+      # If both the first and second arguments are structs with the same
+      # structure, simply re-use operand_2_value as. `tf.nest.map_structure`
+      # below will map the binary operator pointwise to the leaves of the
+      # structure.
+      if structure.is_same_structure(type_signature[0], type_signature[1]):
+        second_arg = operand_2_value
+      else:
+        raise TypeError('Cannot upcast one structure to a different structure. '
+                        '{x} -> {y}'.format(
+                            x=type_signature[1], y=type_signature[0]))
+    elif type_signature[0].is_equivalent_to(type_signature[1]):
       second_arg = operand_2_value
     else:
       second_arg = _pack_into_type(operand_2_value, type_signature[0])
