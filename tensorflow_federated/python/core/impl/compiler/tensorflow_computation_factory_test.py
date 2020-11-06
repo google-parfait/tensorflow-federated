@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from absl.testing import absltest
+import collections
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -20,33 +21,58 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-class CreateConstantTest(parameterized.TestCase):
+class CreateConstantTest(parameterized.TestCase, test_case.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('int', 10,
+      ('scalar_int', 10,
        computation_types.TensorType(tf.int32, [3]),
        [10] * 3),
-      ('float', 10.0,
+      ('scalar_float', 10.0,
        computation_types.TensorType(tf.float32, [3]),
        [10.0] * 3),
-      ('unnamed_tuple', 10,
+      ('scalar_with_unnamed_struct_type', 10,
        computation_types.StructType([tf.int32] * 3),
        structure.Struct([(None, 10)] * 3)),
-      ('named_tuple', 10,
+      ('scalar_with_named_struct_type', 10,
        computation_types.StructType(
            [('a', tf.int32), ('b', tf.int32), ('c', tf.int32)]),
        structure.Struct([('a', 10), ('b', 10), ('c', 10)])),
-      ('nested_tuple', 10,
+      ('scalar_with_nested_struct_type', 10,
        computation_types.StructType([[tf.int32] * 3] * 3),
        structure.Struct(
            [(None, structure.Struct([(None, 10)] * 3))] * 3)),
+      ('tuple_with_struct_type', (10, 11, 12),
+       computation_types.StructType([tf.int32, tf.int32, tf.int32]),
+       structure.Struct([(None, 10), (None, 11), (None, 12)])),
+      ('nested_struct_with_nested_struct_type', (10, (11, 12)),
+       computation_types.StructType([tf.int32, [tf.int32, tf.int32]]),
+       structure.Struct([
+           (None, 10),
+           (None, structure.Struct([
+               (None, 11), (None, 12)]))
+       ])),
+      ('nested_named_struct_with_nested_struct_type',
+       collections.OrderedDict(a=10, b=collections.OrderedDict(c=11, d=12)),
+       computation_types.StructType(
+           collections.OrderedDict(a=tf.int32,
+                                   b=collections.OrderedDict(
+                                       c=tf.int32, d=tf.int32))),
+       structure.Struct([
+           ('a', 10),
+           ('b', structure.Struct([
+               ('c', 11), ('d', 12)]))
+       ])),
+      ('unnamed_value_named_type', (10.0,),
+       computation_types.StructType([('a', tf.float32)]),
+       structure.Struct([('a', 10.0)])),
   )
   # pyformat: enable
   def test_returns_computation(self, value, type_signature, expected_result):
@@ -69,6 +95,12 @@ class CreateConstantTest(parameterized.TestCase):
       ('none_type', 10, None),
       ('federated_type', 10, computation_types.at_server(tf.int32)),
       ('bad_type', 10.0, computation_types.TensorType(tf.int32)),
+      ('value_structure_larger_than_type_structure',
+       (10.0, 11.0), computation_types.StructType([tf.float32])),
+      ('value_structure_smaller_than_type_structure', (10.0,),
+       computation_types.StructType([(None, tf.float32), (None, tf.float32)])),
+      ('named_value_unnamed_type', collections.OrderedDict(a=10.0),
+       computation_types.StructType([(None, tf.float32)])),
   )
   def test_raises_type_error(self, value, type_signature):
     with self.assertRaises(TypeError):
@@ -258,7 +290,7 @@ class CreateBinaryOperatorWithUpcastTest(parameterized.TestCase):
           type_signature, operator)
 
 
-class CreateEmptyTupleTest(absltest.TestCase):
+class CreateEmptyTupleTest(test_case.TestCase):
 
   def test_returns_computation(self):
     proto, _ = tensorflow_computation_factory.create_empty_tuple()
@@ -386,4 +418,4 @@ class CreateComputationForPyFnTest(parameterized.TestCase):
 
 
 if __name__ == '__main__':
-  absltest.main()
+  test_case.main()

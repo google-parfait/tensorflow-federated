@@ -453,8 +453,9 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     async def _create_factor():
       cardinalities = await self._get_cardinalities()
       count = sum(cardinalities)
-      return await executor_utils.embed_tf_scalar_constant(
-          self._server_executor, member_type, float(1.0 / count))
+      return await executor_utils.embed_tf_constant(self._server_executor,
+                                                    member_type,
+                                                    float(1.0 / count))
 
     async def _create_multiply_arg():
       total, factor = await asyncio.gather(_create_total(), _create_factor())
@@ -484,8 +485,8 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     id_comp, id_type = tensorflow_computation_factory.create_identity(
         arg.type_signature.member)
     zero, plus, identity = await asyncio.gather(
-        executor_utils.embed_tf_scalar_constant(self._executor,
-                                                arg.type_signature.member, 0),
+        executor_utils.embed_tf_constant(self._executor,
+                                         arg.type_signature.member, 0),
         executor_utils.embed_tf_binary_operator(self._executor,
                                                 arg.type_signature.member,
                                                 tf.add),

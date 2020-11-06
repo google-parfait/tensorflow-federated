@@ -53,8 +53,8 @@ class TestFederatedStrategy(
     bitwidth_type = arg.type_signature[1]
     sum_result, mask, fn = await asyncio.gather(
         self.compute_federated_sum(value),
-        executor_utils.embed_tf_scalar_constant(self._executor, bitwidth_type,
-                                                2**bitwidth - 1),
+        executor_utils.embed_tf_constant(self._executor, bitwidth_type,
+                                         2**bitwidth - 1),
         executor_utils.embed_tf_binary_operator(self._executor, bitwidth_type,
                                                 tf.math.mod))
     fn_arg = await server_ex.create_struct([

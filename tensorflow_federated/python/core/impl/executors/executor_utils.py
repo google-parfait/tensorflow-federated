@@ -100,13 +100,14 @@ def parse_federated_aggregate_argument_types(type_spec):
   return value_type, zero_type, accumulate_type, merge_type, report_type
 
 
-async def embed_tf_scalar_constant(executor, type_spec, value):
+async def embed_tf_constant(executor, type_spec, value):
   """Embeds a constant `val` of TFF type `type_spec` in `executor`.
 
   Args:
     executor: An instance of `tff.framework.Executor`.
     type_spec: An instance of `tff.Type`.
-    value: A scalar value.
+    value: A value, must be a tensor or nested structure of tensors with the
+      structure matching `type_spec`.
 
   Returns:
     An instance of `tff.framework.ExecutorValue` containing an embedded value.

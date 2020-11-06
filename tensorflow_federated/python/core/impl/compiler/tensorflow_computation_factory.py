@@ -41,20 +41,18 @@ def _tensorflow_comp(
   return (comp, type_signature)
 
 
-def create_constant(scalar_value,
-                    type_spec: computation_types.Type) -> ProtoAndType:
-  """Returns a tensorflow computation returning a constant `scalar_value`.
+def create_constant(value, type_spec: computation_types.Type) -> ProtoAndType:
+  """Returns a tensorflow computation returning a constant `value`.
 
   The returned computation has the type signature `( -> T)`, where `T` is
   `type_spec`.
 
-  `scalar_value` must be a scalar, and cannot be a float if any of the tensor
-  leaves of `type_spec` contain an integer data type. `type_spec` must contain
-  only named tuples and tensor types, but these can be arbitrarily nested.
+  `value` must be a value convertible to a tensor or a structure of values, such
+  that the dtype and shapes match `type_spec`. `type_spec` must contain only
+  named tuples and tensor types, but these can be arbitrarily nested.
 
   Args:
-    scalar_value: A scalar value to place in all the tensor leaves of
-      `type_spec`.
+    value: A value to embed as a constant in the tensorflow graph.
     type_spec: A `computation_types.Type` to use as the argument to the
       constructed binary operator; must contain only named tuples and tensor
       types.
@@ -66,12 +64,16 @@ def create_constant(scalar_value,
     raise TypeError(
         'Type spec {} cannot be constructed as a TensorFlow constant in TFF; '
         ' only nested tuples and tensors are permitted.'.format(type_spec))
-  inferred_scalar_value_type = type_conversions.infer_type(scalar_value)
-  if (not inferred_scalar_value_type.is_tensor() or
-      inferred_scalar_value_type.shape != tf.TensorShape(())):
+  inferred_value_type = type_conversions.infer_type(value)
+  if (inferred_value_type.is_struct() and
+      not type_spec.is_assignable_from(inferred_value_type)):
     raise TypeError(
-        'Must pass a scalar value to `create_tensorflow_constant`; encountered '
-        'a value {}'.format(scalar_value))
+        'Must pass a only tensor or structure of tensor values to '
+        '`create_tensorflow_constant`; encountered a value {v} with inferred '
+        'type {t!r}, but needed {s!r}'.format(
+            v=value, t=inferred_value_type, s=type_spec))
+  if inferred_value_type.is_struct():
+    value = structure.from_container(value, recursive=True)
   tensor_dtypes_in_type_spec = []
 
   def _pack_dtypes(type_signature):
@@ -83,30 +85,36 @@ def create_constant(scalar_value,
   type_transformations.transform_type_postorder(type_spec, _pack_dtypes)
 
   if (any(x.is_integer for x in tensor_dtypes_in_type_spec) and
-      not inferred_scalar_value_type.dtype.is_integer):
+      (inferred_value_type.is_tensor() and
+       not inferred_value_type.dtype.is_integer)):
     raise TypeError(
         'Only integers can be used as scalar values if our desired constant '
         'type spec contains any integer tensors; passed scalar {} of dtype {} '
-        'for type spec {}.'.format(scalar_value,
-                                   inferred_scalar_value_type.dtype, type_spec))
+        'for type spec {}.'.format(value, inferred_value_type.dtype, type_spec))
 
   result_type = type_spec
 
-  def _create_result_tensor(type_spec, scalar_value):
-    """Packs `scalar_value` into `type_spec` recursively."""
+  def _create_result_tensor(type_spec, value):
+    """Packs `value` into `type_spec` recursively."""
     if type_spec.is_tensor():
       type_spec.shape.assert_is_fully_defined()
-      result = tf.constant(
-          scalar_value, dtype=type_spec.dtype, shape=type_spec.shape)
+      result = tf.constant(value, dtype=type_spec.dtype, shape=type_spec.shape)
     else:
       elements = []
-      for _, type_element in structure.iter_elements(type_spec):
-        elements.append(_create_result_tensor(type_element, scalar_value))
-      result = elements
+      if inferred_value_type.is_struct():
+        # Copy the leaf values according to the type_spec structure.
+        for (name, elem_type), value in zip(
+            structure.iter_elements(type_spec), value):
+          elements.append((name, _create_result_tensor(elem_type, value)))
+      else:
+        # "Broadcast" the value to each level of the type_spec structure.
+        for _, elem_type in structure.iter_elements(type_spec):
+          elements.append((None, _create_result_tensor(elem_type, value)))
+      result = structure.Struct(elements)
     return result
 
   with tf.Graph().as_default() as graph:
-    result = _create_result_tensor(result_type, scalar_value)
+    result = _create_result_tensor(result_type, value)
     _, result_binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
 
