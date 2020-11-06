@@ -88,7 +88,7 @@ landing_page:
         state = trainer.initialize()
         for _ in range(5):
           state, metrics = trainer.next(state, train_data)
-          print (metrics.loss)
+          print(metrics['train']['loss'])
         </pre>
 
   - classname: devsite-landing-row-cards
