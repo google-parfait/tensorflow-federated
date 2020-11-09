@@ -16,7 +16,6 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import client_data as cd
-from tensorflow_federated.python.tensorflow_libs import version_check
 
 
 class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
@@ -36,12 +35,7 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
                      tf.TensorSpec(shape=(), dtype=tf.int64))
 
     def length(ds):
-      if version_check.is_tensorflow_version_newer('2.3.0', tf):
-        # ds.cardinality() only works for RangeDataset at HEAD,
-        # and is not in a released version of TensorFlow yet.
-        return ds.cardinality().numpy()
-      else:
-        return tf.data.experimental.cardinality(ds).numpy()
+      return tf.data.experimental.cardinality(ds).numpy()
 
     for i in client_ids:
       self.assertEqual(
