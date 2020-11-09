@@ -186,7 +186,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     type_signature = _unfederated(self.type_signature)
     if not type_signature.is_struct():
       raise TypeError(
-          'Operator len() is only supported for (possibly federated) structure'
+          'Operator len() is only supported for (possibly federated) structure '
           'types, but the object on which it has been invoked is of type {}.'
           .format(self.type_signature))
     return len(type_signature)
