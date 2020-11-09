@@ -3,10 +3,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package_group(
     name = "default_visibility",
     includes = ["//tensorflow_federated/python/core:core_visibility"],
-    packages = [
-        "//tensorflow_federated/python/core/backends/native/...",
-        "//tensorflow_federated/python/core/templates/...",
-    ],
+    packages = ["//tensorflow_federated/python/core/backends/native/..."],
 )
 
 package(default_visibility = [":default_visibility"])
