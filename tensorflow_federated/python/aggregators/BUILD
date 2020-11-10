@@ -28,6 +28,35 @@ py_library(
 )
 
 py_library(
+    name = "clipping_compositions",
+    srcs = ["clipping_compositions.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":clipping_factory",
+        ":factory",
+        ":mean_factory",
+        ":quantile_estimation",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+    ],
+)
+
+py_test(
+    name = "clipping_compositions_test",
+    srcs = ["clipping_compositions_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":clipping_compositions",
+        ":factory",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+    ],
+)
+
+py_library(
     name = "clipping_factory",
     srcs = ["clipping_factory.py"],
     srcs_version = "PY3",
@@ -36,7 +65,6 @@ py_library(
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
