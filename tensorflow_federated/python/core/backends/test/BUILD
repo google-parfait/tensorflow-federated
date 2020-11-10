@@ -52,6 +52,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_utils",
         "//tensorflow_federated/python/core/impl/executors:federated_resolving_strategy",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_transformations",
     ],
 )
 
@@ -62,13 +64,16 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":federated_strategy",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
         "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
         "//tensorflow_federated/python/core/impl/executors:executor_value_base",
         "//tensorflow_federated/python/core/impl/executors:federating_executor",
         "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
