@@ -1004,6 +1004,12 @@ def _to_type_from_attrs(spec) -> Type:
   """Converts an `attr.s` class or instance to a `tff.Type`."""
   if isinstance(spec, type):
     # attrs class type, introspect the attributes for their type annotations.
+
+    # TODO(b/170486248): Deprecate support for converting `attr` classes.
+    warnings.warn(
+        'Deprecation warning: Converting `attr` classes to a federated type is '
+        'deprecated, use one of the other forms described in `tff.to_type()` '
+        'instead.', DeprecationWarning)
     elements = [(a.name, a.type) for a in attr.fields(spec)]
     missing_types = [n for (n, t) in elements if not t]
     if missing_types:
@@ -1015,12 +1021,6 @@ def _to_type_from_attrs(spec) -> Type:
   else:
     # attrs class instance, inspect the field values for instances convertible
     # to types.
-
-    # TODO(b/170486248): Deprecate support for converting `attr` classes.
-    warnings.warn(
-        'Deprecation warning: Converting `attr` classes to a federated type is '
-        'deprecated, use one of the other forms described in `tff.to_type()` '
-        'instead.', DeprecationWarning)
     elements = attr.asdict(
         spec, dict_factory=collections.OrderedDict, recurse=False)
     the_type = type(spec)
