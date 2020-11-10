@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""End-to-end example testing Federated Averaging against the MNIST model."""
+"""End-to-end example testing Federated Averaging with CNN and RNN."""
 
 import collections
 import functools
@@ -21,7 +21,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 
-from tensorflow_federated.python.common_libs import test_utils as common_libs_test_utils
 from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tf
 from tensorflow_federated.python.examples.simple_fedavg import simple_fedavg_tff
 
@@ -395,9 +394,6 @@ class RNNTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(
         str(federated_type[1]), '{<x=int32[?,5],y=int32[?,5]>*}@CLIENTS')
 
-  # TODO(b/139707270): enable GPU tests after Keras fix GPU kernel for
-  # sparse ops in optimizers.
-  @common_libs_test_utils.skip_test_for_gpu
   def test_client_adagrad_train(self):
     it_process = simple_fedavg_tff.build_federated_averaging_process(
         _rnn_model_fn,
