@@ -30,23 +30,23 @@ class TypeMismatchErrorTest(absltest.TestCase):
   def test_short_compact_repr(self):
     first = computation_types.TensorType(tf.int32)
     second = computation_types.TensorType(tf.bool)
-    actual = computation_types._type_mismatch_error_message(
-        first, second, computation_types._TypeRelation.EQUIVALENT)
+    actual = computation_types.type_mismatch_error_message(
+        first, second, computation_types.TypeRelation.EQUIVALENT)
     golden.check_string('short_compact_repr.expected', actual)
 
   def test_long_formatted_with_diff(self):
     int32 = computation_types.TensorType(tf.int32)
     first = computation_types.StructType([(None, int32)] * 20)
     second = computation_types.StructType([(None, int32)] * 21)
-    actual = computation_types._type_mismatch_error_message(
-        first, second, computation_types._TypeRelation.EQUIVALENT)
+    actual = computation_types.type_mismatch_error_message(
+        first, second, computation_types.TypeRelation.EQUIVALENT)
     golden.check_string('long_formatted_with_diff.expected', actual)
 
   def test_container_types_full_repr(self):
     first = computation_types.StructWithPythonType([], list)
     second = computation_types.StructWithPythonType([], tuple)
-    actual = computation_types._type_mismatch_error_message(
-        first, second, computation_types._TypeRelation.EQUIVALENT)
+    actual = computation_types.type_mismatch_error_message(
+        first, second, computation_types.TypeRelation.EQUIVALENT)
     golden.check_string('container_types_full_repr.expected', actual)
 
 

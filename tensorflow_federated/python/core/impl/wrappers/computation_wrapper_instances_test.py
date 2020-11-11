@@ -491,8 +491,8 @@ class AssertReturnsTest(test_case.TestCase):
             collections.OrderedDict(a=tf.int32, b=tf.int32), tf.int32))
 
   def test_fails_with_mismatched_container_type(self):
-    with self.assertRaises(TypeError):  # pylint: disable=g-error-prone-assert-raises
-
+    with golden.check_raises_traceback(
+        'returns_type_container_mismatch_traceback.expected', TypeError):
       # This test fails because it `check_returns_type` with a `tuple`,
       # but returns a `list`.
       @computation_wrapper_instances.tensorflow_wrapper(tf.int32)

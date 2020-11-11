@@ -81,9 +81,12 @@ py_test(
         "$(location computation_wrapper_instances_test_goldens/tensorflow_wrapper_traceback.expected)",
         "--golden",
         "$(location computation_wrapper_instances_test_goldens/federated_computation_wrapper_traceback.expected)",
+        "--golden",
+        "$(location computation_wrapper_instances_test_goldens/returns_type_container_mismatch_traceback.expected)",
     ],
     data = [
         "computation_wrapper_instances_test_goldens/federated_computation_wrapper_traceback.expected",
+        "computation_wrapper_instances_test_goldens/returns_type_container_mismatch_traceback.expected",
         "computation_wrapper_instances_test_goldens/tensorflow_wrapper_traceback.expected",
     ],
     python_version = "PY3",

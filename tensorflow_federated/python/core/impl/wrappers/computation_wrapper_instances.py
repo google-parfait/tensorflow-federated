@@ -108,9 +108,12 @@ def _check_returns_type_helper(fn, expected_return_type):
     result_type = type_conversions.infer_type(result)
     if not result_type.is_identical_to(expected_return_type):
       raise TypeError(
-          f'Value returned from `{fn.__name__}` did not match asserted type.'
-          f'Expected type:\n{expected_return_type}\n'
-          f'Found type:\n{result_type}\n')
+          f'Value returned from `{fn.__name__}` did not match asserted type.\n'
+          + computation_types.type_mismatch_error_message(
+              result_type,
+              expected_return_type,
+              computation_types.TypeRelation.IDENTICAL,
+              second_is_expected=True))
     return result
 
   return wrapped_func

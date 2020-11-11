@@ -47,18 +47,20 @@ MAX_LINE_LEN = 100
 
 
 @enum.unique
-class _TypeRelation(enum.Enum):
+class TypeRelation(enum.Enum):
   EQUIVALENT = 'equivalent'
   IDENTICAL = 'identical'
   ASSIGNABLE = 'assignable'
 
 
-def _type_mismatch_error_message(
+def type_mismatch_error_message(
     first: 'Type',
     second: 'Type',
-    relation: _TypeRelation,
+    relation: TypeRelation,
+    second_is_expected: bool = False,
 ) -> str:
   """Returns an error message describing the mismatch between two types."""
+  maybe_expected = 'expected ' if second_is_expected else ''
   first_str = first.compact_representation()
   second_str = second.compact_representation()
   diff = None
@@ -80,8 +82,8 @@ def _type_mismatch_error_message(
     split_second = second_str.split('\n')
     diff = '\n'.join(difflib.unified_diff(split_first, split_second))
   message = [
-      'Type', f'`{first_str}`', f'is not {relation.value} to type',
-      f'`{second_str}`'
+      'Type', f'`{first_str}`',
+      f'is not {relation.value} to {maybe_expected}type', f'`{second_str}`'
   ]
   if diff:
     message += [f'\nDiff:\n{diff}']
@@ -95,8 +97,8 @@ def _type_mismatch_error_message(
 class TypeNotAssignableError(TypeError):
 
   def __init__(self, source_type, target_type):
-    self.message = _type_mismatch_error_message(source_type, target_type,
-                                                _TypeRelation.ASSIGNABLE)
+    self.message = type_mismatch_error_message(source_type, target_type,
+                                               TypeRelation.ASSIGNABLE)
     super().__init__(self.message)
     self.source_type = source_type
     self.target_type = target_type
@@ -105,8 +107,8 @@ class TypeNotAssignableError(TypeError):
 class TypesNotEquivalentError(TypeError):
 
   def __init__(self, first_type, second_type):
-    self.message = _type_mismatch_error_message(first_type, second_type,
-                                                _TypeRelation.EQUIVALENT)
+    self.message = type_mismatch_error_message(first_type, second_type,
+                                               TypeRelation.EQUIVALENT)
     super().__init__(self.message)
     self.first_type = first_type
     self.second_type = second_type
@@ -115,8 +117,8 @@ class TypesNotEquivalentError(TypeError):
 class TypesNotIdenticalError(TypeError):
 
   def __init__(self, first_type, second_type):
-    self.message = _type_mismatch_error_message(first_type, second_type,
-                                                _TypeRelation.IDENTICAL)
+    self.message = type_mismatch_error_message(first_type, second_type,
+                                               TypeRelation.IDENTICAL)
     super().__init__(self.message)
     self.first_type = first_type
     self.second_type = second_type
