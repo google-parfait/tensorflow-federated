@@ -54,9 +54,7 @@ def build_dp_query(clip,
                    target_unclipped_quantile=None,
                    clipped_count_budget_allocation=None,
                    expected_clients_per_round=None,
-                   per_vector_clipping=False,
-                   geometric_clip_update=True,
-                   model=None):
+                   geometric_clip_update=True):
   """Makes a `DPQuery` to estimate vector averages with differential privacy.
 
   Supports many of the types of query available in tensorflow_privacy, including
@@ -65,30 +63,19 @@ def build_dp_query(clip,
   described in https://arxiv.org/abs/1905.03871.
 
   Args:
-    clip: The query's L2 norm bound.
+    clip: The query's L2 norm bound, or the initial clip if adaptive clipping
+      is used.
     noise_multiplier: The ratio of the (effective) noise stddev to the clip.
     expected_total_weight: The expected total weight of all clients, used as the
       denominator for the average computation.
     adaptive_clip_learning_rate: Learning rate for quantile-based adaptive
-      clipping. If 0, fixed clipping is used. If per-vector clipping is enabled,
-      (but not geometric_clip_update) the learning rate of each vector is
-      proportional to that vector's initial clip.
+      clipping. If 0, fixed clipping is used.
     target_unclipped_quantile: Target unclipped quantile for adaptive clipping.
     clipped_count_budget_allocation: The fraction of privacy budget to use for
       estimating clipped counts.
     expected_clients_per_round: The expected number of clients for estimating
       clipped fractions.
-    per_vector_clipping: Note that this option is not recommended because it
-      has been shown experimentally and theoretically to be inferior from a
-      privacy/utility standpoint. It will be removed in a future release. If
-      True, clip each weight tensor independently. Otherwise, global clipping is
-      used. The clipping norm for each vector (or the initial clipping norm, in
-      the case of adaptive clipping) is proportional to the sqrt of the vector
-      dimensionality such that the root sum squared of the individual clips
-      equals `clip`.
     geometric_clip_update: If True, use geometric updating of the clip.
-    model: A `tff.learning.Model` to determine the structure of model weights.
-      Required only if per_vector_clipping is True.
 
   Returns:
     A `DPQuery` suitable for use in a call to `build_dp_aggregate` and
@@ -99,19 +86,6 @@ def build_dp_query(clip,
   py_typecheck.check_type(noise_multiplier, numbers.Number, 'noise_multiplier')
   py_typecheck.check_type(expected_total_weight, numbers.Number,
                           'expected_total_weight')
-
-  if per_vector_clipping:
-    warnings.warn(
-        'Per-vector clipping is not recommended because it has been shown '
-        'experimentally and theoretically to be inferior from a '
-        'privacy/utility standpoint. It will be removed in a future release.')
-
-    # Note we need to keep the structure of vectors (not just the num_vectors)
-    # to create the subqueries below, when per_vector_clipping is True.
-    vectors = model.weights.trainable
-    num_vectors = len(tf.nest.flatten(vectors))
-  else:
-    num_vectors = 1
 
   if adaptive_clip_learning_rate:
     py_typecheck.check_type(adaptive_clip_learning_rate, numbers.Number,
@@ -124,11 +98,21 @@ def build_dp_query(clip,
                             'expected_clients_per_round')
     p = clipped_count_budget_allocation
     nm = noise_multiplier
-    vectors_noise_multiplier = nm * ((1 - p) / num_vectors)**(-0.5)
-    clipped_count_noise_multiplier = nm * (p / num_vectors)**(-0.5)
+    vectors_noise_multiplier = nm * (1 - p)**(-0.5)
+    clipped_count_noise_multiplier = nm * p**(-0.5)
 
     # Clipped count sensitivity is 0.5.
     clipped_count_stddev = 0.5 * clipped_count_noise_multiplier
+
+    return tensorflow_privacy.QuantileAdaptiveClipAverageQuery(
+        initial_l2_norm_clip=clip,
+        noise_multiplier=vectors_noise_multiplier,
+        target_unclipped_quantile=target_unclipped_quantile,
+        learning_rate=adaptive_clip_learning_rate,
+        clipped_count_stddev=clipped_count_stddev,
+        expected_num_records=expected_clients_per_round,
+        geometric_update=geometric_clip_update,
+        denominator=expected_total_weight)
   else:
     if target_unclipped_quantile is not None:
       warnings.warn(
@@ -136,47 +120,16 @@ def build_dp_query(clip,
           'adaptive_clip_learning_rate is zero. No adaptive clipping will be '
           'performed. Use adaptive_clip_learning_rate > 0 if you want '
           'adaptive clipping.')
-    elif clipped_count_budget_allocation is not None:
+    if clipped_count_budget_allocation is not None:
       warnings.warn(
           'clipped_count_budget_allocation is specified but '
           'adaptive_clip_learning_rate is zero. No adaptive clipping will be '
           'performed. Use adaptive_clip_learning_rate > 0 if you want '
           'adaptive clipping.')
-
-  def make_single_vector_query(vector_clip):
-    """Makes a `DPQuery` for a single vector."""
-    if not adaptive_clip_learning_rate:
-      return tensorflow_privacy.GaussianAverageQuery(
-          l2_norm_clip=vector_clip,
-          sum_stddev=vector_clip * noise_multiplier * num_vectors**0.5,
-          denominator=expected_total_weight)
-    else:
-      # Without geometric updating, the update is c = c - lr * loss, so for
-      # multiple vectors we set the learning rate to be on the same scale as the
-      # initial clip. That way big vectors get big updates, small vectors
-      # small updates. With geometric updating, the update is
-      # c = c * exp(-lr * loss) so the learning rate should be independent of
-      # the initial clip.
-      if geometric_clip_update:
-        learning_rate = adaptive_clip_learning_rate
-      else:
-        learning_rate = adaptive_clip_learning_rate * vector_clip / clip
-      return tensorflow_privacy.QuantileAdaptiveClipAverageQuery(
-          initial_l2_norm_clip=vector_clip,
-          noise_multiplier=vectors_noise_multiplier,
-          target_unclipped_quantile=target_unclipped_quantile,
-          learning_rate=learning_rate,
-          clipped_count_stddev=clipped_count_stddev,
-          expected_num_records=expected_clients_per_round,
-          geometric_update=geometric_clip_update,
-          denominator=expected_total_weight)
-
-  if per_vector_clipping:
-    clips = _distribute_clip(clip, vectors)
-    subqueries = tf.nest.map_structure(make_single_vector_query, clips)
-    return tensorflow_privacy.NestedQuery(subqueries)
-  else:
-    return make_single_vector_query(clip)
+    return tensorflow_privacy.GaussianAverageQuery(
+        l2_norm_clip=clip,
+        sum_stddev=clip * noise_multiplier,
+        denominator=expected_total_weight)
 
 
 def build_dp_aggregate_process(value_type, query):

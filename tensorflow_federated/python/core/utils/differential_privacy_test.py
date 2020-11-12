@@ -57,46 +57,6 @@ class BuildDpQueryTest(test_case.TestCase):
                            expected_sum_query_noise_multiplier)
     self.assertEqual(query._denominator, 3.0)
 
-  def test_build_dp_query_per_vector(self):
-
-    class MockTensor():
-
-      def __init__(self, shape):
-        self.shape = shape
-
-    mock_shape = collections.namedtuple('MockShape', ['dims'])
-    mock_dim = collections.namedtuple('MockDim', ['value'])
-    mock_model = collections.namedtuple('MockModel', ['weights'])
-    mock_weights = collections.namedtuple('MockWeights', ['trainable'])
-
-    def make_mock_tensor(*dims):
-      return MockTensor(mock_shape([mock_dim(dim) for dim in dims]))
-
-    vectors = collections.OrderedDict(
-        a=make_mock_tensor(2),
-        b=make_mock_tensor(2, 3),
-        c=make_mock_tensor(1, 3, 4))
-    model = mock_model(mock_weights(vectors))
-
-    query = differential_privacy.build_dp_query(
-        1.0, 2.0, 3.0, per_vector_clipping=True, model=model)
-
-    self.assertIsInstance(query, tensorflow_privacy.NestedQuery)
-
-    def check(subquery):
-      self.assertIsInstance(subquery, tensorflow_privacy.GaussianAverageQuery)
-      self.assertEqual(subquery._denominator, 3.0)
-
-    tf.nest.map_structure(check, query._queries)
-
-    noise_multipliers = tf.nest.flatten(
-        tf.nest.map_structure(
-            lambda query: query._numerator._stddev / query._numerator.
-            _l2_norm_clip, query._queries))
-
-    effective_noise_multiplier = sum([x**-2.0 for x in noise_multipliers])**-0.5
-    self.assertAlmostEqual(effective_noise_multiplier, 2.0)
-
 
 class BuildDpAggregateProcessTest(test_case.TestCase, parameterized.TestCase):
 
