@@ -28,8 +28,10 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
+_InnerFactoryType = factory.UnweightedAggregationFactory
 
-class MeanFactory(factory.AggregationProcessFactory):
+
+class MeanFactory(factory.WeightedAggregationFactory):
   """`AggregationProcessFactory` for mean.
 
   The created `tff.templates.AggregationProcess` computes a weighted mean of
@@ -54,74 +56,55 @@ class MeanFactory(factory.AggregationProcessFactory):
   the two inner aggregation factories. The same holds for `measurements`.
   """
 
-  def __init__(
-      self,
-      value_sum_factory: Optional[factory.AggregationProcessFactory] = None,
-      weight_sum_factory: Optional[factory.AggregationProcessFactory] = None,
-      no_nan_division: bool = False):
+  def __init__(self,
+               value_sum_factory: Optional[_InnerFactoryType] = None,
+               weight_sum_factory: Optional[_InnerFactoryType] = None,
+               no_nan_division: bool = False):
     """Initializes `MeanFactory`.
 
     Args:
-      value_sum_factory: An optional `tff.aggregators.AggregationProcessFactory`
-        responsible for summation of weighted values. If not specified,
+      value_sum_factory: An optional
+        `tff.aggregators.UnweightedAggregationFactory` responsible for
+        summation of weighted values. If not specified,
         `tff.aggregators.SumFactory` is used.
       weight_sum_factory: An optional
-        `tff.aggregators.AggregationProcessFactory` responsible for summation of
-        weights. If not specified, `tff.aggregators.SumFactory` is used.
+        `tff.aggregators.UnweightedAggregationFactory` responsible for
+        summation of weights. If not specified, `tff.aggregators.SumFactory` is
+        used.
       no_nan_division: A bool. If True, the computed mean is 0 if sum of weights
         is equal to 0.
 
     Raises:
       TypeError: If provided `value_sum_factory` or `weight_sum_factory` is not
-        an instance of `tff.aggregators.AggregationProcessFactory`.
+        an instance of `tff.aggregators.UnweightedAggregationFactory`.
     """
     if value_sum_factory is None:
       value_sum_factory = sum_factory.SumFactory()
     py_typecheck.check_type(value_sum_factory,
-                            factory.AggregationProcessFactory)
+                            factory.UnweightedAggregationFactory)
     self._value_sum_factory = value_sum_factory
 
     if weight_sum_factory is None:
       weight_sum_factory = sum_factory.SumFactory()
     py_typecheck.check_type(weight_sum_factory,
-                            factory.AggregationProcessFactory)
+                            factory.UnweightedAggregationFactory)
     self._weight_sum_factory = weight_sum_factory
 
     py_typecheck.check_type(no_nan_division, bool)
     self._no_nan_division = no_nan_division
 
-  def create(
-      self,
-      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
-    """Creates a `tff.aggregators.AggregationProcess` aggregating `value_type`.
-
-    The provided `value_type` is a non-federated `tff.Type` object, that is,
-    `value_type.is_federated()` should return `False`. Provided `value_type`
-    must be a `tff.TensorType` or a `tff.StructType`.
-
-    The returned `tff.aggregators.AggregationProcess` will be created for
-    computation of a weighted mean of values matching `value_type`. That is, its
-    `next` method will expect type
-    `<S@SERVER, {value_type}@CLIENTS, {float32}@CLIENTS>`, where `S` is the
-    unplaced return type of its `initialize` method and all elements of
-    `value_type` must be of floating dtype.
-
-    Args:
-      value_type: A `tff.Type` without placement.
-
-    Returns:
-      A `tff.templates.AggregationProcess`.
-    """
-
+  def create_weighted(
+      self, value_type: factory.ValueType,
+      weight_type: factory.ValueType) -> aggregation_process.AggregationProcess:
     py_typecheck.check_type(value_type, factory.ValueType.__args__)
+    py_typecheck.check_type(weight_type, factory.ValueType.__args__)
 
     if not all([t.dtype.is_floating for t in structure.flatten(value_type)]):
       raise TypeError(f'All values in provided value_type must be of floating '
                       f'dtype. Provided value_type: {value_type}')
 
-    weight_type = computation_types.to_type(tf.float32)
-    value_sum_process = self._value_sum_factory.create(value_type)
-    weight_sum_process = self._weight_sum_factory.create(weight_type)
+    value_sum_process = self._value_sum_factory.create_unweighted(value_type)
+    weight_sum_process = self._weight_sum_factory.create_unweighted(weight_type)
 
     @computations.federated_computation()
     def init_fn():

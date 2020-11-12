@@ -28,8 +28,8 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 
-class DifferentiallyPrivateFactory(factory.AggregationProcessFactory):
-  """`AggregationProcessFactory` for tensorflow_privacy DPQueries.
+class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
+  """`UnweightedAggregationFactory` for tensorflow_privacy DPQueries.
 
   The created `tff.templates.AggregationProcess` aggregates values placed at
   `CLIENTS` according to the provided DPQuery, and outputs the result placed at
@@ -56,22 +56,23 @@ class DifferentiallyPrivateFactory(factory.AggregationProcessFactory):
   def __init__(self,
                query: tfp.DPQuery,
                record_aggregation_factory: Optional[
-                   factory.AggregationProcessFactory] = None):
+                   factory.UnweightedAggregationFactory] = None):
     """Initializes `DifferentiallyPrivateFactory`.
 
     Args:
       query: A `tfp.SumAggregationDPQuery` to perform private estimation.
-      record_aggregation_factory: A `tff.aggregators.AggregationProcessFactory`
-        to aggregate values after preprocessing by the `query`. If `None`,
-        defaults to `tff.aggregators.SumFactory`. The provided factory is
-        assumed to implement a sum, and to have the property that it does not
-        increase the sensitivity of the query-- typically this means that it
-        should not increase the l2 norm of the records when aggregating.
+      record_aggregation_factory: A
+        `tff.aggregators.UnweightedAggregationFactory` to aggregate values
+        after preprocessing by the `query`. If `None`, defaults to
+        `tff.aggregators.SumFactory`. The provided factory is assumed to
+        implement a sum, and to have the property that it does not increase
+        the sensitivity of the query - typically this means that it should not
+        increase the l2 norm of the records when aggregating.
 
     Raises:
       TypeError: If `query` is not an instance of `tfp.SumAggregationDPQuery` or
         `record_aggregation_factory` is not an instance of
-        `tff.aggregators.AggregationProcessFactory`.
+        `tff.aggregators.UnweightedAggregationFactory`.
     """
     py_typecheck.check_type(query, tfp.SumAggregationDPQuery)
     self._query = query
@@ -80,29 +81,12 @@ class DifferentiallyPrivateFactory(factory.AggregationProcessFactory):
       record_aggregation_factory = sum_factory.SumFactory()
 
     py_typecheck.check_type(record_aggregation_factory,
-                            factory.AggregationProcessFactory)
+                            factory.UnweightedAggregationFactory)
     self._record_aggregation_factory = record_aggregation_factory
 
-  def create(
+  def create_unweighted(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
-    """Creates a `tff.aggregators.AggregationProcess` aggregating `value_type`.
-
-    The provided `value_type` is a non-federated `tff.Type` object, that is,
-    `value_type.is_federated()` should return `False`. Provided `value_type`
-    must be a `tff.TensorType` or a `tff.StructType`.
-
-    The returned `tff.aggregators.AggregationProcess` will be created for
-    aggregating values matching `value_type`. That is, its `next` method will
-    expect type `<S@SERVER, {value_type}@CLIENTS>`, where `S` is the unplaced
-    return type of its `initialize` method.
-
-    Args:
-      value_type: A `tff.Type` without placement.
-
-    Returns:
-      A `tff.templates.AggregationProcess`.
-    """
     py_typecheck.check_type(value_type, factory.ValueType.__args__)
 
     query_initial_state_fn = computations.tf_computation(
@@ -120,7 +104,7 @@ class DifferentiallyPrivateFactory(factory.AggregationProcessFactory):
     derive_metrics = computations.tf_computation(self._query.derive_metrics,
                                                  query_state_type)
 
-    record_agg_process = self._record_aggregation_factory.create(
+    record_agg_process = self._record_aggregation_factory.create_unweighted(
         query_record_type)
 
     @computations.federated_computation()

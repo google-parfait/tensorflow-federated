@@ -562,7 +562,7 @@ def build_model_delta_optimizer_process(
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
-        factory.AggregationProcessFactory] = None,
+        factory.WeightedAggregationFactory] = None,
 ) -> iterative_process.IterativeProcess:
   """Constructs `tff.templates.IterativeProcess` for Federated Averaging or SGD.
 
@@ -587,7 +587,7 @@ def build_model_delta_optimizer_process(
       signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
       `None` if `model_update_aggregation_factory` is not `None.`
     model_update_aggregation_factory: An optional
-      `tff.aggregators.AggregationProcessFactory` that contstructs
+      `tff.aggregators.WeightedAggregationFactory` that contstructs
       `tff.templates.AggregationProcess` for aggregating the client model
       updates on the server. If `None`, uses a default constructed
       `tff.aggregators.MeanFactory`, creating a stateless mean aggregation. Must
@@ -628,8 +628,8 @@ def build_model_delta_optimizer_process(
     model_update_aggregation_factory = mean_factory.MeanFactory()
 
   if model_update_aggregation_factory is not None:
-    aggregation_process = model_update_aggregation_factory.create(
-        model_weights_type.trainable)
+    aggregation_process = model_update_aggregation_factory.create_weighted(
+        model_weights_type.trainable, computation_types.TensorType(tf.float32))
 
   if aggregation_process is None:
     aggregation_process = build_stateless_mean(

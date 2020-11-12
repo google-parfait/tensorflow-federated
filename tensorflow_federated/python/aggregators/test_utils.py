@@ -27,8 +27,8 @@ from tensorflow_federated.python.core.templates import measured_process
 MEASUREMENT_CONSTANT = 42
 
 
-class SumPlusOneFactory(factory.AggregationProcessFactory):
-  """`AggregationProcessFactory` for "sum + 1".
+class SumPlusOneFactory(factory.UnweightedAggregationFactory):
+  """`NonWeightedAggregationFactory` for "sum + 1".
 
   The created `tff.templates.AggregationProcess` will sum the values placed at
   `CLIENTS`, and add `1` to the sum. In the case of value of structured type,
@@ -43,7 +43,7 @@ class SumPlusOneFactory(factory.AggregationProcessFactory):
   outer aggregation factory.
   """
 
-  def create(
+  def create_unweighted(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
 

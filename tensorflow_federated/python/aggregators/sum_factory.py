@@ -23,8 +23,8 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
 
-class SumFactory(factory.AggregationProcessFactory):
-  """`AggregationProcessFactory` for sum.
+class SumFactory(factory.UnweightedAggregationFactory):
+  """`NonWeightedAggregationFactory` for sum.
 
   The created `tff.templates.AggregationProcess` sums values placed at
   `CLIENTS`, and outputs the sum placed at `SERVER`.
@@ -33,7 +33,7 @@ class SumFactory(factory.AggregationProcessFactory):
   implementation delegates to the `tff.federated_sum` operator.
   """
 
-  def create(
+  def create_unweighted(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
 

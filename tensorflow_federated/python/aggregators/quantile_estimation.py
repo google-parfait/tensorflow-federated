@@ -42,15 +42,16 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
   def __init__(
       self,
       quantile_estimator_query: tfp.QuantileEstimatorQuery,
-      record_aggregation_factory: factory.AggregationProcessFactory = None):
+      record_aggregation_factory: factory.UnweightedAggregationFactory = None):
     """Initializes `PrivateQuantileEstimationProcess`.
 
     Args:
       quantile_estimator_query: A `tfp.QuantileEstimatorQuery` for estimating
         quantiles with differential privacy.
-      record_aggregation_factory: A `tff.aggregators.AggregationProcessFactory`
-        to aggregate counts of values below the current estimate. If `None`,
-        defaults to `tff.aggregators.SumFactory`.
+      record_aggregation_factory: A
+        `tff.aggregators.UnweightedAggregationFactory` to aggregate counts of
+        values below the current estimate. If `None`, defaults to
+        `tff.aggregators.SumFactory`.
     """
     py_typecheck.check_type(quantile_estimator_query,
                             tfp.QuantileEstimatorQuery)
@@ -58,7 +59,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
       record_aggregation_factory = sum_factory.SumFactory()
     else:
       py_typecheck.check_type(record_aggregation_factory,
-                              factory.AggregationProcessFactory)
+                              factory.UnweightedAggregationFactory)
 
     # 1. Define tf_computations.
     initial_state_fn = computations.tf_computation(
@@ -73,7 +74,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
     get_noised_result = computations.tf_computation(
         quantile_estimator_query.get_noised_result, quantile_record_type,
         quantile_state_type)
-    quantile_agg_process = record_aggregation_factory.create(
+    quantile_agg_process = record_aggregation_factory.create_unweighted(
         quantile_record_type)
 
     # 2. Define federated_computations.

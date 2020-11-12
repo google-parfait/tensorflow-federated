@@ -34,9 +34,11 @@ class ClippingCompositionsTest(test_case.TestCase):
         increment=1.0,
         learning_rate=np.log(4.0),
         norm_order=np.inf)
-    self.assertIsInstance(factory_, factory.AggregationProcessFactory)
+    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
 
-    process = factory_.create(computation_types.to_type(tf.float32))
+    process = factory_.create_weighted(
+        value_type=computation_types.to_type(tf.float32),
+        weight_type=computation_types.to_type(tf.float32))
 
     state = process.initialize()
 
@@ -67,9 +69,11 @@ class ClippingCompositionsTest(test_case.TestCase):
         initial_clipping_quantile_estimate=2.0,
         target_clipping_quantile=0.0,
         clipping_learning_rate=np.log(4.0))
-    self.assertIsInstance(factory_, factory.AggregationProcessFactory)
+    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
 
-    process = factory_.create(computation_types.to_type(tf.float32))
+    process = factory_.create_weighted(
+        value_type=computation_types.to_type(tf.float32),
+        weight_type=computation_types.to_type(tf.float32))
 
     state = process.initialize()
 

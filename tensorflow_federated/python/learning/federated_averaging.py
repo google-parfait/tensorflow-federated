@@ -144,7 +144,7 @@ def build_federated_averaging_process(
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
-        factory.AggregationProcessFactory] = None,
+        factory.WeightedAggregationFactory] = None,
     use_experimental_simulation_loop: bool = False
 ) -> iterative_process.IterativeProcess:
   """Builds an iterative process that performs federated averaging.
@@ -204,7 +204,7 @@ def build_federated_averaging_process(
       signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
       `None` if `model_update_aggregation_factory` is not `None.`
     model_update_aggregation_factory: An optional
-      `tff.aggregators.AggregationProcessFactory` that constructs
+      `tff.aggregators.WeightedAggregationFactory` that constructs
       `tff.templates.AggregationProcess` for aggregating the client model
       updates on the server. If `None`, uses a default constructed
       `tff.aggregators.MeanFactory`, creating a stateless mean aggregation. Must

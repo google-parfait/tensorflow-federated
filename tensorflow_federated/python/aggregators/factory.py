@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Abstract base factory class for creation of `AggregationProcess`."""
+"""Abstract base factory classes for creation of `AggregationProcess`."""
 
 import abc
 from typing import Union
@@ -22,26 +22,56 @@ from tensorflow_federated.python.core.templates import aggregation_process
 ValueType = Union[computation_types.TensorType, computation_types.StructType]
 
 
-class AggregationProcessFactory(abc.ABC):
-  """Factory for `tff.templates.AggregationProcess`."""
+class UnweightedAggregationFactory(abc.ABC):
+  """Factory for creating `tff.templates.AggregationProcess` without weights."""
 
   @abc.abstractmethod
-  def create(self,
-             value_type: ValueType) -> aggregation_process.AggregationProcess:
-    """Creates a `tff.aggregators.AggregationProcess` aggregating `value_type`.
+  def create_unweighted(
+      self, value_type: ValueType) -> aggregation_process.AggregationProcess:
+    """Creates a `tff.aggregators.AggregationProcess` without weights.
 
     The provided `value_type` is a non-federated `tff.Type` object, that is,
-    `value_type.is_federated()` should return `False`. Provided `value_type`
-    must be a `tff.TensorType` or a `tff.StructType`.
+    `value_type.is_federated()` should return `False`.
 
     The returned `tff.aggregators.AggregationProcess` will be created for
-    aggregation of values matching `value_type`. That is, its `next` method will
-    expect type `<S@SERVER, {value_type}@CLIENTS, *>`, where `S` is the unplaced
-    return type of its `initialize` method, and * stands for optional additional
-    placed input arguments.
+    aggregation of values matching `value_type` placed at `tff.CLIENTS`.
+    That is, its `next` method will expect type
+    `<S@SERVER, {value_type}@CLIENTS>`, where `S` is the unplaced return type of
+    its `initialize` method.
 
     Args:
-      value_type: A `tff.Type` without placement.
+      value_type: A non-federated `tff.Type` (`value_type.is_federated()`
+        returns `False`).
+
+    Returns:
+      A `tff.templates.AggregationProcess`.
+    """
+
+
+class WeightedAggregationFactory(abc.ABC):
+  """Factory for creating `tff.templates.AggregationProcess` with weights."""
+
+  @abc.abstractmethod
+  def create_weighted(
+      self, value_type: ValueType,
+      weight_type: ValueType) -> aggregation_process.AggregationProcess:
+    """Creates a `tff.aggregators.AggregationProcess` with weights.
+
+    The provided `value_type` and `weight_type` are non-federated `tff.Type`
+    objects, that is, `value_type.is_federated()` and
+    `weight_type.is_federated()` should return `False`.
+
+    The returned `tff.aggregators.AggregationProcess` will be created
+    for aggregation of pairs of values matching `value_type` and `weight_type`
+    placed at `tff.CLIENTS`. That is, its `next` method will expect type
+    `<S@SERVER, {value_type}@CLIENTS, {weight_type}@CLIENTS>`, where `S` is the
+    unplaced return type of its `initialize` method.
+
+    Args:
+      value_type: A non-federated `tff.Type` (`value_type.is_federated()`
+        returns `False`).
+      weight_type: A non-federated `tff.Type` (`weight_type.is_federated()`
+        returns `False`).
 
     Returns:
       A `tff.templates.AggregationProcess`.

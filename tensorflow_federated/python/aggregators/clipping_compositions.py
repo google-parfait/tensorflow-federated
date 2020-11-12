@@ -51,7 +51,7 @@ def adaptive_zeroing_mean(
     increment: float,
     learning_rate: float,
     norm_order: bool,
-    no_nan_mean: bool = False) -> factory.AggregationProcessFactory:
+    no_nan_mean: bool = False) -> factory.WeightedAggregationFactory:
   """Creates a factory for mean with adaptive zeroing.
 
   Estimates value at quantile `Z` of value norm distribution and zeroes out
@@ -96,7 +96,7 @@ def adaptive_zeroing_clipping_mean(
     initial_clipping_quantile_estimate: float,
     target_clipping_quantile: float,
     clipping_learning_rate: float,
-    no_nan_mean: bool = False) -> factory.AggregationProcessFactory:
+    no_nan_mean: bool = False) -> factory.WeightedAggregationFactory:
   """Makes a factory for mean with adaptive zeroing and clipping.
 
   Estimates value at quantile `Z` of value norm distribution and zeroes out

@@ -29,30 +29,37 @@ from tensorflow_federated.python.core.templates import measured_process
 
 M_CONST = aggregators_test_utils.MEASUREMENT_CONSTANT
 
+_test_struct_type = ((tf.float32, (2,)), tf.float64)
+
 
 class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
 
-  @parameterized.named_parameters(('float', tf.float32),
-                                  ('struct', ((tf.float32, (2,)), tf.float64)))
-  def test_type_properties(self, value_type):
+  @parameterized.named_parameters(
+      ('float_value_float32_weight', tf.float32, tf.float32),
+      ('struct_value_float32_weight', _test_struct_type, tf.float32),
+      ('float_value_float64_weight', tf.float32, tf.float64),
+      ('struct_value_float64_weight', _test_struct_type, tf.float64),
+      ('float_value_int32_weight', tf.float32, tf.int32),
+      ('struct_value_int32_weight', _test_struct_type, tf.int32),
+      ('float_value_int64_weight', tf.float32, tf.int64),
+      ('struct_value_int64_weight', _test_struct_type, tf.int64),
+  )
+  def test_type_properties(self, value_type, weight_type):
     mean_f = mean_factory.MeanFactory()
-    self.assertIsInstance(mean_f, factory.AggregationProcessFactory)
+    self.assertIsInstance(mean_f, factory.WeightedAggregationFactory)
     value_type = computation_types.to_type(value_type)
-    weight_type = computation_types.FederatedType(tf.float32,
-                                                  placements.CLIENTS)
-    process = mean_f.create(value_type)
+    weight_type = computation_types.to_type(weight_type)
+    process = mean_f.create_weighted(value_type, weight_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     param_value_type = computation_types.FederatedType(value_type,
                                                        placements.CLIENTS)
     result_value_type = computation_types.FederatedType(value_type,
                                                         placements.SERVER)
-    expected_state_type = computation_types.FederatedType(
-        collections.OrderedDict(value_sum_process=(), weight_sum_process=()),
-        placements.SERVER)
-    expected_measurements_type = computation_types.FederatedType(
-        collections.OrderedDict(value_sum_process=(), weight_sum_process=()),
-        placements.SERVER)
+    expected_state_type = computation_types.at_server(
+        collections.OrderedDict(value_sum_process=(), weight_sum_process=()))
+    expected_measurements_type = computation_types.at_server(
+        collections.OrderedDict(value_sum_process=(), weight_sum_process=()))
 
     expected_initialize_type = computation_types.FunctionType(
         parameter=None, result=expected_state_type)
@@ -64,23 +71,30 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
         parameter=collections.OrderedDict(
             state=expected_state_type,
             value=param_value_type,
-            weight=weight_type),
+            weight=computation_types.at_clients(weight_type)),
         result=measured_process.MeasuredProcessOutput(
             expected_state_type, result_value_type, expected_measurements_type))
     self.assertTrue(
         process.next.type_signature.is_equivalent_to(expected_next_type))
 
-  @parameterized.named_parameters(('float', tf.float32),
-                                  ('struct', ((tf.float32, (2,)), tf.float64)))
-  def test_type_properties_with_inner_factory(self, value_type):
+  @parameterized.named_parameters(
+      ('float_value_float32_weight', tf.float32, tf.float32),
+      ('struct_value_float32_weight', _test_struct_type, tf.float32),
+      ('float_value_float64_weight', tf.float32, tf.float64),
+      ('struct_value_float64_weight', _test_struct_type, tf.float64),
+      ('float_value_int32_weight', tf.float32, tf.int32),
+      ('struct_value_int32_weight', _test_struct_type, tf.int32),
+      ('float_value_int64_weight', tf.float32, tf.int64),
+      ('struct_value_int64_weight', _test_struct_type, tf.int64),
+  )
+  def test_type_properties_with_inner_factory(self, value_type, weight_type):
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
     mean_f = mean_factory.MeanFactory(
         value_sum_factory=sum_factory, weight_sum_factory=sum_factory)
-    self.assertIsInstance(mean_f, factory.AggregationProcessFactory)
+    self.assertIsInstance(mean_f, factory.WeightedAggregationFactory)
     value_type = computation_types.to_type(value_type)
-    weight_type = computation_types.FederatedType(tf.float32,
-                                                  placements.CLIENTS)
-    process = mean_f.create(value_type)
+    weight_type = computation_types.to_type(weight_type)
+    process = mean_f.create_weighted(value_type, weight_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     param_value_type = computation_types.FederatedType(value_type,
@@ -106,7 +120,7 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
         parameter=collections.OrderedDict(
             state=expected_state_type,
             value=param_value_type,
-            weight=weight_type),
+            weight=computation_types.at_clients(weight_type)),
         result=measured_process.MeasuredProcessOutput(
             expected_state_type, result_value_type, expected_measurements_type))
     self.assertTrue(
@@ -117,10 +131,13 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
        computation_types.FederatedType(tf.float32, placements.SERVER)),
       ('function_type', computation_types.FunctionType(None, ())),
       ('sequence_type', computation_types.SequenceType(tf.float32)))
-  def test_incorrect_value_type_raises(self, bad_value_type):
+  def test_incorrect_create_type_raises(self, wrong_type):
     mean_f = mean_factory.MeanFactory()
+    correct_type = computation_types.to_type(tf.float32)
     with self.assertRaises(TypeError):
-      mean_f.create(bad_value_type)
+      mean_f.create_weighted(wrong_type, correct_type)
+    with self.assertRaises(TypeError):
+      mean_f.create_weighted(correct_type, wrong_type)
 
 
 class MeanFactoryExecutionTest(test_case.TestCase):
@@ -128,7 +145,8 @@ class MeanFactoryExecutionTest(test_case.TestCase):
   def test_scalar_value(self):
     mean_f = mean_factory.MeanFactory()
     value_type = computation_types.to_type(tf.float32)
-    process = mean_f.create(value_type)
+    weight_type = computation_types.to_type(tf.float32)
+    process = mean_f.create_weighted(value_type, weight_type)
 
     state = process.initialize()
     self.assertAllEqual(
@@ -149,7 +167,8 @@ class MeanFactoryExecutionTest(test_case.TestCase):
   def test_structure_value(self):
     mean_f = mean_factory.MeanFactory()
     value_type = computation_types.to_type(((tf.float32, (2,)), tf.float64))
-    process = mean_f.create(value_type)
+    weight_type = computation_types.to_type(tf.float32)
+    process = mean_f.create_weighted(value_type, weight_type)
 
     state = process.initialize()
     self.assertAllEqual(
@@ -170,7 +189,8 @@ class MeanFactoryExecutionTest(test_case.TestCase):
   def test_weight_arg(self):
     mean_f = mean_factory.MeanFactory()
     value_type = computation_types.to_type(tf.float32)
-    process = mean_f.create(value_type)
+    weight_type = computation_types.to_type(tf.float32)
+    process = mean_f.create_weighted(value_type, weight_type)
 
     state = process.initialize()
     client_data = [1.0, 2.0, 3.0]
@@ -184,7 +204,8 @@ class MeanFactoryExecutionTest(test_case.TestCase):
   def test_weight_arg_all_zeros_nan_division(self):
     mean_f = mean_factory.MeanFactory(no_nan_division=False)
     value_type = computation_types.to_type(tf.float32)
-    process = mean_f.create(value_type)
+    weight_type = computation_types.to_type(tf.float32)
+    process = mean_f.create_weighted(value_type, weight_type)
 
     state = process.initialize()
     client_data = [1.0, 2.0, 3.0]
@@ -196,7 +217,8 @@ class MeanFactoryExecutionTest(test_case.TestCase):
   def test_weight_arg_all_zeros_no_nan_division(self):
     mean_f = mean_factory.MeanFactory(no_nan_division=True)
     value_type = computation_types.to_type(tf.float32)
-    process = mean_f.create(value_type)
+    weight_type = computation_types.to_type(tf.float32)
+    process = mean_f.create_weighted(value_type, weight_type)
 
     state = process.initialize()
     client_data = [1.0, 2.0, 3.0]
@@ -208,7 +230,8 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
     mean_f = mean_factory.MeanFactory(value_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
-    process = mean_f.create(value_type)
+    weight_type = computation_types.to_type(tf.float32)
+    process = mean_f.create_weighted(value_type, weight_type)
 
     state = process.initialize()
     self.assertAllEqual(
@@ -232,7 +255,8 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
     mean_f = mean_factory.MeanFactory(weight_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
-    process = mean_f.create(value_type)
+    weight_type = computation_types.to_type(tf.float32)
+    process = mean_f.create_weighted(value_type, weight_type)
 
     state = process.initialize()
     self.assertAllEqual(
@@ -257,7 +281,8 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     mean_f = mean_factory.MeanFactory(
         value_sum_factory=sum_factory, weight_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
-    process = mean_f.create(value_type)
+    weight_type = computation_types.to_type(tf.float32)
+    process = mean_f.create_weighted(value_type, weight_type)
 
     state = process.initialize()
     self.assertAllEqual(
