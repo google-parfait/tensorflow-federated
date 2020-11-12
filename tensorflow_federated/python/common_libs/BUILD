@@ -126,8 +126,10 @@ py_library(
     name = "tracing",
     srcs = ["tracing.py"],
     srcs_version = "PY3",
-    # TODO(b/163856734): Fix the visibility of the `common_libs`.
-    visibility = ["//tensorflow_federated:internal"],
+    visibility = [
+        "//tensorflow_federated:__pkg__",
+        "//tensorflow_federated:internal",
+    ],
     deps = [":py_typecheck"],
 )
 
