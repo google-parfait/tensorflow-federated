@@ -114,12 +114,6 @@ py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
-    # TODO(b/163856734): Fix the visibility of the `common_libs`.
-    visibility = [
-        "//tensorflow_federated:internal",
-        "//tensorflow_federated/python/examples/simple_fedavg:__pkg__",
-        "//tensorflow_federated/python/tests:__pkg__",
-    ],
 )
 
 py_library(

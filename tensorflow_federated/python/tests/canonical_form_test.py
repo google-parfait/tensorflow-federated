@@ -19,7 +19,6 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.common_libs import test_utils
 
 
 def construct_example_training_comp():
@@ -100,10 +99,11 @@ class CanonicalFormTest(tff.test.TestCase):
         cf.work.type_signature.formatted_representation())
     # pyformat: enable
 
-  # TODO(b/137602785): bring GPU test back after the fix for `wrap_function`.
-  @test_utils.skip_test_for_gpu
   def test_canonical_form_with_learning_structure_does_not_change_execution_of_iterative_process(
       self):
+    if tf.config.list_logical_devices('GPU'):
+      self.skipTest(
+          'b/137602785: bring GPU test back after the fix for `wrap_function`')
     ip_1 = construct_example_training_comp()
     cf = tff.backends.mapreduce.get_canonical_form_for_iterative_process(ip_1)
     ip_2 = tff.backends.mapreduce.get_iterative_process_for_canonical_form(cf)

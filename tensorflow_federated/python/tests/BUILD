@@ -34,7 +34,6 @@ py_test(
     deps = [
         "//tensorflow_federated",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/common_libs:test_utils",
     ],
 )
 
