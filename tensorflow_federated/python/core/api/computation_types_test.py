@@ -601,30 +601,17 @@ class ToTypeTest(absltest.TestCase):
     self.assertIsInstance(a, computation_types.TensorType)
     self.assertIsInstance(b, computation_types.TensorType)
 
-  def test_attrs_type(self):
+  def test_attrs_type_raises_deprecation_error(self):
 
     @attr.s
-    class TestFoo(object):
+    class TestFoo:
       a = attr.ib(type=tf.int32)
       b = attr.ib(type=(tf.float32, [2]))
 
-    t = computation_types.to_type(TestFoo)
-    self.assertIsInstance(t, computation_types.StructWithPythonType)
-    self.assertIs(t.python_container, TestFoo)
-    self.assertEqual(str(t), '<a=int32,b=float32[2]>')
-
-  def test_attrs_class_missing_type_fails(self):
-
-    @attr.s
-    class TestFoo(object):
-      a = attr.ib(type=tf.int32)
-      b = attr.ib()  # no type parameter
-      c = attr.ib()  # no type parameter
-
-    expected_msg = (
-        "Cannot infer tff.Type for attr.s class 'TestFoo' because some "
-        "attributes were missing type specifications: ['b', 'c']")
-    with self.assertRaisesWithLiteralMatch(TypeError, expected_msg):
+    with self.assertRaisesRegex(
+        TypeError,
+        'Converting `attr` classes to a federated type is no longer supported.'
+    ):
       computation_types.to_type(TestFoo)
 
   def test_attrs_instance(self):
@@ -648,9 +635,10 @@ class ToTypeTest(absltest.TestCase):
 
     @attr.s
     class TestFoo2(object):
-      c = attr.ib(type=(tf.float32, [2]))
+      c = attr.ib()
 
-    t = computation_types.to_type(TestFoo(a=[tf.int32, tf.bool], b=TestFoo2))
+    t = computation_types.to_type(
+        TestFoo(a=[tf.int32, tf.bool], b=TestFoo2(c=(tf.float32, [2]))))
     self.assertIsInstance(t, computation_types.StructWithPythonType)
     self.assertIs(t.python_container, TestFoo)
     self.assertIsInstance(t.a, computation_types.StructWithPythonType)

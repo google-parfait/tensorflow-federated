@@ -525,18 +525,6 @@ class AssertReturnsTest(test_case.TestCase):
     def _():
       return MyAttrs(a=0, b=0)
 
-  def test_attrs_type_in_def(self):
-
-    @attr.s(frozen=True, eq=False, slots=True)
-    class MyAttrs:
-      a = attr.ib(type=tf.int32)
-      b = attr.ib(type=tf.int32)
-
-    @computation_wrapper_instances.tensorflow_wrapper
-    @computation_wrapper_instances.check_returns_type(MyAttrs)
-    def _():
-      return MyAttrs(a=0, b=0)
-
 
 class ToComputationImplTest(test_case.TestCase):
 

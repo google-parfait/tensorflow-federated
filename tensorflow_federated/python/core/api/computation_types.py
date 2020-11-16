@@ -19,7 +19,6 @@ import difflib
 import enum
 import typing
 from typing import Any, Dict, Optional, Type as TypingType, TypeVar
-import warnings
 import weakref
 
 import attr
@@ -937,19 +936,27 @@ def to_type(spec) -> Type:
   ((tf.int32, [1]), (('x', (tf.float32, [2])), (tf.bool, [3])))
   ```
 
-  Custom `attr` classes can also be converted to a nested `tff.Type` by using
-  `attr.ib(type=...)` annotations (deprecated):
+  `attr.s` class instances can also be used to describe TFF types by populating
+  the fields with the corresponding types:
 
   ```python
-  @attr.s
+  @attr.s(auto_attribs=True)
   class MyDataClass:
-    int_scalar = attr.ib(type=tf.int32)
-    string_array = attr.ib(type=tff.TensorType(dtype=tf.string, shape=[3]))
-  ```
+    int_scalar: tf.Tensor
+    string_array: tf.Tensor
 
-  Support for converting `attr` classes is deprecated and will be removed in a
-  future release. Please use one of the other supported forms instead.
-  TODO(b/170486248): Deprecate support for converting `attr` classes.
+    @classmethod
+    def tff_type(cls) -> tff.Type:
+      return tff.to_type(cls(
+        int_scalar=tf.int32,
+        string_array=tff.TensorSpec(dtype=tf.string, shape=[3]),
+      ))
+
+  @tff.tf_computation(MyDataClass.tff_type())
+  def work(my_data):
+    assert isinstance(my_data, MyDataClass)
+    ...
+  ```
 
   Args:
     spec: Either an instance of `tff.Type`, or an argument convertible to
@@ -1005,21 +1012,12 @@ def to_type(spec) -> Type:
 def _to_type_from_attrs(spec) -> Type:
   """Converts an `attr.s` class or instance to a `tff.Type`."""
   if isinstance(spec, type):
-    # attrs class type, introspect the attributes for their type annotations.
-
-    # TODO(b/170486248): Deprecate support for converting `attr` classes.
-    warnings.warn(
-        'Deprecation warning: Converting `attr` classes to a federated type is '
-        'deprecated, use one of the other forms described in `tff.to_type()` '
-        'instead.', DeprecationWarning)
-    elements = [(a.name, a.type) for a in attr.fields(spec)]
-    missing_types = [n for (n, t) in elements if not t]
-    if missing_types:
-      raise TypeError((
-          "Cannot infer tff.Type for attr.s class '{}' because some attributes "
-          'were missing type specifications: {}').format(
-              spec.__name__, missing_types))
-    the_type = spec
+    # attrs class type
+    raise TypeError(
+        'Converting `attr` classes to a federated type is no longer supported. '
+        'Either populate an instance of the `attr.s` class with the '
+        'appropriate field types, or use one of the other forms described in '
+        '`tff.to_type()` instead.')
   else:
     # attrs class instance, inspect the field values for instances convertible
     # to types.
