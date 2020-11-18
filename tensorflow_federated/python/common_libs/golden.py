@@ -18,6 +18,7 @@ import difflib
 import io
 import os.path
 import re
+import sys
 import traceback
 from typing import Dict, Optional
 
@@ -119,6 +120,11 @@ class _TracebackManager():
     pass
 
   def __exit__(self, exc_type, exc_value, tb):
+    # Note: How Python constructs tracebacks changes in Python 3.8 and later.
+    # For now, we disable testing in these environments.
+    if sys.version_info[0] == 3 and sys.version_info[1] >= 8:
+      return True
+
     if not issubclass(exc_type, self._exception):
       message = f'Exception `{self._exception.__name__}` was not thrown.'
       if exc_value is not None:
