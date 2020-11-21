@@ -28,7 +28,6 @@ py_library(
         ":federated_sgd",
         ":keras_utils",
         ":model",
-        ":model_update_aggregator",
         ":model_utils",
         ":personalization_eval",
         "//tensorflow_federated/python/learning/framework",
