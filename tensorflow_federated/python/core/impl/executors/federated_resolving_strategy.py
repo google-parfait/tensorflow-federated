@@ -521,7 +521,12 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
   async def compute_federated_secure_sum(
       self,
       arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
-    raise NotImplementedError('The secure sum intrinsic is not implemented.')
+    raise NotImplementedError(
+        '`tff.federated_secure_sum()` is not implemented in this executor. '
+        'For a fake implementation of `federated_secure_sum` suitable for '
+        'testing, consider using the test executor context by adding the '
+        'following during initialization: '
+        '`tff.backends.test.set_test_execution_context()`')
 
   @tracing.trace
   async def compute_federated_sum(
