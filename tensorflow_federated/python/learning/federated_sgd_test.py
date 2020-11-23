@@ -224,6 +224,32 @@ class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(metric_outputs['train']['num_examples'], 0)
     self.assertTrue(tf.math.is_nan(metric_outputs['train']['loss']))
 
+  @test_utils.skip_test_for_multi_gpu
+  def test_get_model_weights(self):
+    iterative_process = federated_sgd.build_federated_sgd_process(
+        model_fn=model_examples.LinearRegression)
+
+    num_clients = 3
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(
+            x=[[1.0, 2.0], [3.0, 4.0]],
+            y=[[5.0], [6.0]],
+        )).batch(2)
+    datasets = [ds] * num_clients
+
+    state = iterative_process.initialize()
+    self.assertIsInstance(
+        iterative_process.get_model_weights(state), model_utils.ModelWeights)
+    self.assertAllClose(state.model.trainable,
+                        iterative_process.get_model_weights(state).trainable)
+
+    for _ in range(3):
+      state, _ = iterative_process.next(state, datasets)
+      self.assertIsInstance(
+          iterative_process.get_model_weights(state), model_utils.ModelWeights)
+      self.assertAllClose(state.model.trainable,
+                          iterative_process.get_model_weights(state).trainable)
+
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()

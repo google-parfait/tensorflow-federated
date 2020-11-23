@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model as model_lib
@@ -159,8 +160,8 @@ def build_federated_sgd_process(
   """Builds the TFF computations for optimization using federated SGD.
 
   This function creates a `tff.templates.IterativeProcess` that performs
-  federated averaging on client models. The iterative process has the following
-  methods:
+  federated SGD on client models. The iterative process has the following
+  methods inherited from `tff.templates.IterativeProcess`:
 
   *   `initialize`: A `tff.Computation` with the functional type signature
       `( -> S@SERVER)`, where `S` is a `tff.learning.framework.ServerState`
@@ -174,6 +175,13 @@ def build_federated_sgd_process(
       and metrics that are the result of
       `tff.learning.Model.federated_output_computation` during client training
       and any other metrics from broadcast and aggregation processes.
+
+  The iterative process also has the following method not inherited from
+  `tff.templates.IterativeProcess`:
+
+  *   `get_model_weights`: A `tff.Computation` that takes as input the
+      a `tff.learning.framework.ServerState`, and returns a
+      `tff.learning.ModelWeights` containing the state's model weights.
 
   Each time the `next` method is called, the server model is broadcast to each
   client using a broadcast function. Each client sums the gradients at each
@@ -228,10 +236,19 @@ def build_federated_sgd_process(
         client_weight_fn,
         use_experimental_simulation_loop=use_experimental_simulation_loop)
 
-  return optimizer_utils.build_model_delta_optimizer_process(
+  iter_proc = optimizer_utils.build_model_delta_optimizer_process(
       model_fn,
       model_to_client_delta_fn=client_sgd_avg,
       server_optimizer_fn=server_optimizer_fn,
       broadcast_process=broadcast_process,
       aggregation_process=aggregation_process,
       model_update_aggregation_factory=model_update_aggregation_factory)
+
+  server_state_type = iter_proc.state_type.member
+
+  @computations.tf_computation(server_state_type)
+  def get_model_weights(server_state):
+    return server_state.model
+
+  iter_proc.get_model_weights = get_model_weights
+  return iter_proc
