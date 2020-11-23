@@ -173,7 +173,7 @@ def main(argv):
       model_fn=model_fn,
       personalize_fn_dict=personalize_fn_dict,
       baseline_evaluate_fn=evaluate_fn,
-      max_num_samples=100)  # Metrics from at most 100 clients will be returned.
+      max_num_clients=100)  # Metrics from at most 100 clients will be returned.
 
   # Train a global model using the standard FedAvg algorithm.
   num_total_rounds = 5
@@ -201,7 +201,7 @@ def main(argv):
   # maps keys (strategy names) in `personalize_fn_dict` to the evaluation
   # metrics of the corresponding personalization strategies.
   #
-  # Only metrics from at most `max_num_samples` participating clients are
+  # Only metrics from at most `max_num_clients` participating clients are
   # collected (clients are sampled without replacement). Each metric is
   # mapped to a list of scalars (each scalar comes from one client). Metric
   # values at the same position, e.g., `metric_1[i]`, `metric_2[i]`, ...,

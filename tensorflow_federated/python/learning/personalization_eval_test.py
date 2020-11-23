@@ -399,16 +399,16 @@ class PersonalizationEvalTest(test_case.TestCase):
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
 
     with self.assertRaises(TypeError):
-      # `max_num_samples` should be an `int`.
-      bad_num_samples = 1.0
+      # `max_num_clients` should be an `int`.
+      bad_num_clients = 1.0
       p13n_eval.build_personalization_eval(
-          model_fn, p13n_fn_dict, _evaluate_fn, max_num_samples=bad_num_samples)
+          model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=bad_num_clients)
 
     with self.assertRaises(ValueError):
-      # `max_num_samples` should be a positive `int`.
-      bad_num_samples = 0
+      # `max_num_clients` should be a positive `int`.
+      bad_num_clients = 0
       p13n_eval.build_personalization_eval(
-          model_fn, p13n_fn_dict, _evaluate_fn, max_num_samples=bad_num_samples)
+          model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=bad_num_clients)
 
   def test_success_with_small_sample_size(self):
 
@@ -419,7 +419,7 @@ class PersonalizationEvalTest(test_case.TestCase):
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
 
     federated_p13n_eval = p13n_eval.build_personalization_eval(
-        model_fn, p13n_fn_dict, _evaluate_fn, max_num_samples=1)
+        model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=1)
 
     # Perform p13n eval on two clients.
     results = federated_p13n_eval(zero_model_weights, [
