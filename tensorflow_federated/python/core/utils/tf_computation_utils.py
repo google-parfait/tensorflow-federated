@@ -81,7 +81,7 @@ def assign(target, source):
     target: A nested structure composed of variables embedded in containers that
       are compatible with `tf.nest`, or instances of
       `structure.Struct`.
-    source: A nsested structure composed of tensors, matching that of `target`.
+    source: A nested structure composed of tensors, matching that of `target`.
 
   Returns:
     A single op that represents the assignment.
