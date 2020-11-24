@@ -14,6 +14,7 @@
 
 import queue
 import threading
+from unittest import mock
 
 from absl.testing import absltest
 import grpc
@@ -199,6 +200,39 @@ class ExecutorServiceTest(absltest.TestCase):
     # exception rather than having it occur on the GRPC thread.
     with self.assertRaises(KeyError):
       env.get_value_future_directly(value_id)
+
+  def test_dispose_does_not_trigger_cleanup(self):
+
+    class MockFactory(executor_factory.ExecutorFactory, mock.MagicMock):
+
+      def create_executor(self, *args, **kwargs):
+        return mock.MagicMock()
+
+      def clean_up_executors(self):
+        return
+
+    ex_factory = MockFactory()
+    ex_factory.clean_up_executors = mock.MagicMock()
+
+    env = TestEnv(ex_factory)
+    value_proto, _ = executor_serialization.serialize_value(
+        tf.constant(10.0).numpy(), tf.float32)
+    # Create the value
+    response = env.stub.CreateValue(
+        executor_pb2.CreateValueRequest(value=value_proto))
+    self.assertIsInstance(response, executor_pb2.CreateValueResponse)
+    value_id = str(response.value_ref.id)
+    # Check that the value appears in the _values map
+    env.get_value_future_directly(value_id)
+    # Dispose of the value
+    dispose_request = executor_pb2.DisposeRequest()
+    dispose_request.value_ref.append(response.value_ref)
+    response = env.stub.Dispose(dispose_request)
+    # We shouldn't be propagating close down the executor stack on Dispose--this
+    # would close the bidi stream and cause a hang in the streaming case with
+    # intermediate aggregation. Python GC takes care of pushing Dispose requests
+    # from the aggregators to the workers.
+    ex_factory.clean_up_executors.assert_not_called()
 
   def test_executor_service_create_one_arg_computation_value_and_call(self):
     ex_factory = executor_stacks.ResourceManagingExecutorFactory(

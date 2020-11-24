@@ -374,7 +374,6 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       with self._lock:
         for value_ref in request.value_ref:
           del self._values[value_ref.id]
-      self._ex_factory.clean_up_executors()
     except KeyError as err:
       _set_invalid_arg_err(context, err)
     return executor_pb2.DisposeResponse()
