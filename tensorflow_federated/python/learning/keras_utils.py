@@ -203,6 +203,10 @@ def federated_aggregate_keras_metric(
       # used. This is somewhat limiting, but the pattern to use default
       # arguments and export the values in `get_config()` (see
       # `tf.keras.metrics.TopKCategoricalAccuracy`) works well.
+      #
+      # If type(metric) is subclass of another tf.keras.metric arguments passed
+      # to __init__ must include arguments expected by the superclass and
+      # specified in superclass get_config().
       keras_metric = None
       try:
         # This is some trickery to reconstruct a metric object in the current
@@ -215,7 +219,7 @@ def federated_aggregate_keras_metric(
             'Caught exception trying to call `{t}.from_config()` with '
             'config {c}. Confirm that {t}.__init__() has an argument for '
             'each member of the config.\nException: {e}'.format(
-                t=type(metric), c=metric.config(), e=e))
+                t=type(metric), c=metric.get_config(), e=e))
 
       assignments = []
       for v, a in zip(keras_metric.variables, values):
