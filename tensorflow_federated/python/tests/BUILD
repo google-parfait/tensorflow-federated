@@ -31,10 +31,7 @@ py_test(
     srcs = ["canonical_form_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated",
-        "//tensorflow_federated/python/common_libs:structure",
-    ],
+    deps = ["//tensorflow_federated"],
 )
 
 py_test(

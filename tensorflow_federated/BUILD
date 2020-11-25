@@ -26,6 +26,7 @@ py_library(
     deps = [
         ":version",
         "//tensorflow_federated/python/aggregators",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
