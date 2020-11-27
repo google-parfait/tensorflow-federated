@@ -57,6 +57,19 @@ class ServerUtilsTest(test_case.TestCase):
 
     mock_logging_info.assert_called_once_with('Shutting down server.')
 
+  @mock.patch(
+      'tensorflow_federated.python.core.impl.executors.executor_service.ExecutorService',
+      side_effect=ValueError)
+  def test_failure_on_construction_fails_as_expected(self, mock_service):
+
+    ex = eager_tf_executor.EagerTFExecutor()
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
+
+    with self.assertRaises(ValueError):
+      with server_utils.server_context(ex_factory, 1,
+                                       portpicker.pick_unused_port()):
+        time.sleep(1)
+
 
 if __name__ == '__main__':
   test_case.main()

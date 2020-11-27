@@ -63,14 +63,14 @@ def server_context(ex_factory: executor_factory.ExecutorFactory,
     raise ValueError('The number of threads must be a positive integer.')
   if port < 1:
     raise ValueError('The server port must be a positive integer.')
+  service = executor_service.ExecutorService(ex_factory)
+  server_kwargs = {}
+  if options is not None:
+    server_kwargs['options'] = options
+  thread_pool_executor = concurrent.futures.ThreadPoolExecutor(
+      max_workers=num_threads)
+  server = grpc.server(thread_pool_executor, **server_kwargs)
   try:
-    service = executor_service.ExecutorService(ex_factory)
-    server_kwargs = {}
-    if options is not None:
-      server_kwargs['options'] = options
-    thread_pool_executor = concurrent.futures.ThreadPoolExecutor(
-        max_workers=num_threads)
-    server = grpc.server(thread_pool_executor, **server_kwargs)
     full_port_string = '[::]:{}'.format(port)
     if credentials is not None:
       server.add_secure_port(full_port_string, credentials)
