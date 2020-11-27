@@ -134,8 +134,8 @@ class ZeroingConfig:
     zeroing_quantile = self._quantile.to_quantile_estimation_process()
     zeroing_norm = zeroing_quantile.map(
         _affine_transform(self._multiplier, self._increment))
-    return clipping_factory.ZeroingFactory(zeroing_norm, inner_factory,
-                                           float('inf'))
+    return clipping_factory.ZeroingFactory(
+        zeroing_norm, inner_factory, norm_order=float('inf'))
 
 
 class ClippingConfig:

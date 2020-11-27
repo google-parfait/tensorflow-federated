@@ -14,15 +14,21 @@
 """Tests for model_update_aggregator."""
 
 from absl.testing import parameterized
+import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean_factory
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.learning import model_update_aggregator
 
 _test_qe_config = model_update_aggregator.QuantileEstimationConfig(
     initial_estimate=1.0, target_quantile=0.5, learning_rate=1.0)
+
+
+_test_type = computation_types.TensorType(tf.float32)
 
 
 class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
@@ -78,6 +84,8 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
         quantile=qe_config, multiplier=10.0, increment=0.5)
     factory_ = zeroing_config.to_factory(mean_factory.MeanFactory())
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
+    process = factory_.create_weighted(_test_type, _test_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
   @parameterized.named_parameters(
       ('good', None, None, None),
@@ -94,6 +102,8 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     clipping_config = model_update_aggregator.ClippingConfig()
     factory_ = clipping_config.to_factory(mean_factory.MeanFactory())
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
+    process = factory_.create_weighted(_test_type, _test_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
   @parameterized.named_parameters(
       ('good', None, None, None),
@@ -115,10 +125,14 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
         noise_multiplier=1.0, clients_per_round=10.0)
     factory_ = dp_config.to_factory()
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
+    process = factory_.create_unweighted(_test_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
   def test_model_update_aggregator(self):
     factory_ = model_update_aggregator.model_update_aggregator()
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
+    process = factory_.create_weighted(_test_type, _test_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
 
 if __name__ == '__main__':
