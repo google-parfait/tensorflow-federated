@@ -17,7 +17,6 @@ import collections
 import itertools
 
 from absl.testing import parameterized
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import clipping_factory
@@ -490,7 +489,7 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(1, output.measurements['zeroed_count'])
 
   def test_fixed_zero_sum_struct_inf_norm(self):
-    factory = _zeroed_sum(2.0, np.inf)
+    factory = _zeroed_sum(2.0, float('inf'))
 
     value_type = computation_types.to_type(_test_struct_type)
     process = factory.create_unweighted(value_type)
@@ -504,7 +503,7 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(1, output.measurements['zeroed_count'])
 
   def test_fixed_zero_mean_struct_inf_norm(self):
-    factory = _zeroed_mean(2.0, np.inf)
+    factory = _zeroed_mean(2.0, float('inf'))
 
     value_type = computation_types.to_type(_test_struct_type)
     weight_type = computation_types.to_type(tf.float32)
