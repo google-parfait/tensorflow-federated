@@ -304,10 +304,7 @@ class _KerasModel(model_lib.Model):
     return local_variables
 
   def get_metrics(self):
-    if not self._keras_model._is_compiled:  # pylint: disable=protected-access
-      return self._metrics + [self._loss_metric]
-    else:
-      return self._keras_model.metrics + [self._loss_metric]
+    return self._metrics + [self._loss_metric]
 
   @property
   def input_spec(self):
