@@ -280,6 +280,15 @@ def _create_two_variable_tensorflow():
   return _pack_noarg_graph(g.as_graph_def(), result_type, result_binding)
 
 
+def _create_tensorflow_graph_with_nan():
+  with tf.Graph().as_default() as g:
+    a = tf.constant(float('NaN'))
+
+  result_type, result_binding = tensorflow_utils.capture_result_from_graph(a, g)
+
+  return _pack_noarg_graph(g.as_graph_def(), result_type, result_binding)
+
+
 class CountTensorFlowVariablesTest(absltest.TestCase):
 
   def test_raises_on_none(self):
@@ -362,7 +371,7 @@ class ContainsNoUnboundReferencesTest(absltest.TestCase):
     self.assertFalse(tree_analysis.contains_no_unbound_references(fn))
 
 
-class ComputationsEqualTest(absltest.TestCase):
+class TreesEqualTest(absltest.TestCase):
 
   def test_raises_type_error(self):
     data = building_blocks.Data('data', tf.int32)
@@ -699,6 +708,12 @@ class ComputationsEqualTest(absltest.TestCase):
     data_2 = building_blocks.Data('data', tf.int32)
     tuple_2 = building_blocks.Struct([data_2, data_2])
     self.assertTrue(tree_analysis.trees_equal(tuple_1, tuple_2))
+
+  def test_returns_true_for_identical_graphs_with_nans(self):
+    self.skipTest('b/174605105')
+    tf_comp1 = _create_tensorflow_graph_with_nan()
+    tf_comp2 = _create_tensorflow_graph_with_nan()
+    self.assertTrue(tree_analysis.trees_equal(tf_comp1, tf_comp2))
 
 
 @computations.federated_computation
