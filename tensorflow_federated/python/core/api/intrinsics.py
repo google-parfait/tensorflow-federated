@@ -70,7 +70,7 @@ def federated_aggregate(value, zero, accumulate, merge, report):
     using the multi-stage process described above.
 
   Raises:
-    TypeError: if the arguments are not of the types specified above.
+    TypeError: If the arguments are not of the types specified above.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
   return factory.federated_aggregate(value, zero, accumulate, merge, report)
@@ -120,7 +120,7 @@ def federated_mean(value, weight=None):
     member constituents contributed by all clients are equally weighted).
 
   Raises:
-    TypeError: if `value` is not a federated TFF value placed at `tff.CLIENTS`,
+    TypeError: If `value` is not a federated TFF value placed at `tff.CLIENTS`,
       or if `weight` is not a federated integer or a floating-point tensor with
       the matching placement.
   """
@@ -141,7 +141,7 @@ def federated_broadcast(value):
     type placed at the `tff.CLIENTS`, all members of which are equal.
 
   Raises:
-    TypeError: if the argument is not a federated TFF value placed at the
+    TypeError: If the argument is not a federated TFF value placed at the
       `tff.SERVER`.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
@@ -159,7 +159,7 @@ def federated_collect(value):
     the `tff.SERVER`.
 
   Raises:
-    TypeError: if the argument is not a federated TFF value placed at
+    TypeError: If the argument is not a federated TFF value placed at
       `tff.CLIENTS`.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
@@ -240,7 +240,7 @@ def federated_reduce(value, zero, op):
     item.
 
   Raises:
-    TypeError: if the arguments are not of the types specified above.
+    TypeError: If the arguments are not of the types specified above.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
   return factory.federated_reduce(value, zero, op)
@@ -283,15 +283,16 @@ def federated_secure_sum(value, bitwidth):
   Args:
     value: An integer value of a TFF federated type placed at the `tff.CLIENTS`,
       in the range [0, 2^bitwidth - 1].
-    bitwidth: An integer or nested structure of integers. For each tensor in
-      `value`, `bitwidth` must contain exactly one corresponding integer.
+    bitwidth: An integer or nested structure of integers matching the structure
+      of `value`. If integer `bitwidth` is used with a nested `value`, the same
+      integer is used for each tensor in `value`.
 
   Returns:
     A representation of the sum of the member constituents of `value` placed
     on the `tff.SERVER`.
 
   Raises:
-    TypeError: if the argument is not a federated TFF value placed at
+    TypeError: If the argument is not a federated TFF value placed at
       `tff.CLIENTS`.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
@@ -312,7 +313,7 @@ def federated_sum(value):
     on the `tff.SERVER`.
 
   Raises:
-    TypeError: if the argument is not a federated TFF value placed at
+    TypeError: If the argument is not a federated TFF value placed at
       `tff.CLIENTS`.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
@@ -352,7 +353,7 @@ def federated_zip(value):
     corresponding member components of the elements of `value`.
 
   Raises:
-    TypeError: if the argument is not a named tuple of federated values with the
+    TypeError: If the argument is not a named tuple of federated values with the
       same placement.
   """
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)

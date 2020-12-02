@@ -14,6 +14,7 @@
 """A factory of intrinsics for use in composing federated computations."""
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl import value_impl
@@ -383,9 +384,9 @@ class IntrinsicFactory(object):
                                                placement_literals.CLIENTS,
                                                'value to be summed')
     type_analysis.check_is_structure_of_integers(value.type_signature)
-    bitwidth = value_impl.to_value(bitwidth, None, self._context_stack)
+    bitwidth_value = value_impl.to_value(bitwidth, None, self._context_stack)
     value_member_type = value.type_signature.member
-    bitwidth_type = bitwidth.type_signature
+    bitwidth_type = bitwidth_value.type_signature
     if not type_analysis.is_valid_bitwidth_type_for_value_type(
         bitwidth_type, value_member_type):
       raise TypeError(
@@ -393,9 +394,14 @@ class IntrinsicFactory(object):
           'the structure of `value`, with one integer bitwidth per tensor in '
           '`value`. Found `value` of `{}` and `bitwidth` of `{}`.'.format(
               value_member_type, bitwidth_type))
+    if bitwidth_type.is_tensor() and value_member_type.is_struct():
+      bitwidth_value = value_impl.to_value(
+          structure.map_structure(lambda _: bitwidth, value_member_type), None,
+          self._context_stack)
     value = value_impl.ValueImpl.get_comp(value)
-    bitwidth = value_impl.ValueImpl.get_comp(bitwidth)
-    comp = building_block_factory.create_federated_secure_sum(value, bitwidth)
+    bitwidth_value = value_impl.ValueImpl.get_comp(bitwidth_value)
+    comp = building_block_factory.create_federated_secure_sum(
+        value, bitwidth_value)
     comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 

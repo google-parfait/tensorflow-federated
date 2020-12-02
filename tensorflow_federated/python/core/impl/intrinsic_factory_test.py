@@ -47,6 +47,15 @@ class FederatedSecureSumTest(absltest.TestCase):
     self.assertEqual(intrinsic.type_signature.compact_representation(),
                      '<int32,<int32,int32>>@SERVER')
 
+  def test_type_signature_with_structure_of_ints_scalar_bitwidth(self):
+    value = intrinsics.federated_value([1, [1, 1]], placement_literals.CLIENTS)
+    bitwidth = 8
+
+    intrinsic = intrinsics.federated_secure_sum(value, bitwidth)
+
+    self.assertEqual(intrinsic.type_signature.compact_representation(),
+                     '<int32,<int32,int32>>@SERVER')
+
   def test_type_signature_with_one_tensor_and_bitwidth(self):
     value = intrinsics.federated_value(
         np.ndarray(shape=(5, 37), dtype=np.int16), placement_literals.CLIENTS)
@@ -84,7 +93,7 @@ class FederatedSecureSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_different_structures(self):
     value = intrinsics.federated_value([1, [1, 1]], placement_literals.CLIENTS)
-    bitwidth = 8
+    bitwidth = [8, 4, 2]
 
     with self.assertRaises(TypeError):
       intrinsics.federated_secure_sum(value, bitwidth)

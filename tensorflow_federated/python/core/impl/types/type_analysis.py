@@ -347,10 +347,9 @@ def is_valid_bitwidth_type_for_value_type(
   py_typecheck.check_type(bitwidth_type, computation_types.Type)
   py_typecheck.check_type(value_type, computation_types.Type)
 
-  if value_type.is_tensor() and bitwidth_type.is_tensor():
-    # Here, `value_type` refers to a tensor. Rather than check that
-    # `bitwidth_type` is exactly the same, we check that it is a single integer,
-    # since we want a single bitwidth integer per tensor.
+  if bitwidth_type.is_tensor():
+    # This condition applies to both `value_type` being a tensor or structure,
+    # as the same integer bitwidth can be used for all values in the structure.
     return bitwidth_type.dtype.is_integer and (
         bitwidth_type.shape.num_elements() == 1)
   elif value_type.is_struct() and bitwidth_type.is_struct():

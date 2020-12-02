@@ -305,6 +305,9 @@ class IsValidBitwidthTypeForValueType(parameterized.TestCase):
       ('different kinds of ints',
        computation_types.TensorType(tf.int32),
        computation_types.TensorType(tf.int8)),
+      ('single int_for_struct',
+       computation_types.TensorType(tf.int32),
+       computation_types.StructType([tf.int32, tf.int32])),
   )
   # pyformat: enable
   def test_returns_true(self, bitwidth_type, value_type):
@@ -314,9 +317,6 @@ class IsValidBitwidthTypeForValueType(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
-      ('single int_for_struct',
-       computation_types.TensorType(tf.int32),
-       computation_types.StructType([tf.int32, tf.int32])),
       ('miscounted struct',
        computation_types.StructType([tf.int32, tf.int32, tf.int32]),
        computation_types.StructType([tf.int32, tf.int32])),
