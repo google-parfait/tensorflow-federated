@@ -447,8 +447,8 @@ class SymbolTree(object):
         comp = comp.parent
     return None
 
-  def get_all_payloads_with_value(self, value, equal_fn=None):
-    """Returns all the payloads whose `value` attribute is equal to `value`.
+  def get_higher_payloads_with_value(self, value, equal_fn=None):
+    """Returns payloads above `active_node` whose `value` is equal to `value`.
 
     Args:
       value: The value to test.
@@ -458,14 +458,14 @@ class SymbolTree(object):
     payloads = []
     if equal_fn is None:
       equal_fn = operator.is_
-    comp = typing.cast(SequentialBindingNode, self.active_node)
-    while comp.parent is not None or comp.older_sibling is not None:
-      if comp.payload.value is not None and equal_fn(value, comp.payload.value):
-        payloads.append(comp.payload)
-      if comp.older_sibling is not None:
-        comp = comp.older_sibling
-      elif comp.parent is not None:
-        comp = comp.parent
+    node = typing.cast(SequentialBindingNode, self.active_node)
+    while node.parent is not None or node.older_sibling is not None:
+      if node.payload.value is not None and equal_fn(value, node.payload.value):
+        payloads.append(node.payload)
+      if node.older_sibling is not None:
+        node = node.older_sibling
+      elif node.parent is not None:
+        node = node.parent
     return payloads
 
   def update_payload_with_name(self, name):
