@@ -244,11 +244,9 @@ py_test(
     deps = [
         ":model_update_aggregator",
         "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/aggregators:mean_factory",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/templates:aggregation_process",
-        "//tensorflow_federated/python/core/templates:estimation_process",
     ],
 )
 
