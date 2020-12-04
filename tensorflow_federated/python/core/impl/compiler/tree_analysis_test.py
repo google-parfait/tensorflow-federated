@@ -710,7 +710,6 @@ class TreesEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(tuple_1, tuple_2))
 
   def test_returns_true_for_identical_graphs_with_nans(self):
-    self.skipTest('b/174605105')
     tf_comp1 = _create_tensorflow_graph_with_nan()
     tf_comp2 = _create_tensorflow_graph_with_nan()
     self.assertTrue(tree_analysis.trees_equal(tf_comp1, tf_comp2))

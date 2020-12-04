@@ -465,7 +465,13 @@ def _compiled_comp_equal(comp_1, comp_2):
 
   graphdef_1 = serialization_utils.unpack_graph_def(tensorflow_1.graph_def)
   graphdef_2 = serialization_utils.unpack_graph_def(tensorflow_2.graph_def)
-  return graphdef_1 == graphdef_2
+  # TODO(b/174605105): We prefer to mitigate nans comparing unequal for now,
+  # given the severity of TFF's failure to handle this violation of its
+  # assumption that trees_equal is an equivalence relation on its ASTs. But this
+  # is not a long-term solution. To replace with more legitimate proto
+  # comparison which treats nans as equal.
+  return graphdef_1.SerializeToString(
+      deterministic=True) == graphdef_2.SerializeToString(deterministic=True)
 
 
 def trees_equal(comp_1, comp_2):
