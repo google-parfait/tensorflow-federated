@@ -126,7 +126,7 @@ class BroadcastForm(object):
   def summary(self, print_fn=print):
     """Prints a string summary of the `BroadcastForm`.
 
-    Arguments:
+    Args:
       print_fn: Print function to use. It will be called on each line of the
         summary in order to capture the string summary.
     """
@@ -390,7 +390,7 @@ class CanonicalForm(object):
   def summary(self, print_fn=print):
     """Prints a string summary of the `CanonicalForm`.
 
-    Arguments:
+    Args:
       print_fn: Print function to use. It will be called on each line of the
         summary in order to capture the string summary.
     """

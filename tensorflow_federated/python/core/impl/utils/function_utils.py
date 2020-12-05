@@ -388,7 +388,7 @@ def _infer_unpack_needed(fn: types.FunctionType,
 _Arguments = Tuple[List[Any], Dict[str, Any]]
 
 
-def _unpack_arg(arg_types, kwarg_types, arg) -> _Arguments:
+def _unpack_arg(arg_types, kwarg_types, arg) -> _Args:
   """Unpacks 'arg' into an argument list based on types."""
   py_typecheck.check_type(arg, (structure.Struct, value_base.Value))
   args = []
@@ -418,7 +418,7 @@ def _unpack_arg(arg_types, kwarg_types, arg) -> _Arguments:
   return args, kwargs
 
 
-def _ensure_arg_type(parameter_type, arg) -> _Arguments:
+def _ensure_arg_type(parameter_type, arg) -> _Args:
   """Ensures that `arg` matches `parameter_type` before returning it."""
   arg_type = type_conversions.infer_type(arg)
   if not parameter_type.is_assignable_from(arg_type):
