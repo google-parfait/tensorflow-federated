@@ -79,7 +79,7 @@ py_library(
     name = "tensor_utils",
     srcs = ["tensor_utils.py"],
     srcs_version = "PY3",
-    # TODO(b/163856734): Fix the visibility of the `common_libs`.
+    # TODO(b/163856734): Fix the visibility of the `tensorflow_libs`.
     visibility = ["//tensorflow_federated:internal"],
     deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
 )
