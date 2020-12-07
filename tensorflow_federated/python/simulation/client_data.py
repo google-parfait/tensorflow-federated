@@ -302,6 +302,12 @@ class PreprocessClientData(ClientData):
   def element_type_structure(self):
     return self._element_type_structure
 
+  def create_tf_dataset_from_all_clients(self,
+                                         seed: Optional[int] = None
+                                        ) -> tf.data.Dataset:
+    return self._preprocess_fn(
+        self._underlying_client_data.create_tf_dataset_from_all_clients(seed))
+
 
 class ConcreteClientData(ClientData):
   """A generic `ClientData` object.
