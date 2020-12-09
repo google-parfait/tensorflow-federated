@@ -18,8 +18,11 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        "//tensorflow_federated/python/core/impl:computation_impl",
         "//tensorflow_federated/python/core/impl:computation_serialization",
         "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",
+        "//tensorflow_federated/python/core/impl:value_transformations",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
@@ -42,5 +45,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )
