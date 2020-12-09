@@ -13,7 +13,6 @@
 # limitations under the License.
 """The medium for exchanging executable logic between compiler and runtime."""
 
-from iree.integrations.tensorflow.bindings.python.pyiree.tf import compiler as iree_compiler
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
@@ -42,8 +41,6 @@ class ComputationModule(typed_object.TypedObject):
         always as an instance of `computation_types.FunctionType`, possibly with
         a `None` parameter in case it takes no arguments.
     """
-    py_typecheck.check_type(compiler_module,
-                            iree_compiler.binding.CompilerModule)
     py_typecheck.check_type(function_name, str)
     py_typecheck.check_type(type_signature, computation_types.FunctionType)
     self._compiler_module = compiler_module

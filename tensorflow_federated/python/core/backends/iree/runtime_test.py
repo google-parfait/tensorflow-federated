@@ -15,10 +15,12 @@
 import tempfile
 
 import numpy as np
+
+from pyiree import rt as iree_runtime
+from pyiree.compiler2 import tf as iree_compiler_tf
+
 import tensorflow as tf
 
-from iree.bindings.python.pyiree import rt as iree_runtime
-from iree.integrations.tensorflow.bindings.python.pyiree.tf import compiler as iree_compiler
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import computation_module
@@ -44,8 +46,8 @@ class RuntimeTest(tf.test.TestCase):
     with tempfile.TemporaryDirectory() as model_dir:
       save_options = tf.saved_model.SaveOptions(save_debug_info=True)
       tf.saved_model.save(tf_module, model_dir, options=save_options)
-      iree_compiler_module = iree_compiler.tf_saved_model_to_compiler_module(
-          model_dir, exported_names=['foo'])
+      iree_compiler_module = iree_compiler_tf.compile_saved_model(
+          model_dir, import_only=True)
     my_computation_module = computation_module.ComputationModule(
         iree_compiler_module, 'foo',
         computation_types.FunctionType(tf.float32, tf.float32))

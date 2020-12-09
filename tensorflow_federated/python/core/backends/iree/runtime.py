@@ -15,7 +15,9 @@
 
 import threading
 
-from iree.bindings.python.pyiree import rt as iree_runtime
+from pyiree import compiler2 as iree_compiler
+from pyiree import rt as iree_runtime
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.backends.iree import backend_info
@@ -67,8 +69,8 @@ class ComputationCallable(typed_object.TypedObject):
     """
     py_typecheck.check_type(module, computation_module.ComputationModule)
     py_typecheck.check_type(backend, backend_info.BackendInfo)
-    flatbuffer_blob = module.compiler_module.compile(
-        target_backends=[backend.target_name])
+    flatbuffer_blob = iree_compiler.compile_str(
+        module.compiler_module, target_backends=[backend.target_name])
     # TODO(b/153499219): Find a way to name the modules somehow differently
     # for debugging. Right now, module names come from the implicit "module {}"
     # that wraps anything parsed from ASM that lacks an explicit module

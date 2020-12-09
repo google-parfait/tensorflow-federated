@@ -223,7 +223,8 @@ class CompilerTest(tf.test.TestCase):
     comp_proto = computation_impl.ComputationImpl.get_proto(comp)
     module = compiler.import_tensorflow_computation(comp_proto)
     self.assertIsInstance(module, computation_module.ComputationModule)
-    mlir = module.compiler_module.to_asm(large_element_limit=100)
+    assert isinstance(module.compiler_module, bytes)
+    mlir = module.compiler_module.decode('utf-8')
     return module, mlir
 
   def _assert_mlir_contains_pattern(self, actual_mlir, expected_list):
