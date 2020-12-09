@@ -294,8 +294,9 @@ def _to_computation_internal_rep(*, value: pb.Computation,
                                  type_spec: computation_types.StructType,
                                  device: tf.config.LogicalDevice):
   """Converts a `pb.Computation` to a `tf.function`."""
-  key = (value.SerializeToString(), str(type_spec),
-         device.name if device else None)
+  key = (value.SerializeToString(deterministic=True),
+         type_serialization.serialize_type(type_spec).SerializeToString(
+             deterministic=True), device.name if device else None)
   cached_fn = tf_function_cache.get(key)
   if cached_fn is not None:
     return cached_fn
