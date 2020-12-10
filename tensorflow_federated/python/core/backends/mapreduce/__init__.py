@@ -229,7 +229,9 @@ abstract types in addition to those defined earlier:
 
 # TODO(b/138261370): Cover this in the general set of guidelines for deployment.
 
+from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_broadcast_form_for_computation
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_canonical_form_for_iterative_process
+from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_computation_for_broadcast_form
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_iterative_process_for_canonical_form
 from tensorflow_federated.python.core.backends.mapreduce.forms import BroadcastForm
 from tensorflow_federated.python.core.backends.mapreduce.forms import CanonicalForm
