@@ -229,7 +229,6 @@ py_library(
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean_factory",
         "//tensorflow_federated/python/aggregators:quantile_estimation",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -243,12 +242,12 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":model_update_aggregator",
+        "//tensorflow_federated/python/aggregators:clipping_factory",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean_factory",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/templates:aggregation_process",
-        "//tensorflow_federated/python/core/templates:estimation_process",
     ],
 )
 
