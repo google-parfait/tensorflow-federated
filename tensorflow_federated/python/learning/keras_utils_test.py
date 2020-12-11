@@ -584,7 +584,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           ])
 
       self.assertIsInstance(tff_model, model_utils.EnhancedModel)
-      dummy_batch = collections.OrderedDict(
+      example_batch = collections.OrderedDict(
           x=[
               np.zeros([1, 1], dtype=np.float32),
               np.zeros([1, 1], dtype=np.float32)
@@ -594,7 +594,26 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
               np.ones([1, 1], dtype=np.float32),
               np.ones([1, 1], dtype=np.float32)
           ])
-      output = tff_model.forward_pass(dummy_batch)
+      output = tff_model.forward_pass(example_batch)
+      self.assertAllClose(output.loss, 2.0)
+
+    class CustomLoss(tf.keras.losses.Loss):
+
+      def __init__(self):
+        super().__init__(name='custom_loss')
+
+      def call(self, y_true, y_pred):
+        loss = tf.constant(0.0)
+        for label, prediction in zip(y_true, y_pred):
+          loss += tf.keras.losses.MeanSquaredError()(label, prediction)
+        return loss
+
+    keras_model = model_examples.build_multiple_outputs_keras_model()
+    with self.subTest('single_custom_loss_can_work_with_multiple_outputs'):
+      tff_model = keras_utils.from_keras_model(
+          keras_model=keras_model, input_spec=input_spec, loss=CustomLoss())
+
+      output = tff_model.forward_pass(example_batch)
       self.assertAllClose(output.loss, 2.0)
 
     keras_model = model_examples.build_multiple_outputs_keras_model()
@@ -609,10 +628,10 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           ],
           loss_weights=[0.1, 0.2, 0.3])
 
-      output = tff_model.forward_pass(dummy_batch)
+      output = tff_model.forward_pass(example_batch)
       self.assertAllClose(output.loss, 0.5)
 
-      output = tff_model.forward_pass(dummy_batch)
+      output = tff_model.forward_pass(example_batch)
       self.assertAllClose(output.loss, 0.5)
 
     with self.subTest('loss_weights_assert_fail_list'):
@@ -683,7 +702,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           ])
 
       self.assertIsInstance(tff_model, model_utils.EnhancedModel)
-      dummy_batch = collections.OrderedDict(
+      example_batch = collections.OrderedDict(
           x=[
               np.zeros([1, 1], dtype=np.float32),
               np.zeros([1, 1], dtype=np.float32)
@@ -693,7 +712,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
               np.ones([1, 1], dtype=np.float32),
               np.ones([1, 1], dtype=np.float32)
           ])
-      output = tff_model.forward_pass(dummy_batch)
+      output = tff_model.forward_pass(example_batch)
 
       # Labels are (0, 1, 1), preds are (1, 1, 3).
       # Total MSE is 1**2 + 0**2 + 2**2 = 5.
@@ -719,14 +738,14 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
           ],
           loss_weights=[0.1, 0.2, 0.3])
 
-      output = tff_model.forward_pass(dummy_batch)
+      output = tff_model.forward_pass(example_batch)
 
       # Labels are (0, 1, 1), preds are (1, 1, 3).
       # Weighted MSE is 0.1 * 1**2 + 0.2 * 0**2 + 0.3 * 2**2 = 1.3.
       # Regularization loss is 0.11 as before, for a total loss of 1.41.
       self.assertAllClose(output.loss, 1.41)
 
-      output = tff_model.forward_pass(dummy_batch)
+      output = tff_model.forward_pass(example_batch)
       self.assertAllClose(output.loss, 1.41)
 
     with self.subTest('loss_weights_assert_fail_list'):
