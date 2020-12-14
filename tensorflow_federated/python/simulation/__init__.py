@@ -15,6 +15,7 @@
 
 from tensorflow_federated.python.simulation import datasets
 from tensorflow_federated.python.simulation import models
+from tensorflow_federated.python.simulation.checkpoint_manager import FileCheckpointManager
 from tensorflow_federated.python.simulation.client_data import ClientData
 from tensorflow_federated.python.simulation.file_per_user_client_data import FilePerUserClientData
 from tensorflow_federated.python.simulation.from_tensor_slices_client_data import FromTensorSlicesClientData

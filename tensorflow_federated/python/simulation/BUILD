@@ -21,6 +21,7 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        ":checkpoint_manager",
         ":client_data",
         ":file_per_user_client_data",
         ":from_tensor_slices_client_data",
@@ -31,6 +32,20 @@ py_library(
         "//tensorflow_federated/python/simulation/datasets",
         "//tensorflow_federated/python/simulation/models",
     ],
+)
+
+py_library(
+    name = "checkpoint_manager",
+    srcs = ["checkpoint_manager.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "checkpoint_manager_test",
+    srcs = ["checkpoint_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":checkpoint_manager"],
 )
 
 py_library(
