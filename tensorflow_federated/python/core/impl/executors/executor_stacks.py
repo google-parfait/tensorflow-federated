@@ -520,7 +520,7 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     composing_executor = federating_executor.FederatingExecutor(
         composing_strategy_factory, unplaced_executor)
     threaded_composing_executor = _wrap_executor_in_threading_stack(
-        composing_executor)
+        composing_executor, can_resolve_references=False)
     return threaded_composing_executor
 
   def _aggregate_stacks(
@@ -560,7 +560,7 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
       executors = new_executors
     if len(executors) != 1:
       raise RuntimeError('Expected 1 executor, got {}.'.format(len(executors)))
-    return executors[0]
+    return reference_resolving_executor.ReferenceResolvingExecutor(executors[0])
 
 
 def local_executor_factory(
@@ -842,7 +842,10 @@ def remote_executor_factory(
       if not cardinalities.get(placement_literals.CLIENTS):
         for ex in remote_executors:
           _configure_remote_executor(ex, cardinalities, loop)
-        return [_wrap_executor_in_threading_stack(e) for e in remote_executors]
+        return [
+            _wrap_executor_in_threading_stack(e, can_resolve_references=False)
+            for e in remote_executors
+        ]
 
       remaining_clients = cardinalities[placement_literals.CLIENTS]
       live_workers = []
@@ -858,10 +861,14 @@ def remote_executor_factory(
       if must_close_loop:
         loop.stop()
         loop.close()
-    return [_wrap_executor_in_threading_stack(e) for e in live_workers]
+    return [
+        _wrap_executor_in_threading_stack(e, can_resolve_references=False)
+        for e in live_workers
+    ]
 
   flat_stack_fn = _configure_remote_workers
-  unplaced_ex_factory = UnplacedExecutorFactory(use_caching=False)
+  unplaced_ex_factory = UnplacedExecutorFactory(
+      use_caching=False, can_resolve_references=False)
   composing_executor_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
