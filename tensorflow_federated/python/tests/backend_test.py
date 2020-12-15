@@ -234,6 +234,51 @@ class FederatedComputationTest(parameterized.TestCase):
     self.assertLen(result1, 2)
     self.assertLen(result2, 3)
 
+  @with_contexts
+  def test_runs_unplaced_lambda(self):
+
+    @tff.federated_computation(tf.int32, tf.int32)
+    def bar(x, y):
+      del y  # Unused
+      return x
+
+    result = bar(1, 2)
+    self.assertEqual(result, 1)
+
+  @with_contexts
+  def test_runs_server_placed_lambda(self):
+
+    @tff.federated_computation(tf.int32, tf.int32)
+    def foo(x, y):
+      del y  # Unused
+      return x
+
+    @tff.federated_computation(
+        tff.FederatedType(
+            collections.OrderedDict(x=tf.int32, y=tf.int32), tff.SERVER))
+    def bar(server_tuple):
+      return tff.federated_map(foo, server_tuple)
+
+    result = bar(collections.OrderedDict(x=1, y=2))
+    self.assertEqual(result, 1)
+
+  @with_contexts
+  def test_runs_clients_placed_lambda(self):
+
+    @tff.federated_computation(tf.int32, tf.int32)
+    def foo(x, y):
+      del y  # Unused
+      return x
+
+    @tff.federated_computation(
+        tff.FederatedType(
+            collections.OrderedDict(x=tf.int32, y=tf.int32), tff.CLIENTS))
+    def bar(clients_tuple):
+      return tff.federated_map(foo, clients_tuple)
+
+    result = bar([collections.OrderedDict(x=1, y=2)])
+    self.assertEqual(result, [1])
+
 
 class TensorFlowComputationTest(parameterized.TestCase):
 

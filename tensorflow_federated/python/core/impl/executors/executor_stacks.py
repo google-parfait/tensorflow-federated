@@ -546,7 +546,8 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
       RuntimeError: If hierarchy construction fails.
     """
     if len(executors) == 1:
-      return self._create_composing_stack(target_executors=executors)
+      return reference_resolving_executor.ReferenceResolvingExecutor(
+          self._create_composing_stack(target_executors=executors))
     while len(executors) > 1:
       new_executors = []
       offset = 0
@@ -868,7 +869,7 @@ def remote_executor_factory(
 
   flat_stack_fn = _configure_remote_workers
   unplaced_ex_factory = UnplacedExecutorFactory(
-      use_caching=False, can_resolve_references=False)
+      use_caching=False, can_resolve_references=True)
   composing_executor_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
