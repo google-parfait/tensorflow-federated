@@ -141,7 +141,7 @@ def build_federated_averaging_process(
     server_optimizer_fn: Callable[
         [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
     client_weight_fn: Callable[[Any], tf.Tensor] = None,
-    *,
+    *,  # Require named (non-positional) parameters for the following kwargs:
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
