@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = ["//visibility:private"])
 
@@ -13,4 +13,10 @@ py_test(
     tags = [
         "nopresubmit",
     ],
+)
+
+py_library(
+    name = "api",
+    srcs = ["__init__.py"],
+    srcs_version = "PY3",
 )
