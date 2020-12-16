@@ -171,7 +171,6 @@ class RemoteRuntimeConfigurationChangeTest(absltest.TestCase):
 
   def test_computations_run_with_changing_clients(self, context,
                                                   server_contexts):
-    self.skipTest('b/175155128')
 
     @tff.tf_computation(tf.int32)
     @tf.function
