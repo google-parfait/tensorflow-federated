@@ -23,10 +23,12 @@ py_library(
     deps = [
         ":checkpoint_manager",
         ":client_data",
+        ":csv_manager",
         ":file_per_user_client_data",
         ":from_tensor_slices_client_data",
         ":hdf5_client_data",
         ":iterative_process_compositions",
+        ":metrics_manager",
         ":server_utils",
         ":transforming_client_data",
         "//tensorflow_federated/python/simulation/datasets",
@@ -66,6 +68,21 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":client_data"],
+)
+
+py_library(
+    name = "csv_manager",
+    srcs = ["csv_manager.py"],
+    srcs_version = "PY3",
+    deps = [":metrics_manager"],
+)
+
+py_test(
+    name = "csv_manager_test",
+    srcs = ["csv_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":csv_manager"],
 )
 
 py_library(
@@ -163,6 +180,12 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/templates:iterative_process",
     ],
+)
+
+py_library(
+    name = "metrics_manager",
+    srcs = ["metrics_manager.py"],
+    srcs_version = "PY3",
 )
 
 py_library(
