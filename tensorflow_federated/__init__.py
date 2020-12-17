@@ -17,6 +17,7 @@ import sys
 
 from tensorflow_federated.version import __version__  # pylint: disable=g-bad-import-order
 
+from tensorflow_federated import experimental
 from tensorflow_federated.python import aggregators
 from tensorflow_federated.python import learning
 from tensorflow_federated.python import simulation

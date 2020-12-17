@@ -5,7 +5,7 @@ package_group(
     includes = ["//tensorflow_federated/python/core/impl:impl_visibility"],
     packages = [
         # Subpackages
-        "//tensorflow_federated/python/core/impl/tensorflow_contet/...",
+        "//tensorflow_federated/python/core/impl/tensorflow_context/...",
 
         # Impl Dependencies
         "//tensorflow_federated/python/core/impl/executors/...",

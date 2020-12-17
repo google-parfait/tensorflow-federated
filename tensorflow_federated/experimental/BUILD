@@ -8,4 +8,5 @@ py_library(
     name = "experimental",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
+    visibility = ["//tensorflow_federated:__pkg__"],
 )

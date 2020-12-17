@@ -25,6 +25,7 @@ py_library(
     visibility = ["//visibility:public"],
     deps = [
         ":version",
+        "//tensorflow_federated/experimental",
         "//tensorflow_federated/python/aggregators",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",
