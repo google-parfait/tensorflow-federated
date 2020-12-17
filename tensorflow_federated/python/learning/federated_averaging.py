@@ -219,6 +219,8 @@ def build_federated_averaging_process(
       be `None` if `aggregation_process` is not `None.`
     use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
+        It is currently necessary to set this flag to True for performant GPU
+        simulations.
 
   Returns:
     A `tff.templates.IterativeProcess`.
