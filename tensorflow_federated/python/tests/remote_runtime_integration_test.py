@@ -45,13 +45,6 @@ class WorkerFailureTest(parameterized.TestCase):
            _WORKER_PORTS),
        remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS)
       ),
-      ('native_remote_intermediate_aggregator',
-       remote_runtime_test_utils.create_localhost_remote_context(
-           _AGGREGATOR_PORTS),
-       remote_runtime_test_utils.create_localhost_aggregator_contexts(
-           _WORKER_PORTS, _AGGREGATOR_PORTS),
-       remote_runtime_test_utils.create_localhost_aggregator_contexts(
-           _WORKER_PORTS, _AGGREGATOR_PORTS)),
   )
   def test_computations_run_with_worker_restarts(self, context, first_contexts,
                                                  second_contexts):
@@ -82,6 +75,57 @@ class WorkerFailureTest(parameterized.TestCase):
           stack.enter_context(server_context)
         result = map_add_one([0, 1])
         self.assertEqual(result, [1, 2])
+
+  @parameterized.named_parameters((
+      'native_remote',
+      remote_runtime_test_utils.create_localhost_remote_context(
+          _AGGREGATOR_PORTS),
+      remote_runtime_test_utils.create_standalone_localhost_aggregator_contexts(
+          _WORKER_PORTS, _AGGREGATOR_PORTS),
+      remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS),
+      remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS)
+  ), ('native_remote_streaming',
+      remote_runtime_test_utils.create_localhost_remote_context(
+          _AGGREGATOR_PORTS, rpc_mode='STREAMING'),
+      remote_runtime_test_utils.create_standalone_localhost_aggregator_contexts(
+          _WORKER_PORTS, _AGGREGATOR_PORTS, rpc_mode='STREAMING'),
+      remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS),
+      remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS))
+                                 )
+  def test_computations_run_with_worker_restarts_and_aggregation(
+      self, context, aggregation_contexts, first_worker_contexts,
+      second_worker_contexts):
+
+    self.skipTest('b/175905392')
+
+    @tff.tf_computation(tf.int32)
+    def add_one(x):
+      return x + 1
+
+    @tff.federated_computation(tff.type_at_clients(tf.int32))
+    def map_add_one(federated_arg):
+      return tff.federated_map(add_one, federated_arg)
+
+    context_stack = tff.framework.get_context_stack()
+    with context_stack.install(context):
+
+      with contextlib.ExitStack() as aggregation_stack:
+        for server_context in aggregation_contexts:
+          aggregation_stack.enter_context(server_context)
+        with contextlib.ExitStack() as first_worker_stack:
+          for server_context in first_worker_contexts:
+            first_worker_stack.enter_context(server_context)
+
+          result = map_add_one([0, 1])
+          self.assertEqual(result, [1, 2])
+
+        # Reinitializing the workers without leaving the aggregation context
+        # simulates a worker failure, while the aggregator keeps running.
+        with contextlib.ExitStack() as second_worker_stack:
+          for server_context in second_worker_contexts:
+            second_worker_stack.enter_context(server_context)
+          result = map_add_one([0, 1])
+          self.assertEqual(result, [1, 2])
 
   @parameterized.named_parameters(
       (

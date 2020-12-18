@@ -56,3 +56,21 @@ def create_localhost_aggregator_contexts(worker_ports,
     aggregator_contexts.append(server_context)
 
   return worker_contexts + aggregator_contexts
+
+
+def create_standalone_localhost_aggregator_contexts(worker_ports,
+                                                    aggregator_ports,
+                                                    rpc_mode='REQUEST_REPLY'):
+  """Constructs aggregators on appropriate ports without workers."""
+
+  aggregator_contexts = []
+
+  for target_port, server_port in zip(worker_ports, aggregator_ports):
+    channel = [grpc.insecure_channel('localhost:{}'.format(target_port))]
+    ex_factory = tff.framework.remote_executor_factory(
+        channel, rpc_mode=rpc_mode)
+    server_context = tff.simulation.server_context(
+        ex_factory, num_threads=1, port=server_port)
+    aggregator_contexts.append(server_context)
+
+  return aggregator_contexts
