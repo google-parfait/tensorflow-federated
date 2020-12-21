@@ -43,6 +43,24 @@ class StackoverflowTest(absltest.TestCase):
         next(iter(stackoverflow._SYNTHETIC_STACKOVERFLOW_DATA.keys())))
     self.assertEqual(dataset.element_spec, expected_type)
 
+  def test_load_word_counts(self):
+    expected_num_words = 6005329
+    expected_periods = 342309
+    expected_occurrences_the = 341937
+    word_counts = stackoverflow.load_word_counts()
+    self.assertLen(word_counts, expected_num_words)
+    self.assertEqual(word_counts['.'], expected_periods)
+    self.assertEqual(word_counts['the'], expected_occurrences_the)
+
+  def test_load_word_counts_small_vocab(self):
+    expected_num_words = 100
+    expected_periods = 342309
+    expected_occurrences_the = 341937
+    word_counts = stackoverflow.load_word_counts(vocab_size=100)
+    self.assertLen(word_counts, expected_num_words)
+    self.assertEqual(word_counts['.'], expected_periods)
+    self.assertEqual(word_counts['the'], expected_occurrences_the)
+
 
 if __name__ == '__main__':
   absltest.main()

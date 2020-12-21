@@ -16,6 +16,7 @@
 import collections
 import json
 import os.path
+from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -113,18 +114,32 @@ def load_data(cache_dir=None):
   return train_client_data, held_out_client_data, test_client_data
 
 
-def load_word_counts(cache_dir=None):
+def load_word_counts(cache_dir=None, vocab_size: Optional[int] = None):
   """Loads the word counts for the Stack Overflow dataset.
 
   Args:
     cache_dir: (Optional) directory to cache the downloaded file. If `None`,
       caches in Keras' default cache directory.
+    vocab_size: (Optional) when specified, only load the first `vocab_size`
+      unique words in the vocab file (i.e. the most frequent `vocab_size`
+      words).
 
   Returns:
     A collections.OrderedDict where the keys are string tokens, and the values
     are the counts of unique users who have at least one example in the training
     set containing that token in the body text.
+
+  Raises:
+    TypeError if vocab_size is not None or int.
+    ValueError if vocab_size is not None but <= 0.
   """
+  if vocab_size is not None:
+    if not isinstance(vocab_size, int):
+      raise TypeError(
+          f'vocab_size should be None or int, got {type(vocab_size)}.')
+    if vocab_size <= 0:
+      raise ValueError(f'vocab_size must be positive, got {vocab_size}.')
+
   path = tf.keras.utils.get_file(
       'stackoverflow.word_count.tar.bz2',
       origin='https://storage.googleapis.com/tff-datasets-public/stackoverflow.word_count.tar.bz2',
@@ -141,6 +156,8 @@ def load_word_counts(cache_dir=None):
     for line in f:
       word, count = line.split()
       word_counts[word] = int(count)
+      if vocab_size is not None and len(word_counts) >= vocab_size:
+        break
   return word_counts
 
 
