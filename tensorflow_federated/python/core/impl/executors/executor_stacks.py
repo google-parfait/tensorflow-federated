@@ -569,7 +569,8 @@ def local_executor_factory(
     max_fanout=100,
     clients_per_thread=1,
     server_tf_device=None,
-    client_tf_devices=tuple()
+    client_tf_devices=tuple(),
+    reference_resolving_clients=True,
 ) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally.
 
@@ -596,6 +597,8 @@ def local_executor_factory(
     client_tf_devices: List/tuple of `tf.config.LogicalDevice` to place clients
       for simulation. Possibly accelerators returned by
       `tf.config.list_logical_devices()`.
+    reference_resolving_clients: Boolean indicating whether executors
+      representing clients must be able to handle unplaced TFF lambdas.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -615,6 +618,7 @@ def local_executor_factory(
     raise ValueError('Max fanout must be greater than 1.')
   unplaced_ex_factory = UnplacedExecutorFactory(
       use_caching=False,
+      can_resolve_references=reference_resolving_clients,
       server_device=server_tf_device,
       client_devices=client_tf_devices)
   federating_executor_factory = FederatingExecutorFactory(
