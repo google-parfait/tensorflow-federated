@@ -29,6 +29,7 @@ py_library(
         ":hdf5_client_data",
         ":iterative_process_compositions",
         ":metrics_manager",
+        ":sampling_utils",
         ":server_utils",
         ":transforming_client_data",
         "//tensorflow_federated/python/simulation/datasets",
@@ -186,6 +187,25 @@ py_library(
     name = "metrics_manager",
     srcs = ["metrics_manager.py"],
     srcs_version = "PY3",
+)
+
+py_library(
+    name = "sampling_utils",
+    srcs = ["sampling_utils.py"],
+    srcs_version = "PY3",
+    deps = [":client_data"],
+)
+
+py_test(
+    name = "sampling_utils_test",
+    size = "small",
+    srcs = ["sampling_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":client_data",
+        ":sampling_utils",
+    ],
 )
 
 py_library(
