@@ -226,23 +226,27 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     # resource on iteration, as well as usages that expect to reinitialize a
     # table with new data. Revisit the semantics implied by this cleanup
     # pattern.
-    eager_cleanup_resources = []
-    for op in wrapped_fn.graph.get_operations():
-      if op.type == 'HashTableV2':
-        eager_cleanup_resources += op.outputs
-    if eager_cleanup_resources:
-      for resource in wrapped_fn.prune(
-          feeds={}, fetches=eager_cleanup_resources)():
-        tf.raw_ops.DestroyResourceOp(resource=resource)
+    with tracing.span(
+        'EagerTFExecutor.create_call', 'hashtable_cleanup', span=True):
+      eager_cleanup_resources = []
+      for op in wrapped_fn.graph.get_operations():
+        if op.type == 'HashTableV2':
+          eager_cleanup_resources += op.outputs
+      if eager_cleanup_resources:
+        for resource in wrapped_fn.prune(
+            feeds={}, fetches=eager_cleanup_resources)():
+          tf.raw_ops.DestroyResourceOp(resource=resource)
 
     param_elements = []
     if arg is not None:
-      arg_parts = structure.flatten(arg)
-      if len(arg_parts) != len(param_fns):
-        raise RuntimeError('Expected {} arguments, found {}.'.format(
-            len(param_fns), len(arg_parts)))
-      for arg_part, param_fn in zip(arg_parts, param_fns):
-        param_elements.append(param_fn(arg_part))
+      with tracing.span(
+          'EagerTFExecutor.create_call', 'arg_ingestion', span=True):
+        arg_parts = structure.flatten(arg)
+        if len(arg_parts) != len(param_fns):
+          raise RuntimeError('Expected {} arguments, found {}.'.format(
+              len(param_fns), len(arg_parts)))
+        for arg_part, param_fn in zip(arg_parts, param_fns):
+          param_elements.append(param_fn(arg_part))
     result_parts = wrapped_fn(*param_elements)
 
     # There is a tf.wrap_function(...) issue b/144127474 that variables created
@@ -251,18 +255,22 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
     # manually.
     # TODO(b/144127474): Remove this manual cleanup once tf.wrap_function(...)
     # is fixed.
-    resources = []
-    for op in wrapped_fn.graph.get_operations():
-      if op.type == 'VarHandleOp':
-        resources += op.outputs
-    if resources:
-      for resource in wrapped_fn.prune(feeds={}, fetches=resources)():
-        tf.raw_ops.DestroyResourceOp(resource=resource)
+    with tracing.span(
+        'EagerTFExecutor.create_call', 'variable_cleanup', span=True):
+      resources = []
+      for op in wrapped_fn.graph.get_operations():
+        if op.type == 'VarHandleOp':
+          resources += op.outputs
+      if resources:
+        for resource in wrapped_fn.prune(feeds={}, fetches=resources)():
+          tf.raw_ops.DestroyResourceOp(resource=resource)
 
-    result_elements = []
-    for result_part, result_fn in zip(result_parts, result_fns):
-      result_elements.append(result_fn(result_part))
-    return structure.pack_sequence_as(result_type, result_elements)
+    with tracing.span(
+        'EagerTFExecutor.create_call', 'result_packing', span=True):
+      result_elements = []
+      for result_part, result_fn in zip(result_parts, result_fns):
+        result_elements.append(result_fn(result_part))
+      return structure.pack_sequence_as(result_type, result_elements)
 
   fn_to_return = lambda arg, p=param_fns, w=wrapped_fn: _fn_to_return(arg, p, w)
 
