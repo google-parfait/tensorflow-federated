@@ -219,6 +219,17 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       _set_invalid_arg_err(context, err)
       return executor_pb2.SetCardinalitiesResponse()
 
+  def ClearExecutor(
+      self,
+      request: executor_pb2.ClearExecutorRequest,
+      context: grpc.ServicerContext,
+  ) -> executor_pb2.ClearExecutorResponse:
+    """Clears the service Executor-related state."""
+    py_typecheck.check_type(request, executor_pb2.ClearExecutorRequest)
+    self._executor = None
+    self._ex_factory.clean_up_executors()
+    return executor_pb2.ClearExecutorResponse()
+
   def CreateValue(
       self,
       request: executor_pb2.CreateValueRequest,

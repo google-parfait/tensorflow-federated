@@ -402,6 +402,26 @@ class StreamingModeExecutorServiceTest(absltest.TestCase):
         iter_obj.queue.put(response)
         env.close_channel()
 
+  def test_executor_service_raises_after_cleanup_without_configuration(self):
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
+        lambda _: eager_tf_executor.EagerTFExecutor())
+    env = TestEnv(ex_factory)
+    env.stub.ClearExecutor(executor_pb2.ClearExecutorRequest())
+    value_proto, _ = executor_serialization.serialize_value(
+        tf.constant(10.0).numpy(), tf.float32)
+    with self.assertRaises(grpc.RpcError):
+      env.stub.CreateValue(executor_pb2.CreateValueRequest(value=value_proto))
+
+  @mock.patch(
+      'tensorflow_federated.python.core.impl.executors.executor_stacks.ResourceManagingExecutorFactory.clean_up_executors'
+  )
+  def test_clear_executor_calls_cleanup(self, mock_cleanup):
+    ex_factory = executor_stacks.ResourceManagingExecutorFactory(
+        lambda _: eager_tf_executor.EagerTFExecutor())
+    env = TestEnv(ex_factory)
+    env.stub.ClearExecutor(executor_pb2.ClearExecutorRequest())
+    mock_cleanup.assert_called_once()
+
 
 if __name__ == '__main__':
   absltest.main()

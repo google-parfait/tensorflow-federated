@@ -30,6 +30,9 @@ service Executor {
   rpc SetCardinalities(SetCardinalitiesRequest)
       returns (SetCardinalitiesResponse) {}
 
+  // Configures executor to handle specified cardinalities.
+  rpc ClearExecutor(ClearExecutorRequest) returns (ClearExecutorResponse) {}
+
   // TODO(b/134543154): Given that there is no support for asynchronous server
   // processing in Python gRPC, long-running calls may be a problem. Revisit
   // this and look for alternatives.
@@ -141,6 +144,10 @@ message SetCardinalitiesRequest {
 }
 
 message SetCardinalitiesResponse {}
+
+// A message used to clear executor state on a server.
+message ClearExecutorRequest {}
+message ClearExecutorResponse {}
 
 // A representation of a value that's to be embedded in the executor, or that
 // is being returned as a result of a computation.

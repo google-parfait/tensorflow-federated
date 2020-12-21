@@ -113,6 +113,12 @@ class _BidiStream:
       try:
         logging.debug('Response thread: blocking for next response')
         for response in response_iter:
+          if response.WhichOneof('response') is None:
+            # TODO(b/175927125): We currently pass an empty response in some
+            # error cases and pass a GRPC error back via the ServicerContext in
+            # some others. Unify this error-passing.
+            raise execution_context.RetryableError(
+                'Unknown error on the service side.')
           logging.debug(
               'Response thread: processing response of type %s, seq_no %s',
               response.WhichOneof('response'), response.sequence_number)
@@ -279,6 +285,8 @@ class RemoteExecutor(executor_base.Executor):
     if self._bidi_stream is not None:
       logging.debug('Closing bidi stream')
       self._bidi_stream.close()
+    logging.debug('Clearing executor state on server.')
+    self._clear_executor()
 
   def _dispose(self, value_ref: executor_pb2.ValueRef):
     """Disposes of the remote value stored on the worker service."""
@@ -309,6 +317,17 @@ class RemoteExecutor(executor_base.Executor):
     else:
       await self._bidi_stream.send_request(
           executor_pb2.ExecuteRequest(set_cardinalities=request))
+    return
+
+  @tracing.trace(span=True)
+  def _clear_executor(self):
+    request = executor_pb2.ClearExecutorRequest()
+    try:
+      _request(self._stub.ClearExecutor, request)
+    except (grpc.RpcError, execution_context.RetryableError):
+      logging.debug('RPC error caught during attempt to clear state on the '
+                    'server; this likely indicates a broken connection, and '
+                    'therefore there is no state to clear.')
     return
 
   @tracing.trace(span=True)

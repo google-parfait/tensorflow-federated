@@ -96,8 +96,6 @@ class WorkerFailureTest(parameterized.TestCase):
       self, context, aggregation_contexts, first_worker_contexts,
       second_worker_contexts):
 
-    self.skipTest('b/175905392')
-
     @tff.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
