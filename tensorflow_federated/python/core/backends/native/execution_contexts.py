@@ -23,30 +23,42 @@ def create_local_execution_context(num_clients=None,
                                    max_fanout=100,
                                    clients_per_thread=1,
                                    server_tf_device=None,
-                                   client_tf_devices=tuple()):
+                                   client_tf_devices=tuple(),
+                                   reference_resolving_clients=False):
   """Creates an execution context that executes computations locally."""
   factory = executor_stacks.local_executor_factory(
       num_clients=num_clients,
       max_fanout=max_fanout,
       clients_per_thread=clients_per_thread,
       server_tf_device=server_tf_device,
-      client_tf_devices=client_tf_devices)
+      client_tf_devices=client_tf_devices,
+      reference_resolving_clients=reference_resolving_clients)
+
+  def _compiler(comp):
+    native_form = compiler.transform_to_native_form(comp)
+    if not reference_resolving_clients:
+      return compiler.transform_mathematical_functions_to_tensorflow(
+          native_form)
+    return native_form
+
   return execution_context.ExecutionContext(
-      executor_fn=factory, compiler_fn=compiler.transform_to_native_form)
+      executor_fn=factory, compiler_fn=_compiler)
 
 
 def set_local_execution_context(num_clients=None,
                                 max_fanout=100,
                                 clients_per_thread=1,
                                 server_tf_device=None,
-                                client_tf_devices=tuple()):
+                                client_tf_devices=tuple(),
+                                reference_resolving_clients=False):
   """Sets an execution context that executes computations locally."""
   context = create_local_execution_context(
       num_clients=num_clients,
       max_fanout=max_fanout,
       clients_per_thread=clients_per_thread,
       server_tf_device=server_tf_device,
-      client_tf_devices=client_tf_devices)
+      client_tf_devices=client_tf_devices,
+      reference_resolving_clients=reference_resolving_clients)
   context_stack_impl.context_stack.set_default_context(context)
 
 
