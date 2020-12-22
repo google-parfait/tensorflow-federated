@@ -147,6 +147,84 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
   return wrapped_fn
 
 
+def _call_embedded_tf(*, arg, param_fns, result_fns, result_type, wrapped_fn,
+                      destroy_before_invocation, destroy_after_invocation):
+  """Function to be run upon EagerTFExecutor.create_call invocation.
+
+  As this function is run completely synchronously, and
+  `EagerTFExecutor.create_call` invocations represent the main work of the
+  program, this function should be kept as-thin a wrapper around delegation
+  to the eager TensorFlow runtime as possible.
+
+  Args:
+    arg: Argument on which to invoke embedded function.
+    param_fns: Functions to be applied to elements of `arg` before passing to
+      `wrapped_fn`, to prepare these argument for ingestion by the eager TF
+      runtime.
+    result_fns: Functions to be applied to results of calling `wrapped_fn` on
+      arg before re-embedding as EagerTFExecutor values.
+    result_type: TFF Type signature of the result of `wrapped_fn`.
+    wrapped_fn: Result of `tf.compat.v1.wrap_function` to run in the eager TF
+      runtime.
+    destroy_before_invocation: eager TF runtime resources which should be
+      destroyed before invoking `wrapped_fn`. Examples might include hashtable
+      resources.
+    destroy_after_invocation: eager TF runtime resources which should be
+      destroyed after invoking `wrapped_fn`. Examples might include resource
+      variables.
+
+  Returns:
+    A `structure.Struct` representing the result of invoking `wrapped_fn` on
+    `arg`.
+
+  Raises:
+    RuntimeError: If `arg` and `param_fns` have different numbers of elements.
+  """
+
+  # TODO(b/166479382): This cleanup-before-invocation pattern is a workaround
+  # to square the circle of TF data expecting to lazily reference this
+  # resource on iteration, as well as usages that expect to reinitialize a
+  # table with new data. Revisit the semantics implied by this cleanup
+  # pattern.
+  with tracing.span(
+      'EagerTFExecutor.create_call',
+      'resource_cleanup_before_invocation',
+      span=True):
+    for resource in destroy_before_invocation:
+      tf.raw_ops.DestroyResourceOp(resource=resource)
+
+  param_elements = []
+  if arg is not None:
+    with tracing.span(
+        'EagerTFExecutor.create_call', 'arg_ingestion', span=True):
+      arg_parts = structure.flatten(arg)
+      if len(arg_parts) != len(param_fns):
+        raise RuntimeError('Expected {} arguments, found {}.'.format(
+            len(param_fns), len(arg_parts)))
+      for arg_part, param_fn in zip(arg_parts, param_fns):
+        param_elements.append(param_fn(arg_part))
+  result_parts = wrapped_fn(*param_elements)
+
+  # There is a tf.wrap_function(...) issue b/144127474 that variables created
+  # from tf.import_graph_def(...) inside tf.wrap_function(...) is not
+  # destroyed.  So get all the variables from `wrapped_fn` and destroy
+  # manually.
+  # TODO(b/144127474): Remove this manual cleanup once tf.wrap_function(...)
+  # is fixed.
+  with tracing.span(
+      'EagerTFExecutor.create_call',
+      'resource_cleanup_after_invocation',
+      span=True):
+    for resource in destroy_after_invocation:
+      tf.raw_ops.DestroyResourceOp(resource=resource)
+
+  with tracing.span('EagerTFExecutor.create_call', 'result_packing', span=True):
+    result_elements = []
+    for result_part, result_fn in zip(result_parts, result_fns):
+      result_elements.append(result_fn(result_part))
+    return structure.pack_sequence_as(result_type, result_elements)
+
+
 def embed_tensorflow_computation(comp, type_spec=None, device=None):
   """Embeds a TensorFlow computation for use in the eager context.
 
@@ -219,60 +297,43 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
 
       result_fns.append(fn)
 
-  def _fn_to_return(arg, param_fns, wrapped_fn):  # pylint:disable=missing-docstring
+  ops = wrapped_fn.graph.get_operations()
 
-    # TODO(b/166479382): This cleanup-before-invocation pattern is a workaround
-    # to square the circle of TF data expecting to lazily reference this
-    # resource on iteration, as well as usages that expect to reinitialize a
-    # table with new data. Revisit the semantics implied by this cleanup
-    # pattern.
-    with tracing.span(
-        'EagerTFExecutor.create_call', 'hashtable_cleanup', span=True):
-      eager_cleanup_resources = []
-      for op in wrapped_fn.graph.get_operations():
-        if op.type == 'HashTableV2':
-          eager_cleanup_resources += op.outputs
-      if eager_cleanup_resources:
-        for resource in wrapped_fn.prune(
-            feeds={}, fetches=eager_cleanup_resources)():
-          tf.raw_ops.DestroyResourceOp(resource=resource)
+  eager_cleanup_ops = []
+  destroy_before_invocation = []
+  for op in ops:
+    if op.type == 'HashTableV2':
+      eager_cleanup_ops += op.outputs
+  if eager_cleanup_ops:
+    for resource in wrapped_fn.prune(feeds={}, fetches=eager_cleanup_ops)():
+      destroy_before_invocation.append(resource)
 
-    param_elements = []
-    if arg is not None:
-      with tracing.span(
-          'EagerTFExecutor.create_call', 'arg_ingestion', span=True):
-        arg_parts = structure.flatten(arg)
-        if len(arg_parts) != len(param_fns):
-          raise RuntimeError('Expected {} arguments, found {}.'.format(
-              len(param_fns), len(arg_parts)))
-        for arg_part, param_fn in zip(arg_parts, param_fns):
-          param_elements.append(param_fn(arg_part))
-    result_parts = wrapped_fn(*param_elements)
+  lazy_cleanup_ops = []
+  destroy_after_invocation = []
+  for op in ops:
+    if op.type == 'VarHandleOp':
+      lazy_cleanup_ops += op.outputs
+  if lazy_cleanup_ops:
+    for resource in wrapped_fn.prune(feeds={}, fetches=lazy_cleanup_ops)():
+      destroy_after_invocation.append(resource)
 
-    # There is a tf.wrap_function(...) issue b/144127474 that variables created
-    # from tf.import_graph_def(...) inside tf.wrap_function(...) is not
-    # destroyed.  So get all the variables from `wrapped_fn` and destroy
-    # manually.
-    # TODO(b/144127474): Remove this manual cleanup once tf.wrap_function(...)
-    # is fixed.
-    with tracing.span(
-        'EagerTFExecutor.create_call', 'variable_cleanup', span=True):
-      resources = []
-      for op in wrapped_fn.graph.get_operations():
-        if op.type == 'VarHandleOp':
-          resources += op.outputs
-      if resources:
-        for resource in wrapped_fn.prune(feeds={}, fetches=resources)():
-          tf.raw_ops.DestroyResourceOp(resource=resource)
-
-    with tracing.span(
-        'EagerTFExecutor.create_call', 'result_packing', span=True):
-      result_elements = []
-      for result_part, result_fn in zip(result_parts, result_fns):
-        result_elements.append(result_fn(result_part))
-      return structure.pack_sequence_as(result_type, result_elements)
-
-  fn_to_return = lambda arg, p=param_fns, w=wrapped_fn: _fn_to_return(arg, p, w)
+  def fn_to_return(arg,
+                   param_fns=tuple(param_fns),
+                   result_fns=tuple(result_fns),
+                   result_type=result_type,
+                   wrapped_fn=wrapped_fn,
+                   destroy_before=tuple(destroy_before_invocation),
+                   destroy_after=tuple(destroy_after_invocation)):
+    # This double-function pattern works around python late binding, forcing the
+    # variables to bind eagerly.
+    return _call_embedded_tf(
+        arg=arg,
+        param_fns=param_fns,
+        result_fns=result_fns,
+        result_type=result_type,
+        wrapped_fn=wrapped_fn,
+        destroy_before_invocation=destroy_before,
+        destroy_after_invocation=destroy_after)
 
   # pylint: disable=function-redefined
   if must_pin_function_to_cpu:
