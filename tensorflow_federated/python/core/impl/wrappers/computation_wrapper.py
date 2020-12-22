@@ -152,11 +152,30 @@ class ComputationReturnedNoneError(ValueError):
     super().__init__(message)
 
 
-class ComputationWrapper(object):
-  """A class for creating wrappers that convert functions into computations.
+class PythonTracingStrategy(object):
+  """A wrapper strategy that directly traces the function being wrapped.
 
-  Here's how one can use `ComputationWrapper` to construct a decorator/wrapper
-  named `xyz`:
+  This strategy relies on directly invoking the Python function being wrapped
+  in an appropriately prepared context, feeding it synthetic arguments, and
+  processing the returned result. This strategy may not be usable in cases,
+  where the process of serializing a Python computation relies on an external
+  serialization logic.
+
+  The mechanics are as follows:
+
+  * The `wrapper_fn` supplied in the constructor is treated as a generator that
+    given the type of the computation parameter, understands how to prepare
+    synthetic arguments for the function to be traced, process its result, and
+    construct the serialized form of the computation.
+
+  * The generator is first asked to yield synthetic arguments for the function
+    being traced. These are unpacked as needed to match the Python function's
+    signature, and the Python function is invoked.
+
+  * The result of the invocation is then sent to the generator, to allow it to
+    continue, and the generator yields the constructed computation.
+
+  Here's one way one can use this helper class with a `ComputationWrapper`:
 
   ```python
   def my_wrapper_fn(parameter_type, name=None):
@@ -165,11 +184,43 @@ class ComputationWrapper(object):
     ...postprocess the result and generate a function_utils.ConcreteFunction...
     yield concrete_function
 
-  xyz = computation_wrapper.ComputationWrapper(my_wrapper_fn)
+  xyz = computation_wrapper.ComputationWrapper(
+    PythonTracingStrategy(my_wrapper_fn))
+  ```
+  """
+
+  def __init__(self, wrapper_fn):
+    """Constructs this tracing strategy given a generator-based `wrapper_fn`.
+
+    Args:
+      wrapper_fn: The Python callable that controls the tracing process.
+    """
+    self._wrapper_fn = wrapper_fn
+
+  def __call__(self, fn_to_wrap, fn_name, parameter_type, unpack):
+    unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
+        fn_to_wrap, parameter_type, unpack=unpack)
+    wrapped_fn_generator = _wrap_concrete(fn_name, self._wrapper_fn,
+                                          parameter_type)
+    args, kwargs = unpack_arguments_fn(next(wrapped_fn_generator))
+    result = fn_to_wrap(*args, **kwargs)
+    if result is None:
+      raise ComputationReturnedNoneError(fn_to_wrap)
+    return wrapped_fn_generator.send(result)
+
+
+class ComputationWrapper(object):
+  """A class for creating wrappers that convert functions into computations.
+
+  Here's how one can use `ComputationWrapper` to construct a decorator/wrapper
+  named `xyz`:
+
+  ```python
+  xyz = computation_wrapper.ComputationWrapper(...)
   ```
 
-  The resulting `xyz` can be used either as an `@xyz(...)` decorator or as a
-  manual wrapping function: `wrapped_func = xyz(my_func, ...)`. The latter
+  The resulting `xyz` can then be used either as an `@xyz(...)` decorator or as
+  a manual wrapping function: `wrapped_func = xyz(my_func, ...)`. The latter
   method may be preferable when using functions from an external module or
   for wrapping an anonymous lambda.
 
@@ -308,18 +359,29 @@ class ComputationWrapper(object):
   For more examples of usage, see `computation_wrapper_test`.
   """
 
-  def __init__(self, wrapper_fn):
-    """Construct a new wrapper/decorator for the given wrapping function.
+  def __init__(self, strategy):
+    """Construct a new wrapper/decorator for the given wrapper callable.
 
     Args:
-      wrapper_fn: The Python callable that performs actual wrapping (as in the
-        specification of `_wrap`).
+      strategy: Python callable that encapsulates the mechanics of the actual
+        wrapping process. It must satisfy the following requirements. First, it
+        must take a tuple `(fn_to_wrap, fn_name, parameter_type, unpack)` as an
+        argument, where `fn_to_wrap` is the Python function being wrapped,
+        `fn_name` is a name to assign to the constructed computation (typically
+        the same as the name of the Python function), `parameter_type` is an
+        instance of `computation_types.Type` that represents the TFF type of the
+        computation parameter, and `unpack` affects the process of mapping
+        Python parameters to the TFF computation's parameter, and has the
+        semantics identical to the `unpack` flag in the specification of
+        `function_utils.create_argument_unpacking_fn`. Second, it must return a
+        result of type `computation_impl.ComputationImpl` that represents the
+        constructed computation.
 
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_callable(wrapper_fn)
-    self._wrapper_fn = wrapper_fn
+    py_typecheck.check_callable(strategy)
+    self._strategy = strategy
 
   def __call__(self, *args, tff_internal_types=None):
     """Handles the different modes of usage of the decorator/wrapper.
@@ -385,29 +447,15 @@ class ComputationWrapper(object):
       # declares parameters. Create a polymorphic template.
       def _polymorphic_wrapper(parameter_type: computation_types.Type,
                                unpack: Optional[bool]):
-        unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
-            fn_to_wrap, parameter_type, unpack=unpack)
-        wrapped_fn_generator = _wrap_concrete(fn_name, self._wrapper_fn,
-                                              parameter_type)
-        args, kwargs = unpack_arguments_fn(next(wrapped_fn_generator))
-        result = fn_to_wrap(*args, **kwargs)
-        if result is None:
-          raise ComputationReturnedNoneError(fn_to_wrap)
-        return wrapped_fn_generator.send(result)
+        return self._strategy(
+            fn_to_wrap, fn_name, parameter_type, unpack=unpack)
 
       wrapped_func = function_utils.PolymorphicFunction(_polymorphic_wrapper)
     else:
       # Either we have a concrete parameter type, or this is no-arg function.
       parameter_type = _parameter_type(parameters, parameter_types)
-      unpack_arguments_fn = function_utils.create_argument_unpacking_fn(
-          fn_to_wrap, parameter_type, unpack=None)
-      wrapped_fn_generator = _wrap_concrete(fn_name, self._wrapper_fn,
-                                            parameter_type)
-      args, kwargs = unpack_arguments_fn(next(wrapped_fn_generator))
-      result = fn_to_wrap(*args, **kwargs)
-      if result is None:
-        raise ComputationReturnedNoneError(fn_to_wrap)
-      wrapped_func = wrapped_fn_generator.send(result)
+      wrapped_func = self._strategy(
+          fn_to_wrap, fn_name, parameter_type, unpack=None)
 
     # Copy the __doc__ attribute with the documentation in triple-quotes from
     # the decorated function.

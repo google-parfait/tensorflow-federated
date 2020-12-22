@@ -2,6 +2,8 @@ Traceback (most recent call last):
   File "python/core/impl/wrappers/computation_wrapper_instances_test.py", in test_stackframes_in_errors
     @computation_wrapper_instances.federated_computation_wrapper
   File "python/core/impl/wrappers/computation_wrapper.py", in __call__
+    fn_to_wrap, fn_name, parameter_type, unpack=None)
+  File "python/core/impl/wrappers/computation_wrapper.py", in __call__
     result = fn_to_wrap(*args, **kwargs)
   File "python/core/impl/wrappers/computation_wrapper_instances_test.py", in _
     raise DummyError()

@@ -80,7 +80,8 @@ class Result:
   zero_result = attr.ib()
 
 
-test_wrap = computation_wrapper.ComputationWrapper(_zero_tracer)
+test_wrap = computation_wrapper.ComputationWrapper(
+    computation_wrapper.PythonTracingStrategy(_zero_tracer))
 
 
 class ComputationWrapperTest(test_case.TestCase):

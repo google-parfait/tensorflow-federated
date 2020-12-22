@@ -2,6 +2,8 @@ Traceback (most recent call last):
   File "python/core/impl/wrappers/computation_wrapper_instances_test.py", in test_fails_with_mismatched_container_type
     @computation_wrapper_instances.check_returns_type((tf.int32, tf.int32))
   File "python/core/impl/wrappers/computation_wrapper.py", in __call__
+    fn_to_wrap, fn_name, parameter_type, unpack=None)
+  File "python/core/impl/wrappers/computation_wrapper.py", in __call__
     result = fn_to_wrap(*args, **kwargs)
   File "python/core/impl/wrappers/computation_wrapper_instances.py", in wrapped_func
     second_is_expected=True))

@@ -55,7 +55,8 @@ def _tf_wrapper_fn(parameter_type, name):
   yield computation_impl.ComputationImpl(comp_pb, ctx_stack, extra_type_spec)
 
 
-tensorflow_wrapper = computation_wrapper.ComputationWrapper(_tf_wrapper_fn)
+tensorflow_wrapper = computation_wrapper.ComputationWrapper(
+    computation_wrapper.PythonTracingStrategy(_tf_wrapper_fn))
 
 
 def _federated_computation_wrapper_fn(parameter_type, name):
@@ -81,7 +82,8 @@ def _federated_computation_wrapper_fn(parameter_type, name):
 
 
 federated_computation_wrapper = computation_wrapper.ComputationWrapper(
-    _federated_computation_wrapper_fn)
+    computation_wrapper.PythonTracingStrategy(
+        _federated_computation_wrapper_fn))
 
 # pylint:enable=g-doc-args,g-doc-return-or-yield
 
