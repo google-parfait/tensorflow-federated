@@ -170,7 +170,24 @@ message Computation {
     // A placement literal.
     Placement placement = 11;
 
-    // NEXT ID: 12
+    // EXPERIMENTAL CONSTRUCTS.
+    //
+    // The following constructs are currently considered experimental, and are
+    // not formally supported yet. They may be recognized, partially or fully
+    // handled by parts of the TFF codebase, but at this stage, one should not
+    // depend on this being the case. Their exact representation may continue
+    // to evolve, or they may be removed altogether. When these constructs are
+    // ready for public consumption and come with an explicit support, we will
+    // remove the "experimental" designation.
+
+    // A local (non-federated) computation expressed in XLA. XLA computations
+    // have functional type signatures, and are used in a manner similar to
+    // local computations expressed in TensorFlow. However, not all types of
+    // TensorFlow computations are expressible in XLA (see below for the list
+    // of current limitations).
+    Xla xla = 12;
+
+    // NEXT ID: 13
   }
 }
 
@@ -815,5 +832,84 @@ message Data {
     // A specification of the data stream as a URI to be interpreted by the
     // environment.
     string uri = 1;
+  }
+}
+
+// A representation of a section of XLA code (experimental-only).
+//
+// The type signature associated with this type of computation must be defined
+// as a function which accepts and returns tensors and potentially nested
+// structures of tensors.
+message Xla {
+  // A serialized representation of XLA code to execute.
+  //
+  // Stores an `HloModuleProto` message, as defined in the TensorFlow repo in
+  // the file "tensorflow/compiler/xla/service/hlo.proto" in the main branch.
+  //
+  // It is recommended, albeit not required that the entry computation in this
+  // module accepts its parameters as a single tuple.
+  //
+  // NOTE: As it is experimental-only, this representation may evolve, possibly
+  // in a manner that is backwards-incompatible. Make sure not to depend on the
+  // current form of this representation, and not to persist it in places where
+  // subsequent changes could cause breakages.
+  google.protobuf.Any hlo_module = 1;
+
+  // A pair of bindings for the parameter and the result. The parameter binding
+  // can be omitted if the computation does not declare a parameter. The result
+  // binding is mandatory, as all XLA computations must declare results.
+  Binding parameter = 2;
+  Binding result = 3;
+
+  // A general representation of a binding of either a parameter or a result to
+  // a part of the embedded HLO module. Note that the structure of the binding
+  // is nested, and it parallels the structure of the corresponding part of the
+  // type signature.
+  message Binding {
+    oneof binding {
+      StructBinding struct = 1;
+      TensorBinding tensor = 2;
+    }
+  }
+
+  // A binding associated with a struct in the type signature. Specifies an
+  // individual binding for each element of the struct.
+  message StructBinding {
+    // Bindings for elements of the struct. The number of elements in this field
+    // must be equal to the number of struct elements declared in the type
+    // signature, with the k-th binding declared here corresponding to the k-th
+    // struct element in the type signature. The element names are omitted since
+    // they are redundant (correspondence is established by element order).
+    repeated Binding element = 1;
+  }
+
+  // A binding associated with a (logical) tensor in the type signature.
+  // Associates that tensor to one or more (concrete) tensors in the inputs
+  // or outputs of a computation in the module.
+  message TensorBinding {
+    oneof binding {
+      // The 0-based index of this tensor in (the flattened form of) either the
+      // parameter or result tuple for the entry computation of the HLO module,
+      // i.e., the `HloComputationProto` with the id matching the module's
+      // `entry_computation_id`.
+      //
+      // The order of indexes associated with the result tensors is defined by
+      // the order in which tensors appear in the DFS traversal of the root
+      // instruction in the computation (which can be a tensor, or a possibly
+      // recursively nested tuple). For example, if the XLA computation returns
+      // a nested tuple ((int32, int32), int32), the indexes of the tensors in
+      // the result are ((0, 1), 2), accordingly.
+      //
+      // The order of indexes for parameter tensors is defined likewise. In the
+      // case of multiple arguments, tensor indexes are determined by traversing
+      // arguments in the order in which they appear on the parameter list (the
+      // order of `parameter_number` in the `HloInstructionProto`s.
+      // For example, if the computation takes 2 arguments, the first of which
+      // is a 2-tuple of tensors, and the second of which is a tensor, the
+      // indexes identifying the individual portions of the argument list would
+      // be (0, 1), 2, i.e., 0 would refer to the first tuple element of the
+      // first parameter, etc.
+      string index = 1;
+    }
   }
 }
