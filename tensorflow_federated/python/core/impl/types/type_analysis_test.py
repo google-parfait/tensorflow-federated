@@ -262,11 +262,53 @@ class CheckFederatedTypeTest(absltest.TestCase):
                       None, None, True)
 
 
+class IsStructureOfFloatsTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('empty_struct', computation_types.StructType([])),
+      ('float', computation_types.TensorType(tf.float32)),
+      ('floats', computation_types.StructType([tf.float32, tf.float32])),
+      ('nested_struct',
+       computation_types.StructType([
+           computation_types.TensorType(tf.float32),
+           computation_types.StructType([tf.float32, tf.float32])
+       ])),
+      ('federated_float_at_clients',
+       computation_types.FederatedType(tf.float32, placement_literals.CLIENTS)),
+  )
+  def test_returns_true(self, type_spec):
+    self.assertTrue(type_analysis.is_structure_of_floats(type_spec))
+
+  @parameterized.named_parameters(
+      ('bool', computation_types.TensorType(tf.bool)),
+      ('int', computation_types.TensorType(tf.int32)),
+      ('string', computation_types.TensorType(tf.string)),
+      ('float_and_bool', computation_types.StructType([tf.float32, tf.bool])),
+      ('nested_struct',
+       computation_types.StructType([
+           computation_types.TensorType(tf.float32),
+           computation_types.StructType([tf.bool, tf.bool])
+       ])),
+      ('sequence_of_floats', computation_types.SequenceType(tf.float32)),
+      ('placement', computation_types.PlacementType()),
+      ('function', computation_types.FunctionType(tf.float32, tf.float32)),
+      ('abstract', computation_types.AbstractType('T')),
+  )
+  def test_returns_false(self, type_spec):
+    self.assertFalse(type_analysis.is_structure_of_floats(type_spec))
+
+
 class IsStructureOfIntegersTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
+      ('empty_struct', computation_types.StructType([])),
       ('int', computation_types.TensorType(tf.int32)),
       ('ints', computation_types.StructType([tf.int32, tf.int32])),
+      ('nested_struct',
+       computation_types.StructType([
+           computation_types.TensorType(tf.int32),
+           computation_types.StructType([tf.int32, tf.int32])
+       ])),
       ('federated_int_at_clients',
        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS)),
   )
@@ -275,8 +317,14 @@ class IsStructureOfIntegersTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('bool', computation_types.TensorType(tf.bool)),
+      ('float', computation_types.TensorType(tf.float32)),
       ('string', computation_types.TensorType(tf.string)),
       ('int_and_bool', computation_types.StructType([tf.int32, tf.bool])),
+      ('nested_struct',
+       computation_types.StructType([
+           computation_types.TensorType(tf.int32),
+           computation_types.StructType([tf.bool, tf.bool])
+       ])),
       ('sequence_of_ints', computation_types.SequenceType(tf.int32)),
       ('placement', computation_types.PlacementType()),
       ('function', computation_types.FunctionType(tf.int32, tf.int32)),

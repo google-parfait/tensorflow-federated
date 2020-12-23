@@ -307,8 +307,44 @@ def check_is_sum_compatible(type_spec):
         .format(type_spec))
 
 
+def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
+  """Determines if `type_spec` is a structure of floats.
+
+  Note that an empty `computation_types.StructType` will return `True`, as it
+  does not contain any non-floating types.
+
+  Args:
+    type_spec: A `computation_types.Type`.
+
+  Returns:
+    `True` iff `type_spec` is a structure of floats, otherwise `False`.
+  """
+  py_typecheck.check_type(type_spec, computation_types.Type)
+  if type_spec.is_tensor():
+    py_typecheck.check_type(type_spec.dtype, tf.DType)
+    return type_spec.dtype.is_floating
+  elif type_spec.is_struct():
+    return all(
+        is_structure_of_floats(v)
+        for _, v in structure.iter_elements(type_spec))
+  elif type_spec.is_federated():
+    return is_structure_of_floats(type_spec.member)
+  else:
+    return False
+
+
+def check_is_structure_of_floats(type_spec):
+  if not is_structure_of_floats(type_spec):
+    raise TypeError(
+        'Expected a type which is structure of floats, found {}.'.format(
+            type_spec))
+
+
 def is_structure_of_integers(type_spec: computation_types.Type) -> bool:
   """Determines if `type_spec` is a structure of integers.
+
+  Note that an empty `computation_types.StructType` will return `True`, as it
+  does not contain any non-integer types.
 
   Args:
     type_spec: A `computation_types.Type`.

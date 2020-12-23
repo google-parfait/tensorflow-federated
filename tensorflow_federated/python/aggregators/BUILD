@@ -218,6 +218,46 @@ py_test(
 )
 
 py_library(
+    name = "secure_factory",
+    srcs = ["secure_factory.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":factory",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:estimation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+        "//tensorflow_federated/python/core/utils:federated_aggregations",
+    ],
+)
+
+py_test(
+    name = "secure_factory_test",
+    size = "small",
+    srcs = ["secure_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":factory",
+        ":secure_factory",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:estimation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)
+
+py_library(
     name = "sum_factory",
     srcs = ["sum_factory.py"],
     srcs_version = "PY3",
