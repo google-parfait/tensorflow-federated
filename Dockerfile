@@ -60,7 +60,7 @@ RUN bazel version
 RUN ${PIP} install --no-cache-dir --upgrade \
     absl-py~=0.10 \
     attrs~=19.3.0 \
-    cachetools~=3.1.1 \
+    cachetools~=4.2.0 \
     dm-tree~=0.1.1 \
     grpcio~=1.32.0 \
     h5py~=2.10.0 \
