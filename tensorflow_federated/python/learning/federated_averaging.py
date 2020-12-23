@@ -22,7 +22,8 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 """
 
 import collections
-from typing import Any, Callable, Optional
+import enum
+from typing import Any, Callable, Optional, Union
 
 import tensorflow as tf
 
@@ -38,13 +39,24 @@ from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
+class ClientWeighting(enum.Enum):
+  """Enum for built-in methods for weighing clients."""
+  UNIFORM = 1
+  NUM_EXAMPLES = 2
+
+
+ClientWeightFnType = Callable[[Any], tf.Tensor]
+
+
 class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated Averaging."""
 
   def __init__(self,
                model: model_lib.Model,
                optimizer: tf.keras.optimizers.Optimizer,
-               client_weight_fn: Optional[Callable[[Any], tf.Tensor]] = None,
+               client_weighting: Union[
+                   ClientWeighting,
+                   ClientWeightFnType] = ClientWeighting.NUM_EXAMPLES,
                use_experimental_simulation_loop: bool = False):
     """Creates the client computation for Federated Averaging.
 
@@ -55,10 +67,10 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     Args:
       model: A `tff.learning.Model` instance.
       optimizer: A `tf.keras.Optimizer` instance.
-      client_weight_fn: an optional callable that takes the output of
-        `model.report_local_outputs` and returns a tensor that provides the
-        weight in the federated average of model deltas. If not provided, the
-        default is the total number of examples processed on device.
+      client_weighting: A value of `tff.learning.ClientWeighting` that
+        specifies a built-in weighting method, or a callable that takes the
+        output of `model.report_local_outputs` and returns a tensor that
+        provides the weight in the federated average of model deltas.
       use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
     """
@@ -67,11 +79,12 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     self._optimizer = optimizer
     py_typecheck.check_type(self._model, model_utils.EnhancedModel)
 
-    if client_weight_fn is not None:
-      py_typecheck.check_callable(client_weight_fn)
-      self._client_weight_fn = client_weight_fn
-    else:
-      self._client_weight_fn = None
+    if (not isinstance(client_weighting, ClientWeighting) and
+        not callable(client_weighting)):
+      raise TypeError(f'`client_weighting` must be either instance of '
+                      f'`ClientWeighting` or callable. '
+                      f'Found type {type(client_weighting)}.')
+    self._client_weighting = client_weighting
 
     self._dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
         use_experimental_simulation_loop)
@@ -116,11 +129,14 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
         tensor_utils.zero_all_if_any_non_finite(weights_delta))
     # Zero out the weight if there are any non-finite values.
     if has_non_finite_delta > 0:
+      # TODO(b/176171842): Zeroing has no effect with unweighted aggregation.
       weights_delta_weight = tf.constant(0.0)
-    elif self._client_weight_fn is None:
+    elif self._client_weighting is ClientWeighting.NUM_EXAMPLES:
       weights_delta_weight = tf.cast(num_examples_sum, tf.float32)
+    elif self._client_weighting is ClientWeighting.UNIFORM:
+      weights_delta_weight = tf.constant(1.0)
     else:
-      weights_delta_weight = self._client_weight_fn(aggregated_outputs)
+      weights_delta_weight = self._client_weighting(aggregated_outputs)
 
     return optimizer_utils.ClientOutput(
         weights_delta, weights_delta_weight, aggregated_outputs,
@@ -140,8 +156,9 @@ def build_federated_averaging_process(
     client_optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer],
     server_optimizer_fn: Callable[
         [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
-    client_weight_fn: Callable[[Any], tf.Tensor] = None,
     *,
+    client_weighting: Optional[Union[ClientWeighting,
+                                     ClientWeightFnType]] = None,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
@@ -200,10 +217,11 @@ def build_federated_averaging_process(
     server_optimizer_fn: A no-arg callable that returns a `tf.keras.Optimizer`.
       By default, this uses `tf.keras.optimizers.SGD` with a learning rate of
       1.0.
-    client_weight_fn: Optional function that takes the output of
-      `model.report_local_outputs` and returns a tensor providing the weight in
-      the federated average of model deltas. If not provided, the default is the
-      total number of examples processed on device.
+    client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
+      built-in weighting method, or a callable that takes the output of
+      `model.report_local_outputs` and returns a tensor that provides the weight
+      in the federated average of model deltas. If None, defaults to weighting
+      by number of examples.
     broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`.
@@ -226,14 +244,18 @@ def build_federated_averaging_process(
     A `tff.templates.IterativeProcess`.
   """
 
+  if not client_weighting:
+    client_weighting = ClientWeighting.NUM_EXAMPLES
+
   def client_fed_avg(model_fn: Callable[[], model_lib.Model]) -> ClientFedAvg:
-    return ClientFedAvg(model_fn(), client_optimizer_fn(), client_weight_fn,
+    return ClientFedAvg(model_fn(), client_optimizer_fn(), client_weighting,
                         use_experimental_simulation_loop)
 
   iter_proc = optimizer_utils.build_model_delta_optimizer_process(
       model_fn,
       model_to_client_delta_fn=client_fed_avg,
       server_optimizer_fn=server_optimizer_fn,
+      weighted_aggregation=(client_weighting is not ClientWeighting.UNIFORM),
       broadcast_process=broadcast_process,
       aggregation_process=aggregation_process,
       model_update_aggregation_factory=model_update_aggregation_factory)

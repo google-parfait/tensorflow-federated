@@ -65,29 +65,37 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
     )
 
   @parameterized.named_parameters(
-      ('non-simulation_noclip', False, {}, 0.1),
-      ('simulation_noclip', True, {}, 0.1),
-      ('non-simulation_clipnorm', False, {
+      ('non-simulation_noclip', True, False, {}, 0.1),
+      ('unweighted_non-simulation_noclip', False, False, {}, 0.1),
+      ('simulation_noclip', True, True, {}, 0.1),
+      ('non-simulation_clipnorm', True, False, {
           'clipnorm': 0.2
       }, 0.05),
-      ('non-simulation_clipvalue', False, {
+      ('non-simulation_clipvalue', True, False, {
           'clipvalue': 0.1
       }, 0.02),
   )
   @test_utils.skip_test_for_multi_gpu
-  def test_client_tf(self, simulation, optimizer_kwargs, expected_norm):
+  def test_client_tf(self, weighted, simulation, optimizer_kwargs,
+                     expected_norm):
     model = self.create_model()
     dataset = self.create_dataset()
+    if weighted:
+      client_weighting = federated_averaging.ClientWeighting.NUM_EXAMPLES
+    else:
+      client_weighting = federated_averaging.ClientWeighting.UNIFORM
     client_tf = federated_averaging.ClientFedAvg(
         model,
         tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs),
+        client_weighting=client_weighting,
         use_experimental_simulation_loop=simulation)
     client_outputs = self.evaluate(client_tf(dataset, self.initial_weights()))
     # Both trainable parameters should have been updated, and we don't return
     # the non-trainable variable.
     self.assertAllGreater(
         np.linalg.norm(client_outputs.weights_delta, axis=-1), expected_norm)
-    self.assertEqual(client_outputs.weights_delta_weight, 8.0)
+    if weighted:
+      self.assertEqual(client_outputs.weights_delta_weight, 8.0)
     self.assertEqual(client_outputs.optimizer_output['num_examples'], 8)
     self.assertEqual(client_outputs.optimizer_output['has_non_finite_delta'], 0)
     self.assertDictContainsSubset(
@@ -105,7 +113,7 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
     client_tf = federated_averaging.ClientFedAvg(
         model,
         tf.keras.optimizers.SGD(learning_rate=0.1),
-        client_weight_fn=lambda _: tf.constant(1.5))
+        client_weighting=lambda _: tf.constant(1.5))
     client_outputs = client_tf(dataset, self.initial_weights())
     self.assertEqual(self.evaluate(client_outputs.weights_delta_weight), 1.5)
 
@@ -149,27 +157,39 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
 class FederatedAveragingModelTffTest(test_case.TestCase,
                                      parameterized.TestCase):
 
-  def _run_test(self, process, *, datasets, expected_num_examples):
+  def _run_test(self,
+                process,
+                *,
+                datasets,
+                expected_num_examples,
+                weighted=True):
     state = process.initialize()
     prev_loss = np.inf
+    aggregation_metrics = collections.OrderedDict(value_sum_process=())
+    if weighted:
+      aggregation_metrics['weight_sum_process'] = ()
     for _ in range(3):
       state, metric_outputs = process.next(state, datasets)
       self.assertEqual(
           list(metric_outputs.keys()), ['broadcast', 'aggregation', 'train'])
       self.assertEmpty(metric_outputs['broadcast'])
-      self.assertEqual(
-          metric_outputs['aggregation'],
-          collections.OrderedDict(value_sum_process=(), weight_sum_process=()))
+      self.assertEqual(aggregation_metrics, metric_outputs['aggregation'])
       train_metrics = metric_outputs['train']
       self.assertEqual(train_metrics['num_examples'], expected_num_examples)
       self.assertLess(train_metrics['loss'], prev_loss)
       prev_loss = train_metrics['loss']
 
+  @parameterized.named_parameters([
+      ('unweighted', federated_averaging.ClientWeighting.UNIFORM),
+      ('example_weighted', federated_averaging.ClientWeighting.NUM_EXAMPLES),
+      ('custom_weighted', lambda _: tf.constant(1.5)),
+  ])
   @test_utils.skip_test_for_multi_gpu
-  def test_basic_orchestration_execute(self):
+  def test_basic_orchestration_execute(self, client_weighting):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.LinearRegression,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1))
+        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
+        client_weighting=client_weighting)
 
     ds = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
@@ -177,11 +197,14 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
             y=[[5.0], [6.0]],
         )).batch(2)
 
+    weighted = client_weighting is not federated_averaging.ClientWeighting.UNIFORM
+
     num_clients = 3
     self._run_test(
         iterative_process,
         datasets=[ds] * num_clients,
-        expected_num_examples=2 * num_clients)
+        expected_num_examples=2 * num_clients,
+        weighted=weighted)
 
   @parameterized.named_parameters([
       ('functional_model',
