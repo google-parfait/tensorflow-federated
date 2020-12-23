@@ -62,6 +62,7 @@ REQUIRED_PACKAGES = [
     'dm-tree~=0.1.1',
     'grpcio~=1.29.0',
     'h5py~=2.10.0',
+    'jaxlib~=0.1.55',
     'numpy~=1.18.4',
     'portpicker~=1.3.1',
     'retrying~=1.3.3',
