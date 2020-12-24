@@ -9,6 +9,7 @@ exports_files(["LICENSE"])
 package_group(
     name = "internal",
     packages = [
+        "//tensorflow_federated/experimental/python/...",
         "//tensorflow_federated/python/...",
         "//tensorflow_federated/tools/development/...",
 
