@@ -909,7 +909,8 @@ message Xla {
       // indexes identifying the individual portions of the argument list would
       // be (0, 1), 2, i.e., 0 would refer to the first tuple element of the
       // first parameter, etc.
-      string index = 1;
+      // ProtoBestPractices.ignore_findings = "type_change"
+      int32 index = 1;
     }
   }
 }
