@@ -1,10 +1,9 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package_group(
     name = "default_visibility",
-    packages = [
-        "//tensorflow_federated/experimental/python/core/impl/jax_context/...",
-    ],
+    packages = ["//tensorflow_federated/experimental/python/core/impl/jax_context/..."],
 )
 
 package(default_visibility = [":default_visibility"])
@@ -27,7 +26,7 @@ py_library(
     ],
 )
 
-py_test(
+py_cpu_gpu_test(
     name = "xla_utils_test",
     size = "small",
     srcs = ["xla_utils_test.py"],
