@@ -64,6 +64,7 @@ RUN ${PIP} install --no-cache-dir --upgrade \
     dm-tree~=0.1.1 \
     grpcio~=1.32.0 \
     h5py~=2.10.0 \
+    jax~=0.2.7 \
     jaxlib~=0.1.55 \
     numpy~=1.19.2 \
     portpicker~=1.3.1 \
