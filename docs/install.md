@@ -45,10 +45,16 @@ On macOS:
 
 Note: To exit the virtual environment, run `deactivate`.
 
-### 3. Install the TensorFlow Federated Python package.
+### 3. Install the released TensorFlow Federated Python package.
 
 <pre class="prettyprint lang-bsh">
 <code class="devsite-terminal tfo-terminal-venv">pip install --upgrade tensorflow_federated</code>
+</pre>
+
+### 3 (alternative). Install the nightly TensorFlow Federated Python package.
+
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal tfo-terminal-venv">pip install --upgrade tensorflow-federated-nightly</code>
 </pre>
 
 ### 4. Test Tensorflow Federated.
@@ -69,6 +75,10 @@ want to:
     released.
 *   Use changes that have been submitted to TensorFlow Federated but have not
     been released.
+
+Note: an easier approach to use the new feature not in the released package
+might be pip installing the
+[nightly package](#3-alternative-install-the-nightly-tensorflow-federated-python-package)
 
 ### 1. Install the Python development environment.
 
