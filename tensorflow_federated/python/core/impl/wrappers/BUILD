@@ -92,12 +92,15 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":computation_wrapper",
         ":computation_wrapper_instances",
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl:computation_impl",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
+        "//tensorflow_federated/python/core/impl/context_stack:runtime_error_context",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )

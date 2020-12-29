@@ -22,7 +22,10 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.context_stack import get_context_stack
+from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
@@ -382,6 +385,24 @@ class TensorflowWrapperTest(test_case.TestCase):
       def _():
         raise DummyError()
 
+  def test_stack_resets_on_none_returned(self):
+
+    self.skipTest('b/176487662')
+
+    stack = get_context_stack.get_context_stack()
+    self.assertIsInstance(stack.current,
+                          runtime_error_context.RuntimeErrorContext)
+
+    try:
+
+      @computation_wrapper_instances.tensorflow_wrapper()
+      def _():
+        pass
+
+    except computation_wrapper.ComputationReturnedNoneError:
+      self.assertIsInstance(  # pylint: disable=g-assert-in-except
+          stack.current, runtime_error_context.RuntimeErrorContext)
+
 
 class FederatedComputationWrapperTest(test_case.TestCase):
 
@@ -424,6 +445,24 @@ class FederatedComputationWrapperTest(test_case.TestCase):
     self.assertEqual(str(foo.type_signature), '(<> -> <>)')
 
     self.assertEqual(str(foo.to_building_block()), '(foo_arg -> foo_arg)')
+
+  def test_stack_resets_on_none_returned(self):
+
+    self.skipTest('b/176487662')
+
+    stack = get_context_stack.get_context_stack()
+    self.assertIsInstance(stack.current,
+                          runtime_error_context.RuntimeErrorContext)
+
+    try:
+
+      @computation_wrapper_instances.federated_computation_wrapper()
+      def _():
+        pass
+
+    except computation_wrapper.ComputationReturnedNoneError:
+      self.assertIsInstance(  # pylint: disable=g-assert-in-except
+          stack.current, runtime_error_context.RuntimeErrorContext)
 
 
 class AssertReturnsTest(test_case.TestCase):
