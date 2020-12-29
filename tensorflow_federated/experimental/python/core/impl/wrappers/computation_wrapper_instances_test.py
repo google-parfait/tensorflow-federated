@@ -11,15 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Noop test to serve as a temporary placeholder until we have a real one."""
 
 from absl.testing import absltest
+import jax
+import numpy as np
+import tensorflow as tf
+
+from tensorflow_federated.experimental.python.core.impl.wrappers import computation_wrapper_instances
+from tensorflow_federated.python.core.impl import computation_impl
 
 
-class NoopTest(absltest.TestCase):
+class JaxWrapperTest(absltest.TestCase):
 
-  def test_nothing(self):
-    pass
+  def test_invoke_with_single_arg_fn(self):
+
+    @computation_wrapper_instances.jax_wrapper(tf.int32)
+    def foo(x):
+      return jax.numpy.add(x, np.int32(10))
+
+    self.assertIsInstance(foo, computation_impl.ComputationImpl)
+    self.assertEqual(str(foo.type_signature), '(int32 -> int32)')
 
 
 if __name__ == '__main__':
