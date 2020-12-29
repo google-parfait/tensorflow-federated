@@ -16,9 +16,7 @@ licenses(["notice"])
 py_library(
     name = "test",
     srcs = ["__init__.py"],
-    visibility = [
-        "//tensorflow_federated:__pkg__",
-    ],
+    visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":static_assert",
         "//tensorflow_federated/python/core/api:test_case",

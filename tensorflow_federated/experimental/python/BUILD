@@ -8,4 +8,5 @@ py_library(
     name = "python",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
+    visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )

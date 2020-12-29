@@ -17,9 +17,7 @@ py_library(
     name = "utils",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = [
-        "//tensorflow_federated:__pkg__",
-    ],
+    visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":adaptive_zeroing",
         ":computation_utils",

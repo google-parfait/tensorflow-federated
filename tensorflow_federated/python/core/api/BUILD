@@ -31,10 +31,7 @@ py_library(
     name = "api",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = [
-        "//tensorflow_federated:__pkg__",
-        "//tensorflow_federated/tools:__subpackages__",
-    ],
+    visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
 py_library(

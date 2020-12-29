@@ -16,9 +16,7 @@ licenses(["notice"])
 py_library(
     name = "framework",
     srcs = ["__init__.py"],
-    visibility = [
-        "//tensorflow_federated:__pkg__",
-    ],
+    visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         "//tensorflow_federated/python/core/impl:computation_serialization",
         "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",

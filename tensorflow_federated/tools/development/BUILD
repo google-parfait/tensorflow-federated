@@ -12,6 +12,13 @@ sh_binary(
     data = [
         ":setup",
         "//tensorflow_federated",
+        "//tensorflow_federated/experimental/python",
+        "//tensorflow_federated/experimental/python/core",
+        "//tensorflow_federated/experimental/python/core/api",
+        "//tensorflow_federated/experimental/python/core/impl",
+        "//tensorflow_federated/experimental/python/core/impl/jax_context",
+        "//tensorflow_federated/experimental/python/core/impl/utils",
+        "//tensorflow_federated/experimental/python/core/impl/wrappers",
         "//tensorflow_federated/proto",
         "//tensorflow_federated/proto/v0",
         "//tensorflow_federated/python",
