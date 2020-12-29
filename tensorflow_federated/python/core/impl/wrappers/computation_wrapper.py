@@ -65,7 +65,11 @@ def _wrap_concrete(fn_name: Optional[str],
                    unpack=None) -> function_utils.ConcreteFunction:
   """Wraps with `wrapper_fn` given the provided `parameter_type`."""
   generator = wrapper_fn(parameter_type, fn_name)
-  result = yield next(generator)
+  arg = next(generator)
+  try:
+    result = yield arg
+  except Exception as e:  # pylint: disable=broad-except
+    generator.throw(e)
   concrete_fn = generator.send(result)
   py_typecheck.check_type(concrete_fn, function_utils.ConcreteFunction,
                           'value returned by the wrapper')
@@ -152,6 +156,10 @@ class ComputationReturnedNoneError(ValueError):
     super().__init__(message)
 
 
+class _TracingError(Exception):
+  """Cleanup error provided to generators upon errors during tracing."""
+
+
 class PythonTracingStrategy(object):
   """A wrapper strategy that directly traces the function being wrapped.
 
@@ -202,10 +210,23 @@ class PythonTracingStrategy(object):
         fn_to_wrap, parameter_type, unpack=unpack)
     wrapped_fn_generator = _wrap_concrete(fn_name, self._wrapper_fn,
                                           parameter_type)
-    args, kwargs = unpack_arguments_fn(next(wrapped_fn_generator))
-    result = fn_to_wrap(*args, **kwargs)
-    if result is None:
-      raise ComputationReturnedNoneError(fn_to_wrap)
+    packed_args = next(wrapped_fn_generator)
+    try:
+      args, kwargs = unpack_arguments_fn(packed_args)
+      result = fn_to_wrap(*args, **kwargs)
+      if result is None:
+        raise ComputationReturnedNoneError(fn_to_wrap)
+    except Exception:
+      # Give nested generators an opportunity to clean up, then
+      # re-raise the original error without extra context.
+      # We don't want to simply pass the error into the generators,
+      # as that would result in the whole generator stack being added
+      # to the error message.
+      try:
+        wrapped_fn_generator.throw(_TracingError())
+      except _TracingError:
+        pass
+      raise
     return wrapped_fn_generator.send(result)
 
 

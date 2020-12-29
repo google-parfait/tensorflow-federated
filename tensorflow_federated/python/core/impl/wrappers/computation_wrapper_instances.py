@@ -50,7 +50,11 @@ def _tf_wrapper_fn(parameter_type, name):
   ctx_stack = context_stack_impl.context_stack
   tf_serializer = tensorflow_serialization.tf_computation_serializer(
       parameter_type, ctx_stack)
-  result = yield next(tf_serializer)
+  arg = next(tf_serializer)
+  try:
+    result = yield arg
+  except Exception as e:  # pylint: disable=broad-except
+    tf_serializer.throw(e)
   comp_pb, extra_type_spec = tf_serializer.send(result)
   yield computation_impl.ComputationImpl(comp_pb, ctx_stack, extra_type_spec)
 
@@ -75,7 +79,11 @@ def _federated_computation_wrapper_fn(parameter_type, name):
       parameter_type=parameter_type,
       context_stack=ctx_stack,
       suggested_name=name)
-  result = yield next(fn_generator)
+  arg = next(fn_generator)
+  try:
+    result = yield arg
+  except Exception as e:  # pylint: disable=broad-except
+    fn_generator.throw(e)
   target_lambda, extra_type_spec = fn_generator.send(result)
   yield computation_impl.ComputationImpl(target_lambda.proto, ctx_stack,
                                          extra_type_spec)

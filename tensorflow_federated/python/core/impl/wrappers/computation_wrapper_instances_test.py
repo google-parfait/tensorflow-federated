@@ -386,9 +386,6 @@ class TensorflowWrapperTest(test_case.TestCase):
         raise DummyError()
 
   def test_stack_resets_on_none_returned(self):
-
-    self.skipTest('b/176487662')
-
     stack = get_context_stack.get_context_stack()
     self.assertIsInstance(stack.current,
                           runtime_error_context.RuntimeErrorContext)
@@ -447,9 +444,6 @@ class FederatedComputationWrapperTest(test_case.TestCase):
     self.assertEqual(str(foo.to_building_block()), '(foo_arg -> foo_arg)')
 
   def test_stack_resets_on_none_returned(self):
-
-    self.skipTest('b/176487662')
-
     stack = get_context_stack.get_context_stack()
     self.assertIsInstance(stack.current,
                           runtime_error_context.RuntimeErrorContext)
