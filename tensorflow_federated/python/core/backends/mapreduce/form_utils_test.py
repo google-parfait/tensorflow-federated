@@ -476,6 +476,32 @@ def get_iterative_process_for_minimal_sum_example():
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
+def get_example_cf_compatible_iterative_processes():
+  # pyformat: disable
+  return (
+      ('sum_example',
+       get_iterative_process_for_sum_example()),
+      ('sum_example_with_no_prepare',
+       get_iterative_process_for_sum_example_with_no_prepare()),
+      ('sum_example_with_no_broadcast',
+       get_iterative_process_for_sum_example_with_no_broadcast()),
+      ('sum_example_with_no_federated_aggregate',
+       get_iterative_process_for_sum_example_with_no_federated_aggregate()),
+      ('sum_example_with_no_federated_secure_sum',
+       get_iterative_process_for_sum_example_with_no_federated_secure_sum()),
+      ('sum_example_with_no_update',
+       get_iterative_process_for_sum_example_with_no_update()),
+      ('sum_example_with_no_server_state',
+       get_iterative_process_for_sum_example_with_no_server_state()),
+      ('minimal_sum_example',
+       get_iterative_process_for_minimal_sum_example()),
+      ('example_with_unused_lambda_arg',
+       mapreduce_test_utils.get_iterative_process_for_example_with_unused_lambda_arg()),
+      ('example_with_unused_tf_computation_arg',
+       mapreduce_test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()))
+  # pyformat: enable
+
+
 class CanonicalFormTestCase(test_case.TestCase):
   """A base class that overrides evaluate to handle various executors."""
 
@@ -753,6 +779,39 @@ class GetTypeInfoTest(test_case.TestCase):
               actual_key))
 
 
+class CheckCanonicalFormCompatibleWithIterativeProcessTest(
+    CanonicalFormTestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      *get_example_cf_compatible_iterative_processes())
+  def test_allows_valid_computation(self, ip):
+    form_utils.check_iterative_process_compatible_with_canonical_form(ip)
+
+  def test_disallows_broadcast_dependent_on_aggregate(self):
+
+    @computations.federated_computation
+    def init_comp():
+      return intrinsics.federated_value(0, placements.SERVER)
+
+    @computations.federated_computation(
+        computation_types.at_server(tf.int32), computation_types.at_clients(()))
+    def next_comp(server_state, client_data):
+      del server_state, client_data
+      client_val = intrinsics.federated_value(0, placements.CLIENTS)
+      server_agg = intrinsics.federated_sum(client_val)
+      # This broadcast is dependent on the result of the above aggregation,
+      # which is not supported by canonical form.
+      broadcasted = intrinsics.federated_broadcast(server_agg)
+      server_agg_again = intrinsics.federated_sum(broadcasted)
+      # `next` must return two values.
+      return server_agg_again, intrinsics.federated_value((), placements.SERVER)
+
+    ip = iterative_process.IterativeProcess(init_comp, next_comp)
+
+    with self.assertRaises(ValueError):
+      form_utils.check_iterative_process_compatible_with_canonical_form(ip)
+
+
 class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
                                               parameterized.TestCase):
 
@@ -851,59 +910,15 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
         tree_analysis.count_tensorflow_variables_under(
             new_it.next.to_building_block()))
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('sum_example',
-       get_iterative_process_for_sum_example()),
-      ('sum_example_with_no_prepare',
-       get_iterative_process_for_sum_example_with_no_prepare()),
-      ('sum_example_with_no_broadcast',
-       get_iterative_process_for_sum_example_with_no_broadcast()),
-      ('sum_example_with_no_federated_aggregate',
-       get_iterative_process_for_sum_example_with_no_federated_aggregate()),
-      ('sum_example_with_no_federated_secure_sum',
-       get_iterative_process_for_sum_example_with_no_federated_secure_sum()),
-      ('sum_example_with_no_update',
-       get_iterative_process_for_sum_example_with_no_update()),
-      ('sum_example_with_no_server_state',
-       get_iterative_process_for_sum_example_with_no_server_state()),
-      ('minimal_sum_example',
-       get_iterative_process_for_minimal_sum_example()),
-      ('example_with_unused_lambda_arg',
-       mapreduce_test_utils.get_iterative_process_for_example_with_unused_lambda_arg()),
-      ('example_with_unused_tf_computation_arg',
-       mapreduce_test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()),
-  )
-  # pyformat: enable
+      *get_example_cf_compatible_iterative_processes())
   def test_returns_canonical_form(self, ip):
     cf = form_utils.get_canonical_form_for_iterative_process(ip)
 
     self.assertIsInstance(cf, forms.CanonicalForm)
 
-  # pyformat: disable
   @parameterized.named_parameters(
-      ('sum_example',
-       get_iterative_process_for_sum_example()),
-      ('sum_example_with_no_prepare',
-       get_iterative_process_for_sum_example_with_no_prepare()),
-      ('sum_example_with_no_broadcast',
-       get_iterative_process_for_sum_example_with_no_broadcast()),
-      ('sum_example_with_no_federated_aggregate',
-       get_iterative_process_for_sum_example_with_no_federated_aggregate()),
-      ('sum_example_with_no_federated_secure_sum',
-       get_iterative_process_for_sum_example_with_no_federated_secure_sum()),
-      ('sum_example_with_no_update',
-       get_iterative_process_for_sum_example_with_no_update()),
-      ('sum_example_with_no_server_state',
-       get_iterative_process_for_sum_example_with_no_server_state()),
-      ('minimal_sum_example',
-       get_iterative_process_for_minimal_sum_example()),
-      ('example_with_unused_lambda_arg',
-       mapreduce_test_utils.get_iterative_process_for_example_with_unused_lambda_arg()),
-      ('example_with_unused_tf_computation_arg',
-       mapreduce_test_utils.get_iterative_process_for_example_with_unused_tf_computation_arg()),
-  )
-  # pyformat: enable
+      *get_example_cf_compatible_iterative_processes())
   def test_returns_canonical_form_with_grappler_disabled(self, ip):
     cf = form_utils.get_canonical_form_for_iterative_process(ip, None)
 

@@ -231,8 +231,8 @@ def _check_function_signature_compatible_with_broadcast_form(
         f'{result_type}')
 
 
-def _check_iterative_process_compatible_with_canonical_form(
-    initialize_tree, next_tree):
+def check_iterative_process_compatible_with_canonical_form(
+    ip: iterative_process.IterativeProcess):
   """Tests compatibility with `tff.backends.mapreduce.CanonicalForm`.
 
   Note: the conditions here are specified in the documentation for
@@ -240,18 +240,19 @@ def _check_iterative_process_compatible_with_canonical_form(
     be propagated to that documentation.
 
   Args:
-    initialize_tree: An instance of `building_blocks.ComputationBuildingBlock`
-      representing the `initalize` component of an
-      `tff.templates.IterativeProcess`.
-    next_tree: An instance of `building_blocks.ComputationBuildingBlock` that
-      representing `next` component of an `tff.templates.IterativeProcess`.
+    ip: An instance of `tff.templates.IterativeProcess` to check for
+    compatibility with `tff.backends.mapreduce.CanonicalForm`.
+
+  Returns:
+    TFF-internal building-blocks representing the validated and simplified
+    `initialize` and `next` computations.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  py_typecheck.check_type(initialize_tree,
-                          building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(next_tree, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(ip, iterative_process.IterativeProcess)
+  initialize_tree = ip.initialize.to_building_block()
+  next_tree = ip.next.to_building_block()
 
   init_type = initialize_tree.type_signature
   _check_type_is_no_arg_fn(init_type, '`initialize`', TypeError)
@@ -269,6 +270,16 @@ def _check_iterative_process_compatible_with_canonical_form(
   if not next_type.result.is_struct() or len(next_type.result) != 2:
     raise TypeError('Expected `next` to return two values, found result '
                     f'type:\n{next_type.result}')
+
+  initialize_tree = _replace_intrinsics_with_bodies(initialize_tree)
+  next_tree = _replace_intrinsics_with_bodies(next_tree)
+  next_tree = _replace_lambda_body_with_call_dominant_form(next_tree)
+
+  tree_analysis.check_contains_only_reducible_intrinsics(initialize_tree)
+  tree_analysis.check_contains_only_reducible_intrinsics(next_tree)
+  tree_analysis.check_broadcast_not_dependent_on_aggregate(next_tree)
+
+  return initialize_tree, next_tree
 
 
 def _create_before_and_after_broadcast_for_no_broadcast(tree):
@@ -1366,21 +1377,10 @@ def get_canonical_form_for_iterative_process(
       process fails.
   """
   py_typecheck.check_type(ip, iterative_process.IterativeProcess)
+  initialize_bb, next_bb = \
+      check_iterative_process_compatible_with_canonical_form(ip)
   if grappler_config is not None:
     grappler_config = _merge_grappler_config_with_default(grappler_config)
-
-  initialize_bb = ip.initialize.to_building_block()
-  next_bb = ip.next.to_building_block()
-  _check_iterative_process_compatible_with_canonical_form(
-      initialize_bb, next_bb)
-
-  initialize_bb = _replace_intrinsics_with_bodies(initialize_bb)
-  next_bb = _replace_intrinsics_with_bodies(next_bb)
-  next_bb = _replace_lambda_body_with_call_dominant_form(next_bb)
-
-  tree_analysis.check_contains_only_reducible_intrinsics(initialize_bb)
-  tree_analysis.check_contains_only_reducible_intrinsics(next_bb)
-  tree_analysis.check_broadcast_not_dependent_on_aggregate(next_bb)
 
   before_broadcast, after_broadcast = _split_ast_on_broadcast(next_bb)
   before_aggregate, after_aggregate = _split_ast_on_aggregate(after_broadcast)
