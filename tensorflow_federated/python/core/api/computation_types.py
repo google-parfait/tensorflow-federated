@@ -22,6 +22,7 @@ from typing import Any, Dict, Optional, Type as TypingType, TypeVar
 import weakref
 
 import attr
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -366,13 +367,32 @@ def _hash_dtype_and_shape(dtype: tf.DType, shape: tf.TensorShape) -> int:
   return hash((dtype.name, None))
 
 
+def _is_dtype_spec(dtype):
+  """Determines whether `dtype` is a representation of a TF or Numpy dtype.
+
+  Args:
+    dtype: The representation to check.
+
+  Returns:
+    Boolean result indicating whether `dtype` is a Numpy or TF dtype.
+  """
+  return (isinstance(dtype, tf.DType) or
+          isinstance(dtype, type) and issubclass(dtype, np.number) or
+          isinstance(dtype, np.dtype))
+
+
 class TensorType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
 
   @staticmethod
   def _normalize_init_args(dtype, shape=None):
     """Checks init arguments and converts to a normalized representation."""
-    py_typecheck.check_type(dtype, tf.DType)
+    if not isinstance(dtype, tf.DType):
+      if _is_dtype_spec(dtype):
+        dtype = tf.dtypes.as_dtype(dtype)
+      else:
+        raise TypeError('Unrecognized dtype {}.'.format(str(dtype)))
+
     # TODO(b/123764922): If we are passed a shape of `TensorShape(None)`, which
     # does happen along some codepaths, we have slightly violated the
     # assumptions of `TensorType` (see the special casing in `repr` and `str`
@@ -395,7 +415,7 @@ class TensorType(Type, metaclass=_Intern):
     """Constructs a new instance from the given `dtype` and `shape`.
 
     Args:
-      dtype: An instance of `tf.DType`.
+      dtype: An instance of `tf.DType` or one of the Numpy numeric types.
       shape: An optional instance of `tf.TensorShape` or an argument that can be
         passed to its constructor (such as a `list` or a `tuple`), or `None` for
         the default scalar shape. TensorShapes with unknown rank are not
@@ -916,6 +936,7 @@ def to_type(spec) -> Type:
   tf.int32
   (tf.int32, [10])
   (tf.int32, [None])
+  np.int32
   ```
 
   Examples of arguments convertible to flat named tuple types:
@@ -969,12 +990,12 @@ def to_type(spec) -> Type:
   # comments, in addition to the unit test.
   if spec is None or isinstance(spec, Type):
     return spec
-  elif isinstance(spec, tf.DType):
+  elif _is_dtype_spec(spec):
     return TensorType(spec)
   elif isinstance(spec, tf.TensorSpec):
     return TensorType(spec.dtype, spec.shape)
   elif (isinstance(spec, tuple) and (len(spec) == 2) and
-        isinstance(spec[0], tf.DType) and
+        _is_dtype_spec(spec[0]) and
         (isinstance(spec[1], tf.TensorShape) or
          (isinstance(spec[1], (list, tuple)) and all(
              (isinstance(x, int) or x is None) for x in spec[1])))):

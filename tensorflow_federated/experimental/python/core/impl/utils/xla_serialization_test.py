@@ -15,7 +15,6 @@
 from absl.testing import absltest
 from jax.lib.xla_bridge import xla_client
 import numpy as np
-import tensorflow as tf
 
 from google.protobuf import any_pb2
 from tensorflow_federated.experimental.python.core.impl.utils import xla_serialization
@@ -46,7 +45,7 @@ class XlaUtilsTest(absltest.TestCase):
   def test_create_xla_tff_computation(self):
     xla_comp = _make_test_xla_comp()
     comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_comp, computation_types.FunctionType(None, tf.int32))
+        xla_comp, computation_types.FunctionType(None, np.int32))
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)

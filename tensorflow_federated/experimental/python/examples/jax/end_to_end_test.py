@@ -15,9 +15,8 @@
 from absl.testing import absltest
 import jax
 import numpy as np
-import tensorflow as tf
+import tensorflow_federated as tff
 
-from tensorflow_federated.experimental.python.core.api import computations
 from tensorflow_federated.experimental.python.core.backends.xla import executor
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
@@ -39,7 +38,7 @@ class EndToEndTest(absltest.TestCase):
 
   def test_add_numbers(self):
 
-    @computations.jax_computation(tf.int32, tf.int32)
+    @tff.experimental.jax_computation(np.int32, np.int32)
     def foo(x, y):
       return jax.numpy.add(x, y)
 

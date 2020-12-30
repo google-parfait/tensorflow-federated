@@ -14,7 +14,6 @@
 """Experimental utilities for serializing JAX computations."""
 
 import jax
-import tensorflow as tf
 
 from tensorflow_federated.experimental.python.core.impl.jax_context import jax_computation_context
 from tensorflow_federated.experimental.python.core.impl.utils import xla_serialization
@@ -84,8 +83,7 @@ def _jax_shape_dtype_struct_to_tff_tensor(val):
     TypeError: if arg type mismatches.
   """
   py_typecheck.check_type(val, jax.ShapeDtypeStruct)
-  return computation_types.TensorType(
-      tf.dtypes.as_dtype(val.dtype), tf.TensorShape(val.shape))
+  return computation_types.TensorType(val.dtype, val.shape)
 
 
 def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):

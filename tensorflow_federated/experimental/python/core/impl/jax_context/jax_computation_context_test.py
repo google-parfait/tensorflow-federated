@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.experimental.python.core.impl.jax_context import jax_computation_context
 from tensorflow_federated.python.core.api import computations
@@ -26,13 +26,13 @@ class JaxComputationContextTest(absltest.TestCase):
     context = jax_computation_context.JaxComputationContext()
     with self.assertRaisesRegex(NotImplementedError,
                                 'JAX code is not currently supported'):
-      context.ingest(10, tf.int32)
+      context.ingest(10, np.int32)
 
   def test_invoke_raises_not_implemented_error(self):
 
-    @computations.tf_computation
+    @computations.federated_computation
     def foo():
-      return tf.constant(10)
+      return 10
 
     context = jax_computation_context.JaxComputationContext()
     with self.assertRaisesRegex(NotImplementedError,

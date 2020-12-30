@@ -14,7 +14,7 @@
 
 import collections
 from absl.testing import absltest
-import tensorflow as tf
+import numpy as np
 
 from tensorflow_federated.experimental.python.core.impl.jax_context import jax_serialization
 from tensorflow_federated.experimental.python.core.impl.utils import xla_serialization
@@ -50,7 +50,7 @@ class JaxSerializationTest(absltest.TestCase):
   def test_serialize_jax_with_int32_to_int32(self):
 
     ctx_stack = context_stack_impl.context_stack
-    param_type = tf.int32
+    param_type = np.int32
     arg_func = lambda x: ([x], {})
 
     def traced_func(x):
@@ -70,7 +70,7 @@ class JaxSerializationTest(absltest.TestCase):
   def test_serialize_jax_with_2xint32_to_2xint32(self):
 
     ctx_stack = context_stack_impl.context_stack
-    param_type = collections.OrderedDict([('foo', tf.int32), ('bar', tf.int32)])
+    param_type = collections.OrderedDict([('foo', np.int32), ('bar', np.int32)])
     arg_func = lambda x: ([x], {})
 
     def traced_func(x):
@@ -117,8 +117,8 @@ class JaxSerializationTest(absltest.TestCase):
   def test_serialize_jax_with_two_args(self):
 
     ctx_stack = context_stack_impl.context_stack
-    param_type = computation_types.StructType([('a', tf.int32),
-                                               ('b', tf.int32)])
+    param_type = computation_types.StructType([('a', np.int32),
+                                               ('b', np.int32)])
     arg_func = lambda arg: ([], {'x': arg[0], 'y': arg[1]})
 
     def traced_func(x, y):

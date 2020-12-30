@@ -17,7 +17,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/experimental/python/core/api:computations",
+        "//tensorflow_federated",
         "//tensorflow_federated/experimental/python/core/backends/xla:executor",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_test_utils",

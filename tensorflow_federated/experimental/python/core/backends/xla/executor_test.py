@@ -17,7 +17,6 @@ import collections
 from absl.testing import absltest
 from jax.lib.xla_bridge import xla_client
 import numpy as np
-import tensorflow as tf
 
 from tensorflow_federated.experimental.python.core.backends.xla import executor
 from tensorflow_federated.experimental.python.core.impl.utils import xla_serialization
@@ -32,18 +31,18 @@ class ExecutorTest(absltest.TestCase):
     self._backend = xla_client.get_local_backend()
 
   def test_to_representation_for_type_with_int32_constant(self):
-    rep = executor.to_representation_for_type(10, tf.int32)
+    rep = executor.to_representation_for_type(10, np.int32)
     self.assertEqual(rep, 10)
 
   def test_to_representation_for_type_with_2xint32_list_constant(self):
-    rep = executor.to_representation_for_type([10, 20], (tf.int32, tf.int32))
+    rep = executor.to_representation_for_type([10, 20], (np.int32, np.int32))
     self.assertIsInstance(rep, structure.Struct)
     self.assertEqual(str(rep), '<10,20>')
 
   def test_to_representation_for_type_with_nested_odict_constant(self):
     rep = executor.to_representation_for_type(
         collections.OrderedDict([('a', 10), ('b', [20, 30])]),
-        collections.OrderedDict([('a', tf.int32), ('b', [tf.int32, tf.int32])]))
+        collections.OrderedDict([('a', np.int32), ('b', [np.int32, np.int32])]))
     self.assertIsInstance(rep, structure.Struct)
     self.assertEqual(str(rep), '<a=10,b=<20,30>>')
 
@@ -52,7 +51,7 @@ class ExecutorTest(absltest.TestCase):
     xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
     xla_client.ops.Constant(builder, np.int32(10))
     xla_comp = builder.build()
-    comp_type = computation_types.FunctionType(None, tf.int32)
+    comp_type = computation_types.FunctionType(None, np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
     rep = executor.to_representation_for_type(comp_pb, comp_type, self._backend)
     self.assertTrue(callable(rep))
@@ -68,7 +67,7 @@ class ExecutorTest(absltest.TestCase):
     ])
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType(
-        None, computation_types.StructType([('a', tf.int32), ('b', tf.int32)]))
+        None, computation_types.StructType([('a', np.int32), ('b', np.int32)]))
     comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
     rep = executor.to_representation_for_type(comp_pb, comp_type, self._backend)
     self.assertTrue(callable(rep))
@@ -84,7 +83,7 @@ class ExecutorTest(absltest.TestCase):
         xla_client.ops.GetTupleElement(param, 0),
         xla_client.ops.GetTupleElement(param, 1))
     xla_comp = builder.build()
-    comp_type = computation_types.FunctionType((tf.int32, tf.int32), tf.int32)
+    comp_type = computation_types.FunctionType((np.int32, np.int32), np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
     rep = executor.to_representation_for_type(comp_pb, comp_type, self._backend)
     self.assertTrue(callable(rep))
@@ -94,7 +93,7 @@ class ExecutorTest(absltest.TestCase):
   def test_create_compute_int32(self):
     ex = executor.XlaExecutor()
     int_val = asyncio.get_event_loop().run_until_complete(
-        ex.create_value(10, tf.int32))
+        ex.create_value(10, np.int32))
     self.assertIsInstance(int_val, executor.XlaValue)
     self.assertEqual(str(int_val.type_signature), 'int32')
     self.assertIsInstance(int_val.internal_representation, np.int32)
@@ -105,9 +104,9 @@ class ExecutorTest(absltest.TestCase):
   def test_create_compute_2xint32_struct(self):
     ex = executor.XlaExecutor()
     x_val = asyncio.get_event_loop().run_until_complete(
-        ex.create_value(10, tf.int32))
+        ex.create_value(10, np.int32))
     y_val = asyncio.get_event_loop().run_until_complete(
-        ex.create_value(20, tf.int32))
+        ex.create_value(20, np.int32))
     struct_val = asyncio.get_event_loop().run_until_complete(
         ex.create_struct([x_val, y_val]))
     self.assertIsInstance(struct_val, executor.XlaValue)
@@ -122,7 +121,7 @@ class ExecutorTest(absltest.TestCase):
     xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
     xla_client.ops.Constant(builder, np.int32(10))
     xla_comp = builder.build()
-    comp_type = computation_types.FunctionType(None, tf.int32)
+    comp_type = computation_types.FunctionType(None, np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
     ex = executor.XlaExecutor()
     comp_val = asyncio.get_event_loop().run_until_complete(
@@ -148,14 +147,14 @@ class ExecutorTest(absltest.TestCase):
         xla_client.ops.GetTupleElement(param, 0),
         xla_client.ops.GetTupleElement(param, 1))
     xla_comp = builder.build()
-    comp_type = computation_types.FunctionType((tf.int32, tf.int32), tf.int32)
+    comp_type = computation_types.FunctionType((np.int32, np.int32), np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
     ex = executor.XlaExecutor()
 
     async def _compute_fn():
       comp_val = await ex.create_value(comp_pb, comp_type)
-      x_val = await ex.create_value(20, tf.int32)
-      y_val = await ex.create_value(30, tf.int32)
+      x_val = await ex.create_value(20, np.int32)
+      y_val = await ex.create_value(30, np.int32)
       arg_val = await ex.create_struct([x_val, y_val])
       call_val = await ex.create_call(comp_val, arg_val)
       return await call_val.compute()
@@ -168,7 +167,7 @@ class ExecutorTest(absltest.TestCase):
     struct_val = asyncio.get_event_loop().run_until_complete(
         ex.create_value(
             collections.OrderedDict([('a', 10), ('b', 20)]),
-            computation_types.StructType([('a', tf.int32), ('b', tf.int32)])))
+            computation_types.StructType([('a', np.int32), ('b', np.int32)])))
     self.assertIsInstance(struct_val, executor.XlaValue)
     self.assertEqual(str(struct_val.type_signature), '<a=int32,b=int32>')
     by_index_val = asyncio.get_event_loop().run_until_complete(

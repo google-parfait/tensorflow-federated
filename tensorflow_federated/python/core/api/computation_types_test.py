@@ -17,6 +17,7 @@ import collections
 from absl.testing import absltest
 from absl.testing import parameterized
 import attr
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
@@ -140,6 +141,11 @@ class TensorTypeTest(absltest.TestCase):
     self.assertTrue(t3.is_equivalent_to(t2))
     self.assertFalse(t1.is_equivalent_to(t2))
     self.assertFalse(t2.is_equivalent_to(t1))
+
+  def test_with_np_int32(self):
+    t = computation_types.TensorType(np.int32, [10])
+    self.assertEqual(t.dtype, tf.int32)
+    self.assertEqual(t.shape, tf.TensorShape([10]))
 
 
 class StructTypeTest(absltest.TestCase):
@@ -659,6 +665,25 @@ class ToTypeTest(absltest.TestCase):
             (None, computation_types.TensorType(tf.int32)),
             ('b', computation_types.TensorType(tf.int64))
         ]))
+
+  def test_with_np_int32(self):
+    t = computation_types.to_type(np.int32)
+    self.assertIsInstance(t, computation_types.TensorType)
+    self.assertEqual(t.dtype, tf.int32)
+    self.assertEqual(t.shape, tf.TensorShape([]))
+
+  def test_with_np_int32_in_tensor_spec(self):
+    t = computation_types.to_type((np.int32, [5]))
+    self.assertIsInstance(t, computation_types.TensorType)
+    self.assertEqual(t.dtype, tf.int32)
+    self.assertEqual(t.shape, tf.TensorShape([5]))
+
+  def test_with_np_int32_in_dict(self):
+    t = computation_types.to_type(collections.OrderedDict([('foo', np.int32)]))
+    self.assertIsInstance(t, computation_types.StructType)
+    self.assertIsInstance(t.foo, computation_types.TensorType)
+    self.assertEqual(t.foo.dtype, tf.int32)
+    self.assertEqual(t.foo.shape, tf.TensorShape([]))
 
 
 class RepresentationTest(absltest.TestCase):
