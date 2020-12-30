@@ -13,20 +13,17 @@
 # limitations under the License.
 """Experimental utilities for serializing JAX computations."""
 
-from typing import Optional
 import jax
 import tensorflow as tf
 
 from tensorflow_federated.experimental.python.core.impl.jax_context import jax_computation_context
-from tensorflow_federated.experimental.python.core.impl.utils import xla_utils
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.experimental.python.core.impl.utils import xla_serialization
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.types import type_conversions
-from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 class _JaxTypedObject(jax.ShapeDtypeStruct, typed_object.TypedObject):
@@ -59,43 +56,6 @@ def _jax_shape_dtype_struct_to_tff_tensor(val):
   py_typecheck.check_type(val, jax.ShapeDtypeStruct)
   return computation_types.TensorType(
       tf.dtypes.as_dtype(val.dtype), tf.TensorShape(val.shape))
-
-
-def _make_xla_binding_for_type(
-    type_spec: Optional[computation_types.Type]) -> Optional[pb.Xla.Binding]:
-  """Generates an XLA binding for TFF type `type_spec`.
-
-  In the generated binding, tensors are assigned indexes in consecutive order
-  of DFS traversal.
-
-  Args:
-    type_spec: The type to generate the binding for. Must be either an instance
-      of `computation_types.Type`, or `None`.
-
-  Returns:
-    The generated binding (either `pb.Xla.Binding` or `None`).
-  """
-  if type_spec is None:
-    return None
-
-  py_typecheck.check_type(type_spec, computation_types.Type)
-
-  def _make_starting_at_index(type_spec, idx):
-    if isinstance(type_spec, computation_types.TensorType):
-      return pb.Xla.Binding(tensor=pb.Xla.TensorBinding(index=idx)), idx + 1
-
-    if isinstance(type_spec, computation_types.StructType):
-      elements = []
-      for _, v in structure.iter_elements(type_spec):
-        binding, idx = _make_starting_at_index(v, idx)
-        elements.append(binding)
-      return pb.Xla.Binding(struct=pb.Xla.StructBinding(element=elements)), idx
-
-    raise NotImplementedError('XLA bindings for {} are unsupported'.format(
-        str(type_spec)))
-
-  binding, _ = _make_starting_at_index(type_spec, 0)
-  return binding
 
 
 def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
@@ -153,9 +113,5 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
 
   computation_type = computation_types.FunctionType(parameter_type,
                                                     returned_type_spec)
-  return pb.Computation(
-      type=type_serialization.serialize_type(computation_type),
-      xla=pb.Xla(
-          hlo_module=xla_utils.pack_xla_computation(compiled_xla),
-          parameter=_make_xla_binding_for_type(parameter_type),
-          result=_make_xla_binding_for_type(returned_type_spec)))
+  return xla_serialization.create_xla_tff_computation(compiled_xla,
+                                                      computation_type)

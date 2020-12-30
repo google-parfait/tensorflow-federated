@@ -17,7 +17,7 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.experimental.python.core.impl.jax_context import jax_serialization
-from tensorflow_federated.experimental.python.core.impl.utils import xla_utils
+from tensorflow_federated.experimental.python.core.impl.utils import xla_serialization
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -40,7 +40,7 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     self.assertEqual(str(type_spec), '( -> int32)')
-    xla_comp = xla_utils.unpack_xla_computation(comp_pb.xla.hlo_module)
+    xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
     self.assertIn('ROOT tuple.4 = (s32[]) tuple(constant.3)',
                   xla_comp.as_hlo_text())
     self.assertEqual(str(comp_pb.xla.parameter), '')
@@ -61,7 +61,7 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     self.assertEqual(str(type_spec), '(int32 -> int32)')
-    xla_comp = xla_utils.unpack_xla_computation(comp_pb.xla.hlo_module)
+    xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
     self.assertIn('ROOT tuple.6 = (s32[]) tuple(add.5)', xla_comp.as_hlo_text())
     self.assertEqual(str(comp_pb.xla.result), str(comp_pb.xla.parameter))
     self.assertEqual(str(comp_pb.xla.result), 'tensor {\n' '  index: 0\n' '}\n')
@@ -84,7 +84,7 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertEqual(
         str(type_spec),
         '(<foo=int32,bar=int32> -> <sum=int32,difference=int32>)')
-    xla_comp = xla_utils.unpack_xla_computation(comp_pb.xla.hlo_module)
+    xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
     self.assertEqual(
         xla_comp.as_hlo_text(),
         # pylint: disable=line-too-long
