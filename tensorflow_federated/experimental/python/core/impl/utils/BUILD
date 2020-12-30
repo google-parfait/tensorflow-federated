@@ -2,7 +2,10 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
     name = "default_visibility",
-    packages = ["//tensorflow_federated/experimental/python/core/impl/jax_context/..."],
+    packages = [
+        "//tensorflow_federated/experimental/python/core/backends/xla/...",
+        "//tensorflow_federated/experimental/python/core/impl/jax_context/...",
+    ],
 )
 
 package(default_visibility = [":default_visibility"])
