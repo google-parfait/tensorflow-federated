@@ -26,8 +26,8 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_ba
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
-class _JaxTypedObject(jax.ShapeDtypeStruct, typed_object.TypedObject):
-  """Represents type information understood by both TFF and JAX serializer."""
+class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):
+  """Represents tensor type info understood by both TFF and JAX serializer."""
 
   def __init__(self, tensor_type):
     py_typecheck.check_type(tensor_type, computation_types.TensorType)
@@ -39,6 +39,36 @@ class _JaxTypedObject(jax.ShapeDtypeStruct, typed_object.TypedObject):
   @property
   def type_signature(self):
     return self._type_signature
+
+
+class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
+  """Represents struct type info understood by both TFF and JAX serializer."""
+
+  def __init__(self, struct_type):
+    py_typecheck.check_type(struct_type, computation_types.StructType)
+    structure.Struct.__init__(self,
+                              [(k, _tff_type_to_xla_serializer_arg(v))
+                               for k, v in structure.to_elements(struct_type)])
+    self._type_signature = struct_type
+
+  @property
+  def type_signature(self):
+    return self._type_signature
+
+
+def _tff_type_to_xla_serializer_arg(type_spec):
+  """Converts TFF type into an argument for the JAX-to-XLA serializer.
+
+  Args:
+    type_spec: An instance of `computation_types.TensorType`.
+
+  Returns:
+    An object that carries both TFF and JAX type info, to be fed into the
+    JAX serializer.
+  """
+  if isinstance(type_spec, computation_types.TensorType):
+    return _XlaSerializerTensorArg(type_spec)
+  return _XlaSerializerStructArg(type_spec)
 
 
 def _jax_shape_dtype_struct_to_tff_tensor(val):
@@ -84,19 +114,18 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
 
   if parameter_type is not None:
     parameter_type = computation_types.to_type(parameter_type)
-    py_typecheck.check_type(parameter_type, computation_types.Type)
-    flattened_type = structure.flatten(parameter_type)
-    shape_dtype_list = []
-    for element in flattened_type:
-      py_typecheck.check_type(element, computation_types.TensorType)
-      shape_dtype_list.append(_JaxTypedObject(element))
-    packed_arg = type_conversions.type_to_py_container(
-        structure.pack_sequence_as(parameter_type, shape_dtype_list),
-        parameter_type)
+    packed_arg = _tff_type_to_xla_serializer_arg(parameter_type)
   else:
     packed_arg = None
 
   args, kwargs = arg_fn(packed_arg)
+
+  def _adjust_arg(x):
+    return type_conversions.type_to_py_container(x, x.type_signature)
+
+  args = [_adjust_arg(x) for x in args]
+  kwargs = {k: _adjust_arg(v) for k, v in kwargs.items()}
+
   context = jax_computation_context.JaxComputationContext()
   with context_stack.install(context):
     tracer_callable = jax.xla_computation(

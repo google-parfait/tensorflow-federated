@@ -64,6 +64,7 @@ py_test(
         ":jax_serialization",
         "//tensorflow_federated/experimental/python/core/impl/utils:xla_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],

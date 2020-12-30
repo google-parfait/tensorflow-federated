@@ -32,6 +32,15 @@ class JaxWrapperTest(absltest.TestCase):
     self.assertIsInstance(foo, computation_impl.ComputationImpl)
     self.assertEqual(str(foo.type_signature), '(int32 -> int32)')
 
+  def test_invoke_with_two_arg_fn(self):
+
+    @computation_wrapper_instances.jax_wrapper(tf.int32, tf.int32)
+    def foo(x, y):
+      return jax.numpy.add(x, y)
+
+    self.assertIsInstance(foo, computation_impl.ComputationImpl)
+    self.assertEqual(str(foo.type_signature), '(<x=int32,y=int32> -> int32)')
+
 
 if __name__ == '__main__':
   absltest.main()
