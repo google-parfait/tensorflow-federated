@@ -14,6 +14,7 @@
 """Templates for commonly used computations."""
 
 from tensorflow_federated.python.core.templates.aggregation_process import AggregationProcess
+from tensorflow_federated.python.core.templates.estimation_process import EstimationProcess
 from tensorflow_federated.python.core.templates.iterative_process import IterativeProcess
 from tensorflow_federated.python.core.templates.measured_process import MeasuredProcess
 from tensorflow_federated.python.core.templates.measured_process import MeasuredProcessOutput

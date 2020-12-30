@@ -24,6 +24,7 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":aggregation_process",
+        ":estimation_process",
         ":iterative_process",
         ":measured_process",
     ],
