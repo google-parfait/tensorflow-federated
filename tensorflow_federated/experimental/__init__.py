@@ -13,4 +13,5 @@
 # limitations under the License.
 """The experimental part of the TensorFlow Federated (TFF) library."""
 
+from tensorflow_federated.experimental.python.core import backends
 from tensorflow_federated.experimental.python.core.api.computations import jax_computation

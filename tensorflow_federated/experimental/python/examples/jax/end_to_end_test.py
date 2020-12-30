@@ -17,24 +17,10 @@ import jax
 import numpy as np
 import tensorflow_federated as tff
 
-from tensorflow_federated.experimental.python.core.backends.xla import executor
-from tensorflow_federated.python.core.impl.executors import executor_factory
-from tensorflow_federated.python.core.impl.executors import executor_test_utils
-
-
-class _XlaExecutorFactoryForTesting(executor_factory.ExecutorFactory):
-
-  def create_executor(self, cardinalities):
-    return executor.XlaExecutor()
-
-  def clean_up_executors(self):
-    pass
-
 
 class EndToEndTest(absltest.TestCase):
 
-  # TODO(b/175888145): Extend and clean this up as the implementation of JAX
-  # and XLA support gets more complete.
+  # TODO(b/175888145): Evolve this into a complete federated training example.
 
   def test_add_numbers(self):
 
@@ -42,11 +28,10 @@ class EndToEndTest(absltest.TestCase):
     def foo(x, y):
       return jax.numpy.add(x, y)
 
-    with executor_test_utils.install_executor(_XlaExecutorFactoryForTesting()):
-      result = foo(np.int32(20), np.int32(30))
-
+    result = foo(np.int32(20), np.int32(30))
     self.assertEqual(result, 50)
 
 
 if __name__ == '__main__':
+  tff.experimental.backends.xla.set_local_execution_context()
   absltest.main()

@@ -15,7 +15,35 @@ py_library(
     name = "xla",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/tools:__subpackages__"],
+    visibility = ["//tensorflow_federated/experimental/python/core/backends:__pkg__"],
+    deps = [":execution_contexts"],
+)
+
+py_library(
+    name = "execution_contexts",
+    srcs = ["execution_contexts.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":executor",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/executors:executor_factory",
+    ],
+)
+
+py_test(
+    name = "execution_contexts_test",
+    srcs = ["execution_contexts_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":execution_contexts",
+        "//tensorflow_federated/experimental/python/core/impl/utils:xla_serialization",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl:computation_impl",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/executors:execution_context",
+    ],
 )
 
 py_library(

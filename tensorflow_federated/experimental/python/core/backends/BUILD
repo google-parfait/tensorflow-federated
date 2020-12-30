@@ -15,5 +15,9 @@ py_library(
     name = "backends",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/tools:__subpackages__"],
+    visibility = [
+        "//tensorflow_federated/experimental:__pkg__",
+        "//tensorflow_federated/tools:__subpackages__",
+    ],
+    deps = ["//tensorflow_federated/experimental/python/core/backends/xla"],
 )
