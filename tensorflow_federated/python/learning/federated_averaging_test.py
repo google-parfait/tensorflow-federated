@@ -97,7 +97,6 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
     if weighted:
       self.assertEqual(client_outputs.weights_delta_weight, 8.0)
     self.assertEqual(client_outputs.optimizer_output['num_examples'], 8)
-    self.assertEqual(client_outputs.optimizer_output['has_non_finite_delta'], 0)
     self.assertDictContainsSubset(
         {
             'num_examples': 8,
@@ -129,9 +128,6 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
     self.assertEqual(self.evaluate(client_outputs.weights_delta_weight), 0.0)
     self.assertAllClose(
         self.evaluate(client_outputs.weights_delta), [[[0.0], [0.0]], 0.0])
-    self.assertEqual(
-        self.evaluate(client_outputs.optimizer_output['has_non_finite_delta']),
-        1)
 
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))
@@ -171,7 +167,8 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
     for _ in range(3):
       state, metric_outputs = process.next(state, datasets)
       self.assertEqual(
-          list(metric_outputs.keys()), ['broadcast', 'aggregation', 'train'])
+          list(metric_outputs.keys()),
+          ['broadcast', 'aggregation', 'train', 'stat'])
       self.assertEmpty(metric_outputs['broadcast'])
       self.assertEqual(aggregation_metrics, metric_outputs['aggregation'])
       train_metrics = metric_outputs['train']

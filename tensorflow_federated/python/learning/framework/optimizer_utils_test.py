@@ -60,11 +60,12 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
                                                     initial_weights.trainable)
     client_weight = tf.constant(1.0)
     return optimizer_utils.ClientOutput(
-        trainable_weights_delta,
+        weights_delta=trainable_weights_delta,
         weights_delta_weight=client_weight,
         model_output=self._model.report_local_outputs(),
-        optimizer_output=collections.OrderedDict([('client_weight',
-                                                   client_weight)]))
+        optimizer_output=collections.OrderedDict([
+            ('num_examples', client_weight),
+        ]))
 
 
 @computations.tf_computation(tf.int32)
@@ -222,7 +223,9 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             aggregation=aggregate_state_and_metrics_dict,
             train=collections.OrderedDict(
                 loss=computation_types.TensorType(tf.float32),
-                num_examples=computation_types.TensorType(tf.int32))),
+                num_examples=computation_types.TensorType(tf.int32)),
+            stat=collections.OrderedDict(
+                num_examples=computation_types.TensorType(tf.float32))),
         placements.SERVER)
 
     self.assertEqual(
@@ -352,7 +355,8 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
         train={
             'loss': 15.25,
             'num_examples': 6,
-        })
+        },
+        stat=collections.OrderedDict(num_examples=3.0))
     self.assertEqual(str(expected_outputs), str(outputs))
 
 

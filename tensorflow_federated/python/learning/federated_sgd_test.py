@@ -101,9 +101,6 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(self.evaluate(client_outputs.weights_delta_weight), 0.0)
     self.assertAllClose(
         self.evaluate(client_outputs.weights_delta), [[[0.0], [0.0]], 0.0])
-    self.assertEqual(
-        self.evaluate(client_outputs.optimizer_output['has_non_finite_delta']),
-        1)
 
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))
@@ -216,7 +213,8 @@ class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(
         list(first_state.model.trainable), [[[0.0], [0.0]], 0.0])
     self.assertEqual(
-        list(metric_outputs.keys()), ['broadcast', 'aggregation', 'train'])
+        list(metric_outputs.keys()),
+        ['broadcast', 'aggregation', 'train', 'stat'])
     self.assertEmpty(metric_outputs['broadcast'])
     self.assertEqual(
         metric_outputs['aggregation'],

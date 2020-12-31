@@ -121,7 +121,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 
     weights_delta = tf.nest.map_structure(tf.subtract, model.weights.trainable,
                                           initial_weights.trainable)
-    aggregated_outputs = model.report_local_outputs()
+    model_output = model.report_local_outputs()
 
     # TODO(b/122071074): Consider moving this functionality into
     # tff.federated_mean?
@@ -136,14 +136,11 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     elif self._client_weighting is ClientWeighting.UNIFORM:
       weights_delta_weight = tf.constant(1.0)
     else:
-      weights_delta_weight = self._client_weighting(aggregated_outputs)
-
-    return optimizer_utils.ClientOutput(
-        weights_delta, weights_delta_weight, aggregated_outputs,
-        collections.OrderedDict(
-            num_examples=num_examples_sum,
-            has_non_finite_delta=has_non_finite_delta,
-        ))
+      weights_delta_weight = self._client_weighting(model_output)
+    # TODO(b/176245976): TFF `ClientOutput` structure names are confusing.
+    optimizer_output = collections.OrderedDict(num_examples=num_examples_sum)
+    return optimizer_utils.ClientOutput(weights_delta, weights_delta_weight,
+                                        model_output, optimizer_output)
 
 
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)

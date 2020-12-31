@@ -55,21 +55,21 @@ class DisjointArgumentError(Exception):
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
 
-  Fields:
-  -   `weights_delta`: a dictionary of updates to the model's trainable
+  Attributes:
+    weights_delta: A dictionary of updates to the model's trainable
       variables.
-  -   `weights_delta_weight`: weight to use in a weighted mean when aggregating
+    weights_delta_weight: Weight to use in a weighted mean when aggregating
       `weights_delta`.
-  -   `model_output`: a structure matching
+    model_output: A structure matching
       `tff.learning.Model.report_local_outputs`, reflecting the results of
       training on the input dataset.
-  -   `optimizer_output`: additional metrics or other outputs defined by the
+    optimizer_output: Additional metrics or other outputs defined by the
       optimizer.
   """
   weights_delta = attr.ib()
   weights_delta_weight = attr.ib()
   model_output = attr.ib()
-  optimizer_output = attr.ib()
+  optimizer_output = attr.ib(default=None)
 
 
 class ClientDeltaFn(object, metaclass=abc.ABCMeta):
@@ -433,11 +433,14 @@ def _build_one_round_computation(
                     aggregation_output.state, broadcast_output.state))
     aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
         client_outputs.model_output)
+    optimizer_outputs = intrinsics.federated_sum(
+        client_outputs.optimizer_output)
     measurements = intrinsics.federated_zip(
         collections.OrderedDict(
             broadcast=broadcast_output.measurements,
             aggregation=aggregation_output.measurements,
-            train=aggregated_outputs))
+            train=aggregated_outputs,
+            stat=optimizer_outputs))
     return new_server_state, measurements
 
   return one_round_computation
