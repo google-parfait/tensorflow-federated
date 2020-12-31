@@ -26,6 +26,9 @@ from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.templates import estimation_process
+
+QEProcess = quantile_estimation.PrivateQuantileEstimationProcess
 
 
 class PrivateQEComputationTest(test_case.TestCase, parameterized.TestCase):
@@ -47,8 +50,7 @@ class PrivateQEComputationTest(test_case.TestCase, parameterized.TestCase):
           learning_rate=1.0,
           geometric_update=True)
 
-    process = quantile_estimation.PrivateQuantileEstimationProcess(
-        quantile_estimator_query)
+    process = QEProcess(quantile_estimator_query)
 
     query_state = quantile_estimator_query.initial_global_state()
     sum_process_state = ()
@@ -84,8 +86,7 @@ class PrivateQEComputationTest(test_case.TestCase, parameterized.TestCase):
         l2_norm_clip=1.0, stddev=1.0)
 
     with self.assertRaises(TypeError):
-      quantile_estimation.PrivateQuantileEstimationProcess(
-          non_quantile_estimator_query)
+      QEProcess(non_quantile_estimator_query)
 
   def test_bad_aggregation_factory(self):
     quantile_estimator_query = tfp.NoPrivacyQuantileEstimatorQuery(
@@ -95,7 +96,7 @@ class PrivateQEComputationTest(test_case.TestCase, parameterized.TestCase):
         geometric_update=True)
 
     with self.assertRaises(TypeError):
-      quantile_estimation.PrivateQuantileEstimationProcess(
+      QEProcess(
           quantile_estimator_query=quantile_estimator_query,
           record_aggregation_factory="I'm not a record_aggregation_factory.")
 
@@ -114,8 +115,7 @@ class PrivateQEExecutionTest(test_case.TestCase, parameterized.TestCase):
         learning_rate=learning_rate,
         geometric_update=geometric_update)
 
-    process = quantile_estimation.PrivateQuantileEstimationProcess(
-        quantile_estimator_query)
+    process = QEProcess(quantile_estimator_query)
 
     state = process.initialize()
     self.assertAllClose(process.report(state), initial_estimate)
@@ -130,6 +130,18 @@ class PrivateQEExecutionTest(test_case.TestCase, parameterized.TestCase):
       expected_estimate = initial_estimate + learning_rate * target_quantile
 
     self.assertAllClose(process.report(state), expected_estimate)
+
+  def test_no_noise_cls(self):
+    process = QEProcess.no_noise(1.0, 0.5, 1.0)
+    self.assertIsInstance(process, QEProcess)
+    state = process.initialize()
+    self.assertEqual(process.report(state), 1.0)
+
+  def test_no_noise_affine_cls(self):
+    process = QEProcess.no_noise_affine(1.0, 0.5, 1.0, 2.0, 1.0)
+    self.assertIsInstance(process, estimation_process.EstimationProcess)
+    state = process.initialize()
+    self.assertEqual(process.report(state), 3.0)
 
 
 if __name__ == '__main__':

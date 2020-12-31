@@ -39,6 +39,79 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
   quantile can be retrieved using `get_current_estimate(state)`.
   """
 
+  @classmethod
+  def no_noise(cls, initial_estimate: float, target_quantile: float,
+               learning_rate: float):
+    """No-noise estimator for value at quantile.
+
+    Estimates value `C` at `q`'th quantile of input distribution. `C` is
+    estimated using the geometric method described in Thakkar et al. 2019,
+    "Differentially Private Learning with Adaptive Clipping"
+    (https://arxiv.org/abs/1905.03871) without noise added.
+
+    Note that this estimator does not add noise, so it does not guarantee
+    differential privacy. It is useful for estimating quantiles in contexts
+    where rigorous privacy guarantees are not needed.
+
+    Args:
+      initial_estimate: The initial estimate of `C`.
+      target_quantile: The quantile `q` to which `C` will be adapted.
+      learning_rate: The learning rate for the adaptive algorithm.
+
+    Returns:
+      A `PrivateQuantileEstimationProcess`.
+    """
+    _check_float_positive(initial_estimate, 'initial_estimate')
+    _check_float_probability(target_quantile, 'target_quantile')
+    _check_float_positive(learning_rate, 'learning_rate')
+
+    return cls(
+        tfp.NoPrivacyQuantileEstimatorQuery(
+            initial_estimate=initial_estimate,
+            target_quantile=target_quantile,
+            learning_rate=learning_rate,
+            geometric_update=True))
+
+  @classmethod
+  def no_noise_affine(cls, initial_estimate: float, target_quantile: float,
+                      learning_rate: float, multiplier: float,
+                      increment: float):
+    """No-noise estimator for affine function of value at quantile.
+
+    Estimates value `C` at `q`'th quantile of input distribution and reports
+    `rC + i` for multiplier `r` and increment `i`. The quantile `C` is estimated
+    using the geometric method described in Thakkar et al. 2019,
+    "Differentially Private Learning with Adaptive Clipping"
+    (https://arxiv.org/abs/1905.03871) without noise added.
+
+    Note that this estimator does not add noise, so it does not guarantee
+    differential privacy. It is useful for estimating quantiles in contexts
+    where rigorous privacy guarantees are not needed.
+
+    Args:
+      initial_estimate: The initial estimate of `C`.
+      target_quantile: The quantile `q` to which `C` will be adapted.
+      learning_rate: The learning rate for the adaptive algorithm.
+      multiplier: The multiplier `r` of the affine transform.
+      increment: The increment `i` of the affine transform.
+
+    Returns:
+      An `EstimationProcess`.
+    """
+    _check_float_positive(initial_estimate, 'initial_estimate')
+    _check_float_probability(target_quantile, 'target_quantile')
+    _check_float_positive(learning_rate, 'learning_rate')
+    _check_float_positive(multiplier, 'multiplier')
+    _check_float_nonnegative(increment, 'increment')
+
+    quantile = cls(
+        tfp.NoPrivacyQuantileEstimatorQuery(
+            initial_estimate=initial_estimate,
+            target_quantile=target_quantile,
+            learning_rate=learning_rate,
+            geometric_update=True))
+    return quantile.map(_affine_transform(multiplier, increment))
+
   def __init__(
       self,
       quantile_estimator_query: tfp.QuantileEstimatorQuery,
@@ -111,3 +184,30 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
         lambda state: state[0].current_estimate, init_fn.type_signature.result)
 
     super().__init__(init_fn, next_fn, report_fn)
+
+
+def _affine_transform(multiplier, increment):
+  transform_tf_comp = computations.tf_computation(
+      lambda value: multiplier * value + increment, tf.float32)
+  return computations.federated_computation(
+      lambda value: intrinsics.federated_map(transform_tf_comp, value),
+      computation_types.at_server(tf.float32))
+
+
+def _check_float_positive(value, label):
+  py_typecheck.check_type(value, float, label)
+  if value <= 0:
+    raise ValueError(f'{label} must be positive. Found {value}.')
+
+
+def _check_float_nonnegative(value, label):
+  py_typecheck.check_type(value, float, label)
+  if value < 0:
+    raise ValueError(f'{label} must be nonnegative. Found {value}.')
+
+
+def _check_float_probability(value, label):
+  py_typecheck.check_type(value, float, label)
+  if not 0 <= value <= 1:
+    raise ValueError(f'{label} must be between 0 and 1 (inclusive). '
+                     f'Found {value}.')
