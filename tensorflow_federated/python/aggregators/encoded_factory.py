@@ -82,6 +82,40 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
     py_typecheck.check_callable(encoder_fn)
     self._encoder_fn = encoder_fn
 
+  @classmethod
+  def quantize_above_threshold(cls, quantization_bits=8, threshold=20000):
+    """Quantization of values with at least `threshold` elements.
+
+    Given a `value_type` in the `create_unweighted` method, this classmethod
+    configures the `EncodedSumFactory` to apply uniform quantization to all
+    instances of `tff.TensorType` in the `value_type` which have more than
+    `threshold` elements.
+
+    Precisely, for each tensor `t`, this operation corresponds to
+    `t = round((t - min(t)) / (max(t) - min(t)) * (2**quantizaton_bits - 1))`.
+
+    If a type does not have more than `threshold` elements, it is summed
+    directly without being modified.
+
+    Args:
+      quantization_bits: A integer specifying the quantization bitwidth.
+      threshold: A non-negative integer. Only tensors with more than this number
+        of elements are quantized.
+
+    Returns:
+      An `EncodedSumFactory`.
+    """
+    _check_quantization_bits(quantization_bits)
+    _check_threshold(threshold)
+
+    def encoder_fn(value_spec):
+      if value_spec.shape.num_elements() > threshold:
+        return te.encoders.as_gather_encoder(
+            te.encoders.uniform_quantization(quantization_bits), value_spec)
+      return te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
+
+    return cls(encoder_fn)
+
   def create_unweighted(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
@@ -319,3 +353,17 @@ def _accmulate_state_update_tensor(a, b, mode):
         'StateAggregationMode.STACK is not supported yet.')
   else:
     raise ValueError('Not supported state aggregation mode: %s' % mode)
+
+
+def _check_threshold(threshold):
+  py_typecheck.check_type(threshold, int)
+  if threshold < 0:
+    raise ValueError(f'The threshold must be nonnegative. '
+                     f'Provided threshold: {threshold}')
+
+
+def _check_quantization_bits(quantization_bits):
+  py_typecheck.check_type(quantization_bits, int)
+  if not 1 <= quantization_bits <= 16:
+    raise ValueError(f'The quantization_bits must be in range [1, 16]. '
+                     f'Provided quantization_bits: {quantization_bits}')

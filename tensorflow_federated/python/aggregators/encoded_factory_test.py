@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import random
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -102,6 +103,22 @@ class EncodedSumFactoryComputationTest(test_case.TestCase,
     with self.assertRaises(TypeError):
       encoded_factory.EncodedSumFactory(encoder)
 
+  def test_quantize_above_threshold_negative_threshold_raises(self):
+    with self.assertRaises(ValueError):
+      encoded_factory.EncodedSumFactory.quantize_above_threshold(
+          quantization_bits=8, threshold=-1)
+
+  @parameterized.named_parameters(
+      ('zero', 0),
+      ('negative', -1),
+      ('too_large', 17),
+  )
+  def test_quantize_above_threshold_quantization_bits_raises(
+      self, quantization_bits):
+    with self.assertRaises(ValueError):
+      encoded_factory.EncodedSumFactory.quantize_above_threshold(
+          quantization_bits=quantization_bits, threshold=10000)
+
 
 class EncodedSumFactoryExecutionTest(test_case.TestCase):
 
@@ -135,6 +152,50 @@ class EncodedSumFactoryExecutionTest(test_case.TestCase):
       self.assertAllClose([[6.0, 8.0], 10], output.result)
       self.assertEqual((), output.measurements)
       state = output.state
+
+  def test_quantize_above_threshold_zero(self):
+    encoded_f = encoded_factory.EncodedSumFactory.quantize_above_threshold(
+        quantization_bits=1, threshold=0)
+    test_type = computation_types.to_type([(tf.float32, (3,)),
+                                           (tf.float32, (5,))])
+    process = encoded_f.create_unweighted(test_type)
+
+    single_client_data = [[[0.0, 1.0, 2.0], [1.0, 2.0, 3.0, 4.0, 5.0]]]
+    state = process.initialize()
+    output = process.next(state, single_client_data)
+    # Both tensors are quantized to their min and max, independently.
+    self.assertSetEqual(set([0.0, 2.0]), set(output.result[0]))
+    self.assertSetEqual(set([1.0, 5.0]), set(output.result[1]))
+
+  def test_quantize_above_threshold_positive(self):
+    encoded_f = encoded_factory.EncodedSumFactory.quantize_above_threshold(
+        quantization_bits=1, threshold=4)
+    test_type = computation_types.to_type([(tf.float32, (3,)),
+                                           (tf.float32, (5,))])
+    process = encoded_f.create_unweighted(test_type)
+
+    single_client_data = [[[0.0, 1.0, 2.0], [1.0, 2.0, 3.0, 4.0, 5.0]]]
+    state = process.initialize()
+    output = process.next(state, single_client_data)
+    # The first tensor is not quantized.
+    self.assertAllClose([0.0, 1.0, 2.0], output.result[0])
+    # The second tensor is quantized to its min and max.
+    self.assertSetEqual(set([1.0, 5.0]), set(output.result[1]))
+
+  def test_quantize_above_threshold(self):
+    encoded_f = encoded_factory.EncodedSumFactory.quantize_above_threshold(
+        quantization_bits=4, threshold=0)
+    process = encoded_f.create_unweighted(
+        computation_types.to_type((tf.float32, (10000,))))
+
+    # Creates random values in range [0., 15.] plus the bondaries exactly.
+    # After randomized quantization, 16 unique values should be present.
+    single_client_data = [[random.uniform(0.0, 15.0) for _ in range(9998)] +
+                          [0.0, 15.0]]
+    state = process.initialize()
+    output = process.next(state, single_client_data)
+    unique_values = sorted(list(set(output.result)))
+    self.assertAllClose([float(i) for i in range(16)], unique_values)
 
 
 @te.core.tf_style_adaptive_encoding_stage
