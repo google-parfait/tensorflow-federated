@@ -21,4 +21,5 @@ from tensorflow_federated.python.aggregators.factory import UnweightedAggregatio
 from tensorflow_federated.python.aggregators.factory import WeightedAggregationFactory
 from tensorflow_federated.python.aggregators.mean_factory import MeanFactory
 from tensorflow_federated.python.aggregators.quantile_estimation import PrivateQuantileEstimationProcess
+from tensorflow_federated.python.aggregators.secure_factory import SecureSumFactory
 from tensorflow_federated.python.aggregators.sum_factory import SumFactory

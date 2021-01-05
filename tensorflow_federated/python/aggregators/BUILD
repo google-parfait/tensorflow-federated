@@ -24,6 +24,7 @@ py_library(
         ":factory",
         ":mean_factory",
         ":quantile_estimation",
+        ":secure_factory",
         ":sum_factory",
     ],
 )
