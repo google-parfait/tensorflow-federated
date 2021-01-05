@@ -15,7 +15,7 @@
 
 import os.path
 import re
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Union
 
 from absl import logging
 import tensorflow as tf
@@ -73,7 +73,7 @@ class FileCheckpointManager():
     self._round_num_expression = re.compile(r'{}([0-9]+)$'.format(path))
 
   def load_latest_checkpoint_or_default(self, default: Any) -> Tuple[Any, int]:
-    """Returns latest checkpoint; returns `default` if no checkpoints exist.
+    """Loads latest checkpoint, loading `default` if no checkpoints exist.
 
     Saves `default` as the 0th checkpoint if no checkpoints exist.
 
@@ -82,6 +82,11 @@ class FileCheckpointManager():
         as a template when reconstructing the loaded template. This structure
         will be saved as the checkpoint for round number 0 and returned if there
         are no pre-existing saved checkpoints.
+
+    Returns:
+      A `tuple` of `(state, round_num)` where `state` matches the Python
+      structure in `structure`, and `round_num` is an integer. If no
+      checkpoints have been written, returns `(default, 0)`.
     """
     state, round_num = self.load_latest_checkpoint(default)
     if state is None:
@@ -90,18 +95,24 @@ class FileCheckpointManager():
       self.save_checkpoint(state, round_num)
     return state, round_num
 
-  def load_latest_checkpoint(self, structure: Any) -> Tuple[Any, int]:
-    """Returns the latest checkpointed state and round number.
+  def load_latest_checkpoint(self,
+                             structure: Any) -> Tuple[Any, Union[int, None]]:
+    """Loads the latest state and round number.
 
     Args:
       structure: A nested structure which `tf.convert_to_tensor` supports to use
         as a template when reconstructing the loaded template.
+
+    Returns:
+      A `tuple` of `(state, round_num)` where `state` matches the Python
+      structure in `structure`, and `round_num` is an integer. If no checkpoints
+      have been previously saved, returns the tuple `(None, None)`.
     """
     checkpoint_paths = self._get_all_checkpoint_paths()
     if checkpoint_paths:
       checkpoint_path = max(checkpoint_paths, key=self._round_num)
       return self._load_checkpoint_from_path(structure, checkpoint_path)
-    return None, 0
+    return None, None
 
   def load_checkpoint(self, structure: Any, round_num: int) -> Any:
     """Returns the checkpointed state for the given `round_num`.

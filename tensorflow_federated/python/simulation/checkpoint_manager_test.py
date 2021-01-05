@@ -32,7 +32,7 @@ def _create_test_state(value=0):
 
 class FileCheckpointManagerLoadLatestCheckpointTest(tf.test.TestCase):
 
-  def test_returns_none_and_zero_with_no_checkpoints(self):
+  def test_returns_none_with_no_checkpoints(self):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
     structure = _create_test_state()
@@ -40,7 +40,7 @@ class FileCheckpointManagerLoadLatestCheckpointTest(tf.test.TestCase):
     state, round_num = checkpoint_mngr.load_latest_checkpoint(structure)
 
     self.assertIsNone(state)
-    self.assertEqual(round_num, 0)
+    self.assertIsNone(round_num)
 
   def test_returns_state_and_round_num_with_one_checkpoint(self):
     temp_dir = self.get_temp_dir()
