@@ -54,6 +54,9 @@ class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
   def type_signature(self):
     return self._type_signature
 
+  def __str__(self):
+    return '_XlaSerializerStructArg({})'.format(structure.Struct.__str__(self))
+
 
 def _tff_type_to_xla_serializer_arg(type_spec):
   """Converts TFF type into an argument for the JAX-to-XLA serializer.
@@ -119,7 +122,10 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
   args, kwargs = arg_fn(packed_arg)
 
   def _adjust_arg(x):
-    return type_conversions.type_to_py_container(x, x.type_signature)
+    if isinstance(x, structure.Struct):
+      return type_conversions.type_to_py_container(x, x.type_signature)
+    else:
+      return x
 
   args = [_adjust_arg(x) for x in args]
   kwargs = {k: _adjust_arg(v) for k, v in kwargs.items()}

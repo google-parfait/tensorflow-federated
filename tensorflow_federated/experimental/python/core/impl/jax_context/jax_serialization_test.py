@@ -22,21 +22,21 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.core.impl.utils import function_utils
 
 
 class JaxSerializationTest(absltest.TestCase):
 
   def test_serialize_jax_with_noarg_to_int32(self):
 
-    ctx_stack = context_stack_impl.context_stack
-    param_type = None
-    arg_func = lambda x: ([], {})
-
-    def traced_func():
+    def traced_fn():
       return 10
 
+    param_type = None
+    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
+    ctx_stack = context_stack_impl.context_stack
     comp_pb = jax_serialization.serialize_jax_computation(
-        traced_func, arg_func, param_type, ctx_stack)
+        traced_fn, arg_fn, param_type, ctx_stack)
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
@@ -49,15 +49,14 @@ class JaxSerializationTest(absltest.TestCase):
 
   def test_serialize_jax_with_int32_to_int32(self):
 
-    ctx_stack = context_stack_impl.context_stack
-    param_type = np.int32
-    arg_func = lambda x: ([x], {})
-
-    def traced_func(x):
+    def traced_fn(x):
       return x + 10
 
+    param_type = computation_types.to_type(np.int32)
+    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
+    ctx_stack = context_stack_impl.context_stack
     comp_pb = jax_serialization.serialize_jax_computation(
-        traced_func, arg_func, param_type, ctx_stack)
+        traced_fn, arg_fn, param_type, ctx_stack)
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
@@ -69,16 +68,16 @@ class JaxSerializationTest(absltest.TestCase):
 
   def test_serialize_jax_with_2xint32_to_2xint32(self):
 
-    ctx_stack = context_stack_impl.context_stack
-    param_type = collections.OrderedDict([('foo', np.int32), ('bar', np.int32)])
-    arg_func = lambda x: ([x], {})
-
-    def traced_func(x):
+    def traced_fn(x):
       return collections.OrderedDict([('sum', x['foo'] + x['bar']),
                                       ('difference', x['bar'] - x['foo'])])
 
+    param_type = computation_types.to_type(
+        collections.OrderedDict([('foo', np.int32), ('bar', np.int32)]))
+    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
+    ctx_stack = context_stack_impl.context_stack
     comp_pb = jax_serialization.serialize_jax_computation(
-        traced_func, arg_func, param_type, ctx_stack)
+        traced_fn, arg_fn, param_type, ctx_stack)
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
@@ -86,19 +85,16 @@ class JaxSerializationTest(absltest.TestCase):
         str(type_spec),
         '(<foo=int32,bar=int32> -> <sum=int32,difference=int32>)')
     xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
-    self.assertEqual(
-        xla_comp.as_hlo_text(),
+    self.assertIn(
         # pylint: disable=line-too-long
-        'HloModule xla_computation_traced_func.8\n\n'
-        'ENTRY xla_computation_traced_func.8 {\n'
         '  constant.4 = pred[] constant(false)\n'
         '  parameter.1 = (s32[], s32[]) parameter(0)\n'
         '  get-tuple-element.2 = s32[] get-tuple-element(parameter.1), index=0\n'
         '  get-tuple-element.3 = s32[] get-tuple-element(parameter.1), index=1\n'
         '  add.5 = s32[] add(get-tuple-element.2, get-tuple-element.3)\n'
         '  subtract.6 = s32[] subtract(get-tuple-element.3, get-tuple-element.2)\n'
-        '  ROOT tuple.7 = (s32[], s32[]) tuple(add.5, subtract.6)\n'
-        '}\n\n')
+        '  ROOT tuple.7 = (s32[], s32[]) tuple(add.5, subtract.6)\n',
+        xla_comp.as_hlo_text())
     self.assertEqual(str(comp_pb.xla.result), str(comp_pb.xla.parameter))
     self.assertEqual(
         str(comp_pb.xla.parameter), 'struct {\n'
@@ -116,33 +112,29 @@ class JaxSerializationTest(absltest.TestCase):
 
   def test_serialize_jax_with_two_args(self):
 
-    ctx_stack = context_stack_impl.context_stack
-    param_type = computation_types.StructType([('a', np.int32),
-                                               ('b', np.int32)])
-    arg_func = lambda arg: ([], {'x': arg[0], 'y': arg[1]})
-
-    def traced_func(x, y):
+    def traced_fn(x, y):
       return x + y
 
+    param_type = computation_types.to_type(
+        collections.OrderedDict([('x', np.int32), ('y', np.int32)]))
+    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
+    ctx_stack = context_stack_impl.context_stack
     comp_pb = jax_serialization.serialize_jax_computation(
-        traced_func, arg_func, param_type, ctx_stack)
+        traced_fn, arg_fn, param_type, ctx_stack)
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
-    self.assertEqual(str(type_spec), '(<a=int32,b=int32> -> int32)')
+    self.assertEqual(str(type_spec), '(<x=int32,y=int32> -> int32)')
     xla_comp = xla_serialization.unpack_xla_computation(comp_pb.xla.hlo_module)
-    self.assertEqual(
-        xla_comp.as_hlo_text(),
+    self.assertIn(
         # pylint: disable=line-too-long
-        'HloModule xla_computation_traced_func__3.7\n\n'
-        'ENTRY xla_computation_traced_func__3.7 {\n'
         '  constant.4 = pred[] constant(false)\n'
         '  parameter.1 = (s32[], s32[]) parameter(0)\n'
         '  get-tuple-element.2 = s32[] get-tuple-element(parameter.1), index=0\n'
         '  get-tuple-element.3 = s32[] get-tuple-element(parameter.1), index=1\n'
         '  add.5 = s32[] add(get-tuple-element.2, get-tuple-element.3)\n'
-        '  ROOT tuple.6 = (s32[]) tuple(add.5)\n'
-        '}\n\n')
+        '  ROOT tuple.6 = (s32[]) tuple(add.5)\n',
+        xla_comp.as_hlo_text())
     self.assertEqual(
         str(comp_pb.xla.parameter), 'struct {\n'
         '  element {\n'
@@ -157,6 +149,21 @@ class JaxSerializationTest(absltest.TestCase):
         '  }\n'
         '}\n')
     self.assertEqual(str(comp_pb.xla.result), 'tensor {\n' '  index: 0\n' '}\n')
+
+  def test_nested_structure_type_signature_roundtrip(self):
+
+    def traced_fn(x):
+      return x[0][0]
+
+    param_type = computation_types.to_type([(np.int32,)])
+    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
+    ctx_stack = context_stack_impl.context_stack
+    comp_pb = jax_serialization.serialize_jax_computation(
+        traced_fn, arg_fn, param_type, ctx_stack)
+    self.assertIsInstance(comp_pb, pb.Computation)
+    self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
+    type_spec = type_serialization.deserialize_type(comp_pb.type)
+    self.assertEqual(str(type_spec), '(<<int32>> -> int32)')
 
 
 if __name__ == '__main__':
