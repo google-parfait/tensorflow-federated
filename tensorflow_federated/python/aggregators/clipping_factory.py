@@ -281,7 +281,7 @@ class ZeroingFactory(factory.UnweightedAggregationFactory,
   def __init__(self,
                zeroing_norm: Union[float, estimation_process.EstimationProcess],
                inner_agg_factory: _InnerFactoryType,
-               norm_order: float = 2.0):
+               norm_order: float = math.inf):
     """Initializes a ZeroingFactory.
 
     Args:
