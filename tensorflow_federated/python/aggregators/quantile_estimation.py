@@ -40,42 +40,12 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
   """
 
   @classmethod
-  def no_noise(cls, initial_estimate: float, target_quantile: float,
-               learning_rate: float):
-    """No-noise estimator for value at quantile.
-
-    Estimates value `C` at `q`'th quantile of input distribution. `C` is
-    estimated using the geometric method described in Thakkar et al. 2019,
-    "Differentially Private Learning with Adaptive Clipping"
-    (https://arxiv.org/abs/1905.03871) without noise added.
-
-    Note that this estimator does not add noise, so it does not guarantee
-    differential privacy. It is useful for estimating quantiles in contexts
-    where rigorous privacy guarantees are not needed.
-
-    Args:
-      initial_estimate: The initial estimate of `C`.
-      target_quantile: The quantile `q` to which `C` will be adapted.
-      learning_rate: The learning rate for the adaptive algorithm.
-
-    Returns:
-      A `PrivateQuantileEstimationProcess`.
-    """
-    _check_float_positive(initial_estimate, 'initial_estimate')
-    _check_float_probability(target_quantile, 'target_quantile')
-    _check_float_positive(learning_rate, 'learning_rate')
-
-    return cls(
-        tfp.NoPrivacyQuantileEstimatorQuery(
-            initial_estimate=initial_estimate,
-            target_quantile=target_quantile,
-            learning_rate=learning_rate,
-            geometric_update=True))
-
-  @classmethod
-  def no_noise_affine(cls, initial_estimate: float, target_quantile: float,
-                      learning_rate: float, multiplier: float,
-                      increment: float):
+  def no_noise(cls,
+               initial_estimate: float,
+               target_quantile: float,
+               learning_rate: float,
+               multiplier: float = 1.0,
+               increment: float = 0.0):
     """No-noise estimator for affine function of value at quantile.
 
     Estimates value `C` at `q`'th quantile of input distribution and reports
@@ -96,7 +66,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
       increment: The increment `i` of the affine transform.
 
     Returns:
-      An `EstimationProcess`.
+      An `EstimationProcess` whose `report` function returns `rC + i`.
     """
     _check_float_positive(initial_estimate, 'initial_estimate')
     _check_float_probability(target_quantile, 'target_quantile')
@@ -110,7 +80,10 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
             target_quantile=target_quantile,
             learning_rate=learning_rate,
             geometric_update=True))
-    return quantile.map(_affine_transform(multiplier, increment))
+    if multiplier == 1.0 and increment == 0.0:
+      return quantile
+    else:
+      return quantile.map(_affine_transform(multiplier, increment))
 
   def __init__(
       self,

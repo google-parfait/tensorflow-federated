@@ -132,13 +132,19 @@ class PrivateQEExecutionTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(process.report(state), expected_estimate)
 
   def test_no_noise_cls(self):
-    process = QEProcess.no_noise(1.0, 0.5, 1.0)
+    process = QEProcess.no_noise(
+        initial_estimate=1.0, target_quantile=0.5, learning_rate=1.0)
     self.assertIsInstance(process, QEProcess)
     state = process.initialize()
     self.assertEqual(process.report(state), 1.0)
 
   def test_no_noise_affine_cls(self):
-    process = QEProcess.no_noise_affine(1.0, 0.5, 1.0, 2.0, 1.0)
+    process = QEProcess.no_noise(
+        initial_estimate=1.0,
+        target_quantile=0.5,
+        learning_rate=1.0,
+        multiplier=2.0,
+        increment=1.0)
     self.assertIsInstance(process, estimation_process.EstimationProcess)
     state = process.initialize()
     self.assertEqual(process.report(state), 3.0)
