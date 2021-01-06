@@ -26,7 +26,8 @@ class FederatedResolvingStrategyValueComputeTest(
     executor_test_utils.AsyncTestCase):
 
   def test_returns_value_with_embedded_value(self):
-    value = eager_tf_executor.EagerValue(10.0, None, tf.float32)
+    tensor_type = computation_types.TensorType(tf.float32, shape=[])
+    value = eager_tf_executor.EagerValue(10.0, tensor_type)
     type_signature = computation_types.TensorType(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
         value, type_signature)
@@ -36,10 +37,11 @@ class FederatedResolvingStrategyValueComputeTest(
     self.assertEqual(result, 10.0)
 
   def test_returns_value_with_federated_type_at_clients(self):
+    tensor_type = computation_types.TensorType(tf.float32, shape=[])
     value = [
-        eager_tf_executor.EagerValue(10.0, None, tf.float32),
-        eager_tf_executor.EagerValue(11.0, None, tf.float32),
-        eager_tf_executor.EagerValue(12.0, None, tf.float32),
+        eager_tf_executor.EagerValue(10.0, tensor_type),
+        eager_tf_executor.EagerValue(11.0, tensor_type),
+        eager_tf_executor.EagerValue(12.0, tensor_type),
     ]
     type_signature = computation_types.at_clients(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
@@ -50,7 +52,8 @@ class FederatedResolvingStrategyValueComputeTest(
     self.assertEqual(result, [10.0, 11.0, 12.0])
 
   def test_returns_value_with_federated_type_at_clients_all_equal(self):
-    value = [eager_tf_executor.EagerValue(10.0, None, tf.float32)]
+    tensor_type = computation_types.TensorType(tf.float32, shape=[])
+    value = [eager_tf_executor.EagerValue(10.0, tensor_type)]
     type_signature = computation_types.at_clients(tf.float32, all_equal=True)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
         value, type_signature)
@@ -60,7 +63,8 @@ class FederatedResolvingStrategyValueComputeTest(
     self.assertEqual(result, 10.0)
 
   def test_returns_value_with_federated_type_at_server(self):
-    value = [eager_tf_executor.EagerValue(10.0, None, tf.float32)]
+    tensor_type = computation_types.TensorType(tf.float32, shape=[])
+    value = [eager_tf_executor.EagerValue(10.0, tensor_type)]
     type_signature = computation_types.at_server(tf.float32)
     value = federated_resolving_strategy.FederatedResolvingStrategyValue(
         value, type_signature)
@@ -70,7 +74,8 @@ class FederatedResolvingStrategyValueComputeTest(
     self.assertEqual(result, 10.0)
 
   def test_returns_value_with_structure_value(self):
-    element = eager_tf_executor.EagerValue(10.0, None, tf.float32)
+    tensor_type = computation_types.TensorType(tf.float32, shape=[])
+    element = eager_tf_executor.EagerValue(10.0, tensor_type)
     element_type = computation_types.TensorType(tf.float32)
     names = ['a', 'b', 'c']
     value = structure.Struct((n, element) for n in names)

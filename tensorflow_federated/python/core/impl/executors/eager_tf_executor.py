@@ -175,7 +175,10 @@ def _call_embedded_tf(*, arg, param_fns, result_fns, result_type, wrapped_fn,
 
   Returns:
     A `structure.Struct` representing the result of invoking `wrapped_fn` on
-    `arg`.
+    `arg`. The result of invoking `wrapped_fn` on `arg`, postprocessed by
+    `result_fns` and packed as `result_type`. This result must be structured
+    such that `to_representation_for_type` with this result and `result_type` as
+    an argument would no-op.
 
   Raises:
     RuntimeError: If `arg` and `param_fns` have different numbers of elements.
@@ -504,27 +507,20 @@ def to_representation_for_type(
 class EagerValue(executor_value_base.ExecutorValue):
   """A representation of an eager value managed by the eager executor."""
 
-  def __init__(self, value, tf_function_cache, type_spec=None, device=None):
+  def __init__(self, value, type_spec):
     """Creates an instance of a value in this executor.
 
     Args:
       value: Depending on `type_spec`, either a `tf.Tensor`, `tf.data.Dataset`,
-        or a nested structure of these stored in an `Struct`.
-      tf_function_cache: A cache obeying `dict` semantics that can be used to
-        look up previously embedded TensorFlow functions.
+        or a nested structure of these stored in an `Struct`. We assume that
+        `value` is a fixed point of `to_representation_for_type` with type_spec
+        argument `type_spec`.
       type_spec: An instance of `tff.Type` that represents a tensor, a dataset,
         or a nested structure of these.
-      device: An optional `tf.config.LogicalDevice` on which to place the value.
     """
-    if type_spec is None:
-      py_typecheck.check_type(value, typed_object.TypedObject)
-      type_spec = value.type_signature
-    else:
-      type_spec = computation_types.to_type(type_spec)
-      py_typecheck.check_type(type_spec, computation_types.Type)
+    py_typecheck.check_type(type_spec, computation_types.Type)
     self._type_signature = type_spec
-    self._value = to_representation_for_type(value, tf_function_cache,
-                                             type_spec, device)
+    self._value = value
 
   @property
   def internal_representation(self):
@@ -574,6 +570,15 @@ class EagerTFExecutor(executor_base.Executor):
   operations it supports in a synchronous fashion. Asynchrony and other aspects
   not supported here should be handled by composing this executor with other
   executors into a complex executor stack, rather than mixing in all the logic.
+
+  One further implementation detail is worth noting. Like all executors, this
+  executor embeds incoming data as an instance of an executor-specific class,
+  here the `EagerValue`. All `EagerValues` are assumed in this implmentation
+  to have an `internal_representation` which is a fixed point under the action
+  of `to_representation_for_type` with type the `type_signature` attribute of
+  the `EagerValue`. This invariant is introduced by normalization in
+  `create_value`, and is respected by the form of returned `EagerValues` in all
+  other methods this executor exposes.
   """
 
   def __init__(self, device=None):
@@ -603,6 +608,12 @@ class EagerTFExecutor(executor_base.Executor):
   async def create_value(self, value, type_spec=None):
     """Embeds `value` of type `type_spec` within this executor.
 
+    `create_value` first normalizes its incoming `value` arguments via
+    `to_representation_for_type`, establishing the invariant that every value
+    embedded in this executor would no-op under the action of
+    `to_representation_for_type`. This invariant is then preserved and assumed
+    by the remainder of the methods exposed by the executor.
+
     Args:
       value: An object that represents the value to embed within the executor.
       type_spec: The `tff.Type` of the value represented by this object, or
@@ -621,7 +632,16 @@ class EagerTFExecutor(executor_base.Executor):
     if not tf.executing_eagerly():
       raise RuntimeError('The eager executor may only be used in eager mode.')
 
-    return EagerValue(value, self._tf_function_cache, type_spec, self._device)
+    if type_spec is None:
+      py_typecheck.check_type(value, typed_object.TypedObject)
+      type_spec = value.type_signature
+    else:
+      type_spec = computation_types.to_type(type_spec)
+      py_typecheck.check_type(type_spec, computation_types.Type)
+    normalized_value = to_representation_for_type(value,
+                                                  self._tf_function_cache,
+                                                  type_spec, self._device)
+    return EagerValue(normalized_value, type_spec)
 
   @tracing.trace
   async def create_call(self, comp, arg=None):
@@ -647,10 +667,10 @@ class EagerTFExecutor(executor_base.Executor):
     if comp.type_signature.parameter is not None:
       return EagerValue(
           comp.internal_representation(arg.internal_representation),
-          self._tf_function_cache, comp.type_signature.result, self._device)
+          comp.type_signature.result)
     elif arg is None:
-      return EagerValue(comp.internal_representation(), self._tf_function_cache,
-                        comp.type_signature.result, self._device)
+      return EagerValue(comp.internal_representation(),
+                        comp.type_signature.result)
     else:
       raise TypeError('Cannot pass an argument to a no-argument function.')
 
@@ -664,7 +684,7 @@ class EagerTFExecutor(executor_base.Executor):
     Returns:
       An instance of `EagerValue` that represents the constructed tuple.
     """
-    elements = structure.to_elements(structure.from_container(elements))
+    elements = structure.iter_elements(structure.from_container(elements))
     val_elements = []
     type_elements = []
     for k, v in elements:
@@ -672,7 +692,7 @@ class EagerTFExecutor(executor_base.Executor):
       val_elements.append((k, v.internal_representation))
       type_elements.append((k, v.type_signature))
     return EagerValue(
-        structure.Struct(val_elements), self._tf_function_cache,
+        structure.Struct(val_elements),
         computation_types.StructType([
             (k, v) if k is not None else v for k, v in type_elements
         ]))
@@ -704,12 +724,12 @@ class EagerTFExecutor(executor_base.Executor):
                 name, index))
       else:
         return EagerValue(source.internal_representation[index],
-                          self._tf_function_cache, source.type_signature[index])
+                          source.type_signature[index])
     elif name is not None:
       py_typecheck.check_type(name, str)
       return EagerValue(
           getattr(source.internal_representation, str(name)),
-          self._tf_function_cache, getattr(source.type_signature, str(name)))
+          getattr(source.type_signature, str(name)))
     else:
       raise ValueError('Must specify either name or index.')
 

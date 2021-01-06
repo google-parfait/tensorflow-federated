@@ -401,7 +401,10 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
               device).device.endswith(device.name))
 
   def test_eager_value_constructor_with_int_constant(self):
-    v = eager_tf_executor.EagerValue(10, {}, tf.int32)
+    int_tensor_type = computation_types.TensorType(dtype=tf.int32, shape=[])
+    normalized_value = eager_tf_executor.to_representation_for_type(
+        10, {}, int_tensor_type)
+    v = eager_tf_executor.EagerValue(normalized_value, int_tensor_type)
     self.assertEqual(str(v.type_signature), 'int32')
     self.assertIsInstance(v.internal_representation, tf.Tensor)
     self.assertEqual(v.internal_representation, 10)
