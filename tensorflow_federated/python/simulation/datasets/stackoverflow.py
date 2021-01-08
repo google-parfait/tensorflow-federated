@@ -272,5 +272,32 @@ _SYNTHETIC_STACKOVERFLOW_DATA = {
                 b'question',
                 b'question',
             ],
+        ),
+    'synthetic_3':
+        collections.OrderedDict(
+            creation_date=[
+                b'2008-10-30 16:49:26.9 UTC',
+                b'2008-10-30 16:49:26.9 UTC',
+            ],
+            title=[
+                b'iterator pattern in vb . net ( c # would use yield ! )',
+                b'iterator pattern in vb . net ( c # would use yield ! )',
+            ],
+            score=np.asarray([
+                1,
+                1,
+            ]).astype(np.int64),
+            tags=[
+                b'vb . net|design-patterns|iterator|yield',
+                b'vb . net|design-patterns|iterator|yield',
+            ],
+            tokens=[
+                b'edit :',
+                b'the spec is available here .',
+            ],
+            type=[
+                b'answer',
+                b'answer',
+            ],
         )
 }
