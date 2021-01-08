@@ -53,6 +53,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
@@ -194,15 +195,35 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
     async def _num_clients(executor):
       """Returns the number of clients for the given `executor`."""
+      # We implement num_clients as a federated_aggregate to allow for federated
+      # op resolving strategies which implement only the minimal set of
+      # intrinsics.
+      int_at_clients_type = computation_types.at_clients(tf.int32)
+      zero_type = tf.int32
+      accumulate_type = computation_types.FunctionType(
+          computation_types.StructType([tf.int32, tf.int32]), tf.int32)
+      merge_type = accumulate_type
+      report_type = computation_types.FunctionType(tf.int32, tf.int32)
+
       intrinsic_type = computation_types.FunctionType(
-          computation_types.at_clients(tf.int32),
-          computation_types.at_server(tf.int32))
+          computation_types.StructType([
+              int_at_clients_type, zero_type, accumulate_type, merge_type,
+              report_type
+          ]), computation_types.at_server(tf.int32))
       intrinsic = executor_utils.create_intrinsic_comp(
-          intrinsic_defs.FEDERATED_SUM, intrinsic_type)
-      arg_type = computation_types.at_clients(tf.int32, all_equal=True)
-      fn, arg = await asyncio.gather(
+          intrinsic_defs.FEDERATED_AGGREGATE, intrinsic_type)
+      add_comp = building_block_factory.create_tensorflow_binary_operator_with_upcast(
+          computation_types.StructType([tf.int32, tf.int32]), tf.add).proto
+      identity_comp = building_block_factory.create_compiled_identity(
+          computation_types.TensorType(tf.int32)).proto
+      fn, client_data, zero_value, add_value, identity_value = await asyncio.gather(
           executor.create_value(intrinsic, intrinsic_type),
-          executor.create_value(1, arg_type))
+          executor.create_value(
+              1, computation_types.at_clients(tf.int32, all_equal=True)),
+          executor.create_value(0, tf.int32), executor.create_value(add_comp),
+          executor.create_value(identity_comp))
+      arg = await executor.create_struct(
+          [client_data, zero_value, add_value, add_value, identity_value])
       call = await executor.create_call(fn, arg)
       result = await call.compute()
       if isinstance(result, tf.Tensor):
@@ -277,13 +298,15 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
 
     async def _child_fn(ex, v):
       py_typecheck.check_type(v, executor_value_base.ExecutorValue)
+      arg_values = [
+          ex.create_value(zero, zero_type),
+          ex.create_value(accumulate, accumulate_type),
+          ex.create_value(merge, merge_type),
+          ex.create_value(identity_report, identity_report_type)
+      ]
       aggr_func, aggr_args = await asyncio.gather(
           ex.create_value(aggr_comp, aggr_type),
-          ex.create_struct([v] + list(await asyncio.gather(
-              ex.create_value(zero, zero_type),
-              ex.create_value(accumulate, accumulate_type),
-              ex.create_value(merge, merge_type),
-              ex.create_value(identity_report, identity_report_type)))))
+          ex.create_struct([v] + list(await asyncio.gather(*arg_values))))
       child_result = await (await ex.create_call(aggr_func,
                                                  aggr_args)).compute()
       result_at_server = await self._server_executor.create_value(
