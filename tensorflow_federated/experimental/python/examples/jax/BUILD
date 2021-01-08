@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package(default_visibility = ["//visibility:private"])
 
@@ -9,12 +9,4 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
-)
-
-py_test(
-    name = "end_to_end_test",
-    srcs = ["end_to_end_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
 )
