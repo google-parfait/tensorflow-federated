@@ -53,6 +53,78 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
   tools provided in tensorflow_privacy by using QueryWithLedger.
   """
 
+  @classmethod
+  def gaussian_adaptive(cls,
+                        noise_multiplier: float,
+                        clients_per_round: float,
+                        initial_l2_norm_clip: float = 0.1,
+                        target_unclipped_quantile: float = 0.5,
+                        learning_rate: float = 0.2,
+                        clipped_count_stddev: Optional[float] = None):
+    """`DifferentiallyPrivateFactory` with adaptive clipping and Gaussian noise.
+
+    Performs adaptive clipping and addition of Gaussian noise for differentially
+    private learning. For details of the DP algorithm see McMahan et. al (2017)
+    https://arxiv.org/abs/1710.06963. The adaptive clipping uses the geometric
+    method described in Thakkar et al. (2019) https://arxiv.org/abs/1905.03871.
+
+    The adaptive clipping parameters have been chosen to yield a process that
+    starts small and adapts relatively quickly to the median, without using
+    much of the privacy budget. This works well on most problems.
+
+    Args:
+      noise_multiplier: A float specifying the noise multiplier for the Gaussian
+        mechanism for model updates. May be zero for non-private learning with
+        adaptive clipping. A value of 1.0 or higher may be needed for meaningful
+        privacy. See above mentioned papers to compute (epsilon, delta) privacy
+        guarantee.
+      clients_per_round: A float specifying the expected number of clients per
+        round. Must be positive.
+      initial_l2_norm_clip: The initial value of the adaptive clipping norm.
+      target_unclipped_quantile: The quantile to which the clipping norm should
+        adapt.
+      learning_rate: The learning rate for the adaptive clipping process.
+      clipped_count_stddev: The stddev of the noise added to the clipped counts
+        in the adaptive clipping algorithm. If None, defaults to `0.05 *
+        clients_per_round`.
+
+    Returns:
+      A `DifferentiallyPrivateFactory` with adaptive clipping and Gaussian
+        noise.
+    """
+
+    if isinstance(clients_per_round, int):
+      clients_per_round = float(clients_per_round)
+
+    _check_float_nonnegative(noise_multiplier, 'noise_multiplier')
+    _check_float_positive(clients_per_round, 'clients_per_round')
+    _check_float_positive(initial_l2_norm_clip, 'initial_l2_norm_clip')
+    _check_float_probability(target_unclipped_quantile,
+                             'target_unclipped_quantile')
+    _check_float_nonnegative(learning_rate, 'learning_rate')
+
+    if clipped_count_stddev is None:
+      # Defaults to 0.05 * clients_per_round. The noised fraction of unclipped
+      # updates will be within 0.1 of the true fraction with 95.4% probability,
+      # and will be within 0.15 of the true fraction with 99.7% probability.
+      # Even in this unlikely case, the error on the update would be a factor of
+      # exp(0.2 * 0.15) = 1.03, a small deviation. So this default gives maximal
+      # privacy for acceptable probability of deviation.
+      clipped_count_stddev = 0.05 * clients_per_round
+    _check_float_nonnegative(clipped_count_stddev, 'clipped_count_stddev')
+
+    query = tfp.QuantileAdaptiveClipAverageQuery(
+        initial_l2_norm_clip=initial_l2_norm_clip,
+        noise_multiplier=noise_multiplier,
+        denominator=clients_per_round,
+        target_unclipped_quantile=target_unclipped_quantile,
+        learning_rate=learning_rate,
+        clipped_count_stddev=clipped_count_stddev,
+        expected_num_records=clients_per_round,
+        geometric_update=True)
+
+    return cls(query)
+
   def __init__(self,
                query: tfp.DPQuery,
                record_aggregation_factory: Optional[
@@ -139,3 +211,22 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
           intrinsics.federated_zip(measurements))
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
+
+
+def _check_float_positive(value, label):
+  py_typecheck.check_type(value, float, label)
+  if value <= 0:
+    raise ValueError(f'{label} must be positive. Found {value}.')
+
+
+def _check_float_nonnegative(value, label):
+  py_typecheck.check_type(value, float, label)
+  if value < 0:
+    raise ValueError(f'{label} must be nonnegative. Found {value}.')
+
+
+def _check_float_probability(value, label):
+  py_typecheck.check_type(value, float, label)
+  if not 0 <= value <= 1:
+    raise ValueError(f'{label} must be between 0 and 1 (inclusive). '
+                     f'Found {value}.')

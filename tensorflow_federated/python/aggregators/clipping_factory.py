@@ -265,7 +265,11 @@ class ZeroingFactory(factory.UnweightedAggregationFactory,
 
   The created `tff.templates.AggregationProcess` zeroes out any values whose
   norm is greater than that determined by the provided `zeroing_norm`, before
-  aggregating the values as specified by `inner_agg_factory`.
+  aggregating the values as specified by `inner_agg_factory`. Note that for
+  weighted aggregation if some value is zeroed, the weight is unchanged. So for
+  example if you have a zeroed weighted mean and a lot of zeroing occurs, the
+  average will tend to be pulled toward zero. This is for consistency between
+  weighted and unweighted aggregation
 
   The provided `zeroing_norm` can either be a constant (for fixed norm), or an
   instance of `tff.templates.EstimationProcess` (for adaptive norm). If it is an

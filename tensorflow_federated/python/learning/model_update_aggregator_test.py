@@ -13,11 +13,10 @@
 # limitations under the License.
 """Tests for model_update_aggregator."""
 
+from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.aggregators import clipping_factory
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.aggregators import mean_factory
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.templates import aggregation_process
@@ -27,51 +26,35 @@ from tensorflow_federated.python.learning import model_update_aggregator
 _test_type = computation_types.TensorType(tf.float32)
 
 
-class ModelUpdateAggregatorTest(test_case.TestCase):
+class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
 
-  def test_apply_zeroing(self):
-    factory_ = model_update_aggregator._apply_zeroing(
-        model_update_aggregator.AdaptiveZeroingConfig(),
-        mean_factory.MeanFactory())
+  @parameterized.named_parameters(
+      ('simple', False, False),
+      ('zeroing', True, False),
+      ('clipping', False, True),
+      ('zeroing_and_clipping', False, False),
+  )
+  def test_robust_aggregator(self, zeroing, clipping):
+    factory_ = model_update_aggregator.robust_aggregator(zeroing, clipping)
+
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
     process = factory_.create_weighted(_test_type, _test_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-  def test_apply_fixed_clipping(self):
-    factory_ = model_update_aggregator._apply_clipping(
-        model_update_aggregator.FixedClippingConfig(1.0),
-        mean_factory.MeanFactory())
-    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create_weighted(_test_type, _test_type)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
-
-  def test_apply_adaptive_clipping(self):
-    factory_ = model_update_aggregator._apply_clipping(
-        model_update_aggregator.AdaptiveClippingConfig(),
-        mean_factory.MeanFactory())
-    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create_weighted(_test_type, _test_type)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
-
-  def test_dp_factory(self):
-    dp_config = model_update_aggregator.DifferentialPrivacyConfig(
-        noise_multiplier=1.0, clients_per_round=10.0)
-    factory_ = model_update_aggregator._dp_factory(dp_config)
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create_unweighted(_test_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
-  def test_model_update_aggregator(self):
-    factory_ = model_update_aggregator.model_update_aggregator()
-    self.assertIsInstance(factory_, clipping_factory.ZeroingFactory)
-    process = factory_.create_weighted(_test_type, _test_type)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+  @parameterized.named_parameters(
+      ('simple', False),
+      ('zeroing', True),
+  )
+  def test_dp_aggregator(self, zeroing):
+    factory_ = model_update_aggregator.dp_aggregator(
+        noise_multiplier=1.0, clients_per_round=10, zeroing=zeroing)
 
-  def test_model_update_aggregator_no_zeroing(self):
-    factory_ = model_update_aggregator.model_update_aggregator(zeroing=None)
-    self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    self.assertNotIsInstance(factory_, clipping_factory.ZeroingFactory)
-    process = factory_.create_weighted(_test_type, _test_type)
+    self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
+    process = factory_.create_unweighted(_test_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
 

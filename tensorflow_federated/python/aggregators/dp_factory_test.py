@@ -184,6 +184,11 @@ class DPFactoryExecutionTest(test_case.TestCase):
     output = process.next(output.state, client_data)
     self.assertAllClose(expected_result, output.result)
 
+  def test_gaussian_adaptive_cls(self):
+    process = dp_factory.DifferentiallyPrivateFactory.gaussian_adaptive(
+        noise_multiplier=1.0, clients_per_round=10)
+    self.assertIsInstance(process, dp_factory.DifferentiallyPrivateFactory)
+
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
