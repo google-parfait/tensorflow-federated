@@ -14,6 +14,7 @@
 
 import collections
 from absl.testing import absltest
+import jax
 import numpy as np
 
 from tensorflow_federated.experimental.python.core.impl.jax_context import jax_serialization
@@ -164,6 +165,23 @@ class JaxSerializationTest(absltest.TestCase):
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     self.assertEqual(str(type_spec), '(<<int32>> -> int32)')
+
+  def test_arg_ordering(self):
+    param_type = computation_types.to_type(
+        (computation_types.TensorType(np.int32, 10),
+         computation_types.TensorType(np.int32)))
+
+    def traced_fn(b, a):
+      return jax.numpy.add(a, jax.numpy.sum(b))
+
+    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
+    ctx_stack = context_stack_impl.context_stack
+    comp_pb = jax_serialization.serialize_jax_computation(
+        traced_fn, arg_fn, param_type, ctx_stack)
+    self.assertIsInstance(comp_pb, pb.Computation)
+    self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
+    type_spec = type_serialization.deserialize_type(comp_pb.type)
+    self.assertEqual(str(type_spec), '(<int32[10],int32> -> int32)')
 
 
 if __name__ == '__main__':

@@ -52,7 +52,8 @@ class ExecutorTest(absltest.TestCase):
     xla_client.ops.Constant(builder, np.int32(10))
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType(None, np.int32)
-    comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
+    comp_pb = xla_serialization.create_xla_tff_computation(
+        xla_comp, [], comp_type)
     rep = executor.to_representation_for_type(comp_pb, comp_type, self._backend)
     self.assertTrue(callable(rep))
     result = rep()
@@ -68,7 +69,8 @@ class ExecutorTest(absltest.TestCase):
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType(
         None, computation_types.StructType([('a', np.int32), ('b', np.int32)]))
-    comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
+    comp_pb = xla_serialization.create_xla_tff_computation(
+        xla_comp, [0, 1], comp_type)
     rep = executor.to_representation_for_type(comp_pb, comp_type, self._backend)
     self.assertTrue(callable(rep))
     result = rep()
@@ -84,7 +86,8 @@ class ExecutorTest(absltest.TestCase):
         xla_client.ops.GetTupleElement(param, 1))
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType((np.int32, np.int32), np.int32)
-    comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
+    comp_pb = xla_serialization.create_xla_tff_computation(
+        xla_comp, [0, 1], comp_type)
     rep = executor.to_representation_for_type(comp_pb, comp_type, self._backend)
     self.assertTrue(callable(rep))
     result = rep(structure.Struct([(None, np.int32(20)), (None, np.int32(30))]))
@@ -122,7 +125,8 @@ class ExecutorTest(absltest.TestCase):
     xla_client.ops.Constant(builder, np.int32(10))
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType(None, np.int32)
-    comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
+    comp_pb = xla_serialization.create_xla_tff_computation(
+        xla_comp, [], comp_type)
     ex = executor.XlaExecutor()
     comp_val = asyncio.get_event_loop().run_until_complete(
         ex.create_value(comp_pb, comp_type))
@@ -148,7 +152,8 @@ class ExecutorTest(absltest.TestCase):
         xla_client.ops.GetTupleElement(param, 1))
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType((np.int32, np.int32), np.int32)
-    comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
+    comp_pb = xla_serialization.create_xla_tff_computation(
+        xla_comp, [0, 1], comp_type)
     ex = executor.XlaExecutor()
 
     async def _compute_fn():

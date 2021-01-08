@@ -55,7 +55,7 @@ class XlaUtilsTest(absltest.TestCase):
   def test_create_xla_tff_computation_noarg(self):
     xla_comp = _make_test_xla_comp_noarg_to_int32()
     comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_comp, computation_types.FunctionType(None, np.int32))
+        xla_comp, [], computation_types.FunctionType(None, np.int32))
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
@@ -70,35 +70,72 @@ class XlaUtilsTest(absltest.TestCase):
     xla_comp = _make_test_xla_comp_noarg_to_int32()
     with self.assertRaises(ValueError):
       xla_serialization.create_xla_tff_computation(
-          xla_comp, computation_types.FunctionType(np.int32, np.int32))
+          xla_comp, [0], computation_types.FunctionType(np.int32, np.int32))
 
   def test_create_xla_tff_computation_raises_missing_arg_in_type_spec(self):
     xla_comp = _make_test_xla_comp_int32x10_to_int32x10()
     with self.assertRaises(ValueError):
       xla_serialization.create_xla_tff_computation(
-          xla_comp, computation_types.FunctionType(None, np.int32))
+          xla_comp, [], computation_types.FunctionType(None, np.int32))
 
   def test_create_xla_tff_computation_raises_arg_type_mismatch(self):
     xla_comp = _make_test_xla_comp_int32x10_to_int32x10()
     with self.assertRaises(ValueError):
       xla_serialization.create_xla_tff_computation(
-          xla_comp, computation_types.FunctionType(np.int32, (np.int32, (10,))))
+          xla_comp, [0],
+          computation_types.FunctionType(np.int32, (np.int32, (10,))))
 
   def test_create_xla_tff_computation_raises_result_type_mismatch(self):
     xla_comp = _make_test_xla_comp_int32x10_to_int32x10()
     with self.assertRaises(ValueError):
       xla_serialization.create_xla_tff_computation(
-          xla_comp, computation_types.FunctionType((np.int32, (10,)), np.int32))
+          xla_comp, [0],
+          computation_types.FunctionType((np.int32, (10,)), np.int32))
 
   def test_create_xla_tff_computation_int32x10_to_int32x10(self):
     xla_comp = _make_test_xla_comp_int32x10_to_int32x10()
     comp_pb = xla_serialization.create_xla_tff_computation(
-        xla_comp,
+        xla_comp, [0],
         computation_types.FunctionType((np.int32, (10,)), (np.int32, (10,))))
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
     type_spec = type_serialization.deserialize_type(comp_pb.type)
     self.assertEqual(str(type_spec), '(int32[10] -> int32[10])')
+
+  def test_create_xla_tff_computation_with_reordered_tensor_indexes(self):
+    builder = xla_client.XlaBuilder('comp')
+    tensor_shape_1 = xla_client.Shape.array_shape(
+        xla_client.dtype_to_etype(np.int32), (10, 1))
+    param_1 = xla_client.ops.Parameter(builder, 0, tensor_shape_1)
+    tensor_shape_2 = xla_client.Shape.array_shape(
+        xla_client.dtype_to_etype(np.int32), (1, 20))
+    param_2 = xla_client.ops.Parameter(builder, 1, tensor_shape_2)
+    xla_client.ops.Dot(param_1, param_2)
+    xla_comp = builder.build()
+    comp_pb_1 = xla_serialization.create_xla_tff_computation(
+        xla_comp, [0, 1],
+        computation_types.FunctionType(
+            ((np.int32, (10, 1)), (np.int32, (1, 20))), (np.int32, (
+                10,
+                20,
+            ))))
+    self.assertIsInstance(comp_pb_1, pb.Computation)
+    self.assertEqual(comp_pb_1.WhichOneof('computation'), 'xla')
+    type_spec_1 = type_serialization.deserialize_type(comp_pb_1.type)
+    self.assertEqual(
+        str(type_spec_1), '(<int32[10,1],int32[1,20]> -> int32[10,20])')
+    comp_pb_2 = xla_serialization.create_xla_tff_computation(
+        xla_comp, [1, 0],
+        computation_types.FunctionType(
+            ((np.int32, (1, 20)), (np.int32, (10, 1))), (np.int32, (
+                10,
+                20,
+            ))))
+    self.assertIsInstance(comp_pb_2, pb.Computation)
+    self.assertEqual(comp_pb_2.WhichOneof('computation'), 'xla')
+    type_spec_2 = type_serialization.deserialize_type(comp_pb_2.type)
+    self.assertEqual(
+        str(type_spec_2), '(<int32[1,20],int32[10,1]> -> int32[10,20])')
 
   def test_flatten_xla_tensor_shape(self):
     tensor_shape = xla_client.Shape.array_shape(

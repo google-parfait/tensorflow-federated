@@ -17,6 +17,7 @@ import jax
 import numpy as np
 
 from tensorflow_federated.experimental.python.core.impl.wrappers import computation_wrapper_instances
+from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import computation_impl
 
 
@@ -39,6 +40,17 @@ class JaxWrapperTest(absltest.TestCase):
 
     self.assertIsInstance(foo, computation_impl.ComputationImpl)
     self.assertEqual(str(foo.type_signature), '(<x=int32,y=int32> -> int32)')
+
+  def test_arg_ordering(self):
+
+    @computation_wrapper_instances.jax_wrapper(
+        computation_types.TensorType(np.int32, 10), np.int32)
+    def foo(b, a):
+      return jax.numpy.add(a, jax.numpy.sum(b))
+
+    self.assertIsInstance(foo, computation_impl.ComputationImpl)
+    self.assertEqual(
+        str(foo.type_signature), '(<b=int32[10],a=int32> -> int32)')
 
 
 if __name__ == '__main__':

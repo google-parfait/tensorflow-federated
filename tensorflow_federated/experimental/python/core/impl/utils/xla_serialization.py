@@ -13,7 +13,7 @@
 # limitations under the License.
 """Experimental utilities for serializing and deserializing XLA code."""
 
-from typing import Optional
+from typing import List, Optional
 
 from jax.lib.xla_bridge import xla_client
 import numpy as np
@@ -67,6 +67,7 @@ def unpack_xla_computation(any_pb):
 
 
 def _make_xla_binding_for_type(
+    tensor_indexes: List[int],
     type_spec: Optional[computation_types.Type]) -> Optional[pb.Xla.Binding]:
   """Generates an XLA binding for TFF type `type_spec`.
 
@@ -74,6 +75,8 @@ def _make_xla_binding_for_type(
   of DFS traversal.
 
   Args:
+    tensor_indexes: The list of tensor indexes to use in the binding, in the
+      order matching the order of flattened `type_spec`.
     type_spec: The type to generate the binding for. Must be either an instance
       of `computation_types.Type`, or `None`.
 
@@ -84,10 +87,12 @@ def _make_xla_binding_for_type(
     return None
 
   py_typecheck.check_type(type_spec, computation_types.Type)
+  py_typecheck.check_type(tensor_indexes, list)
 
   def _make_starting_at_index(type_spec, idx):
     if isinstance(type_spec, computation_types.TensorType):
-      return pb.Xla.Binding(tensor=pb.Xla.TensorBinding(index=idx)), idx + 1
+      return pb.Xla.Binding(
+          tensor=pb.Xla.TensorBinding(index=tensor_indexes[idx])), idx + 1
 
     if isinstance(type_spec, computation_types.StructType):
       elements = []
@@ -131,11 +136,13 @@ def _remove_struct_element_names_from_tff_type(type_spec):
   ])
 
 
-def create_xla_tff_computation(xla_computation, type_spec):
+def create_xla_tff_computation(xla_computation, tensor_indexes, type_spec):
   """Creates an XLA TFF computation.
 
   Args:
     xla_computation: An instance of `xla_client.XlaComputation`.
+    tensor_indexes: The list of tensor indexes to use in the parameter binding,
+      in the order matching the order of flattened parameter in `type_spec`.
     type_spec: The TFF type of the computation to be constructed.
 
   Returns:
@@ -146,9 +153,12 @@ def create_xla_tff_computation(xla_computation, type_spec):
       e.g., because the TFF types mismatch.
   """
   py_typecheck.check_type(xla_computation, xla_client.XlaComputation)
+  py_typecheck.check_type(tensor_indexes, list)
   py_typecheck.check_type(type_spec, computation_types.FunctionType)
-  parameter_binding = _make_xla_binding_for_type(type_spec.parameter)
-  result_binding = _make_xla_binding_for_type(type_spec.result)
+  parameter_binding = _make_xla_binding_for_type(tensor_indexes,
+                                                 type_spec.parameter)
+  result_binding = _make_xla_binding_for_type(
+      list(range(len(structure.flatten(type_spec.result)))), type_spec.result)
   reconstructed_type = xla_computation_and_bindings_to_tff_type(
       xla_computation, parameter_binding, result_binding)
   py_typecheck.check_type(reconstructed_type, computation_types.FunctionType)

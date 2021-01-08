@@ -36,7 +36,8 @@ class ExecutionContextsTest(absltest.TestCase):
     xla_client.ops.Constant(builder, np.int32(10))
     xla_comp = builder.build()
     comp_type = computation_types.FunctionType(None, np.int32)
-    comp_pb = xla_serialization.create_xla_tff_computation(xla_comp, comp_type)
+    comp_pb = xla_serialization.create_xla_tff_computation(
+        xla_comp, [], comp_type)
     ctx_stack = context_stack_impl.context_stack
     comp = computation_impl.ComputationImpl(comp_pb, ctx_stack)
     execution_contexts.set_local_execution_context()

@@ -31,6 +31,32 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
+def _binding_to_tensor_indexes(binding):
+  """Returns the list of tensor indexes in `binding` in the flatten order.
+
+  Args:
+    binding: An XLA binding.
+
+  Returns:
+    A list of tensor indexes in it.
+
+  Raises:
+    ValueError: if the binding is of an unrecognized kind.
+  """
+  py_typecheck.check_type(binding, pb.Xla.Binding)
+  kind = binding.WhichOneof('binding')
+  if kind is None:
+    return []
+  if kind == 'tensor':
+    return [binding.tensor.index]
+  if kind == 'struct':
+    tensor_indexes = []
+    for element in binding.struct.element:
+      tensor_indexes += _binding_to_tensor_indexes(element)
+    return tensor_indexes
+  raise ValueError('Unknown kind of binding {}.'.format(kind))
+
+
 class _ComputationCallable(typed_object.TypedObject):
   """An executor callable that encapsulates the logic of an XLA computation."""
 
@@ -57,6 +83,9 @@ class _ComputationCallable(typed_object.TypedObject):
     compile_options = xla_client.CompileOptions()
     compile_options.parameter_is_tupled_arguments = True
     self._executable = backend.compile(xla_comp, compile_options)
+    self._inverted_parameter_tensor_indexes = list(
+        np.argsort(_binding_to_tensor_indexes(comp_pb.xla.parameter)))
+    self._result_tensor_indexes = _binding_to_tensor_indexes(comp_pb.xla.result)
     self._type_signature = type_spec
     self._backend = backend
 
@@ -97,9 +126,15 @@ class _ComputationCallable(typed_object.TypedObject):
         py_typecheck.check_type(param_type, computation_types.StructType)
         py_typecheck.check_type(positional_arg, structure.Struct)
         flat_py_args = structure.flatten(positional_arg)
-    result = xla_client.execute_with_python_values(self._executable,
-                                                   flat_py_args, self._backend)
-    py_typecheck.check_type(result, list)
+
+    reordered_flat_py_args = [
+        flat_py_args[idx] for idx in self._inverted_parameter_tensor_indexes
+    ]
+
+    unordered_result = xla_client.execute_with_python_values(
+        self._executable, reordered_flat_py_args, self._backend)
+    py_typecheck.check_type(unordered_result, list)
+    result = [unordered_result[idx] for idx in self._result_tensor_indexes]
     result_type = self.type_signature.result
     if isinstance(result_type, computation_types.TensorType):
       if len(result) != 1:

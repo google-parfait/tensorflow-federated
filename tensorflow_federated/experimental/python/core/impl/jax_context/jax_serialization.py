@@ -14,6 +14,7 @@
 """Experimental utilities for serializing JAX computations."""
 
 import jax
+import numpy as np
 
 from tensorflow_federated.experimental.python.core.impl.jax_context import jax_computation_context
 from tensorflow_federated.experimental.python.core.impl.utils import xla_serialization
@@ -28,27 +29,30 @@ from tensorflow_federated.python.core.impl.types import type_conversions
 class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):
   """Represents tensor type info understood by both TFF and JAX serializer."""
 
-  def __init__(self, tensor_type):
+  def __init__(self, tensor_type, tensor_index):
     py_typecheck.check_type(tensor_type, computation_types.TensorType)
     shape = tuple(tensor_type.shape.as_list())
     dtype = tensor_type.dtype.as_numpy_dtype
     jax.ShapeDtypeStruct.__init__(self, shape, dtype)
     self._type_signature = tensor_type
+    self._tensor_index = tensor_index
 
   @property
   def type_signature(self):
     return self._type_signature
 
+  @property
+  def tensor_index(self):
+    return self._tensor_index
+
 
 class _XlaSerializerStructArg(structure.Struct, typed_object.TypedObject):
   """Represents struct type info understood by both TFF and JAX serializer."""
 
-  def __init__(self, struct_type):
-    py_typecheck.check_type(struct_type, computation_types.StructType)
-    structure.Struct.__init__(self,
-                              [(k, _tff_type_to_xla_serializer_arg(v))
-                               for k, v in structure.to_elements(struct_type)])
-    self._type_signature = struct_type
+  def __init__(self, type_spec, elements):
+    py_typecheck.check_type(type_spec, computation_types.StructType)
+    structure.Struct.__init__(self, elements)
+    self._type_signature = type_spec
 
   @property
   def type_signature(self):
@@ -65,12 +69,25 @@ def _tff_type_to_xla_serializer_arg(type_spec):
     type_spec: An instance of `computation_types.TensorType`.
 
   Returns:
-    An object that carries both TFF and JAX type info, to be fed into the
-    JAX serializer.
+    An object that carries both TFF and JAX type info, to be fed into the JAX
+    serializer.
   """
-  if isinstance(type_spec, computation_types.TensorType):
-    return _XlaSerializerTensorArg(type_spec)
-  return _XlaSerializerStructArg(type_spec)
+
+  def _make(type_spec, next_unused_tensor_index):
+    if isinstance(type_spec, computation_types.TensorType):
+      obj = _XlaSerializerTensorArg(type_spec, next_unused_tensor_index)
+      next_unused_tensor_index = next_unused_tensor_index + 1
+      return obj, next_unused_tensor_index
+    py_typecheck.check_type(type_spec, computation_types.StructType)
+    elements = []
+    for k, v in structure.to_elements(type_spec):
+      obj, next_unused_tensor_index = _make(v, next_unused_tensor_index)
+      elements.append((k, obj))
+    obj = _XlaSerializerStructArg(type_spec, elements)
+    return obj, next_unused_tensor_index
+
+  obj, _ = _make(type_spec, 0)
+  return obj
 
 
 def _jax_shape_dtype_struct_to_tff_tensor(val):
@@ -121,6 +138,15 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
 
   args, kwargs = arg_fn(packed_arg)
 
+  # While the fake parameters are fed via args/kwargs during serialization,
+  # it is possible for them to get reorderd in the actual generate XLA code.
+  # We use here the same flatenning function as that one, which is used by
+  # the JAX serializer to determine the orderding and allow it to be captured
+  # in the parameter binding. We do not need to do anything special for the
+  # results, since the results, if multiple, are always returned as a tuple.
+  flattened_obj, _ = jax.tree_util.tree_flatten((args, kwargs))
+  tensor_indexes = list(np.argsort([x.tensor_index for x in flattened_obj]))
+
   def _adjust_arg(x):
     if isinstance(x, structure.Struct):
       return type_conversions.type_to_py_container(x, x.type_signature)
@@ -147,4 +173,5 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
   computation_type = computation_types.FunctionType(parameter_type,
                                                     returned_type_spec)
   return xla_serialization.create_xla_tff_computation(compiled_xla,
+                                                      tensor_indexes,
                                                       computation_type)
