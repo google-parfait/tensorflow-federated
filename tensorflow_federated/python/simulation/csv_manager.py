@@ -165,6 +165,7 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
 
     self._metrics_file = csv_filepath
     if not tf.io.gfile.exists(self._metrics_file):
+      tf.io.gfile.makedirs(os.path.dirname(self._metrics_file))
       with tf.io.gfile.GFile(self._metrics_file, 'w') as file_object:
         writer = csv.DictWriter(
             file_object, fieldnames=['round_num'], quoting=_QUOTING)

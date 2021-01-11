@@ -48,7 +48,7 @@ def _create_scalar_metrics_with_extra_column():
 class CSVMetricsManager(tf.test.TestCase):
 
   def test_scalar_metrics_are_appended(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     _, metrics = csv_mngr.get_metrics()
     self.assertEmpty(metrics)
@@ -62,7 +62,7 @@ class CSVMetricsManager(tf.test.TestCase):
     self.assertLen(metrics, 2)
 
   def test_nonscalar_metrics_are_appended(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     _, metrics = csv_mngr.get_metrics()
     self.assertEmpty(metrics)
@@ -76,7 +76,7 @@ class CSVMetricsManager(tf.test.TestCase):
     self.assertLen(metrics, 2)
 
   def test_update_metrics_returns_flat_dict_with_scalars(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     input_data_dict = _create_scalar_metrics()
     appended_data_dict = csv_mngr.update_metrics(0, input_data_dict)
@@ -88,7 +88,7 @@ class CSVMetricsManager(tf.test.TestCase):
         }), appended_data_dict)
 
   def test_update_metrics_returns_flat_dict_with_nonscalars(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     input_data_dict = _create_nonscalar_metrics()
     appended_data_dict = csv_mngr.update_metrics(0, input_data_dict)
@@ -105,7 +105,7 @@ class CSVMetricsManager(tf.test.TestCase):
     self.assertAllEqual(expected_dict['a/c'], appended_data_dict['a/c'])
 
   def test_column_names(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     csv_mngr.update_metrics(0, _create_scalar_metrics())
     fieldnames, _ = csv_mngr.get_metrics()
@@ -113,14 +113,14 @@ class CSVMetricsManager(tf.test.TestCase):
 
   def test_column_names_with_list(self):
     metrics_to_append = {'a': [3, 4, 5], 'b': 6}
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     csv_mngr.update_metrics(0, metrics_to_append)
     fieldnames, _ = csv_mngr.get_metrics()
     self.assertCountEqual(['a/0', 'a/1', 'a/2', 'b', 'round_num'], fieldnames)
 
   def test_update_metrics_adds_column_if_previously_unseen_metric_added(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     csv_mngr.update_metrics(0, _create_scalar_metrics())
     fieldnames, metrics = csv_mngr.get_metrics()
@@ -133,7 +133,7 @@ class CSVMetricsManager(tf.test.TestCase):
     self.assertEqual(metrics[0]['a/d'], '')
 
   def test_update_metrics_adds_empty_str_if_previous_column_not_provided(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     csv_mngr.update_metrics(0, _create_scalar_metrics_with_extra_column())
     csv_mngr.update_metrics(1, _create_scalar_metrics())
@@ -141,13 +141,13 @@ class CSVMetricsManager(tf.test.TestCase):
     self.assertEqual(metrics[1]['a/d'], '')
 
   def test_csvfile_is_saved(self):
-    temp_dir = self.get_temp_dir()
+    temp_dir = os.path.join(self.get_temp_dir(), 'test_dir')
     csv_file = os.path.join(temp_dir, 'metrics.csv')
     csv_manager.CSVMetricsManager(csv_file)
     self.assertEqual(set(os.listdir(temp_dir)), set(['metrics.csv']))
 
   def test_reload_of_csvfile(self):
-    temp_dir = self.get_temp_dir()
+    temp_dir = os.path.join(self.get_temp_dir(), 'test_dir')
     csv_file = os.path.join(temp_dir, 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     csv_mngr.update_metrics(0, _create_scalar_metrics())
@@ -163,53 +163,44 @@ class CSVMetricsManager(tf.test.TestCase):
     self.assertEqual(set(os.listdir(temp_dir)), set(['metrics.csv']))
 
   def test_update_metrics_raises_value_error_if_round_num_is_negative(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
-
     with self.assertRaises(ValueError):
       csv_mngr.update_metrics(-1, _create_scalar_metrics())
 
   def test_update_metrics_raises_value_error_if_round_num_is_out_of_order(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
-
     csv_mngr.update_metrics(1, _create_scalar_metrics())
-
     with self.assertRaises(ValueError):
       csv_mngr.update_metrics(0, _create_scalar_metrics())
 
   def test_clear_rounds_after_raises_runtime_error_if_no_metrics(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
-
     # Clear is allowed with no metrics if no rounds have yet completed.
     csv_mngr.clear_rounds_after(last_valid_round_num=0)
-
     with self.assertRaises(RuntimeError):
       # Raise exception with no metrics if no rounds have yet completed.
       csv_mngr.clear_rounds_after(last_valid_round_num=1)
 
   def test_clear_rounds_after_raises_value_error_if_round_num_is_negative(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     csv_mngr.update_metrics(0, _create_scalar_metrics())
-
     with self.assertRaises(ValueError):
       csv_mngr.clear_rounds_after(last_valid_round_num=-1)
 
   def test_rows_are_cleared_and_last_round_num_is_reset(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
-
     csv_mngr.update_metrics(0, _create_scalar_metrics())
     csv_mngr.update_metrics(5, _create_scalar_metrics())
     csv_mngr.update_metrics(10, _create_scalar_metrics())
     _, metrics = csv_mngr.get_metrics()
     self.assertLen(metrics, 3,
                    'There should be 3 rows (for rounds 0, 5, and 10).')
-
     csv_mngr.clear_rounds_after(last_valid_round_num=7)
-
     _, metrics = csv_mngr.get_metrics()
     self.assertLen(
         metrics, 2,
@@ -217,37 +208,29 @@ class CSVMetricsManager(tf.test.TestCase):
         'rows of metrics (for rounds 0 and 5).')
     self.assertEqual(5, metrics[-1]['round_num'],
                      'Last metrics retained are for round 5.')
-
     # The internal state of the manager knows the last round number is 7, so it
     # raises an exception if a user attempts to add new metrics at round 7, ...
     with self.assertRaises(ValueError):
       csv_mngr.update_metrics(7, _create_scalar_metrics())
-
     # ... but allows a user to add new metrics at a round number greater than 7.
     csv_mngr.update_metrics(8, _create_scalar_metrics())  # (No exception.)
 
   def test_rows_are_cleared_is_reflected_in_saved_file(self):
-    temp_dir = self.get_temp_dir()
+    temp_dir = os.path.join(self.get_temp_dir(), 'test_dir')
     csv_file = os.path.join(temp_dir, 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
-
     csv_mngr.update_metrics(0, _create_scalar_metrics())
     csv_mngr.update_metrics(5, _create_scalar_metrics())
     csv_mngr.update_metrics(10, _create_scalar_metrics())
-
     filename = os.path.join(temp_dir, 'metrics.csv')
     with tf.io.gfile.GFile(filename, 'r') as csvfile:
       num_lines_before = len(csvfile.readlines())
-
     # The CSV file should have 4 lines, one for the fieldnames, and 3 for each
     # call to `update_metrics`.
     self.assertEqual(num_lines_before, 4)
-
     csv_mngr.clear_rounds_after(last_valid_round_num=7)
-
     with tf.io.gfile.GFile(filename, 'r') as csvfile:
       num_lines_after = len(csvfile.readlines())
-
     # The CSV file should have 3 lines, one for the fieldnames, and 2 for the
     # calls to `update_metrics` with round_nums less <= 7.
     self.assertEqual(num_lines_after, 3)
@@ -264,7 +247,6 @@ class CSVMetricsManager(tf.test.TestCase):
           csvfile, fieldnames=metrics_missing_round_num.keys())
       writer.writeheader()
       writer.writerow(metrics_missing_round_num)
-
     with self.assertRaises(ValueError):
       csv_manager.CSVMetricsManager(invalid_csvfile)
 
@@ -273,7 +255,7 @@ class CSVMetricsManager(tf.test.TestCase):
         'a': tf.ones([1], dtype=tf.int32),
         'b': tf.zeros([2, 2], dtype=tf.int32)
     }
-    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     csv_mngr.update_metrics(0, metrics_to_append)
     _, metrics = csv_mngr.get_metrics()
