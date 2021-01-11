@@ -703,22 +703,21 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assert_type(baz, function_type.compact_representation())
 
-  def test_federated_apply_raises_warning(self):
-    with warnings.catch_warnings(record=True) as w:
+  def test_federated_apply_raises_deprecation_warning(self):
+    with warnings.catch_warnings(record=True) as warning:
       warnings.simplefilter('always')
 
       @computations.federated_computation(
           computation_types.FederatedType(tf.int32, placements.SERVER))
       def foo(x):
-        val = intrinsics.federated_apply(
+        value = intrinsics.federated_apply(
             computations.tf_computation(lambda x: x * x), x)
-        self.assertIsInstance(val, value_base.Value)
-        return val
+        self.assertIsInstance(value, value_base.Value)
+        return value
 
-      self.assertLen(w, 1)
-      self.assertIsInstance(w[0].category(), DeprecationWarning)
-      self.assertIn('tff.federated_apply() is deprecated', str(w[0].message))
-      self.assert_type(foo, '(int32@SERVER -> int32@SERVER)')
+      del foo  # Unused.
+      self.assertLen(warning, 1)
+      self.assertIsInstance(warning[0].category(), DeprecationWarning)
 
   def test_federated_value_with_bool_on_clients(self):
 
@@ -765,6 +764,20 @@ class IntrinsicsTest(parameterized.TestCase):
       return val
 
     self.assert_type(foo, '(bool -> bool@SERVER)')
+
+  def test_federated_value_raises_deprecation_warning(self):
+    with warnings.catch_warnings(record=True) as warning:
+      warnings.simplefilter('always')
+
+      @computations.federated_computation(tf.bool)
+      def foo(x):
+        value = intrinsics.federated_value(x, placements.CLIENTS)
+        self.assertIsInstance(value, value_base.Value)
+        return value
+
+      del foo  # Unused.
+      self.assertLen(warning, 1)
+      self.assertIsInstance(warning[0].category(), DeprecationWarning)
 
   def test_sequence_sum(self):
 
