@@ -32,7 +32,7 @@ MLCG_MULTIPLIER = 16807
 T = TypeVar('T')
 
 
-def build_sampling_fn(
+def build_uniform_sampling_fn(
     sample_range: Sequence[T],
     size: int,
     replace: bool = False,
@@ -76,14 +76,14 @@ def build_sampling_fn(
   return functools.partial(sample, random_seed=random_seed)
 
 
-def build_client_sampling_fn(
+def build_uniform_client_sampling_fn(
     dataset: client_data.ClientData,
     clients_per_round: int,
     random_seed: Optional[int] = None) -> Callable[[int], List[str]]:
   """Builds a function that (pseudo-)randomly samples clients.
 
-  The function samples a number of clients (without replacement within a given
-  round, but with replacement across rounds) and returns their ids.
+  The function uniformly samples a number of clients (without replacement within
+  a given round, but with replacement across rounds) and returns their ids.
 
   Args:
     dataset: A `tff.simulation.ClientData` object.
@@ -98,9 +98,9 @@ def build_client_sampling_fn(
 
   Returns:
     A function that takes as input an integer `round_num` and returns a a list
-    of ids corresponding to the sampled clients.
+    of ids corresponding to the uniformly sampled clients.
   """
-  return build_sampling_fn(
+  return build_uniform_sampling_fn(
       dataset.client_ids,
       size=clients_per_round,
       replace=False,
