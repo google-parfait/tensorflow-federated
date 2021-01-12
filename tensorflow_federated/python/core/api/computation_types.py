@@ -393,14 +393,6 @@ class TensorType(Type, metaclass=_Intern):
       else:
         raise TypeError('Unrecognized dtype {}.'.format(str(dtype)))
 
-    # TODO(b/123764922): If we are passed a shape of `TensorShape(None)`, which
-    # does happen along some codepaths, we have slightly violated the
-    # assumptions of `TensorType` (see the special casing in `repr` and `str`
-    # below. This is related to compatibility checking,
-    # and there are a few options. For now, simply adding a case in
-    # `is_assignable_from` to catch. We could alternatively
-    # treat this case the same as if we have been passed a shape of `None` in
-    # this constructor.
     if shape is None:
       shape = tf.TensorShape([])
     elif not isinstance(shape, tf.TensorShape):
@@ -418,8 +410,7 @@ class TensorType(Type, metaclass=_Intern):
       dtype: An instance of `tf.DType` or one of the Numpy numeric types.
       shape: An optional instance of `tf.TensorShape` or an argument that can be
         passed to its constructor (such as a `list` or a `tuple`), or `None` for
-        the default scalar shape. TensorShapes with unknown rank are not
-        supported.
+        the default scalar shape.
 
     Raises:
       TypeError: if arguments are of the wrong types.
@@ -445,9 +436,9 @@ class TensorType(Type, metaclass=_Intern):
 
   def __repr__(self):
     if self._shape.ndims is None:
-      return 'TensorType({!r}, {})'.format(self._dtype, None)
+      return 'TensorType({!r}, shape=None)'.format(self._dtype)
     elif self._shape.ndims > 0:
-      values = [dim.value for dim in self._shape.dims]
+      values = self._shape.as_list()
       return 'TensorType({!r}, {!r})'.format(self._dtype, values)
     else:
       return 'TensorType({!r})'.format(self._dtype)
@@ -470,23 +461,28 @@ class TensorType(Type, metaclass=_Intern):
       return False
     target_shape = self.shape
     source_shape = source_type.shape
-    # TODO(b/123764922): See if we can pass to TensorShape's
-    # `is_compatible_with`.
-    if target_shape.ndims is None:
+
+    # TensorShape's `is_compatible_with` relation is nontransitive
+    # a property TFF does not desire in its subtyping relation. So we implement
+    # our own comparison between shapes below.
+    if target_shape.rank is None:
       return True
-    if target_shape.ndims != source_shape.ndims:
+    elif source_shape.rank is None:
       return False
-    if target_shape.dims is None:
-      return True
+
+    # The as_list call here is safe, as both TensorShapes have known rank.
+    target_shape_list = target_shape.as_list()
+    source_shape_list = source_shape.as_list()
+    if len(target_shape_list) != len(source_shape_list):
+      return False
 
     def _dimension_is_assignable_from(target_dim, source_dim):
-      return ((target_dim.value is None) or
-              (target_dim.value == source_dim.value))
+      return (target_dim is None) or (target_dim == source_dim)
 
     return all(
-        _dimension_is_assignable_from(target_shape.dims[k],
-                                      source_shape.dims[k])
-        for k in range(target_shape.ndims))
+        _dimension_is_assignable_from(target_shape_elem, source_shape_elem)
+        for target_shape_elem, source_shape_elem in zip(target_shape_list,
+                                                        source_shape_list))
 
 
 def _format_struct_type_members(struct_type: 'StructType') -> str:
