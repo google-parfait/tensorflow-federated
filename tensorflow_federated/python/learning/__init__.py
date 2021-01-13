@@ -24,7 +24,9 @@ from tensorflow_federated.python.learning.keras_utils import federated_aggregate
 from tensorflow_federated.python.learning.keras_utils import from_keras_model
 from tensorflow_federated.python.learning.model import BatchOutput
 from tensorflow_federated.python.learning.model import Model
+from tensorflow_federated.python.learning.model_update_aggregator import compression_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import dp_aggregator
 from tensorflow_federated.python.learning.model_update_aggregator import robust_aggregator
+from tensorflow_federated.python.learning.model_update_aggregator import secure_aggregator
 from tensorflow_federated.python.learning.model_utils import ModelWeights
 from tensorflow_federated.python.learning.personalization_eval import build_personalization_eval

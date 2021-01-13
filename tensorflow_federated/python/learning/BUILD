@@ -227,9 +227,11 @@ py_library(
     deps = [
         "//tensorflow_federated/python/aggregators:clipping_factory",
         "//tensorflow_federated/python/aggregators:dp_factory",
+        "//tensorflow_federated/python/aggregators:encoded_factory",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean_factory",
         "//tensorflow_federated/python/aggregators:quantile_estimation",
+        "//tensorflow_federated/python/aggregators:secure_factory",
     ],
 )
 
