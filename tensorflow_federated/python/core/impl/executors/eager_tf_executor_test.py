@@ -429,6 +429,14 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(str(val.type_signature), 'int32')
     self.assertEqual(val.internal_representation, 10)
 
+  def test_executor_create_value_struct_mismatched_type(self):
+    ex = eager_tf_executor.EagerTFExecutor()
+    with self.assertRaises(TypeError):
+      asyncio.get_event_loop().run_until_complete(
+          ex.create_value([10],
+                          computation_types.StructType([(None, tf.int32),
+                                                        (None, tf.float32)])))
+
   def test_executor_create_value_unnamed_int_pair(self):
     ex = eager_tf_executor.EagerTFExecutor()
     val = asyncio.get_event_loop().run_until_complete(
