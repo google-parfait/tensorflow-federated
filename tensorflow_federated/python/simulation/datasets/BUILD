@@ -6,6 +6,7 @@ package_group(
     packages = [
         # Subpackages
         "//tensorflow_federated/python/simulation/datasets/...",
+        "//tensorflow_federated/python/simulation/baselines/...",
     ],
 )
 
