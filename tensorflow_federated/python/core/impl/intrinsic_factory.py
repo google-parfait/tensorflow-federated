@@ -441,32 +441,31 @@ class IntrinsicFactory(object):
     # Check if the value is a federated sequence that should be reduced
     # under a `federated_map`.
     if value.type_signature.is_federated():
-      value_sequence_type = value.type_signature.member
-      needs_map = True
+      is_federated_sequence = True
+      value_member_type = value.type_signature.member
+      value_member_type.check_sequence()
+      zero_member_type = zero.type_signature.member
     else:
-      value_sequence_type = value.type_signature
-      needs_map = False
-    value_sequence_type.check_sequence()
-    element_type = value_sequence_type.element
-    op_type_expected = type_factory.reduction_op(zero.type_signature,
-                                                 element_type)
-    if not op_type_expected.is_assignable_from(op.type_signature):
-      raise TypeError('Expected an operator of type {}, got {}.'.format(
-          op_type_expected, op.type_signature))
-
+      is_federated_sequence = False
+      value.type_signature.check_sequence()
     value = value_impl.ValueImpl.get_comp(value)
     zero = value_impl.ValueImpl.get_comp(zero)
     op = value_impl.ValueImpl.get_comp(op)
-    if not needs_map:
+    if not is_federated_sequence:
       comp = building_block_factory.create_sequence_reduce(value, zero, op)
       comp = self._bind_comp_as_reference(comp)
       return value_impl.ValueImpl(comp, self._context_stack)
     else:
-      ref = building_blocks.Reference('arg', value_sequence_type)
-      call = building_block_factory.create_sequence_reduce(ref, zero, op)
+      ref_type = computation_types.StructType(
+          [value_member_type, zero_member_type])
+      ref = building_blocks.Reference('arg', ref_type)
+      arg1 = building_blocks.Selection(ref, index=0)
+      arg2 = building_blocks.Selection(ref, index=1)
+      call = building_block_factory.create_sequence_reduce(arg1, arg2, op)
       fn = building_blocks.Lambda(ref.name, ref.type_signature, call)
-      fn_impl = value_impl.ValueImpl(fn, self._context_stack)
-      return self.federated_map(fn_impl, value)
+      fn_value_impl = value_impl.ValueImpl(fn, self._context_stack)
+      args = building_blocks.Struct([value, zero])
+      return self.federated_map(fn_value_impl, args)
 
   def sequence_sum(self, value):
     """Implements `sequence_sum` as defined in `api/intrinsics.py`."""

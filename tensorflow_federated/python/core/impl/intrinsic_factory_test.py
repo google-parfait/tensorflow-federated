@@ -15,19 +15,16 @@
 from absl.testing import absltest
 import numpy as np
 
+from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 
 class FederatedSecureSumTest(absltest.TestCase):
-
-  def run(self, result=None):
-    fc_context = federated_computation_context.FederatedComputationContext(
-        context_stack_impl.context_stack)
-    with context_stack_impl.context_stack.install(fc_context):
-      super(FederatedSecureSumTest, self).run(result)
 
   def test_type_signature_with_int(self):
     value = intrinsics.federated_value(1, placement_literals.CLIENTS)
@@ -99,5 +96,46 @@ class FederatedSecureSumTest(absltest.TestCase):
       intrinsics.federated_secure_sum(value, bitwidth)
 
 
+class SequenceReduceTest(absltest.TestCase):
+
+  def test_type_signature_with_non_federated_type(self):
+    factory = intrinsic_factory.IntrinsicFactory(
+        context_stack_impl.context_stack)
+
+    @computations.tf_computation(np.int32, np.int32)
+    def add(x, y):
+      return x + y
+
+    @computations.federated_computation(
+        computation_types.SequenceType(np.int32))
+    def foo(value):
+      return factory.sequence_reduce(value, 0, add)
+
+    self.assertEqual(foo.type_signature.compact_representation(),
+                     '(int32* -> int32)')
+
+  def test_type_signature_with_federated_type(self):
+    factory = intrinsic_factory.IntrinsicFactory(
+        context_stack_impl.context_stack)
+
+    @computations.tf_computation(np.int32, np.int32)
+    def add(x, y):
+      return x + y
+
+    @computations.federated_computation(
+        computation_types.FederatedType(
+            computation_types.SequenceType(np.int32),
+            placement_literals.CLIENTS))
+    def foo(value):
+      zero = intrinsics.federated_value(0, placement_literals.CLIENTS)
+      return factory.sequence_reduce(value, zero, add)
+
+    self.assertEqual(foo.type_signature.compact_representation(),
+                     '({int32*}@CLIENTS -> {int32}@CLIENTS)')
+
+
 if __name__ == '__main__':
-  absltest.main()
+  context = federated_computation_context.FederatedComputationContext(
+      context_stack_impl.context_stack)
+  with context_stack_impl.context_stack.install(context):
+    absltest.main()

@@ -428,6 +428,9 @@ def sequence_reduce(value, zero, op):
   `federated_map(x -> sequence_reduce(x, zero, op), value)`. See also the
   discussion on `sequence_map`.
 
+  Note: When applied to a federated value this function does the reduce
+  point-wise.
+
   Args:
     value: A value that is either a TFF sequence, or a federated sequence.
     zero: The result of reducing a sequence with no elements.

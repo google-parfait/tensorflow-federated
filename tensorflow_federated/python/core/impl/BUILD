@@ -172,6 +172,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":intrinsic_factory",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation_context",

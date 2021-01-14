@@ -863,9 +863,10 @@ class IntrinsicsTest(parameterized.TestCase):
         computation_types.FederatedType(
             computation_types.SequenceType(tf.int32), placements.SERVER))
     def foo2(x):
-      val = intrinsics.sequence_reduce(x, 0, add_numbers)
-      self.assertIsInstance(val, value_base.Value)
-      return val
+      zero = intrinsics.federated_value(0, placements.SERVER)
+      value = intrinsics.sequence_reduce(x, zero, add_numbers)
+      self.assertIsInstance(value, value_base.Value)
+      return value
 
     self.assert_type(foo2, '(int32*@SERVER -> int32@SERVER)')
 
@@ -873,9 +874,10 @@ class IntrinsicsTest(parameterized.TestCase):
         computation_types.FederatedType(
             computation_types.SequenceType(tf.int32), placements.CLIENTS))
     def foo3(x):
-      val = intrinsics.sequence_reduce(x, 0, add_numbers)
-      self.assertIsInstance(val, value_base.Value)
-      return val
+      zero = intrinsics.federated_value(0, placements.CLIENTS)
+      value = intrinsics.sequence_reduce(x, zero, add_numbers)
+      self.assertIsInstance(value, value_base.Value)
+      return value
 
     self.assert_type(foo3, '({int32*}@CLIENTS -> {int32}@CLIENTS)')
 
