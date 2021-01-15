@@ -124,7 +124,7 @@ py_library(
 
 py_test(
     name = "encoded_factory_test",
-    size = "small",
+    size = "medium",
     srcs = ["encoded_factory_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
