@@ -25,7 +25,7 @@ import numpy as np
 import tensorflow as tf
 import tree
 
-from tensorflow_federated.python.simulation import metrics_manager
+from tensorflow_federated.python.simulation.train import metrics_manager
 
 _QUOTING = csv.QUOTE_NONNUMERIC
 

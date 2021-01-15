@@ -18,7 +18,7 @@ import os
 
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import csv_manager
+from tensorflow_federated.python.simulation.train import csv_manager
 
 
 def _create_scalar_metrics():

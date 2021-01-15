@@ -18,7 +18,7 @@ import os.path
 
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import checkpoint_manager
+from tensorflow_federated.python.simulation.train import checkpoint_manager
 
 
 def _create_test_state(value=0):
