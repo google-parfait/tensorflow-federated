@@ -110,8 +110,6 @@ def create_preprocess_fn(
   """
   if num_epochs < 1:
     raise ValueError('num_epochs must be a positive integer.')
-  if shuffle_buffer_size <= 1:
-    shuffle_buffer_size = 1
   if not isinstance(crop_shape, collections.abc.Iterable):
     raise TypeError('Argument crop_shape must be an iterable.')
   crop_shape = tuple(crop_shape)
@@ -128,8 +126,10 @@ def create_preprocess_fn(
 
   @computations.tf_computation(computation_types.SequenceType(feature_dtypes))
   def preprocess_fn(dataset):
+    if shuffle_buffer_size > 1:
+      dataset = dataset.shuffle(shuffle_buffer_size)
     return (
-        dataset.shuffle(shuffle_buffer_size).repeat(num_epochs)
+        dataset.repeat(num_epochs)
         # We map before batching to ensure that the cropping occurs
         # at an image level (eg. we do not perform the same crop on
         # every image within a batch)
@@ -187,11 +187,6 @@ def get_federated_datasets(
     raise TypeError(
         'serializable must be a Boolean; you passed {} of type {}.'.format(
             serializable, type(serializable)))
-  if train_shuffle_buffer_size <= 1:
-    train_shuffle_buffer_size = 1
-  if test_shuffle_buffer_size <= 1:
-    test_shuffle_buffer_size = 1
-
   cifar_train, cifar_test = cifar100.load_data()
 
   train_preprocess_fn = create_preprocess_fn(
@@ -241,11 +236,6 @@ def get_centralized_datasets(
     A tuple (cifar_train, cifar_test) of `tf.data.Dataset` instances
     representing the centralized training and test datasets.
   """
-  if train_shuffle_buffer_size <= 1:
-    train_shuffle_buffer_size = 1
-  if test_shuffle_buffer_size <= 1:
-    test_shuffle_buffer_size = 1
-
   cifar_train, cifar_test = cifar100.load_data()
   cifar_train = cifar_train.create_tf_dataset_from_all_clients()
   cifar_test = cifar_test.create_tf_dataset_from_all_clients()

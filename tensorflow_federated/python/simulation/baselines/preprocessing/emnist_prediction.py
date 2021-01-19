@@ -67,8 +67,6 @@ def create_preprocess_fn(
   """
   if num_epochs < 1:
     raise ValueError('num_epochs must be a positive integer.')
-  if shuffle_buffer_size <= 1:
-    shuffle_buffer_size = 1
 
   if emnist_task == 'digit_recognition':
     mapping_fn = _reshape_for_digit_recognition
@@ -84,7 +82,9 @@ def create_preprocess_fn(
 
   @computations.tf_computation(computation_types.SequenceType(feature_dtypes))
   def preprocess_fn(dataset):
-    return dataset.shuffle(shuffle_buffer_size).repeat(num_epochs).batch(
+    if shuffle_buffer_size > 1:
+      dataset = dataset.shuffle(shuffle_buffer_size)
+    return dataset.repeat(num_epochs).batch(
         batch_size, drop_remainder=False).map(
             mapping_fn, num_parallel_calls=num_parallel_calls)
 
@@ -137,10 +137,6 @@ def get_federated_datasets(
         'train_client_epochs_per_round must be a positive integer.')
   if test_client_epochs_per_round < 0:
     raise ValueError('test_client_epochs_per_round must be a positive integer.')
-  if train_shuffle_buffer_size <= 1:
-    train_shuffle_buffer_size = 1
-  if test_shuffle_buffer_size <= 1:
-    test_shuffle_buffer_size = 1
 
   emnist_train, emnist_test = emnist.load_data(only_digits=only_digits)
 
@@ -193,11 +189,6 @@ def get_centralized_datasets(
     A tuple (train_dataset, test_dataset) of `tf.data.Dataset` instances
     representing the centralized training and test datasets.
   """
-  if train_shuffle_buffer_size <= 1:
-    train_shuffle_buffer_size = 1
-  if test_shuffle_buffer_size <= 1:
-    test_shuffle_buffer_size = 1
-
   emnist_train, emnist_test = emnist.load_data(only_digits=only_digits)
 
   emnist_train = emnist_train.create_tf_dataset_from_all_clients()

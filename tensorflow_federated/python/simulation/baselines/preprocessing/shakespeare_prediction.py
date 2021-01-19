@@ -124,16 +124,16 @@ def create_preprocess_fn(
     raise ValueError('num_epochs must be a positive integer.')
   if sequence_length < 1:
     raise ValueError('sequence_length must be a positive integer.')
-  if shuffle_buffer_size <= 1:
-    shuffle_buffer_size = 1
 
   feature_dtypes = collections.OrderedDict(snippets=tf.string,)
 
   @computations.tf_computation(computation_types.SequenceType(feature_dtypes))
   def preprocess_fn(dataset):
+    if shuffle_buffer_size > 1:
+      dataset = dataset.shuffle(shuffle_buffer_size)
     to_tokens = _build_tokenize_fn(split_length=sequence_length + 1)
     return (
-        dataset.shuffle(shuffle_buffer_size).repeat(num_epochs)
+        dataset.repeat(num_epochs)
         # Convert snippets to int64 tokens and pad.
         .map(to_tokens, num_parallel_calls=num_parallel_calls)
         # Separate into individual tokens
@@ -184,11 +184,6 @@ def get_federated_datasets(
     A tuple (shakespeare_train, shakespeare_test) of `tff.simulation.ClientData`
     instances representing the federated training and test datasets.
   """
-  if train_shuffle_buffer_size <= 1:
-    train_shuffle_buffer_size = 1
-  if test_shuffle_buffer_size <= 1:
-    test_shuffle_buffer_size = 1
-
   shakespeare_train, shakespeare_test = shakespeare.load_data()
 
   train_preprocess_fn = create_preprocess_fn(
@@ -233,11 +228,6 @@ def get_centralized_datasets(
     A tuple (shakespeare_train, shakespeare_test) of `tf.data.Dataset` instances
     representing the centralized training and test datasets.
   """
-  if train_shuffle_buffer_size <= 1:
-    train_shuffle_buffer_size = 1
-  if test_shuffle_buffer_size <= 1:
-    test_shuffle_buffer_size = 1
-
   shakespeare_train, shakespeare_test = shakespeare.load_data()
 
   shakespeare_train = shakespeare_train.create_tf_dataset_from_all_clients()
