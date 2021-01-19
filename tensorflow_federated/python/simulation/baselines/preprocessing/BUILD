@@ -64,3 +64,29 @@ py_test(
         "//tensorflow_federated/python/simulation:client_data",
     ],
 )
+
+py_library(
+    name = "shakespeare_prediction",
+    srcs = ["shakespeare_prediction.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/simulation:client_data",
+        "//tensorflow_federated/python/simulation/datasets:shakespeare",
+    ],
+)
+
+py_test(
+    name = "shakespeare_prediction_test",
+    size = "medium",
+    srcs = ["shakespeare_prediction_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":shakespeare_prediction",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/simulation:client_data",
+    ],
+)
