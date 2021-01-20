@@ -187,10 +187,11 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
         server_optimizer_fn=tf.keras.optimizers.SGD,
         weighted_aggregation=weighted)
 
-    aggregate_state_and_metrics_dict = collections.OrderedDict(
-        value_sum_process=())
+    aggregate_state_dict = collections.OrderedDict(value_sum_process=())
+    aggregate_metrics_dict = collections.OrderedDict(mean_value=())
     if weighted:
-      aggregate_state_and_metrics_dict['weight_sum_process'] = ()
+      aggregate_state_dict['weight_sum_process'] = ()
+      aggregate_metrics_dict['mean_weight'] = ()
 
     server_state_type = computation_types.FederatedType(
         optimizer_utils.ServerState(
@@ -201,7 +202,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
                 ],
                 non_trainable=[computation_types.TensorType(tf.float32)]),
             optimizer_state=[tf.int64],
-            delta_aggregate_state=aggregate_state_and_metrics_dict,
+            delta_aggregate_state=aggregate_state_dict,
             model_broadcast_state=()), placements.SERVER)
 
     self.assertEqual(
@@ -220,7 +221,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     metrics_type = computation_types.FederatedType(
         collections.OrderedDict(
             broadcast=(),
-            aggregation=aggregate_state_and_metrics_dict,
+            aggregation=aggregate_metrics_dict,
             train=collections.OrderedDict(
                 loss=computation_types.TensorType(tf.float32),
                 num_examples=computation_types.TensorType(tf.int32)),

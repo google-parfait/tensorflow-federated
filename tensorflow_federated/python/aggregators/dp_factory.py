@@ -205,7 +205,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
 
       new_state = (new_query_state, new_agg_state)
       measurements = collections.OrderedDict(
-          query_metrics=query_metrics, record_agg_process=agg_measurements)
+          dp_query_metrics=query_metrics, dp=agg_measurements)
       return measured_process.MeasuredProcessOutput(
           intrinsics.federated_zip(new_state), result,
           intrinsics.federated_zip(measurements))

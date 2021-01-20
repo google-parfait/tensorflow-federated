@@ -244,10 +244,10 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
     min_clipped_count = intrinsics.federated_secure_sum(
         is_min_clipped, bitwidth=1)
     measurements = collections.OrderedDict(
-        upper_bound_clipped_count=max_clipped_count,
-        lower_bound_clipped_count=min_clipped_count,
-        upper_bound_threshold=upper_bound,
-        lower_bound_threshold=lower_bound)
+        secure_upper_clipped_count=max_clipped_count,
+        secure_lower_clipped_count=min_clipped_count,
+        secure_upper_threshold=upper_bound,
+        secure_lower_threshold=lower_bound)
     return intrinsics.federated_zip(measurements)
 
   def _sum_securely(self, value, upper_bound, lower_bound):

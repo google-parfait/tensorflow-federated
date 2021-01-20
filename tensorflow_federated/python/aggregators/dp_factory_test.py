@@ -69,8 +69,7 @@ class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
     inner_measurements_type = tf.int32 if inner_agg_factory else ()
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
-            query_metrics=query_metrics_type,
-            record_agg_process=inner_measurements_type))
+            dp_query_metrics=query_metrics_type, dp=inner_measurements_type))
 
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
@@ -157,7 +156,7 @@ class DPFactoryExecutionTest(test_case.TestCase):
     self.assertAllEqual(1, output.state[1])
     self.assertAllClose(3.5, output.result)
     self.assertAllEqual(test_utils.MEASUREMENT_CONSTANT,
-                        output.measurements['record_agg_process'])
+                        output.measurements['dp'])
 
   def test_adaptive_query(self):
     query = tfp.QuantileAdaptiveClipSumQuery(

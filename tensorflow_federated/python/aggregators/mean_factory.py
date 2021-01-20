@@ -70,13 +70,13 @@ class MeanFactory(factory.UnweightedAggregationFactory,
 
     Args:
       value_sum_factory: An optional
-        `tff.aggregators.UnweightedAggregationFactory` responsible for
-        summation of weighted values. If not specified,
-        `tff.aggregators.SumFactory` is used.
+        `tff.aggregators.UnweightedAggregationFactory` responsible for summation
+        of weighted values. If not specified, `tff.aggregators.SumFactory` is
+        used.
       weight_sum_factory: An optional
-        `tff.aggregators.UnweightedAggregationFactory` responsible for
-        summation of weights. If not specified, `tff.aggregators.SumFactory` is
-        used. Not used by `create_unweighted`.
+        `tff.aggregators.UnweightedAggregationFactory` responsible for summation
+        of weights. If not specified, `tff.aggregators.SumFactory` is used. Not
+        used by `create_unweighted`.
       no_nan_division: A bool. If True, the computed mean is 0 if sum of weights
         is equal to 0.
 
@@ -130,7 +130,7 @@ class MeanFactory(factory.UnweightedAggregationFactory,
 
       state = collections.OrderedDict(value_sum_process=value_sum_output.state)
       measurements = collections.OrderedDict(
-          value_sum_process=value_sum_output.measurements)
+          mean_value=value_sum_output.measurements)
       return measured_process.MeasuredProcessOutput(
           intrinsics.federated_zip(state), mean_value,
           intrinsics.federated_zip(measurements))
@@ -181,8 +181,8 @@ class MeanFactory(factory.UnweightedAggregationFactory,
           value_sum_process=value_output.state,
           weight_sum_process=weight_output.state)
       measurements = collections.OrderedDict(
-          value_sum_process=value_output.measurements,
-          weight_sum_process=weight_output.measurements)
+          mean_value=value_output.measurements,
+          mean_weight=weight_output.measurements)
       return measured_process.MeasuredProcessOutput(
           intrinsics.federated_zip(state), weighted_mean_value,
           intrinsics.federated_zip(measurements))

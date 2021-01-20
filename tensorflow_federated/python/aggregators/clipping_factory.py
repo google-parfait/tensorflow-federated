@@ -232,7 +232,7 @@ class ClippingFactory(factory.UnweightedAggregationFactory,
           inner_agg=agg_output.state,
           clipped_count_agg=clipped_count_output.state)
       measurements = collections.OrderedDict(
-          agg_process=agg_output.measurements,
+          clipping=agg_output.measurements,
           clipping_norm=clipping_norm,
           clipped_count=clipped_count_output.result)
 
@@ -420,7 +420,7 @@ class ZeroingFactory(factory.UnweightedAggregationFactory,
           inner_agg=agg_output.state,
           zeroed_count_agg=zeroed_count_output.state)
       measurements = collections.OrderedDict(
-          agg_process=agg_output.measurements,
+          zeroing=agg_output.measurements,
           zeroing_norm=zeroing_norm,
           zeroed_count=zeroed_count_output.result)
 

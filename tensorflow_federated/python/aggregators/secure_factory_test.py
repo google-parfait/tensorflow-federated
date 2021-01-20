@@ -64,10 +64,10 @@ def _test_estimation_process(factor):
 def _measurements_type(bound_type):
   return computation_types.at_server(
       collections.OrderedDict(
-          upper_bound_clipped_count=secure_factory.COUNT_TF_TYPE,
-          lower_bound_clipped_count=secure_factory.COUNT_TF_TYPE,
-          upper_bound_threshold=bound_type,
-          lower_bound_threshold=bound_type))
+          secure_upper_clipped_count=secure_factory.COUNT_TF_TYPE,
+          secure_lower_clipped_count=secure_factory.COUNT_TF_TYPE,
+          secure_upper_threshold=bound_type,
+          secure_lower_threshold=bound_type))
 
 
 class SecureSumFactoryComputationTest(test_case.TestCase,
@@ -253,10 +253,10 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(1, output.result)
     self._check_measurements(
         output.measurements,
-        expected_upper_bound_clipped_count=2,
-        expected_lower_bound_clipped_count=1,
-        expected_upper_bound_threshold=1,
-        expected_lower_bound_threshold=-1)
+        expected_secure_upper_clipped_count=2,
+        expected_secure_lower_clipped_count=1,
+        expected_secure_upper_threshold=1,
+        expected_secure_lower_threshold=-1)
 
   def test_float_constant_bounds(self):
     secure_sum_f = secure_factory.SecureSumFactory(
@@ -270,10 +270,10 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
     self.assertAllClose(1.5, output.result)
     self._check_measurements(
         output.measurements,
-        expected_upper_bound_clipped_count=2,
-        expected_lower_bound_clipped_count=1,
-        expected_upper_bound_threshold=1.0,
-        expected_lower_bound_threshold=-1.0)
+        expected_secure_upper_clipped_count=2,
+        expected_secure_lower_clipped_count=1,
+        expected_secure_upper_threshold=1.0,
+        expected_secure_lower_threshold=-1.0)
 
   def test_float_single_process_bounds(self):
     secure_sum_f = secure_factory.SecureSumFactory(
@@ -287,28 +287,28 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
     self.assertAllClose(1.5, output.result)
     self._check_measurements(
         output.measurements,
-        expected_upper_bound_clipped_count=2,
-        expected_lower_bound_clipped_count=1,
-        expected_upper_bound_threshold=1.0,
-        expected_lower_bound_threshold=-1.0)
+        expected_secure_upper_clipped_count=2,
+        expected_secure_lower_clipped_count=1,
+        expected_secure_upper_threshold=1.0,
+        expected_secure_lower_threshold=-1.0)
 
     output = process.next(output.state, client_data)
     self.assertAllClose(2.0, output.result)
     self._check_measurements(
         output.measurements,
-        expected_upper_bound_clipped_count=1,
-        expected_lower_bound_clipped_count=1,
-        expected_upper_bound_threshold=2.0,
-        expected_lower_bound_threshold=-2.0)
+        expected_secure_upper_clipped_count=1,
+        expected_secure_lower_clipped_count=1,
+        expected_secure_upper_threshold=2.0,
+        expected_secure_lower_threshold=-2.0)
 
     output = process.next(output.state, client_data)
     self.assertAllClose(2.5, output.result)
     self._check_measurements(
         output.measurements,
-        expected_upper_bound_clipped_count=1,
-        expected_lower_bound_clipped_count=0,
-        expected_upper_bound_threshold=3.0,
-        expected_lower_bound_threshold=-3.0)
+        expected_secure_upper_clipped_count=1,
+        expected_secure_lower_clipped_count=0,
+        expected_secure_upper_threshold=3.0,
+        expected_secure_lower_threshold=-3.0)
 
   def test_float_two_processes_bounds(self):
     secure_sum_f = secure_factory.SecureSumFactory(
@@ -322,28 +322,28 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
     output = process.next(state, client_data)
     self._check_measurements(
         output.measurements,
-        expected_upper_bound_clipped_count=2,
-        expected_lower_bound_clipped_count=1,
-        expected_upper_bound_threshold=1.0,
-        expected_lower_bound_threshold=-1.0)
+        expected_secure_upper_clipped_count=2,
+        expected_secure_lower_clipped_count=1,
+        expected_secure_upper_threshold=1.0,
+        expected_secure_lower_threshold=-1.0)
 
     output = process.next(output.state, client_data)
     self.assertAllClose(2.0, output.result)
     self._check_measurements(
         output.measurements,
-        expected_upper_bound_clipped_count=1,
-        expected_lower_bound_clipped_count=1,
-        expected_upper_bound_threshold=2.0,
-        expected_lower_bound_threshold=-2.0)
+        expected_secure_upper_clipped_count=1,
+        expected_secure_lower_clipped_count=1,
+        expected_secure_upper_threshold=2.0,
+        expected_secure_lower_threshold=-2.0)
 
     output = process.next(output.state, client_data)
     self.assertAllClose(2.5, output.result)
     self._check_measurements(
         output.measurements,
-        expected_upper_bound_clipped_count=1,
-        expected_lower_bound_clipped_count=0,
-        expected_upper_bound_threshold=3.0,
-        expected_lower_bound_threshold=-3.0)
+        expected_secure_upper_clipped_count=1,
+        expected_secure_lower_clipped_count=0,
+        expected_secure_upper_threshold=3.0,
+        expected_secure_lower_threshold=-3.0)
 
   def test_float_32_larger_than_2_pow_32(self):
     secure_sum_f = secure_factory.SecureSumFactory(
@@ -357,10 +357,10 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
     self.assertAllClose(float(2**35), output.result)
     self._check_measurements(
         output.measurements,
-        expected_upper_bound_clipped_count=0,
-        expected_lower_bound_clipped_count=0,
-        expected_upper_bound_threshold=float(2**34),
-        expected_lower_bound_threshold=float(-2**34))
+        expected_secure_upper_clipped_count=0,
+        expected_secure_lower_clipped_count=0,
+        expected_secure_upper_threshold=float(2**34),
+        expected_secure_lower_threshold=float(-2**34))
 
   def test_float_64_larger_than_2_pow_64(self):
     secure_sum_f = secure_factory.SecureSumFactory(
@@ -378,24 +378,24 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
     self.assertAllClose(np.array(2**67, np.float64), output.result)
     self._check_measurements(
         output.measurements,
-        expected_upper_bound_clipped_count=0,
-        expected_lower_bound_clipped_count=0,
-        expected_upper_bound_threshold=np.array(2**66, np.float64),
-        expected_lower_bound_threshold=np.array(-2**66, np.float64))
+        expected_secure_upper_clipped_count=0,
+        expected_secure_lower_clipped_count=0,
+        expected_secure_upper_threshold=np.array(2**66, np.float64),
+        expected_secure_lower_threshold=np.array(-2**66, np.float64))
 
   def _check_measurements(self, measurements,
-                          expected_upper_bound_clipped_count,
-                          expected_lower_bound_clipped_count,
-                          expected_upper_bound_threshold,
-                          expected_lower_bound_threshold):
-    self.assertEqual(expected_upper_bound_clipped_count,
-                     measurements['upper_bound_clipped_count'])
-    self.assertEqual(expected_lower_bound_clipped_count,
-                     measurements['lower_bound_clipped_count'])
-    self.assertAllClose(expected_upper_bound_threshold,
-                        measurements['upper_bound_threshold'])
-    self.assertAllClose(expected_lower_bound_threshold,
-                        measurements['lower_bound_threshold'])
+                          expected_secure_upper_clipped_count,
+                          expected_secure_lower_clipped_count,
+                          expected_secure_upper_threshold,
+                          expected_secure_lower_threshold):
+    self.assertEqual(expected_secure_upper_clipped_count,
+                     measurements['secure_upper_clipped_count'])
+    self.assertEqual(expected_secure_lower_clipped_count,
+                     measurements['secure_lower_clipped_count'])
+    self.assertAllClose(expected_secure_upper_threshold,
+                        measurements['secure_upper_threshold'])
+    self.assertAllClose(expected_secure_lower_threshold,
+                        measurements['secure_lower_threshold'])
 
 
 if __name__ == '__main__':

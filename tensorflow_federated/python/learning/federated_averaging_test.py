@@ -161,9 +161,9 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
                 weighted=True):
     state = process.initialize()
     prev_loss = np.inf
-    aggregation_metrics = collections.OrderedDict(value_sum_process=())
+    aggregation_metrics = collections.OrderedDict(mean_value=())
     if weighted:
-      aggregation_metrics['weight_sum_process'] = ()
+      aggregation_metrics['mean_weight'] = ()
     for _ in range(3):
       state, metric_outputs = process.next(state, datasets)
       self.assertEqual(

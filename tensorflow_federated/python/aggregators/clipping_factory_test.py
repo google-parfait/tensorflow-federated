@@ -108,7 +108,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
-            agg_process=(),
+            clipping=(),
             clipping_norm=clipping_factory.NORM_TF_TYPE,
             clipped_count=clipping_factory.COUNT_TF_TYPE))
     expected_next_type = computation_types.FunctionType(
@@ -148,8 +148,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
-            agg_process=collections.OrderedDict(
-                value_sum_process=(), weight_sum_process=()),
+            clipping=collections.OrderedDict(mean_value=(), mean_weight=()),
             clipping_norm=clipping_factory.NORM_TF_TYPE,
             clipped_count=clipping_factory.COUNT_TF_TYPE))
     expected_next_type = computation_types.FunctionType(
@@ -185,7 +184,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
-            agg_process=(),
+            zeroing=(),
             zeroing_norm=clipping_factory.NORM_TF_TYPE,
             zeroed_count=clipping_factory.COUNT_TF_TYPE))
     expected_next_type = computation_types.FunctionType(
@@ -225,8 +224,7 @@ class ClippingFactoryComputationTest(test_case.TestCase,
 
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
-            agg_process=collections.OrderedDict(
-                value_sum_process=(), weight_sum_process=()),
+            zeroing=collections.OrderedDict(mean_value=(), mean_weight=()),
             zeroing_norm=clipping_factory.NORM_TF_TYPE,
             zeroed_count=clipping_factory.COUNT_TF_TYPE))
     expected_next_type = computation_types.FunctionType(

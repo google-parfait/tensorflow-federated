@@ -179,7 +179,6 @@ py_test(
         ":mean_factory",
         ":test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
