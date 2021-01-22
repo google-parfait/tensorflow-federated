@@ -20,11 +20,11 @@ import tensorflow as tf
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 
@@ -94,12 +94,8 @@ class MeanFactory(factory.WeightedAggregationFactory):
   def create(
       self, value_type: factory.ValueType,
       weight_type: factory.ValueType) -> aggregation_process.AggregationProcess:
-    py_typecheck.check_type(value_type, factory.ValueType.__args__)
+    _check_value_type(value_type)
     py_typecheck.check_type(weight_type, factory.ValueType.__args__)
-
-    if not all([t.dtype.is_floating for t in structure.flatten(value_type)]):
-      raise TypeError(f'All values in provided value_type must be of floating '
-                      f'dtype. Provided value_type: {value_type}')
 
     value_sum_process = self._value_sum_factory.create(value_type)
     weight_sum_process = self._weight_sum_factory.create(weight_type)
@@ -142,6 +138,78 @@ class MeanFactory(factory.WeightedAggregationFactory):
           intrinsics.federated_zip(measurements))
 
     return aggregation_process.AggregationProcess(init_fn, next_fn)
+
+
+class UnweightedMeanFactory(factory.UnweightedAggregationFactory):
+  """Aggregation factory for unweighted mean.
+
+  The created `tff.templates.AggregationProcess` computes the unweighted mean of
+  values placed at `CLIENTS`, and outputs the mean placed at `SERVER`.
+
+  The input arguments of the `next` attribute of the process returned by
+  `create` are `<state, value>`, and the unweighted mean refers to the
+  expression `sum(value * weight) / count(value)` where `count(value)` is the
+  cardinality of the `CLIENTS` placement.
+
+  The implementation is parameterized by an inner aggregation factory
+  responsible for the summation of values.
+  """
+
+  def __init__(
+      self,
+      value_sum_factory: Optional[factory.UnweightedAggregationFactory] = None):
+    """Initializes `UnweightedMeanFactory`.
+
+    Args:
+      value_sum_factory: An optional
+        `tff.aggregators.UnweightedAggregationFactory` responsible for summation
+        of values. If not specified, `tff.aggregators.SumFactory` is used.
+
+    Raises:
+      TypeError: If provided `value_sum_factory` is not an instance of
+        `tff.aggregators.UnweightedAggregationFactory`.
+    """
+    if value_sum_factory is None:
+      value_sum_factory = sum_factory.SumFactory()
+    py_typecheck.check_type(value_sum_factory,
+                            factory.UnweightedAggregationFactory)
+    self._value_sum_factory = value_sum_factory
+
+  def create(
+      self,
+      value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
+    _check_value_type(value_type)
+    value_sum_process = self._value_sum_factory.create(value_type)
+
+    @computations.federated_computation()
+    def init_fn():
+      return value_sum_process.initialize()
+
+    @computations.federated_computation(init_fn.type_signature.result,
+                                        computation_types.FederatedType(
+                                            value_type, placements.CLIENTS))
+    def next_fn(state, value):
+      value_sum_output = value_sum_process.next(state, value)
+      count = intrinsics.federated_sum(
+          intrinsics.federated_value(1, placements.CLIENTS))
+
+      mean_value = intrinsics.federated_map(_div,
+                                            (value_sum_output.result, count))
+      state = value_sum_output.state
+      measurements = intrinsics.federated_zip(
+          collections.OrderedDict(mean_value=value_sum_output.measurements))
+
+      return measured_process.MeasuredProcessOutput(state, mean_value,
+                                                    measurements)
+
+    return aggregation_process.AggregationProcess(init_fn, next_fn)
+
+
+def _check_value_type(value_type):
+  py_typecheck.check_type(value_type, factory.ValueType.__args__)
+  if not type_analysis.is_structure_of_floats(value_type):
+    raise TypeError(f'All values in provided value_type must be of floating '
+                    f'dtype. Provided value_type: {value_type}')
 
 
 @computations.tf_computation()

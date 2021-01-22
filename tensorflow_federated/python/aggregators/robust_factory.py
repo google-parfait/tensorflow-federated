@@ -49,10 +49,6 @@ def _constant_process(value):
   return estimation_process.EstimationProcess(init_fn, next_fn, report_fn)
 
 
-def _contains_non_float_dtype(type_spec):
-  return type_spec.is_tensor() and not type_spec.dtype.is_floating
-
-
 def _check_norm_process(norm_process: estimation_process.EstimationProcess,
                         name: str):
   """Checks type properties for norm_process.
@@ -354,7 +350,7 @@ def _make_wrapper(clipping_norm: Union[float,
 
 def _check_value_type(value_type):
   py_typecheck.check_type(value_type, factory.ValueType.__args__)
-  if type_analysis.contains(value_type, predicate=_contains_non_float_dtype):
+  if not type_analysis.is_structure_of_floats(value_type):
     raise TypeError(f'All values in provided value_type must be of floating '
                     f'dtype. Provided value_type: {value_type}')
 

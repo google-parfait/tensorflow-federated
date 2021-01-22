@@ -30,47 +30,6 @@ py_library(
 )
 
 py_library(
-    name = "robust_factory",
-    srcs = ["robust_factory.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":factory",
-        ":sum_factory",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/api:placements",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/templates:aggregation_process",
-        "//tensorflow_federated/python/core/templates:estimation_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-    ],
-)
-
-py_test(
-    name = "robust_factory_test",
-    srcs = ["robust_factory_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":mean_factory",
-        ":robust_factory",
-        ":sum_factory",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/api:placements",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/templates:aggregation_process",
-        "//tensorflow_federated/python/core/templates:estimation_process",
-        "//tensorflow_federated/python/core/templates:measured_process",
-    ],
-)
-
-py_library(
     name = "dp_factory",
     srcs = ["dp_factory.py"],
     srcs_version = "PY3",
@@ -159,11 +118,11 @@ py_library(
         ":factory",
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
     ],
@@ -216,6 +175,47 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:estimation_process",
+    ],
+)
+
+py_library(
+    name = "robust_factory",
+    srcs = ["robust_factory.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":factory",
+        ":sum_factory",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:estimation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
+    ],
+)
+
+py_test(
+    name = "robust_factory_test",
+    srcs = ["robust_factory_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":mean_factory",
+        ":robust_factory",
+        ":sum_factory",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
+        "//tensorflow_federated/python/core/templates:estimation_process",
+        "//tensorflow_federated/python/core/templates:measured_process",
     ],
 )
 

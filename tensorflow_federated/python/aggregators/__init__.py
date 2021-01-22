@@ -18,6 +18,7 @@ from tensorflow_federated.python.aggregators.encoded_factory import EncodedSumFa
 from tensorflow_federated.python.aggregators.factory import UnweightedAggregationFactory
 from tensorflow_federated.python.aggregators.factory import WeightedAggregationFactory
 from tensorflow_federated.python.aggregators.mean_factory import MeanFactory
+from tensorflow_federated.python.aggregators.mean_factory import UnweightedMeanFactory
 from tensorflow_federated.python.aggregators.quantile_estimation import PrivateQuantileEstimationProcess
 from tensorflow_federated.python.aggregators.robust_factory import clipping_factory
 from tensorflow_federated.python.aggregators.robust_factory import zeroing_factory
