@@ -99,7 +99,7 @@ def set_thread_debugging_execution_context(num_clients=None,
 
 
 def create_remote_execution_context(channels,
-                                    rpc_mode='REQUEST_REPLY',
+                                    rpc_mode='STREAMING',
                                     thread_pool_executor=None,
                                     dispose_batch_size=20,
                                     max_fanout: int = 100):
@@ -117,7 +117,7 @@ def create_remote_execution_context(channels,
 
 
 def set_remote_execution_context(channels,
-                                 rpc_mode='REQUEST_REPLY',
+                                 rpc_mode='STREAMING',
                                  thread_pool_executor=None,
                                  dispose_batch_size=20,
                                  max_fanout: int = 100):
