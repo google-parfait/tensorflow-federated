@@ -296,7 +296,7 @@ def _build_one_round_computation(
                                        ClientDeltaFn],
     broadcast_process: measured_process.MeasuredProcess,
     aggregation_process: measured_process.MeasuredProcess,
-    weighted_aggregation: bool = True,
+    weighted_aggregation: bool,
 ) -> computation_base.Computation:
   """Builds the `next` computation for a model delta averaging process.
 
@@ -568,11 +568,10 @@ def build_model_delta_optimizer_process(
                                        ClientDeltaFn],
     server_optimizer_fn: _OptimizerConstructor,
     *,
-    weighted_aggregation: bool = True,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
-        factory.WeightedAggregationFactory] = None,
+        factory.AggregationFactory] = None,
 ) -> iterative_process.IterativeProcess:
   """Constructs `tff.templates.IterativeProcess` for Federated Averaging or SGD.
 
@@ -589,7 +588,6 @@ def build_model_delta_optimizer_process(
     server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
       `apply_gradients` method of this optimizer is used to apply client updates
       to the server model.
-    weighted_aggregation: Whether to use weighted aggregation.
     broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`.
@@ -639,27 +637,30 @@ def build_model_delta_optimizer_process(
     if model_update_aggregation_factory is None:
       model_update_aggregation_factory = mean_factory.MeanFactory()
 
-    if weighted_aggregation:
-      if not isinstance(model_update_aggregation_factory,
-                        factory.WeightedAggregationFactory):
-        raise TypeError(
-            f'Weighted aggregation is requested, but '
-            f'`model_update_aggregation_factory` is of type '
-            f'{type(model_update_aggregation_factory)} which is not an '
-            f'instance of `tff.aggregators.WeightedAggregationFactory`.')
-      aggregation_process = model_update_aggregation_factory.create_weighted(
+    py_typecheck.check_type(model_update_aggregation_factory,
+                            factory.AggregationFactory.__args__)
+
+    if isinstance(model_update_aggregation_factory,
+                  factory.WeightedAggregationFactory):
+      aggregation_process = model_update_aggregation_factory.create(
           model_weights_type.trainable,
           computation_types.TensorType(tf.float32))
+      weighted_aggregation = True
     else:
-      if not isinstance(model_update_aggregation_factory,
-                        factory.UnweightedAggregationFactory):
-        raise TypeError(
-            f'Unweighted aggregation is requested, but '
-            f'`model_update_aggregation_factory` is of type '
-            f'{type(model_update_aggregation_factory)} which is not an '
-            f'instance of `tff.aggregators.UnweightedAggregationFactory`.')
-      aggregation_process = model_update_aggregation_factory.create_unweighted(
+      aggregation_process = model_update_aggregation_factory.create(
           model_weights_type.trainable)
+      weighted_aggregation = False
+  else:
+    next_num_args = len(aggregation_process.next.type_signature.parameter)
+    if next_num_args == 2:
+      weighted_aggregation = False
+    elif next_num_args == 3:
+      weighted_aggregation = True
+    else:
+      raise ValueError(
+          f'`next` function of `aggregation_process` must take two (for '
+          f'unweighted aggregation) or three (for weighted aggregation) '
+          f'arguments. Found {next_num_args}.')
 
   if not _is_valid_aggregation_process(aggregation_process):
     raise ProcessTypeError(

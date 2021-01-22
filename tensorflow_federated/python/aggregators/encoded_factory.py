@@ -72,8 +72,8 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
     number of elements are often more sensitive to inaccuracy, and can provide
     only relatively small gain in terms of compression.
 
-    The `encoder_fn` will be used during the call to `create_unweighted` of the
-    factory, and applied based on the provided `value_type`.
+    The `encoder_fn` will be used during the call to `create` of the factory,
+    and applied based on the provided `value_type`.
 
     Args:
       encoder_fn: A one-arg callable, mapping a `tf.TensorSpec`, to a
@@ -86,10 +86,10 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
   def quantize_above_threshold(cls, quantization_bits=8, threshold=20000):
     """Quantization of values with at least `threshold` elements.
 
-    Given a `value_type` in the `create_unweighted` method, this classmethod
-    configures the `EncodedSumFactory` to apply uniform quantization to all
-    instances of `tff.TensorType` in the `value_type` which have more than
-    `threshold` elements.
+    Given a `value_type` in the `create` method, this classmethod configures the
+    `EncodedSumFactory` to apply uniform quantization to all instances of
+    `tff.TensorType` in the `value_type` which have more than `threshold`
+    elements.
 
     Precisely, for each tensor `t`, this operation corresponds to
     `t = round((t - min(t)) / (max(t) - min(t)) * (2**quantizaton_bits - 1))`.
@@ -116,7 +116,7 @@ class EncodedSumFactory(factory.UnweightedAggregationFactory):
 
     return cls(encoder_fn)
 
-  def create_unweighted(
+  def create(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
     py_typecheck.check_type(value_type, factory.ValueType.__args__)

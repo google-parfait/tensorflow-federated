@@ -28,7 +28,7 @@ MEASUREMENT_CONSTANT = 42
 
 
 class SumPlusOneFactory(factory.UnweightedAggregationFactory):
-  """`NonWeightedAggregationFactory` for "sum + 1".
+  """`UnweightedAggregationFactory` for "sum + 1".
 
   The created `tff.templates.AggregationProcess` will sum the values placed at
   `CLIENTS`, and add `1` to the sum. In the case of value of structured type,
@@ -43,7 +43,7 @@ class SumPlusOneFactory(factory.UnweightedAggregationFactory):
   outer aggregation factory.
   """
 
-  def create_unweighted(
+  def create(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
 

@@ -201,7 +201,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
           self._update_state = _create_update_state_two_processes(
               upper_bound_threshold, lower_bound_threshold)
 
-  def create_unweighted(
+  def create(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
     self._check_value_type_compatible_with_config_mode(value_type)

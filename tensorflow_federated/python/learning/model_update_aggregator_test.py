@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.learning import model_update_aggregator
 
 
-_test_type = computation_types.TensorType(tf.float32)
+_float_type = computation_types.TensorType(tf.float32)
 
 
 class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
@@ -38,12 +38,9 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     factory_ = model_update_aggregator.robust_aggregator(zeroing, clipping)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create_weighted(_test_type, _test_type)
+    process = factory_.create(_float_type, _float_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
-
-    self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    process = factory_.create_unweighted(_test_type)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertLen(process.next.type_signature.parameter, 3)
 
   @parameterized.named_parameters(
       ('simple', False),
@@ -54,8 +51,9 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
         noise_multiplier=1.0, clients_per_round=10, zeroing=zeroing)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    process = factory_.create_unweighted(_test_type)
+    process = factory_.create(_float_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertLen(process.next.type_signature.parameter, 2)
 
   @parameterized.named_parameters(
       ('simple', False, False),
@@ -67,12 +65,9 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     factory_ = model_update_aggregator.secure_aggregator(zeroing, clipping)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create_weighted(_test_type, _test_type)
+    process = factory_.create(_float_type, _float_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
-
-    self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    process = factory_.create_unweighted(_test_type)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertLen(process.next.type_signature.parameter, 3)
 
   @parameterized.named_parameters(
       ('simple', False, False),
@@ -84,12 +79,9 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     factory_ = model_update_aggregator.compression_aggregator(zeroing, clipping)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
-    process = factory_.create_weighted(_test_type, _test_type)
+    process = factory_.create(_float_type, _float_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
-
-    self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
-    process = factory_.create_unweighted(_test_type)
-    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertLen(process.next.type_signature.parameter, 3)
 
 
 if __name__ == '__main__':

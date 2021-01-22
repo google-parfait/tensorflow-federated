@@ -18,25 +18,26 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
-        ":clipping_factory",
         ":dp_factory",
         ":encoded_factory",
         ":factory",
         ":mean_factory",
         ":quantile_estimation",
+        ":robust_factory",
         ":secure_factory",
         ":sum_factory",
     ],
 )
 
 py_library(
-    name = "clipping_factory",
-    srcs = ["clipping_factory.py"],
+    name = "robust_factory",
+    srcs = ["robust_factory.py"],
     srcs_version = "PY3",
     deps = [
         ":factory",
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -49,13 +50,13 @@ py_library(
 )
 
 py_test(
-    name = "clipping_factory_test",
-    srcs = ["clipping_factory_test.py"],
+    name = "robust_factory_test",
+    srcs = ["robust_factory_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":clipping_factory",
         ":mean_factory",
+        ":robust_factory",
         ":sum_factory",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -170,7 +171,7 @@ py_library(
 
 py_test(
     name = "mean_factory_test",
-    size = "small",
+    size = "medium",
     srcs = ["mean_factory_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -239,7 +240,7 @@ py_library(
 
 py_test(
     name = "secure_factory_test",
-    size = "small",
+    size = "medium",
     srcs = ["secure_factory_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

@@ -14,21 +14,20 @@
 """Generic aggregator for model updates in federated averaging."""
 
 import math
-from typing import Union
 
-from tensorflow_federated.python.aggregators import clipping_factory
 from tensorflow_federated.python.aggregators import dp_factory
 from tensorflow_federated.python.aggregators import encoded_factory
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean_factory
 from tensorflow_federated.python.aggregators import quantile_estimation
+from tensorflow_federated.python.aggregators import robust_factory
 from tensorflow_federated.python.aggregators import secure_factory
 
-_AggregationFactory = Union[factory.UnweightedAggregationFactory,
-                            factory.WeightedAggregationFactory]
 
+def _default_zeroing(
+    inner_factory: factory.AggregationFactory) -> factory.AggregationFactory:
+  """The default adaptive zeroing wrapper."""
 
-def _default_zeroing(inner_factory: _AggregationFactory) -> _AggregationFactory:
   # Adapts very quickly to a value somewhat higher than the highest values so
   # far seen.
   zeroing_norm = quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
@@ -37,27 +36,30 @@ def _default_zeroing(inner_factory: _AggregationFactory) -> _AggregationFactory:
       learning_rate=math.log(10.0),
       multiplier=2.0,
       increment=1.0)
-  return clipping_factory.ZeroingFactory(zeroing_norm, inner_factory)
+  return robust_factory.zeroing_factory(zeroing_norm, inner_factory)
 
 
 def _default_clipping(
-    inner_factory: _AggregationFactory) -> _AggregationFactory:
+    inner_factory: factory.AggregationFactory) -> factory.AggregationFactory:
+  """The default adaptive clipping wrapper."""
+
   # Adapts relatively quickly to a moderately high norm.
   clipping_norm = quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
       initial_estimate=1.0, target_quantile=0.8, learning_rate=0.2)
-  return clipping_factory.ClippingFactory(clipping_norm, inner_factory)
+  return robust_factory.clipping_factory(clipping_norm, inner_factory)
 
 
-def robust_aggregator(zeroing: bool = True,
-                      clipping: bool = True) -> _AggregationFactory:
+def robust_aggregator(
+    zeroing: bool = True,
+    clipping: bool = True) -> factory.WeightedAggregationFactory:
   """Creates aggregator for mean with adaptive zeroing and clipping.
 
   Zeroes out extremely large values for robustness to data corruption on
   clients, and clips to moderately high norm for robustness to outliers.
 
-  For details on clipping and zeroing see `tff.aggregators.ClippingFactory` and
-  `tff.aggregators.ZeroingFactory`. For details on the quantile-based adaptive
-  algorithm see `tff.aggregators.PrivateQuantileEstimationProcess`.
+  For details on clipping and zeroing see `tff.aggregators.clipping_factory`
+  and `tff.aggregators.zeroing_factory`. For details on the quantile-based
+  adaptive algorithm see `tff.aggregators.PrivateQuantileEstimationProcess`.
 
   Args:
     zeroing: Whether to enable adaptive zeroing.
@@ -99,7 +101,7 @@ def dp_aggregator(noise_multiplier: float,
     zeroing: Whether to enable adaptive zeroing.
 
   Returns:
-    A `tff.aggregators.WeightedAggregationFactory`.
+    A `tff.aggregators.UnweightedAggregationFactory`.
   """
 
   factory_ = dp_factory.DifferentiallyPrivateFactory.gaussian_adaptive(
@@ -111,8 +113,9 @@ def dp_aggregator(noise_multiplier: float,
   return factory_
 
 
-def compression_aggregator(zeroing: bool = True,
-                           clipping: bool = True) -> _AggregationFactory:
+def compression_aggregator(
+    zeroing: bool = True,
+    clipping: bool = True) -> factory.WeightedAggregationFactory:
   """Creates aggregator with compression and adaptive zeroing and clipping.
 
   Zeroes out extremely large values for robustness to data corruption on
@@ -144,8 +147,9 @@ def compression_aggregator(zeroing: bool = True,
   return factory_
 
 
-def secure_aggregator(zeroing: bool = True,
-                      clipping: bool = True) -> _AggregationFactory:
+def secure_aggregator(
+    zeroing: bool = True,
+    clipping: bool = True) -> factory.WeightedAggregationFactory:
   """Creates secure aggregator with adaptive zeroing and clipping.
 
   Zeroes out extremely large values for robustness to data corruption on

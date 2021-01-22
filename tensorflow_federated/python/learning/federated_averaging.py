@@ -252,7 +252,6 @@ def build_federated_averaging_process(
       model_fn,
       model_to_client_delta_fn=client_fed_avg,
       server_optimizer_fn=server_optimizer_fn,
-      weighted_aggregation=(client_weighting is not ClientWeighting.UNIFORM),
       broadcast_process=broadcast_process,
       aggregation_process=aggregation_process,
       model_update_aggregation_factory=model_update_aggregation_factory)

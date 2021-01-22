@@ -56,7 +56,7 @@ py_library(
 
 py_cpu_gpu_test(
     name = "federated_averaging_test",
-    size = "medium",
+    size = "large",
     srcs = ["federated_averaging_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -225,12 +225,12 @@ py_library(
     srcs = ["model_update_aggregator.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/aggregators:clipping_factory",
         "//tensorflow_federated/python/aggregators:dp_factory",
         "//tensorflow_federated/python/aggregators:encoded_factory",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean_factory",
         "//tensorflow_federated/python/aggregators:quantile_estimation",
+        "//tensorflow_federated/python/aggregators:robust_factory",
         "//tensorflow_federated/python/aggregators:secure_factory",
     ],
 )

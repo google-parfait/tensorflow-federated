@@ -153,17 +153,10 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
 class FederatedAveragingModelTffTest(test_case.TestCase,
                                      parameterized.TestCase):
 
-  def _run_test(self,
-                process,
-                *,
-                datasets,
-                expected_num_examples,
-                weighted=True):
+  def _run_test(self, process, *, datasets, expected_num_examples):
     state = process.initialize()
     prev_loss = np.inf
-    aggregation_metrics = collections.OrderedDict(mean_value=())
-    if weighted:
-      aggregation_metrics['mean_weight'] = ()
+    aggregation_metrics = collections.OrderedDict(mean_value=(), mean_weight=())
     for _ in range(3):
       state, metric_outputs = process.next(state, datasets)
       self.assertEqual(
@@ -194,14 +187,11 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
             y=[[5.0], [6.0]],
         )).batch(2)
 
-    weighted = client_weighting is not federated_averaging.ClientWeighting.UNIFORM
-
     num_clients = 3
     self._run_test(
         iterative_process,
         datasets=[ds] * num_clients,
-        expected_num_examples=2 * num_clients,
-        weighted=weighted)
+        expected_num_examples=2 * num_clients)
 
   @parameterized.named_parameters([
       ('functional_model',

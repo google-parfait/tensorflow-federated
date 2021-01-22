@@ -48,7 +48,7 @@ class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
         _test_dp_query, inner_agg_factory)
     self.assertIsInstance(agg_factory, factory.UnweightedAggregationFactory)
     value_type = computation_types.to_type(value_type)
-    process = agg_factory.create_unweighted(value_type)
+    process = agg_factory.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     query_state = _test_dp_query.initial_global_state()
@@ -99,7 +99,7 @@ class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
   def test_incorrect_value_type_raises(self, bad_value_type):
     agg_factory = dp_factory.DifferentiallyPrivateFactory(_test_dp_query)
     with self.assertRaises(TypeError):
-      agg_factory.create_unweighted(bad_value_type)
+      agg_factory.create(bad_value_type)
 
 
 class DPFactoryExecutionTest(test_case.TestCase):
@@ -107,7 +107,7 @@ class DPFactoryExecutionTest(test_case.TestCase):
   def test_simple_sum(self):
     agg_factory = dp_factory.DifferentiallyPrivateFactory(_test_dp_query)
     value_type = computation_types.to_type(tf.float32)
-    process = agg_factory.create_unweighted(value_type)
+    process = agg_factory.create(value_type)
 
     # The test query has clip 1.0 and no noise, so this computes clipped sum.
 
@@ -120,7 +120,7 @@ class DPFactoryExecutionTest(test_case.TestCase):
   def test_structure_sum(self):
     agg_factory = dp_factory.DifferentiallyPrivateFactory(_test_dp_query)
     value_type = computation_types.to_type([tf.float32, tf.float32])
-    process = agg_factory.create_unweighted(value_type)
+    process = agg_factory.create(value_type)
 
     # The test query has clip 1.0 and no noise, so this computes clipped sum.
 
@@ -143,7 +143,7 @@ class DPFactoryExecutionTest(test_case.TestCase):
     agg_factory = dp_factory.DifferentiallyPrivateFactory(
         _test_dp_query, _test_inner_agg_factory)
     value_type = computation_types.to_type(tf.float32)
-    process = agg_factory.create_unweighted(value_type)
+    process = agg_factory.create(value_type)
 
     # The test query has clip 1.0 and no noise, so this computes clipped sum.
     # Inner agg adds another 1.0 (post-clipping).
@@ -169,7 +169,7 @@ class DPFactoryExecutionTest(test_case.TestCase):
         geometric_update=False)
     agg_factory = dp_factory.DifferentiallyPrivateFactory(query)
     value_type = computation_types.to_type(tf.float32)
-    process = agg_factory.create_unweighted(value_type)
+    process = agg_factory.create(value_type)
 
     state = process.initialize()
 

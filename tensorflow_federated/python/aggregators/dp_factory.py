@@ -41,7 +41,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
   DPQuery, formal (epsilon, delta) privacy guarantees can be derived. This
   aggregation is controlled by `record_aggregation_factory`.
 
-  A simple summation (using the default `tff.templates.SumFactory`) is usually
+  A simple summation (using the default `tff.aggregators.SumFactory`) is usually
   acceptable. Aggregations that change the records (such as compression or
   secure aggregation) may be allowed so long as they do not increase the
   sensitivity of the query. It is the users' responsibility to ensure that the
@@ -54,13 +54,15 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
   """
 
   @classmethod
-  def gaussian_adaptive(cls,
-                        noise_multiplier: float,
-                        clients_per_round: float,
-                        initial_l2_norm_clip: float = 0.1,
-                        target_unclipped_quantile: float = 0.5,
-                        learning_rate: float = 0.2,
-                        clipped_count_stddev: Optional[float] = None):
+  def gaussian_adaptive(
+      cls,
+      noise_multiplier: float,
+      clients_per_round: float,
+      initial_l2_norm_clip: float = 0.1,
+      target_unclipped_quantile: float = 0.5,
+      learning_rate: float = 0.2,
+      clipped_count_stddev: Optional[float] = None
+  ) -> factory.UnweightedAggregationFactory:
     """`DifferentiallyPrivateFactory` with adaptive clipping and Gaussian noise.
 
     Performs adaptive clipping and addition of Gaussian noise for differentially
@@ -134,11 +136,11 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     Args:
       query: A `tfp.SumAggregationDPQuery` to perform private estimation.
       record_aggregation_factory: A
-        `tff.aggregators.UnweightedAggregationFactory` to aggregate values
-        after preprocessing by the `query`. If `None`, defaults to
+        `tff.aggregators.UnweightedAggregationFactory` to aggregate values after
+        preprocessing by the `query`. If `None`, defaults to
         `tff.aggregators.SumFactory`. The provided factory is assumed to
-        implement a sum, and to have the property that it does not increase
-        the sensitivity of the query - typically this means that it should not
+        implement a sum, and to have the property that it does not increase the
+        sensitivity of the query - typically this means that it should not
         increase the l2 norm of the records when aggregating.
 
     Raises:
@@ -156,7 +158,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
                             factory.UnweightedAggregationFactory)
     self._record_aggregation_factory = record_aggregation_factory
 
-  def create_unweighted(
+  def create(
       self,
       value_type: factory.ValueType) -> aggregation_process.AggregationProcess:
     py_typecheck.check_type(value_type, factory.ValueType.__args__)
@@ -176,7 +178,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     derive_metrics = computations.tf_computation(self._query.derive_metrics,
                                                  query_state_type)
 
-    record_agg_process = self._record_aggregation_factory.create_unweighted(
+    record_agg_process = self._record_aggregation_factory.create(
         query_record_type)
 
     @computations.federated_computation()

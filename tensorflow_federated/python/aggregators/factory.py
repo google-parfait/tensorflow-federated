@@ -16,6 +16,7 @@
 import abc
 from typing import Union
 
+
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 
@@ -26,8 +27,8 @@ class UnweightedAggregationFactory(abc.ABC):
   """Factory for creating `tff.templates.AggregationProcess` without weights."""
 
   @abc.abstractmethod
-  def create_unweighted(
-      self, value_type: ValueType) -> aggregation_process.AggregationProcess:
+  def create(self,
+             value_type: ValueType) -> aggregation_process.AggregationProcess:
     """Creates a `tff.aggregators.AggregationProcess` without weights.
 
     The provided `value_type` is a non-federated `tff.Type` object, that is,
@@ -52,9 +53,8 @@ class WeightedAggregationFactory(abc.ABC):
   """Factory for creating `tff.templates.AggregationProcess` with weights."""
 
   @abc.abstractmethod
-  def create_weighted(
-      self, value_type: ValueType,
-      weight_type: ValueType) -> aggregation_process.AggregationProcess:
+  def create(self, value_type: ValueType,
+             weight_type: ValueType) -> aggregation_process.AggregationProcess:
     """Creates a `tff.aggregators.AggregationProcess` with weights.
 
     The provided `value_type` and `weight_type` are non-federated `tff.Type`
@@ -76,3 +76,7 @@ class WeightedAggregationFactory(abc.ABC):
     Returns:
       A `tff.templates.AggregationProcess`.
     """
+
+
+AggregationFactory = Union[UnweightedAggregationFactory,
+                           WeightedAggregationFactory]

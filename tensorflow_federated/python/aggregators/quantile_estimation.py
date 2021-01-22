@@ -120,7 +120,7 @@ class PrivateQuantileEstimationProcess(estimation_process.EstimationProcess):
     get_noised_result = computations.tf_computation(
         quantile_estimator_query.get_noised_result, quantile_record_type,
         quantile_state_type)
-    quantile_agg_process = record_aggregation_factory.create_unweighted(
+    quantile_agg_process = record_aggregation_factory.create(
         quantile_record_type)
 
     # 2. Define federated_computations.

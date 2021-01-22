@@ -19,6 +19,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import mean_factory
+from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -181,17 +183,22 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
       ('unweighted', False),
   )
   def test_construction(self, weighted):
+    aggregation_factory = (
+        mean_factory.MeanFactory() if weighted else sum_factory.SumFactory())
+
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=tf.keras.optimizers.SGD,
-        weighted_aggregation=weighted)
+        model_update_aggregation_factory=aggregation_factory)
 
-    aggregate_state_dict = collections.OrderedDict(value_sum_process=())
-    aggregate_metrics_dict = collections.OrderedDict(mean_value=())
     if weighted:
-      aggregate_state_dict['weight_sum_process'] = ()
-      aggregate_metrics_dict['mean_weight'] = ()
+      aggregate_state = collections.OrderedDict(
+          value_sum_process=(), weight_sum_process=())
+      aggregate_metrics = collections.OrderedDict(mean_value=(), mean_weight=())
+    else:
+      aggregate_state = ()
+      aggregate_metrics = ()
 
     server_state_type = computation_types.FederatedType(
         optimizer_utils.ServerState(
@@ -202,7 +209,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
                 ],
                 non_trainable=[computation_types.TensorType(tf.float32)]),
             optimizer_state=[tf.int64],
-            delta_aggregate_state=aggregate_state_dict,
+            delta_aggregate_state=aggregate_state,
             model_broadcast_state=()), placements.SERVER)
 
     self.assertEqual(
@@ -221,7 +228,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
     metrics_type = computation_types.FederatedType(
         collections.OrderedDict(
             broadcast=(),
-            aggregation=aggregate_metrics_dict,
+            aggregation=aggregate_metrics,
             train=collections.OrderedDict(
                 loss=computation_types.TensorType(tf.float32),
                 num_examples=computation_types.TensorType(tf.int32)),

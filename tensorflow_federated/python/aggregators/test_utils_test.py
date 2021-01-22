@@ -35,7 +35,7 @@ class SumPlusOneFactoryComputationTest(test_case.TestCase,
     sum_f = aggregators_test_utils.SumPlusOneFactory()
     self.assertIsInstance(sum_f, factory.UnweightedAggregationFactory)
     value_type = computation_types.to_type(value_type)
-    process = sum_f.create_unweighted(value_type)
+    process = sum_f.create(value_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     param_value_type = computation_types.FederatedType(value_type,
@@ -69,7 +69,7 @@ class SumPlusOneFactoryComputationTest(test_case.TestCase,
   def test_incorrect_value_type_raises(self, bad_value_type):
     sum_f = aggregators_test_utils.SumPlusOneFactory()
     with self.assertRaises(TypeError):
-      sum_f.create_unweighted(bad_value_type)
+      sum_f.create(bad_value_type)
 
 
 class SumPlusOneFactoryExecutionTest(test_case.TestCase):
@@ -77,7 +77,7 @@ class SumPlusOneFactoryExecutionTest(test_case.TestCase):
   def test_sum_scalar(self):
     sum_f = aggregators_test_utils.SumPlusOneFactory()
     value_type = computation_types.to_type(tf.float32)
-    process = sum_f.create_unweighted(value_type)
+    process = sum_f.create(value_type)
 
     state = process.initialize()
     self.assertEqual(0, state)
@@ -91,7 +91,7 @@ class SumPlusOneFactoryExecutionTest(test_case.TestCase):
   def test_sum_structure(self):
     sum_f = aggregators_test_utils.SumPlusOneFactory()
     value_type = computation_types.to_type(((tf.float32, (2,)), tf.int32))
-    process = sum_f.create_unweighted(value_type)
+    process = sum_f.create(value_type)
 
     state = process.initialize()
     self.assertEqual(0, state)

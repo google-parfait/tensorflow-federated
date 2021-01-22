@@ -77,7 +77,7 @@ class EncodedSumFactoryComputationTest(test_case.TestCase,
     encoded_f = encoded_factory.EncodedSumFactory(encoder_fn)
     self.assertIsInstance(encoded_f, factory.UnweightedAggregationFactory)
 
-    process = encoded_f.create_unweighted(_test_struct_type)
+    process = encoded_f.create(_test_struct_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
 
     self.assertIsNone(process.initialize.type_signature.parameter)
@@ -124,7 +124,7 @@ class EncodedSumFactoryExecutionTest(test_case.TestCase):
 
   def test_simple_sum(self):
     encoded_f = encoded_factory.EncodedSumFactory(_identity_encoder_fn)
-    process = encoded_f.create_unweighted(computation_types.to_type(tf.float32))
+    process = encoded_f.create(computation_types.to_type(tf.float32))
 
     state = process.initialize()
 
@@ -137,7 +137,7 @@ class EncodedSumFactoryExecutionTest(test_case.TestCase):
 
   def test_structure_sum(self):
     encoded_f = encoded_factory.EncodedSumFactory(_identity_encoder_fn)
-    process = encoded_f.create_unweighted(
+    process = encoded_f.create(
         computation_types.to_type(((tf.float32, (2,)), tf.float32)))
 
     state = process.initialize()
@@ -158,7 +158,7 @@ class EncodedSumFactoryExecutionTest(test_case.TestCase):
         quantization_bits=1, threshold=0)
     test_type = computation_types.to_type([(tf.float32, (3,)),
                                            (tf.float32, (5,))])
-    process = encoded_f.create_unweighted(test_type)
+    process = encoded_f.create(test_type)
 
     single_client_data = [[[0.0, 1.0, 2.0], [1.0, 2.0, 3.0, 4.0, 5.0]]]
     state = process.initialize()
@@ -172,7 +172,7 @@ class EncodedSumFactoryExecutionTest(test_case.TestCase):
         quantization_bits=1, threshold=4)
     test_type = computation_types.to_type([(tf.float32, (3,)),
                                            (tf.float32, (5,))])
-    process = encoded_f.create_unweighted(test_type)
+    process = encoded_f.create(test_type)
 
     single_client_data = [[[0.0, 1.0, 2.0], [1.0, 2.0, 3.0, 4.0, 5.0]]]
     state = process.initialize()
@@ -185,7 +185,7 @@ class EncodedSumFactoryExecutionTest(test_case.TestCase):
   def test_quantize_above_threshold(self):
     encoded_f = encoded_factory.EncodedSumFactory.quantize_above_threshold(
         quantization_bits=4, threshold=0)
-    process = encoded_f.create_unweighted(
+    process = encoded_f.create(
         computation_types.to_type((tf.float32, (10000,))))
 
     # Creates random values in range [0., 15.] plus the bondaries exactly.
