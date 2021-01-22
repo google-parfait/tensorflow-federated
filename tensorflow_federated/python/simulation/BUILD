@@ -31,6 +31,7 @@ py_library(
         ":metrics_manager",
         ":sampling_utils",
         ":server_utils",
+        ":tensorboard_manager",
         ":transforming_client_data",
         "//tensorflow_federated/python/simulation/datasets",
         "//tensorflow_federated/python/simulation/models",

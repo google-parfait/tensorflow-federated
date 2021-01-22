@@ -27,4 +27,5 @@ from tensorflow_federated.python.simulation.metrics_manager import MetricsManage
 from tensorflow_federated.python.simulation.sampling_utils import build_uniform_client_sampling_fn
 from tensorflow_federated.python.simulation.server_utils import run_server
 from tensorflow_federated.python.simulation.server_utils import server_context
+from tensorflow_federated.python.simulation.tensorboard_manager import TensorBoardManager
 from tensorflow_federated.python.simulation.transforming_client_data import TransformingClientData
