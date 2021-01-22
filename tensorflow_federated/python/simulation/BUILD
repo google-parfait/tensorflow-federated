@@ -234,6 +234,21 @@ py_test(
 )
 
 py_library(
+    name = "tensorboard_manager",
+    srcs = ["tensorboard_manager.py"],
+    srcs_version = "PY3",
+    deps = [":metrics_manager"],
+)
+
+py_test(
+    name = "tensorboard_manager_test",
+    srcs = ["tensorboard_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":tensorboard_manager"],
+)
+
+py_library(
     name = "transforming_client_data",
     srcs = ["transforming_client_data.py"],
     srcs_version = "PY3",
