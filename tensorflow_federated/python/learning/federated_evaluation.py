@@ -47,10 +47,9 @@ def build_federated_evaluation(model_fn,
   # types needed to define the computations that follow.
   # TODO(b/124477628): Ideally replace the need for stamping throwaway models
   # with some other mechanism.
-  with tf.Graph().as_default():
-    model = model_fn()
-    model_weights_type = model_utils.weights_type_from_model(model)
-    batch_type = computation_types.to_type(model.input_spec)
+  model = model_fn()
+  model_weights_type = model_utils.weights_type_from_model(model)
+  batch_type = computation_types.to_type(model.input_spec)
 
   @computations.tf_computation(model_weights_type,
                                computation_types.SequenceType(batch_type))
