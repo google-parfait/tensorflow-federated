@@ -76,10 +76,9 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
 
     Args:
       noise_multiplier: A float specifying the noise multiplier for the Gaussian
-        mechanism for model updates. May be zero for non-private learning with
-        adaptive clipping. A value of 1.0 or higher may be needed for meaningful
-        privacy. See above mentioned papers to compute (epsilon, delta) privacy
-        guarantee.
+        mechanism for model updates. A value of 1.0 or higher may be needed for
+        strong privacy. See above mentioned papers to compute (epsilon, delta)
+        privacy guarantee.
       clients_per_round: A float specifying the expected number of clients per
         round. Must be positive.
       initial_l2_norm_clip: The initial value of the adaptive clipping norm.
@@ -98,7 +97,7 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     if isinstance(clients_per_round, int):
       clients_per_round = float(clients_per_round)
 
-    _check_float_nonnegative(noise_multiplier, 'noise_multiplier')
+    _check_float_positive(noise_multiplier, 'noise_multiplier')
     _check_float_positive(clients_per_round, 'clients_per_round')
     _check_float_positive(initial_l2_norm_clip, 'initial_l2_norm_clip')
     _check_float_probability(target_unclipped_quantile,
@@ -124,6 +123,42 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
         clipped_count_stddev=clipped_count_stddev,
         expected_num_records=clients_per_round,
         geometric_update=True)
+
+    return cls(query)
+
+  @classmethod
+  def gaussian_fixed(cls, noise_multiplier: float, clients_per_round: float,
+                     clip: float) -> factory.UnweightedAggregationFactory:
+    """`DifferentiallyPrivateFactory` with fixed clipping and Gaussian noise.
+
+    Performs fixed clipping and addition of Gaussian noise for differentially
+    private learning. For details of the DP algorithm see McMahan et. al (2017)
+    https://arxiv.org/abs/1710.06963.
+
+    Args:
+      noise_multiplier: A float specifying the noise multiplier for the Gaussian
+        mechanism for model updates. A value of 1.0 or higher may be needed for
+        strong privacy. See above mentioned paper to compute (epsilon, delta)
+        privacy guarantee.
+      clients_per_round: A float specifying the expected number of clients per
+        round. Must be positive.
+      clip: The value of the clipping norm.
+
+    Returns:
+      A `DifferentiallyPrivateFactory` with fixed clipping and Gaussian noise.
+    """
+
+    if isinstance(clients_per_round, int):
+      clients_per_round = float(clients_per_round)
+
+    _check_float_positive(noise_multiplier, 'noise_multiplier')
+    _check_float_positive(clients_per_round, 'clients_per_round')
+    _check_float_positive(clip, 'clip')
+
+    query = tfp.GaussianAverageQuery(
+        l2_norm_clip=clip,
+        sum_stddev=clip * noise_multiplier,
+        denominator=clients_per_round)
 
     return cls(query)
 

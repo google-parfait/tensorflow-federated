@@ -188,6 +188,11 @@ class DPFactoryExecutionTest(test_case.TestCase):
         noise_multiplier=1.0, clients_per_round=10)
     self.assertIsInstance(process, dp_factory.DifferentiallyPrivateFactory)
 
+  def test_gaussian_fixed_cls(self):
+    process = dp_factory.DifferentiallyPrivateFactory.gaussian_fixed(
+        noise_multiplier=1.0, clients_per_round=10, clip=1.0)
+    self.assertIsInstance(process, dp_factory.DifferentiallyPrivateFactory)
+
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()
