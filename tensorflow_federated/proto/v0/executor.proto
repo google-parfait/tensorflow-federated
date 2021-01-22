@@ -30,7 +30,7 @@ service Executor {
   rpc SetCardinalities(SetCardinalitiesRequest)
       returns (SetCardinalitiesResponse) {}
 
-  // Configures executor to handle specified cardinalities.
+  // Clears executor state, resetting executor service.
   rpc ClearExecutor(ClearExecutorRequest) returns (ClearExecutorResponse) {}
 
   // TODO(b/134543154): Given that there is no support for asynchronous server
