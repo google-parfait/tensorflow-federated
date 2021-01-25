@@ -296,7 +296,6 @@ def _build_one_round_computation(
                                        ClientDeltaFn],
     broadcast_process: measured_process.MeasuredProcess,
     aggregation_process: measured_process.MeasuredProcess,
-    weighted_aggregation: bool,
 ) -> computation_base.Computation:
   """Builds the `next` computation for a model delta averaging process.
 
@@ -316,7 +315,6 @@ def _build_one_round_computation(
       model to the clients.
     aggregation_process: a `tff.templates.MeasuredProcess` to aggregate client
       model deltas.
-    weighted_aggregation: Whether to use weighted aggregation.
 
   Returns:
     A `tff.Computation` that initializes the process. The computation takes
@@ -418,7 +416,7 @@ def _build_one_round_computation(
     client_outputs = intrinsics.federated_map(
         _compute_local_training_and_client_delta,
         (federated_dataset, broadcast_output.result))
-    if weighted_aggregation:
+    if len(aggregation_process.next.type_signature.parameter) == 3:
       aggregation_output = aggregation_process.next(
           server_state.delta_aggregate_state, client_outputs.weights_delta,
           client_outputs.weights_delta_weight)
@@ -645,18 +643,12 @@ def build_model_delta_optimizer_process(
       aggregation_process = model_update_aggregation_factory.create(
           model_weights_type.trainable,
           computation_types.TensorType(tf.float32))
-      weighted_aggregation = True
     else:
       aggregation_process = model_update_aggregation_factory.create(
           model_weights_type.trainable)
-      weighted_aggregation = False
   else:
     next_num_args = len(aggregation_process.next.type_signature.parameter)
-    if next_num_args == 2:
-      weighted_aggregation = False
-    elif next_num_args == 3:
-      weighted_aggregation = True
-    else:
+    if next_num_args not in [2, 3]:
       raise ValueError(
           f'`next` function of `aggregation_process` must take two (for '
           f'unweighted aggregation) or three (for weighted aggregation) '
@@ -679,8 +671,7 @@ def build_model_delta_optimizer_process(
       server_optimizer_fn=server_optimizer_fn,
       model_to_client_delta_fn=model_to_client_delta_fn,
       broadcast_process=broadcast_process,
-      aggregation_process=aggregation_process,
-      weighted_aggregation=weighted_aggregation)
+      aggregation_process=aggregation_process)
 
   return iterative_process.IterativeProcess(
       initialize_fn=initialize_computation, next_fn=run_one_round_computation)

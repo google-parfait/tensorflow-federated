@@ -227,10 +227,10 @@ def build_federated_averaging_process(
       signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
       `None` if `model_update_aggregation_factory` is not `None.`
     model_update_aggregation_factory: An optional
-      `tff.aggregators.WeightedAggregationFactory` that constructs
+      `tff.aggregators.WeightedAggregationFactory` or
+      `tff.aggregators.UnweightedAggregationFactory` that constructs
       `tff.templates.AggregationProcess` for aggregating the client model
-      updates on the server. If `None`, uses a default constructed
-      `tff.aggregators.MeanFactory`, creating a stateless mean aggregation. Must
+      updates on the server. If `None`, uses `tff.aggregators.MeanFactory`. Must
       be `None` if `aggregation_process` is not `None.`
     use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
@@ -241,7 +241,14 @@ def build_federated_averaging_process(
     A `tff.templates.IterativeProcess`.
   """
 
-  if not client_weighting:
+  if isinstance(model_update_aggregation_factory,
+                factory.UnweightedAggregationFactory):
+    if client_weighting is not None:
+      client_weighting = ClientWeighting.UNIFORM
+    elif client_weighting is not ClientWeighting.UNIFORM:
+      raise ValueError('Cannot use non-uniform client weighting with '
+                       'unweighted aggregation.')
+  elif not client_weighting:
     client_weighting = ClientWeighting.NUM_EXAMPLES
 
   def client_fed_avg(model_fn: Callable[[], model_lib.Model]) -> ClientFedAvg:
