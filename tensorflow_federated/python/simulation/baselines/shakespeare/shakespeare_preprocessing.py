@@ -14,15 +14,13 @@
 """Preprocessing library for Shakespeare next-character prediction tasks."""
 
 import collections
-from typing import Optional, Tuple
+from typing import Tuple
 
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.simulation import client_data
-from tensorflow_federated.python.simulation.datasets import shakespeare
 
 SEQUENCE_LENGTH = 80  # from McMahan et al AISTATS 2017
 # Vocabulary re-used from the Federated Learning for Text Generation tutorial.
@@ -148,103 +146,3 @@ def create_preprocess_fn(
         .map(_split_target, num_parallel_calls=num_parallel_calls))
 
   return preprocess_fn
-
-
-def get_federated_datasets(
-    train_client_batch_size: int = 4,
-    test_client_batch_size: int = 100,
-    train_client_epochs_per_round: int = 1,
-    test_client_epochs_per_round: int = 1,
-    train_shuffle_buffer_size: int = 50,
-    test_shuffle_buffer_size: int = 1,
-    sequence_length: int = SEQUENCE_LENGTH
-) -> Tuple[client_data.ClientData, client_data.ClientData]:
-  """Loads and preprocesses federated Shakespeare datasets.
-
-  Args:
-    train_client_batch_size: The batch size for all train clients.
-    test_client_batch_size: The batch size for all test clients.
-    train_client_epochs_per_round: The number of epochs each train client should
-      iterate over their local dataset, via `tf.data.Dataset.repeat`. Must be
-      set to a positive integer.
-    test_client_epochs_per_round: The number of epochs each test client should
-      iterate over their local dataset, via `tf.data.Dataset.repeat`. Must be
-      set to a positive integer.
-    train_shuffle_buffer_size: An integer representing the shuffle buffer size
-      (as in `tf.data.Dataset.shuffle`) for each train client's dataset. By
-      default, this is set to the largest dataset size among all clients. If set
-      to some integer less than or equal to 1, no shuffling occurs.
-    test_shuffle_buffer_size: An integer representing the shuffle buffer size
-      (as in `tf.data.Dataset.shuffle`) for each test client's dataset. If set
-      to some integer less than or equal to 1, no shuffling occurs.
-    sequence_length: The resulting length of input/output sequences in the
-      client datasets.
-
-  Returns:
-    A tuple (shakespeare_train, shakespeare_test) of `tff.simulation.ClientData`
-    instances representing the federated training and test datasets.
-  """
-  shakespeare_train, shakespeare_test = shakespeare.load_data()
-
-  train_preprocess_fn = create_preprocess_fn(
-      num_epochs=train_client_epochs_per_round,
-      batch_size=train_client_batch_size,
-      shuffle_buffer_size=train_shuffle_buffer_size,
-      sequence_length=sequence_length)
-
-  test_preprocess_fn = create_preprocess_fn(
-      num_epochs=test_client_epochs_per_round,
-      batch_size=test_client_batch_size,
-      shuffle_buffer_size=test_shuffle_buffer_size,
-      sequence_length=sequence_length)
-
-  shakespeare_train = shakespeare_train.preprocess(train_preprocess_fn)
-  shakespeare_test = shakespeare_test.preprocess(test_preprocess_fn)
-  return shakespeare_train, shakespeare_test
-
-
-def get_centralized_datasets(
-    train_batch_size: Optional[int] = 20,
-    test_batch_size: Optional[int] = 100,
-    train_shuffle_buffer_size: Optional[int] = 1000,
-    test_shuffle_buffer_size: Optional[int] = 1,
-    sequence_length: Optional[int] = SEQUENCE_LENGTH
-) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
-  """Loads and preprocesses centralized Shakespeare datasets.
-
-  Args:
-    train_batch_size: The batch size for the training dataset.
-    test_batch_size: The batch size for the test dataset.
-    train_shuffle_buffer_size: An integer specifying the buffer size used to
-      shuffle the train dataset via `tf.data.Dataset.shuffle`. If set to an
-      integer less than or equal to 1, no shuffling occurs.
-    test_shuffle_buffer_size: An integer specifying the buffer size used to
-      shuffle the test dataset via `tf.data.Dataset.shuffle`. If set to an
-      integer less than or equal to 1, no shuffling occurs.
-    sequence_length: The number of characters in the input and output sequence
-      of each example.
-
-  Returns:
-    A tuple (shakespeare_train, shakespeare_test) of `tf.data.Dataset` instances
-    representing the centralized training and test datasets.
-  """
-  shakespeare_train, shakespeare_test = shakespeare.load_data()
-
-  shakespeare_train = shakespeare_train.create_tf_dataset_from_all_clients()
-  shakespeare_test = shakespeare_test.create_tf_dataset_from_all_clients()
-
-  train_preprocess_fn = create_preprocess_fn(
-      num_epochs=1,
-      batch_size=train_batch_size,
-      shuffle_buffer_size=train_shuffle_buffer_size,
-      sequence_length=sequence_length)
-
-  test_preprocess_fn = create_preprocess_fn(
-      num_epochs=1,
-      batch_size=test_batch_size,
-      shuffle_buffer_size=test_shuffle_buffer_size,
-      sequence_length=sequence_length)
-
-  shakespeare_train = train_preprocess_fn(shakespeare_train)
-  shakespeare_test = test_preprocess_fn(shakespeare_test)
-  return shakespeare_train, shakespeare_test

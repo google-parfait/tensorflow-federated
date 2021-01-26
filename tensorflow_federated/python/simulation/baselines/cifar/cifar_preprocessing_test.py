@@ -13,14 +13,12 @@
 # limitations under the License.
 
 import collections
-from unittest import mock
 
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.simulation import client_data
-from tensorflow_federated.python.simulation.baselines.preprocessing import cifar100_prediction
+from tensorflow_federated.python.simulation.baselines.cifar import cifar_preprocessing
 
 
 TEST_DATA = collections.OrderedDict(
@@ -39,17 +37,17 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_preprocess_fn_with_negative_epochs_raises(self):
     with self.assertRaisesRegex(ValueError,
                                 'num_epochs must be a positive integer'):
-      cifar100_prediction.create_preprocess_fn(num_epochs=-2, batch_size=1)
+      cifar_preprocessing.create_preprocess_fn(num_epochs=-2, batch_size=1)
 
   def test_raises_non_iterable_crop(self):
     with self.assertRaisesRegex(TypeError, 'crop_shape must be an iterable'):
-      cifar100_prediction.create_preprocess_fn(
+      cifar_preprocessing.create_preprocess_fn(
           num_epochs=1, batch_size=1, crop_shape=32)
 
   def test_raises_iterable_length_2_crop(self):
     with self.assertRaisesRegex(ValueError,
                                 'The crop_shape must have length 3'):
-      cifar100_prediction.create_preprocess_fn(
+      cifar_preprocessing.create_preprocess_fn(
           num_epochs=1, batch_size=1, crop_shape=(32, 32))
 
   @parameterized.named_parameters(
@@ -63,7 +61,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_ds_length_is_ceil_num_epochs_over_batch_size(self, num_epochs,
                                                         batch_size):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
-    preprocess_fn = cifar100_prediction.create_preprocess_fn(
+    preprocess_fn = cifar_preprocessing.create_preprocess_fn(
         num_epochs=num_epochs, batch_size=batch_size, shuffle_buffer_size=1)
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(
@@ -81,7 +79,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_preprocess_fn_returns_correct_element(self, crop_shape,
                                                  distort_image):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
-    preprocess_fn = cifar100_prediction.create_preprocess_fn(
+    preprocess_fn = cifar_preprocessing.create_preprocess_fn(
         num_epochs=1,
         batch_size=1,
         shuffle_buffer_size=1,
@@ -106,72 +104,12 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.constant([[[1.0, -1.0, 0.0]]])  # Has shape (1, 1, 3), mean 0
     x = x / tf.math.reduce_std(x)  # x now has variance 1
     simple_example = collections.OrderedDict(image=x, label=0)
-    image_map = cifar100_prediction.build_image_map(crop_shape, distort=False)
+    image_map = cifar_preprocessing.build_image_map(crop_shape, distort=False)
     cropped_example = image_map(simple_example)
 
     self.assertEqual(cropped_example[0].shape, crop_shape)
     self.assertAllClose(x, cropped_example[0], rtol=1e-03)
     self.assertEqual(cropped_example[1], 0)
-
-
-CIFAR100_LOAD_DATA = 'tensorflow_federated.python.simulation.datasets.cifar100.load_data'
-
-
-class FederatedDatasetTest(tf.test.TestCase):
-
-  @mock.patch(CIFAR100_LOAD_DATA)
-  def test_preprocess_applied(self, mock_load_data):
-    # Mock out the actual data loading from disk. Assert that the preprocessing
-    # function is applied to the client data, and that only the ClientData
-    # objects we desired are used.
-    #
-    # The correctness of the preprocessing function is tested in other tests.
-    mock_train = mock.create_autospec(client_data.ClientData)
-    mock_test = mock.create_autospec(client_data.ClientData)
-    mock_load_data.return_value = (mock_train, mock_test)
-
-    _, _ = cifar100_prediction.get_federated_datasets()
-
-    mock_load_data.assert_called_once()
-
-    # Assert the training and testing data are preprocessed.
-    self.assertEqual(mock_train.mock_calls,
-                     mock.call.preprocess(mock.ANY).call_list())
-    self.assertEqual(mock_test.mock_calls,
-                     mock.call.preprocess(mock.ANY).call_list())
-
-
-class CentralizedDatasetTest(tf.test.TestCase):
-
-  @mock.patch(CIFAR100_LOAD_DATA)
-  def test_preprocess_applied(self, mock_load_data):
-    # Mock out the actual data loading from disk. Assert that the preprocessing
-    # function is applied to the client data, and that only the ClientData
-    # objects we desired are used.
-    #
-    # The correctness of the preprocessing function is tested in other tests.
-    sample_ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
-
-    mock_train = mock.create_autospec(client_data.ClientData)
-    mock_train.create_tf_dataset_from_all_clients = mock.Mock(
-        return_value=sample_ds)
-
-    mock_test = mock.create_autospec(client_data.ClientData)
-    mock_test.create_tf_dataset_from_all_clients = mock.Mock(
-        return_value=sample_ds)
-
-    mock_load_data.return_value = (mock_train, mock_test)
-
-    _, _ = cifar100_prediction.get_centralized_datasets()
-
-    mock_load_data.assert_called_once()
-
-    # Assert the validation ClientData isn't used, and the train and test
-    # are amalgamated into datasets single datasets over all clients.
-    self.assertEqual(mock_train.mock_calls,
-                     mock.call.create_tf_dataset_from_all_clients().call_list())
-    self.assertEqual(mock_test.mock_calls,
-                     mock.call.create_tf_dataset_from_all_clients().call_list())
 
 
 if __name__ == '__main__':
