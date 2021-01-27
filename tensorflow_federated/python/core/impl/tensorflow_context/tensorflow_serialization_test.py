@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import itertools
 
 import numpy as np
 import tensorflow as tf
@@ -146,41 +145,6 @@ class TensorFlowSerializationTest(test_case.TestCase):
                     tf.data.experimental.to_variant(parameter)
             }, [comp.tensorflow.result.tensor.tensor_name]))
     self.assertEqual(results, [10])
-
-  @test_utils.graph_mode_test
-  def test_serialize_tensorflow_with_tf_function_no_grappler(self):
-
-    @tf.function
-    def test_add_one(x):
-      return x + 1
-
-    def _tf_function_call(a):
-      return test_add_one(a)
-
-    comp, extra_type_spec = _tf_computation_serializer(
-        _tf_function_call, computation_types.TensorType(tf.int64),
-        context_stack_impl.context_stack)
-    self.assertEqual(
-        str(type_serialization.deserialize_type(comp.type)), '(int64 -> int64)')
-    self.assertEqual(str(extra_type_spec), '(int64 -> int64)')
-    self.assertEqual(comp.WhichOneof('computation'), 'tensorflow')
-
-    # Assert the call has been configured to _not_ use grappler.
-    graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
-    all_node_defs = itertools.chain(
-        graph_def.node, *[f.node_def for f in graph_def.library.function])
-    call_node_defs = [
-        node_def for node_def in all_node_defs
-        if node_def.op.endswith('PartitionedCall')
-    ]
-    self.assertLen(call_node_defs, 1)
-    self.assertIn('config_proto', call_node_defs[0].attr)
-    config_proto = tf.compat.v1.ConfigProto.FromString(
-        call_node_defs[0].attr['config_proto'].s)
-    # Only test the fields we explicitly set.
-    self.assertTrue(config_proto.allow_soft_placement)
-    self.assertProtoEquals('rewrite_options { disable_meta_optimizer: true }',
-                           config_proto.graph_options)
 
 
 if __name__ == '__main__':

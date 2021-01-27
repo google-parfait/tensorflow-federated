@@ -13,7 +13,6 @@
 # limitations under the License.
 """Utilities for serializing TensorFlow computations."""
 
-import contextlib
 from typing import Optional
 
 import tensorflow as tf
@@ -27,17 +26,6 @@ from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.tensorflow_libs import variable_utils
-
-
-@contextlib.contextmanager
-def _disable_grappler():
-  """Enter a context which disables grappler on tf.function calls."""
-  tf_experimental_options = tf.config.optimizer.get_experimental_options()
-  tf.config.optimizer.set_experimental_options({'disable_meta_optimizer': True})
-  try:
-    yield
-  finally:
-    tf.config.optimizer.set_experimental_options(tf_experimental_options)
 
 
 def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
@@ -75,51 +63,45 @@ def tf_computation_serializer(parameter_type: Optional[computation_types.Type],
   if parameter_type is not None:
     py_typecheck.check_type(parameter_type, computation_types.Type)
 
-  # Explicitly turn turn off grappler.
-  # The cost of grappler is almost never worth it for the shortlived graphs in
-  # TensorFlow computations. Store the previous values so the can be restored
-  # once were done tracing and we can return the global config to the previous
-  # state.
-  with _disable_grappler():
-    with tf.Graph().as_default() as graph:
-      if parameter_type is not None:
-        parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
-            'arg', parameter_type, graph)
-      else:
-        parameter_value = None
-        parameter_binding = None
-      context = tensorflow_computation_context.TensorFlowComputationContext(
-          graph)
-      with context_stack.install(context):
-        with variable_utils.record_variable_creation_scope() as all_variables:
-          result = yield parameter_value
-        initializer_ops = []
-        if all_variables:
-          # Use a readable but not-too-long name for the init_op.
-          name = 'init_op_for_' + '_'.join(
-              [v.name.replace(':0', '') for v in all_variables])
-          if len(name) > 50:
-            name = 'init_op_for_{}_variables'.format(len(all_variables))
-          initializer_ops.append(
-              tf.compat.v1.initializers.variables(all_variables, name=name))
-        initializer_ops.extend(
-            tf.compat.v1.get_collection(
-                tf.compat.v1.GraphKeys.TABLE_INITIALIZERS))
-        if initializer_ops:
-          # Before running the main new init op, run any initializers for sub-
-          # computations from context.init_ops. Variables from import_graph_def
-          # will not make it into the global collections, and so will not be
-          # initialized without this code path.
-          with tf.compat.v1.control_dependencies(context.init_ops):
-            init_op_name = tf.group(
-                *initializer_ops, name='grouped_initializers').name
-        elif context.init_ops:
+  with tf.Graph().as_default() as graph:
+    if parameter_type is not None:
+      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
+          'arg', parameter_type, graph)
+    else:
+      parameter_value = None
+      parameter_binding = None
+    context = tensorflow_computation_context.TensorFlowComputationContext(graph)
+    with context_stack.install(context):
+      with variable_utils.record_variable_creation_scope() as all_variables:
+        result = yield parameter_value
+      initializer_ops = []
+      if all_variables:
+        # Use a readable but not-too-long name for the init_op.
+        name = 'init_op_for_' + '_'.join(
+            [v.name.replace(':0', '') for v in all_variables])
+        if len(name) > 50:
+          name = 'init_op_for_{}_variables'.format(len(all_variables))
+        initializer_ops.append(
+            tf.compat.v1.initializers.variables(all_variables, name=name))
+      initializer_ops.extend(
+          tf.compat.v1.get_collection(
+              tf.compat.v1.GraphKeys.TABLE_INITIALIZERS))
+      if initializer_ops:
+        # Before running the main new init op, run any initializers for sub-
+        # computations from context.init_ops. Variables from import_graph_def
+        # will not make it into the global collections, and so will not be
+        # initialized without this code path.
+        with tf.compat.v1.control_dependencies(context.init_ops):
           init_op_name = tf.group(
-              *context.init_ops, name='subcomputation_init_ops').name
-        else:
-          init_op_name = None
-      result_type, result_binding = tensorflow_utils.capture_result_from_graph(
-          result, graph)
+              *initializer_ops, name='grouped_initializers').name
+      elif context.init_ops:
+        init_op_name = tf.group(
+            *context.init_ops, name='subcomputation_init_ops').name
+      else:
+        init_op_name = None
+
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        result, graph)
 
   type_signature = computation_types.FunctionType(parameter_type, result_type)
 

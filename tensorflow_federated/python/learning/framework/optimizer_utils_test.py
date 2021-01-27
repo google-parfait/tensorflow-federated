@@ -70,16 +70,9 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
         ]))
 
 
-def get_add_one_comp():
-  # Must not be evaluated until after main() has called and TensorFlow has a
-  # chance to register all platforms. This doesn't happen until later in
-  # unittests.
-
-  @computations.tf_computation(tf.int32)
-  def _add_one(x):
-    return x + 1
-
-  return _add_one
+@computations.tf_computation(tf.int32)
+def _add_one(x):
+  return x + 1
 
 
 def _build_test_measured_broadcast(
@@ -96,7 +89,7 @@ def _build_test_measured_broadcast(
       computation_types.FederatedType(model_weights_type, placements.SERVER))
   def next_comp(state, value):
     return measured_process.MeasuredProcessOutput(
-        state=intrinsics.federated_map(get_add_one_comp(), state),
+        state=intrinsics.federated_map(_add_one, state),
         result=intrinsics.federated_broadcast(value),
         # Arbitrary metrics for testing.
         measurements=intrinsics.federated_map(
@@ -123,7 +116,7 @@ def _build_test_measured_mean(
       computation_types.FederatedType(tf.float32, placements.CLIENTS))
   def next_comp(state, value, weight):
     return measured_process.MeasuredProcessOutput(
-        state=intrinsics.federated_map(get_add_one_comp(), state),
+        state=intrinsics.federated_map(_add_one, state),
         result=intrinsics.federated_mean(value, weight),
         measurements=intrinsics.federated_zip(
             collections.OrderedDict(
