@@ -166,25 +166,25 @@ Decorators for constructing computations.
 Libraries for executing computations.
 
 [impl/federated_context](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/federated_context)
-Libraries for * a federated context.
+Libraries for interacting with a federated context.
 
 [impl/tensorflow_context](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/tensorflow_context)
-Libraries for * a TensorFlow context.
+Libraries for interacting with a TensorFlow context.
 
 [impl/computation](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/computation)
-Libraries for * a computation.
+Libraries for interacting with a computation.
 
 [impl/compiler](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/compiler)
 Libraries for compiling computations.
 
 [impl/context_stack](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/context_stack)
-Libraries for * the context of a computation
+Libraries for interacting with the context of a computation
 
 [impl/utils](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/utils)
 Libraries for use in TensorFlow Federated core library.
 
 [impl/types](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/types)
-Libraries for * the type of a computation.
+Libraries for interacting with the type of a computation.
 
 #### TFF Proto
 
