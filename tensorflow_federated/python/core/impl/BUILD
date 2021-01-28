@@ -51,33 +51,6 @@ py_test(
 )
 
 py_library(
-    name = "computation_serialization",
-    srcs = ["computation_serialization.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-    ],
-)
-
-py_test(
-    name = "computation_serialization_test",
-    size = "small",
-    srcs = ["computation_serialization_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":computation_serialization",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
-    ],
-)
-
-py_library(
     name = "intrinsic_bodies",
     srcs = ["intrinsic_bodies.py"],
     srcs_version = "PY3",
@@ -255,12 +228,12 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
+        "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/context_stack:symbol_binding_context",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/impl/utils:function_utils",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )

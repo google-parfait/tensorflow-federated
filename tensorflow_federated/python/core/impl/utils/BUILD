@@ -17,11 +17,6 @@ package_group(
         # TODO(b/143772942): This package is temporary and can be removed once
         # all the appropriate modules have been moved out of the `impl` package.
         "//tensorflow_federated/python/core/impl",
-
-        # TODO(b/143772942): This package is temporary and can be removed once
-        # the `function_utils` modules has been moved into the `computation`
-        # package.
-        "//tensorflow_federated/python/core/impl/computation/...",
     ],
 )
 
@@ -37,47 +32,10 @@ py_library(
 )
 
 py_library(
-    name = "function_utils",
-    srcs = ["function_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:value_base",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/tensorflow_libs:function",
-    ],
-)
-
-py_test(
-    name = "function_utils_test",
-    size = "small",
-    srcs = ["function_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":function_utils",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-    ],
-)
-
-py_library(
     name = "tensorflow_utils",
     srcs = ["tensorflow_utils.py"],
     srcs_version = "PY3",
     deps = [
-        ":function_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",

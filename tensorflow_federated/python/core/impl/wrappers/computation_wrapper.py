@@ -22,7 +22,7 @@ from typing import Optional, Tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.utils import function_utils
+from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.tensorflow_libs import function
 
 

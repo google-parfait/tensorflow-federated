@@ -16,7 +16,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.impl import computation_serialization
+from tensorflow_federated.python.core.impl.computation import computation_serialization
 
 
 @computations.tf_computation(tf.int32, tf.int32)

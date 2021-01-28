@@ -32,7 +32,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/utils:function_utils",
+        "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/tensorflow_libs:function",
     ],
 )
@@ -48,9 +48,9 @@ py_test(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/utils:function_utils",
     ],
 )
 

@@ -14,8 +14,8 @@
 """Libraries for extending the TensorFlow Federated core library."""
 
 from tensorflow_federated.python.core.impl.compiler.building_blocks import ComputationBuildingBlock
-from tensorflow_federated.python.core.impl.computation_serialization import deserialize_computation
-from tensorflow_federated.python.core.impl.computation_serialization import serialize_computation
+from tensorflow_federated.python.core.impl.computation.computation_serialization import deserialize_computation
+from tensorflow_federated.python.core.impl.computation.computation_serialization import serialize_computation
 from tensorflow_federated.python.core.impl.context_stack.context_base import Context
 from tensorflow_federated.python.core.impl.context_stack.context_stack_base import ContextStack
 from tensorflow_federated.python.core.impl.context_stack.get_context_stack import get_context_stack
