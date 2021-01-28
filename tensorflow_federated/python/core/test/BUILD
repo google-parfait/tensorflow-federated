@@ -30,9 +30,9 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl:computation_impl",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
+        "//tensorflow_federated/python/core/impl/computation:computation_impl",
     ],
 )
 

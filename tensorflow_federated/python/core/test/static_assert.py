@@ -16,9 +16,9 @@
 from typing import List, Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
+from tensorflow_federated.python.core.impl.computation import computation_impl
 
 
 def _raise_expected_none(calls: List[building_blocks.Call],

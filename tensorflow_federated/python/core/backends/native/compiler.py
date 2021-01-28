@@ -16,9 +16,9 @@
 from absl import logging
 
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformations
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 

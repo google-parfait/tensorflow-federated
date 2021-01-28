@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import compiler
 from tensorflow_federated.python.core.backends.iree import computation_module
 from tensorflow_federated.python.core.backends.iree import runtime
-from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl.computation import computation_impl
 
 
 class CompilerTest(tf.test.TestCase):

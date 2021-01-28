@@ -15,8 +15,8 @@
 import tensorflow as tf
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.computation import computation_impl
 
 # TODO(b/146086870) Move more tests into this file
 

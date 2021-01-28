@@ -17,7 +17,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 
 

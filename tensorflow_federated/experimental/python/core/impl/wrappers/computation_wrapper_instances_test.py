@@ -18,7 +18,7 @@ import numpy as np
 
 from tensorflow_federated.experimental.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import computation_impl
+from tensorflow_federated.python.core.impl.computation import computation_impl
 
 
 class JaxWrapperTest(absltest.TestCase):

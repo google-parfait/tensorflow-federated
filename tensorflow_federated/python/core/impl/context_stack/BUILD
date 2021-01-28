@@ -8,6 +8,7 @@ package_group(
         "//tensorflow_federated/python/core/impl/context_stack/...",
 
         # Impl Dependencies
+        "//tensorflow_federated/python/core/impl/computation/...",
         "//tensorflow_federated/python/core/impl/executors/...",
         "//tensorflow_federated/python/core/impl/federated_context/...",
         "//tensorflow_federated/python/core/impl/tensorflow_context/...",
