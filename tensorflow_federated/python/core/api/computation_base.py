@@ -16,10 +16,16 @@
 import abc
 
 from tensorflow_federated.python.core.api import typed_object
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 
 
 class Computation(typed_object.TypedObject, metaclass=abc.ABCMeta):
   """An abstract interface for all classes that represent computations."""
+
+  @abc.abstractmethod
+  def to_building_block(self) -> building_blocks.ComputationBuildingBlock:
+    """Constructs a new `tff.framework.ComputationBuildingBlock`."""
+    raise NotImplementedError
 
   @abc.abstractmethod
   def __call__(self, *args, **kwargs):

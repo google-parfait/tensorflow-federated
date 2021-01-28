@@ -24,6 +24,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.types import type_analysis
@@ -514,6 +515,10 @@ class ConcreteFunction(computation_base.Computation):
   @property
   def type_signature(self):
     return self._type_signature
+
+  def to_building_block(self) -> building_blocks.ComputationBuildingBlock:
+    """Constructs a new `building_blocks.ComputationBuildingBlock`."""
+    raise NotImplementedError
 
   def __call__(self, *args, **kwargs):
     context = self._context_stack.current

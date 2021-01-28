@@ -19,7 +19,6 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl import computation_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -69,8 +68,7 @@ class CountTensorFlowOpsTest(absltest.TestCase):
 
       return bar(bar(x))
 
-    proto = computation_impl.ComputationImpl.get_proto(foo)
-    building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
+    building_block = foo.to_building_block()
     tf_ops_in_graph = building_block_analysis.count_tensorflow_ops_in(
         building_block)
     self.assertEqual(tf_ops_in_graph, 6)
@@ -157,8 +155,7 @@ class CountTensorFlowVariablesTest(absltest.TestCase):
       z = bar(x)
       return bar(z[0])
 
-    proto = computation_impl.ComputationImpl.get_proto(foo)
-    building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
+    building_block = foo.to_building_block()
     tf_vars_in_graph = building_block_analysis.count_tensorflow_variables_in(
         building_block)
     self.assertEqual(tf_vars_in_graph, 1)

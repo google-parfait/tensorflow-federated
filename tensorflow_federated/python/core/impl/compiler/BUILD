@@ -16,6 +16,11 @@ package_group(
         # TODO(b/143772942): This package is temporary and can be removed once
         # all the appropriate modules have been moved out of the `impl` package.
         "//tensorflow_federated/python/core/impl",
+
+        # TODO(b/143772942): This package is temporary and can be removed once
+        # the `function_utils` modules has been moved into the `computation`
+        # package.
+        "//tensorflow_federated/python/core/impl/utils/...",
     ],
 )
 
@@ -54,7 +59,6 @@ py_test(
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl:computation_impl",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
