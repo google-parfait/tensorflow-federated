@@ -15,11 +15,6 @@ py_library(
     name = "backend_info",
     srcs = ["backend_info.py"],
     srcs_version = "PY3",
-    tags = [
-        "manual",
-        "nokokoro",
-        "nopresubmit",
-    ],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
@@ -30,10 +25,6 @@ py_test(
     srcs = ["backend_info_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "nokokoro",
-        "nopresubmit",
-    ],
     deps = [":backend_info"],
 )
 
@@ -41,11 +32,6 @@ py_library(
     name = "compiler",
     srcs = ["compiler.py"],
     srcs_version = "PY3",
-    tags = [
-        "manual",
-        "nokokoro",
-        "nopresubmit",
-    ],
     deps = [
         ":computation_module",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -62,10 +48,6 @@ py_test(
     srcs = ["compiler_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "nokokoro",
-        "nopresubmit",
-    ],
     deps = [
         ":backend_info",
         ":compiler",
@@ -81,11 +63,6 @@ py_library(
     name = "computation_module",
     srcs = ["computation_module.py"],
     srcs_version = "PY3",
-    tags = [
-        "manual",
-        "nokokoro",
-        "nopresubmit",
-    ],
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -98,10 +75,6 @@ py_test(
     srcs = ["computation_module_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "nokokoro",
-        "nopresubmit",
-    ],
     deps = [
         ":computation_module",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -112,11 +85,6 @@ py_library(
     name = "executor",
     srcs = ["executor.py"],
     srcs_version = "PY3",
-    tags = [
-        "manual",
-        "nokokoro",
-        "nopresubmit",
-    ],
     deps = [
         ":backend_info",
         ":compiler",
@@ -140,10 +108,6 @@ py_test(
     srcs = ["executor_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "nokokoro",
-        "nopresubmit",
-    ],
     deps = [
         ":backend_info",
         ":executor",
@@ -158,11 +122,6 @@ py_library(
     name = "runtime",
     srcs = ["runtime.py"],
     srcs_version = "PY3",
-    tags = [
-        "manual",
-        "nokokoro",
-        "nopresubmit",
-    ],
     deps = [
         ":backend_info",
         ":computation_module",
@@ -176,10 +135,6 @@ py_test(
     srcs = ["runtime_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "nokokoro",
-        "nopresubmit",
-    ],
     deps = [
         ":backend_info",
         ":computation_module",
