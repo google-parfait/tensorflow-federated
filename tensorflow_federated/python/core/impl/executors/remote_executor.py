@@ -245,7 +245,7 @@ class RemoteExecutor(executor_base.Executor):
 
   def __init__(self,
                channel,
-               rpc_mode='STREAMING',
+               rpc_mode='REQUEST_REPLY',
                thread_pool_executor=None,
                dispose_batch_size=20):
     """Creates a remote executor.
@@ -254,7 +254,7 @@ class RemoteExecutor(executor_base.Executor):
       channel: An instance of `grpc.Channel` to use for communication with the
         remote executor service.
       rpc_mode: Optional mode of calling the remote executor. Must be either
-        'REQUEST_REPLY' or 'STREAMING' (defaults to 'STREAMING'). This
+        'REQUEST_REPLY' or 'STREAMING' (defaults to 'REQUEST_REPLY'). This
         option will be removed after the request-reply interface is deprecated.
       thread_pool_executor: Optional concurrent.futures.Executor used to wait
         for the reply to a streaming RPC message. Uses the default Executor if

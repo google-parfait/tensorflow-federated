@@ -835,7 +835,7 @@ class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
 
 def remote_executor_factory(
     channels: List[grpc.Channel],
-    rpc_mode: str = 'STREAMING',
+    rpc_mode: str = 'REQUEST_REPLY',
     thread_pool_executor: Optional[futures.Executor] = None,
     dispose_batch_size: int = 20,
     max_fanout: int = 100) -> executor_factory.ExecutorFactory:
