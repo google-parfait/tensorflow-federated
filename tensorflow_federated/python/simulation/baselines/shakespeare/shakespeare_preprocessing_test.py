@@ -67,7 +67,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
       shakespeare_preprocessing.create_preprocess_fn(
           num_epochs=-2, batch_size=1)
 
-  def test_raises_non_iterable_crop(self):
+  def test_raises_negative_sequence_length(self):
     with self.assertRaisesRegex(ValueError,
                                 'sequence_length must be a positive integer'):
       shakespeare_preprocessing.create_preprocess_fn(
