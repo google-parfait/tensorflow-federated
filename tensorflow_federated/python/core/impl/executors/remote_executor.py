@@ -273,6 +273,17 @@ class RemoteExecutor(executor_base.Executor):
 
     logging.debug('Creating new ExecutorStub with RPC_MODE=%s', rpc_mode)
 
+    self._channel_status = False
+
+    def _channel_status_callback(
+        channel_connectivity: grpc.ChannelConnectivity):
+      self._channel_status = channel_connectivity
+
+    channel.subscribe(_channel_status_callback, try_to_connect=True)
+
+    # We need to keep a reference to the channel around to prevent the Python
+    # object from being GC'ed and the callback above from no-op'ing.
+    self._channel = channel
     self._stub = executor_pb2_grpc.ExecutorStub(channel)
     self._bidi_stream = None
     self._dispose_batch_size = dispose_batch_size
@@ -280,6 +291,10 @@ class RemoteExecutor(executor_base.Executor):
     if rpc_mode == 'STREAMING':
       logging.debug('Creating Bidi stream')
       self._bidi_stream = _BidiStream(self._stub, thread_pool_executor)
+
+  @property
+  def is_ready(self) -> bool:
+    return self._channel_status == grpc.ChannelConnectivity.READY
 
   def close(self):
     if self._bidi_stream is not None:

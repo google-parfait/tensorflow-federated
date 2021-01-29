@@ -376,6 +376,7 @@ py_library(
     deps = [
         ":caching_executor",
         ":eager_tf_executor",
+        ":execution_context",
         ":executor_base",
         ":executor_factory",
         ":federated_composing_strategy",

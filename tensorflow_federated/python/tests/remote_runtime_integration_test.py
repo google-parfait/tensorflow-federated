@@ -144,8 +144,6 @@ class WorkerFailureTest(parameterized.TestCase):
   def test_computations_run_with_partially_available_workers(
       self, tff_context, server_contexts):
 
-    self.skipTest('b/174679820')
-
     @tff.tf_computation(tf.int32)
     def add_one(x):
       return x + 1

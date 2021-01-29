@@ -18,6 +18,7 @@ from concurrent import futures
 import math
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
+from absl import logging
 import attr
 import grpc
 import tensorflow as tf
@@ -25,6 +26,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
+from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import federated_composing_strategy
@@ -901,19 +903,25 @@ def remote_executor_factory(
 
   def _configure_remote_workers(cardinalities):
     loop, must_close_loop = _get_event_loop()
+    available_executors = [ex for ex in remote_executors if ex.is_ready]
+    logging.info('%s TFF workers available out of a total of %s.',
+                 len(available_executors), len(remote_executors))
+    if not available_executors:
+      raise execution_context.RetryableError(
+          'No workers are ready; try again to reconnect.')
     try:
       if not cardinalities.get(placement_literals.CLIENTS):
-        for ex in remote_executors:
+        for ex in available_executors:
           _configure_remote_executor(ex, cardinalities, loop)
         return [
             _wrap_executor_in_threading_stack(e, can_resolve_references=False)
-            for e in remote_executors
+            for e in available_executors
         ]
 
       remaining_clients = cardinalities[placement_literals.CLIENTS]
       live_workers = []
-      for ex_idx, ex in enumerate(remote_executors):
-        remaining_executors = len(remote_executors) - ex_idx
+      for ex_idx, ex in enumerate(available_executors):
+        remaining_executors = len(available_executors) - ex_idx
         num_clients_to_host = remaining_clients // remaining_executors
         remaining_clients -= num_clients_to_host
         if num_clients_to_host > 0:
@@ -930,8 +938,7 @@ def remote_executor_factory(
     ]
 
   flat_stack_fn = _configure_remote_workers
-  unplaced_ex_factory = UnplacedExecutorFactory(
-      use_caching=False, can_resolve_references=True)
+  unplaced_ex_factory = UnplacedExecutorFactory(use_caching=False)
   composing_executor_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
@@ -943,12 +950,18 @@ def remote_executor_factory(
 
     def __init__(self):
       self._cardinalities = None
+      self._available_executors = ()
 
     def __call__(self,
                  cardinalities: executor_factory.CardinalitiesType) -> bool:
       cardinalities_changed = self._cardinalities != cardinalities
       self._cardinalities = cardinalities
-      return cardinalities_changed
+      currently_available_executors = tuple(
+          ex for ex in remote_executors if ex.is_ready)
+      available_executors_changed = (
+          currently_available_executors != self._available_executors)
+      self._available_executors = currently_available_executors
+      return cardinalities_changed or available_executors_changed
 
   return ReconstructOnChangeExecutorFactory(
       underlying_stack=composing_executor_factory,

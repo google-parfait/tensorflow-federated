@@ -651,13 +651,18 @@ class RemoteExecutorFactoryTest(absltest.TestCase):
   def setUp(self):
     super().setUp()
     self.coro_mock = mock.Mock()
-    self.patcher = mock.patch(
+    self.cardinalities_patcher = mock.patch(
         'tensorflow_federated.python.core.impl.executors.remote_executor.RemoteExecutor.set_cardinalities',
         new=self._make_set_cardinalities_patch(self.coro_mock))
-    self.patcher.start()
+    self.ready_patcher = mock.patch(
+        'tensorflow_federated.python.core.impl.executors.remote_executor.RemoteExecutor.is_ready',
+        new=lambda _: True)
+    self.cardinalities_patcher.start()
+    self.ready_patcher.start()
 
   def tearDown(self):
-    self.patcher.stop()
+    self.cardinalities_patcher.stop()
+    self.ready_patcher.stop()
     super().tearDown()
 
   def test_fewer_clients_than_workers_only_passes_one_client(self):

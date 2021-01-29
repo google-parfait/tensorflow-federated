@@ -7,6 +7,7 @@ licenses(["notice"])
 
 py_test(
     name = "backend_test",
+    timeout = "long",
     srcs = ["backend_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
