@@ -212,22 +212,25 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
             signature, *args, **kwargs))
 
   # pyformat: disable
-  @parameterized.parameters(
-      (tf.int32, False),
-      ([tf.int32, tf.int32], True),
-      ([tf.int32, ('b', tf.int32)], True),
-      ([('a', tf.int32), ('b', tf.int32)], True),
-      ([('a', tf.int32), tf.int32], False),
-      (structure.Struct([(None, 1), ('a', 2)]), True),
-      (structure.Struct([('a', 1), (None, 2)]), False))
+  @parameterized.named_parameters(
+      ('int', tf.int32, False),
+      ('tuple_unnamed', [tf.int32, tf.int32], True),
+      ('tuple_partially_named', [tf.int32, ('b', tf.int32)], True),
+      ('tuple_named', [('a', tf.int32), ('b', tf.int32)], True),
+      ('tuple_partially_named_kwargs_first', [('a', tf.int32), tf.int32],
+       False),
+      ('struct', structure.Struct([(None, 1), ('a', 2)]), True),
+      ('struct_kwargs_first', structure.Struct([('a', 1), (None, 2)]), False))
   # pyformat: enable
   def test_is_argument_struct(self, arg, expected_result):
     self.assertEqual(function_utils.is_argument_struct(arg), expected_result)
 
   # pyformat: disable
-  @parameterized.parameters(
-      (structure.Struct([(None, 1)]), [1], {}),
-      (structure.Struct([(None, 1), ('a', 2)]), [1], {'a': 2}))
+  @parameterized.named_parameters(
+      ('tuple_unnamed', structure.Struct([(None, 1)]), [1], {}),
+      ('tuple_partially_named', structure.Struct([(None, 1), ('a', 2)]),
+       [1], {'a': 2}),
+  )
   # pyformat: enable
   def test_unpack_args_from_structure(self, tuple_with_args, expected_args,
                                       expected_kwargs):
@@ -236,12 +239,15 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
         (expected_args, expected_kwargs))
 
   # pyformat: disable
-  @parameterized.parameters(
-      ([tf.int32], [tf.int32], {}),
-      ([('a', tf.int32)], [], {'a': tf.int32}),
-      ([tf.int32, tf.bool], [tf.int32, tf.bool], {}),
-      ([tf.int32, ('b', tf.bool)], [tf.int32], {'b': tf.bool}),
-      ([('a', tf.int32), ('b', tf.bool)], [], {'a': tf.int32, 'b': tf.bool}))
+  @parameterized.named_parameters(
+      ('tuple_unnamed_1', [tf.int32], [tf.int32], {}),
+      ('tuple_named_1', [('a', tf.int32)], [], {'a': tf.int32}),
+      ('tuple_unnamed_2', [tf.int32, tf.bool], [tf.int32, tf.bool], {}),
+      ('tuple_partially_named',
+       [tf.int32, ('b', tf.bool)], [tf.int32], {'b': tf.bool}),
+      ('tuple_named_2',
+       [('a', tf.int32), ('b', tf.bool)], [], {'a': tf.int32, 'b': tf.bool}),
+  )
   # pyformat: enable
   def test_unpack_args_from_struct_type(self, tuple_with_args, expected_args,
                                         expected_kwargs):
@@ -290,18 +296,18 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
         structure.Struct([(None, 1)]))
 
   # pyformat: disable
-  @parameterized.parameters(
-      ([1], {}, [tf.int32], [(None, 1)]),
-      ([1, True], {}, [tf.int32, tf.bool], [(None, 1), (None, True)]),
-      ([1, True], {}, [('x', tf.int32), ('y', tf.bool)],
-       [('x', 1), ('y', True)]),
-      ([1], {'y': True}, [('x', tf.int32), ('y', tf.bool)],
-       [('x', 1), ('y', True)]),
-      ([], {'x': 1, 'y': True}, [('x', tf.int32), ('y', tf.bool)],
-       [('x', 1), ('y', True)]),
-      ([], collections.OrderedDict([('y', True), ('x', 1)]),
-       [('x', tf.int32), ('y', tf.bool)],
-       [('x', 1), ('y', True)]))
+  @parameterized.named_parameters(
+      ('int', [1], {}, [tf.int32], [(None, 1)]),
+      ('tuple_unnamed_with_args',
+       [1, True], {}, [tf.int32, tf.bool], [(None, 1), (None, True)]),
+      ('tuple_named_with_args', [1, True], {},
+       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]),
+      ('tuple_named_with_args_and_kwargs', [1], {'y': True},
+       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]),
+      ('tuple_with_kwargs', [], {'x': 1, 'y': True},
+       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]),
+      ('tuple_with_args_odict', [], collections.OrderedDict([('y', True), ('x', 1)]),
+       [('x', tf.int32), ('y', tf.bool)], [('x', 1), ('y', True)]))
   # pyformat: enable
   def test_pack_args_into_struct_with_type_spec_expect_success(
       self, args, kwargs, type_spec, elements):
@@ -311,9 +317,10 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
         structure.Struct(elements))
 
   # pyformat: disable
-  @parameterized.parameters(
-      ([1], {}, [(tf.bool)]),
-      ([], {'x': 1, 'y': True}, [(tf.int32), (tf.bool)]))
+  @parameterized.named_parameters(
+      ('wrong_type', [1], {}, [(tf.bool)]),
+      ('wrong_structure', [], {'x': 1, 'y': True}, [(tf.int32), (tf.bool)]),
+  )
   # pyformat: enable
   def test_pack_args_into_struct_with_type_spec_expect_failure(
       self, args, kwargs, type_spec):
@@ -322,15 +329,16 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
                                            NoopIngestContextForTest())
 
   # pyformat: disable
-  @parameterized.parameters(
-      (None, [], {}, 'None'),
-      (tf.int32, [1], {}, '1'),
-      ([tf.int32, tf.bool], [1, True], {}, '<1,True>'),
-      ([('x', tf.int32), ('y', tf.bool)], [1, True], {}, '<x=1,y=True>'),
-      ([('x', tf.int32), ('y', tf.bool)], [1], {'y': True}, '<x=1,y=True>'),
-      ([tf.int32, tf.bool],
-       [structure.Struct([(None, 1), (None, True)])], {},
-       '<1,True>'))
+  @parameterized.named_parameters(
+      ('none', None, [], {}, 'None'),
+      ('int', tf.int32, [1], {}, '1'),
+      ('tuple_unnamed', [tf.int32, tf.bool], [1, True], {}, '<1,True>'),
+      ('tuple_named_with_args', [('x', tf.int32), ('y', tf.bool)], [1, True],
+       {}, '<x=1,y=True>'),
+      ('tuple_named_with_kwargs', [('x', tf.int32), ('y', tf.bool)], [1],
+       {'y': True}, '<x=1,y=True>'),
+      ('tuple_with_args_struct', [tf.int32, tf.bool],
+       [structure.Struct([(None, 1), (None, True)])], {}, '<1,True>'))
   # pyformat: enable
   def test_pack_args(self, parameter_type, args, kwargs, expected_value_string):
     self.assertEqual(
@@ -340,23 +348,24 @@ class FunctionUtilsTest(test_case.TestCase, parameterized.TestCase):
         expected_value_string)
 
   # pyformat: disable
-  @parameterized.parameters(
-      (1, lambda: 10, None, None, None, 10),
-      (2, lambda x=1: x + 10, None, None, None, 11),
-      (3, lambda x=1: x + 10, tf.int32, None, 20, 30),
-      (4, lambda x, y: x + y, [tf.int32, tf.int32], None,
+  @parameterized.named_parameters(
+      ('const', lambda: 10, None, None, None, 10),
+      ('add_const', lambda x=1: x + 10, None, None, None, 11),
+      ('add_const_with_type', lambda x=1: x + 10, tf.int32, None, 20, 30),
+      ('add', lambda x, y: x + y, [tf.int32, tf.int32], None,
        structure.Struct([('x', 5), ('y', 6)]), 11),
-      (5, lambda *args: str(args), [tf.int32, tf.int32], True,
+      ('str_tuple', lambda *args: str(args), [tf.int32, tf.int32], True,
        structure.Struct([(None, 5), (None, 6)]), '(5, 6)'),
-      (6, lambda *args: str(args), [('x', tf.int32), ('y', tf.int32)], False,
+      ('str_tuple_with_named_type', lambda *args: str(args),
+       [('x', tf.int32), ('y', tf.int32)], False,
        structure.Struct([('x', 5), ('y', 6)]),
        '(Struct([(\'x\', 5), (\'y\', 6)]),)'),
-      (7, lambda x: str(x),  # pylint: disable=unnecessary-lambda
-       [tf.int32], None, structure.Struct([(None, 10)]), '[10]'))
+      ('str_ing', lambda x: str(x),  # pylint: disable=unnecessary-lambda
+       [tf.int32], None, structure.Struct([(None, 10)]), '[10]'),
+  )
   # pyformat: enable
-  def test_wrap_as_zero_or_one_arg_callable(self, unused_index, fn,
-                                            parameter_type, unpack, arg,
-                                            expected_result):
+  def test_wrap_as_zero_or_one_arg_callable(self, fn, parameter_type, unpack,
+                                            arg, expected_result):
     parameter_type = computation_types.to_type(parameter_type)
     unpack_arguments = function_utils.create_argument_unpacking_fn(
         fn, parameter_type, unpack)
