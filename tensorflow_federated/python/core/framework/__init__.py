@@ -48,3 +48,5 @@ from tensorflow_federated.python.core.impl.types.type_conversions import type_fr
 from tensorflow_federated.python.core.impl.types.type_conversions import type_to_tf_tensor_specs
 from tensorflow_federated.python.core.impl.types.type_serialization import deserialize_type
 from tensorflow_federated.python.core.impl.types.type_serialization import serialize_type
+from tensorflow_federated.python.core.impl.value_transformations import replace_intrinsics_with_bodies
+from tensorflow_federated.python.core.impl.wrappers.computation_wrapper_instances import building_block_to_computation
