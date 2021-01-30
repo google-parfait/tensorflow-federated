@@ -22,7 +22,6 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.learning import model_update_aggregator
 
-
 _float_type = computation_types.TensorType(tf.float32)
 
 
@@ -48,7 +47,7 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
   )
   def test_dp_aggregator(self, zeroing):
     factory_ = model_update_aggregator.dp_aggregator(
-        noise_multiplier=1.0, clients_per_round=10, zeroing=zeroing)
+        noise_multiplier=1e-2, clients_per_round=10, zeroing=zeroing)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create(_float_type)

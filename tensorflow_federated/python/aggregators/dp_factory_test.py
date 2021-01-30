@@ -205,7 +205,7 @@ class DPFactoryExecutionTest(test_case.TestCase):
 
   def test_gaussian_adaptive_cls(self):
     process = dp_factory.DifferentiallyPrivateFactory.gaussian_adaptive(
-        noise_multiplier=1.0, clients_per_round=10)
+        noise_multiplier=1e-2, clients_per_round=10)
     self.assertIsInstance(process, dp_factory.DifferentiallyPrivateFactory)
 
   def test_gaussian_fixed_cls(self):
