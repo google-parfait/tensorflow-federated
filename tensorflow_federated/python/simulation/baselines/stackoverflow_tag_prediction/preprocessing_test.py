@@ -17,7 +17,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.simulation.baselines.stackoverflow import tag_prediction_preprocessing
+from tensorflow_federated.python.simulation.baselines.stackoverflow_tag_prediction import preprocessing
 
 TEST_DATA = collections.OrderedDict(
     creation_date=(['unused date']),
@@ -38,8 +38,7 @@ class ToIDsFnTest(tf.test.TestCase):
   def test_word_tokens_to_ids_without_oov(self):
     word_vocab = ['A', 'B', 'C']
     tag_vocab = ['D', 'E', 'F']
-    to_ids_fn = tag_prediction_preprocessing.build_to_ids_fn(
-        word_vocab, tag_vocab)
+    to_ids_fn = preprocessing.build_to_ids_fn(word_vocab, tag_vocab)
     data = {'tokens': 'A B C', 'title': '', 'tags': ''}
     processed = to_ids_fn(data)
     self.assertAllClose(self.evaluate(processed[0]), [1 / 3, 1 / 3, 1 / 3])
@@ -47,8 +46,7 @@ class ToIDsFnTest(tf.test.TestCase):
   def test_word_tokens_to_ids_with_oov(self):
     word_vocab = ['A', 'B']
     tag_vocab = ['D', 'E', 'F']
-    to_ids_fn = tag_prediction_preprocessing.build_to_ids_fn(
-        word_vocab, tag_vocab)
+    to_ids_fn = preprocessing.build_to_ids_fn(word_vocab, tag_vocab)
     data = {'tokens': 'A B C', 'title': '', 'tags': ''}
     processed = to_ids_fn(data)
     self.assertAllClose(self.evaluate(processed[0]), [1 / 3, 1 / 3])
@@ -56,8 +54,7 @@ class ToIDsFnTest(tf.test.TestCase):
   def test_tag_tokens_to_ids_without_oov(self):
     word_vocab = ['A', 'B', 'C']
     tag_vocab = ['D', 'E', 'F']
-    to_ids_fn = tag_prediction_preprocessing.build_to_ids_fn(
-        word_vocab, tag_vocab)
+    to_ids_fn = preprocessing.build_to_ids_fn(word_vocab, tag_vocab)
     data = {'tokens': '', 'title': '', 'tags': 'D|E|F'}
     processed = to_ids_fn(data)
     self.assertAllClose(self.evaluate(processed[1]), [1, 1, 1])
@@ -65,8 +62,7 @@ class ToIDsFnTest(tf.test.TestCase):
   def test_tag_tokens_to_ids_with_oov(self):
     word_vocab = ['A', 'B', 'C']
     tag_vocab = ['D', 'E']
-    to_ids_fn = tag_prediction_preprocessing.build_to_ids_fn(
-        word_vocab, tag_vocab)
+    to_ids_fn = preprocessing.build_to_ids_fn(word_vocab, tag_vocab)
     data = {'tokens': '', 'title': '', 'tags': 'D|E|F'}
     processed = to_ids_fn(data)
     self.assertAllClose(self.evaluate(processed[1]), [1, 1])
@@ -74,8 +70,7 @@ class ToIDsFnTest(tf.test.TestCase):
   def test_join_word_tokens_with_title(self):
     word_vocab = ['A', 'B', 'C']
     tag_vocab = ['D', 'E', 'F']
-    to_ids_fn = tag_prediction_preprocessing.build_to_ids_fn(
-        word_vocab, tag_vocab)
+    to_ids_fn = preprocessing.build_to_ids_fn(word_vocab, tag_vocab)
     data = {'tokens': 'A B C', 'title': 'A B', 'tags': ''}
     processed = to_ids_fn(data)
     self.assertAllClose(self.evaluate(processed[0]), [2 / 5, 2 / 5, 1 / 5])
@@ -86,29 +81,29 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_preprocess_fn_with_negative_epochs_raises(self):
     with self.assertRaisesRegex(ValueError,
                                 'num_epochs must be a positive integer'):
-      tag_prediction_preprocessing.create_preprocess_fn(
+      preprocessing.create_preprocess_fn(
           num_epochs=-2, batch_size=1, word_vocab=['A'], tag_vocab=['B'])
 
   def test_preprocess_fn_with_negative_batch_raises(self):
     with self.assertRaisesRegex(ValueError,
                                 'batch_size must be a positive integer'):
-      tag_prediction_preprocessing.create_preprocess_fn(
+      preprocessing.create_preprocess_fn(
           num_epochs=1, batch_size=-10, word_vocab=['A'], tag_vocab=['B'])
 
   def test_preprocess_fn_with_empty_word_vocab_raises(self):
     with self.assertRaisesRegex(ValueError, 'word_vocab must be non-empty'):
-      tag_prediction_preprocessing.create_preprocess_fn(
+      preprocessing.create_preprocess_fn(
           num_epochs=1, batch_size=1, word_vocab=[], tag_vocab=['B'])
 
   def test_preprocess_fn_with_empty_tag_vocab_raises(self):
     with self.assertRaisesRegex(ValueError, 'tag_vocab must be non-empty'):
-      tag_prediction_preprocessing.create_preprocess_fn(
+      preprocessing.create_preprocess_fn(
           num_epochs=1, batch_size=1, word_vocab=['A'], tag_vocab=[])
 
   def test_preprocess_fn_with_zero_or_less_neg1_max_elements_raises(self):
     with self.assertRaisesRegex(
         ValueError, 'max_elements must be a positive integer or -1'):
-      tag_prediction_preprocessing.create_preprocess_fn(
+      preprocessing.create_preprocess_fn(
           num_epochs=1,
           batch_size=1,
           word_vocab=['A'],
@@ -117,7 +112,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.assertRaisesRegex(
         ValueError, 'max_elements must be a positive integer or -1'):
-      tag_prediction_preprocessing.create_preprocess_fn(
+      preprocessing.create_preprocess_fn(
           num_epochs=1,
           batch_size=1,
           word_vocab=['A'],
@@ -135,7 +130,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_ds_length_is_ceil_num_epochs_over_batch_size(self, num_epochs,
                                                         batch_size):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
-    preprocess_fn = tag_prediction_preprocessing.create_preprocess_fn(
+    preprocess_fn = preprocessing.create_preprocess_fn(
         num_epochs=num_epochs,
         batch_size=batch_size,
         word_vocab=['A'],
@@ -154,7 +149,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     tag_vocab = ['A', 'B']
     tag_vocab_size = len(tag_vocab)
 
-    preprocess_fn = tag_prediction_preprocessing.create_preprocess_fn(
+    preprocess_fn = preprocessing.create_preprocess_fn(
         num_epochs=1,
         batch_size=1,
         word_vocab=word_vocab,

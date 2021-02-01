@@ -14,8 +14,8 @@ package(default_visibility = [":default_visibility"])
 licenses(["notice"])
 
 py_library(
-    name = "cifar_preprocessing",
-    srcs = ["cifar_preprocessing.py"],
+    name = "preprocessing",
+    srcs = ["preprocessing.py"],
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/api:computation_base",
@@ -25,13 +25,13 @@ py_library(
 )
 
 py_test(
-    name = "cifar_preprocessing_test",
+    name = "preprocessing_test",
     size = "medium",
-    srcs = ["cifar_preprocessing_test.py"],
+    srcs = ["preprocessing_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":cifar_preprocessing",
+        ":preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
 )

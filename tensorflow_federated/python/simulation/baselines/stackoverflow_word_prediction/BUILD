@@ -5,7 +5,7 @@ package_group(
     includes = ["//tensorflow_federated/python/simulation:simulation_visibility"],
     packages = [
         # Subpackages
-        "//tensorflow_federated/python/simulation/baselines/shakespeare/...",
+        "//tensorflow_federated/python/simulation/baselines/stackoverflow_word_prediction/...",
     ],
 )
 

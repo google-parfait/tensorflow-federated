@@ -18,7 +18,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
-from tensorflow_federated.python.simulation.baselines.cifar import cifar_preprocessing
+from tensorflow_federated.python.simulation.baselines.cifar import preprocessing
 
 
 TEST_DATA = collections.OrderedDict(
@@ -37,17 +37,17 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_preprocess_fn_with_negative_epochs_raises(self):
     with self.assertRaisesRegex(ValueError,
                                 'num_epochs must be a positive integer'):
-      cifar_preprocessing.create_preprocess_fn(num_epochs=-2, batch_size=1)
+      preprocessing.create_preprocess_fn(num_epochs=-2, batch_size=1)
 
   def test_raises_non_iterable_crop(self):
     with self.assertRaisesRegex(TypeError, 'crop_shape must be an iterable'):
-      cifar_preprocessing.create_preprocess_fn(
+      preprocessing.create_preprocess_fn(
           num_epochs=1, batch_size=1, crop_shape=32)
 
   def test_raises_iterable_length_2_crop(self):
     with self.assertRaisesRegex(ValueError,
                                 'The crop_shape must have length 3'):
-      cifar_preprocessing.create_preprocess_fn(
+      preprocessing.create_preprocess_fn(
           num_epochs=1, batch_size=1, crop_shape=(32, 32))
 
   @parameterized.named_parameters(
@@ -61,7 +61,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_ds_length_is_ceil_num_epochs_over_batch_size(self, num_epochs,
                                                         batch_size):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
-    preprocess_fn = cifar_preprocessing.create_preprocess_fn(
+    preprocess_fn = preprocessing.create_preprocess_fn(
         num_epochs=num_epochs, batch_size=batch_size, shuffle_buffer_size=1)
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(
@@ -79,7 +79,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_preprocess_fn_returns_correct_element(self, crop_shape,
                                                  distort_image):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
-    preprocess_fn = cifar_preprocessing.create_preprocess_fn(
+    preprocess_fn = preprocessing.create_preprocess_fn(
         num_epochs=1,
         batch_size=1,
         shuffle_buffer_size=1,
@@ -104,7 +104,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.constant([[[1.0, -1.0, 0.0]]])  # Has shape (1, 1, 3), mean 0
     x = x / tf.math.reduce_std(x)  # x now has variance 1
     simple_example = collections.OrderedDict(image=x, label=0)
-    image_map = cifar_preprocessing.build_image_map(crop_shape, distort=False)
+    image_map = preprocessing.build_image_map(crop_shape, distort=False)
     cropped_example = image_map(simple_example)
 
     self.assertEqual(cropped_example[0].shape, crop_shape)
