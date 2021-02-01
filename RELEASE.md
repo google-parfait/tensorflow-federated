@@ -1,3 +1,40 @@
+# Release 0.18.0
+
+## Major Features and Improvements
+
+*   Extended the `tff.simulation` package to add many new tools for running
+    simulations (checkpoints and metrics managers, client sampling functions).
+*   Extended the `tff.aggregators` package with a number of new aggregation
+    factories.
+*   Added the `tff.structure` API to expose the `Struct` class and related
+    functions.
+*   Added the `tff.profiler` API to expose useful profiling related functions.
+*   Added the `tff.backends.test` package to expose backends that focused on
+    testing specifically a way to test a computation with a
+    `federated_secure_sum` intrinsic.
+*   Added the `tff.experimental` package to expose less stable API.
+
+## Breaking Changes
+
+*   Replaced the `tff.aggregators.AggregationProcessFactory` abstract base class
+    with the `tff.aggregators.UnweightedAggregationFactory` and the
+    `tff.aggregators.WeightedAggregationFactory` classes.
+*   Replaced the `tff.aggregators.ZeroingFactory` class with a
+    `tff.aggregators.zeroing_factory` function with the same input arguments.
+*   Replaced the `tff.aggregators.ClippingFactory` class with a
+    `tff.aggregators.clipping_factory` function with the same input arguments.
+*   Updated `tensorflow` package dependency to `2.4.0`.
+*   Updated `absl-py` package dependency to `0.10`.
+*   Updated `grpcio` package dependency to `1.32.0`.
+*   Added a `jaxlib` package dependency at `0.1.55`.
+*   Updated `numpy` package dependency to `1.19.2`.
+*   Updated `tensorflow-addons` package dependency to `0.12.0`.
+*   Updated `tensorflow-model-optimization` package dependency to `0.5.0`.
+
+## Bug Fixes
+
+*   Fixed issue with the `sequence_reduce` intrinsic handling federated types.
+
 # Release 0.17.0
 
 ## Major Features and Improvements
