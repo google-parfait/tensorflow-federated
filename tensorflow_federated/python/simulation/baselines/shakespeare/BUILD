@@ -14,6 +14,13 @@ package(default_visibility = [":default_visibility"])
 licenses(["notice"])
 
 py_library(
+    name = "shakespeare",
+    srcs = ["__init__.py"],
+    srcs_version = "PY3",
+    visibility = ["//tensorflow_federated/python/simulation/baselines:__pkg__"],
+)
+
+py_library(
     name = "shakespeare_preprocessing",
     srcs = ["shakespeare_preprocessing.py"],
     srcs_version = "PY3",
