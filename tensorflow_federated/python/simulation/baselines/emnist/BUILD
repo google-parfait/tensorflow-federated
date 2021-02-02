@@ -21,6 +21,20 @@ py_library(
 )
 
 py_library(
+    name = "emnist_models",
+    srcs = ["emnist_models.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "emnist_models_test",
+    srcs = ["emnist_models_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":emnist_models"],
+)
+
+py_library(
     name = "emnist_preprocessing",
     srcs = ["emnist_preprocessing.py"],
     srcs_version = "PY3",
