@@ -21,6 +21,20 @@ py_library(
 )
 
 py_library(
+    name = "shakespeare_models",
+    srcs = ["shakespeare_models.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "shakespeare_models_test",
+    srcs = ["shakespeare_models_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":shakespeare_models"],
+)
+
+py_library(
     name = "shakespeare_preprocessing",
     srcs = ["shakespeare_preprocessing.py"],
     srcs_version = "PY3",
