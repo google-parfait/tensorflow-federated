@@ -44,6 +44,20 @@ py_test(
 )
 
 py_library(
+    name = "word_prediction_models",
+    srcs = ["word_prediction_models.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "word_prediction_models_test",
+    srcs = ["word_prediction_models_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":word_prediction_models"],
+)
+
+py_library(
     name = "word_prediction_preprocessing",
     srcs = ["word_prediction_preprocessing.py"],
     srcs_version = "PY3",
