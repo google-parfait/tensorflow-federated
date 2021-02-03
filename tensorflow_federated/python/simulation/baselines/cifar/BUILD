@@ -42,3 +42,17 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
 )
+
+py_library(
+    name = "resnet_models",
+    srcs = ["resnet_models.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "resnet_models_test",
+    srcs = ["resnet_models_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":resnet_models"],
+)
