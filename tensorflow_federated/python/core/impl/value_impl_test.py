@@ -329,6 +329,13 @@ class ValueImplTest(parameterized.TestCase):
     self.assertIsInstance(value, value_base.Value)
     self.assertEqual(str(value.type_signature), 'int32*')
 
+  def test_to_value_sequence_in_tuple_with_type(self):
+    expected_type = computation_types.StructWithPythonType(
+        [computation_types.SequenceType(tf.int32)], tuple)
+    value = value_impl.to_value(([1, 2, 3],), expected_type,
+                                context_stack_impl.context_stack)
+    value.type_signature.check_identical_to(expected_type)
+
   def test_to_value_with_empty_list_of_ints(self):
     value = value_impl.to_value([], computation_types.SequenceType(tf.int32),
                                 context_stack_impl.context_stack)
