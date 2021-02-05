@@ -72,11 +72,11 @@ def executors(*args):
   arguments, the default this decorator with parameterize the test by the
   following executors:
 
-  *   reference executor
   *   local executor
+  *   sizing executor
 
   If the decorator is called with arguments the arguments must be in a form that
-  is accpeted by `parameterized.named_parameters`.
+  is accepted by `parameterized.named_parameters`.
 
   Args:
     *args: Either a test function to be decorated or named executors for the
@@ -87,6 +87,11 @@ def executors(*args):
   """
 
   def decorator(fn, *named_executors):
+    if isinstance(fn, type):
+      raise TypeError('Do not directly decorate classes with the executors '
+                      'decorator; this will cause the tests to be skipped. '
+                      'Decorate the member test functions instead.')
+
     if not named_executors:
       named_executors = [
           ('local', executor_stacks.local_executor_factory()),
