@@ -639,7 +639,7 @@ def check_concrete_instance_of(concrete_type: computation_types.Type,
         # Note: we could also add an exception here for cases where every usage
         # is equivalent to the first usage. However, that's not currently
         # needed since the only intrinsic that doesn't have a defining use is
-        # GENERIC_ZERO, which has only a sinle-use type parameter.
+        # GENERIC_ZERO, which has only a single-use type parameter.
         pass
       else:
         raise MissingDefiningUsageError(generic_type, label)

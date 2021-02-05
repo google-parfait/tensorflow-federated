@@ -1004,8 +1004,8 @@ def create_federated_reduce(
                                                 placement_literals.SERVER)
   # Remove names from `op`'s argument.
   parameter_type = computation_types.StructType([
-      zero.type_signature,
-      value.type_signature.member,
+      op.type_signature.parameter[0],
+      op.type_signature.parameter[1],
   ])
   op = _unname_fn_parameter(op, parameter_type)
   intrinsic_type = computation_types.FunctionType((

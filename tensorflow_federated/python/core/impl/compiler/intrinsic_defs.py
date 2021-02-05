@@ -354,7 +354,11 @@ FEDERATED_REDUCE = IntrinsicDef(
     computation_types.FunctionType(
         parameter=[
             computation_types.at_clients(computation_types.AbstractType('T')),
-            computation_types.AbstractType('U'),
+            # Note: zero is a separate type which must be assignable to `U`.
+            # It is not possible to deduce this assignability relationship from
+            # the structure of this function signature alone, so we use a
+            # separate type to enable variance.
+            computation_types.AbstractType('Z'),
             type_factory.reduction_op(
                 computation_types.AbstractType('U'),
                 computation_types.AbstractType('T'))

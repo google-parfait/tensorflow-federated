@@ -296,20 +296,15 @@ class IntrinsicFactory(object):
 
   def federated_reduce(self, value, zero, op):
     """Implements `federated_reduce` as defined in `api/intrinsics.py`."""
-    # TODO(b/113112108): Since in most cases, it can be assumed that CLIENTS is
-    # a non-empty collective (or else, the computation fails), specifying zero
-    # at this level of the API should probably be optional. TBD.
-
     value = value_impl.to_value(value, None, self._context_stack)
     value = value_utils.ensure_federated_value(value,
                                                placement_literals.CLIENTS,
                                                'value to be reduced')
 
     zero = value_impl.to_value(zero, None, self._context_stack)
-    py_typecheck.check_type(zero, value_base.Value)
-
-    # TODO(b/113112108): We need a check here that zero does not have federated
-    # constituents.
+    if type_analysis.contains_federated_types(zero.type_signature):
+      raise TypeError('`zero` may not contain a federated type, found type:\n' +
+                      str(zero.type_signature))
 
     op = value_impl.to_value(
         op,
@@ -317,9 +312,14 @@ class IntrinsicFactory(object):
         self._context_stack,
         parameter_type_hint=computation_types.StructType(
             [zero.type_signature, value.type_signature.member]))
-    py_typecheck.check_type(op, value_base.Value)
-    py_typecheck.check_type(op.type_signature, computation_types.FunctionType)
-    op_type_expected = type_factory.reduction_op(zero.type_signature,
+    op.type_signature.check_function()
+    if not op.type_signature.result.is_assignable_from(zero.type_signature):
+      raise TypeError(
+          '`zero` must be assignable to the result type from `op`:\n',
+          computation_types.type_mismatch_error_message(
+              zero.type_signature, op.type_signature.result,
+              computation_types.TypeRelation.ASSIGNABLE))
+    op_type_expected = type_factory.reduction_op(op.type_signature.result,
                                                  value.type_signature.member)
     if not op_type_expected.is_assignable_from(op.type_signature):
       raise TypeError('Expected an operator of type {}, got {}.'.format(
