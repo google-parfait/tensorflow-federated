@@ -24,7 +24,6 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.reference import reference_context
-from tensorflow_federated.python.core.impl import intrinsic_bodies
 from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -935,24 +934,20 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(foo(), 0)
 
   def test_generic_plus_with_integers(self):
-    bodies = intrinsic_bodies.get_intrinsic_bodies(
-        context_stack_impl.context_stack)
 
     @computations.federated_computation(tf.int32, tf.int32)
     def foo(x, y):
-      return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, y])
+      return x + y
 
     self.assertEqual(str(foo.type_signature), '(<x=int32,y=int32> -> int32)')
     self.assertEqual(foo(2, 3), 5)
 
   def test_generic_plus_with_tuples(self):
     type_spec = [('A', tf.int32), ('B', tf.float32)]
-    bodies = intrinsic_bodies.get_intrinsic_bodies(
-        context_stack_impl.context_stack)
 
     @computations.federated_computation(type_spec, type_spec)
     def foo(x, y):
-      return bodies[intrinsic_defs.GENERIC_PLUS.uri]([x, y])
+      return x + y
 
     self.assertEqual(
         str(foo.type_signature),

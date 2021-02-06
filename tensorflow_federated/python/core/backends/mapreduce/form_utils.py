@@ -31,15 +31,14 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import transformations
-from tensorflow_federated.python.core.impl import value_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
@@ -271,8 +270,9 @@ def check_iterative_process_compatible_with_canonical_form(
     raise TypeError('Expected `next` to return two values, found result '
                     f'type:\n{next_type.result}')
 
-  initialize_tree = _replace_intrinsics_with_bodies(initialize_tree)
-  next_tree = _replace_intrinsics_with_bodies(next_tree)
+  initialize_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
+      initialize_tree)
+  next_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(next_tree)
   next_tree = _replace_lambda_body_with_call_dominant_form(next_tree)
 
   tree_analysis.check_contains_only_reducible_intrinsics(initialize_tree)
@@ -1236,24 +1236,6 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   )
 
 
-def _replace_intrinsics_with_bodies(comp):
-  """Replaces intrinsics with their bodies as defined in `intrinsic_bodies.py`.
-
-  Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` in which we
-      wish to replace all intrinsics with their bodies.
-
-  Returns:
-    An instance of `building_blocks.ComputationBuildingBlock` with
-    all intrinsics defined in `intrinsic_bodies.py` replaced with their bodies.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  context_stack = context_stack_impl.context_stack
-  comp, _ = value_transformations.replace_intrinsics_with_bodies(
-      comp, context_stack)
-  return comp
-
-
 def _replace_lambda_body_with_call_dominant_form(
     comp: building_blocks.Lambda) -> building_blocks.Lambda:
   """Transforms the body of `comp` to call-dominant form.
@@ -1316,7 +1298,7 @@ def get_broadcast_form_for_computation(
     grappler_config = _merge_grappler_config_with_default(grappler_config)
 
   bb = comp.to_building_block()
-  bb = _replace_intrinsics_with_bodies(bb)
+  bb, _ = intrinsic_reductions.replace_intrinsics_with_bodies(bb)
   bb = _replace_lambda_body_with_call_dominant_form(bb)
 
   tree_analysis.check_contains_only_reducible_intrinsics(bb)

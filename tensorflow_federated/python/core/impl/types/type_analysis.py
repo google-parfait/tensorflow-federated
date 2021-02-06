@@ -101,6 +101,10 @@ def is_tensorflow_compatible_type(type_spec):
       type_spec, lambda t: t.is_struct() or t.is_sequence() or t.is_tensor())
 
 
+def is_structure_of_tensors(type_spec):
+  return contains_only(type_spec, lambda t: t.is_struct() or t.is_tensor())
+
+
 def check_tensorflow_compatible_type(type_spec):
   if not is_tensorflow_compatible_type(type_spec):
     raise TypeError(

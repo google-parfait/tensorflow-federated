@@ -315,6 +315,44 @@ py_library(
     ],
 )
 
+py_library(
+    name = "intrinsic_reductions",
+    srcs = ["intrinsic_reductions.py"],
+    srcs_version = "PY3",
+    visibility = [
+        ":default_visibility",
+        "//tensorflow_federated/python/core/impl:__pkg__",
+    ],
+    deps = [
+        ":building_block_factory",
+        ":building_blocks",
+        ":intrinsic_defs",
+        ":transformation_utils",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+    ],
+)
+
+py_test(
+    name = "intrinsic_reductions_test",
+    size = "small",
+    srcs = ["intrinsic_reductions_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":building_blocks",
+        ":intrinsic_defs",
+        ":intrinsic_reductions",
+        ":tree_analysis",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/impl/types:placement_literals",
+    ],
+)
+
 py_test(
     name = "intrinsic_defs_test",
     size = "small",

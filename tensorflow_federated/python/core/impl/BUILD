@@ -51,42 +51,6 @@ py_test(
 )
 
 py_library(
-    name = "intrinsic_bodies",
-    srcs = ["intrinsic_bodies.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":intrinsic_factory",
-        ":value_impl",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-    ],
-)
-
-py_test(
-    name = "intrinsic_bodies_test",
-    size = "medium",
-    srcs = ["intrinsic_bodies_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":intrinsic_bodies",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
-    ],
-)
-
-py_library(
     name = "intrinsic_factory",
     srcs = ["intrinsic_factory.py"],
     srcs_version = "PY3",
@@ -255,40 +219,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/executors:executor_test_utils",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation_context",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
-    ],
-)
-
-py_library(
-    name = "value_transformations",
-    srcs = ["value_transformations.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":intrinsic_bodies",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:transformation_utils",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation_utils",
-    ],
-)
-
-py_test(
-    name = "value_transformations_test",
-    size = "small",
-    srcs = ["value_transformations_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":value_transformations",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
-        "//tensorflow_federated/python/core/impl/compiler:test_utils",
-        "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )

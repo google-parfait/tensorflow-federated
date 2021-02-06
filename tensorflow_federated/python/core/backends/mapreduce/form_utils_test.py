@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.backends.reference import reference_context
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
@@ -643,7 +644,8 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(test_case.TestCase):
     ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum()
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
-    next_tree = form_utils._replace_intrinsics_with_bodies(next_tree)
+    next_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
+        next_tree)
 
     before_aggregate, after_aggregate = form_utils._create_before_and_after_aggregate_for_no_federated_secure_sum(
         next_tree)
@@ -693,15 +695,34 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(test_case.TestCase):
         tree_analysis.trees_equal(after_aggregate.result.function,
                                   after_federated_aggregate))
 
-    # pyformat: disable
-    self.assertEqual(
-        after_aggregate.result.argument.formatted_representation(),
-        '<\n'
-        '  _var1[0],\n'
-        '  _var1[1][0]\n'
-        '>'
-    )
-    # pyformat: enable
+    # We manually check the structure of the expected result to avoid dependence
+    # on literal string names. We expect a structure like:
+
+    # '<\n'
+    # '  _ohm1[0],\n'
+    # '  _ohm1[1][0]\n'
+    # '>'
+
+    # Which is what we check below.
+
+    building_block_to_check = after_aggregate.result.argument
+    self.assertIsInstance(building_block_to_check, building_blocks.Struct)
+    self.assertLen(building_block_to_check, 2)
+    self.assertIsInstance(building_block_to_check[0], building_blocks.Selection)
+    self.assertEqual(building_block_to_check[0].index, 0)
+    self.assertIsInstance(building_block_to_check[0].source,
+                          building_blocks.Reference)
+    self.assertIsInstance(building_block_to_check[1], building_blocks.Selection)
+    self.assertEqual(building_block_to_check[1].index, 0)
+    self.assertIsInstance(building_block_to_check[1].source,
+                          building_blocks.Selection)
+    self.assertEqual(building_block_to_check[1].source.index, 1)
+    self.assertIsInstance(building_block_to_check[1].source.source,
+                          building_blocks.Reference)
+    self.assertEqual(building_block_to_check[1].source.source.name,
+                     building_block_to_check[0].source.name)
+    self.assertEqual(building_block_to_check[1].source.source.type_signature,
+                     building_block_to_check[0].source.type_signature)
 
 
 class GetTypeInfoTest(test_case.TestCase):
@@ -712,9 +733,10 @@ class GetTypeInfoTest(test_case.TestCase):
         ip.initialize._computation_proto)
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
-    initialize_tree = form_utils._replace_intrinsics_with_bodies(
+    initialize_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
         initialize_tree)
-    next_tree = form_utils._replace_intrinsics_with_bodies(next_tree)
+    next_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
+        next_tree)
     before_broadcast, after_broadcast = (
         transformations.force_align_and_split_by_intrinsics(
             next_tree, [intrinsic_defs.FEDERATED_BROADCAST.uri]))

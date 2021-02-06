@@ -19,8 +19,8 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",
-        "//tensorflow_federated/python/core/impl:value_transformations",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/compiler:intrinsic_reductions",
         "//tensorflow_federated/python/core/impl/computation:computation_serialization",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
