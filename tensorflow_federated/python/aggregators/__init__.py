@@ -11,7 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for constructing federated aggregation."""
+"""Libraries for constructing federated aggregation.
+
+For example uses of the symbols in this module, see
+[Tuning recommended aggregations for learning](
+https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators)
+tutorial, and for details of the design and how to implement new aggregations,
+see [Implementing Custom Aggregations](
+https://www.tensorflow.org/federated/tutorials/custom_aggregators) tutorial.
+"""
 
 from tensorflow_federated.python.aggregators.dp_factory import DifferentiallyPrivateFactory
 from tensorflow_federated.python.aggregators.encoded_factory import EncodedSumFactory

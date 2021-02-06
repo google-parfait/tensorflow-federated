@@ -23,6 +23,10 @@ upper_tabs:
         path: /federated/tutorials/custom_federated_algorithms_1
       - title: "Custom Federated Algorithms Part 2 - Implementing Federated Averaging"
         path: /federated/tutorials/custom_federated_algorithms_2
+      - title: "Tuning Recommended Aggregations for Learning"
+        path: /federated/tutorials/tuning_recommended_aggregators
+      - title: "Implementing Custom Aggregators"
+        path: /federated/tutorials/custom_aggregators
       - title: "High-performance simulations with TFF"
         path: /federated/tutorials/simulations
       - title: "TFF for Federated Learning Research: Model and Update Compression"
