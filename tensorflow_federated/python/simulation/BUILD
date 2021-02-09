@@ -9,6 +9,9 @@ package_group(
     packages = [
         # Subpackages
         "//tensorflow_federated/python/simulation/...",
+
+        # Core Dependencies
+        "//tensorflow_federated/python/core/test/...",
     ],
 )
 
@@ -25,7 +28,6 @@ py_library(
         ":client_data",
         ":csv_manager",
         ":file_per_user_client_data",
-        ":from_tensor_slices_client_data",
         ":hdf5_client_data",
         ":iterative_process_compositions",
         ":metrics_manager",

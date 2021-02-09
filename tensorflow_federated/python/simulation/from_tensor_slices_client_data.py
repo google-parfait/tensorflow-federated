@@ -20,7 +20,10 @@ from tensorflow_federated.python.simulation import client_data
 
 
 class FromTensorSlicesClientData(client_data.ClientData):
-  """ClientData based on `tf.data.Dataset.from_tensor_slices`."""
+  """ClientData based on `tf.data.Dataset.from_tensor_slices`.
+
+  Useful for constructing toy federated datasets for testing purposes.
+  """
 
   def __init__(self, tensor_slices_dict):
     """Constructs the object from a dictionary of client data.
