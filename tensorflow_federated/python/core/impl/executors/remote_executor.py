@@ -92,12 +92,12 @@ class _BidiStream:
     logging.debug('Initializing bidi stream')
 
     self._request_queue = queue.Queue()
+    # Lock preventing concurrent mutation of the `response_event_dict`.
     self._response_event_lock = threading.Lock()
     self._response_event_dict = {}
     self._stream_closed_event = threading.Event()
     self._stream_error = None
     self._request_num = 0
-    self._request_num_lock = threading.Lock()
 
     def request_iter():
       """Iterator that blocks on the request Queue."""
@@ -122,11 +122,12 @@ class _BidiStream:
           logging.debug(
               'Response thread: processing response of type %s, seq_no %s',
               response.WhichOneof('response'), response.sequence_number)
-          # Get the corresponding response Event
-          response_event = self._response_event_dict[response.sequence_number]
-          # Attach the response as an attribute on the Event
-          response_event.response = response
-          response_event.set()
+          with self._response_event_lock:
+            # Get the corresponding response Event
+            response_event = self._response_event_dict[response.sequence_number]
+            # Attach the response as an attribute on the Event
+            response_event.response = response
+            response_event.set()
         # Set the event indicating the stream has been closed
         self._stream_closed_event.set()
       except Exception as error:  # pylint: disable=broad-except
@@ -160,9 +161,8 @@ class _BidiStream:
     py_typecheck.check_type(request, executor_pb2.ExecuteRequest)
     py_typecheck.check_type(response_event, threading.Event)
 
-    with self._request_num_lock:
-      seq = self._request_num
-      self._request_num += 1
+    seq = self._request_num
+    self._request_num += 1
 
     with self._response_event_lock:
       if self._stream_error is not None:
