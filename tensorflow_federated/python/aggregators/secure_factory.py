@@ -214,8 +214,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
       upper_bound, lower_bound = self._get_bounds_from_state(state)
 
       # Compute min and max *before* clipping and use it to update the state.
-      value_max = intrinsics.federated_map(_reduce_nest_max, value)
-      value_min = intrinsics.federated_map(_reduce_nest_min, value)
+      value_min, value_max = intrinsics.federated_map(_compute_range, value)
       new_state = self._update_state(state, value_min, value_max)
 
       # Clips value to [lower_bound, upper_bound] and securely sums it.
@@ -231,18 +230,18 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
   def _compute_measurements(self, upper_bound, lower_bound, value_max,
                             value_min):
     """Creates measurements to be reported. All values are summed securely."""
-    is_max_clipped = intrinsics.federated_map(
-        computations.tf_computation(
-            lambda bound, value: tf.cast(bound < value, COUNT_TF_TYPE)),
-        (intrinsics.federated_broadcast(upper_bound), value_max))
-    max_clipped_count = intrinsics.federated_secure_sum(
-        is_max_clipped, bitwidth=1)
-    is_min_clipped = intrinsics.federated_map(
-        computations.tf_computation(
-            lambda bound, value: tf.cast(bound > value, COUNT_TF_TYPE)),
-        (intrinsics.federated_broadcast(lower_bound), value_min))
-    min_clipped_count = intrinsics.federated_secure_sum(
-        is_min_clipped, bitwidth=1)
+    client_bounds = intrinsics.federated_broadcast((upper_bound, lower_bound))
+
+    @computations.tf_computation
+    def exceeds_bounds(min_value, lower_bound, max_value, upper_bound):
+      return (tf.cast(min_value < lower_bound, COUNT_TF_TYPE),
+              tf.cast(max_value > upper_bound, COUNT_TF_TYPE))
+
+    is_min_clipped, is_max_clipped = intrinsics.federated_map(
+        exceeds_bounds,
+        (value_min, client_bounds[1], value_max, client_bounds[0]))
+    min_clipped_count, max_clipped_count = intrinsics.federated_secure_sum(
+        (is_min_clipped, is_max_clipped), bitwidth=(1, 1))
     measurements = collections.OrderedDict(
         secure_upper_clipped_count=max_clipped_count,
         secure_lower_clipped_count=min_clipped_count,
@@ -253,9 +252,9 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
   def _sum_securely(self, value, upper_bound, lower_bound):
     """Securely sums `value` placed at CLIENTS."""
     if self._config_mode == _Config.INT:
-      value = intrinsics.federated_map(
-          _client_shift, (value, intrinsics.federated_broadcast(upper_bound),
-                          intrinsics.federated_broadcast(lower_bound)))
+      value = intrinsics.federated_map(_client_shift,
+                                       (value, *intrinsics.federated_broadcast(
+                                           (upper_bound, lower_bound))))
       value = intrinsics.federated_secure_sum(value, self._secagg_bitwidth)
       num_summands = intrinsics.federated_sum(_client_one())
       value = intrinsics.federated_map(_server_shift,
@@ -319,33 +318,38 @@ def _is_float(value):
   return is_py_float or is_np_float
 
 
-@computations.tf_computation()
-def _reduce_nest_max(value):
-  max_list = tf.nest.map_structure(tf.reduce_max, tf.nest.flatten(value))
-  return tf.reduce_max(tf.stack(max_list))
+@computations.tf_computation
+def _compute_range(value):
+  """Returns the minimum and maximum for each tensor in the structure.
+
+  Args:
+    value: A nested structure of tensors.
+
+  Returns:
+    A 2-tuple of the minimum value and the maximum value across all tensors in
+    the structure.
+  """
+  flat_values = tf.nest.flatten(value)
+  maxs = tf.nest.map_structure(tf.reduce_max, flat_values)
+  mins = tf.nest.map_structure(tf.reduce_min, flat_values)
+  return tf.reduce_min(tf.stack(mins)), tf.reduce_max(tf.stack(maxs))
 
 
-@computations.tf_computation()
-def _reduce_nest_min(value):
-  min_list = tf.nest.map_structure(tf.reduce_min, tf.nest.flatten(value))
-  return tf.reduce_min(tf.stack(min_list))
-
-
-@computations.tf_computation()
+@computations.tf_computation
 def _client_shift(value, upper_bound, lower_bound):
   return tf.nest.map_structure(
       lambda v: tf.clip_by_value(v, lower_bound, upper_bound) - lower_bound,
       value)
 
 
-@computations.tf_computation()
+@computations.tf_computation
 def _server_shift(value, lower_bound, num_summands):
   return tf.nest.map_structure(
       lambda v: v + (lower_bound * tf.cast(num_summands, lower_bound.dtype)),
       value)
 
 
-@computations.federated_computation()
+@computations.federated_computation
 def _empty_state():
   return intrinsics.federated_value((), placements.SERVER)
 
