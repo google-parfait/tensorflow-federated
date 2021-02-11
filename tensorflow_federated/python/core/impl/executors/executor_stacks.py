@@ -373,18 +373,16 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
     num_requested_clients = cardinalities.get(placement_literals.CLIENTS)
     if num_requested_clients is None:
       if self._num_clients is not None:
-        num_clients = self._num_clients
+        return self._num_clients
       else:
-        num_clients = 0
-    elif (self._num_clients is not None and
-          self._num_clients != num_requested_clients):
+        return 0
+    if (self._num_clients is not None and
+        self._num_clients != num_requested_clients):
       raise ValueError(
           'FederatingStackFactory configured to return {} '
           'clients, but encountered a request for {} clients.'.format(
               self._num_clients, num_requested_clients))
-    else:
-      num_clients = num_requested_clients
-    return num_clients
+    return num_requested_clients
 
   def create_executor(
       self, cardinalities: executor_factory.CardinalitiesType
@@ -547,7 +545,7 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     Raises:
       RuntimeError: If hierarchy construction fails.
     """
-    if len(executors) == 1:
+    if len(executors) <= 1:
       return reference_resolving_executor.ReferenceResolvingExecutor(
           self._create_composing_stack(target_executors=executors))
     while len(executors) > 1:
@@ -591,9 +589,9 @@ def local_executor_factory(
       order of `log(num_clients) / log(max_fanout)`.
     clients_per_thread: Integer number of clients for each of TFF's threads to
       run in sequence. Increasing `clients_per_thread` therefore reduces the
-      concurrency of the TFF runtime, which can be useful if client work is
-      very lightweight or models are very large and multiple copies cannot fit
-      in memory.
+      concurrency of the TFF runtime, which can be useful if client work is very
+      lightweight or models are very large and multiple copies cannot fit in
+      memory.
     server_tf_device: A `tf.config.LogicalDevice` to place server and other
       computation without explicit TFF placement.
     client_tf_devices: List/tuple of `tf.config.LogicalDevice` to place clients
@@ -833,12 +831,89 @@ class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
     self._underlying_stack.clean_up_executors()
 
 
+def _configure_remote_executor(ex, cardinalities, loop):
+  """Configures `ex` to run the appropriate number of clients."""
+  if loop.is_running():
+    asyncio.run_coroutine_threadsafe(ex.set_cardinalities(cardinalities), loop)
+  else:
+    loop.run_until_complete(ex.set_cardinalities(cardinalities))
+  return
+
+
+def _get_event_loop() -> Tuple[asyncio.AbstractEventLoop, bool]:
+  """Returns an event loop and whether the loop should be closed once done."""
+  try:
+    loop = asyncio.get_event_loop()
+    if loop.is_closed():
+      loop = asyncio.new_event_loop()
+      should_close_loop = True
+    else:
+      should_close_loop = False
+  except RuntimeError:
+    loop = asyncio.new_event_loop()
+    should_close_loop = True
+  return loop, should_close_loop
+
+
+class _CardinalitiesOrReadyListChanged():
+  """Callable checking for changes to either the argument or a ready list.
+
+  Note: the contents of the provided list are expected to change over time.
+  Elements of the list must offer an `is_ready` property which will be checked
+  each time.
+  """
+
+  def __init__(self, maybe_ready_list):
+    self._previous_cardinalities = None
+    self._previous_ready_list = ()
+    self._maybe_ready_list = maybe_ready_list
+
+  def __call__(self, cardinalities: executor_factory.CardinalitiesType) -> bool:
+    cardinalities_changed = self._previous_cardinalities != cardinalities
+    ready_list = tuple(x for x in self._maybe_ready_list if x.is_ready)
+    ready_list_changed = ready_list != self._previous_ready_list
+    self._previous_cardinalities = cardinalities
+    self._previous_ready_list = ready_list
+    return cardinalities_changed or ready_list_changed
+
+
+def _configure_remote_workers(num_clients, remote_executors):
+  """"Configures `num_clients` across `remote_executors`."""
+  loop, must_close_loop = _get_event_loop()
+  available_executors = [ex for ex in remote_executors if ex.is_ready]
+  logging.info('%s TFF workers available out of a total of %s.',
+               len(available_executors), len(remote_executors))
+  if not available_executors:
+    raise execution_context.RetryableError(
+        'No workers are ready; try again to reconnect.')
+  try:
+    remaining_clients = num_clients
+    live_workers = []
+    for ex_idx, ex in enumerate(available_executors):
+      remaining_executors = len(available_executors) - ex_idx
+      num_clients_to_host = remaining_clients // remaining_executors
+      remaining_clients -= num_clients_to_host
+      if num_clients_to_host > 0:
+        _configure_remote_executor(
+            ex, {placement_literals.CLIENTS: num_clients_to_host}, loop)
+        live_workers.append(ex)
+  finally:
+    if must_close_loop:
+      loop.stop()
+      loop.close()
+  return [
+      _wrap_executor_in_threading_stack(e, can_resolve_references=False)
+      for e in live_workers
+  ]
+
+
 def remote_executor_factory(
     channels: List[grpc.Channel],
     rpc_mode: str = 'REQUEST_REPLY',
     thread_pool_executor: Optional[futures.Executor] = None,
     dispose_batch_size: int = 20,
-    max_fanout: int = 100) -> executor_factory.ExecutorFactory:
+    max_fanout: int = 100,
+    default_num_clients: int = 0) -> executor_factory.ExecutorFactory:
   """Create an executor backed by remote workers.
 
   Args:
@@ -857,6 +932,12 @@ def remote_executor_factory(
       `num_clients > max_fanout`, the constructed executor stack will consist of
       multiple levels of aggregators. The height of the stack will be on the
       order of `log(num_clients) / log(max_fanout)`.
+    default_num_clients: The number of clients to use for simulations where the
+      number of clients cannot be inferred. Usually the number of clients will
+      be inferred from the number of values passed to computations which accept
+      client-placed values. However, when this inference isn't possible (such as
+      in the case of a no-argument or non-federated computation) this default
+      will be used instead.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -870,6 +951,7 @@ def remote_executor_factory(
     py_typecheck.check_type(thread_pool_executor, futures.Executor)
   py_typecheck.check_type(dispose_batch_size, int)
   py_typecheck.check_type(max_fanout, int)
+  py_typecheck.check_type(default_num_clients, int)
 
   remote_executors = []
   for channel in channels:
@@ -880,90 +962,20 @@ def remote_executor_factory(
             thread_pool_executor=thread_pool_executor,
             dispose_batch_size=dispose_batch_size))
 
-  def _get_event_loop():
-    should_close_loop = False
-    try:
-      loop = asyncio.get_event_loop()
-      if loop.is_closed():
-        loop = asyncio.new_event_loop()
-        should_close_loop = True
-    except RuntimeError:
-      loop = asyncio.new_event_loop()
-      should_close_loop = True
-    return loop, should_close_loop
+  def _flat_stack_fn(cardinalities):
+    num_clients = cardinalities.get(placement_literals.CLIENTS,
+                                    default_num_clients)
+    return _configure_remote_workers(num_clients, remote_executors)
 
-  def _configure_remote_executor(ex, cardinalities, loop):
-    """Configures `ex` to run the appropriate number of clients."""
-    if loop.is_running():
-      asyncio.run_coroutine_threadsafe(
-          ex.set_cardinalities(cardinalities), loop)
-    else:
-      loop.run_until_complete(ex.set_cardinalities(cardinalities))
-    return
-
-  def _configure_remote_workers(cardinalities):
-    loop, must_close_loop = _get_event_loop()
-    available_executors = [ex for ex in remote_executors if ex.is_ready]
-    logging.info('%s TFF workers available out of a total of %s.',
-                 len(available_executors), len(remote_executors))
-    if not available_executors:
-      raise execution_context.RetryableError(
-          'No workers are ready; try again to reconnect.')
-    try:
-      if not cardinalities.get(placement_literals.CLIENTS):
-        for ex in available_executors:
-          _configure_remote_executor(ex, cardinalities, loop)
-        return [
-            _wrap_executor_in_threading_stack(e, can_resolve_references=False)
-            for e in available_executors
-        ]
-
-      remaining_clients = cardinalities[placement_literals.CLIENTS]
-      live_workers = []
-      for ex_idx, ex in enumerate(available_executors):
-        remaining_executors = len(available_executors) - ex_idx
-        num_clients_to_host = remaining_clients // remaining_executors
-        remaining_clients -= num_clients_to_host
-        if num_clients_to_host > 0:
-          _configure_remote_executor(
-              ex, {placement_literals.CLIENTS: num_clients_to_host}, loop)
-          live_workers.append(ex)
-    finally:
-      if must_close_loop:
-        loop.stop()
-        loop.close()
-    return [
-        _wrap_executor_in_threading_stack(e, can_resolve_references=False)
-        for e in live_workers
-    ]
-
-  flat_stack_fn = _configure_remote_workers
   unplaced_ex_factory = UnplacedExecutorFactory(use_caching=False)
   composing_executor_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
-      flat_stack_fn=flat_stack_fn,
+      flat_stack_fn=_flat_stack_fn,
   )
-
-  class _ChangeQuery:
-    """Stateful callable tracking cardinalities of remote runtime."""
-
-    def __init__(self):
-      self._cardinalities = None
-      self._available_executors = ()
-
-    def __call__(self,
-                 cardinalities: executor_factory.CardinalitiesType) -> bool:
-      cardinalities_changed = self._cardinalities != cardinalities
-      self._cardinalities = cardinalities
-      currently_available_executors = tuple(
-          ex for ex in remote_executors if ex.is_ready)
-      available_executors_changed = (
-          currently_available_executors != self._available_executors)
-      self._available_executors = currently_available_executors
-      return cardinalities_changed or available_executors_changed
 
   return ReconstructOnChangeExecutorFactory(
       underlying_stack=composing_executor_factory,
       ensure_closed=remote_executors,
-      change_query=_ChangeQuery())
+      change_query=_CardinalitiesOrReadyListChanged(
+          maybe_ready_list=remote_executors))
