@@ -139,3 +139,10 @@ class TensorBoardManager(metrics_manager.MetricsManager):
 
     self._latest_round_num = round_num
     return flat_metrics
+
+  def clear_rounds_after(self, round_num: int):
+    del round_num
+    return
+
+  def clear_all_rounds(self):
+    return

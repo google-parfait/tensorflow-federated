@@ -49,3 +49,13 @@ class MetricsManager(metaclass=abc.ABCMeta):
       metrics_to_append: A nested structure of tensors.
     """
     raise NotImplementedError
+
+  @abc.abstractmethod
+  def clear_all_rounds(self):
+    """Clear out metrics at or after a given round number."""
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def clear_rounds_after(self, round_num: int):
+    """Clear out metrics after a given round number."""
+    raise NotImplementedError

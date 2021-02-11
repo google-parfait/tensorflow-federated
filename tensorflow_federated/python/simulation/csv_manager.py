@@ -265,15 +265,15 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
       writer.writeheader()
     self._latest_round_num = None
 
-  def clear_rounds_after(self, last_valid_round_num: int) -> None:
-    """Metrics for rounds greater than `last_valid_round_num` are cleared out.
+  def clear_rounds_after(self, round_num: int) -> None:
+    """Metrics for rounds greater than `round_num` are cleared out.
 
     By using this method, this class can be used upon restart of an experiment
-    at `last_valid_round_num` to ensure that no duplicate rows of data exist in
+    at `round_num` to ensure that no duplicate rows of data exist in
     the CSV file. This method will atomically update the stored CSV file.
 
     Args:
-      last_valid_round_num: All metrics for rounds later than this are expunged.
+      round_num: All metrics for rounds later than this are expunged.
 
     Raises:
       RuntimeError: If metrics do not exist (none loaded during construction '
@@ -281,24 +281,30 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
         zero.
       ValueError: If `last_valid_round_num` is negative.
     """
-    if last_valid_round_num < 0:
+    if round_num < 0:
       raise ValueError('Attempting to clear metrics after round '
-                       f'{last_valid_round_num}, which is negative.')
+                       f'{round_num}, which is negative.')
     if self._latest_round_num is None:
-      if last_valid_round_num == 0:
+      if round_num == 0:
         return
       raise RuntimeError('Metrics do not exist yet.')
 
     reduced_fieldnames = set(['round_num'])
     _, metrics = _read_from_csv(self._metrics_file)
     reduced_metrics = []
+
+    latest_round_num = None
     for metric_row in metrics:
-      if metric_row['round_num'] <= last_valid_round_num:
+      metric_row_round_num = metric_row['round_num']
+      if metric_row_round_num <= round_num:
         reduced_fieldnames = reduced_fieldnames.union(metric_row.keys())
         reduced_metrics.append(metric_row)
+        if (latest_round_num is None) or (latest_round_num <
+                                          metric_row_round_num):
+          latest_round_num = metric_row_round_num
 
     _write_to_csv(reduced_metrics, self._metrics_file, reduced_fieldnames)
-    self._latest_round_num = last_valid_round_num
+    self._latest_round_num = latest_round_num
 
   @property
   def metrics_filename(self) -> str:

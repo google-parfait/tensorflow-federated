@@ -179,17 +179,17 @@ class CSVMetricsManager(tf.test.TestCase):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     # Clear is allowed with no metrics if no rounds have yet completed.
-    csv_mngr.clear_rounds_after(last_valid_round_num=0)
+    csv_mngr.clear_rounds_after(round_num=0)
     with self.assertRaises(RuntimeError):
       # Raise exception with no metrics if no rounds have yet completed.
-      csv_mngr.clear_rounds_after(last_valid_round_num=1)
+      csv_mngr.clear_rounds_after(round_num=1)
 
   def test_clear_rounds_after_raises_value_error_if_round_num_is_negative(self):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
     csv_mngr = csv_manager.CSVMetricsManager(csv_file)
     csv_mngr.update_metrics(0, _create_scalar_metrics())
     with self.assertRaises(ValueError):
-      csv_mngr.clear_rounds_after(last_valid_round_num=-1)
+      csv_mngr.clear_rounds_after(round_num=-1)
 
   def test_rows_are_cleared_and_last_round_num_is_reset(self):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
@@ -200,20 +200,14 @@ class CSVMetricsManager(tf.test.TestCase):
     _, metrics = csv_mngr.get_metrics()
     self.assertLen(metrics, 3,
                    'There should be 3 rows (for rounds 0, 5, and 10).')
-    csv_mngr.clear_rounds_after(last_valid_round_num=7)
+    csv_mngr.clear_rounds_after(round_num=7)
     _, metrics = csv_mngr.get_metrics()
     self.assertLen(
-        metrics, 2,
-        'After clearing all rounds after last_valid_round_num=7, should be 2 '
+        metrics, 2, 'After clearing all rounds after round_num=7, should be 2 '
         'rows of metrics (for rounds 0 and 5).')
     self.assertEqual(5, metrics[-1]['round_num'],
                      'Last metrics retained are for round 5.')
-    # The internal state of the manager knows the last round number is 7, so it
-    # raises an exception if a user attempts to add new metrics at round 7, ...
-    with self.assertRaises(ValueError):
-      csv_mngr.update_metrics(7, _create_scalar_metrics())
-    # ... but allows a user to add new metrics at a round number greater than 7.
-    csv_mngr.update_metrics(8, _create_scalar_metrics())  # (No exception.)
+    self.assertEqual(5, csv_mngr._latest_round_num)
 
   def test_rows_are_cleared_is_reflected_in_saved_file(self):
     temp_dir = os.path.join(self.get_temp_dir(), 'test_dir')
@@ -228,7 +222,7 @@ class CSVMetricsManager(tf.test.TestCase):
     # The CSV file should have 4 lines, one for the fieldnames, and 3 for each
     # call to `update_metrics`.
     self.assertEqual(num_lines_before, 4)
-    csv_mngr.clear_rounds_after(last_valid_round_num=7)
+    csv_mngr.clear_rounds_after(round_num=7)
     with tf.io.gfile.GFile(filename, 'r') as csvfile:
       num_lines_after = len(csvfile.readlines())
     # The CSV file should have 3 lines, one for the fieldnames, and 2 for the
