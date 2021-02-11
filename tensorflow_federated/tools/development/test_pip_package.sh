@@ -81,8 +81,7 @@ main() {
   fi
 
   # Test pip package
-  # TODO(b/167259907): Remove the `2020-resolver` feature when it is default.
-  pip install --upgrade --use-feature=2020-resolver "${package}"
+  pip install --upgrade "${package}"
   python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"
 
   if [[ $? -ne 0 ]]; then
