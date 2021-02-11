@@ -60,8 +60,8 @@ REQUIRED_PACKAGES = [
     'attrs~=19.3.0',
     'cachetools~=3.1.1',
     'dm-tree~=0.1.1',
-    'grpcio~=1.34.0',
-    'h5py~=3.1.0',
+    'grpcio~=1.32.0',
+    'h5py~=2.10.0',
     'jax~=0.2.8',
     'jaxlib~=0.1.55',
     'numpy~=1.19.2',
@@ -96,7 +96,11 @@ if '--nightly' in sys.argv:
   VERSION = '{}.dev{}'.format(VERSION, date)
   for index, required_package in enumerate(REQUIRED_PACKAGES):
     package_name = get_package_name(required_package)
-    if package_name == 'tensorflow':
+    if package_name == 'grpcio':
+      REQUIRED_PACKAGES[index] = 'grpcio~=1.34.0'
+    elif package_name == 'h5py':
+      REQUIRED_PACKAGES[index] = 'h5py~=3.1.0'
+    elif package_name == 'tensorflow':
       REQUIRED_PACKAGES[index] = 'tf-nightly'
     elif package_name == 'tensorflow-addons':
       REQUIRED_PACKAGES[index] = 'tfa-nightly'
