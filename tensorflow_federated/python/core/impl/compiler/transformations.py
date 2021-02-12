@@ -152,9 +152,6 @@ def remove_called_lambdas_and_blocks(comp):
     # combinatorially increasing build times in the worst case. We ensure
     # here that remove_called_lambdas_and_blocks respects the postcondition that
     # selections from tuples are always collapsed.
-
-    # TODO(b/180050092): Add coverage to compilation benchmarks to cover
-    # the combinatorial explosion here.
     comp, _ = tree_transformations.inline_selections_from_tuple(comp)
     comp, _ = tree_transformations.uniquify_reference_names(comp)
   modified = names_uniquified or fns_resolved or lambdas_replaced or sels_removed or locals_inlined
