@@ -39,7 +39,7 @@ def parse_tff_to_tf(comp):
   parser_callable = tree_to_cc_transformations.TFParser()
   comp, _ = tree_transformations.replace_called_lambda_with_block(comp)
   comp, _ = tree_transformations.inline_block_locals(comp)
-  comp, _ = tree_transformations.replace_selection_from_tuple_with_element(comp)
+  comp, _ = tree_transformations.inline_selections_from_tuple(comp)
   new_comp, transformed = transformation_utils.transform_postorder(
       comp, parser_callable)
   return new_comp, transformed

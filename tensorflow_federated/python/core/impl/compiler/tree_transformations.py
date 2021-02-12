@@ -442,10 +442,6 @@ class InlineSelectionsFromTuples(transformation_utils.TransformSpec):
   in another pass. Notice this transform makes no effort to remove these tuples,
   as it does nothing to guarantee that the tuples it inlines are not referenced
   elsewhere.
-
-  This is implemented as a stanadlone transform, as opposed to simply extending
-  `ReplaceSelectionFromTuple`, in order to preserve ease of chaining that
-  transformation together with inlining all or some block locals.
   """
 
   def __init__(self):
@@ -1330,43 +1326,6 @@ def replace_called_lambda_with_block(comp):
       transformation_utils.TrackRemovedReferences)
   return transformation_utils.transform_postorder_with_symbol_bindings(
       comp, _transform_fn, symbol_tree)
-
-
-class ReplaceSelectionFromTuple(transformation_utils.TransformSpec):
-  r"""Replaces any selection from a tuple with the underlying tuple element.
-
-  Invocations of `transform` replace any occurences of:
-
-  Selection
-           \
-            Tuple
-            |
-            [Comp, Comp, ...]
-
-  with the appropriate Comp, as determined by the `index` or `name` of the
-  `Selection`.
-  """
-
-  def should_transform(self, comp):
-    return comp.is_selection() and comp.source.is_struct()
-
-  def _get_index_from_name(self, selection_name, tuple_type_signature):
-    named_type_signatures = structure.to_elements(tuple_type_signature)
-    return [x[0] for x in named_type_signatures].index(selection_name)
-
-  def transform(self, comp):
-    if not self.should_transform(comp):
-      return comp, False
-    if comp.name is not None:
-      index = self._get_index_from_name(comp.name, comp.source.type_signature)
-    else:
-      index = comp.index
-    return comp.source[index], True
-
-
-def replace_selection_from_tuple_with_element(comp):
-  """Replaces any selection from a tuple with the underlying tuple element."""
-  return _apply_transforms(comp, ReplaceSelectionFromTuple())
 
 
 def resolve_higher_order_functions(

@@ -82,7 +82,7 @@ class TransformingExecutorTest(absltest.TestCase):
     def transformation_fn(x):
       x, _ = tree_transformations.remove_mapped_or_applied_identity(x)
       x, _ = tree_transformations.inline_block_locals(x)
-      x, _ = tree_transformations.replace_selection_from_tuple_with_element(x)
+      x, _ = tree_transformations.inline_selections_from_tuple(x)
       return x
 
     self.assertIn('federated_zip_at_server(<comp_arg,comp_arg>)',

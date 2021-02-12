@@ -61,8 +61,8 @@ def prepare_for_rebinding(comp):
   comp, _ = tree_transformations.uniquify_reference_names(comp)
   comp, _ = tree_transformations.replace_called_lambda_with_block(comp)
   block_inliner = tree_transformations.InlineBlock(comp)
-  selection_replacer = tree_transformations.ReplaceSelectionFromTuple()
-  transforms = [block_inliner, selection_replacer]
+  selection_inliner = tree_transformations.InlineSelectionsFromTuples()
+  transforms = [block_inliner, selection_inliner]
   symbol_tree = transformation_utils.SymbolTree(
       transformation_utils.ReferenceCounter)
 
