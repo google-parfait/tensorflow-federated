@@ -26,7 +26,7 @@ The fix is to:
 
         ```python
         # Create a virtual environment
-        virtualenv --python=python3 "venv"
+        virtualenv --python=python3.6 "venv"
         source "venv/bin/activate"
         pip install --upgrade pip
 
