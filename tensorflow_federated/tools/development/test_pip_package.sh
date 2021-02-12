@@ -58,6 +58,10 @@ main() {
     exit 1
   fi
 
+  if [[ ! -f "${package}" ]]; then
+    die "The package '${package}' does not exist."
+  fi
+
   echo "*** 1"
   pip freeze
 
@@ -93,6 +97,10 @@ main() {
   fi
 
   echo "*** 5"
+  pip freeze
+
+  python --version
+  pip install tf-ngihtly
   pip freeze
 
   # Test pip package
