@@ -121,6 +121,7 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
     ],
 )
 
@@ -130,7 +131,12 @@ py_test(
     srcs = ["from_tensor_slices_client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":from_tensor_slices_client_data"],
+    deps = [
+        ":from_tensor_slices_client_data",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+    ],
 )
 
 py_library(
