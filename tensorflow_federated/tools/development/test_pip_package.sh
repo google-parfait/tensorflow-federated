@@ -21,7 +21,7 @@
 #
 # Arguments:
 #   package: A path to a local pip package.
-set -e
+set -ex
 
 die() {
   echo >&2 "$@"
@@ -58,37 +58,53 @@ main() {
     exit 1
   fi
 
+  echo "*** 1"
+  pip freeze
+
   # Create working directory
   local temp_dir="$(mktemp -d)"
   trap "rm -rf ${temp_dir}" EXIT
   pushd "${temp_dir}"
 
+  echo "*** 2"
+  pip freeze
+
   if [[ $? -ne 0 ]]; then
       return_code=$?
-      echo "error code 1 ='$?'"
+      echo "error code 2 ='$?'"
       exit "${return_code}"
   fi
+
+  echo "*** 3"
+  pip freeze
 
   # Create a virtual environment
   virtualenv --python=python3 "venv"
   source "venv/bin/activate"
   pip install --upgrade pip
 
+  echo "*** 4"
+  pip freeze
+
   if [[ $? -ne 0 ]]; then
       return_code=$?
-      echo "error code 2 ='$?'"
+      echo "error code 4 ='$?'"
       exit "${return_code}"
   fi
 
+  echo "*** 5"
   pip freeze
 
   # Test pip package
   pip install --upgrade "${package}"
   python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"
 
+  echo "*** 6"
+  pip freeze
+
   if [[ $? -ne 0 ]]; then
       return_code=$?
-      echo "error code 2 ='$?'"
+      echo "error code 6 ='$?'"
       exit "${return_code}"
   fi
 }
