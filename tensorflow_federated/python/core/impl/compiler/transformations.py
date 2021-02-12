@@ -111,9 +111,8 @@ def remove_called_lambdas_and_blocks(comp):
   This function first resolves any higher-order functions, so that replacing
   called lambdas with blocks and then inlining the block locals cannot result
   in more called lambdas. It then performs this sequence of transformations,
-  taking care to inline selections from tuples before inlining the rest of
-  the block locals to prevent possible combinatorial growth of the generated
-  AST.
+  taking care to inline selections from tuples at appropriate stages to prevent
+  possible combinatorial growth of the generated AST.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` from which we
@@ -148,6 +147,16 @@ def remove_called_lambdas_and_blocks(comp):
   if sels_removed:
     comp, _ = tree_transformations.uniquify_reference_names(comp)
   comp, locals_inlined = tree_transformations.inline_block_locals(comp)
+  if locals_inlined:
+    # Inlining local symbols may reintroduce selection-from-tuple pattern,
+    # combinatorially increasing build times in the worst case. We ensure
+    # here that remove_called_lambdas_and_blocks respects the postcondition that
+    # selections from tuples are always collapsed.
+
+    # TODO(b/180050092): Add coverage to compilation benchmarks to cover
+    # the combinatorial explosion here.
+    comp, _ = tree_transformations.inline_selections_from_tuple(comp)
+    comp, _ = tree_transformations.uniquify_reference_names(comp)
   modified = names_uniquified or fns_resolved or lambdas_replaced or sels_removed or locals_inlined
   return comp, modified
 
