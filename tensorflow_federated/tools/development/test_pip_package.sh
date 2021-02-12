@@ -80,6 +80,8 @@ main() {
       exit "${return_code}"
   fi
 
+  pip freeze
+
   # Test pip package
   pip install --upgrade "${package}"
   python -c "import tensorflow_federated as tff; print(tff.federated_computation(lambda: 'Hello World')())"
