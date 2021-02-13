@@ -100,7 +100,7 @@ main() {
   pip freeze
 
   python --version
-  pip install tf-ngihtly
+  pip install tf-nightly
   pip freeze
 
   # Test pip package
