@@ -3194,24 +3194,6 @@ class RemoveDuplicateBlockLocals(test_case.TestCase):
     self.assertTrue(modified)
 
 
-class DeduplicateBuildingBlocksTest(test_case.TestCase):
-
-  def test_removes_multiple_selections(self):
-    id_lam = building_blocks.Lambda(
-        'x', [tf.int32, tf.float32],
-        building_blocks.Reference('x', [tf.int32, tf.float32]))
-    ref_to_a = building_blocks.Reference('a', [tf.int32, tf.float32])
-    called_id = building_blocks.Call(id_lam, ref_to_a)
-    sel_0 = building_blocks.Selection(called_id, index=0)
-    tup = building_blocks.Struct([sel_0, sel_0])
-    fake_lam = building_blocks.Lambda('a', [tf.int32, tf.float32], tup)
-    dups_removed, modified = tree_transformations.remove_duplicate_building_blocks(
-        fake_lam)
-    self.assertTrue(modified)
-    self.assertEqual(
-        tree_analysis.count_types(dups_removed, building_blocks.Selection), 1)
-
-
 class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_raises_type_error(self):

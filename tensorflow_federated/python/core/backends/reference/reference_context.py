@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import compiler_pipeline
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
+from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
@@ -586,7 +587,7 @@ class ReferenceContext(context_base.Context):
           proto)
       intrinsics_reduced, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
           bb_to_transform)
-      dupes_removed, _ = tree_transformations.remove_duplicate_building_blocks(
+      dupes_removed, _ = transformations.remove_duplicate_building_blocks(
           intrinsics_reduced)
       comp_to_return = computation_impl.ComputationImpl(
           dupes_removed.proto, context_stack_impl.context_stack)

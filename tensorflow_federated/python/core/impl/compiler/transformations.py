@@ -30,7 +30,27 @@ from tensorflow_federated.python.core.impl.compiler import compiled_computation_
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
+from tensorflow_federated.python.core.impl.compiler.tree_transformations import extract_computations
+from tensorflow_federated.python.core.impl.compiler.tree_transformations import remove_duplicate_block_locals
+from tensorflow_federated.python.core.impl.compiler.tree_transformations import remove_mapped_or_applied_identity
+from tensorflow_federated.python.core.impl.compiler.tree_transformations import replace_called_lambda_with_block
+from tensorflow_federated.python.core.impl.compiler.tree_transformations import uniquify_reference_names
 from tensorflow_federated.python.core.impl.types import type_analysis
+
+
+def remove_duplicate_building_blocks(comp):
+  """Composite transformation to remove duplicated building blocks."""
+  mutated = False
+  for transform in [
+      replace_called_lambda_with_block,
+      remove_mapped_or_applied_identity,
+      uniquify_reference_names,
+      extract_computations,
+      remove_duplicate_block_locals,
+  ]:
+    comp, comp_mutated = transform(comp)
+    mutated = mutated or comp_mutated
+  return comp, mutated
 
 
 def prepare_for_rebinding(comp):

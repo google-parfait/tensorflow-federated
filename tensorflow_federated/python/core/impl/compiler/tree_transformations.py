@@ -675,21 +675,6 @@ class MergeChainedFederatedMapsOrApplys(transformation_utils.TransformSpec):
     return comp, True
 
 
-def remove_duplicate_building_blocks(comp):
-  """Composite transformation to remove duplicated building blocks."""
-  mutated = False
-  for transform in [
-      replace_called_lambda_with_block,
-      remove_mapped_or_applied_identity,
-      uniquify_reference_names,
-      extract_computations,
-      remove_duplicate_block_locals,
-  ]:
-    comp, comp_mutated = transform(comp)
-    mutated = mutated or comp_mutated
-  return comp, mutated
-
-
 def merge_chained_federated_maps_or_applys(comp):
   """Merges chained federated maps or federated apply into one structure."""
   return _apply_transforms(comp, MergeChainedFederatedMapsOrApplys(comp))
