@@ -735,6 +735,25 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertEqual(result, 10)
 
+  @test_utils.skip_test_for_gpu
+  def test_executor_create_value_from_iterable(self):
+
+    def _generate_items():
+      yield 2
+      yield 5
+      yield 10
+      return
+
+    ex = eager_tf_executor.EagerTFExecutor()
+    loop = asyncio.get_event_loop()
+    type_spec = computation_types.SequenceType(tf.int32)
+    val = loop.run_until_complete(ex.create_value(_generate_items, type_spec))
+    self.assertIsInstance(val, eager_tf_executor.EagerValue)
+    self.assertEqual(str(val.type_signature), str(type_spec))
+    self.assertIn('Dataset', type(val.internal_representation).__name__)
+    self.assertCountEqual([x.numpy() for x in val.internal_representation],
+                          [2, 5, 10])
+
 
 if __name__ == '__main__':
   tf.test.main()
