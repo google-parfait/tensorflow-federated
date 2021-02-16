@@ -70,12 +70,17 @@ main() {
   # Create a virtual environment
   virtualenv --python=python3.6 "venv"
   source "venv/bin/activate"
+  python --version
   pip install --upgrade pip
 
   # Publish pip package
   pip install --upgrade twine
   twine check "${package}"
   twine upload "${package}"
+
+  # Cleanup
+  deactivate
+  popd
 }
 
 main "$@"

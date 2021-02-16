@@ -81,19 +81,22 @@ main() {
   # Create a virtual environment
   virtualenv --python=python3.6 "venv"
   source "venv/bin/activate"
+  python --version
   pip install --upgrade pip
 
   # Build pip package
+  pip install --upgrade setuptools wheel
   flags=()
   if [[ ${nightly} == "1" ]]; then
     flags+=("--nightly")
   fi
-  pip install --upgrade setuptools wheel
   python "tensorflow_federated/tools/development/setup.py" bdist_wheel \
       --universal \
       "${flags[@]}"
-  popd
 
+  # Cleanup
+  deactivate
+  popd
   cp "${temp_dir}/dist/"* "${output_dir}"
 }
 
