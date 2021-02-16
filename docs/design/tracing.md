@@ -40,7 +40,7 @@ methods (e.g. `__getattr__`).
 In more detail, when there is exactly one argument, tracing is accomplished by:
 
 1.  Constructing a
-    [value_impl.ValueImpl](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/value_impl.py)
+    [value_impl.ValueImpl](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/federated_context/value_impl.py)
     backed by a
     [building_blocks.Reference](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/compiler/building_blocks.py)
     with appropriate type signature to represent the argument.

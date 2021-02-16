@@ -16,10 +16,10 @@ from typing import Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
+from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 

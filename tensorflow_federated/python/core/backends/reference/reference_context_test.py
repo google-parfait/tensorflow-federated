@@ -25,7 +25,6 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.reference import reference_context
 from tensorflow_federated.python.core.impl import intrinsic_factory
-from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks as bb
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -33,6 +32,7 @@ from tensorflow_federated.python.core.impl.compiler import test_utils as compile
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances

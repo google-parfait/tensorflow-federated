@@ -13,8 +13,8 @@
 # limitations under the License.
 """Defines functions and classes for building and manipulating TFF values."""
 
-from tensorflow_federated.python.core.impl import value_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.federated_context import value_impl
 
 # TODO(b/113116813): Pick accepted representations for sequence and federated
 # type constants and update this as well as value_impl.ValueImpl accordingly.
