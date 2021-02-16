@@ -430,12 +430,14 @@ def _to_sequence_internal_rep(
   if isinstance(value, list):
     value = tensorflow_utils.make_data_set_from_elements(
         None, value, type_spec.element)
-  py_typecheck.check_type(value,
-                          type_conversions.TF_DATASET_REPRESENTATION_TYPES)
-  element_type = computation_types.to_type(value.element_spec)
-  value_type = computation_types.SequenceType(element_type)
-  type_spec.check_assignable_from(value_type)
-  return value
+  if isinstance(value, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
+    element_type = computation_types.to_type(value.element_spec)
+    value_type = computation_types.SequenceType(element_type)
+    type_spec.check_assignable_from(value_type)
+    return value
+  py_typecheck.check_type(type_spec, computation_types.SequenceType)
+  output_sig = type_conversions.type_to_tf_tensor_specs(type_spec.element)
+  return tf.data.Dataset.from_generator(value, output_signature=output_sig)
 
 
 @tracing.trace
