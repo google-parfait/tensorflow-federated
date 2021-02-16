@@ -117,11 +117,13 @@ def create_preprocess_fn(
   if (max_elements > 0) and (max_elements < shuffle_buffer_size):
     shuffle_buffer_size = max_elements
 
+  # Features are intentionally sorted lexicographically by key for consistency
+  # across datasets.
   feature_dtypes = collections.OrderedDict(
       creation_date=tf.string,
-      title=tf.string,
       score=tf.int64,
       tags=tf.string,
+      title=tf.string,
       tokens=tf.string,
       type=tf.string,
   )

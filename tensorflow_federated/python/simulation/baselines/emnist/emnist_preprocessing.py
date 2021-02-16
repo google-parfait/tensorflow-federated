@@ -73,9 +73,11 @@ def create_preprocess_fn(
     raise ValueError('emnist_task must be one of "digit_recognition" or '
                      '"autoencoder".')
 
+  # Features are intentionally sorted lexicographically by key for consistency
+  # across datasets.
   feature_dtypes = collections.OrderedDict(
-      pixels=computation_types.TensorType(tf.float32, shape=(28, 28)),
-      label=computation_types.TensorType(tf.int32))
+      label=computation_types.TensorType(tf.int32),
+      pixels=computation_types.TensorType(tf.float32, shape=(28, 28)))
 
   @computations.tf_computation(computation_types.SequenceType(feature_dtypes))
   def preprocess_fn(dataset):

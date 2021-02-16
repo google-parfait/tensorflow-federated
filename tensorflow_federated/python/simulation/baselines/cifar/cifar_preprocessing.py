@@ -115,6 +115,8 @@ def create_preprocess_fn(
     raise ValueError('The crop_shape must have length 3, corresponding to a '
                      'tensor of shape [height, width, channels].')
 
+  # Features are intentionally sorted lexicographically by key for consistency
+  # across datasets.
   feature_dtypes = collections.OrderedDict(
       coarse_label=computation_types.TensorType(tf.int64),
       image=computation_types.TensorType(tf.uint8, shape=(32, 32, 3)),

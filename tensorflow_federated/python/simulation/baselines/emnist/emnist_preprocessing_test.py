@@ -26,8 +26,8 @@ TOTAL_NUM_CLIENTS = 3400
 
 
 TEST_DATA = collections.OrderedDict(
-    pixels=([tf.zeros((28, 28), dtype=tf.float32)]),
     label=([tf.constant(0, dtype=tf.int32)]),
+    pixels=([tf.zeros((28, 28), dtype=tf.float32)]),
 )
 
 

@@ -21,9 +21,9 @@ from tensorflow_federated.python.simulation.baselines.stackoverflow import tag_p
 
 TEST_DATA = collections.OrderedDict(
     creation_date=(['unused date']),
-    title=(['C']),
     score=([tf.constant(0, dtype=tf.int64)]),
     tags=(['B']),
+    title=(['C']),
     tokens=(['A']),
     type=(['unused type']),
 )
