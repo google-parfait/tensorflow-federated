@@ -46,13 +46,11 @@ def _unfederated(type_signature):
   return type_signature
 
 
-# Note: not a `ValueImpl` method because of the `__setattr__` override
 def _is_federated_named_tuple(vimpl: 'ValueImpl') -> bool:
   comp_ty = vimpl.type_signature
   return comp_ty.is_federated() and comp_ty.member.is_struct()
 
 
-# Note: not a `ValueImpl` method because of the `__setattr__` override
 def _is_named_tuple(vimpl: 'ValueImpl') -> bool:
   return vimpl.type_signature.is_struct()  # pylint: disable=protected-access
 
@@ -81,14 +79,9 @@ def _check_symbol_binding_context(context: context_base.Context):
 class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
   """A generic base class for values that appear in TFF computations.
 
-  If the value in this class is of `StructType` or `FederatedType`
-  containing a `StructType`, the inner fields can be accessed by name
-  (e.g. `my_value_impl.x = ...` or `y = my_value_impl.y`).
-
-  Note that setting nested fields (e.g. `my_value_impl.x.y = ...`) will not
-  work properly because it translates to
-  `my_value_impl.__getattr__('x').__setattr__('y')`, but the object returned
-  by `__getattr__` cannot proxy writes back to the original `ValueImpl`.
+  If the value in this class is of `StructType` or `FederatedType` containing a
+  `StructType`, the inner fields can be accessed by name
+  (e.g. `y = my_value_impl.y`).
   """
 
   def __init__(
@@ -103,14 +96,12 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
         contains the logic that computes this value.
       context_stack: The context stack to use.
     """
+    super()
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
     py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
     _check_symbol_binding_context(context_stack.current)
-    # We override `__setattr__` for `ValueImpl` and so must assign fields using
-    # the `__setattr__` impl on the superclass (rather than simply using
-    # e.g. `self._comp = comp`.
-    super().__setattr__('_comp', comp)
-    super().__setattr__('_context_stack', context_stack)
+    self._comp = comp
+    self._context_stack = context_stack
 
   @property
   def type_signature(self):
@@ -160,22 +151,6 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
       return ValueImpl(getattr(self._comp, name), self._context_stack)
     return ValueImpl(
         building_blocks.Selection(self._comp, name=name), self._context_stack)
-
-  def __setattr__(self, name, value):
-    py_typecheck.check_type(name, str)
-    _check_struct_or_federated_struct(self, name)
-    value_comp = ValueImpl.get_comp(to_value(value, None, self._context_stack))
-    if _is_federated_named_tuple(self):
-      new_comp = building_block_factory.create_federated_setattr_call(
-          self._comp, name, value_comp)
-      super().__setattr__('_comp', new_comp)
-      return
-    named_tuple_setattr_lambda = building_block_factory.create_named_tuple_setattr_lambda(
-        self.type_signature, name, value_comp)
-    new_comp = building_blocks.Call(named_tuple_setattr_lambda, self._comp)
-    fc_context = self._context_stack.current
-    ref = fc_context.bind_computation_to_reference(new_comp)
-    super().__setattr__('_comp', ref)
 
   def __bool__(self):
     raise TypeError(
