@@ -12,35 +12,11 @@
 # limitations under the License.
 """Utilities for type conversion, type checking, type inference, etc."""
 
-import collections
 from typing import Any, Optional
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
-
-
-def to_canonical_value(value):
-  """Converts a Python object to a canonical TFF value for a given type.
-
-  Args:
-    value: The object to convert.
-
-  Returns:
-    The canonical TFF representation of `value` for a given type.
-  """
-  if value is None:
-    return None
-  elif isinstance(value, dict):
-    if isinstance(value, collections.OrderedDict):
-      items = value.items()
-    else:
-      items = sorted(value.items())
-    return structure.Struct((k, to_canonical_value(v)) for k, v in items)
-  elif isinstance(value, (tuple, list)):
-    return [to_canonical_value(e) for e in value]
-  return value
 
 
 def reconcile_value_with_type_spec(

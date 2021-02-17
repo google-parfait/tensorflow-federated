@@ -29,7 +29,6 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl import tensorflow_deserialization
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import compiler_pipeline
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
@@ -78,6 +77,28 @@ class ComputedValue(object):
 
   def __str__(self):
     return 'ComputedValue({}, {})'.format(self._value, self._type_signature)
+
+
+def to_canonical_value(value):
+  """Converts a Python object to a canonical TFF value.
+
+  Args:
+    value: The object to convert.
+
+  Returns:
+    The canonical TFF representation of `value` for a given type.
+  """
+  if value is None:
+    return None
+  elif isinstance(value, dict):
+    if isinstance(value, collections.OrderedDict):
+      items = value.items()
+    else:
+      items = sorted(value.items())
+    return structure.Struct((k, to_canonical_value(v)) for k, v in items)
+  elif isinstance(value, (tuple, list)):
+    return [to_canonical_value(e) for e in value]
+  return value
 
 
 def to_representation_for_type(value, type_spec, callable_handler=None):
@@ -315,7 +336,7 @@ def capture_computed_value_from_graph(value, type_spec):
   """
   type_spec = computation_types.to_type(type_spec)
   py_typecheck.check_type(type_spec, computation_types.Type)
-  value = type_utils.to_canonical_value(value)
+  value = to_canonical_value(value)
   return ComputedValue(to_representation_for_type(value, type_spec), type_spec)
 
 

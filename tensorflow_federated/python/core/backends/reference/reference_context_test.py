@@ -47,6 +47,96 @@ def zero_for(type_spec, context_stack):
 
 class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
 
+  def test_to_canonical_value_with_none(self):
+    self.assertIsNone(reference_context.to_canonical_value(None))
+
+  def test_to_canonical_value_with_int(self):
+    self.assertEqual(reference_context.to_canonical_value(1), 1)
+
+  def test_to_canonical_value_with_float(self):
+    self.assertEqual(reference_context.to_canonical_value(1.0), 1.0)
+
+  def test_to_canonical_value_with_bool(self):
+    self.assertEqual(reference_context.to_canonical_value(True), True)
+    self.assertEqual(reference_context.to_canonical_value(False), False)
+
+  def test_to_canonical_value_with_string(self):
+    self.assertEqual(reference_context.to_canonical_value('a'), 'a')
+
+  def test_to_canonical_value_with_list_of_ints(self):
+    self.assertEqual(reference_context.to_canonical_value([1, 2, 3]), [1, 2, 3])
+
+  def test_to_canonical_value_with_list_of_floats(self):
+    self.assertEqual(
+        reference_context.to_canonical_value([1.0, 2.0, 3.0]), [1.0, 2.0, 3.0])
+
+  def test_to_canonical_value_with_list_of_bools(self):
+    self.assertEqual(
+        reference_context.to_canonical_value([True, False]), [True, False])
+
+  def test_to_canonical_value_with_list_of_strings(self):
+    self.assertEqual(
+        reference_context.to_canonical_value(['a', 'b', 'c']), ['a', 'b', 'c'])
+
+  def test_to_canonical_value_with_list_of_dict(self):
+    self.assertEqual(
+        reference_context.to_canonical_value([{
+            'a': 1,
+            'b': 0.1,
+        }]), [structure.Struct([
+            ('a', 1),
+            ('b', 0.1),
+        ])])
+
+  def test_to_canonical_value_with_list_of_ordered_dict(self):
+    self.assertEqual(
+        reference_context.to_canonical_value(
+            [collections.OrderedDict([
+                ('a', 1),
+                ('b', 0.1),
+            ])]), [structure.Struct([
+                ('a', 1),
+                ('b', 0.1),
+            ])])
+
+  def test_to_canonical_value_with_dict(self):
+    self.assertEqual(
+        reference_context.to_canonical_value({
+            'a': 1,
+            'b': 0.1,
+        }), structure.Struct([
+            ('a', 1),
+            ('b', 0.1),
+        ]))
+    self.assertEqual(
+        reference_context.to_canonical_value({
+            'b': 0.1,
+            'a': 1,
+        }), structure.Struct([
+            ('a', 1),
+            ('b', 0.1),
+        ]))
+
+  def test_to_canonical_value_with_ordered_dict(self):
+    self.assertEqual(
+        reference_context.to_canonical_value(
+            collections.OrderedDict([
+                ('a', 1),
+                ('b', 0.1),
+            ])), structure.Struct([
+                ('a', 1),
+                ('b', 0.1),
+            ]))
+    self.assertEqual(
+        reference_context.to_canonical_value(
+            collections.OrderedDict([
+                ('b', 0.1),
+                ('a', 1),
+            ])), structure.Struct([
+                ('b', 0.1),
+                ('a', 1),
+            ]))
+
   def test_computed_value(self):
     v = reference_context.ComputedValue(10, tf.int32)
     self.assertEqual(str(v.type_signature), 'int32')
