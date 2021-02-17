@@ -59,7 +59,7 @@ def load_data(cache_dir=None):
   The `tf.data.Datasets` returned by
   `tff.simulation.ClientData.create_tf_dataset_for_client` will yield
   `collections.OrderedDict` objects at each iteration, with the following keys
-  and values:
+  and values, in lexicographic order by key:
 
     -   `'coarse_label'`: a `tf.Tensor` with `dtype=tf.int64` and shape [1] that
         corresponds to the coarse label of the associated image. Labels are

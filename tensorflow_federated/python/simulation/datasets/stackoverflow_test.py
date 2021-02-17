@@ -30,9 +30,9 @@ class StackoverflowTest(absltest.TestCase):
 
     expected_type = collections.OrderedDict(
         creation_date=tf.TensorSpec(shape=[], dtype=tf.string),
-        title=tf.TensorSpec(shape=[], dtype=tf.string),
         score=tf.TensorSpec(shape=[], dtype=tf.int64),
         tags=tf.TensorSpec(shape=[], dtype=tf.string),
+        title=tf.TensorSpec(shape=[], dtype=tf.string),
         tokens=tf.TensorSpec(shape=[], dtype=tf.string),
         type=tf.TensorSpec(shape=[], dtype=tf.string),
     )

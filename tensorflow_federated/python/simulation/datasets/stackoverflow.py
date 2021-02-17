@@ -70,16 +70,16 @@ def load_data(cache_dir=None):
   The `tf.data.Datasets` returned by
   `tff.simulation.ClientData.create_tf_dataset_for_client` will yield
   `collections.OrderedDict` objects at each iteration, with the following keys
-  and values:
+  and values, in lexicographic order by key:
 
     -   `'creation_date'`: a `tf.Tensor` with `dtype=tf.string` and shape []
         containing the date/time of the question or answer in UTC format.
-    -   `'title'`: a `tf.Tensor` with `dtype=tf.string` and shape [] containing
-        the title of the question.
     -   `'score'`: a `tf.Tensor` with `dtype=tf.int64` and shape [] containing
         the score of the question.
     -   `'tags'`: a `tf.Tensor` with `dtype=tf.string` and shape [] containing
         the tags of the question, separated by '|' characters.
+    -   `'title'`: a `tf.Tensor` with `dtype=tf.string` and shape [] containing
+        the title of the question.
     -   `'tokens'`: a `tf.Tensor` with `dtype=tf.string` and shape []
         containing the tokens of the question/answer, separated by space (' ')
         characters.
@@ -215,11 +215,6 @@ _SYNTHETIC_STACKOVERFLOW_DATA = {
                 b'2008-08-10 08:28:52.1 UTC',
                 b'2008-08-10 08:28:52.1 UTC',
             ],
-            title=[
-                b'function to calculate median in sql server',
-                b'creating rounded corners using css',
-                b'creating rounded corners using css',
-            ],
             score=np.asarray([
                 172,
                 80,
@@ -229,6 +224,11 @@ _SYNTHETIC_STACKOVERFLOW_DATA = {
                 b'sql|sql-server|aggregate-functions|median',
                 b'css|cross-browser|rounded-corners|css3',
                 b'css|cross-browser|rounded-corners|css3',
+            ],
+            title=[
+                b'function to calculate median in sql server',
+                b'creating rounded corners using css',
+                b'creating rounded corners using css',
             ],
             tokens=[
                 b"if you're using sql 2005 or better this is a nice , simple-ish median calculation for a single column in a table :",
@@ -247,11 +247,6 @@ _SYNTHETIC_STACKOVERFLOW_DATA = {
                 b'2010-07-15 18:15:58.5 UTC',
                 b'2010-07-15 18:15:58.5 UTC',
             ],
-            title=[
-                b'getting started with version control',
-                b'writing to / system / framework in emulator',
-                b'writing to / system / framework in emulator',
-            ],
             score=np.asarray([
                 3,
                 12,
@@ -261,6 +256,11 @@ _SYNTHETIC_STACKOVERFLOW_DATA = {
                 b'git|svn|version-control|language-agnostic|dvcs',
                 b'android|android-emulator|monkey',
                 b'android|android-emulator|monkey',
+            ],
+            title=[
+                b'getting started with version control',
+                b'writing to / system / framework in emulator',
+                b'writing to / system / framework in emulator',
             ],
             tokens=[
                 b'if you are on mac osx , i found <URL> " > versions to be an incredible ( free ) gui front-end to svn .',
@@ -279,10 +279,6 @@ _SYNTHETIC_STACKOVERFLOW_DATA = {
                 b'2008-10-30 16:49:26.9 UTC',
                 b'2008-10-30 16:49:26.9 UTC',
             ],
-            title=[
-                b'iterator pattern in vb . net ( c # would use yield ! )',
-                b'iterator pattern in vb . net ( c # would use yield ! )',
-            ],
             score=np.asarray([
                 1,
                 1,
@@ -290,6 +286,10 @@ _SYNTHETIC_STACKOVERFLOW_DATA = {
             tags=[
                 b'vb . net|design-patterns|iterator|yield',
                 b'vb . net|design-patterns|iterator|yield',
+            ],
+            title=[
+                b'iterator pattern in vb . net ( c # would use yield ! )',
+                b'iterator pattern in vb . net ( c # would use yield ! )',
             ],
             tokens=[
                 b'edit :',

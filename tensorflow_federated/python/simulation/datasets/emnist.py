@@ -70,16 +70,16 @@ def load_data(only_digits=True, cache_dir=None):
   The `tf.data.Datasets` returned by
   `tff.simulation.ClientData.create_tf_dataset_for_client` will yield
   `collections.OrderedDict` objects at each iteration, with the following keys
-  and values:
+  and values, in lexicographic order by key:
 
-    -   `'pixels'`: a `tf.Tensor` with `dtype=tf.float32` and shape [28, 28],
-        containing the pixels of the handwritten digit, with values in
-        the range [0.0, 1.0].
     -   `'label'`: a `tf.Tensor` with `dtype=tf.int32` and shape [1], the class
         label of the corresponding pixels. Labels [0-9] correspond to the digits
         classes, labels [10-35] correspond to the uppercase classes (e.g., label
         11 is 'B'), and labels [36-61] correspond to the lowercase classes
         (e.g., label 37 is 'b').
+    -   `'pixels'`: a `tf.Tensor` with `dtype=tf.float32` and shape [28, 28],
+        containing the pixels of the handwritten digit, with values in
+        the range [0.0, 1.0].
 
   Args:
     only_digits: (Optional) whether to only include examples that are from the
@@ -279,7 +279,8 @@ def _get_synthetic_digits_data():
 
   Returns:
     A dictionary that matches the structure of the data produced by
-    `tff.simulation.datasets.emnist.load_data`, with keys `pixels` and `label`.
+    `tff.simulation.datasets.emnist.load_data`, with keys (in lexicographic
+    order) `label` and `pixels`.
   """
   data = np.array(_SYNTHETIC_DIGITS_DATA)
   img_list = []
@@ -287,8 +288,10 @@ def _get_synthetic_digits_data():
     img_array = img_array.astype(np.float32) / 9.0
     img_list.append(img_array)
   assert len(img_list) == 10
-  return collections.OrderedDict([('pixels', img_list),
-                                  ('label', list(range(10)))])
+  return collections.OrderedDict([
+      ('label', list(range(10))),
+      ('pixels', img_list),
+  ])
 
 
 # pyformat: disable

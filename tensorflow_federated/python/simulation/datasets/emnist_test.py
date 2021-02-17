@@ -30,8 +30,8 @@ class EMNISTTest(tf.test.TestCase, absltest.TestCase):
     self.assertEqual(
         client_data.element_type_structure,
         collections.OrderedDict([
-            ('pixels', tf.TensorSpec(shape=(28, 28), dtype=tf.float32)),
             ('label', tf.TensorSpec(shape=(), dtype=tf.int32)),
+            ('pixels', tf.TensorSpec(shape=(28, 28), dtype=tf.float32)),
         ]))
 
     for client_id in client_data.client_ids:
