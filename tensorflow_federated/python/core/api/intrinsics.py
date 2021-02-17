@@ -15,8 +15,8 @@
 
 import warnings
 
-from tensorflow_federated.python.core.impl import intrinsic_factory
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.federated_context import intrinsic_factory
 
 
 def federated_aggregate(value, zero, accumulate, merge, report):

@@ -98,8 +98,8 @@ py_library(
     srcs = ["intrinsics.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/core/impl:intrinsic_factory",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/federated_context:intrinsic_factory",
     ],
 )
 

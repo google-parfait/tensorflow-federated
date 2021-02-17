@@ -383,8 +383,6 @@ def is_valid_bitwidth_type_for_value_type(
     value_type: computation_types.Type) -> bool:
   """Whether or not `bitwidth_type` is a valid bitwidth type for `value_type`."""
 
-  # NOTE: this function is primarily a helper for `intrinsic_factory.py`'s
-  # `federated_secure_sum` function.
   py_typecheck.check_type(bitwidth_type, computation_types.Type)
   py_typecheck.check_type(value_type, computation_types.Type)
 

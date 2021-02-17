@@ -51,45 +51,6 @@ py_test(
 )
 
 py_library(
-    name = "intrinsic_factory",
-    srcs = ["intrinsic_factory.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":value_utils",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:value_base",
-        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
-        "//tensorflow_federated/python/core/impl/context_stack:symbol_binding_context",
-        "//tensorflow_federated/python/core/impl/federated_context:value_impl",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
-        "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
-    ],
-)
-
-py_test(
-    name = "intrinsic_factory_test",
-    srcs = ["intrinsic_factory_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":intrinsic_factory",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation_context",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
-    ],
-)
-
-py_library(
     name = "tensorflow_deserialization",
     srcs = ["tensorflow_deserialization.py"],
     srcs_version = "PY3",
