@@ -137,38 +137,3 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
     ],
 )
-
-py_library(
-    name = "value_utils",
-    srcs = ["value_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:value_base",
-        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/federated_context:value_impl",
-    ],
-)
-
-py_test(
-    name = "value_utils_test",
-    size = "small",
-    srcs = ["value_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":value_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation_context",
-        "//tensorflow_federated/python/core/impl/federated_context:value_impl",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
-    ],
-)
