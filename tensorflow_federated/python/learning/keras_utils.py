@@ -51,6 +51,11 @@ def from_keras_model(
   which the generated `tff.learning.Model` will appear, TFF needs the type `y`
   in addition to the type `x`.
 
+  Note: This function does not currently accept subclassed `tf.keras.Models`,
+  as it makes assumptions about presence of certain attributes which are
+  guaranteed to exist through the functional or Sequential API but are
+  not necessarily present for subclassed models.
+
   Args:
     keras_model: A `tf.keras.Model` object that is not compiled.
     loss: A single `tf.keras.losses.Loss` or a list of losses-per-output. If a
