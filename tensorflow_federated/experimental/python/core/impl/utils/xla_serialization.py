@@ -62,7 +62,8 @@ def unpack_xla_computation(any_pb):
   """
   py_typecheck.check_type(any_pb, any_pb2.Any)
   if any_pb.type_url != _HLO_MODULE_PROTO_URI:
-    raise ValueError('Not a serialized `HloModuleProto`.')
+    raise ValueError('Not a serialized `HloModuleProto`: {}.'.format(
+        str(any_pb.type_url)))
   return xla_client.XlaComputation(any_pb.value)
 
 

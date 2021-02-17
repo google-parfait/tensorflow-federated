@@ -1582,5 +1582,6 @@ ComputationBuildingBlock._deserializer_dict = {
     'data': Data.from_proto,
     'placement': Placement.from_proto,
     'tensorflow': CompiledComputation,
+    'xla': CompiledComputation,
 }
 # pylint: enable=protected-access

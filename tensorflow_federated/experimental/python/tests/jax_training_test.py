@@ -26,21 +26,28 @@ import jax
 import numpy as np
 import tensorflow_federated as tff
 
+# TODO(b/175888145): Represent the entirety of local eval as a computation.
+
 # TODO(b/175888145): Evolve this into a complete federated training example.
+
+# TODO(b/175888145): Allow step size to be dynamic.
 
 Trainer = collections.namedtuple('Trainer', [
     'create_initial_model',
     'generate_random_batches',
     'train_on_one_batch',
+    'train_on_one_client',
+    'local_training_process',
     'compute_loss_on_one_batch',
 ])
 
 
-def create_trainer(batch_size):
+def create_trainer(batch_size, step_size):
   """Constructs a trainer for the given batch size.
 
   Args:
     batch_size: The size of a single data batch.
+    step_size: The step size to use during training.
 
   Returns:
     An instance of `Trainer`.
@@ -77,12 +84,19 @@ def create_trainer(batch_size):
     targets = jax.nn.one_hot(jax.numpy.reshape(batch['labels'], -1), 10)
     return -jax.numpy.mean(jax.numpy.sum(targets * jax.numpy.log(y), axis=1))
 
-  @tff.experimental.jax_computation(model_type, batch_type, np.float32)
-  def train_on_one_batch(model, batch, step_size):
+  @tff.experimental.jax_computation(model_type, batch_type)
+  def train_on_one_batch(model, batch):
     grads = jax.api.grad(_loss_fn)(model, batch)
     return collections.OrderedDict([
         (k, model[k] - step_size * grads[k]) for k in ['weights', 'bias']
     ])
+
+  @tff.federated_computation(model_type, tff.SequenceType(batch_type))
+  def train_on_one_client(model, batches):
+    return tff.sequence_reduce(batches, model, train_on_one_batch)
+
+  local_training_process = tff.templates.IterativeProcess(
+      initialize_fn=create_initial_model, next_fn=train_on_one_client)
 
   compute_loss_on_one_batch = tff.experimental.jax_computation(
       _loss_fn, model_type, batch_type)
@@ -91,13 +105,15 @@ def create_trainer(batch_size):
       create_initial_model=create_initial_model,
       generate_random_batches=generate_random_batches,
       train_on_one_batch=train_on_one_batch,
+      train_on_one_client=train_on_one_client,
+      local_training_process=local_training_process,
       compute_loss_on_one_batch=compute_loss_on_one_batch)
 
 
 class JaxTrainingTest(absltest.TestCase):
 
   def test_types(self):
-    trainer = create_trainer(100)
+    trainer = create_trainer(100, 0.01)
     model_type = trainer.create_initial_model.type_signature.result
     example_batch = next(trainer.generate_random_batches(1))
     make_example_batch = tff.experimental.jax_computation(lambda: example_batch)
@@ -107,9 +123,7 @@ class JaxTrainingTest(absltest.TestCase):
         str(
             tff.FunctionType(
                 collections.OrderedDict([('model', model_type),
-                                         ('batch', batch_type),
-                                         ('step_size', np.float32)]),
-                model_type)))
+                                         ('batch', batch_type)]), model_type)))
     self.assertEqual(
         str(trainer.compute_loss_on_one_batch.type_signature),
         str(
@@ -122,15 +136,15 @@ class JaxTrainingTest(absltest.TestCase):
     num_batches = 20
     num_rounds = 5
     step_size = 0.001
-    trainer = create_trainer(batch_size)
+    trainer = create_trainer(batch_size, step_size)
     training_batches = list(trainer.generate_random_batches(num_batches))
     eval_batches = list(trainer.generate_random_batches(num_batches))
-    model = trainer.create_initial_model()
+
+    model = trainer.local_training_process.initialize()
     losses = []
     for round_number in range(num_rounds + 1):
       if round_number > 0:
-        for batch in training_batches:
-          model = trainer.train_on_one_batch(model, batch, step_size)
+        model = trainer.local_training_process.next(model, training_batches)
       average_loss = np.mean([
           trainer.compute_loss_on_one_batch(model, batch)
           for batch in eval_batches

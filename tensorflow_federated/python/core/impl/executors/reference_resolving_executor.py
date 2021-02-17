@@ -502,7 +502,9 @@ class ReferenceResolvingExecutor(executor_base.Executor):
     py_typecheck.check_type(comp, pb.Computation)
     py_typecheck.check_type(scope, ReferenceResolvingExecutorScope)
     which_computation = comp.WhichOneof('computation')
-    if which_computation in ['tensorflow', 'intrinsic', 'data', 'placement']:
+    if which_computation in [
+        'tensorflow', 'intrinsic', 'data', 'placement', 'xla'
+    ]:
       # nothing interesting here-- forward the creation to the child executor
       return await self._evaluate_to_delegate(comp, scope)
     elif which_computation == 'lambda':
