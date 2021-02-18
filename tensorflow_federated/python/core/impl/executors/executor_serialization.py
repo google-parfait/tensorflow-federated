@@ -29,8 +29,8 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -56,7 +56,7 @@ def _serialize_computation(
     comp: computation_pb2.Computation,
     type_spec: Optional[computation_types.Type]) -> _SerializeReturnType:
   """Serializes a TFF computation."""
-  type_spec = type_utils.reconcile_value_type_with_type_spec(
+  type_spec = executor_utils.reconcile_value_type_with_type_spec(
       type_serialization.deserialize_type(comp.type), type_spec)
   return executor_pb2.Value(computation=comp), type_spec
 
@@ -263,7 +263,7 @@ def serialize_value(
   elif isinstance(value, computation_impl.ComputationImpl):
     return _serialize_computation(
         computation_impl.ComputationImpl.get_proto(value),
-        type_utils.reconcile_value_with_type_spec(value, type_spec))
+        executor_utils.reconcile_value_with_type_spec(value, type_spec))
   elif type_spec is None:
     raise TypeError('A type hint is required when serializing a value which '
                     'is not a TFF computation. Asked to serialized value {v} '

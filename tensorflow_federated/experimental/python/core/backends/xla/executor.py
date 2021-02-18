@@ -23,9 +23,9 @@ from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -182,7 +182,7 @@ def to_representation_for_type(value, type_spec, backend=None):
     py_typecheck.check_type(backend, xla_client.Client)
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
-  type_spec = type_utils.reconcile_value_with_type_spec(value, type_spec)
+  type_spec = executor_utils.reconcile_value_with_type_spec(value, type_spec)
   if isinstance(value, computation_base.Computation):
     return to_representation_for_type(
         computation_impl.ComputationImpl.get_proto(value), type_spec, backend)

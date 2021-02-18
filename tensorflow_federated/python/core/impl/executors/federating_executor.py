@@ -57,7 +57,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import executor_base
@@ -362,7 +361,7 @@ class FederatingExecutor(executor_base.Executor):
     elif isinstance(value, computation_impl.ComputationImpl):
       return await self.create_value(
           computation_impl.ComputationImpl.get_proto(value),
-          type_utils.reconcile_value_with_type_spec(value, type_spec))
+          executor_utils.reconcile_value_with_type_spec(value, type_spec))
     elif isinstance(value, pb.Computation):
       deserialized_type = type_serialization.deserialize_type(value.type)
       if type_spec is None:

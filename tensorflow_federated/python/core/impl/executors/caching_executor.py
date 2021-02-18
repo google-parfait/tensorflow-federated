@@ -24,9 +24,9 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 
 
@@ -209,7 +209,7 @@ class CachingExecutor(executor_base.Executor):
     if isinstance(value, computation_impl.ComputationImpl):
       return await self.create_value(
           computation_impl.ComputationImpl.get_proto(value),
-          type_utils.reconcile_value_with_type_spec(value, type_spec))
+          executor_utils.reconcile_value_with_type_spec(value, type_spec))
     py_typecheck.check_type(type_spec, computation_types.Type)
     hashable_key = _get_hashable_key(value, type_spec)
     try:

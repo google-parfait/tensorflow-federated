@@ -110,28 +110,3 @@ py_test(
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
     ],
 )
-
-py_library(
-    name = "type_utils",
-    srcs = ["type_utils.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:typed_object",
-    ],
-)
-
-py_test(
-    name = "type_utils_test",
-    size = "small",
-    srcs = ["type_utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":type_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
-    ],
-)

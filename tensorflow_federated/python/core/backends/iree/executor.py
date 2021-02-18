@@ -24,9 +24,9 @@ from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import compiler
 from tensorflow_federated.python.core.backends.iree import runtime
-from tensorflow_federated.python.core.impl import type_utils
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import executor_base
+from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.types import type_analysis
 
@@ -57,7 +57,7 @@ def to_representation_for_type(value, type_spec=None, backend=None):
     ValueError: If the arguments are incorrect (e.g., missing `backend` for a
       computation-typed `value`).
   """
-  type_spec = type_utils.reconcile_value_with_type_spec(value, type_spec)
+  type_spec = executor_utils.reconcile_value_with_type_spec(value, type_spec)
   if backend is not None:
     py_typecheck.check_type(backend, backend_info.BackendInfo)
   if isinstance(value, computation_base.Computation):
