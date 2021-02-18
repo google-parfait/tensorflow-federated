@@ -476,6 +476,7 @@ def _setup_mock_streaming_executor(mock_stub,
 class RemoteExecutorStreamingTest(absltest.TestCase):
 
   def test_set_cardinalities_returns_none(self, mock_stub):
+    self.skipTest('b/179526304; disabled in the runtime.')
     response = executor_pb2.ExecuteResponse(
         set_cardinalities=executor_pb2.SetCardinalitiesResponse())
     executor = _setup_mock_streaming_executor(mock_stub, response)
@@ -485,6 +486,7 @@ class RemoteExecutorStreamingTest(absltest.TestCase):
     self.assertIsNone(result)
 
   def test_create_value_returns_remote_value(self, mock_stub):
+    self.skipTest('b/179526304; disabled in the runtime.')
     response = executor_pb2.ExecuteResponse(
         create_value=executor_pb2.CreateValueResponse())
     executor = _setup_mock_streaming_executor(mock_stub, response)
@@ -495,6 +497,7 @@ class RemoteExecutorStreamingTest(absltest.TestCase):
 
   def test_create_value_raises_value_error_with_illegal_response(
       self, mock_stub):
+    self.skipTest('b/179526304; disabled in the runtime.')
     response = 0
     executor = _setup_mock_streaming_executor(mock_stub, response)
     loop = asyncio.get_event_loop()
@@ -503,6 +506,7 @@ class RemoteExecutorStreamingTest(absltest.TestCase):
       loop.run_until_complete(executor.create_value(1, tf.int32))
 
   def test_create_value_raises_non_retryable_error(self, mock_stub):
+    self.skipTest('b/179526304; disabled in the runtime.')
     response = executor_pb2.ExecuteResponse(
         create_value=executor_pb2.CreateValueResponse())
     executor = _setup_mock_streaming_executor(
@@ -516,6 +520,7 @@ class RemoteExecutorStreamingTest(absltest.TestCase):
 
   def test_create_value_raises_retryable_error_on_grpc_error_unavailable(
       self, mock_stub):
+    self.skipTest('b/179526304; disabled in the runtime.')
     response = executor_pb2.ExecuteResponse(
         create_value=executor_pb2.CreateValueResponse())
     executor = _setup_mock_streaming_executor(
@@ -526,6 +531,7 @@ class RemoteExecutorStreamingTest(absltest.TestCase):
       loop.run_until_complete(executor.create_value(1, tf.int32))
 
   def test_create_call_returns_remote_value(self, mock_stub):
+    self.skipTest('b/179526304; disabled in the runtime.')
     response = executor_pb2.ExecuteResponse(
         create_call=executor_pb2.CreateCallResponse())
     executor = _setup_mock_streaming_executor(mock_stub, response)
@@ -540,6 +546,7 @@ class RemoteExecutorStreamingTest(absltest.TestCase):
 
   def test_create_struct_returns_remote_value(self, mock_stub):
 
+    self.skipTest('b/179526304; disabled in the runtime.')
     response = executor_pb2.ExecuteResponse(
         create_struct=executor_pb2.CreateStructResponse())
     executor = _setup_mock_streaming_executor(mock_stub, response)
@@ -556,6 +563,7 @@ class RemoteExecutorStreamingTest(absltest.TestCase):
     self.assertIsInstance(result, remote_executor.RemoteValue)
 
   def test_create_selection_returns_remote_value(self, mock_stub):
+    self.skipTest('b/179526304; disabled in the runtime.')
     response = executor_pb2.ExecuteResponse(
         create_selection=executor_pb2.CreateSelectionResponse())
     executor = _setup_mock_streaming_executor(mock_stub, response)
@@ -570,6 +578,7 @@ class RemoteExecutorStreamingTest(absltest.TestCase):
 
   def test_error_raises_when_conn_fails_before_first_msg(self, mock_stub):
     """Ensure errors are raised when gRPC stream fails before first message."""
+    self.skipTest('b/179526304; disabled in the runtime.')
     loop = asyncio.get_event_loop()
 
     executor = _setup_mock_streaming_executor(

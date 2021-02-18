@@ -12,23 +12,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for running a TFF remote runtime on localhost."""
+import contextlib
+import os
+import signal
+import subprocess
+import sys
+from typing import List, Sequence
+
+from absl import logging
 
 import grpc
+import tensorflow as tf
 import tensorflow_federated as tff
 
 
-def create_localhost_remote_context(ports, rpc_mode='REQUEST_REPLY'):
+def create_localhost_remote_context(ports: Sequence[str]):
   """Connects remote executors to `ports`."""
   channels = [
       grpc.insecure_channel('localhost:{}'.format(port)) for port in ports
   ]
-  context = tff.backends.native.create_remote_execution_context(
-      channels, rpc_mode=rpc_mode)
+  context = tff.backends.native.create_remote_execution_context(channels)
   return context
 
 
-def create_localhost_worker_contexts(ports):
-  """Constructs executor service on `ports`; returns list of contextmanagers."""
+def create_inprocess_worker_contexts(
+    ports: Sequence[str]) -> List[contextlib.AbstractContextManager]:
+  """Constructs inprocess workers listening on `ports`.
+
+  Starting and running inprocess workers and aggregators leads to lower
+  overhead and faster tests than their subprocess-based equivalents, though
+  subprocess versions are easier to keep isolated and reason more effectively
+  about the cleanup. For this reason, we prefer inprocess versions unless
+  isolation or corruption during cleanup is a major concern.
+
+  Args:
+    ports: Sequence of strings, defining the ports on which to serve.
+
+  Returns:
+    List of context managers which control serving and cleanup on `ports`.
+  """
   server_contexts = []
   for port in ports:
     executor_factory = tff.framework.local_executor_factory()
@@ -38,39 +60,99 @@ def create_localhost_worker_contexts(ports):
   return server_contexts
 
 
-def create_localhost_aggregator_contexts(worker_ports,
-                                         aggregator_ports,
-                                         rpc_mode='REQUEST_REPLY'):
-  """Constructs 2-tiered executor service; returns list of contextmanagers."""
+def create_inprocess_aggregator_contexts(
+    worker_ports: Sequence[str],
+    aggregator_ports: Sequence[str]) -> List[contextlib.AbstractContextManager]:
+  """Constructs inprocess aggregators listening on `aggregator_ports`.
 
-  worker_contexts = create_localhost_worker_contexts(worker_ports)
+  See comment in `create_inprocess_worker_contexts` for reasons to prefer
+  inprocess or subprocess-based aggregators.
+
+  Args:
+    worker_ports: Sequence of strings, defining the ports which should host the
+      (endpoint) workers in this runtime.
+    aggregator_ports: Sequence of strings, defining the ports on which the
+      aggregators should be listening.
+
+  Returns:
+    List of context managers which control serving and cleanup of aggregators
+    and workers.
+  """
+
+  worker_contexts = create_inprocess_worker_contexts(worker_ports)
 
   aggregator_contexts = []
 
   for target_port, server_port in zip(worker_ports, aggregator_ports):
-    channel = [grpc.insecure_channel('localhost:{}'.format(target_port))]
-    ex_factory = tff.framework.remote_executor_factory(
-        channel, rpc_mode=rpc_mode)
+    channel = grpc.insecure_channel('localhost:{}'.format(target_port))
+    executor_factory = tff.framework.remote_executor_factory([channel])
     server_context = tff.simulation.server_context(
-        ex_factory, num_threads=1, port=server_port)
+        executor_factory, num_threads=1, port=server_port)
     aggregator_contexts.append(server_context)
-
   return worker_contexts + aggregator_contexts
 
 
-def create_standalone_localhost_aggregator_contexts(worker_ports,
-                                                    aggregator_ports,
-                                                    rpc_mode='REQUEST_REPLY'):
-  """Constructs aggregators on appropriate ports without workers."""
+def create_standalone_subprocess_aggregator_contexts(
+    worker_ports: Sequence[str],
+    aggregator_ports: Sequence[str]) -> List[contextlib.AbstractContextManager]:
+  """Constructs aggregators in subprocess listening on appropriate ports.
+
+  See comment in `create_inprocess_worker_contexts` for reasons to prefer
+  inprocess or subprocess-based aggregators.
+
+  Args:
+    worker_ports: Sequence of strings, defining the ports which should host the
+      (endpoint) workers in this runtime.
+    aggregator_ports: Sequence of strings, defining the ports on which the
+      aggregators should be listening.
+
+  Returns:
+    List of context managers which control serving and cleanup of aggregators
+    only; workers must be started and stopped by other means.
+  """
 
   aggregator_contexts = []
 
-  for target_port, server_port in zip(worker_ports, aggregator_ports):
-    channel = [grpc.insecure_channel('localhost:{}'.format(target_port))]
-    ex_factory = tff.framework.remote_executor_factory(
-        channel, rpc_mode=rpc_mode)
-    server_context = tff.simulation.server_context(
-        ex_factory, num_threads=1, port=server_port)
+  @contextlib.contextmanager
+  def _aggregator_subprocess(worker_port, aggregator_port):
+    pids = []
+    try:
+      pids.append(start_python_aggregator(worker_port, aggregator_port))
+      logging.info('We should have started the worker')
+      yield pids
+    finally:
+      for pid in pids:
+        stop_service_process(pid)
+
+  for worker_port, aggregator_port in zip(worker_ports, aggregator_ports):
+    server_context = _aggregator_subprocess(worker_port, aggregator_port)
     aggregator_contexts.append(server_context)
 
   return aggregator_contexts
+
+
+def start_python_aggregator(worker_port: str,
+                            aggregator_port: str) -> subprocess.Popen:
+  """Starts running Python aggregator in a subprocess."""
+  python_service_binary = os.path.join(
+      tf.compat.v1.resource_loader.get_root_dir_with_all_resources(),
+      tf.compat.v1.resource_loader.get_path_to_datafile('test_aggregator.par'))
+
+  args = [
+      python_service_binary,
+      f'--worker_port={worker_port}',
+      f'--aggregator_port={aggregator_port}',
+  ]
+  logging.info('Starting python aggregator service via: %s', args)
+  if logging.vlog_is_on(1):
+    pid = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
+  else:
+    pid = subprocess.Popen(args)
+  return pid
+
+
+def stop_service_process(process: subprocess.Popen):
+  logging.info('Sending SIGINT to executor service...')
+  os.kill(process.pid, signal.SIGINT)
+  logging.info('Waiting for process to complete...')
+  process.wait()  # wait for exit from SIGINT

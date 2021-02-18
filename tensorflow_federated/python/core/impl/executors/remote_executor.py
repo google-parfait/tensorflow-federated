@@ -17,9 +17,10 @@ import asyncio
 import queue
 import threading
 from typing import Mapping
+import warnings
 import weakref
 
-import absl.logging as logging
+from absl import logging
 import grpc
 
 from tensorflow_federated.proto.v0 import executor_pb2
@@ -270,6 +271,11 @@ class RemoteExecutor(executor_base.Executor):
     py_typecheck.check_type(dispose_batch_size, int)
     if rpc_mode not in ['REQUEST_REPLY', 'STREAMING']:
       raise ValueError('Invalid rpc_mode: {}'.format(rpc_mode))
+
+    if rpc_mode == 'STREAMING':
+      warnings.warn('TFF streaming RPCs are deprecated and being removed; '
+                    'falling back to request-reply behavior.')
+      rpc_mode = 'REQUEST_REPLY'
 
     logging.debug('Creating new ExecutorStub with RPC_MODE=%s', rpc_mode)
 

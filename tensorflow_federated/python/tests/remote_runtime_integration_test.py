@@ -22,8 +22,13 @@ import tensorflow_federated as tff
 
 from tensorflow_federated.python.tests import remote_runtime_test_utils
 
-_WORKER_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
-_AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
+
+def _get_unused_ports(num_ports=2):
+  return [portpicker.pick_unused_port() for _ in range(num_ports)]
+
+
+_WORKER_PORTS = _get_unused_ports()
+_AGGREGATOR_PORTS = _get_unused_ports()
 
 
 # TODO(b/168744510): This module is intended to be short-lived, and the
@@ -31,23 +36,14 @@ _AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 # infrastructure deeper in the runtime.
 class WorkerFailureTest(parameterized.TestCase):
 
-  @parameterized.named_parameters(
-      ('native_remote_request_reply',
-       remote_runtime_test_utils.create_localhost_remote_context(_WORKER_PORTS),
-       remote_runtime_test_utils.create_localhost_worker_contexts(
-           _WORKER_PORTS),
-       remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS)
-      ),
-      ('native_remote_streaming',
-       remote_runtime_test_utils.create_localhost_remote_context(
-           _WORKER_PORTS, rpc_mode='STREAMING'),
-       remote_runtime_test_utils.create_localhost_worker_contexts(
-           _WORKER_PORTS),
-       remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS)
-      ),
-  )
-  def test_computations_run_with_worker_restarts(self, context, first_contexts,
-                                                 second_contexts):
+  def test_computations_run_with_worker_restarts(self):
+
+    context = remote_runtime_test_utils.create_localhost_remote_context(
+        _WORKER_PORTS)
+    first_contexts = remote_runtime_test_utils.create_inprocess_worker_contexts(
+        _WORKER_PORTS)
+    second_contexts = remote_runtime_test_utils.create_inprocess_worker_contexts(
+        _WORKER_PORTS)
 
     @tff.tf_computation(tf.int32)
     def add_one(x):
@@ -76,25 +72,18 @@ class WorkerFailureTest(parameterized.TestCase):
         result = map_add_one([0, 1])
         self.assertEqual(result, [1, 2])
 
-  @parameterized.named_parameters((
-      'native_remote',
-      remote_runtime_test_utils.create_localhost_remote_context(
-          _AGGREGATOR_PORTS),
-      remote_runtime_test_utils.create_standalone_localhost_aggregator_contexts(
-          _WORKER_PORTS, _AGGREGATOR_PORTS),
-      remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS),
-      remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS)
-  ), ('native_remote_streaming',
-      remote_runtime_test_utils.create_localhost_remote_context(
-          _AGGREGATOR_PORTS, rpc_mode='STREAMING'),
-      remote_runtime_test_utils.create_standalone_localhost_aggregator_contexts(
-          _WORKER_PORTS, _AGGREGATOR_PORTS, rpc_mode='STREAMING'),
-      remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS),
-      remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS))
-                                 )
-  def test_computations_run_with_worker_restarts_and_aggregation(
-      self, context, aggregation_contexts, first_worker_contexts,
-      second_worker_contexts):
+  def test_computations_run_with_worker_restarts_and_aggregation(self):
+
+    context = remote_runtime_test_utils.create_localhost_remote_context(
+        _AGGREGATOR_PORTS)
+    # TODO(b/180524229): Swap for inprocess aggregator when mutex
+    # corruption on shutdown is understood.
+    aggregation_contexts = remote_runtime_test_utils.create_standalone_subprocess_aggregator_contexts(
+        _WORKER_PORTS, _AGGREGATOR_PORTS)
+    first_worker_contexts = remote_runtime_test_utils.create_inprocess_worker_contexts(
+        _WORKER_PORTS)
+    second_worker_contexts = remote_runtime_test_utils.create_inprocess_worker_contexts(
+        _WORKER_PORTS)
 
     @tff.tf_computation(tf.int32)
     def add_one(x):
@@ -125,24 +114,12 @@ class WorkerFailureTest(parameterized.TestCase):
           result = map_add_one([0, 1])
           self.assertEqual(result, [1, 2])
 
-  @parameterized.named_parameters(
-      (
-          'native_remote_request_reply',
-          remote_runtime_test_utils.create_localhost_remote_context(
-              _WORKER_PORTS),
-          remote_runtime_test_utils.create_localhost_worker_contexts(
-              [_WORKER_PORTS[0]]),
-      ),
-      (
-          'native_remote_streaming',
-          remote_runtime_test_utils.create_localhost_remote_context(
-              _WORKER_PORTS, rpc_mode='STREAMING'),
-          remote_runtime_test_utils.create_localhost_worker_contexts(
-              [_WORKER_PORTS[0]]),
-      ),
-  )
-  def test_computations_run_with_partially_available_workers(
-      self, tff_context, server_contexts):
+  def test_computations_run_with_partially_available_workers(self):
+
+    tff_context = remote_runtime_test_utils.create_localhost_remote_context(
+        _WORKER_PORTS)
+    server_contexts = remote_runtime_test_utils.create_inprocess_worker_contexts(
+        [_WORKER_PORTS[0]])
 
     @tff.tf_computation(tf.int32)
     def add_one(x):
@@ -162,52 +139,18 @@ class WorkerFailureTest(parameterized.TestCase):
         self.assertEqual(result, [1, 2])
 
 
-# TODO(b/172025644): Promote streaming plus intermediate aggregation to a
-# proper backend test when the final cleanup issues are diagnosed and fixed.
-class StreamingWithIntermediateAggTest(absltest.TestCase):
-
-  def test_runs_computation_streaming_with_intermediate_agg(self):
-
-    @tff.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    @tff.federated_computation(tff.type_at_clients(tf.int32))
-    def map_add_one_and_sum(federated_arg):
-      return tff.federated_sum(tff.federated_map(add_one, federated_arg))
-
-    execution_context = remote_runtime_test_utils.create_localhost_remote_context(
-        _AGGREGATOR_PORTS, rpc_mode='STREAMING')
-    worker_contexts = remote_runtime_test_utils.create_localhost_aggregator_contexts(
-        _WORKER_PORTS, _AGGREGATOR_PORTS, rpc_mode='STREAMING')
-
-    context_stack = tff.framework.get_context_stack()
-    with context_stack.install(execution_context):
-
-      with contextlib.ExitStack() as stack:
-        for server_context in worker_contexts:
-          stack.enter_context(server_context)
-        result = map_add_one_and_sum([0, 1])
-        self.assertEqual(result, 3)
-
-
 @parameterized.named_parameters((
-    'native_remote_request_reply',
+    'native_remote',
     remote_runtime_test_utils.create_localhost_remote_context(_WORKER_PORTS),
-    remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS),
-), (
-    'native_remote_streaming',
-    remote_runtime_test_utils.create_localhost_remote_context(
-        _WORKER_PORTS, rpc_mode='STREAMING'),
-    remote_runtime_test_utils.create_localhost_worker_contexts(_WORKER_PORTS),
+    remote_runtime_test_utils.create_inprocess_worker_contexts(_WORKER_PORTS),
 ), (
     'native_remote_intermediate_aggregator',
     remote_runtime_test_utils.create_localhost_remote_context(
         _AGGREGATOR_PORTS),
-    remote_runtime_test_utils.create_localhost_aggregator_contexts(
+    remote_runtime_test_utils.create_inprocess_aggregator_contexts(
         _WORKER_PORTS, _AGGREGATOR_PORTS),
 ))
-class RemoteRuntimeConfigurationChangeTest(absltest.TestCase):
+class RemoteRuntimeConfigurationChangeTest(parameterized.TestCase):
 
   def test_computations_run_with_changing_clients(self, context,
                                                   server_contexts):

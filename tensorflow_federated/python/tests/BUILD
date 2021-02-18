@@ -1,5 +1,5 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 package(default_visibility = ["//visibility:private"])
 
@@ -46,7 +46,7 @@ py_test(
 
 py_test(
     name = "remote_runtime_integration_test",
-    timeout = "moderate",
+    timeout = "long",
     srcs = ["remote_runtime_integration_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -60,6 +60,9 @@ py_library(
     name = "remote_runtime_test_utils",
     testonly = True,
     srcs = ["remote_runtime_test_utils.py"],
+    data = [
+        ":test_aggregator.par",
+    ],
     srcs_version = "PY3",
     deps = ["//tensorflow_federated"],
 )
@@ -67,6 +70,14 @@ py_library(
 py_library(
     name = "temperature_sensor_example",
     srcs = ["temperature_sensor_example.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
+py_binary(
+    name = "test_aggregator",
+    srcs = ["test_aggregator.py"],
+    python_version = "PY3",
     srcs_version = "PY3",
     deps = ["//tensorflow_federated"],
 )
