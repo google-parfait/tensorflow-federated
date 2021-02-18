@@ -72,48 +72,6 @@ class WorkerFailureTest(parameterized.TestCase):
         result = map_add_one([0, 1])
         self.assertEqual(result, [1, 2])
 
-  def test_computations_run_with_worker_restarts_and_aggregation(self):
-
-    context = remote_runtime_test_utils.create_localhost_remote_context(
-        _AGGREGATOR_PORTS)
-    # TODO(b/180524229): Swap for inprocess aggregator when mutex
-    # corruption on shutdown is understood.
-    aggregation_contexts = remote_runtime_test_utils.create_standalone_subprocess_aggregator_contexts(
-        _WORKER_PORTS, _AGGREGATOR_PORTS)
-    first_worker_contexts = remote_runtime_test_utils.create_inprocess_worker_contexts(
-        _WORKER_PORTS)
-    second_worker_contexts = remote_runtime_test_utils.create_inprocess_worker_contexts(
-        _WORKER_PORTS)
-
-    @tff.tf_computation(tf.int32)
-    def add_one(x):
-      return x + 1
-
-    @tff.federated_computation(tff.type_at_clients(tf.int32))
-    def map_add_one(federated_arg):
-      return tff.federated_map(add_one, federated_arg)
-
-    context_stack = tff.framework.get_context_stack()
-    with context_stack.install(context):
-
-      with contextlib.ExitStack() as aggregation_stack:
-        for server_context in aggregation_contexts:
-          aggregation_stack.enter_context(server_context)
-        with contextlib.ExitStack() as first_worker_stack:
-          for server_context in first_worker_contexts:
-            first_worker_stack.enter_context(server_context)
-
-          result = map_add_one([0, 1])
-          self.assertEqual(result, [1, 2])
-
-        # Reinitializing the workers without leaving the aggregation context
-        # simulates a worker failure, while the aggregator keeps running.
-        with contextlib.ExitStack() as second_worker_stack:
-          for server_context in second_worker_contexts:
-            second_worker_stack.enter_context(server_context)
-          result = map_add_one([0, 1])
-          self.assertEqual(result, [1, 2])
-
   def test_computations_run_with_partially_available_workers(self):
 
     tff_context = remote_runtime_test_utils.create_localhost_remote_context(
