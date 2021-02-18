@@ -13,7 +13,6 @@
 # limitations under the License.
 """Libraries for using and developing Federated algorithms."""
 
-from tensorflow_federated.python.core.utils.adaptive_zeroing import build_adaptive_zeroing_mean_process
 from tensorflow_federated.python.core.utils.computation_utils import update_state
 from tensorflow_federated.python.core.utils.differential_privacy import build_dp_aggregate_process
 from tensorflow_federated.python.core.utils.differential_privacy import build_dp_query
