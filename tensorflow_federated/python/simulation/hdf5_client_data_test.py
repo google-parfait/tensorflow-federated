@@ -20,6 +20,7 @@ import h5py
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation import hdf5_client_data
 
 TEST_DATA = {
@@ -127,4 +128,5 @@ class HDF5ClientDataTest(tf.test.TestCase, absltest.TestCase):
 
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   tf.test.main()
