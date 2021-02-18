@@ -21,6 +21,7 @@ it to be more complete and feature-full.
 """
 
 import collections
+import itertools
 from absl.testing import absltest
 import jax
 import numpy as np
@@ -38,6 +39,8 @@ Trainer = collections.namedtuple('Trainer', [
     'train_on_one_batch',
     'train_on_one_client',
     'local_training_process',
+    'train_one_round',
+    'federated_averaging_process',
     'compute_loss_on_one_batch',
 ])
 
@@ -64,7 +67,7 @@ def create_trainer(batch_size, step_size):
                                ('bias', tff.TensorType(np.float32, (10,)))]))
 
   @tff.experimental.jax_computation
-  def create_initial_model():
+  def create_zero_model():
     weights = jax.numpy.zeros((784, 10), dtype=np.float32)
     bias = jax.numpy.zeros((10,), dtype=np.float32)
     return collections.OrderedDict([('weights', weights), ('bias', bias)])
@@ -96,24 +99,109 @@ def create_trainer(batch_size, step_size):
     return tff.sequence_reduce(batches, model, train_on_one_batch)
 
   local_training_process = tff.templates.IterativeProcess(
-      initialize_fn=create_initial_model, next_fn=train_on_one_client)
+      initialize_fn=create_zero_model, next_fn=train_on_one_client)
+
+  # TODO(b/175888145): Switch to a simple tff.federated_mean after finding a
+  # way to reduce reliance on the auto-generated TF bits in the executor stack
+  # for the GENERIC_PLUS and similar intrinsics.
+
+  @tff.experimental.jax_computation
+  def create_zero_count():
+    return np.int32(0)
+
+  @tff.experimental.jax_computation
+  def create_one_count():
+    return np.int32(1)
+
+  @tff.experimental.jax_computation(model_type, model_type)
+  def combine_two_models(x, y):
+    return collections.OrderedDict([
+        ('weights', jax.numpy.add(x['weights'], y['weights'])),
+        ('bias', jax.numpy.add(x['bias'], y['bias']))
+    ])
+
+  @tff.experimental.jax_computation(model_type, np.int32)
+  def divide_model_by_count(model, count):
+    multiplier = 1.0 / count.astype(np.float32)
+    return collections.OrderedDict([
+        ('weights', jax.numpy.multiply(model['weights'], multiplier)),
+        ('bias', jax.numpy.multiply(model['bias'], multiplier))
+    ])
+
+  @tff.experimental.jax_computation(np.int32, np.int32)
+  def combine_two_counts(x, y):
+    return jax.numpy.add(x, y)
+
+  @tff.federated_computation
+  def make_zero_model_and_count():
+    return collections.OrderedDict([('model', create_zero_model()),
+                                    ('count', create_zero_count())])
+
+  model_and_count_type = make_zero_model_and_count.type_signature.result
+
+  @tff.federated_computation(model_and_count_type, model_type)
+  def accumulate(arg):
+    # TODO(b/180550248): Diagnose the newly emergent problem with tuple arg
+    # handling that gets in the way by forcing named elements here at input
+    # (i.e., we can't just declare `def accumulate(accumulator, model)` for
+    # reasons that yet need to be understood).
+    accumulator = arg[0]
+    model = arg[1]
+    return collections.OrderedDict([
+        ('model', combine_two_models(accumulator['model'], model)),
+        ('count', combine_two_counts(accumulator['count'], create_one_count()))
+    ])
+
+  @tff.federated_computation(model_and_count_type, model_and_count_type)
+  def merge(arg):
+    x = arg[0]
+    y = arg[1]
+    return collections.OrderedDict([
+        ('model', combine_two_models(x['model'], y['model'])),
+        ('count', combine_two_counts(x['count'], y['count']))
+    ])
+
+  @tff.federated_computation(model_and_count_type)
+  def report(x):
+    return divide_model_by_count(x['model'], x['count'])
+
+  @tff.federated_computation
+  def create_zero_model_on_server():
+    return tff.federated_eval(create_zero_model, tff.SERVER)
+
+  @tff.federated_computation(
+      tff.FederatedType(model_type, tff.SERVER),
+      tff.FederatedType(tff.SequenceType(batch_type), tff.CLIENTS))
+  def train_one_round(model, federated_data):
+    locally_trained_models = tff.federated_map(
+        train_on_one_client,
+        collections.OrderedDict([('model', tff.federated_broadcast(model)),
+                                 ('batches', federated_data)]))
+    return tff.federated_aggregate(locally_trained_models,
+                                   make_zero_model_and_count(), accumulate,
+                                   merge, report)
+
+  federated_averaging_process = tff.templates.IterativeProcess(
+      initialize_fn=create_zero_model_on_server, next_fn=train_one_round)
 
   compute_loss_on_one_batch = tff.experimental.jax_computation(
       _loss_fn, model_type, batch_type)
 
   return Trainer(
-      create_initial_model=create_initial_model,
+      create_initial_model=create_zero_model,
       generate_random_batches=generate_random_batches,
       train_on_one_batch=train_on_one_batch,
       train_on_one_client=train_on_one_client,
       local_training_process=local_training_process,
+      train_one_round=train_one_round,
+      federated_averaging_process=federated_averaging_process,
       compute_loss_on_one_batch=compute_loss_on_one_batch)
 
 
 class JaxTrainingTest(absltest.TestCase):
 
   def test_types(self):
-    trainer = create_trainer(100, 0.01)
+    trainer = create_trainer(batch_size=100, step_size=0.01)
     model_type = trainer.create_initial_model.type_signature.result
     example_batch = next(trainer.generate_random_batches(1))
     make_example_batch = tff.experimental.jax_computation(lambda: example_batch)
@@ -131,14 +219,14 @@ class JaxTrainingTest(absltest.TestCase):
                 collections.OrderedDict([('model', model_type),
                                          ('batch', batch_type)]), np.float32)))
 
-  def test_training(self):
+  def test_local_training(self):
     batch_size = 50
     num_batches = 20
     num_rounds = 5
     step_size = 0.001
     trainer = create_trainer(batch_size, step_size)
     training_batches = list(trainer.generate_random_batches(num_batches))
-    eval_batches = list(trainer.generate_random_batches(num_batches))
+    eval_batches = training_batches
 
     model = trainer.local_training_process.initialize()
     losses = []
@@ -148,6 +236,31 @@ class JaxTrainingTest(absltest.TestCase):
       average_loss = np.mean([
           trainer.compute_loss_on_one_batch(model, batch)
           for batch in eval_batches
+      ])
+      losses.append(average_loss)
+    self.assertLess(losses[-1], losses[0])
+
+  def test_federated_training(self):
+    batch_size = 50
+    num_batches = 10
+    num_clients = 2
+    num_rounds = 5
+    step_size = 0.001
+    trainer = create_trainer(batch_size, step_size)
+    training_data = [
+        list(trainer.generate_random_batches(num_batches))
+        for _ in range(num_clients)
+    ]
+    centralized_eval_data = list(itertools.chain.from_iterable(training_data))
+
+    model = trainer.federated_averaging_process.initialize()
+    losses = []
+    for round_number in range(num_rounds + 1):
+      if round_number > 0:
+        model = trainer.federated_averaging_process.next(model, training_data)
+      average_loss = np.mean([
+          trainer.compute_loss_on_one_batch(model, batch)
+          for batch in centralized_eval_data
       ])
       losses.append(average_loss)
     self.assertLess(losses[-1], losses[0])
