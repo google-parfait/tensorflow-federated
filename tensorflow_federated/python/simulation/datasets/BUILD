@@ -71,6 +71,21 @@ py_test(
 )
 
 py_library(
+    name = "download",
+    srcs = ["download.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "download_test",
+    size = "small",
+    srcs = ["download_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":download"],
+)
+
+py_library(
     name = "emnist",
     srcs = ["emnist.py"],
     srcs_version = "PY3",
