@@ -13,14 +13,14 @@
 # limitations under the License.
 """Libraries for constructing federated aggregation."""
 
-from tensorflow_federated.python.aggregators.dp_factory import DifferentiallyPrivateFactory
-from tensorflow_federated.python.aggregators.encoded_factory import EncodedSumFactory
+from tensorflow_federated.python.aggregators.differential_privacy import DifferentiallyPrivateFactory
+from tensorflow_federated.python.aggregators.encoded import EncodedSumFactory
 from tensorflow_federated.python.aggregators.factory import UnweightedAggregationFactory
 from tensorflow_federated.python.aggregators.factory import WeightedAggregationFactory
-from tensorflow_federated.python.aggregators.mean_factory import MeanFactory
-from tensorflow_federated.python.aggregators.mean_factory import UnweightedMeanFactory
+from tensorflow_federated.python.aggregators.mean import MeanFactory
+from tensorflow_federated.python.aggregators.mean import UnweightedMeanFactory
 from tensorflow_federated.python.aggregators.quantile_estimation import PrivateQuantileEstimationProcess
-from tensorflow_federated.python.aggregators.robust_factory import clipping_factory
-from tensorflow_federated.python.aggregators.robust_factory import zeroing_factory
-from tensorflow_federated.python.aggregators.secure_factory import SecureSumFactory
-from tensorflow_federated.python.aggregators.sum_factory import SumFactory
+from tensorflow_federated.python.aggregators.robust import clipping_factory
+from tensorflow_federated.python.aggregators.robust import zeroing_factory
+from tensorflow_federated.python.aggregators.secure import SecureSumFactory
+from tensorflow_federated.python.aggregators.sum import SumFactory

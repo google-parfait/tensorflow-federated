@@ -18,24 +18,24 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
-        ":dp_factory",
-        ":encoded_factory",
+        ":differential_privacy",
+        ":encoded",
         ":factory",
-        ":mean_factory",
+        ":mean",
         ":quantile_estimation",
-        ":robust_factory",
-        ":secure_factory",
-        ":sum_factory",
+        ":robust",
+        ":secure",
+        ":sum",
     ],
 )
 
 py_library(
-    name = "dp_factory",
-    srcs = ["dp_factory.py"],
+    name = "differential_privacy",
+    srcs = ["differential_privacy.py"],
     srcs_version = "PY3",
     deps = [
+        ":aggregators",
         ":factory",
-        ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -47,12 +47,12 @@ py_library(
 )
 
 py_test(
-    name = "dp_factory_test",
-    srcs = ["dp_factory_test.py"],
+    name = "differential_privacy_test",
+    srcs = ["differential_privacy_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":dp_factory",
+        ":aggregators",
         ":factory",
         ":test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -66,8 +66,8 @@ py_test(
 )
 
 py_library(
-    name = "encoded_factory",
-    srcs = ["encoded_factory.py"],
+    name = "encoded",
+    srcs = ["encoded.py"],
     srcs_version = "PY3",
     deps = [
         ":factory",
@@ -83,13 +83,13 @@ py_library(
 )
 
 py_test(
-    name = "encoded_factory_test",
+    name = "encoded_test",
     size = "medium",
-    srcs = ["encoded_factory_test.py"],
+    srcs = ["encoded_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":encoded_factory",
+        ":aggregators",
         ":factory",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
@@ -111,12 +111,12 @@ py_library(
 )
 
 py_library(
-    name = "mean_factory",
-    srcs = ["mean_factory.py"],
+    name = "mean",
+    srcs = ["mean.py"],
     srcs_version = "PY3",
     deps = [
+        ":aggregators",
         ":factory",
-        ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -129,14 +129,14 @@ py_library(
 )
 
 py_test(
-    name = "mean_factory_test",
+    name = "mean_test",
     size = "medium",
-    srcs = ["mean_factory_test.py"],
+    srcs = ["mean_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":aggregators",
         ":factory",
-        ":mean_factory",
         ":test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:test_case",
@@ -151,8 +151,8 @@ py_library(
     srcs = ["quantile_estimation.py"],
     srcs_version = "PY3",
     deps = [
+        ":aggregators",
         ":factory",
-        ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -179,12 +179,12 @@ py_test(
 )
 
 py_library(
-    name = "robust_factory",
-    srcs = ["robust_factory.py"],
+    name = "robust",
+    srcs = ["robust.py"],
     srcs_version = "PY3",
     deps = [
+        ":aggregators",
         ":factory",
-        ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -199,14 +199,12 @@ py_library(
 )
 
 py_test(
-    name = "robust_factory_test",
-    srcs = ["robust_factory_test.py"],
+    name = "robust_test",
+    srcs = ["robust_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":mean_factory",
-        ":robust_factory",
-        ":sum_factory",
+        ":aggregators",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -220,8 +218,8 @@ py_test(
 )
 
 py_library(
-    name = "secure_factory",
-    srcs = ["secure_factory.py"],
+    name = "secure",
+    srcs = ["secure.py"],
     srcs_version = "PY3",
     deps = [
         ":factory",
@@ -239,14 +237,14 @@ py_library(
 )
 
 py_test(
-    name = "secure_factory_test",
+    name = "secure_test",
     size = "medium",
-    srcs = ["secure_factory_test.py"],
+    srcs = ["secure_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":aggregators",
         ":factory",
-        ":secure_factory",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
@@ -260,8 +258,8 @@ py_test(
 )
 
 py_library(
-    name = "sum_factory",
-    srcs = ["sum_factory.py"],
+    name = "sum",
+    srcs = ["sum.py"],
     srcs_version = "PY3",
     deps = [
         ":factory",
@@ -276,14 +274,14 @@ py_library(
 )
 
 py_test(
-    name = "sum_factory_test",
+    name = "sum_test",
     size = "small",
-    srcs = ["sum_factory_test.py"],
+    srcs = ["sum_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":aggregators",
         ":factory",
-        ":sum_factory",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:test_case",
