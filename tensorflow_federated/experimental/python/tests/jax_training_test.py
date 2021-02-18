@@ -141,7 +141,7 @@ def create_trainer(batch_size, step_size):
 
   @tff.federated_computation(model_and_count_type, model_type)
   def accumulate(arg):
-    # TODO(b/180550248): Diagnose the newly emergent problem with tuple arg
+    # TODO(b/175888145): Diagnose the newly emergent problem with tuple arg
     # handling that gets in the way by forcing named elements here at input
     # (i.e., we can't just declare `def accumulate(accumulator, model)` for
     # reasons that yet need to be understood).

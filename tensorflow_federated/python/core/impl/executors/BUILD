@@ -272,6 +272,7 @@ py_test(
         ":execution_context",
         ":executor_stacks",
         ":executor_test_utils",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",

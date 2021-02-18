@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -179,6 +180,20 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     with executor_test_utils.install_executor(executor):
       with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
         comp([five_ints, ten_ints])
+
+  def test_tuple_argument_can_accept_unnamed_elements(self):
+
+    @computations.tf_computation(tf.int32, tf.int32)
+    def foo(x, y):
+      return x + y
+
+    executor = executor_stacks.local_executor_factory()
+    with executor_test_utils.install_executor(executor):
+      # pylint:disable=no-value-for-parameter
+      result = foo(structure.Struct([(None, 2), (None, 3)]))
+      # pylint:enable=no-value-for-parameter
+
+    self.assertEqual(result, 5)
 
 
 if __name__ == '__main__':

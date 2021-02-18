@@ -90,8 +90,15 @@ async def _ingest(executor, val, type_spec):
     type_spec.check_struct()
     v_elem = structure.to_elements(val)
     t_elem = structure.to_elements(type_spec)
-    if ([k for k, _ in v_elem] != [k for k, _ in t_elem]):
-      raise TypeError('Value {} does not match type {}.'.format(val, type_spec))
+    if len(v_elem) != len(t_elem):
+      raise TypeError(
+          'Value {} does not match type {}: mismatching tuple length.'.format(
+              val, type_spec))
+    for ((vk, _), (tk, _)) in zip(v_elem, t_elem):
+      if vk not in [tk, None]:
+        raise TypeError(
+            'Value {} does not match type {}: mismatching tuple element '
+            'names {} vs. {}.'.format(val, type_spec, vk, tk))
     ingested = []
     for (_, v), (_, t) in zip(v_elem, t_elem):
       ingested.append(_ingest(executor, v, t))
