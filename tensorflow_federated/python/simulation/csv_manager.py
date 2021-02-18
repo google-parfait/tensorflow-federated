@@ -268,9 +268,8 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
 
     Raises:
       RuntimeError: If metrics do not exist (none loaded during construction '
-        nor recorded via `update_metrics()` and `last_valid_round_num` is not
-        zero.
-      ValueError: If `last_valid_round_num` is negative.
+        nor recorded via `update_metrics()` and `round_num` is not zero.
+      ValueError: If `round_num` is negative.
     """
     if round_num < 0:
       raise ValueError('Attempting to clear metrics after round '
