@@ -278,3 +278,26 @@ py_test(
         ":transforming_client_data",
     ],
 )
+
+py_library(
+    name = "sql_client_data",
+    srcs = ["sql_client_data.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":client_data",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+    ],
+)
+
+py_test(
+    name = "sql_client_data_test",
+    size = "small",
+    srcs = ["sql_client_data_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":sql_client_data",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+    ],
+)
