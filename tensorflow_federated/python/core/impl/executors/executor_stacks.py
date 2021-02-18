@@ -34,6 +34,7 @@ from tensorflow_federated.python.core.impl.executors import federated_resolving_
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor
+from tensorflow_federated.python.core.impl.executors import sequence_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
@@ -238,12 +239,20 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
     return bit_size
 
 
+# pylint:disable=missing-function-docstring
 def _wrap_executor_in_threading_stack(ex: executor_base.Executor,
                                       use_caching: Optional[bool] = False,
+                                      support_sequence_ops: bool = False,
                                       can_resolve_references=True):
   threaded_ex = thread_delegating_executor.ThreadDelegatingExecutor(ex)
   if use_caching:
     threaded_ex = caching_executor.CachingExecutor(threaded_ex)
+  if support_sequence_ops:
+    if not can_resolve_references:
+      raise ValueError(
+          'Support for sequence ops requires ability to resolve references.')
+    threaded_ex = sequence_executor.SequenceExecutor(
+        reference_resolving_executor.ReferenceResolvingExecutor(threaded_ex))
   if can_resolve_references:
     threaded_ex = reference_resolving_executor.ReferenceResolvingExecutor(
         threaded_ex)
@@ -258,18 +267,21 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
   this executor manages the placement of work on local executors.
   """
 
-  def __init__(
-      self,
-      *,
-      use_caching: bool,
-      can_resolve_references: bool = True,
-      server_device: Optional[tf.config.LogicalDevice] = None,
-      client_devices: Optional[Sequence[tf.config.LogicalDevice]] = ()):
+  def __init__(self,
+               *,
+               use_caching: bool,
+               support_sequence_ops: bool = False,
+               can_resolve_references: bool = True,
+               server_device: Optional[tf.config.LogicalDevice] = None,
+               client_devices: Optional[Sequence[tf.config.LogicalDevice]] = (),
+               leaf_executor_fn=eager_tf_executor.EagerTFExecutor):
     self._use_caching = use_caching
+    self._support_sequence_ops = support_sequence_ops
     self._can_resolve_references = can_resolve_references
     self._server_device = server_device
     self._client_devices = client_devices
     self._client_device_index = 0
+    self._leaf_executor_fn = leaf_executor_fn
 
   def _get_next_client_device(self) -> Optional[tf.config.LogicalDevice]:
     if not self._client_devices:
@@ -295,10 +307,11 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
       device = self._server_device
     else:
       device = None
-    eager_ex = eager_tf_executor.EagerTFExecutor(device=device)
+    leaf_ex = self._leaf_executor_fn(device=device)
     return _wrap_executor_in_threading_stack(
-        eager_ex,
+        leaf_ex,
         use_caching=self._use_caching,
+        support_sequence_ops=self._support_sequence_ops,
         can_resolve_references=self._can_resolve_references)
 
   def clean_up_executors(self):
@@ -571,6 +584,8 @@ def local_executor_factory(
     server_tf_device=None,
     client_tf_devices=tuple(),
     reference_resolving_clients=True,
+    support_sequence_ops=False,
+    leaf_executor_fn=eager_tf_executor.EagerTFExecutor
 ) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally.
 
@@ -599,6 +614,12 @@ def local_executor_factory(
       `tf.config.list_logical_devices()`.
     reference_resolving_clients: Boolean indicating whether executors
       representing clients must be able to handle unplaced TFF lambdas.
+    support_sequence_ops: Boolean indicating whether this executor supports
+      sequence ops (currently False by default).
+    leaf_executor_fn: A function that constructs leaf-level executors. Default
+      is the eager TF executor (other possible options: XLA, IREE). Should
+      accept the `device` keyword argument if the executor is to be configured
+      with explicitly chosen devices.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -618,9 +639,11 @@ def local_executor_factory(
     raise ValueError('Max fanout must be greater than 1.')
   unplaced_ex_factory = UnplacedExecutorFactory(
       use_caching=False,
+      support_sequence_ops=support_sequence_ops,
       can_resolve_references=reference_resolving_clients,
       server_device=server_tf_device,
-      client_devices=client_tf_devices)
+      client_devices=client_tf_devices,
+      leaf_executor_fn=leaf_executor_fn)
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
@@ -645,6 +668,7 @@ def local_executor_factory(
 def thread_debugging_executor_factory(
     num_clients=None,
     clients_per_thread=1,
+    leaf_executor_fn=eager_tf_executor.EagerTFExecutor
 ) -> executor_factory.ExecutorFactory:
   r"""Constructs a simplified execution stack to execute local computations.
 
@@ -687,6 +711,10 @@ def thread_debugging_executor_factory(
       concurrency of the TFF runtime, which can be useful if client work is very
       lightweight or models are very large and multiple copies cannot fit in
       memory.
+    leaf_executor_fn: A function that constructs leaf-level executors. Default
+      is the eager TF executor (other possible options: XLA, IREE). Should
+      accept the `device` keyword argument if the executor is to be configured
+      with explicitly chosen devices.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -701,7 +729,7 @@ def thread_debugging_executor_factory(
   unplaced_ex_factory = UnplacedExecutorFactory(
       use_caching=False,
       can_resolve_references=False,
-  )
+      leaf_executor_fn=leaf_executor_fn)
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
@@ -715,7 +743,9 @@ def thread_debugging_executor_factory(
 def sizing_executor_factory(
     num_clients: int = None,
     max_fanout: int = 100,
-    clients_per_thread: int = 1) -> executor_factory.ExecutorFactory:
+    clients_per_thread: int = 1,
+    leaf_executor_fn=eager_tf_executor.EagerTFExecutor
+) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally with sizing.
 
   Args:
@@ -733,6 +763,10 @@ def sizing_executor_factory(
       concurrency of the TFF runtime, which can be useful if client work is very
       lightweight or models are very large and multiple copies cannot fit in
       memory.
+    leaf_executor_fn: A function that constructs leaf-level executors. Default
+      is the eager TF executor (other possible options: XLA, IREE). Should
+      accept the `device` keyword argument if the executor is to be configured
+      with explicitly chosen devices.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -747,7 +781,8 @@ def sizing_executor_factory(
     py_typecheck.check_type(num_clients, int)
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
-  unplaced_ex_factory = UnplacedExecutorFactory(use_caching=False)
+  unplaced_ex_factory = UnplacedExecutorFactory(
+      use_caching=False, leaf_executor_fn=leaf_executor_fn)
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
@@ -913,7 +948,8 @@ def remote_executor_factory(
     thread_pool_executor: Optional[futures.Executor] = None,
     dispose_batch_size: int = 20,
     max_fanout: int = 100,
-    default_num_clients: int = 0) -> executor_factory.ExecutorFactory:
+    default_num_clients: int = 0,
+) -> executor_factory.ExecutorFactory:
   """Create an executor backed by remote workers.
 
   Args:

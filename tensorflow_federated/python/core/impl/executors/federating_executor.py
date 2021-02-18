@@ -285,6 +285,12 @@ class FederatingExecutor(executor_base.Executor):
   federated types and intrinsics into the execution stack.
   """
 
+  _FORWARDED_INTRINSICS = [
+      intrinsic_defs.SEQUENCE_MAP.uri,
+      intrinsic_defs.SEQUENCE_REDUCE.uri,
+      intrinsic_defs.SEQUENCE_SUM.uri,
+  ]
+
   def __init__(self, strategy_factory: Callable[['FederatingExecutor'],
                                                 FederatingStrategy],
                unplaced_executor: executor_base.Executor):
@@ -319,7 +325,7 @@ class FederatingExecutor(executor_base.Executor):
     * An instance of `placement_literals.PlacementLiteral`.
 
     * An instance of `pb.Computation` if of one of the following kinds:
-      intrinsic, lambda, and tensorflow.
+      intrinsic, lambda, tensorflow, or xla.
 
     * A Python `list` if `type_spec` is a federated type.
 
@@ -364,9 +370,11 @@ class FederatingExecutor(executor_base.Executor):
       else:
         type_spec.check_assignable_from(deserialized_type)
       which_computation = value.WhichOneof('computation')
-      if which_computation in ['lambda', 'tensorflow']:
+      if which_computation in ['lambda', 'tensorflow', 'xla']:
         return self._strategy.ingest_value(value, type_spec)
       elif which_computation == 'intrinsic':
+        if value.intrinsic.uri in FederatingExecutor._FORWARDED_INTRINSICS:
+          return self._strategy.ingest_value(value, type_spec)
         intrinsic_def = intrinsic_defs.uri_to_intrinsic_def(value.intrinsic.uri)
         if intrinsic_def is None:
           raise ValueError('Encountered an unrecognized intrinsic "{}".'.format(
@@ -393,7 +401,7 @@ class FederatingExecutor(executor_base.Executor):
     The kinds of supported `comp`s are:
 
     * An instance of `pb.Computation` if of one of the following kinds:
-      tensorflow.
+      tensorflow, xla.
     * An instance of `intrinsic_defs.IntrinsicDef`.
 
     Args:
@@ -422,7 +430,10 @@ class FederatingExecutor(executor_base.Executor):
       arg = self._strategy.ingest_value(arg.internal_representation, param_type)
     if isinstance(comp.internal_representation, pb.Computation):
       which_computation = comp.internal_representation.WhichOneof('computation')
-      if which_computation == 'tensorflow':
+      if ((which_computation in ['tensorflow', 'xla', 'intrinsic']) or
+          ((which_computation == 'intrinsic') and
+           (comp.internal_representation.intrinsic.uri in
+            FederatingExecutor._FORWARDED_INTRINSICS))):
         embedded_comp = await self._unplaced_executor.create_value(
             comp.internal_representation, comp.type_signature)
         if arg is not None:

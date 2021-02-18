@@ -60,24 +60,6 @@ def _temperature_sensor_example_next_fn():
   return comp
 
 
-def _create_concurrent_maxthread_tuples():
-  tuples = []
-  for concurrency in range(1, 5):
-    local_ex_string = 'local_executor_{}_clients_per_thread'.format(concurrency)
-    ex_factory = executor_stacks.local_executor_factory(
-        clients_per_thread=concurrency)
-    tuples.append((local_ex_string, ex_factory, concurrency))
-    sizing_ex_string = 'sizing_executor_{}_client_thread'.format(concurrency)
-    ex_factory = executor_stacks.sizing_executor_factory(
-        clients_per_thread=concurrency)
-    tuples.append((sizing_ex_string, ex_factory, concurrency))
-    debug_ex_string = 'debug_executor_{}_client_thread'.format(concurrency)
-    ex_factory = executor_stacks.thread_debugging_executor_factory(
-        clients_per_thread=concurrency)
-    tuples.append((debug_ex_string, ex_factory, concurrency))
-  return tuples
-
-
 class ExecutorMock(mock.MagicMock, executor_base.Executor):
 
   async def create_value(self, *args):
@@ -94,6 +76,27 @@ class ExecutorMock(mock.MagicMock, executor_base.Executor):
 
   async def close(self, *args):
     pass
+
+
+def _create_concurrent_maxthread_tuples():
+  tuples = []
+  for concurrency in range(1, 5):
+    local_ex_string = 'local_executor_{}_clients_per_thread'.format(concurrency)
+    tf_executor_mock = ExecutorMock()
+    ex_factory = executor_stacks.local_executor_factory(
+        clients_per_thread=concurrency, leaf_executor_fn=tf_executor_mock)
+    tuples.append((local_ex_string, ex_factory, concurrency, tf_executor_mock))
+    sizing_ex_string = 'sizing_executor_{}_client_thread'.format(concurrency)
+    tf_executor_mock = ExecutorMock()
+    ex_factory = executor_stacks.sizing_executor_factory(
+        clients_per_thread=concurrency, leaf_executor_fn=tf_executor_mock)
+    tuples.append((sizing_ex_string, ex_factory, concurrency, tf_executor_mock))
+    debug_ex_string = 'debug_executor_{}_client_thread'.format(concurrency)
+    tf_executor_mock = ExecutorMock()
+    ex_factory = executor_stacks.thread_debugging_executor_factory(
+        clients_per_thread=concurrency, leaf_executor_fn=tf_executor_mock)
+    tuples.append((debug_ex_string, ex_factory, concurrency, tf_executor_mock))
+  return tuples
 
 
 class ResourceManagingExecutorFactoryTest(absltest.TestCase):
@@ -338,9 +341,6 @@ class ExecutorStacksTest(parameterized.TestCase):
     self.assertEqual(result, 10)
 
   @parameterized.named_parameters(*_create_concurrent_maxthread_tuples())
-  @mock.patch(
-      'tensorflow_federated.python.core.impl.executors.eager_tf_executor.EagerTFExecutor',
-      return_value=ExecutorMock())
   def test_limiting_concurrency_constructs_one_eager_executor(
       self, ex_factory, clients_per_thread, tf_executor_mock):
     num_clients = 10

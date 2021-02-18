@@ -265,13 +265,25 @@ class XlaExecutor(executor_base.Executor):
 
   # TODO(b/175888145): Reach full functional parity with the eager TF executor.
 
-  def __init__(self, backend=None):
+  # TODO(b/175888145): Add support for explicitly specifying devices.
+
+  # TODO(b/175888145): There's a dependency here on the caller knowing what if
+  # any are the valid device names, and since executor construction in some
+  # configurations (e.g., in simulations) can be lazy (e.g., because it can be
+  # a function of cardinality), errors can manifest at runtime. Consider ways
+  # to bundle device enumeration logic with executors that accept device names
+  # here and elsewhere in the executor stack.
+
+  def __init__(self, device=None):
     """Creates a new instance of an XLA executor.
 
     Args:
-      backend: An optional name of a local XLA backend.
+      device: An optional device name (currently unsupported; must be `None`).
     """
-    self._backend = xla_client.get_local_backend(backend)
+    if device is not None:
+      raise ValueError(
+          'Explicitly specifying a device is currently not supported.')
+    self._backend = xla_client.get_local_backend(None)
 
   @tracing.trace(span=True)
   async def create_value(self, value, type_spec=None):

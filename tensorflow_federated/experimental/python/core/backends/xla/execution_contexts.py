@@ -16,21 +16,7 @@
 from tensorflow_federated.experimental.python.core.backends.xla import executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
-from tensorflow_federated.python.core.impl.executors import executor_factory
-from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
-from tensorflow_federated.python.core.impl.executors import sequence_executor
-
-
-class _XlaExecutorFactory(executor_factory.ExecutorFactory):
-
-  def create_executor(self, cardinalities):
-    return reference_resolving_executor.ReferenceResolvingExecutor(
-        sequence_executor.SequenceExecutor(
-            reference_resolving_executor.ReferenceResolvingExecutor(
-                executor.XlaExecutor())))
-
-  def clean_up_executors(self):
-    pass
+from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 
 def create_local_execution_context():
@@ -44,7 +30,8 @@ def create_local_execution_context():
   """
   # TODO(b/175888145): Extend this into a complete local executor stack.
 
-  factory = _XlaExecutorFactory()
+  factory = executor_stacks.local_executor_factory(
+      support_sequence_ops=True, leaf_executor_fn=executor.XlaExecutor)
   return execution_context.ExecutionContext(executor_fn=factory)
 
 

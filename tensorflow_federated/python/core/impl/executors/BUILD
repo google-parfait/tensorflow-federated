@@ -384,6 +384,7 @@ py_library(
         ":federating_executor",
         ":reference_resolving_executor",
         ":remote_executor",
+        ":sequence_executor",
         ":sizing_executor",
         ":thread_delegating_executor",
         "//tensorflow_federated/python/common_libs:py_typecheck",
