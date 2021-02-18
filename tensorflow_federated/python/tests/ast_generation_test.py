@@ -12,35 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from absl.testing import absltest
 import tensorflow as tf
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.impl.compiler import building_blocks
-from tensorflow_federated.python.core.impl.computation import computation_impl
+import tensorflow_federated as tff
 
 # TODO(b/146086870) Move more tests into this file
 
 
-class AstGenerationTest(test_case.TestCase):
+class AstGenerationTest(absltest.TestCase):
 
   def formatted_computation(self, comp):
-    self.assertIsInstance(comp, computation_impl.ComputationImpl)
     building_block = comp.to_building_block()
-    self.assertIsInstance(building_block, building_blocks.CompiledComputation)
     return building_block.formatted_representation()
 
   def assert_ast_equal(self, comp, expected):
-    self.assertIsInstance(comp, computation_impl.ComputationImpl)
     self.assertEqual(comp.to_building_block().formatted_representation(),
                      expected)
 
   def test_flattens_to_tf_computation(self):
 
-    @computations.tf_computation
+    @tff.tf_computation
     def five():
       return 5
 
-    @computations.federated_computation
+    @tff.federated_computation
     def federated_five():
       return five()
 
@@ -56,11 +51,11 @@ class AstGenerationTest(test_case.TestCase):
 
   def test_only_one_random_only_generates_a_single_call_to_random(self):
 
-    @computations.tf_computation
+    @tff.tf_computation
     def rand():
       return tf.random.normal([])
 
-    @computations.federated_computation
+    @tff.federated_computation
     def same_rand_tuple():
       single_random_number = rand()
       return (single_random_number, single_random_number)
@@ -79,4 +74,4 @@ class AstGenerationTest(test_case.TestCase):
 
 
 if __name__ == '__main__':
-  test_case.main()
+  absltest.main()

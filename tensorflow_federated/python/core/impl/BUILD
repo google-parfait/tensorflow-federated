@@ -36,20 +36,6 @@ py_library(
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
-py_test(
-    name = "ast_generation_test",
-    size = "small",
-    srcs = ["ast_generation_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
-        "//tensorflow_federated/python/core/impl/computation:computation_impl",
-    ],
-)
-
 py_library(
     name = "tensorflow_deserialization",
     srcs = ["tensorflow_deserialization.py"],

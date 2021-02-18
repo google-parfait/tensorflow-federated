@@ -6,6 +6,15 @@ package(default_visibility = ["//visibility:private"])
 licenses(["notice"])
 
 py_test(
+    name = "ast_generation_test",
+    size = "small",
+    srcs = ["ast_generation_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated"],
+)
+
+py_test(
     name = "backend_test",
     timeout = "long",
     srcs = ["backend_test.py"],
