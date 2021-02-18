@@ -60,16 +60,13 @@ class TensorBoardManagerTest(tf.test.TestCase):
     self.assertTrue(tf.io.gfile.exists(summary_dir))
     self.assertLen(tf.io.gfile.listdir(summary_dir), 1)
 
-  def test_update_metrics_returns_flat_dict(self):
-    tb_mngr = tensorboard_manager.TensorBoardManager(
-        summary_dir=self.get_temp_dir())
+  def test_flatten_returns_flat_dict(self):
     input_data_dict = _create_scalar_metrics()
-    appended_data_dict = tb_mngr.update_metrics(0, input_data_dict)
+    flat_data = tensorboard_manager._flatten_nested_dict(input_data_dict)
     self.assertEqual({
         'a/b': 1.0,
         'a/c': 2.0,
-        'round_num': 0.0
-    }, appended_data_dict)
+    }, flat_data)
 
   def test_update_metrics_raises_value_error_if_round_num_is_negative(self):
     tb_mngr = tensorboard_manager.TensorBoardManager(

@@ -75,34 +75,26 @@ class CSVMetricsManager(tf.test.TestCase):
     _, metrics = csv_mngr.get_metrics()
     self.assertLen(metrics, 2)
 
-  def test_update_metrics_returns_flat_dict_with_scalars(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+  def test_flatten_nested_dict_with_scalars(self):
     input_data_dict = _create_scalar_metrics()
-    appended_data_dict = csv_mngr.update_metrics(0, input_data_dict)
+    flattened_data = csv_manager._flatten_nested_dict(input_data_dict)
     self.assertEqual(
         collections.OrderedDict({
             'a/b': 1.0,
             'a/c': 2.0,
-            'round_num': 0.0
-        }), appended_data_dict)
+        }), flattened_data)
 
-  def test_update_metrics_returns_flat_dict_with_nonscalars(self):
-    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+  def test_flatten_nested_dict_with_nonscalars(self):
     input_data_dict = _create_nonscalar_metrics()
-    appended_data_dict = csv_mngr.update_metrics(0, input_data_dict)
+    flattened_data = csv_manager._flatten_nested_dict(input_data_dict)
     expected_dict = collections.OrderedDict({
         'a/b': tf.ones([1]),
         'a/c': tf.zeros([2, 2]),
-        'round_num': 0.0
     })
     self.assertListEqual(
-        list(expected_dict.keys()), list(appended_data_dict.keys()))
-    self.assertEqual(expected_dict['round_num'],
-                     appended_data_dict['round_num'])
-    self.assertAllEqual(expected_dict['a/b'], appended_data_dict['a/b'])
-    self.assertAllEqual(expected_dict['a/c'], appended_data_dict['a/c'])
+        list(expected_dict.keys()), list(flattened_data.keys()))
+    self.assertAllEqual(expected_dict['a/b'], flattened_data['a/b'])
+    self.assertAllEqual(expected_dict['a/c'], flattened_data['a/c'])
 
   def test_column_names(self):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')

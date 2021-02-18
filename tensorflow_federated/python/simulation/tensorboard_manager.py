@@ -84,7 +84,7 @@ class TensorBoardManager(metrics_manager.MetricsManager):
     self._latest_round_num = None
 
   def update_metrics(self, round_num: int,
-                     metrics_to_append: Dict[str, Any]) -> Dict[str, Any]:
+                     metrics_to_append: Dict[str, Any]) -> None:
     """Updates the stored metrics data with metrics for a specific round.
 
     The specified `round_num` must be later than the latest round number
@@ -105,14 +105,6 @@ class TensorBoardManager(metrics_manager.MetricsManager):
       metrics_to_append: A nested structure of metrics collected during
         `round_num`. The nesting will be flattened for purposes of writing to
         TensorBoard.
-
-    Returns:
-      A `collections.OrderedDict` of the metrics used to update the manager.
-      Compared with the input `metrics_to_append`, this data is flattened,
-      with the key names equal to the path in the nested structure, and
-      `round_num` has been added as an additional key (overwriting the value
-      if already present in the input `metrics_to_append`). The `OrderedDict` is
-      sorted by the flattened keys.
 
     Raises:
       ValueError: If the provided round number is negative.
@@ -138,7 +130,6 @@ class TensorBoardManager(metrics_manager.MetricsManager):
           tf.summary.scalar(name, val, step=round_num)
 
     self._latest_round_num = round_num
-    return flat_metrics
 
   def clear_rounds_after(self, round_num: int):
     del round_num

@@ -184,8 +184,8 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
     else:
       self._latest_round_num = current_metrics[-1]['round_num']
 
-  def update_metrics(self, round_num,
-                     metrics_to_append: Dict[str, Any]) -> Dict[str, Any]:
+  def update_metrics(self, round_num, metrics_to_append: Dict[str,
+                                                              Any]) -> None:
     """Updates the stored metrics data with metrics for a specific round.
 
     The specified `round_num` must be later than the latest round number for
@@ -206,14 +206,6 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
       metrics_to_append: A nested structure of metrics collected during
         `round_num`. The nesting will be flattened for storage in the CSV (with
         the new keys equal to the paths in the nested structure).
-
-    Returns:
-      A `collections.OrderedDict` of the metrics used to update the manager.
-      Compared with the input `metrics_to_append`, this data is flattened, with
-      the key names equal to the path in the nested structure, and `round_num`
-      has been added as an additional key (overwriting the value if already
-      present in the input `metrics_to_append`). The `OrderedDict` is sorted by
-      the flattened keys.
 
     Raises:
       ValueError: If the provided round number is negative.
@@ -239,7 +231,6 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
       flat_metrics_as_list[key] = np.array(value).tolist()
     _append_to_csv(flat_metrics_as_list, self._metrics_file)
     self._latest_round_num = round_num
-    return flat_metrics
 
   def get_metrics(self) -> Tuple[Sequence[str], List[Dict[str, Any]]]:
     """Retrieve the stored experiment metrics data for all rounds.
