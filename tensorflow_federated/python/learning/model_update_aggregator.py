@@ -21,7 +21,7 @@ from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.aggregators import robust
-from tensorflow_federated.python.aggregators import secure_factory
+from tensorflow_federated.python.aggregators import secure
 
 
 def _default_zeroing(
@@ -172,8 +172,7 @@ def secure_aggregator(
       target_quantile=0.95,
       learning_rate=1.0,
       multiplier=2.0)
-  factory_ = mean.MeanFactory(
-      secure_factory.SecureSumFactory(secure_clip_bound))
+  factory_ = mean.MeanFactory(secure.SecureSumFactory(secure_clip_bound))
 
   if clipping:
     factory_ = _default_clipping(factory_)

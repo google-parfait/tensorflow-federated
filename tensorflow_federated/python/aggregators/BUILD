@@ -24,7 +24,7 @@ py_library(
         ":mean",
         ":quantile_estimation",
         ":robust",
-        ":secure_factory",
+        ":secure",
         ":sum_factory",
     ],
 )
@@ -220,8 +220,8 @@ py_test(
 )
 
 py_library(
-    name = "secure_factory",
-    srcs = ["secure_factory.py"],
+    name = "secure",
+    srcs = ["secure.py"],
     srcs_version = "PY3",
     deps = [
         ":factory",
@@ -239,14 +239,14 @@ py_library(
 )
 
 py_test(
-    name = "secure_factory_test",
+    name = "secure_test",
     size = "medium",
-    srcs = ["secure_factory_test.py"],
+    srcs = ["secure_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
         ":factory",
-        ":secure_factory",
+        ":secure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
