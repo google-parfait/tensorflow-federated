@@ -142,6 +142,7 @@ py_test(
 py_library(
     name = "hdf5_client_data",
     srcs = ["hdf5_client_data.py"],
+    deprecation = "hdf5_client_data is deprecated and slated for removal April 2021",
     srcs_version = "PY3",
     deps = [
         ":client_data",
@@ -274,7 +275,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":hdf5_client_data",
+        ":from_tensor_slices_client_data",
         ":transforming_client_data",
     ],
 )

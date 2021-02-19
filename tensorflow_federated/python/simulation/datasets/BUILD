@@ -33,7 +33,10 @@ py_library(
     name = "cifar100",
     srcs = ["cifar100.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation:hdf5_client_data"],
+    deps = [
+        ":download",
+        "//tensorflow_federated/python/simulation:sql_client_data",
+    ],
 )
 
 py_test(
@@ -90,16 +93,17 @@ py_library(
     srcs = ["emnist.py"],
     srcs_version = "PY3",
     deps = [
+        ":download",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
-        "//tensorflow_federated/python/simulation:hdf5_client_data",
+        "//tensorflow_federated/python/simulation:sql_client_data",
         "//tensorflow_federated/python/simulation:transforming_client_data",
     ],
 )
 
 py_test(
     name = "emnist_test",
-    size = "small",
+    timeout = "long",
     srcs = ["emnist_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -111,9 +115,10 @@ py_library(
     srcs = ["shakespeare.py"],
     srcs_version = "PY3",
     deps = [
+        ":download",
         "//tensorflow_federated/python/simulation:client_data",
         "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
-        "//tensorflow_federated/python/simulation:hdf5_client_data",
+        "//tensorflow_federated/python/simulation:sql_client_data",
     ],
 )
 
@@ -131,8 +136,9 @@ py_library(
     srcs = ["stackoverflow.py"],
     srcs_version = "PY3",
     deps = [
+        ":download",
         "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
-        "//tensorflow_federated/python/simulation:hdf5_client_data",
+        "//tensorflow_federated/python/simulation:sql_client_data",
     ],
 )
 

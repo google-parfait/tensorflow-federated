@@ -15,10 +15,15 @@
 
 import collections
 
+from absl import flags
 from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import shakespeare
+
+FLAGS = flags.FLAGS
+EXPECTED_ELEMENT_TYPE = collections.OrderedDict(
+    snippets=tf.TensorSpec(shape=[], dtype=tf.string))
 
 
 class ShakespeareTest(absltest.TestCase):
@@ -27,15 +32,20 @@ class ShakespeareTest(absltest.TestCase):
     client_data = shakespeare.get_synthetic()
     self.assertCountEqual(client_data.client_ids,
                           shakespeare._SYNTHETIC_SHAKESPEARE_DATA.keys())
-
-    expected_type = collections.OrderedDict(
-        snippets=tf.TensorSpec(shape=[], dtype=tf.string))
-
-    self.assertEqual(client_data.element_type_structure, expected_type)
-
+    self.assertEqual(client_data.element_type_structure, EXPECTED_ELEMENT_TYPE)
     dataset = client_data.create_tf_dataset_for_client(
         next(iter(shakespeare._SYNTHETIC_SHAKESPEARE_DATA.keys())))
-    self.assertEqual(dataset.element_spec, expected_type)
+    self.assertEqual(dataset.element_spec, EXPECTED_ELEMENT_TYPE)
+
+  def test_load_from_gcs(self):
+    self.skipTest(
+        "CI infrastructure doesn't support downloading from GCS. Remove "
+        "skipTest to run test locally.")
+    train, test = shakespeare.load_data(cache_dir=FLAGS.test_tmpdir)
+    self.assertLen(train.client_ids, 715)
+    self.assertLen(test.client_ids, 715)
+    self.assertEqual(train.element_type_structure, EXPECTED_ELEMENT_TYPE)
+    self.assertEqual(test.element_type_structure, EXPECTED_ELEMENT_TYPE)
 
 
 if __name__ == '__main__':

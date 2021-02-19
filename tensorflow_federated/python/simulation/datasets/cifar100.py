@@ -13,11 +13,30 @@
 # limitations under the License.
 """Libraries for the federated CIFAR-100 dataset for simulation."""
 
-import os.path
+import collections
 
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import hdf5_client_data
+from tensorflow_federated.python.simulation import sql_client_data
+from tensorflow_federated.python.simulation.datasets import download
+
+
+def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
+  """Add parsing of the tf.Example proto to the dataset pipeline."""
+
+  def parse_proto(tensor_proto):
+    parse_spec = {
+        'coarse_label': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
+        'image': tf.io.FixedLenFeature(shape=(32, 32, 3), dtype=tf.int64),
+        'label': tf.io.FixedLenFeature(shape=(), dtype=tf.int64),
+    }
+    parsed_features = tf.io.parse_example(tensor_proto, parse_spec)
+    return collections.OrderedDict(
+        coarse_label=parsed_features['coarse_label'],
+        image=tf.cast(parsed_features['image'], tf.uint8),
+        label=parsed_features['label'])
+
+  return dataset.map(parse_proto, num_parallel_calls=tf.data.AUTOTUNE)
 
 
 def load_data(cache_dir=None):
@@ -78,19 +97,11 @@ def load_data(cache_dir=None):
     Tuple of (train, test) where the tuple elements are
     `tff.simulation.ClientData` objects.
   """
-  path = tf.keras.utils.get_file(
-      'fed_cifar100.tar.bz2',
-      origin='https://storage.googleapis.com/tff-datasets-public/fed_cifar100.tar.bz2',
-      file_hash='e8575e22c038ecef1ce6c7d492d7abee7da13b1e1ba9b70a7fc18531ba7590de',
-      hash_algorithm='sha256',
-      extract=True,
-      archive_format='tar',
+  database_path = download.get_compressed_file(
+      origin='https://storage.googleapis.com/tff-datasets-public/cifar100.sqlite.lzma',
       cache_dir=cache_dir)
-
-  dir_path = os.path.dirname(path)
-  train_client_data = hdf5_client_data.HDF5ClientData(
-      os.path.join(dir_path, 'fed_cifar100_train.h5'))
-  test_client_data = hdf5_client_data.HDF5ClientData(
-      os.path.join(dir_path, 'fed_cifar100_test.h5'))
-
+  train_client_data = sql_client_data.SqlClientData(
+      database_path, 'train').preprocess(_add_proto_parsing)
+  test_client_data = sql_client_data.SqlClientData(
+      database_path, 'test').preprocess(_add_proto_parsing)
   return train_client_data, test_client_data

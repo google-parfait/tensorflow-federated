@@ -16,7 +16,6 @@
 import collections
 import hashlib
 import math
-import os.path
 import struct
 
 import numpy as np
@@ -25,8 +24,25 @@ import tensorflow_addons.image as tfa_image
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation import from_tensor_slices_client_data
-from tensorflow_federated.python.simulation import hdf5_client_data
+from tensorflow_federated.python.simulation import sql_client_data
 from tensorflow_federated.python.simulation import transforming_client_data
+from tensorflow_federated.python.simulation.datasets import download
+
+
+def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
+  """Add parsing of the tf.Example proto to the dataset pipeline."""
+
+  def parse_proto(tensor_proto):
+    parse_spec = {
+        'pixels': tf.io.FixedLenFeature(shape=(28, 28), dtype=tf.float32),
+        'label': tf.io.FixedLenFeature(shape=(), dtype=tf.int64)
+    }
+    parsed_features = tf.io.parse_example(tensor_proto, parse_spec)
+    return collections.OrderedDict(
+        label=tf.cast(parsed_features['label'], tf.int32),
+        pixels=parsed_features['pixels'])
+
+  return dataset.map(parse_proto, num_parallel_calls=tf.data.AUTOTUNE)
 
 
 def load_data(only_digits=True, cache_dir=None):
@@ -92,29 +108,19 @@ def load_data(only_digits=True, cache_dir=None):
     Tuple of (train, test) where the tuple elements are
     `tff.simulation.ClientData` objects.
   """
-  if only_digits:
-    fileprefix = 'fed_emnist_digitsonly'
-    sha256 = '55333deb8546765427c385710ca5e7301e16f4ed8b60c1dc5ae224b42bd5b14b'
-  else:
-    fileprefix = 'fed_emnist'
-    sha256 = 'fe1ed5a502cea3a952eb105920bff8cffb32836b5173cb18a57a32c3606f3ea0'
-
-  filename = fileprefix + '.tar.bz2'
-  path = tf.keras.utils.get_file(
-      filename,
-      origin='https://storage.googleapis.com/tff-datasets-public/' + filename,
-      file_hash=sha256,
-      hash_algorithm='sha256',
-      extract=True,
-      archive_format='tar',
+  database_path = download.get_compressed_file(
+      origin='https://storage.googleapis.com/tff-datasets-public/emnist_all.sqlite.lzma',
       cache_dir=cache_dir)
-
-  dir_path = os.path.dirname(path)
-  train_client_data = hdf5_client_data.HDF5ClientData(
-      os.path.join(dir_path, fileprefix + '_train.h5'))
-  test_client_data = hdf5_client_data.HDF5ClientData(
-      os.path.join(dir_path, fileprefix + '_test.h5'))
-
+  if only_digits:
+    train_client_data = sql_client_data.SqlClientData(
+        database_path, 'digits_only_train').preprocess(_add_proto_parsing)
+    test_client_data = sql_client_data.SqlClientData(
+        database_path, 'digits_only_test').preprocess(_add_proto_parsing)
+  else:
+    train_client_data = sql_client_data.SqlClientData(
+        database_path, 'all_train').preprocess(_add_proto_parsing)
+    test_client_data = sql_client_data.SqlClientData(
+        database_path, 'all_test').preprocess(_add_proto_parsing)
   return train_client_data, test_client_data
 
 

@@ -15,10 +15,21 @@
 
 import collections
 
+from absl import flags
 from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import stackoverflow
+
+FLAGS = flags.FLAGS
+EXPECTED_ELEMENT_TYPE = collections.OrderedDict(
+    creation_date=tf.TensorSpec(shape=[], dtype=tf.string),
+    score=tf.TensorSpec(shape=[], dtype=tf.int64),
+    tags=tf.TensorSpec(shape=[], dtype=tf.string),
+    title=tf.TensorSpec(shape=[], dtype=tf.string),
+    tokens=tf.TensorSpec(shape=[], dtype=tf.string),
+    type=tf.TensorSpec(shape=[], dtype=tf.string),
+)
 
 
 class StackoverflowTest(absltest.TestCase):
@@ -27,21 +38,10 @@ class StackoverflowTest(absltest.TestCase):
     client_data = stackoverflow.get_synthetic()
     self.assertCountEqual(client_data.client_ids,
                           stackoverflow._SYNTHETIC_STACKOVERFLOW_DATA.keys())
-
-    expected_type = collections.OrderedDict(
-        creation_date=tf.TensorSpec(shape=[], dtype=tf.string),
-        score=tf.TensorSpec(shape=[], dtype=tf.int64),
-        tags=tf.TensorSpec(shape=[], dtype=tf.string),
-        title=tf.TensorSpec(shape=[], dtype=tf.string),
-        tokens=tf.TensorSpec(shape=[], dtype=tf.string),
-        type=tf.TensorSpec(shape=[], dtype=tf.string),
-    )
-
-    self.assertEqual(client_data.element_type_structure, expected_type)
-
+    self.assertEqual(client_data.element_type_structure, EXPECTED_ELEMENT_TYPE)
     dataset = client_data.create_tf_dataset_for_client(
         next(iter(stackoverflow._SYNTHETIC_STACKOVERFLOW_DATA.keys())))
-    self.assertEqual(dataset.element_spec, expected_type)
+    self.assertEqual(dataset.element_spec, EXPECTED_ELEMENT_TYPE)
 
   def test_load_word_counts(self):
     expected_num_words = 6005329
@@ -60,6 +60,18 @@ class StackoverflowTest(absltest.TestCase):
     self.assertLen(word_counts, expected_num_words)
     self.assertEqual(word_counts['.'], expected_periods)
     self.assertEqual(word_counts['the'], expected_occurrences_the)
+
+  def test_load_from_gcs(self):
+    self.skipTest(
+        "CI infrastructure doesn't support downloading from GCS. Remove "
+        'skipTest to run test locally.')
+    train, heldout, test = stackoverflow.load_data(cache_dir=FLAGS.test_tmpdir)
+    self.assertLen(train.client_ids, 342_477)
+    self.assertLen(heldout.client_ids, 38_758)
+    self.assertLen(test.client_ids, 204_088)
+    self.assertEqual(train.element_type_structure, EXPECTED_ELEMENT_TYPE)
+    self.assertEqual(heldout.element_type_structure, EXPECTED_ELEMENT_TYPE)
+    self.assertEqual(test.element_type_structure, EXPECTED_ELEMENT_TYPE)
 
 
 if __name__ == '__main__':

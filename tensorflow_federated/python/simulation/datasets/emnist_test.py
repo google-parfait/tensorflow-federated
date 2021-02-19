@@ -14,11 +14,17 @@
 
 import collections
 
+from absl import flags
 from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import emnist
+
+FLAGS = flags.FLAGS
+EXPECTED_ELEMENT_TYPE = collections.OrderedDict(
+    label=tf.TensorSpec(shape=(), dtype=tf.int32),
+    pixels=tf.TensorSpec(shape=(28, 28), dtype=tf.float32))
 
 
 class EMNISTTest(tf.test.TestCase, absltest.TestCase):
@@ -26,14 +32,7 @@ class EMNISTTest(tf.test.TestCase, absltest.TestCase):
   def test_get_synthetic(self):
     client_data = emnist.get_synthetic(num_clients=4)
     self.assertLen(client_data.client_ids, 4)
-
-    self.assertEqual(
-        client_data.element_type_structure,
-        collections.OrderedDict([
-            ('label', tf.TensorSpec(shape=(), dtype=tf.int32)),
-            ('pixels', tf.TensorSpec(shape=(28, 28), dtype=tf.float32)),
-        ]))
-
+    self.assertEqual(client_data.element_type_structure, EXPECTED_ELEMENT_TYPE)
     for client_id in client_data.client_ids:
       data = self.evaluate(
           list(client_data.create_tf_dataset_for_client(client_id)))
@@ -51,7 +50,6 @@ class EMNISTTest(tf.test.TestCase, absltest.TestCase):
     # random seed should always be the same, so that outputs are consistent.)
     raw_client_data = emnist.get_synthetic(num_clients=1)
     inf_client_data = emnist.get_infinite(raw_client_data, num_pseudo_clients=2)
-
     # Generate the dataset for one of the 'infinite' clients. (I.e., one of the
     # clients that is formed by random translations, shearing, etc.).
     inf_dataset = inf_client_data.create_tf_dataset_for_client(
@@ -60,12 +58,28 @@ class EMNISTTest(tf.test.TestCase, absltest.TestCase):
     img0_from_inf_dataset = next(inf_dataset_iter)['pixels']
     img1_from_inf_dataset = next(inf_dataset_iter)['pixels']
     img2_from_inf_dataset = next(inf_dataset_iter)['pixels']
-
     # Just take the first few images from the 'infinite' client's dataset, and
     # check that the average of the pixel values never changes.
     self.assertAlmostEqual(np.average(img0_from_inf_dataset), 0.8107493)
     self.assertAlmostEqual(np.average(img1_from_inf_dataset), 0.8532163)
     self.assertAlmostEqual(np.average(img2_from_inf_dataset), 0.8392606)
+
+  def test_load_from_gcs(self):
+    self.skipTest(
+        "CI infrastructure doesn't support downloading from GCS. Remove "
+        'skipTest to run test locally.')
+
+    def run_test(only_digits: bool, expect_num_clients):
+      train, test = emnist.load_data(only_digits, cache_dir=FLAGS.test_tmpdir)
+      self.assertLen(train.client_ids, expect_num_clients)
+      self.assertLen(test.client_ids, expect_num_clients)
+      self.assertEqual(train.element_type_structure, EXPECTED_ELEMENT_TYPE)
+      self.assertEqual(test.element_type_structure, EXPECTED_ELEMENT_TYPE)
+
+    with self.subTest('only_digits'):
+      run_test(True, 3383)
+    with self.subTest('all'):
+      run_test(False, 3400)
 
 
 if __name__ == '__main__':

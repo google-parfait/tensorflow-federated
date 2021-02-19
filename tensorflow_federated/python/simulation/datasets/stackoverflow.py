@@ -22,7 +22,26 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import from_tensor_slices_client_data
-from tensorflow_federated.python.simulation import hdf5_client_data
+from tensorflow_federated.python.simulation import sql_client_data
+from tensorflow_federated.python.simulation.datasets import download
+
+
+def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
+  """Add parsing of the tf.Example proto to the dataset pipeline."""
+
+  def parse_proto(tensor_proto):
+    parse_spec = collections.OrderedDict(
+        creation_date=tf.io.FixedLenFeature(dtype=tf.string, shape=()),
+        score=tf.io.FixedLenFeature(dtype=tf.int64, shape=()),
+        tags=tf.io.FixedLenFeature(dtype=tf.string, shape=()),
+        title=tf.io.FixedLenFeature(dtype=tf.string, shape=()),
+        tokens=tf.io.FixedLenFeature(dtype=tf.string, shape=()),
+        type=tf.io.FixedLenFeature(dtype=tf.string, shape=()))
+    parsed_features = tf.io.parse_example(tensor_proto, parse_spec)
+    return collections.OrderedDict(
+        (key, parsed_features[key]) for key in parse_spec.keys())
+
+  return dataset.map(parse_proto, num_parallel_calls=tf.data.AUTOTUNE)
 
 
 def load_data(cache_dir=None):
@@ -94,24 +113,16 @@ def load_data(cache_dir=None):
     Tuple of (train, held_out, test) where the tuple elements are
     `tff.simulation.ClientData` objects.
   """
-  path = tf.keras.utils.get_file(
-      'stackoverflow.tar.bz2',
-      origin='https://storage.googleapis.com/tff-datasets-public/stackoverflow.tar.bz2',
-      file_hash='99eca2f8b8327a09e5fc123979df2d237acbc5e52322f6d86bf523ee47b961a2',
-      hash_algorithm='sha256',
-      extract=True,
-      archive_format='tar',
+  database_path = download.get_compressed_file(
+      origin='https://storage.googleapis.com/tff-datasets-public/stackoverflow.sqlite.lzma',
       cache_dir=cache_dir)
-
-  dir_path = os.path.dirname(path)
-  train_client_data = hdf5_client_data.HDF5ClientData(
-      os.path.join(dir_path, 'stackoverflow_train.h5'))
-  held_out_client_data = hdf5_client_data.HDF5ClientData(
-      os.path.join(dir_path, 'stackoverflow_held_out.h5'))
-  test_client_data = hdf5_client_data.HDF5ClientData(
-      os.path.join(dir_path, 'stackoverflow_test.h5'))
-
-  return train_client_data, held_out_client_data, test_client_data
+  train_client_data = sql_client_data.SqlClientData(
+      database_path, 'train').preprocess(_add_proto_parsing)
+  heldout_client_data = sql_client_data.SqlClientData(
+      database_path, 'heldout').preprocess(_add_proto_parsing)
+  test_client_data = sql_client_data.SqlClientData(
+      database_path, 'test').preprocess(_add_proto_parsing)
+  return train_client_data, heldout_client_data, test_client_data
 
 
 def load_word_counts(cache_dir=None, vocab_size: Optional[int] = None):

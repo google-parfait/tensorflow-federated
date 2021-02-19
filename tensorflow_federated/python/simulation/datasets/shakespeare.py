@@ -14,14 +14,24 @@
 """Libraries for the Shakespeare dataset for federated learning simulation."""
 
 import collections
-import os
 from typing import Optional, Tuple
 
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import client_data
 from tensorflow_federated.python.simulation import from_tensor_slices_client_data
-from tensorflow_federated.python.simulation import hdf5_client_data
+from tensorflow_federated.python.simulation import sql_client_data
+from tensorflow_federated.python.simulation.datasets import download
+
+
+def _add_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
+
+  def _parse_example_bytes(serialized_proto_tensor):
+    field_dict = {'snippets': tf.io.FixedLenFeature(shape=(), dtype=tf.string)}
+    parsed_fields = tf.io.parse_example(serialized_proto_tensor, field_dict)
+    return collections.OrderedDict(snippets=parsed_fields['snippets'])
+
+  return dataset.map(_parse_example_bytes, num_parallel_calls=tf.data.AUTOTUNE)
 
 
 def load_data(
@@ -68,21 +78,13 @@ def load_data(
     Tuple of (train, test) where the tuple elements are
     `tff.simulation.ClientData` objects.
   """
-  path = tf.keras.utils.get_file(
-      'shakespeare.tar.bz2',
-      origin='https://storage.googleapis.com/tff-datasets-public/shakespeare.tar.bz2',
-      file_hash='0285be9906cb5f268092eee4edeeacfc2af4574f2941f7cc2f08a321d7f5c707',
-      hash_algorithm='sha256',
-      extract=True,
-      archive_format='tar',
+  database_path = download.get_compressed_file(
+      origin='https://storage.googleapis.com/tff-datasets-public/shakespeare.sqlite.lzma',
       cache_dir=cache_dir)
-
-  dir_path = os.path.dirname(path)
-  train_client_data = hdf5_client_data.HDF5ClientData(
-      os.path.join(dir_path, 'shakespeare_train.h5'))
-  test_client_data = hdf5_client_data.HDF5ClientData(
-      os.path.join(dir_path, 'shakespeare_test.h5'))
-
+  train_client_data = sql_client_data.SqlClientData(
+      database_path, split_name='train').preprocess(_add_parsing)
+  test_client_data = sql_client_data.SqlClientData(
+      database_path, split_name='test').preprocess(_add_parsing)
   return train_client_data, test_client_data
 
 

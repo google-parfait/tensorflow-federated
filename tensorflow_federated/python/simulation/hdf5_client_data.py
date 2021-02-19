@@ -14,6 +14,7 @@
 """Implementation of HDF5 backed ClientData."""
 
 import collections
+import warnings
 
 import h5py
 import tensorflow as tf
@@ -33,6 +34,8 @@ class HDF5ClientData(client_data.ClientData):
   `HDF5ClientData.create_tf_dataset_for_client(client_id)` yields tuples from
   zipping all datasets that were found at `/data/client_id` group, in a similar
   fashion to `tf.data.Dataset.from_tensor_slices()`.
+
+  WARNING: this class is deprecated and is slated for removal in April 2021.
   """
 
   _EXAMPLES_GROUP = "examples"
@@ -40,9 +43,14 @@ class HDF5ClientData(client_data.ClientData):
   def __init__(self, hdf5_filepath):
     """Constructs a `tff.simulation.ClientData` object.
 
+    WARNING: this class is deprecated and is slated for removal in April 2021.
+
     Args:
       hdf5_filepath: String path to the hdf5 file.
     """
+    warnings.warn(
+        "HDF5ClientData is deprecated and slated for removal April 2021. "
+        "Usages have been repalced with SqlClientData.", DeprecationWarning)
     py_typecheck.check_type(hdf5_filepath, str)
     self._filepath = hdf5_filepath
 
