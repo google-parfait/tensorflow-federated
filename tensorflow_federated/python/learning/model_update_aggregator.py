@@ -20,7 +20,7 @@ from tensorflow_federated.python.aggregators import encoded
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import quantile_estimation
-from tensorflow_federated.python.aggregators import robust_factory
+from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import secure_factory
 
 
@@ -36,7 +36,7 @@ def _default_zeroing(
       learning_rate=math.log(10.0),
       multiplier=2.0,
       increment=1.0)
-  return robust_factory.zeroing_factory(zeroing_norm, inner_factory)
+  return robust.zeroing_factory(zeroing_norm, inner_factory)
 
 
 def _default_clipping(
@@ -46,7 +46,7 @@ def _default_clipping(
   # Adapts relatively quickly to a moderately high norm.
   clipping_norm = quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
       initial_estimate=1.0, target_quantile=0.8, learning_rate=0.2)
-  return robust_factory.clipping_factory(clipping_norm, inner_factory)
+  return robust.clipping_factory(clipping_norm, inner_factory)
 
 
 def robust_aggregator(

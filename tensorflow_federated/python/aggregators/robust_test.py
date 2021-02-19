@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for clipping and zeroing robust_factory."""
+"""Tests for clipping and zeroing."""
 
 import collections
 import itertools
@@ -20,7 +20,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
-from tensorflow_federated.python.aggregators import robust_factory
+from tensorflow_federated.python.aggregators import robust
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -40,20 +40,19 @@ def _make_test_struct_value(x):
 
 
 def _clipped_mean(clip=2.0):
-  return robust_factory.clipping_factory(clip, mean.MeanFactory())
+  return robust.clipping_factory(clip, mean.MeanFactory())
 
 
 def _clipped_sum(clip=2.0):
-  return robust_factory.clipping_factory(clip, sum_factory.SumFactory())
+  return robust.clipping_factory(clip, sum_factory.SumFactory())
 
 
 def _zeroed_mean(clip=2.0, norm_order=2.0):
-  return robust_factory.zeroing_factory(clip, mean.MeanFactory(), norm_order)
+  return robust.zeroing_factory(clip, mean.MeanFactory(), norm_order)
 
 
 def _zeroed_sum(clip=2.0, norm_order=2.0):
-  return robust_factory.zeroing_factory(clip, sum_factory.SumFactory(),
-                                        norm_order)
+  return robust.zeroing_factory(clip, sum_factory.SumFactory(), norm_order)
 
 
 _float_at_server = computation_types.at_server(tf.float32)
@@ -108,8 +107,8 @@ class ClippingFactoryComputationTest(test_case.TestCase,
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             clipping=(),
-            clipping_norm=robust_factory.NORM_TF_TYPE,
-            clipped_count=robust_factory.COUNT_TF_TYPE))
+            clipping_norm=robust.NORM_TF_TYPE,
+            clipped_count=robust.COUNT_TF_TYPE))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -148,8 +147,8 @@ class ClippingFactoryComputationTest(test_case.TestCase,
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             clipping=collections.OrderedDict(mean_value=(), mean_weight=()),
-            clipping_norm=robust_factory.NORM_TF_TYPE,
-            clipped_count=robust_factory.COUNT_TF_TYPE))
+            clipping_norm=robust.NORM_TF_TYPE,
+            clipped_count=robust.COUNT_TF_TYPE))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -184,8 +183,8 @@ class ClippingFactoryComputationTest(test_case.TestCase,
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             zeroing=(),
-            zeroing_norm=robust_factory.NORM_TF_TYPE,
-            zeroed_count=robust_factory.COUNT_TF_TYPE))
+            zeroing_norm=robust.NORM_TF_TYPE,
+            zeroed_count=robust.COUNT_TF_TYPE))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -224,8 +223,8 @@ class ClippingFactoryComputationTest(test_case.TestCase,
     expected_measurements_type = computation_types.at_server(
         collections.OrderedDict(
             zeroing=collections.OrderedDict(mean_value=(), mean_weight=()),
-            zeroing_norm=robust_factory.NORM_TF_TYPE,
-            zeroed_count=robust_factory.COUNT_TF_TYPE))
+            zeroing_norm=robust.NORM_TF_TYPE,
+            zeroed_count=robust.COUNT_TF_TYPE))
     expected_next_type = computation_types.FunctionType(
         parameter=collections.OrderedDict(
             state=server_state_type,
@@ -572,8 +571,8 @@ class NormTest(test_case.TestCase):
     values = [1.0, -2.0, 3.0, -4.0]
     for l in itertools.permutations(values):
       v = [tf.constant(l[0]), (tf.constant([l[1], l[2]]), tf.constant([l[3]]))]
-      self.assertAllClose(4.0, robust_factory._global_inf_norm(v).numpy())
-      self.assertAllClose(10.0, robust_factory._global_l1_norm(v).numpy())
+      self.assertAllClose(4.0, robust._global_inf_norm(v).numpy())
+      self.assertAllClose(10.0, robust._global_l1_norm(v).numpy())
 
 
 if __name__ == '__main__':

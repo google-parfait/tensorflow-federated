@@ -20,7 +20,7 @@ from tensorflow_federated.python.aggregators.factory import WeightedAggregationF
 from tensorflow_federated.python.aggregators.mean import MeanFactory
 from tensorflow_federated.python.aggregators.mean import UnweightedMeanFactory
 from tensorflow_federated.python.aggregators.quantile_estimation import PrivateQuantileEstimationProcess
-from tensorflow_federated.python.aggregators.robust_factory import clipping_factory
-from tensorflow_federated.python.aggregators.robust_factory import zeroing_factory
+from tensorflow_federated.python.aggregators.robust import clipping_factory
+from tensorflow_federated.python.aggregators.robust import zeroing_factory
 from tensorflow_federated.python.aggregators.secure_factory import SecureSumFactory
 from tensorflow_federated.python.aggregators.sum_factory import SumFactory
