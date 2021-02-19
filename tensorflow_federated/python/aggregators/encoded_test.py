@@ -17,7 +17,7 @@ import random
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.aggregators import encoded_factory
+from tensorflow_federated.python.aggregators import encoded
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import placements
@@ -74,7 +74,7 @@ class EncodedSumFactoryComputationTest(test_case.TestCase,
       ('state_update_from_encoder_fn', _state_update_encoder_fn),
   )
   def test_type_properties(self, encoder_fn):
-    encoded_f = encoded_factory.EncodedSumFactory(encoder_fn)
+    encoded_f = encoded.EncodedSumFactory(encoder_fn)
     self.assertIsInstance(encoded_f, factory.UnweightedAggregationFactory)
 
     process = encoded_f.create(_test_struct_type)
@@ -101,11 +101,11 @@ class EncodedSumFactoryComputationTest(test_case.TestCase,
     encoder = te.encoders.as_gather_encoder(te.encoders.identity(),
                                             tf.TensorSpec((), tf.float32))
     with self.assertRaises(TypeError):
-      encoded_factory.EncodedSumFactory(encoder)
+      encoded.EncodedSumFactory(encoder)
 
   def test_quantize_above_threshold_negative_threshold_raises(self):
     with self.assertRaises(ValueError):
-      encoded_factory.EncodedSumFactory.quantize_above_threshold(
+      encoded.EncodedSumFactory.quantize_above_threshold(
           quantization_bits=8, threshold=-1)
 
   @parameterized.named_parameters(
@@ -116,14 +116,14 @@ class EncodedSumFactoryComputationTest(test_case.TestCase,
   def test_quantize_above_threshold_quantization_bits_raises(
       self, quantization_bits):
     with self.assertRaises(ValueError):
-      encoded_factory.EncodedSumFactory.quantize_above_threshold(
+      encoded.EncodedSumFactory.quantize_above_threshold(
           quantization_bits=quantization_bits, threshold=10000)
 
 
 class EncodedSumFactoryExecutionTest(test_case.TestCase):
 
   def test_simple_sum(self):
-    encoded_f = encoded_factory.EncodedSumFactory(_identity_encoder_fn)
+    encoded_f = encoded.EncodedSumFactory(_identity_encoder_fn)
     process = encoded_f.create(computation_types.to_type(tf.float32))
 
     state = process.initialize()
@@ -136,7 +136,7 @@ class EncodedSumFactoryExecutionTest(test_case.TestCase):
       state = output.state
 
   def test_structure_sum(self):
-    encoded_f = encoded_factory.EncodedSumFactory(_identity_encoder_fn)
+    encoded_f = encoded.EncodedSumFactory(_identity_encoder_fn)
     process = encoded_f.create(
         computation_types.to_type(((tf.float32, (2,)), tf.float32)))
 
@@ -154,7 +154,7 @@ class EncodedSumFactoryExecutionTest(test_case.TestCase):
       state = output.state
 
   def test_quantize_above_threshold_zero(self):
-    encoded_f = encoded_factory.EncodedSumFactory.quantize_above_threshold(
+    encoded_f = encoded.EncodedSumFactory.quantize_above_threshold(
         quantization_bits=1, threshold=0)
     test_type = computation_types.to_type([(tf.float32, (3,)),
                                            (tf.float32, (5,))])
@@ -168,7 +168,7 @@ class EncodedSumFactoryExecutionTest(test_case.TestCase):
     self.assertSetEqual(set([1.0, 5.0]), set(output.result[1]))
 
   def test_quantize_above_threshold_positive(self):
-    encoded_f = encoded_factory.EncodedSumFactory.quantize_above_threshold(
+    encoded_f = encoded.EncodedSumFactory.quantize_above_threshold(
         quantization_bits=1, threshold=4)
     test_type = computation_types.to_type([(tf.float32, (3,)),
                                            (tf.float32, (5,))])
@@ -183,7 +183,7 @@ class EncodedSumFactoryExecutionTest(test_case.TestCase):
     self.assertSetEqual(set([1.0, 5.0]), set(output.result[1]))
 
   def test_quantize_above_threshold(self):
-    encoded_f = encoded_factory.EncodedSumFactory.quantize_above_threshold(
+    encoded_f = encoded.EncodedSumFactory.quantize_above_threshold(
         quantization_bits=4, threshold=0)
     process = encoded_f.create(
         computation_types.to_type((tf.float32, (10000,))))

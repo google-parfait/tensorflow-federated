@@ -16,7 +16,7 @@
 import math
 
 from tensorflow_federated.python.aggregators import differential_privacy
-from tensorflow_federated.python.aggregators import encoded_factory
+from tensorflow_federated.python.aggregators import encoded
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean_factory
 from tensorflow_federated.python.aggregators import quantile_estimation
@@ -135,7 +135,7 @@ def compression_aggregator(
     A `tff.aggregators.WeightedAggregationFactory`.
   """
   factory_ = mean_factory.MeanFactory(
-      encoded_factory.EncodedSumFactory.quantize_above_threshold(
+      encoded.EncodedSumFactory.quantize_above_threshold(
           quantization_bits=8, threshold=20000))
 
   if clipping:

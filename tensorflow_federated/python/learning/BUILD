@@ -227,7 +227,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:differential_privacy",
-        "//tensorflow_federated/python/aggregators:encoded_factory",
+        "//tensorflow_federated/python/aggregators:encoded",
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean_factory",
         "//tensorflow_federated/python/aggregators:quantile_estimation",

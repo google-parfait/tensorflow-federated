@@ -19,7 +19,7 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":differential_privacy",
-        ":encoded_factory",
+        ":encoded",
         ":factory",
         ":mean_factory",
         ":quantile_estimation",
@@ -66,8 +66,8 @@ py_test(
 )
 
 py_library(
-    name = "encoded_factory",
-    srcs = ["encoded_factory.py"],
+    name = "encoded",
+    srcs = ["encoded.py"],
     srcs_version = "PY3",
     deps = [
         ":factory",
@@ -83,13 +83,13 @@ py_library(
 )
 
 py_test(
-    name = "encoded_factory_test",
+    name = "encoded_test",
     size = "medium",
-    srcs = ["encoded_factory_test.py"],
+    srcs = ["encoded_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":encoded_factory",
+        ":encoded",
         ":factory",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
