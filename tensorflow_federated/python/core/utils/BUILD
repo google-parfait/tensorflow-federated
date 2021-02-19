@@ -20,7 +20,6 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":computation_utils",
-        ":differential_privacy",
         ":encoding_utils",
         ":federated_aggregations",
         ":tf_computation_utils",
@@ -43,37 +42,6 @@ py_test(
     deps = [
         ":computation_utils",
         "//tensorflow_federated/python/core/api:test_case",
-    ],
-)
-
-py_library(
-    name = "differential_privacy",
-    srcs = ["differential_privacy.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/api:placements",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/templates:measured_process",
-    ],
-)
-
-py_test(
-    name = "differential_privacy_test",
-    srcs = ["differential_privacy_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":differential_privacy",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:placements",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
-        "//tensorflow_federated/python/core/templates:measured_process",
     ],
 )
 
