@@ -15,7 +15,7 @@
 
 import math
 
-from tensorflow_federated.python.aggregators import dp_factory
+from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import encoded_factory
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean_factory
@@ -104,7 +104,7 @@ def dp_aggregator(noise_multiplier: float,
     A `tff.aggregators.UnweightedAggregationFactory`.
   """
 
-  factory_ = dp_factory.DifferentiallyPrivateFactory.gaussian_adaptive(
+  factory_ = differential_privacy.DifferentiallyPrivateFactory.gaussian_adaptive(
       noise_multiplier, clients_per_round)
 
   if zeroing:

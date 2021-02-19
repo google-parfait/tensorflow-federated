@@ -13,7 +13,7 @@
 # limitations under the License.
 """Libraries for constructing federated aggregation."""
 
-from tensorflow_federated.python.aggregators.dp_factory import DifferentiallyPrivateFactory
+from tensorflow_federated.python.aggregators.differential_privacy import DifferentiallyPrivateFactory
 from tensorflow_federated.python.aggregators.encoded_factory import EncodedSumFactory
 from tensorflow_federated.python.aggregators.factory import UnweightedAggregationFactory
 from tensorflow_federated.python.aggregators.factory import WeightedAggregationFactory

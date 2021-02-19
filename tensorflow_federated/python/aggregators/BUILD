@@ -18,7 +18,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
-        ":dp_factory",
+        ":differential_privacy",
         ":encoded_factory",
         ":factory",
         ":mean_factory",
@@ -30,8 +30,8 @@ py_library(
 )
 
 py_library(
-    name = "dp_factory",
-    srcs = ["dp_factory.py"],
+    name = "differential_privacy",
+    srcs = ["differential_privacy.py"],
     srcs_version = "PY3",
     deps = [
         ":factory",
@@ -47,12 +47,12 @@ py_library(
 )
 
 py_test(
-    name = "dp_factory_test",
-    srcs = ["dp_factory_test.py"],
+    name = "differential_privacy_test",
+    srcs = ["differential_privacy_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":dp_factory",
+        ":differential_privacy",
         ":factory",
         ":test_utils",
         "//tensorflow_federated/python/core/api:computation_types",

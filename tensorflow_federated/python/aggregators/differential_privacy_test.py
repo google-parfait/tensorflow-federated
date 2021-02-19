@@ -20,7 +20,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_privacy as tfp
 
-from tensorflow_federated.python.aggregators import dp_factory
+from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import test_utils
 from tensorflow_federated.python.core.api import computation_types
@@ -45,8 +45,8 @@ class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
       ('float_inner', tf.float32, _test_inner_agg_factory),
       ('struct_inner', _test_struct_type, _test_inner_agg_factory))
   def test_type_properties(self, value_type, inner_agg_factory):
-    factory_ = dp_factory.DifferentiallyPrivateFactory(_test_dp_query,
-                                                       inner_agg_factory)
+    factory_ = differential_privacy.DifferentiallyPrivateFactory(
+        _test_dp_query, inner_agg_factory)
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     value_type = computation_types.to_type(value_type)
     process = factory_.create(value_type)
@@ -85,12 +85,12 @@ class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
 
   def test_init_non_dp_query_raises(self):
     with self.assertRaises(TypeError):
-      dp_factory.DifferentiallyPrivateFactory('not a dp_query')
+      differential_privacy.DifferentiallyPrivateFactory('not a dp_query')
 
   def test_init_non_agg_factory_raises(self):
     with self.assertRaises(TypeError):
-      dp_factory.DifferentiallyPrivateFactory(_test_dp_query,
-                                              'not an agg factory')
+      differential_privacy.DifferentiallyPrivateFactory(_test_dp_query,
+                                                        'not an agg factory')
 
   @parameterized.named_parameters(
       ('federated_type',
@@ -98,7 +98,7 @@ class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
       ('function_type', computation_types.FunctionType(None, ())),
       ('sequence_type', computation_types.SequenceType(tf.float32)))
   def test_incorrect_value_type_raises(self, bad_value_type):
-    factory_ = dp_factory.DifferentiallyPrivateFactory(_test_dp_query)
+    factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
     with self.assertRaises(TypeError):
       factory_.create(bad_value_type)
 
@@ -106,7 +106,7 @@ class DPFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
 class DPFactoryExecutionTest(test_case.TestCase):
 
   def test_simple_sum(self):
-    factory_ = dp_factory.DifferentiallyPrivateFactory(_test_dp_query)
+    factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
     value_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type)
 
@@ -119,7 +119,7 @@ class DPFactoryExecutionTest(test_case.TestCase):
     self.assertAllClose(2.5, output.result)
 
   def test_structure_sum(self):
-    factory_ = dp_factory.DifferentiallyPrivateFactory(_test_dp_query)
+    factory_ = differential_privacy.DifferentiallyPrivateFactory(_test_dp_query)
     value_type = computation_types.to_type([tf.float32, tf.float32])
     process = factory_.create(value_type)
 
@@ -141,8 +141,8 @@ class DPFactoryExecutionTest(test_case.TestCase):
     self.assertAllClose(expected_result, output.result)
 
   def test_inner_sum(self):
-    factory_ = dp_factory.DifferentiallyPrivateFactory(_test_dp_query,
-                                                       _test_inner_agg_factory)
+    factory_ = differential_privacy.DifferentiallyPrivateFactory(
+        _test_dp_query, _test_inner_agg_factory)
     value_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type)
 
@@ -168,7 +168,7 @@ class DPFactoryExecutionTest(test_case.TestCase):
         clipped_count_stddev=0.0,
         expected_num_records=3.0,
         geometric_update=False)
-    factory_ = dp_factory.DifferentiallyPrivateFactory(query)
+    factory_ = differential_privacy.DifferentiallyPrivateFactory(query)
     value_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type)
 
@@ -186,7 +186,7 @@ class DPFactoryExecutionTest(test_case.TestCase):
 
   def test_noise(self):
     noise = 3.14159
-    factory_ = dp_factory.DifferentiallyPrivateFactory.gaussian_fixed(
+    factory_ = differential_privacy.DifferentiallyPrivateFactory.gaussian_fixed(
         noise_multiplier=noise, clients_per_round=1.0, clip=1.0)
     value_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type)
@@ -204,14 +204,16 @@ class DPFactoryExecutionTest(test_case.TestCase):
     self.assertAllClose(stddev, noise, rtol=0.15)
 
   def test_gaussian_adaptive_cls(self):
-    process = dp_factory.DifferentiallyPrivateFactory.gaussian_adaptive(
+    process = differential_privacy.DifferentiallyPrivateFactory.gaussian_adaptive(
         noise_multiplier=1e-2, clients_per_round=10)
-    self.assertIsInstance(process, dp_factory.DifferentiallyPrivateFactory)
+    self.assertIsInstance(process,
+                          differential_privacy.DifferentiallyPrivateFactory)
 
   def test_gaussian_fixed_cls(self):
-    process = dp_factory.DifferentiallyPrivateFactory.gaussian_fixed(
+    process = differential_privacy.DifferentiallyPrivateFactory.gaussian_fixed(
         noise_multiplier=1.0, clients_per_round=10, clip=1.0)
-    self.assertIsInstance(process, dp_factory.DifferentiallyPrivateFactory)
+    self.assertIsInstance(process,
+                          differential_privacy.DifferentiallyPrivateFactory)
 
 
 if __name__ == '__main__':
