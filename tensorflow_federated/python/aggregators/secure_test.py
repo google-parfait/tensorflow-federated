@@ -18,7 +18,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.aggregators import secure_factory
+from tensorflow_federated.python.aggregators import secure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -64,8 +64,8 @@ def _test_estimation_process(factor):
 def _measurements_type(bound_type):
   return computation_types.at_server(
       collections.OrderedDict(
-          secure_upper_clipped_count=secure_factory.COUNT_TF_TYPE,
-          secure_lower_clipped_count=secure_factory.COUNT_TF_TYPE,
+          secure_upper_clipped_count=secure.COUNT_TF_TYPE,
+          secure_lower_clipped_count=secure.COUNT_TF_TYPE,
           secure_upper_threshold=bound_type,
           secure_lower_threshold=bound_type))
 
@@ -85,7 +85,7 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
   )
   def test_type_properties_constant_bounds(self, value_type, upper_bound,
                                            lower_bound, measurements_dtype):
-    secure_sum_f = secure_factory.SecureSumFactory(
+    secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=upper_bound, lower_bound_threshold=lower_bound)
     self.assertIsInstance(secure_sum_f, factory.UnweightedAggregationFactory)
     value_type = computation_types.to_type(value_type)
@@ -119,7 +119,7 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
   )
   def test_type_properties_single_bound(self, value_type):
     upper_bound_process = _test_estimation_process(1)
-    secure_sum_f = secure_factory.SecureSumFactory(
+    secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=upper_bound_process)
     self.assertIsInstance(secure_sum_f, factory.UnweightedAggregationFactory)
     value_type = computation_types.to_type(value_type)
@@ -155,7 +155,7 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
   def test_type_properties_adaptive_bounds(self, value_type):
     upper_bound_process = _test_estimation_process(1)
     lower_bound_process = _test_estimation_process(-1)
-    secure_sum_f = secure_factory.SecureSumFactory(
+    secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=upper_bound_process,
         lower_bound_threshold=lower_bound_process)
     self.assertIsInstance(secure_sum_f, factory.UnweightedAggregationFactory)
@@ -190,10 +190,10 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
                                   ('float_equal', 1.0, 1.0))
   def test_upper_bound_not_larger_than_lower_bound_raises(self, upper, lower):
     with self.assertRaises(ValueError):
-      secure_factory.SecureSumFactory(upper, lower)
+      secure.SecureSumFactory(upper, lower)
 
   def test_int_ranges_beyond_2_pow_32(self):
-    secure_sum_f = secure_factory.SecureSumFactory(2**33, -2**33)
+    secure_sum_f = secure.SecureSumFactory(2**33, -2**33)
     # Bounds this large should be provided only with tf.int64 value_type.
     process = secure_sum_f.create(computation_types.TensorType(tf.int64))
     self.assertEqual(process.next.type_signature.result.result.member.dtype,
@@ -203,7 +203,7 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
       ('py', 1, -1), ('np', np.array(1, np.int32), np.array(-1, np.int32)))
   def test_value_type_incompatible_with_config_mode_raises_int(
       self, upper, lower):
-    secure_sum_f = secure_factory.SecureSumFactory(upper, lower)
+    secure_sum_f = secure.SecureSumFactory(upper, lower)
     with self.assertRaises(TypeError):
       secure_sum_f.create(computation_types.TensorType(tf.float32))
 
@@ -212,17 +212,17 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
       ('np', np.array(1.0, np.float32), np.array(-1.0, np.float32)))
   def test_value_type_incompatible_with_config_mode_raises_float(
       self, upper, lower):
-    secure_sum_f = secure_factory.SecureSumFactory(upper, lower)
+    secure_sum_f = secure.SecureSumFactory(upper, lower)
     with self.assertRaises(TypeError):
       secure_sum_f.create(computation_types.TensorType(tf.int32))
 
   def test_value_type_incompatible_with_config_mode_raises_single_process(self):
-    secure_sum_f = secure_factory.SecureSumFactory(_test_estimation_process(1))
+    secure_sum_f = secure.SecureSumFactory(_test_estimation_process(1))
     with self.assertRaises(TypeError):
       secure_sum_f.create(computation_types.TensorType(tf.int32))
 
   def test_value_type_incompatible_with_config_mode_raises_two_processes(self):
-    secure_sum_f = secure_factory.SecureSumFactory(
+    secure_sum_f = secure.SecureSumFactory(
         _test_estimation_process(1), _test_estimation_process(-1))
     with self.assertRaises(TypeError):
       secure_sum_f.create(computation_types.TensorType(tf.int32))
@@ -233,7 +233,7 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
       ('function_type', computation_types.FunctionType(None, ())),
       ('sequence_type', computation_types.SequenceType(tf.float32)))
   def test_incorrect_value_type_raises(self, bad_value_type):
-    secure_sum_f = secure_factory.SecureSumFactory(1.0, -1.0)
+    secure_sum_f = secure.SecureSumFactory(1.0, -1.0)
     with self.assertRaises(TypeError):
       secure_sum_f.create(bad_value_type)
 
@@ -241,7 +241,7 @@ class SecureSumFactoryComputationTest(test_case.TestCase,
 class SecureSumFactoryExecutionTest(test_case.TestCase):
 
   def test_int_constant_bounds(self):
-    secure_sum_f = secure_factory.SecureSumFactory(
+    secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=1, lower_bound_threshold=-1)
     process = secure_sum_f.create(computation_types.to_type(tf.int32))
     client_data = [-2, -1, 0, 1, 2, 3]
@@ -257,7 +257,7 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
         expected_secure_lower_threshold=-1)
 
   def test_float_constant_bounds(self):
-    secure_sum_f = secure_factory.SecureSumFactory(
+    secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=1.0, lower_bound_threshold=-1.0)
     process = secure_sum_f.create(computation_types.to_type(tf.float32))
     client_data = [-2.5, -0.5, 0.0, 1.0, 1.5, 2.5]
@@ -273,7 +273,7 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
         expected_secure_lower_threshold=-1.0)
 
   def test_float_single_process_bounds(self):
-    secure_sum_f = secure_factory.SecureSumFactory(
+    secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=_test_estimation_process(1))
     process = secure_sum_f.create(computation_types.to_type(tf.float32))
     client_data = [-2.5, -0.5, 0.0, 1.0, 1.5, 3.5]
@@ -307,7 +307,7 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
         expected_secure_lower_threshold=-3.0)
 
   def test_float_two_processes_bounds(self):
-    secure_sum_f = secure_factory.SecureSumFactory(
+    secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=_test_estimation_process(1),
         lower_bound_threshold=_test_estimation_process(-1))
     process = secure_sum_f.create(computation_types.to_type(tf.float32))
@@ -341,8 +341,7 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
         expected_secure_lower_threshold=-3.0)
 
   def test_float_32_larger_than_2_pow_32(self):
-    secure_sum_f = secure_factory.SecureSumFactory(
-        upper_bound_threshold=float(2**34))
+    secure_sum_f = secure.SecureSumFactory(upper_bound_threshold=float(2**34))
     process = secure_sum_f.create(computation_types.to_type(tf.float32))
     client_data = [float(2**33), float(2**33), float(2**34)]
 
@@ -357,7 +356,7 @@ class SecureSumFactoryExecutionTest(test_case.TestCase):
         expected_secure_lower_threshold=float(-2**34))
 
   def test_float_64_larger_than_2_pow_64(self):
-    secure_sum_f = secure_factory.SecureSumFactory(
+    secure_sum_f = secure.SecureSumFactory(
         upper_bound_threshold=np.array(2**66, dtype=np.float64))
     process = secure_sum_f.create(computation_types.to_type(tf.float64))
     client_data = [

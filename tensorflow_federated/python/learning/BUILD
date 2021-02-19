@@ -232,7 +232,7 @@ py_library(
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:quantile_estimation",
         "//tensorflow_federated/python/aggregators:robust",
-        "//tensorflow_federated/python/aggregators:secure_factory",
+        "//tensorflow_federated/python/aggregators:secure",
     ],
 )
 
