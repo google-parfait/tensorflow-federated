@@ -18,7 +18,7 @@ import csv
 import os.path
 import shutil
 import tempfile
-from typing import Any, Dict, List, Tuple, Sequence, Set, Union
+from typing import Any, Dict, List, Mapping, Tuple, Sequence, Set, Union
 
 from absl import logging
 import numpy as np
@@ -113,7 +113,7 @@ def _append_to_csv(metrics_to_append: Dict[str, Any], file_name: str):
   return expanded_fieldnames
 
 
-def _flatten_nested_dict(struct: Dict[str, Any]) -> Dict[str, Any]:
+def _flatten_nested_dict(struct: Mapping[str, Any]) -> Dict[str, Any]:
   """Flattens a given nested structure of tensors, sorting by flattened keys.
 
   For example, if we have the nested dictionary {'d':3, 'a': {'b': 1, 'c':2}, },
@@ -123,7 +123,7 @@ def _flatten_nested_dict(struct: Dict[str, Any]) -> Dict[str, Any]:
   flattened dictionary will be the leaf nodetensors in the original struct.
 
   Args:
-    struct: A nested dictionary.
+    struct: A (possibly nested) mapping.
 
   Returns:
     A `collections.OrderedDict` representing a flattened version of `struct`.
@@ -142,21 +142,21 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
     This class will maintain metrics in a CSV file in the filesystem. The path
     of the file is {`root_metrics_dir`}/{`prefix`}.metrics.csv. To use this
     class upon restart of an experiment at an earlier round number, you can
-    initialize and then call the clear_rounds_after() method to remove all rows
+    initialize and then call the clear_metrics() method to remove all rows
     for round numbers later than the restart round number. This ensures that no
     duplicate rows of data exist in the CSV.
 
-    In order to reduce metric writing time, metrics passed to `update_metrics`
+    In order to reduce metric writing time, metrics passed to `save_metrics`
     are appended to the underlying CSV file (as long as they do not introduce
-    any new key values). This may be *incompatible* with zipped
-    files, such as `.bz2` formats, or encoded directories.
+    any new key values). This may be incompatible with zipped files, such as
+    `.bz2` formats, or encoded directories.
 
     Args:
       csv_filepath: A string specifying the file to write and read metrics from.
 
     Raises:
       ValueError: If `csv_filepath` is an empty string.
-      ValueError: If the specified metrics csv file already exists but does not
+      ValueError: If the file at `csv_filepath` already exists but does not
         contain a `round_num` column.
     """
     super().__init__()
@@ -184,16 +184,19 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
     else:
       self._latest_round_num = current_metrics[-1]['round_num']
 
-  def update_metrics(self, round_num, metrics_to_append: Dict[str,
-                                                              Any]) -> None:
+  def save_metrics(self, round_num, metrics: Mapping[str, Any]) -> None:
     """Updates the stored metrics data with metrics for a specific round.
 
-    The specified `round_num` must be later than the latest round number for
-    which metrics exist in the stored metrics data. This method will atomically
-    update the stored CSV file. Also, if stored metrics already exist and
-    `metrics_to_append` contains a new, previously unseen metric name, a new
-    column in the dataframe will be added for that metric, and all previous rows
-    will fill in with NaN values for the metric.
+    The specified `round_num` must be nonnegative, and larger than the latest
+    round number for which metrics exist in the stored metrics data. For
+    example, calling this method with `round_num = 3` then `round_num = 7`
+    is acceptable, but calling the method with `round_num = 6` then
+    `round_num = 6` (or anything less than 6) is not supported.
+
+    This method will atomically update the stored CSV file. Also, if stored
+    metrics already exist and `metrics` contains a new, previously unseen metric
+    name, a new column in the dataframe will be added for that metric, and all
+    previous rows will fill in with NaN values for the metric.
 
     The metrics written are the leaf node tensors of the metrics_to_append
     structure. Purely scalar tensors will be written as scalars in the CSV,
@@ -203,9 +206,9 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
 
     Args:
       round_num: Communication round at which `metrics_to_append` was collected.
-      metrics_to_append: A nested structure of metrics collected during
-        `round_num`. The nesting will be flattened for storage in the CSV (with
-        the new keys equal to the paths in the nested structure).
+      metrics: A nested structure of metrics collected during `round_num`. The
+        nesting will be flattened for storage in the CSV (with the new keys
+        equal to the paths in the nested structure).
 
     Raises:
       ValueError: If the provided round number is negative.
@@ -220,15 +223,15 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
                        'but metrics already exist through round '
                        f'{self._latest_round_num}.')
 
-    # Add the round number to the metrics before storing to csv file. This will
-    # be used if a restart occurs, to identify which metrics to trim in the
-    # _clear_invalid_rounds() method.
-    metrics_to_append['round_num'] = round_num
-
-    flat_metrics = _flatten_nested_dict(metrics_to_append)
+    flat_metrics = _flatten_nested_dict(metrics)
     flat_metrics_as_list = collections.OrderedDict()
     for key, value in flat_metrics.items():
       flat_metrics_as_list[key] = np.array(value).tolist()
+
+    # Add the round number to the metrics before storing to csv file. This will
+    # be used if a restart occurs, to identify which metrics to trim in the
+    # clear_metrics() method.
+    flat_metrics_as_list['round_num'] = round_num
     _append_to_csv(flat_metrics_as_list, self._metrics_file)
     self._latest_round_num = round_num
 
@@ -245,7 +248,7 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
     """
     return _read_from_csv(self._metrics_file)
 
-  def clear_all_rounds(self) -> None:
+  def _clear_all_rounds(self) -> None:
     """Existing metrics for all rounds are cleared out.
 
     This method will atomically update the stored CSV file.
@@ -256,27 +259,17 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
       writer.writeheader()
     self._latest_round_num = None
 
-  def clear_rounds_after(self, round_num: int) -> None:
+  def _clear_rounds_after(self, round_num: int) -> None:
     """Metrics for rounds greater than `round_num` are cleared out.
-
-    By using this method, this class can be used upon restart of an experiment
-    at `round_num` to ensure that no duplicate rows of data exist in
-    the CSV file. This method will atomically update the stored CSV file.
 
     Args:
       round_num: All metrics for rounds later than this are expunged.
 
     Raises:
-      RuntimeError: If metrics do not exist (none loaded during construction '
-        nor recorded via `update_metrics()` and `round_num` is not zero.
-      ValueError: If `round_num` is negative.
+      RuntimeError: If `self._last_valid_round_num` is `None`, indicating that
+        no metrics have yet been written.
     """
-    if round_num < 0:
-      raise ValueError('Attempting to clear metrics after round '
-                       f'{round_num}, which is negative.')
     if self._latest_round_num is None:
-      if round_num == 0:
-        return
       raise RuntimeError('Metrics do not exist yet.')
 
     reduced_fieldnames = set(['round_num'])
@@ -295,6 +288,34 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
 
     _write_to_csv(reduced_metrics, self._metrics_file, reduced_fieldnames)
     self._latest_round_num = latest_round_num
+
+  def clear_metrics(self, round_num: int) -> None:
+    """Clear out metrics at and after a given starting `round_num`.
+
+    By using this method, this class can be used upon restart of an experiment
+    at `round_num` to ensure that no duplicate rows of data exist in
+    the CSV file. This method will atomically update the stored CSV file.
+
+    Note that if `clear_metrics(round_num=0)` is called, all metrics are cleared
+    in a more performant manner. Rather than removing all rows of the CSV with
+    round numbers greater than or equal to `round_num`, we simply remove all
+    rows of the CSV when `round_num=0`.
+
+    Args:
+      round_num: A nonnegative integer indicating the starting round number for
+        clearing metrics from the manager's associated CSV.
+
+    Raises:
+      ValueError: If `round_num` is negative.
+    """
+    if round_num < 0:
+      raise ValueError('Attempting to clear metrics after round '
+                       f'{round_num}, which is negative.')
+    if self._latest_round_num is not None:
+      if round_num == 0:
+        self._clear_all_rounds()
+      else:
+        self._clear_rounds_after(round_num - 1)
 
   @property
   def metrics_filename(self) -> str:

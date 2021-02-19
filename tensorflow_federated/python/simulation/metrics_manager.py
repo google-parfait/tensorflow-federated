@@ -14,48 +14,36 @@
 """Utility class for saving and loading simulation metrics."""
 
 import abc
-from typing import Any, Dict
+from typing import Any, Mapping
 
 
 class MetricsManager(metaclass=abc.ABCMeta):
   """An abstract base class for metrics managers.
 
-  A `MetricManager` is a utility to log metric data across a number of
-  rounds of some simulation.
+  A `tff.simulation.MetricsManager` is a utility to save metric data across a
+  number of rounds of some simulation.
   """
 
   @abc.abstractmethod
-  def update_metrics(self, round_num: int, metrics_to_append: Dict[str, Any]):
+  def save_metrics(self, round_num: int, metrics: Mapping[str, Any]) -> None:
     """Updates the metrics manager with metrics for a given round.
-
-    This method updates the MetricsManager with a given nested structure of
-    tensors `metrics_to_append`, at a given round number `round_num`. This
-    method should only support strictly increasing, nonnegative round numbers,
-    but not necessarily contiguous round numbers.
-
-    For example, calling this method with `round_num = 3` then `round_num = 7`
-    is acceptable, but calling the method with `round_num = 6` then
-    `round_num = 6` (or anything less than 6) is not supported. he `round_num`
-    must also be nonnegative, so `round_num = 0` is supported, but
-    `round_num < 0` is not.
-
-    The `metrics_to_append` can be any nested structure of tensors. The actual
-    metrics that are recorded are the leaves of this nested structure, with
-    names given by the path to the leaf.
 
     Args:
       round_num: A nonnegative integer representing the round number associated
-        with `metrics_to_append`.
-      metrics_to_append: A nested structure of tensors.
+        with `metrics`.
+      metrics: A mapping with string valued keys.
     """
     raise NotImplementedError
 
-  @abc.abstractmethod
-  def clear_all_rounds(self):
-    """Clear out metrics at or after a given round number."""
-    raise NotImplementedError
+  def clear_metrics(self, round_num: int) -> None:
+    """Clear out metrics at or after a given starting `round_num`.
 
-  @abc.abstractmethod
-  def clear_rounds_after(self, round_num: int):
-    """Clear out metrics after a given round number."""
-    raise NotImplementedError
+    Note that since `save_metrics` is only compatible with nonnegative integer
+    round numbers, `clear_metrics(round_num=0)` corresponds to clearing all
+    metrics previously saved via `save_metrics`.
+
+    Args:
+      round_num: A nonnegative integer representing the starting round number
+        for clearing metrics.
+    """
+    pass

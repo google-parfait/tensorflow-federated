@@ -14,7 +14,7 @@
 """Utility class for logging metrics and hyperparameters to TensorBoard."""
 
 import collections
-from typing import Any, Dict
+from typing import Any, Dict, Mapping
 
 from absl import logging
 import numpy as np
@@ -31,7 +31,7 @@ def _create_if_not_exists(path):
     logging.info('Skipping creation of directory [%s], already exists', path)
 
 
-def _flatten_nested_dict(struct: Dict[str, Any]) -> Dict[str, Any]:
+def _flatten_nested_dict(struct: Mapping[str, Any]) -> Dict[str, Any]:
   """Flattens a given nested structure of tensors, sorting by flattened keys.
 
   For example, if we have the nested dictionary {'d':3, 'a': {'b': 1, 'c':2}, },
@@ -83,12 +83,11 @@ class TensorBoardManager(metrics_manager.MetricsManager):
     self._summary_writer = tf.summary.create_file_writer(self._logdir)
     self._latest_round_num = None
 
-  def update_metrics(self, round_num: int,
-                     metrics_to_append: Dict[str, Any]) -> None:
+  def save_metrics(self, round_num: int, metrics: Mapping[str, Any]):
     """Updates the stored metrics data with metrics for a specific round.
 
     The specified `round_num` must be later than the latest round number
-    previously used with `update_metrics`. Note that we do not check whether
+    previously used with `save_metrics`. Note that we do not check whether
     the underlying summary writer has previously written any metrics with the
     given `round_num`. Thus, if the `TensorboardManager` is created from a
     directory containing previously written metrics, it may overwrite them. This
@@ -101,15 +100,20 @@ class TensorBoardManager(metrics_manager.MetricsManager):
     will be written using `tf.summary.histogram`.
 
     Args:
-      round_num: Communication round at which `metrics_to_append` was collected.
-      metrics_to_append: A nested structure of metrics collected during
-        `round_num`. The nesting will be flattened for purposes of writing to
-        TensorBoard.
+      round_num: Communication round at which `metrics` was collected.
+      metrics: A nested structure of metrics collected during `round_num`. The
+        nesting will be flattened for purposes of writing to TensorBoard.
+
+    Returns:
+      A `collections.OrderedDict` of the metrics used to update the manager.
+      Compared with the input `metrics`, this data is flattened, with the key
+      names equal to the path in the nested structure, and `round_num` has been
+      added as an additional key (overwriting the value if already present in
+      the input `metrics`). The `OrderedDict` is sorted by the flattened keys.
 
     Raises:
-      ValueError: If the provided round number is negative.
-      ValueError: If the provided round number is less than or equal to the
-        last round number used with `update_metrics`.
+      ValueError: If `round_num` is negative, or `round_num` is less than or
+        equal to the last round number used with `save_metrics`.
     """
     if not isinstance(round_num, int) or round_num < 0:
       raise ValueError(
@@ -119,8 +123,8 @@ class TensorBoardManager(metrics_manager.MetricsManager):
                        'but metrics already exist through round '
                        f'{self._latest_round_num}.')
 
-    metrics_to_append['round_num'] = round_num
-    flat_metrics = _flatten_nested_dict(metrics_to_append)
+    flat_metrics = _flatten_nested_dict(metrics)
+    flat_metrics['round_num'] = round_num
     with self._summary_writer.as_default():
       for name, val in flat_metrics.items():
         val_array = np.array(val)
@@ -130,10 +134,4 @@ class TensorBoardManager(metrics_manager.MetricsManager):
           tf.summary.scalar(name, val, step=round_num)
 
     self._latest_round_num = round_num
-
-  def clear_rounds_after(self, round_num: int):
-    del round_num
-    return
-
-  def clear_all_rounds(self):
-    return
+    return flat_metrics
