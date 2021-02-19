@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for running a TFF remote runtime on localhost."""
-
 import contextlib
 import os
 import signal
 import subprocess
+import sys
 from typing import List, Sequence
 
 from absl import logging
 
 import grpc
+import tensorflow as tf
 import tensorflow_federated as tff
 
 
@@ -89,6 +90,64 @@ def create_inprocess_aggregator_contexts(
         executor_factory, num_threads=1, port=server_port)
     aggregator_contexts.append(server_context)
   return worker_contexts + aggregator_contexts
+
+
+def create_standalone_subprocess_aggregator_contexts(
+    worker_ports: Sequence[str],
+    aggregator_ports: Sequence[str]) -> List[contextlib.AbstractContextManager]:
+  """Constructs aggregators in subprocess listening on appropriate ports.
+
+  See comment in `create_inprocess_worker_contexts` for reasons to prefer
+  inprocess or subprocess-based aggregators.
+
+  Args:
+    worker_ports: Sequence of strings, defining the ports which should host the
+      (endpoint) workers in this runtime.
+    aggregator_ports: Sequence of strings, defining the ports on which the
+      aggregators should be listening.
+
+  Returns:
+    List of context managers which control serving and cleanup of aggregators
+    only; workers must be started and stopped by other means.
+  """
+
+  aggregator_contexts = []
+
+  @contextlib.contextmanager
+  def _aggregator_subprocess(worker_port, aggregator_port):
+    pids = []
+    try:
+      pids.append(start_python_aggregator(worker_port, aggregator_port))
+      yield pids
+    finally:
+      for pid in pids:
+        stop_service_process(pid)
+
+  for worker_port, aggregator_port in zip(worker_ports, aggregator_ports):
+    server_context = _aggregator_subprocess(worker_port, aggregator_port)
+    aggregator_contexts.append(server_context)
+
+  return aggregator_contexts
+
+
+def start_python_aggregator(worker_port: str,
+                            aggregator_port: str) -> subprocess.Popen:
+  """Starts running Python aggregator in a subprocess."""
+  python_service_binary = os.path.join(
+      tf.compat.v1.resource_loader.get_root_dir_with_all_resources(),
+      tf.compat.v1.resource_loader.get_path_to_datafile('test_aggregator'))
+
+  args = [
+      python_service_binary,
+      f'--worker_port={worker_port}',
+      f'--aggregator_port={aggregator_port}',
+  ]
+  logging.info('Starting python aggregator service via: %s', args)
+  if logging.vlog_is_on(1):
+    pid = subprocess.Popen(args, stdout=sys.stdout, stderr=sys.stderr)
+  else:
+    pid = subprocess.Popen(args)
+  return pid
 
 
 def stop_service_process(process: subprocess.Popen):

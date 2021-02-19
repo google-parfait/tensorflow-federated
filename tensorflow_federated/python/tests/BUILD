@@ -69,6 +69,7 @@ py_library(
     name = "remote_runtime_test_utils",
     testonly = True,
     srcs = ["remote_runtime_test_utils.py"],
+    data = [":test_aggregator"],
     srcs_version = "PY3",
     deps = ["//tensorflow_federated"],
 )
