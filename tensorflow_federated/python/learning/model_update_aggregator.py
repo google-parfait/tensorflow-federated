@@ -18,7 +18,7 @@ import math
 from tensorflow_federated.python.aggregators import differential_privacy
 from tensorflow_federated.python.aggregators import encoded
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.aggregators import mean_factory
+from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import quantile_estimation
 from tensorflow_federated.python.aggregators import robust_factory
 from tensorflow_federated.python.aggregators import secure_factory
@@ -68,7 +68,7 @@ def robust_aggregator(
   Returns:
     A `tff.aggregators.WeightedAggregationFactory`.
   """
-  factory_ = mean_factory.MeanFactory()
+  factory_ = mean.MeanFactory()
 
   if clipping:
     factory_ = _default_clipping(factory_)
@@ -134,7 +134,7 @@ def compression_aggregator(
   Returns:
     A `tff.aggregators.WeightedAggregationFactory`.
   """
-  factory_ = mean_factory.MeanFactory(
+  factory_ = mean.MeanFactory(
       encoded.EncodedSumFactory.quantize_above_threshold(
           quantization_bits=8, threshold=20000))
 
@@ -172,7 +172,7 @@ def secure_aggregator(
       target_quantile=0.95,
       learning_rate=1.0,
       multiplier=2.0)
-  factory_ = mean_factory.MeanFactory(
+  factory_ = mean.MeanFactory(
       secure_factory.SecureSumFactory(secure_clip_bound))
 
   if clipping:

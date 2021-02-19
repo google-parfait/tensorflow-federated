@@ -22,7 +22,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.aggregators import mean_factory
+from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
@@ -56,8 +56,7 @@ class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
 
   Attributes:
-    weights_delta: A dictionary of updates to the model's trainable
-      variables.
+    weights_delta: A dictionary of updates to the model's trainable variables.
     weights_delta_weight: Weight to use in a weighted mean when aggregating
       `weights_delta`.
     model_output: A structure matching
@@ -633,7 +632,7 @@ def build_model_delta_optimizer_process(
 
   if aggregation_process is None:
     if model_update_aggregation_factory is None:
-      model_update_aggregation_factory = mean_factory.MeanFactory()
+      model_update_aggregation_factory = mean.MeanFactory()
 
     py_typecheck.check_type(model_update_aggregation_factory,
                             factory.AggregationFactory.__args__)

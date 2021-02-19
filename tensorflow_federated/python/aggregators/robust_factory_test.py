@@ -19,7 +19,7 @@ import itertools
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.aggregators import mean_factory
+from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import robust_factory
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.core.api import computation_types
@@ -40,7 +40,7 @@ def _make_test_struct_value(x):
 
 
 def _clipped_mean(clip=2.0):
-  return robust_factory.clipping_factory(clip, mean_factory.MeanFactory())
+  return robust_factory.clipping_factory(clip, mean.MeanFactory())
 
 
 def _clipped_sum(clip=2.0):
@@ -48,8 +48,7 @@ def _clipped_sum(clip=2.0):
 
 
 def _zeroed_mean(clip=2.0, norm_order=2.0):
-  return robust_factory.zeroing_factory(clip, mean_factory.MeanFactory(),
-                                        norm_order)
+  return robust_factory.zeroing_factory(clip, mean.MeanFactory(), norm_order)
 
 
 def _zeroed_sum(clip=2.0, norm_order=2.0):

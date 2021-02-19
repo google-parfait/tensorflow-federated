@@ -18,7 +18,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
-from tensorflow_federated.python.aggregators import mean_factory
+from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import test_utils as aggregators_test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
@@ -47,7 +47,7 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
     value_type = computation_types.to_type(value_type)
     weight_type = computation_types.to_type(weight_type)
 
-    factory_ = mean_factory.MeanFactory()
+    factory_ = mean.MeanFactory()
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
     process = factory_.create(value_type, weight_type)
 
@@ -86,7 +86,7 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
   def test_type_properties_unweighted(self, value_type):
     value_type = computation_types.to_type(value_type)
 
-    factory_ = mean_factory.UnweightedMeanFactory()
+    factory_ = mean.UnweightedMeanFactory()
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create(value_type)
 
@@ -128,7 +128,7 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
     weight_type = computation_types.to_type(weight_type)
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
 
-    factory_ = mean_factory.MeanFactory(
+    factory_ = mean.MeanFactory(
         value_sum_factory=sum_factory, weight_sum_factory=sum_factory)
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
     process = factory_.create(value_type, weight_type)
@@ -170,7 +170,7 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
     value_type = computation_types.to_type(value_type)
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
 
-    factory_ = mean_factory.UnweightedMeanFactory(value_sum_factory=sum_factory)
+    factory_ = mean.UnweightedMeanFactory(value_sum_factory=sum_factory)
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create(value_type)
 
@@ -202,14 +202,14 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
       ('function_type', computation_types.FunctionType(None, ())),
       ('sequence_type', computation_types.SequenceType(tf.float32)))
   def test_incorrect_create_type_raises(self, wrong_type):
-    factory_ = mean_factory.MeanFactory()
+    factory_ = mean.MeanFactory()
     correct_type = computation_types.to_type(tf.float32)
     with self.assertRaises(TypeError):
       factory_.create(wrong_type, correct_type)
     with self.assertRaises(TypeError):
       factory_.create(correct_type, wrong_type)
 
-    factory_ = mean_factory.UnweightedMeanFactory()
+    factory_ = mean.UnweightedMeanFactory()
     with self.assertRaises(TypeError):
       factory_.create(wrong_type)
 
@@ -217,7 +217,7 @@ class MeanFactoryComputationTest(test_case.TestCase, parameterized.TestCase):
 class MeanFactoryExecutionTest(test_case.TestCase):
 
   def test_scalar_value(self):
-    factory_ = mean_factory.MeanFactory()
+    factory_ = mean.MeanFactory()
     value_type = computation_types.to_type(tf.float32)
     weight_type = computation_types.to_type(tf.float32)
 
@@ -239,7 +239,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(expected_measurements, output.measurements)
 
   def test_scalar_value_unweighted(self):
-    factory_ = mean_factory.UnweightedMeanFactory()
+    factory_ = mean.UnweightedMeanFactory()
     value_type = computation_types.to_type(tf.float32)
 
     process = factory_.create(value_type)
@@ -257,7 +257,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(expected_measurements, output.measurements)
 
   def test_structure_value(self):
-    factory_ = mean_factory.MeanFactory()
+    factory_ = mean.MeanFactory()
     value_type = computation_types.to_type(_test_struct_type)
     weight_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type, weight_type)
@@ -277,7 +277,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(expected_measurements, output.measurements)
 
   def test_structure_value_unweighted(self):
-    factory_ = mean_factory.UnweightedMeanFactory()
+    factory_ = mean.UnweightedMeanFactory()
     value_type = computation_types.to_type(_test_struct_type)
     process = factory_.create(value_type)
     expected_state = ()
@@ -294,7 +294,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(expected_measurements, output.measurements)
 
   def test_weight_arg(self):
-    factory_ = mean_factory.MeanFactory()
+    factory_ = mean.MeanFactory()
     value_type = computation_types.to_type(tf.float32)
     weight_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type, weight_type)
@@ -309,7 +309,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
     self.assertEqual(1.5, process.next(state, client_data, weights).result)
 
   def test_weight_arg_all_zeros_nan_division(self):
-    factory_ = mean_factory.MeanFactory(no_nan_division=False)
+    factory_ = mean.MeanFactory(no_nan_division=False)
     value_type = computation_types.to_type(tf.float32)
     weight_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type, weight_type)
@@ -323,7 +323,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
         math.isfinite(process.next(state, client_data, weights).result))
 
   def test_weight_arg_all_zeros_no_nan_division(self):
-    factory_ = mean_factory.MeanFactory(no_nan_division=True)
+    factory_ = mean.MeanFactory(no_nan_division=True)
     value_type = computation_types.to_type(tf.float32)
     weight_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type, weight_type)
@@ -337,7 +337,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
 
   def test_inner_value_sum_factory(self):
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
-    factory_ = mean_factory.MeanFactory(value_sum_factory=sum_factory)
+    factory_ = mean.MeanFactory(value_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
     weight_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type, weight_type)
@@ -362,7 +362,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
 
   def test_inner_value_sum_factory_unweighted(self):
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
-    factory_ = mean_factory.UnweightedMeanFactory(value_sum_factory=sum_factory)
+    factory_ = mean.UnweightedMeanFactory(value_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type)
 
@@ -380,7 +380,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
 
   def test_inner_weight_sum_factory(self):
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
-    factory_ = mean_factory.MeanFactory(weight_sum_factory=sum_factory)
+    factory_ = mean.MeanFactory(weight_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
     weight_type = computation_types.to_type(tf.float32)
     process = factory_.create(value_type, weight_type)
@@ -405,7 +405,7 @@ class MeanFactoryExecutionTest(test_case.TestCase):
 
   def test_inner_value_and_weight_sum_factory(self):
     sum_factory = aggregators_test_utils.SumPlusOneFactory()
-    factory_ = mean_factory.MeanFactory(
+    factory_ = mean.MeanFactory(
         value_sum_factory=sum_factory, weight_sum_factory=sum_factory)
     value_type = computation_types.to_type(tf.float32)
     weight_type = computation_types.to_type(tf.float32)

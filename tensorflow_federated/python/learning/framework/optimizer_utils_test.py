@@ -19,7 +19,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.aggregators import mean_factory
+from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
@@ -184,7 +184,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
   )
   def test_construction(self, weighted):
     aggregation_factory = (
-        mean_factory.MeanFactory() if weighted else sum_factory.SumFactory())
+        mean.MeanFactory() if weighted else sum_factory.SumFactory())
 
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,

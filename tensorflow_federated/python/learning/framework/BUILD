@@ -66,7 +66,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/aggregators:factory",
-        "//tensorflow_federated/python/aggregators:mean_factory",
+        "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -89,7 +89,7 @@ py_cpu_gpu_test(
     srcs_version = "PY3",
     deps = [
         ":optimizer_utils",
-        "//tensorflow_federated/python/aggregators:mean_factory",
+        "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",

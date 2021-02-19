@@ -21,7 +21,7 @@ py_library(
         ":differential_privacy",
         ":encoded",
         ":factory",
-        ":mean_factory",
+        ":mean",
         ":quantile_estimation",
         ":robust_factory",
         ":secure_factory",
@@ -111,8 +111,8 @@ py_library(
 )
 
 py_library(
-    name = "mean_factory",
-    srcs = ["mean_factory.py"],
+    name = "mean",
+    srcs = ["mean.py"],
     srcs_version = "PY3",
     deps = [
         ":factory",
@@ -129,14 +129,14 @@ py_library(
 )
 
 py_test(
-    name = "mean_factory_test",
+    name = "mean_test",
     size = "medium",
-    srcs = ["mean_factory_test.py"],
+    srcs = ["mean_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
         ":factory",
-        ":mean_factory",
+        ":mean",
         ":test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:test_case",
@@ -204,7 +204,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":mean_factory",
+        ":mean",
         ":robust_factory",
         ":sum_factory",
         "//tensorflow_federated/python/core/api:computation_types",
