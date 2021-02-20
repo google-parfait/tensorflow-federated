@@ -1424,16 +1424,14 @@ def resolve_higher_order_functions(
     new_locals = []
     modified = False
     for name, old_local in block.locals:
-      new_local, local_modified = transformation_utils.transform_preorder(
-          old_local, _resolve_higher_order_fns)
+      new_local, local_modified = _resolve_higher_order_fns(old_local)
       if _contains_function(new_local.type_signature):
         functional_bindings[name] = new_local
-      modified = modified or local_modified
       new_locals.append((name, new_local))
-    new_result, result_modified = transformation_utils.transform_preorder(
-        block.result, _resolve_higher_order_fns)
-    modified = modified or result_modified
+      modified = modified or local_modified
+    new_result, result_modified = _resolve_higher_order_fns(block.result)
     new_block = building_blocks.Block(new_locals, new_result)
+    modified = modified or result_modified
     return new_block, modified
 
   def _resolve_functional_selection(
@@ -1456,8 +1454,7 @@ def resolve_higher_order_functions(
       A transformed version of `sel` as described above, plus a boolean
       indicating whether `sel` was indeed transformed.
     """
-    resolved_source, source_modified = transformation_utils.transform_preorder(
-        sel.source, _resolve_higher_order_fns)
+    resolved_source, source_modified = _resolve_higher_order_fns(sel.source)
     if resolved_source.is_block():
       new_block = building_blocks.Block(
           resolved_source.locals,
@@ -1509,12 +1506,10 @@ def resolve_higher_order_functions(
       TransformationError: If construction of the postcondition of the
         top-level transformation fails.
     """
-    resolved_fn, fn_modified = transformation_utils.transform_preorder(
-        call.function, _resolve_higher_order_fns)
+    resolved_fn, fn_modified = _resolve_higher_order_fns(call.function)
     arg_modified = False
     if call.argument is not None:
-      resolved_argument, arg_modified = transformation_utils.transform_preorder(
-          call.argument, _resolve_higher_order_fns)
+      resolved_argument, arg_modified = _resolve_higher_order_fns(call.argument)
     else:
       resolved_argument = None
 
@@ -1535,8 +1530,7 @@ def resolve_higher_order_functions(
             [(resolved_fn.parameter_name, resolved_argument)],
             resolved_fn.result)
       # Retraversal of already walked tree to resolve higher-order function.
-      resolved, _ = transformation_utils.transform_preorder(
-          block_to_walk, _resolve_higher_order_fns)
+      resolved, _ = _resolve_higher_order_fns(block_to_walk)
       return resolved, True
     elif resolved_fn.is_block():
       new_result = building_blocks.Call(resolved_fn.result, resolved_argument)
@@ -1546,10 +1540,9 @@ def resolve_higher_order_functions(
         if resolved_fn.result.is_lambda() and not _contains_function(
             resolved_fn.result.type_signature):
           # Not a higher order lambda, we are in our base case.
-          return block_to_walk, True
+          return block_to_walk, fn_modified or arg_modified
       # Retraversal of already walked tree to resolve higher-order function.
-      resolved, _ = transformation_utils.transform_preorder(
-          block_to_walk, _resolve_higher_order_fns)
+      resolved, _ = _resolve_higher_order_fns(block_to_walk)
       return resolved, True
     else:
       # In the case of a functional parameter or a tuple containing functions,
@@ -1571,7 +1564,8 @@ def resolve_higher_order_functions(
           resolved_fn, resolved_argument), fn_modified or arg_modified
 
   def _resolve_higher_order_fns(
-      comp: building_blocks.ComputationBuildingBlock) -> TransformReturnType:
+      inner_comp: building_blocks.ComputationBuildingBlock
+  ) -> TransformReturnType:
     """Internal switch to cover resolution of higher order functions.
 
     This algorithm achieves higher order function resolution essentially by
@@ -1584,29 +1578,59 @@ def resolve_higher_order_functions(
     traversals go wrong.
 
     Args:
-      comp: Instance of `building_blocks.ComputationBuildingBlock` whose
+      inner_comp: Instance of `building_blocks.ComputationBuildingBlock` whose
         higher-order functions we wish to resolve.
 
     Returns:
-      A transformed version of `comp` whose higher-order functions are as
-      resolved as possible, plus a boolean indicating whether `comp` was indeed
-      transformed.
+      A transformed version of `inner_comp` whose higher-order functions are as
+      resolved as possible.
     """
-    if comp.is_selection() and _contains_function(comp.type_signature):
-      return _resolve_functional_selection(comp)
-    elif comp.is_reference() and _contains_function(comp.type_signature):
-      return _resolve_functional_reference(comp)
-    elif comp.is_block():
-      return _resolve_block(comp)
-    elif comp.is_call():
-      return _resolve_call(comp)
-    return comp, False
+    if inner_comp.is_reference():
+      if _contains_function(inner_comp.type_signature):
+        return _resolve_functional_reference(inner_comp)
+      else:
+        return inner_comp, False
+    elif inner_comp.is_compiled_computation() or inner_comp.is_data(
+    ) or inner_comp.is_intrinsic() or inner_comp.is_placement():
+      # Concrete leaf nodes, nothing to resolve.
+      return inner_comp, False
+    elif inner_comp.is_selection():
+      if _contains_function(inner_comp.type_signature):
+        return _resolve_functional_selection(inner_comp)
+      else:
+        # We may still have higher-order functions hiding underneath, continue
+        # the walk.
+        resolved_source, source_modified = _resolve_higher_order_fns(
+            inner_comp.source)
+        return building_blocks.Selection(
+            resolved_source, name=inner_comp.name,
+            index=inner_comp.index), source_modified
+    elif inner_comp.is_block():
+      return _resolve_block(inner_comp)
+    elif inner_comp.is_call():
+      return _resolve_call(inner_comp)
+    elif inner_comp.is_struct():
+      elements = []
+      modified = False
+      for name, val in structure.iter_elements(inner_comp):
+        result, elem_modified = _resolve_higher_order_fns(val)
+        elements.append((name, result))
+        modified = modified or elem_modified
+      return building_blocks.Struct(elements), modified
+    elif inner_comp.is_lambda():
+      # We may have higher-order functions inside the lambda body; continue the
+      # traversal.
+      resolved_result, result_modified = _resolve_higher_order_fns(
+          inner_comp.result)
+      return building_blocks.Lambda(
+          parameter_name=inner_comp.parameter_name,
+          parameter_type=inner_comp.parameter_type,
+          result=resolved_result), result_modified
+    else:
+      raise NotImplementedError(
+          f'Unrecognized building block, type: {type(inner_comp)}')
 
-  # A preorder walk here is crucial to the efficiency of this transform; for
-  # this reason we don't perform the usual split into TransformSpec and
-  # application function here.
-  return transformation_utils.transform_preorder(comp,
-                                                 _resolve_higher_order_fns)
+  return _resolve_higher_order_fns(comp)
 
 
 def uniquify_compiled_computation_names(comp):

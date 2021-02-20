@@ -143,7 +143,9 @@ def transform_preorder(
       return a two-tuple whose first element is a
       `building_blocks.ComputationBuildingBlock` and whose second element is a
       Boolean. If the computation which is passed to `comp` is returned in a
-      modified state, must return `True` for the second element.
+      modified state, must return `True` for the second element. This Boolean
+      controls whether or not to stop traversing the tree under `comp`; if this
+      Bool is `True`, `transform_preorder` will not traverse this subtree.
 
   Returns:
     A two-tuple, whose first element is modified version of `comp`, and
