@@ -38,11 +38,11 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":execution_contexts",
-        "//tensorflow_federated/experimental/python/core/impl/utils:xla_serialization",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/utils:xla_serialization",
     ],
 )
 
@@ -51,7 +51,6 @@ py_library(
     srcs = ["executor.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/experimental/python/core/impl/utils:xla_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -65,6 +64,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/executors:executor_value_base",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/utils:xla_serialization",
     ],
 )
 
@@ -75,8 +75,8 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":executor",
-        "//tensorflow_federated/experimental/python/core/impl/utils:xla_serialization",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/utils:xla_serialization",
     ],
 )

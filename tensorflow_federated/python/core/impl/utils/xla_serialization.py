@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Experimental utilities for serializing and deserializing XLA code."""
+"""Utilities for serializing and deserializing XLA code."""
 
 from typing import List, Optional
 
