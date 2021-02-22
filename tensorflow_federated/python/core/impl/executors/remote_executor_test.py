@@ -15,9 +15,6 @@
 import asyncio
 import collections
 import contextlib
-import queue
-import sys
-import threading
 from unittest import mock
 
 from absl.testing import absltest
@@ -42,14 +39,14 @@ from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
 
 
-def create_remote_executor(rpc_mode='REQUEST_REPLY'):
+def create_remote_executor():
   port = portpicker.pick_unused_port()
   channel = grpc.insecure_channel('localhost:{}'.format(port))
-  return remote_executor.RemoteExecutor(channel, rpc_mode=rpc_mode)
+  return remote_executor.RemoteExecutor(channel)
 
 
 @contextlib.contextmanager
-def test_context(rpc_mode='REQUEST_REPLY'):
+def test_context():
   port = portpicker.pick_unused_port()
   server_pool = logging_pool.pool(max_workers=1)
   server = grpc.server(server_pool)
@@ -70,7 +67,7 @@ def test_context(rpc_mode='REQUEST_REPLY'):
 
   channel = grpc.insecure_channel('localhost:{}'.format(port))
 
-  remote_exec = remote_executor.RemoteExecutor(channel, rpc_mode)
+  remote_exec = remote_executor.RemoteExecutor(channel)
   asyncio.get_event_loop().run_until_complete(
       remote_exec.set_cardinalities({placement_literals.CLIENTS: 3}))
   executor = reference_resolving_executor.ReferenceResolvingExecutor(
@@ -411,183 +408,6 @@ class RemoteExecutorTest(absltest.TestCase):
       loop.run_until_complete(executor.create_selection(source, index=0))
 
 
-def execute_mock(request_iter, return_value, error_fn=None, fail_fast=False):
-  """Minimal stub Execute implementation, always yielding `return_value`."""
-  if fail_fast:
-    error_fn()
-
-  response_queue = queue.Queue()
-
-  class RequestIterFinished:
-    """Marker object indicating how many requests were received."""
-
-    def __init__(self, n_reqs):
-      self._n_reqs = n_reqs
-
-    def get_n_reqs(self):
-      return self._n_reqs
-
-  def request_thread_fn():
-    n_reqs = 0
-    for _ in request_iter:
-      n_reqs += 1
-      response = return_value
-      response_queue.put_nowait(response)
-    response_queue.put_nowait(RequestIterFinished(n_reqs))
-
-  threading.Thread(target=request_thread_fn, daemon=True).start()
-
-  # This generator is finished when the request iterator is finished and we
-  # have yielded a response for every request.
-  n_responses = 0
-  target_responses = sys.maxsize
-  while n_responses < target_responses:
-    response = response_queue.get()
-    if error_fn is not None:
-      error_fn()
-    if isinstance(response, RequestIterFinished):
-      target_responses = response.get_n_reqs()
-    elif isinstance(response, executor_pb2.ExecuteResponse):
-      response.sequence_number = n_responses
-      n_responses += 1
-      yield response
-    else:
-      raise ValueError('Illegal response: {}'.format(response))
-
-
-def _setup_mock_streaming_executor(mock_stub,
-                                   response,
-                                   error_fn=None,
-                                   fail_fast=False):
-  instance = mock_stub.return_value
-
-  def _execute(iterator):
-    return execute_mock(
-        iterator, return_value=response, error_fn=error_fn, fail_fast=fail_fast)
-
-  instance.Execute = _execute
-  executor = create_remote_executor('STREAMING')
-  return executor
-
-
-@mock.patch(
-    'tensorflow_federated.proto.v0.executor_pb2_grpc.ExecutorStub',
-)
-class RemoteExecutorStreamingTest(absltest.TestCase):
-
-  def test_set_cardinalities_returns_none(self, mock_stub):
-    self.skipTest('b/179526304; disabled in the runtime.')
-    response = executor_pb2.ExecuteResponse(
-        set_cardinalities=executor_pb2.SetCardinalitiesResponse())
-    executor = _setup_mock_streaming_executor(mock_stub, response)
-    loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(
-        executor.set_cardinalities({placement_literals.CLIENTS: 3}))
-    self.assertIsNone(result)
-
-  def test_create_value_returns_remote_value(self, mock_stub):
-    self.skipTest('b/179526304; disabled in the runtime.')
-    response = executor_pb2.ExecuteResponse(
-        create_value=executor_pb2.CreateValueResponse())
-    executor = _setup_mock_streaming_executor(mock_stub, response)
-    loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(executor.create_value(1, tf.int32))
-
-    self.assertIsInstance(result, remote_executor.RemoteValue)
-
-  def test_create_value_raises_value_error_with_illegal_response(
-      self, mock_stub):
-    self.skipTest('b/179526304; disabled in the runtime.')
-    response = 0
-    executor = _setup_mock_streaming_executor(mock_stub, response)
-    loop = asyncio.get_event_loop()
-
-    with self.assertRaises(ValueError):
-      loop.run_until_complete(executor.create_value(1, tf.int32))
-
-  def test_create_value_raises_non_retryable_error(self, mock_stub):
-    self.skipTest('b/179526304; disabled in the runtime.')
-    response = executor_pb2.ExecuteResponse(
-        create_value=executor_pb2.CreateValueResponse())
-    executor = _setup_mock_streaming_executor(
-        mock_stub, response, error_fn=_raise_non_retryable_grpc_error)
-    loop = asyncio.get_event_loop()
-
-    with self.assertRaises(grpc.RpcError) as context:
-      loop.run_until_complete(executor.create_value(1, tf.int32))
-
-    self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
-
-  def test_create_value_raises_retryable_error_on_grpc_error_unavailable(
-      self, mock_stub):
-    self.skipTest('b/179526304; disabled in the runtime.')
-    response = executor_pb2.ExecuteResponse(
-        create_value=executor_pb2.CreateValueResponse())
-    executor = _setup_mock_streaming_executor(
-        mock_stub, response, error_fn=_raise_grpc_error_unavailable)
-    loop = asyncio.get_event_loop()
-
-    with self.assertRaises(execution_context.RetryableError):
-      loop.run_until_complete(executor.create_value(1, tf.int32))
-
-  def test_create_call_returns_remote_value(self, mock_stub):
-    self.skipTest('b/179526304; disabled in the runtime.')
-    response = executor_pb2.ExecuteResponse(
-        create_call=executor_pb2.CreateCallResponse())
-    executor = _setup_mock_streaming_executor(mock_stub, response)
-    loop = asyncio.get_event_loop()
-    type_signature = computation_types.FunctionType(None, tf.int32)
-    fn = remote_executor.RemoteValue(executor_pb2.ValueRef(), type_signature,
-                                     executor)
-
-    result = loop.run_until_complete(executor.create_call(fn, None))
-
-    self.assertIsInstance(result, remote_executor.RemoteValue)
-
-  def test_create_struct_returns_remote_value(self, mock_stub):
-
-    self.skipTest('b/179526304; disabled in the runtime.')
-    response = executor_pb2.ExecuteResponse(
-        create_struct=executor_pb2.CreateStructResponse())
-    executor = _setup_mock_streaming_executor(mock_stub, response)
-    loop = asyncio.get_event_loop()
-
-    type_signature = computation_types.TensorType(tf.int32)
-    value_1 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                          type_signature, executor)
-    value_2 = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                          type_signature, executor)
-
-    result = loop.run_until_complete(executor.create_struct([value_1, value_2]))
-
-    self.assertIsInstance(result, remote_executor.RemoteValue)
-
-  def test_create_selection_returns_remote_value(self, mock_stub):
-    self.skipTest('b/179526304; disabled in the runtime.')
-    response = executor_pb2.ExecuteResponse(
-        create_selection=executor_pb2.CreateSelectionResponse())
-    executor = _setup_mock_streaming_executor(mock_stub, response)
-    loop = asyncio.get_event_loop()
-    type_signature = computation_types.StructType([tf.int32, tf.int32])
-    source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
-                                         type_signature, executor)
-
-    result = loop.run_until_complete(executor.create_selection(source, index=0))
-
-    self.assertIsInstance(result, remote_executor.RemoteValue)
-
-  def test_error_raises_when_conn_fails_before_first_msg(self, mock_stub):
-    """Ensure errors are raised when gRPC stream fails before first message."""
-    self.skipTest('b/179526304; disabled in the runtime.')
-    loop = asyncio.get_event_loop()
-
-    executor = _setup_mock_streaming_executor(
-        mock_stub, None, error_fn=_raise_grpc_error_unavailable, fail_fast=True)
-
-    with self.assertRaises(execution_context.RetryableError):
-      loop.run_until_complete(executor.create_value(1, tf.int32))
-
-
 class RemoteExecutorIntegrationTest(parameterized.TestCase):
 
   def test_no_arg_tf_computation(self):
@@ -624,10 +444,6 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
     with test_context() as context:
       self._test_with_selection(context)
 
-  def test_with_selection_streaming(self):
-    with test_context(rpc_mode='STREAMING') as context:
-      self._test_with_selection(context)
-
   def _test_with_selection(self, context):
 
     @computations.tf_computation(tf.int32)
@@ -651,17 +467,13 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
     ]
     self.assertLen(seletions, 2)
 
-  @parameterized.named_parameters(
-      ('request_reply', 'REQUEST_REPLY'),
-      ('streaming', 'STREAMING'),
-  )
-  def test_execution_of_tensorflow(self, rpc_mode):
+  def test_execution_of_tensorflow(self):
 
     @computations.tf_computation
     def comp():
       return tf.math.add(5, 5)
 
-    with test_context(rpc_mode=rpc_mode) as context:
+    with test_context() as context:
       result = _invoke(context.executor, comp)
 
     self.assertEqual(result, 10)

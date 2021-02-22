@@ -13,9 +13,6 @@
 # limitations under the License.
 """A local proxy for a remote executor service hosted on a separate machine."""
 
-import asyncio
-import queue
-import threading
 from typing import Mapping
 import warnings
 import weakref
@@ -77,135 +74,6 @@ class RemoteValue(executor_value_base.ExecutorValue):
     return self._value_ref
 
 
-class _BidiStream:
-  """A bidi stream connection to the Executor service's Execute method."""
-
-  def __init__(self, stub, thread_pool_executor):
-    self._stub = stub
-    self._thread_pool_executor = thread_pool_executor
-    self._is_initialized = False
-
-  def _lazy_init(self):
-    """Lazily initialize the underlying gRPC stream."""
-    if self._is_initialized:
-      return
-
-    logging.debug('Initializing bidi stream')
-
-    self._request_queue = queue.Queue()
-    # Lock preventing concurrent mutation of the `response_event_dict`.
-    self._response_event_lock = threading.Lock()
-    self._response_event_dict = {}
-    self._stream_closed_event = threading.Event()
-    self._stream_error = None
-    self._request_num = 0
-
-    def request_iter():
-      """Iterator that blocks on the request Queue."""
-      request = self._request_queue.get()
-      while request is not None:
-        yield request
-        request = self._request_queue.get()
-
-    response_iter = self._stub.Execute(request_iter())
-
-    def response_thread_fn():
-      """Consumes response iter and exposes the value on corresponding Event."""
-      try:
-        logging.debug('Response thread: blocking for next response')
-        for response in response_iter:
-          if response.WhichOneof('response') is None:
-            # TODO(b/175927125): We currently pass an empty response in some
-            # error cases and pass a GRPC error back via the ServicerContext in
-            # some others. Unify this error-passing.
-            raise execution_context.RetryableError(
-                'Unknown error on the service side.')
-          logging.debug(
-              'Response thread: processing response of type %s, seq_no %s',
-              response.WhichOneof('response'), response.sequence_number)
-          with self._response_event_lock:
-            # Get the corresponding response Event
-            response_event = self._response_event_dict[response.sequence_number]
-            # Attach the response as an attribute on the Event
-            response_event.response = response
-            response_event.set()
-        # Set the event indicating the stream has been closed
-        self._stream_closed_event.set()
-      except Exception as error:  # pylint: disable=broad-except
-        logging.exception('Error calling remote executor: %s', error)
-        if _is_retryable_grpc_error(error):
-          logging.exception('gRPC error is retryable')
-          error = execution_context.RetryableError(error)
-        with self._response_event_lock:
-          self._stream_error = error
-          for _, response_event in self._response_event_dict.items():
-            if not response_event.isSet():
-              response_event.response = error
-              response_event.set()
-        self._stream_closed_event.set()
-
-    response_thread = threading.Thread(target=response_thread_fn)
-    response_thread.daemon = True
-    response_thread.start()
-
-    self._is_initialized = True
-
-  @tracing.trace(span=True)
-  async def send_request(self, request):
-    """Send a request on the bidi stream."""
-    self._lazy_init()
-
-    py_typecheck.check_type(request, executor_pb2.ExecuteRequest)
-    request_type = request.WhichOneof('request')
-    response_event = threading.Event()
-
-    py_typecheck.check_type(request, executor_pb2.ExecuteRequest)
-    py_typecheck.check_type(response_event, threading.Event)
-
-    seq = self._request_num
-    self._request_num += 1
-
-    with self._response_event_lock:
-      if self._stream_error is not None:
-        logging.debug('Stream failed before msg enqueued')
-        logging.debug('%s', self._stream_error)
-        response_event.response = self._stream_error
-        response_event.set()
-      else:
-        request.sequence_number = seq
-        logging.debug(
-            'Request thread: processing request of type %s, seq_no %s',
-            request.WhichOneof('request'), seq)
-        self._response_event_dict[seq] = response_event
-
-        # Enqueue a tuple of request and an Event used to return the response
-        self._request_queue.put(request)
-
-    await asyncio.get_event_loop().run_in_executor(self._thread_pool_executor,
-                                                   response_event.wait)
-    response = response_event.response
-    if isinstance(response, Exception):
-      raise response
-
-    py_typecheck.check_type(response, executor_pb2.ExecuteResponse)
-    response_type = response.WhichOneof('response')
-    if response_type != request_type:
-      raise ValueError('Request had type: {} but response had type: {}'.format(
-          request_type, response_type))
-    return response
-
-  def close(self):
-    if self._is_initialized:
-      logging.debug('Closing bidi stream')
-
-      self._request_queue.put(None)
-      # Wait for the stream to be closed
-      self._stream_closed_event.wait(_STREAM_CLOSE_WAIT_SECONDS)
-    else:
-      logging.debug('Closing unused bidi stream')
-    self._is_initialized = False
-
-
 @tracing.trace(span=True)
 def _request(rpc_func, request):
   """Populates trace context and reraises gRPC errors with retryable info."""
@@ -246,7 +114,7 @@ class RemoteExecutor(executor_base.Executor):
 
   def __init__(self,
                channel,
-               rpc_mode='REQUEST_REPLY',
+               rpc_mode=None,
                thread_pool_executor=None,
                dispose_batch_size=20):
     """Creates a remote executor.
@@ -254,9 +122,8 @@ class RemoteExecutor(executor_base.Executor):
     Args:
       channel: An instance of `grpc.Channel` to use for communication with the
         remote executor service.
-      rpc_mode: Optional mode of calling the remote executor. Must be either
-        'REQUEST_REPLY' or 'STREAMING' (defaults to 'REQUEST_REPLY'). This
-        option will be removed after the request-reply interface is deprecated.
+      rpc_mode: (Deprecated) string, one of 'REQUEST_REPLY' or 'STREAMING'.
+        Unused, still here for backwards compatibility.
       thread_pool_executor: Optional concurrent.futures.Executor used to wait
         for the reply to a streaming RPC message. Uses the default Executor if
         not specified.
@@ -267,17 +134,14 @@ class RemoteExecutor(executor_base.Executor):
     """
 
     py_typecheck.check_type(channel, grpc.Channel)
-    py_typecheck.check_type(rpc_mode, str)
     py_typecheck.check_type(dispose_batch_size, int)
-    if rpc_mode not in ['REQUEST_REPLY', 'STREAMING']:
-      raise ValueError('Invalid rpc_mode: {}'.format(rpc_mode))
+    if rpc_mode is not None:
+      warnings.warn('The rpc_mode argument is deprecated and slated for '
+                    'removal. Please update your callsites to avoid specifying '
+                    'rpc_mode.')
+    del rpc_mode
 
-    if rpc_mode == 'STREAMING':
-      warnings.warn('TFF streaming RPCs are deprecated and being removed; '
-                    'falling back to request-reply behavior.')
-      rpc_mode = 'REQUEST_REPLY'
-
-    logging.debug('Creating new ExecutorStub with RPC_MODE=%s', rpc_mode)
+    logging.debug('Creating new ExecutorStub')
 
     self._channel_status = False
 
@@ -291,21 +155,14 @@ class RemoteExecutor(executor_base.Executor):
     # object from being GC'ed and the callback above from no-op'ing.
     self._channel = channel
     self._stub = executor_pb2_grpc.ExecutorStub(channel)
-    self._bidi_stream = None
     self._dispose_batch_size = dispose_batch_size
     self._dispose_request = executor_pb2.DisposeRequest()
-    if rpc_mode == 'STREAMING':
-      logging.debug('Creating Bidi stream')
-      self._bidi_stream = _BidiStream(self._stub, thread_pool_executor)
 
   @property
   def is_ready(self) -> bool:
     return self._channel_status == grpc.ChannelConnectivity.READY
 
   def close(self):
-    if self._bidi_stream is not None:
-      logging.debug('Closing bidi stream')
-      self._bidi_stream.close()
     logging.debug('Clearing executor state on server.')
     self._clear_executor()
 
@@ -316,14 +173,7 @@ class RemoteExecutor(executor_base.Executor):
       return
     dispose_request = self._dispose_request
     self._dispose_request = executor_pb2.DisposeRequest()
-    if self._bidi_stream is None:
-      _request(self._stub.Dispose, dispose_request)
-    else:
-      send_request_fut = self._bidi_stream.send_request(
-          executor_pb2.ExecuteRequest(dispose=dispose_request))
-      # We don't care about the response, and so don't bother to await it.
-      # Just start it as a task so that it runs at some point.
-      asyncio.get_event_loop().create_task(send_request_fut)
+    _request(self._stub.Dispose, dispose_request)
 
   @tracing.trace(span=True)
   async def set_cardinalities(
@@ -333,12 +183,7 @@ class RemoteExecutor(executor_base.Executor):
     request = executor_pb2.SetCardinalitiesRequest(
         cardinalities=serialized_cardinalities)
 
-    if self._bidi_stream is None:
-      _request(self._stub.SetCardinalities, request)
-    else:
-      await self._bidi_stream.send_request(
-          executor_pb2.ExecuteRequest(set_cardinalities=request))
-    return
+    _request(self._stub.SetCardinalities, request)
 
   @tracing.trace(span=True)
   def _clear_executor(self):
@@ -360,12 +205,7 @@ class RemoteExecutor(executor_base.Executor):
 
     value_proto, type_spec = serialize_value()
     create_value_request = executor_pb2.CreateValueRequest(value=value_proto)
-    if self._bidi_stream is None:
-      response = _request(self._stub.CreateValue, create_value_request)
-    else:
-      response = (await self._bidi_stream.send_request(
-          executor_pb2.ExecuteRequest(create_value=create_value_request)
-      )).create_value
+    response = _request(self._stub.CreateValue, create_value_request)
     py_typecheck.check_type(response, executor_pb2.CreateValueResponse)
     return RemoteValue(response.value_ref, type_spec, self)
 
@@ -378,12 +218,7 @@ class RemoteExecutor(executor_base.Executor):
     create_call_request = executor_pb2.CreateCallRequest(
         function_ref=comp.value_ref,
         argument_ref=(arg.value_ref if arg is not None else None))
-    if self._bidi_stream is None:
-      response = _request(self._stub.CreateCall, create_call_request)
-    else:
-      response = (await self._bidi_stream.send_request(
-          executor_pb2.ExecuteRequest(create_call=create_call_request)
-      )).create_call
+    response = _request(self._stub.CreateCall, create_call_request)
     py_typecheck.check_type(response, executor_pb2.CreateCallResponse)
     return RemoteValue(response.value_ref, comp.type_signature.result, self)
 
@@ -400,11 +235,7 @@ class RemoteExecutor(executor_base.Executor):
       type_elem.append((k, v.type_signature) if k else v.type_signature)
     result_type = computation_types.StructType(type_elem)
     request = executor_pb2.CreateStructRequest(element=proto_elem)
-    if self._bidi_stream is None:
-      response = _request(self._stub.CreateStruct, request)
-    else:
-      response = (await self._bidi_stream.send_request(
-          executor_pb2.ExecuteRequest(create_struct=request))).create_struct
+    response = _request(self._stub.CreateStruct, request)
     py_typecheck.check_type(response, executor_pb2.CreateStructResponse)
     return RemoteValue(response.value_ref, result_type, self)
 
@@ -421,12 +252,7 @@ class RemoteExecutor(executor_base.Executor):
       result_type = getattr(source.type_signature, name)
     request = executor_pb2.CreateSelectionRequest(
         source_ref=source.value_ref, name=name, index=index)
-    if self._bidi_stream is None:
-      response = _request(self._stub.CreateSelection, request)
-    else:
-      response = (await self._bidi_stream.send_request(
-          executor_pb2.ExecuteRequest(create_selection=request)
-      )).create_selection
+    response = _request(self._stub.CreateSelection, request)
     py_typecheck.check_type(response, executor_pb2.CreateSelectionResponse)
     return RemoteValue(response.value_ref, result_type, self)
 
@@ -434,11 +260,7 @@ class RemoteExecutor(executor_base.Executor):
   async def _compute(self, value_ref):
     py_typecheck.check_type(value_ref, executor_pb2.ValueRef)
     request = executor_pb2.ComputeRequest(value_ref=value_ref)
-    if self._bidi_stream is None:
-      response = _request(self._stub.Compute, request)
-    else:
-      response = (await self._bidi_stream.send_request(
-          executor_pb2.ExecuteRequest(compute=request))).compute
+    response = _request(self._stub.Compute, request)
     py_typecheck.check_type(response, executor_pb2.ComputeResponse)
     value, _ = executor_serialization.deserialize_value(response.value)
     return value
