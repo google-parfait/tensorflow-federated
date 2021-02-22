@@ -19,11 +19,13 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
+from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
@@ -1071,6 +1073,36 @@ class GraphUtilsTest(test_case.TestCase):
         x, element_type)
 
     computation_types.to_type(y.element_spec).check_equivalent_to(element_type)
+
+
+class TensorFlowDeserializationTest(test_case.TestCase):
+
+  @test_utils.graph_mode_test
+  def test_deserialize_and_call_tf_computation_with_add_one(self):
+
+    with tf.Graph().as_default() as graph:
+      parameter_value, parameter_binding = tensorflow_utils.stamp_parameter_in_graph(
+          'x', tf.int32, graph)
+      result = tf.identity(parameter_value)
+      result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+          result, graph)
+    parameter_type = computation_types.TensorType(tf.int32)
+    type_signature = computation_types.FunctionType(parameter_type, result_type)
+    tensorflow_proto = pb.TensorFlow(
+        graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+        parameter=parameter_binding,
+        result=result_binding)
+    serialized_type = type_serialization.serialize_type(type_signature)
+    computation_proto = pb.Computation(
+        type=serialized_type, tensorflow=tensorflow_proto)
+    init_op, result = tensorflow_utils.deserialize_and_call_tf_computation(
+        computation_proto, tf.constant(10), tf.compat.v1.get_default_graph())
+    self.assertTrue(tf.is_tensor(result))
+    with tf.compat.v1.Session() as sess:
+      if init_op:
+        sess.run(init_op)
+      result_val = sess.run(result)
+    self.assertEqual(result_val, 10)
 
 
 if __name__ == '__main__':

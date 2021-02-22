@@ -17,11 +17,11 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.impl import tensorflow_deserialization
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 
 class TensorFlowComputationContext(context_base.Context):
@@ -47,7 +47,7 @@ class TensorFlowComputationContext(context_base.Context):
     py_typecheck.check_type(comp, computation_base.Computation)
     computation_proto = computation_impl.ComputationImpl.get_proto(comp)
     init_op, result = (
-        tensorflow_deserialization.deserialize_and_call_tf_computation(
+        tensorflow_utils.deserialize_and_call_tf_computation(
             computation_proto, arg, self._graph))
     if init_op:
       self._init_ops.append(init_op)

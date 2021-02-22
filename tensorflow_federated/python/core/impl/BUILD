@@ -37,34 +37,6 @@ py_library(
 )
 
 py_library(
-    name = "tensorflow_deserialization",
-    srcs = ["tensorflow_deserialization.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:serialization_utils",
-        "//tensorflow_federated/python/core/impl/types:type_serialization",
-        "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
-    ],
-)
-
-py_test(
-    name = "tensorflow_deserialization_test",
-    size = "small",
-    srcs = ["tensorflow_deserialization_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":tensorflow_deserialization",
-        "//tensorflow_federated/python/common_libs:test_utils",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
-    ],
-)
-
-py_library(
     name = "tree_to_cc_transformations",
     srcs = ["tree_to_cc_transformations.py"],
     srcs_version = "PY3",
