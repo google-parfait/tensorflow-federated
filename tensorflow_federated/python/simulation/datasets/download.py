@@ -71,6 +71,8 @@ def get_compressed_file(origin: str, cache_dir: Optional[str] = None) -> str:
     raise ValueError(
         'Only decompressing LZMA files is supported. If the file '
         'is LZMA compressed, rename the origin to have a .lzma suffix.')
+  if not tf.io.gfile.exists(cache_dir):
+    tf.io.gfile.makedirs(cache_dir)
   if tf.io.gfile.exists(extracted_filename):
     return extracted_filename
   _fetch_lzma_file(origin, extracted_filename)
