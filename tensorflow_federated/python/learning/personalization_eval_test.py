@@ -23,6 +23,10 @@ from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning import personalization_eval as p13n_eval
+from tensorflow_federated.python.learning.framework import dataset_reduce
+
+# TODO(b/160896627): Switch to `dataset.reduce` once multi-GPU supports it.
+dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(simulation_flag=True)
 
 
 @tf.function
@@ -43,7 +47,10 @@ def _evaluate_fn(model, dataset, batch_size=1):
 
   # Evaluate on the dataset.
   batched_dataset = dataset.batch(batch_size)
-  batched_dataset.reduce(initial_state=0, reduce_func=eval_fn)
+  dataset_reduce_fn(
+      reduce_fn=eval_fn,
+      dataset=batched_dataset,
+      initial_state_fn=lambda: tf.constant(0))
 
   # Obtain the metrics.
   results = collections.OrderedDict()
@@ -80,8 +87,10 @@ def _build_personalize_fn(optimizer_fn, train_batch_size, test_batch_size):
 
     # Train a personalized model.
     batched_train_data = train_data.batch(train_batch_size)
-    num_examples_sum = batched_train_data.reduce(
-        initial_state=0, reduce_func=train_fn)
+    num_examples_sum = dataset_reduce_fn(
+        reduce_fn=train_fn,
+        dataset=batched_train_data,
+        initial_state_fn=lambda: tf.constant(0))
 
     # For test coverage, this example uses an optional `int32` as `context`.
     if context is not None:
