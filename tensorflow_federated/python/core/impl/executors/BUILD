@@ -230,7 +230,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
-        "nokokoro",
         "requires-gpu-nvidia",
     ],
     deps = [
@@ -420,7 +419,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     tags = [
-        "nokokoro",
         "requires-gpu-nvidia",
     ],
     deps = [
