@@ -101,30 +101,6 @@ def prepare_for_rebinding(comp):
       comp, _transform_fn, symbol_tree)
 
 
-def _contains_higher_order_fns(
-    comp: building_blocks.ComputationBuildingBlock) -> bool:
-  """Function indicating existence of higher-order functions under `comp`."""
-
-  has_higher_order_fns = False
-
-  def _type_contains_fn(type_spec):
-    return type_spec is not None and type_analysis.contains(
-        type_spec, lambda x: x.is_function())
-
-  def _transform(
-      comp: building_blocks.ComputationBuildingBlock
-  ) -> tree_transformations.TransformReturnType:
-    if comp.type_signature.is_function() and (
-        _type_contains_fn(comp.type_signature.parameter) or
-        _type_contains_fn(comp.type_signature.result)):
-      nonlocal has_higher_order_fns
-      has_higher_order_fns = True
-    return comp, False
-
-  transformation_utils.transform_postorder(comp, _transform)
-  return has_higher_order_fns
-
-
 def remove_called_lambdas_and_blocks(comp):
   """Removes any called lambdas and blocks from `comp`.
 
@@ -144,21 +120,7 @@ def remove_called_lambdas_and_blocks(comp):
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
   comp, names_uniquified = tree_transformations.uniquify_reference_names(comp)
-  # TODO(b/162888191): Remove this gating when `resolve_higher_order_functions`
-  # is more efficient, or avoided.
-  if _contains_higher_order_fns(comp):
-    # `resolve_higher_order_functions` can be expensive, so we only call into it
-    # when necessary.
-    comp, fns_resolved = tree_transformations.resolve_higher_order_functions(
-        comp)
-  else:
-    # We must still inline any functional references. We first inline selections
-    # from tuples to prevent the AST from becoming unnecessarly large.
-    comp, sels_removed = tree_transformations.inline_selections_from_tuple(comp)
-    if sels_removed:
-      comp, _ = tree_transformations.uniquify_reference_names(comp)
-    comp, locals_inlined = tree_transformations.inline_block_locals(comp)
-    fns_resolved = sels_removed or locals_inlined
+  comp, fns_resolved = tree_transformations.resolve_higher_order_functions(comp)
   comp, lambdas_replaced = tree_transformations.replace_called_lambda_with_block(
       comp)
   if fns_resolved or lambdas_replaced:
