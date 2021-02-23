@@ -388,6 +388,16 @@ py_test(
 )
 
 py_library(
+    name = "local_computation_factory_base",
+    srcs = ["local_computation_factory_base.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_library(
     name = "tensorflow_computation_factory",
     srcs = ["tensorflow_computation_factory.py"],
     srcs_version = "PY3",

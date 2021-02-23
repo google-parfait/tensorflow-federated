@@ -42,6 +42,9 @@ def _tensorflow_comp(
   return (comp, type_signature)
 
 
+# TODO(b/175888145): Wrap TF-specific helpers as a local computation factory.
+
+
 def create_constant(value, type_spec: computation_types.Type) -> ProtoAndType:
   """Returns a tensorflow computation returning a constant `value`.
 

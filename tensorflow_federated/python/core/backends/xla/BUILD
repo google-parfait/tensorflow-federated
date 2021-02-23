@@ -110,6 +110,35 @@ py_test(
 )
 
 py_library(
+    name = "compiler",
+    srcs = ["compiler.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":xla_serialization",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
+        "//tensorflow_federated/python/core/impl/types:type_analysis",
+    ],
+)
+
+py_test(
+    name = "compiler_test",
+    size = "small",
+    srcs = ["compiler_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":compiler",
+        ":runtime",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/core/api:computation_types",
+    ],
+)
+
+py_library(
     name = "runtime",
     srcs = ["runtime.py"],
     srcs_version = "PY3",
