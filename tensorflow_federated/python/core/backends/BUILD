@@ -14,5 +14,6 @@ py_library(
         "//tensorflow_federated/python/core/backends/native",
         "//tensorflow_federated/python/core/backends/reference",
         "//tensorflow_federated/python/core/backends/test",
+        "//tensorflow_federated/python/core/backends/xla",
     ],
 )

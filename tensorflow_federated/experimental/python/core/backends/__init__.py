@@ -11,6 +11,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Backends for running TFF computations."""
-
-from tensorflow_federated.experimental.python.core.backends import xla
+"""Experimental backends for running TFF computations."""

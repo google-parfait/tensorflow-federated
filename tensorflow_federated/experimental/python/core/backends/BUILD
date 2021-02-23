@@ -19,5 +19,5 @@ py_library(
         "//tensorflow_federated/experimental:__pkg__",
         "//tensorflow_federated/tools:__subpackages__",
     ],
-    deps = ["//tensorflow_federated/experimental/python/core/backends/xla"],
+    deps = [],
 )

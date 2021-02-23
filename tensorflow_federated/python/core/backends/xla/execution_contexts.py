@@ -13,7 +13,7 @@
 # limitations under the License.
 """Execution contexts for the XLA backend."""
 
-from tensorflow_federated.experimental.python.core.backends.xla import executor
+from tensorflow_federated.python.core.backends.xla import executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks

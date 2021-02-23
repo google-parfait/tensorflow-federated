@@ -267,5 +267,5 @@ class JaxTrainingTest(absltest.TestCase):
 
 
 if __name__ == '__main__':
-  tff.experimental.backends.xla.set_local_execution_context()
+  tff.backends.xla.set_local_execution_context()
   absltest.main()

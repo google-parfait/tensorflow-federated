@@ -18,9 +18,9 @@ from absl.testing import absltest
 from jax.lib.xla_bridge import xla_client
 import numpy as np
 
-from tensorflow_federated.experimental.python.core.backends.xla import executor
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.backends.xla import executor
 from tensorflow_federated.python.core.impl.utils import xla_serialization
 
 

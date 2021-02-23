@@ -3,7 +3,7 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package_group(
     name = "default_visibility",
     packages = [
-        "//tensorflow_federated/experimental/...",
+        "//tensorflow_federated/...",
     ],
 )
 
@@ -15,7 +15,7 @@ py_library(
     name = "xla",
     srcs = ["__init__.py"],
     srcs_version = "PY3",
-    visibility = ["//tensorflow_federated/experimental/python/core/backends:__pkg__"],
+    visibility = ["//tensorflow_federated/python/core/backends:__pkg__"],
     deps = [":execution_contexts"],
 )
 

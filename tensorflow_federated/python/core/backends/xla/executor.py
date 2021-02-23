@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""An experimental executor that delegates to the XLA compiler."""
+"""An executor that delegates to the XLA compiler."""
 
 from jax.lib.xla_bridge import xla_client
 import numpy as np
