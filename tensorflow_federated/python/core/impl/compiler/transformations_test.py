@@ -46,6 +46,146 @@ class DeduplicateBuildingBlocksTest(test_case.TestCase):
         tree_analysis.count_types(dups_removed, building_blocks.Selection), 1)
 
 
+class TransformToLocalCallDominantTest(test_case.TestCase):
+
+  def test_inlines_references(self):
+    int_type = computation_types.to_type(tf.int32)
+    int_ref = lambda name: building_blocks.Reference(name, int_type)
+    int_fn = lambda name, result: building_blocks.Lambda(name, int_type, result)
+    before = int_fn(
+        'x',
+        building_blocks.Block([
+            ('y', int_ref('x')),
+            ('z', int_ref('y')),
+        ], int_ref('z')))
+    after = transformations.transform_to_local_call_dominant(before)
+    expected = int_fn('x', int_ref('x'))
+    self.assertEqual(after.compact_representation(),
+                     expected.compact_representation())
+
+  def test_inlines_selections(self):
+    int_type = computation_types.to_type(tf.int32)
+    structed = computation_types.StructType([int_type])
+    double = computation_types.StructType([structed])
+    bb = building_blocks
+    before = bb.Lambda(
+        'x', double,
+        bb.Block([
+            ('y', bb.Selection(bb.Reference('x', double), index=0)),
+            ('z', bb.Selection(bb.Reference('y', structed), index=0)),
+        ], bb.Reference('z', int_type)))
+    after = transformations.transform_to_local_call_dominant(before)
+    expected = bb.Lambda(
+        'x', double,
+        bb.Selection(bb.Selection(bb.Reference('x', double), index=0), index=0))
+    self.assertEqual(after.compact_representation(),
+                     expected.compact_representation())
+
+  def test_inlines_structs(self):
+    int_type = computation_types.to_type(tf.int32)
+    structed = computation_types.StructType([int_type])
+    double = computation_types.StructType([structed])
+    bb = building_blocks
+    before = bb.Lambda(
+        'x', int_type,
+        bb.Block([
+            ('y', bb.Struct([building_blocks.Reference('x', int_type)])),
+            ('z', bb.Struct([building_blocks.Reference('y', structed)])),
+        ], bb.Reference('z', double)))
+    after = transformations.transform_to_local_call_dominant(before)
+    expected = bb.Lambda('x', int_type,
+                         bb.Struct([bb.Struct([bb.Reference('x', int_type)])]))
+    self.assertEqual(after.compact_representation(),
+                     expected.compact_representation())
+
+  def test_inlines_selection_from_struct(self):
+    int_type = computation_types.to_type(tf.int32)
+    bb = building_blocks
+    before = bb.Lambda(
+        'x', int_type,
+        bb.Selection(bb.Struct([bb.Reference('x', int_type)]), index=0))
+    after = transformations.transform_to_local_call_dominant(before)
+    expected = bb.Lambda('x', int_type, bb.Reference('x', int_type))
+    self.assertEqual(after.compact_representation(),
+                     expected.compact_representation())
+
+  def test_creates_binding_for_each_call(self):
+    int_type = computation_types.to_type(tf.int32)
+    int_to_int_type = computation_types.FunctionType(int_type, int_type)
+    bb = building_blocks
+    int_to_int_fn = bb.Data('ext', int_to_int_type)
+    before = bb.Lambda(
+        'x', int_type,
+        bb.Call(int_to_int_fn,
+                bb.Call(int_to_int_fn, bb.Reference('x', int_type))))
+    after = transformations.transform_to_local_call_dominant(before)
+    expected = bb.Lambda(
+        'x', int_type,
+        bb.Block([
+            ('_var1', bb.Call(int_to_int_fn, bb.Reference('x', int_type))),
+            ('_var2', bb.Call(int_to_int_fn, bb.Reference('_var1', int_type)))
+        ], bb.Reference('_var2', int_type)))
+    self.assertEqual(after.compact_representation(),
+                     expected.compact_representation())
+
+  def test_evaluates_called_lambdas(self):
+    int_type = computation_types.to_type(tf.int32)
+    int_to_int_type = computation_types.FunctionType(int_type, int_type)
+    int_thunk_type = computation_types.FunctionType(None, int_type)
+    bb = building_blocks
+    int_to_int_fn = bb.Data('ext', int_to_int_type)
+
+    # -> (let result = ext(x) in (-> result))
+    # Each call of the outer lambda should create a single binding, with
+    # calls to the inner lambda repeatedly returning references to the binding.
+    higher_fn = bb.Lambda(
+        None, None,
+        bb.Block(
+            [('result', bb.Call(int_to_int_fn, bb.Reference('x', int_type)))],
+            bb.Lambda(None, None, bb.Reference('result', int_type))))
+    block_locals = [
+        ('fn', higher_fn),
+        # fn = -> (let result = ext(x) in (-> result))
+        ('get_val1', bb.Call(bb.Reference('fn', higher_fn.type_signature))),
+        # _var2 = ext(x)
+        # get_val1 = -> _var2
+        ('get_val2', bb.Call(bb.Reference('fn', higher_fn.type_signature))),
+        # _var3 = ext(x)
+        # get_val2 = -> _var3
+        ('val11', bb.Call(bb.Reference('get_val1', int_thunk_type))),
+        # val11 = _var2
+        ('val12', bb.Call(bb.Reference('get_val1', int_thunk_type))),
+        # val12 = _var2
+        ('val2', bb.Call(bb.Reference('get_val2', int_thunk_type))),
+        # val2 = _var3
+    ]
+    before = bb.Lambda(
+        'x',
+        int_type,
+        bb.Block(
+            block_locals,
+            # <_var2, _var2, _var3>
+            bb.Struct([
+                bb.Reference('val11', int_type),
+                bb.Reference('val12', int_type),
+                bb.Reference('val2', int_type)
+            ])))
+    after = transformations.transform_to_local_call_dominant(before)
+    expected = bb.Lambda(
+        'x', int_type,
+        bb.Block([
+            ('_var2', bb.Call(int_to_int_fn, bb.Reference('x', int_type))),
+            ('_var3', bb.Call(int_to_int_fn, bb.Reference('x', int_type))),
+        ],
+                 bb.Struct([
+                     bb.Reference('_var2', int_type),
+                     bb.Reference('_var2', int_type),
+                     bb.Reference('_var3', int_type)
+                 ])))
+    self.assertEqual(after.compact_representation(),
+                     expected.compact_representation())
+
+
 class RemoveLambdasAndBlocksTest(test_case.TestCase):
 
   def assertNoLambdasOrBlocks(self, comp):

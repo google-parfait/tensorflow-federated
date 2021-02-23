@@ -101,6 +101,165 @@ def prepare_for_rebinding(comp):
       comp, _transform_fn, symbol_tree)
 
 
+def _type_contains_function(t):
+  return type_analysis.contains(t, lambda x: x.is_function())
+
+
+def _disallow_higher_order(comp, global_comp):
+  if comp.type_signature.is_function():
+    param_type = comp.type_signature.parameter
+    if param_type is not None and _type_contains_function(param_type):
+      raise ValueError(
+          f'{comp}\nin\n{global_comp}\nhas higher-order parameter of type {param_type}'
+      )
+    result_type = comp.type_signature.result
+    if _type_contains_function(result_type):
+      raise ValueError(
+          f'{comp}\nin\n{global_comp}\nhas a higher-order result of type {result_type}'
+      )
+
+
+def transform_to_local_call_dominant(
+    comp: building_blocks.Lambda) -> building_blocks.Lambda:
+  """Transforms local (non-federated) computations into call-dominant form.
+
+  Args:
+    comp: A `building_blocks.Lambda` representing a local computation. Local
+      computations must not contain intrinsics or compiled computations with
+      higher-order parameters or results, such as the `federated_x` set of
+      intrinsics.
+
+  Returns:
+    A transformed but semantically-equivalent `comp`. The new `result` of `comp`
+    will be a block with exactly one local per call to intrinsic or compiled
+    computation. This block will not contain any lambdas or blocks.
+  """
+  # Top-level comp must be a lambda to ensure that we create a set of bindings
+  # immediately under it, as `_build` does for all lambdas.
+  comp.check_lambda()
+  global_comp = comp
+  name_generator = building_block_factory.unique_name_generator(comp)
+
+  class _Scope():
+    """Name resolution scopes which track the creation of new value bindings."""
+
+    def __init__(self, parent=None, bind_to_parent=False):
+      """Create a new scope.
+
+      Args:
+        parent: An optional parent scope.
+        bind_to_parent: If true, `create_bindings` calls will be propagated to
+          the parent scope, causing newly-created bindings to be visible at a
+          higher level. If false, `create_bindings` will create a new binding in
+          this scope. New bindings will be used as locals inside of
+          `bindings_to_block_with_result`.
+      """
+      if parent is None and bind_to_parent:
+        raise ValueError('Cannot `bind_to_parent` for `None` parent.')
+      self._parent = parent
+      self._newly_bound_values = None if bind_to_parent else []
+      self._locals = {}
+
+    def resolve(self, name: str):
+      if name in self._locals:
+        return self._locals[name]
+      if self._parent is None:
+        raise ValueError(f'Unable to resolve name `{name}` in `{global_comp}`')
+      return self._parent.resolve(name)
+
+    def add_local(self, name, value):
+      self._locals[name] = value
+
+    def create_binding(self, value):
+      """Add a binding to the nearest binding scope."""
+      if self._newly_bound_values is None:
+        return self._parent.create_binding(value)
+      else:
+        name = next(name_generator)
+        self._newly_bound_values.append((name, value))
+        reference = building_blocks.Reference(name, value.type_signature)
+        self._locals[name] = reference
+        return reference
+
+    def new_child(self):
+      return _Scope(parent=self, bind_to_parent=True)
+
+    def new_child_with_bindings(self):
+      """Creates a child scope which will hold its own bindings."""
+      # NOTE: should always be paired with a call to
+      # `bindings_to_block_with_result`.
+      return _Scope(parent=self, bind_to_parent=False)
+
+    def bindings_to_block_with_result(self, result):
+      # Don't create unnecessary blocks if there aren't any locals.
+      if len(self._newly_bound_values) == 0:  # pylint: disable=g-explicit-length-test
+        return result
+      else:
+        return building_blocks.Block(self._newly_bound_values, result)
+
+  def _build(comp, scope):
+    """Transforms `comp` to CDF, possibly adding bindings to `scope`."""
+    # The structure returned by this function is a generalized version of
+    # call-dominant form. This function may result in the following patterns:
+    # CDF ->
+    #  | External
+    #  | Reference to a bound call to an External
+    #  | Selection(CDF, index)
+    #  | Struct(CDF, ...)
+    #  | Lambda(Block([bindings for External calls], CDF))
+    # External -> Intrinsic | Data | Compiled Computation
+    if comp.is_reference():
+      return scope.resolve(comp.name)
+    elif comp.is_selection():
+      source = _build(comp.source, scope)
+      if source.is_struct():
+        return source[comp.as_index()]
+      return building_blocks.Selection(source, index=comp.as_index())
+    elif comp.is_struct():
+      elements = []
+      for (name, value) in structure.iter_elements(comp):
+        value = _build(value, scope)
+        elements.append((name, value))
+      return building_blocks.Struct(elements)
+    elif comp.is_call():
+      function = _build(comp.function, scope)
+      argument = None if comp.argument is None else _build(comp.argument, scope)
+      if function.is_lambda():
+        if argument is not None:
+          scope = scope.new_child()
+          scope.add_local(function.parameter_name, argument)
+        return _build(function.result, scope)
+      else:
+        return scope.create_binding(building_blocks.Call(function, argument))
+    elif comp.is_lambda():
+      scope = scope.new_child_with_bindings()
+      if comp.parameter_name:
+        scope.add_local(
+            comp.parameter_name,
+            building_blocks.Reference(comp.parameter_name, comp.parameter_type))
+      result = _build(comp.result, scope)
+      block = scope.bindings_to_block_with_result(result)
+      return building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
+                                    block)
+    elif comp.is_block():
+      scope = scope.new_child()
+      for (name, value) in comp.locals:
+        scope.add_local(name, _build(value, scope))
+      return _build(comp.result, scope)
+    elif (comp.is_intrinsic() or comp.is_data() or
+          comp.is_compiled_computation()):
+      _disallow_higher_order(comp, global_comp)
+      return comp
+    elif comp.is_placement():
+      raise ValueError(f'Found placement {comp} in\n{global_comp}\n'
+                       'but placements are not allowed in local computations.')
+    else:
+      raise ValueError(
+          f'Unrecognized computation kind\n{comp}\nin\n{global_comp}')
+
+  return _build(comp, _Scope())
+
+
 def remove_called_lambdas_and_blocks(comp):
   """Removes any called lambdas and blocks from `comp`.
 
