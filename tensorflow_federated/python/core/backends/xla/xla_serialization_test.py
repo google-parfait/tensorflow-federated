@@ -19,8 +19,8 @@ import numpy as np
 from google.protobuf import any_pb2
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.backends.xla import xla_serialization
 from tensorflow_federated.python.core.impl.types import type_serialization
-from tensorflow_federated.python.core.impl.utils import xla_serialization
 
 
 def _make_test_xla_comp_noarg_to_int32():
