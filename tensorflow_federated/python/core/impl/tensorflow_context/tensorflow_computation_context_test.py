@@ -34,8 +34,9 @@ class TensorFlowComputationContextTest(test_case.TestCase):
     context = tensorflow_computation_context.TensorFlowComputationContext(
         tf.compat.v1.get_default_graph())
 
-    with self.assertRaisesRegex(ValueError,
-                                'Expected a TensorFlow computation.'):
+    with self.assertRaisesRegex(
+        ValueError, 'Can only invoke TensorFlow in the body of '
+        'a TensorFlow computation'):
       context.invoke(foo, None)
 
   def test_invoke_returns_result_with_tf_computation(self):
