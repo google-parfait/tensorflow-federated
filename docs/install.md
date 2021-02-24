@@ -48,7 +48,7 @@ Note: To exit the virtual environment, run `deactivate`.
 ### 3. Install the released TensorFlow Federated Python package.
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal tfo-terminal-venv">pip install --upgrade tensorflow_federated</code>
+<code class="devsite-terminal tfo-terminal-venv">pip install --upgrade tensorflow-federated</code>
 </pre>
 
 ### 3 (alternative). Install the nightly TensorFlow Federated Python package.

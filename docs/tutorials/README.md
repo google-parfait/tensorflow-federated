@@ -13,12 +13,12 @@ notebooks.
 
 The fix is to:
 
-1.  Install [nest_asyncio](https://pypi.org/project/nest-asyncio/) by either:
+1.  Install [nest-asyncio](https://pypi.org/project/nest-asyncio/) by either:
 
     *   `pip` install the package from within the notebook.
 
         ```python
-        !pip install --quiet --upgrade --user nest_asyncio
+        !pip install --quiet --upgrade --user nest-asyncio
         ```
 
     *   `pip` install the package in the same virtual environment that the
@@ -32,8 +32,8 @@ The fix is to:
 
         # Install the required Python package
         pip install --upgrade \
-            tensorflow_federated \
-            nest_asyncio
+            tensorflow-federated \
+            nest-asyncio
 
         # Install Jupyter
         pip install --upgrade jupyter
@@ -45,12 +45,12 @@ The fix is to:
             --display-name "TFF Kernel"
         ```
 
-1.  Use `nest_asyncio` to patch `asyncio`.
+1.  Use `nest-asyncio` to patch `asyncio`.
 
     ```python
     import nest_asyncio
     nest_asyncio.apply()
     ```
 
-See the [nest_asyncio](https://pypi.org/project/nest-asyncio/) Python package
+See the [nest-asyncio](https://pypi.org/project/nest-asyncio/) Python package
 for more information.

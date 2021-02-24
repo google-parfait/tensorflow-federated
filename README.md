@@ -135,5 +135,5 @@ tag.
 
 <sup id="footnote1">1</sup> TensorFlow Federated
     [0.8.0](https://github.com/tensorflow/federated/tree/v0.8.0) fails to pip
-    install `pip install tensorflow_federated==0.8.0` because it requires
+    install `pip install tensorflow-federated==0.8.0` because it requires
     `tf-nightly==1.15.0.dev20190805`, which is no longer available.
