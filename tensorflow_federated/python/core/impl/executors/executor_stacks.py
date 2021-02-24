@@ -24,6 +24,8 @@ import grpc
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import caching_executor
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import execution_context
@@ -346,6 +348,10 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
       this hardcoded parameter.
     * A boolean `use_sizing` to indicate whether to wire instances of
       `sizing_executors.SizingExecutor` on top of the client stacks.
+    * An optional instance of `LocalComputationFactory` to use to construct
+      local computations used as parameters in certain federated operators
+      (such as `tff.federated_sum`, etc.). Defaults to a TensorFlow factory.
+
   """
 
   def __init__(self,
@@ -354,10 +360,16 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
                unplaced_ex_factory: UnplacedExecutorFactory,
                num_clients: Optional[int] = None,
                use_sizing: bool = False,
+               local_computation_factory: local_computation_factory_base
+               .LocalComputationFactory = tensorflow_computation_factory
+               .TensorFlowComputationFactory(),
                federated_strategy_factory=federated_resolving_strategy
                .FederatedResolvingStrategy.factory):
     py_typecheck.check_type(clients_per_thread, int)
     py_typecheck.check_type(unplaced_ex_factory, UnplacedExecutorFactory)
+    py_typecheck.check_type(
+        local_computation_factory,
+        local_computation_factory_base.LocalComputationFactory)
     self._clients_per_thread = clients_per_thread
     self._unplaced_executor_factory = unplaced_ex_factory
     if num_clients is not None:
@@ -371,6 +383,7 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
     else:
       self._sizing_executors = None
     self._federated_strategy_factory = federated_strategy_factory
+    self._local_computation_factory = local_computation_factory
 
   @property
   def sizing_executors(self) -> List[sizing_executor.SizingExecutor]:
@@ -414,14 +427,17 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
       ]
       self._sizing_executors.extend(client_stacks)
 
-    federating_strategy_factory = self._federated_strategy_factory({
-        placement_literals.CLIENTS: [
-            client_stacks[k % len(client_stacks)] for k in range(num_clients)
-        ],
-        placement_literals.SERVER:
-            self._unplaced_executor_factory.create_executor(
-                placement=placement_literals.SERVER),
-    })
+    federating_strategy_factory = self._federated_strategy_factory(
+        {
+            placement_literals.CLIENTS: [
+                client_stacks[k % len(client_stacks)]
+                for k in range(num_clients)
+            ],
+            placement_literals.SERVER:
+                self._unplaced_executor_factory.create_executor(
+                    placement=placement_literals.SERVER),
+        },
+        local_computation_factory=self._local_computation_factory)
     unplaced_executor = self._unplaced_executor_factory.create_executor()
     executor = federating_executor.FederatingExecutor(
         federating_strategy_factory, unplaced_executor)
@@ -489,15 +505,21 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
   compositional hierarchy based on the `max_fanout` parameter.
   """
 
-  def __init__(self, *, max_fanout: int,
+  def __init__(self,
+               *,
+               max_fanout: int,
                unplaced_ex_factory: UnplacedExecutorFactory,
                flat_stack_fn: Callable[[executor_factory.CardinalitiesType],
-                                       Sequence[executor_base.Executor]]):
+                                       Sequence[executor_base.Executor]],
+               local_computation_factory: local_computation_factory_base
+               .LocalComputationFactory = tensorflow_computation_factory
+               .TensorFlowComputationFactory()):
     if max_fanout < 2:
       raise ValueError('Max fanout must be greater than 1.')
     self._flat_stack_fn = flat_stack_fn
     self._max_fanout = max_fanout
     self._unplaced_ex_factory = unplaced_ex_factory
+    self._local_computation_factory = local_computation_factory
 
   def create_executor(
       self, cardinalities: executor_factory.CardinalitiesType
@@ -528,7 +550,9 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     server_executor = self._unplaced_ex_factory.create_executor(
         placement=placement_literals.SERVER)
     composing_strategy_factory = federated_composing_strategy.FederatedComposingStrategy.factory(
-        server_executor, target_executors)
+        server_executor,
+        target_executors,
+        local_computation_factory=self._local_computation_factory)
     unplaced_executor = self._unplaced_ex_factory.create_executor()
     composing_executor = federating_executor.FederatingExecutor(
         composing_strategy_factory, unplaced_executor)
@@ -585,7 +609,9 @@ def local_executor_factory(
     client_tf_devices=tuple(),
     reference_resolving_clients=True,
     support_sequence_ops=False,
-    leaf_executor_fn=eager_tf_executor.EagerTFExecutor
+    leaf_executor_fn=eager_tf_executor.EagerTFExecutor,
+    local_computation_factory=tensorflow_computation_factory
+    .TensorFlowComputationFactory()
 ) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally.
 
@@ -620,6 +646,10 @@ def local_executor_factory(
       is the eager TF executor (other possible options: XLA, IREE). Should
       accept the `device` keyword argument if the executor is to be configured
       with explicitly chosen devices.
+    local_computation_factory: An instance of `LocalComputationFactory` to
+      use to construct local computations used as parameters in certain
+      federated operators (such as `tff.federated_sum`, etc.). Defaults to
+      a TensorFlow computation factory that generates TensorFlow code.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -648,14 +678,15 @@ def local_executor_factory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
       num_clients=num_clients,
-      use_sizing=False)
+      use_sizing=False,
+      local_computation_factory=local_computation_factory)
   flat_stack_fn = create_minimal_length_flat_stack_fn(
       max_fanout, federating_executor_factory)
   full_stack_factory = ComposingExecutorFactory(
       max_fanout=max_fanout,
       unplaced_ex_factory=unplaced_ex_factory,
       flat_stack_fn=flat_stack_fn,
-  )
+      local_computation_factory=local_computation_factory)
 
   def _factory_fn(cardinalities):
     if cardinalities.get(placement_literals.CLIENTS, 0) < max_fanout:

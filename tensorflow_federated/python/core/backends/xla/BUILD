@@ -53,6 +53,7 @@ py_library(
     srcs = ["execution_contexts.py"],
     srcs_version = "PY3",
     deps = [
+        ":compiler",
         ":executor",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
@@ -69,6 +70,9 @@ py_test(
         ":execution_contexts",
         ":xla_serialization",
         "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/executors:execution_context",

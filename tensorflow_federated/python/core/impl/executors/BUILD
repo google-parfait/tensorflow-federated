@@ -391,6 +391,8 @@ py_library(
         ":sizing_executor",
         ":thread_delegating_executor",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
+        "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )

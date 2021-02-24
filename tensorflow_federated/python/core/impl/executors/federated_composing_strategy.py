@@ -145,9 +145,19 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
   """
 
   @classmethod
-  def factory(cls, server_executor: executor_base.Executor,
-              target_executors: List[executor_base.Executor]):
-    return lambda executor: cls(executor, server_executor, target_executors)
+  def factory(cls,
+              server_executor: executor_base.Executor,
+              target_executors: List[executor_base.Executor],
+              local_computation_factory: local_computation_factory_base
+              .LocalComputationFactory = tensorflow_computation_factory
+              .TensorFlowComputationFactory()):
+    # pylint:disable=g-long-lambda
+    return lambda executor: cls(
+        executor,
+        server_executor,
+        target_executors,
+        local_computation_factory=local_computation_factory)
+    # pylint:enable=g-long-lambda
 
   def __init__(self,
                executor: federating_executor.FederatingExecutor,

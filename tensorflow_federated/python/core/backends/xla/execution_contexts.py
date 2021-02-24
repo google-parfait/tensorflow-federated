@@ -13,6 +13,7 @@
 # limitations under the License.
 """Execution contexts for the XLA backend."""
 
+from tensorflow_federated.python.core.backends.xla import compiler
 from tensorflow_federated.python.core.backends.xla import executor
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
@@ -31,7 +32,9 @@ def create_local_execution_context():
   # TODO(b/175888145): Extend this into a complete local executor stack.
 
   factory = executor_stacks.local_executor_factory(
-      support_sequence_ops=True, leaf_executor_fn=executor.XlaExecutor)
+      support_sequence_ops=True,
+      leaf_executor_fn=executor.XlaExecutor,
+      local_computation_factory=compiler.XlaComputationFactory())
   return execution_context.ExecutionContext(executor_fn=factory)
 
 

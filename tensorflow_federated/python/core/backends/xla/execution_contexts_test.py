@@ -17,6 +17,9 @@ from jax.lib.xla_bridge import xla_client
 import numpy as np
 
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.xla import execution_contexts
 from tensorflow_federated.python.core.backends.xla import xla_serialization
 from tensorflow_federated.python.core.impl.computation import computation_impl
@@ -34,7 +37,7 @@ class ExecutionContextsTest(absltest.TestCase):
     context = execution_contexts.create_local_execution_context()
     self.assertIsInstance(context, execution_context.ExecutionContext)
 
-  def test_set_local_execution_context(self):
+  def test_set_local_execution_context_and_run_simple_xla_computation(self):
     builder = xla_client.XlaBuilder('comp')
     xla_client.ops.Parameter(builder, 0, xla_client.shape_from_pyval(tuple()))
     xla_client.ops.Constant(builder, np.int32(10))
@@ -46,6 +49,16 @@ class ExecutionContextsTest(absltest.TestCase):
     comp = computation_impl.ComputationImpl(comp_pb, ctx_stack)
     execution_contexts.set_local_execution_context()
     self.assertEqual(comp(), 10)
+
+  def test_federated_sum_in_xla_execution_context(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(np.int32, placements.CLIENTS))
+    def comp(x):
+      return intrinsics.federated_sum(x)
+
+    execution_contexts.set_local_execution_context()
+    self.assertEqual(comp([1, 2, 3]), 6)
 
 
 if __name__ == '__main__':
