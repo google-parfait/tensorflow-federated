@@ -402,6 +402,7 @@ py_library(
     srcs = ["tensorflow_computation_factory.py"],
     srcs_version = "PY3",
     deps = [
+        ":local_computation_factory_base",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:serialization_utils",

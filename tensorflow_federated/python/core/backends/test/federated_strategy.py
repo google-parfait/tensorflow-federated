@@ -24,6 +24,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.types import placement_literals
@@ -149,8 +150,8 @@ class TestFederatedStrategy(
     mask_value = _map_numpy_or_structure(
         extended_bitwidth, mask_type, fn=compute_mask)
     logging.debug('Emulated secure sum using mask: %s', mask_value)
-    return await executor_utils.embed_tf_constant(self._executor, mask_type,
-                                                  mask_value)
+    return await executor_utils.embed_constant(self._executor, mask_type,
+                                               mask_value)
 
   async def _compute_modulus(self, value, mask):
 
@@ -172,12 +173,14 @@ class TestFederatedStrategy(
             'Unknown placement [{p}], must be one of [CLIENTS, SERVER]'.format(
                 p=value.type_signature.placement))
 
+    modulus_comp_coro = self._executor.create_value(
+        *tensorflow_computation_factory.create_binary_operator_with_upcast(
+            computation_types.StructType([
+                value.type_signature.member, mask.type_signature
+            ]), tf.bitwise.bitwise_and))
+
     modulus_comp, modulus_comp_arg = await asyncio.gather(
-        executor_utils.embed_tf_binary_operator_with_upcast(
-            self._executor,
-            computation_types.StructType(
-                [value.type_signature.member, mask.type_signature]),
-            tf.bitwise.bitwise_and), build_modulus_argument(value, mask))
+        modulus_comp_coro, build_modulus_argument(value, mask))
     map_arg = federated_resolving_strategy.FederatedResolvingStrategyValue(
         structure.Struct([
             (None, modulus_comp.internal_representation),

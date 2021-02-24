@@ -45,13 +45,14 @@ import asyncio
 from typing import Any, Dict
 
 import absl.logging as logging
-import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
+from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
@@ -141,8 +142,12 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
   def factory(cls, target_executors: Dict[str, executor_base.Executor]):
     return lambda executor: cls(executor, target_executors)
 
-  def __init__(self, executor: federating_executor.FederatingExecutor,
-               target_executors: Dict[str, executor_base.Executor]):
+  def __init__(self,
+               executor: federating_executor.FederatingExecutor,
+               target_executors: Dict[str, executor_base.Executor],
+               local_computation_factory: local_computation_factory_base
+               .LocalComputationFactory = tensorflow_computation_factory
+               .TensorFlowComputationFactory()):
     """Creates a `FederatedResolvingStrategy`.
 
     Args:
@@ -153,6 +158,10 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
         dictionary are placement literals. The values can be either single
         executors (if there only is a single participant associated with that
         placement, e.g. `tff.SERVER`) or lists of executors.
+      local_computation_factory: An instance of `LocalComputationFactory` to
+        use to construct local computations used as parameters in certain
+        federated operators (such as `tff.federated_sum`, etc.). Defaults to
+        a TensorFlow computation factory that generates TensorFlow code.
 
     Raises:
       TypeError: If `target_executors` is not a `dict`, where each key is a
@@ -164,7 +173,11 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     """
     super().__init__(executor)
     py_typecheck.check_type(target_executors, dict)
+    py_typecheck.check_type(
+        local_computation_factory,
+        local_computation_factory_base.LocalComputationFactory)
     self._target_executors = {}
+    self._local_computation_factory = local_computation_factory
     for k, v in target_executors.items():
       if k is not None:
         py_typecheck.check_type(k, placement_literals.PlacementLiteral)
@@ -464,10 +477,15 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       raise RuntimeError('Cannot compute a federated mean over an empty group.')
     child = self._target_executors[placement_literals.SERVER][0]
     factor, multiply = await asyncio.gather(
-        executor_utils.embed_tf_constant(child, member_type,
-                                         float(1.0 / count)),
-        executor_utils.embed_tf_binary_operator(child, member_type,
-                                                tf.multiply))
+        executor_utils.embed_constant(
+            child,
+            member_type,
+            float(1.0 / count),
+            local_computation_factory=self._local_computation_factory),
+        executor_utils.embed_multiply_operator(
+            child,
+            member_type,
+            local_computation_factory=self._local_computation_factory))
     multiply_arg = await child.create_struct(
         structure.Struct([(None, arg_sum.internal_representation[0]),
                           (None, factor)]))
@@ -534,11 +552,15 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     py_typecheck.check_type(arg.type_signature, computation_types.FederatedType)
     zero, plus = await asyncio.gather(
-        executor_utils.embed_tf_constant(self._executor,
-                                         arg.type_signature.member, 0),
-        executor_utils.embed_tf_binary_operator(self._executor,
-                                                arg.type_signature.member,
-                                                tf.add))
+        executor_utils.embed_constant(
+            self._executor,
+            arg.type_signature.member,
+            0,
+            local_computation_factory=self._local_computation_factory),
+        executor_utils.embed_plus_operator(
+            self._executor,
+            arg.type_signature.member,
+            local_computation_factory=self._local_computation_factory))
     return await self.compute_federated_reduce(
         FederatedResolvingStrategyValue(
             structure.Struct([(None, arg.internal_representation),
@@ -567,7 +589,9 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
       self,
       arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     return await executor_utils.compute_intrinsic_federated_weighted_mean(
-        self._executor, arg)
+        self._executor,
+        arg,
+        local_computation_factory=self._local_computation_factory)
 
   @tracing.trace
   async def compute_federated_zip_at_clients(

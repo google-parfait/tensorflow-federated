@@ -16,7 +16,6 @@
 from jax.lib.xla_bridge import xla_client
 import numpy as np
 
-from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
@@ -33,7 +32,8 @@ class XlaComputationFactory(
     pass
 
   def create_constant_from_scalar(
-      self, value, type_spec: computation_types.Type) -> pb.Computation:
+      self, value, type_spec: computation_types.Type
+  ) -> local_computation_factory_base.ComputationProtoAndType:
     py_typecheck.check_type(type_spec, computation_types.Type)
     if not type_analysis.is_structure_of_tensors(type_spec):
       raise ValueError('Not a tensor or a structure of tensors: {}'.format(
@@ -65,5 +65,23 @@ class XlaComputationFactory(
     xla_client.ops.Tuple(builder, tensors)
     xla_computation = builder.build()
 
-    return xla_serialization.create_xla_tff_computation(
+    comp_pb = xla_serialization.create_xla_tff_computation(
         xla_computation, [], computation_types.FunctionType(None, type_spec))
+    comp_type = computation_types.FunctionType(None, type_spec)
+    return (comp_pb, comp_type)
+
+  def create_plus_operator(
+      self, type_spec: computation_types.Type
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    raise NotImplementedError
+
+  def create_multiply_operator(
+      self, type_spec: computation_types.Type
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    raise NotImplementedError
+
+  def create_scalar_multiply_operator(
+      self, operand_type: computation_types.Type,
+      scalar_type: computation_types.TensorType
+  ) -> local_computation_factory_base.ComputationProtoAndType:
+    raise NotImplementedError

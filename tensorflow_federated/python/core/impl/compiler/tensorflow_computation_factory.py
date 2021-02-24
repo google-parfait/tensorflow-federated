@@ -15,7 +15,7 @@
 
 import functools
 import types
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional
 
 import tensorflow as tf
 
@@ -24,28 +24,62 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
-ProtoAndType = Tuple[pb.Computation, computation_types.Type]
+
+# TODO(b/181028772): Move this and similar code to `backends/tensorflow`.
+
+# TODO(b/181131807): Remove independent invocations of the helper methods, and
+# replace them with calls to the factory, then inline the bodies of the methods
+# within the factory.
+
+ComputationProtoAndType = local_computation_factory_base.ComputationProtoAndType
+
+
+class TensorFlowComputationFactory(
+    local_computation_factory_base.LocalComputationFactory):
+  """An implementation of local computation factory for TF computations."""
+
+  def __init__(self):
+    pass
+
+  def create_constant_from_scalar(
+      self, value,
+      type_spec: computation_types.Type) -> ComputationProtoAndType:
+    return create_constant(value, type_spec)
+
+  def create_plus_operator(
+      self, type_spec: computation_types.Type) -> ComputationProtoAndType:
+    return create_binary_operator(tf.add, type_spec)
+
+  def create_multiply_operator(
+      self, type_spec: computation_types.Type) -> ComputationProtoAndType:
+    return create_binary_operator(tf.multiply, type_spec)
+
+  def create_scalar_multiply_operator(
+      self, operand_type: computation_types.Type,
+      scalar_type: computation_types.TensorType) -> ComputationProtoAndType:
+    return create_binary_operator_with_upcast(
+        computation_types.StructType([(None, operand_type),
+                                      (None, scalar_type)]), tf.multiply)
 
 
 def _tensorflow_comp(
     tensorflow_proto: pb.TensorFlow,
     type_signature: computation_types.Type,
-) -> ProtoAndType:
+) -> ComputationProtoAndType:
   serialized_type = type_serialization.serialize_type(type_signature)
   comp = pb.Computation(type=serialized_type, tensorflow=tensorflow_proto)
   return (comp, type_signature)
 
 
-# TODO(b/175888145): Wrap TF-specific helpers as a local computation factory.
-
-
-def create_constant(value, type_spec: computation_types.Type) -> ProtoAndType:
+def create_constant(
+    value, type_spec: computation_types.Type) -> ComputationProtoAndType:
   """Returns a tensorflow computation returning a constant `value`.
 
   The returned computation has the type signature `( -> T)`, where `T` is
@@ -131,7 +165,7 @@ def create_constant(value, type_spec: computation_types.Type) -> ProtoAndType:
 
 
 def create_binary_operator(
-    operator, operand_type: computation_types.Type) -> ProtoAndType:
+    operator, operand_type: computation_types.Type) -> ComputationProtoAndType:
   """Returns a tensorflow computation computing a binary operation.
 
   The returned computation has the type signature `(<T,T> -> U)`, where `T` is
@@ -197,7 +231,7 @@ def create_binary_operator(
 
 def create_binary_operator_with_upcast(
     type_signature: computation_types.StructType,
-    operator: Callable[[Any, Any], Any]) -> ProtoAndType:
+    operator: Callable[[Any, Any], Any]) -> ComputationProtoAndType:
   """Creates TF computation upcasting its argument and applying `operator`.
 
   Args:
@@ -209,9 +243,7 @@ def create_binary_operator_with_upcast(
     operator: Callable defining the operator.
 
   Returns:
-    A `building_blocks.CompiledComputation` encapsulating a function which
-    upcasts the second element of its argument and applies the binary
-    operator.
+    Same as `create_binary_operator()`.
   """
   py_typecheck.check_type(type_signature, computation_types.StructType)
   py_typecheck.check_callable(operator)
@@ -280,7 +312,7 @@ def create_binary_operator_with_upcast(
   return _tensorflow_comp(tensorflow, type_signature)
 
 
-def create_empty_tuple() -> ProtoAndType:
+def create_empty_tuple() -> ComputationProtoAndType:
   """Returns a tensorflow computation returning an empty tuple.
 
   The returned computation has the type signature `( -> <>)`.
@@ -288,7 +320,8 @@ def create_empty_tuple() -> ProtoAndType:
   return create_computation_for_py_fn(lambda: structure.Struct([]), None)
 
 
-def create_identity(type_signature: computation_types.Type) -> ProtoAndType:
+def create_identity(
+    type_signature: computation_types.Type) -> ComputationProtoAndType:
   """Returns a tensorflow computation representing an identity function.
 
   The returned computation has the type signature `(T -> T)`, where `T` is
@@ -322,7 +355,7 @@ def create_identity(type_signature: computation_types.Type) -> ProtoAndType:
 
 
 def create_replicate_input(type_signature: computation_types.Type,
-                           count: int) -> ProtoAndType:
+                           count: int) -> ComputationProtoAndType:
   """Returns a tensorflow computation returning `count` copies of its argument.
 
   The returned computation has the type signature `(T -> <T, T, T, ...>)`, where
@@ -343,8 +376,8 @@ def create_replicate_input(type_signature: computation_types.Type,
 
 
 def create_computation_for_py_fn(
-    fn: types.FunctionType,
-    parameter_type: Optional[computation_types.Type]) -> ProtoAndType:
+    fn: types.FunctionType, parameter_type: Optional[computation_types.Type]
+) -> ComputationProtoAndType:
   """Returns a tensorflow computation returning the result of `fn`.
 
   The returned computation has the type signature `(T -> U)`, where `T` is

@@ -14,9 +14,13 @@
 """Defines the interface for factories of framework-specific computations."""
 
 import abc
+from typing import Tuple
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import computation_types
+
+
+ComputationProtoAndType = Tuple[pb.Computation, computation_types.Type]
 
 
 class LocalComputationFactory(metaclass=abc.ABCMeta):
@@ -29,7 +33,8 @@ class LocalComputationFactory(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def create_constant_from_scalar(
-      self, value, type_spec: computation_types.Type) -> pb.Computation:
+      self, value,
+      type_spec: computation_types.Type) -> ComputationProtoAndType:
     """Creates a TFF computation returning a constant based on a scalar value.
 
     The returned computation has the type signature `( -> T)`, where `T` may be
@@ -43,10 +48,68 @@ class LocalComputationFactory(metaclass=abc.ABCMeta):
         either a tensor, or a nested structure of tensors.
 
     Returns:
-      An instance of `pb.Computation` with semantics as described above.
+      A tuple `(pb.Computation, computation_types.Type)` with the first element
+      being a TFF computation with semantics as described above, and the second
+      element representing the formal type of that computation.
+    """
+    raise NotImplementedError
 
-    Raises:
-      TypeError: if types don't match.
-      ValueError: if the arguments are invalid.
+  def create_plus_operator(
+      self, type_spec: computation_types.Type) -> ComputationProtoAndType:
+    """Creates a TFF computation computing a binary plus operation.
+
+    The returned computation has the type signature `(<T,T> -> T)`, where `T` is
+    the `type_spec`.
+
+    Note: If `type_spec` is a `computation_types.StructType`, then
+    `operator` will be applied pointwise.
+
+    Args:
+      type_spec: A `computation_types.Type` to use as the argument to the
+        constructed binary operator; must contain only named tuples and tensor
+        types.
+
+    Returns:
+      A tuple `(pb.Computation, computation_types.Type)` with the first element
+      being a TFF computation with semantics as described above, and the second
+      element representing the formal type of that computation.
+    """
+    raise NotImplementedError
+
+  def create_multiply_operator(
+      self, type_spec: computation_types.Type) -> ComputationProtoAndType:
+    """Creates a TFF computation computing a binary point-wise multiplication.
+
+    The returned computation has the type signature `(<T,T> -> T)`, where `T` is
+    the `type_spec`.
+
+    Note: If `type_spec` is a `computation_types.StructType`, then
+    `operator` will be applied pointwise.
+
+    Args:
+      type_spec: A `computation_types.Type` to use as the argument to the
+        constructed binary operator; must contain only named tuples and tensor
+        types.
+
+    Returns:
+      A tuple `(pb.Computation, computation_types.Type)` with the first element
+      being a TFF computation with semantics as described above, and the second
+      element representing the formal type of that computation.
+    """
+    raise NotImplementedError
+
+  def create_scalar_multiply_operator(
+      self, operand_type: computation_types.Type,
+      scalar_type: computation_types.TensorType) -> ComputationProtoAndType:
+    """Creates a TFF computation multiplying an argument by a scalar.
+
+    Args:
+      operand_type: The type of the value to multiply by a scalar.
+      scalar_type: The type of the scalar to multiply by.
+
+    Returns:
+      A tuple `(pb.Computation, computation_types.Type)` with the first element
+      being a TFF computation with semantics as described above, and the second
+      element representing the formal type of that computation.
     """
     raise NotImplementedError

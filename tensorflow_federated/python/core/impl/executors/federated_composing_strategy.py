@@ -55,6 +55,7 @@ from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
@@ -148,9 +149,13 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
               target_executors: List[executor_base.Executor]):
     return lambda executor: cls(executor, server_executor, target_executors)
 
-  def __init__(self, executor: federating_executor.FederatingExecutor,
+  def __init__(self,
+               executor: federating_executor.FederatingExecutor,
                server_executor: executor_base.Executor,
-               target_executors: List[executor_base.Executor]):
+               target_executors: List[executor_base.Executor],
+               local_computation_factory: local_computation_factory_base
+               .LocalComputationFactory = tensorflow_computation_factory
+               .TensorFlowComputationFactory()):
     """Creates a `FederatedComposingStrategy`.
 
     Args:
@@ -161,6 +166,10 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
         server-side processing, etc.
       target_executors: The list of executors that manage disjoint scopes to
         combine in this executor, delegate to and collect or aggregate from.
+      local_computation_factory: An instance of `LocalComputationFactory` to
+        use to construct local computations used as parameters in certain
+        federated operators (such as `tff.federated_sum`, etc.). Defaults to
+        a TensorFlow computation factory that generates TensorFlow code.
 
     Raises:
       TypeError: If `server_executor` is not an `executor_base.Executor` or if
@@ -169,6 +178,10 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     super().__init__(executor)
     py_typecheck.check_type(server_executor, executor_base.Executor)
     py_typecheck.check_type(target_executors, list)
+    py_typecheck.check_type(
+        local_computation_factory,
+        local_computation_factory_base.LocalComputationFactory)
+    self._local_computation_factory = local_computation_factory
     for e in target_executors:
       py_typecheck.check_type(e, executor_base.Executor)
     self._server_executor = server_executor
@@ -476,17 +489,21 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     async def _create_factor():
       cardinalities = await self._get_cardinalities()
       count = sum(cardinalities)
-      return await executor_utils.embed_tf_constant(self._server_executor,
-                                                    member_type,
-                                                    float(1.0 / count))
+      return await executor_utils.embed_constant(
+          self._server_executor,
+          member_type,
+          float(1.0 / count),
+          local_computation_factory=self._local_computation_factory)
 
     async def _create_multiply_arg():
       total, factor = await asyncio.gather(_create_total(), _create_factor())
       return await self._server_executor.create_struct([total, factor])
 
     multiply_fn, multiply_arg = await asyncio.gather(
-        executor_utils.embed_tf_binary_operator(self._server_executor,
-                                                member_type, tf.multiply),
+        executor_utils.embed_multiply_operator(
+            self._server_executor,
+            member_type,
+            local_computation_factory=self._local_computation_factory),
         _create_multiply_arg())
     result = await self._server_executor.create_call(multiply_fn, multiply_arg)
     type_signature = computation_types.at_server(member_type)
@@ -508,11 +525,15 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     id_comp, id_type = tensorflow_computation_factory.create_identity(
         arg.type_signature.member)
     zero, plus, identity = await asyncio.gather(
-        executor_utils.embed_tf_constant(self._executor,
-                                         arg.type_signature.member, 0),
-        executor_utils.embed_tf_binary_operator(self._executor,
-                                                arg.type_signature.member,
-                                                tf.add),
+        executor_utils.embed_constant(
+            self._executor,
+            arg.type_signature.member,
+            0,
+            local_computation_factory=self._local_computation_factory),
+        executor_utils.embed_plus_operator(
+            self._executor,
+            arg.type_signature.member,
+            local_computation_factory=self._local_computation_factory),
         self._executor.create_value(id_comp, id_type))
     aggregate_args = await self._executor.create_struct(
         [arg, zero, plus, plus, identity])
@@ -543,7 +564,9 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     return await executor_utils.compute_intrinsic_federated_weighted_mean(
-        self._executor, arg)
+        self._executor,
+        arg,
+        local_computation_factory=self._local_computation_factory)
 
   @tracing.trace
   async def compute_federated_zip_at_clients(

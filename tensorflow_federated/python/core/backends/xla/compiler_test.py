@@ -31,15 +31,15 @@ class CompilerTest(absltest.TestCase):
 
   def test_create_constant_from_scalar_float32(self):
     constant_type = computation_types.TensorType(np.float32)
-    comp = self._factory.create_constant_from_scalar(10.0, constant_type)
-    comp_type = computation_types.FunctionType(None, constant_type)
+    comp, comp_type = self._factory.create_constant_from_scalar(
+        10.0, constant_type)
     result = self._run_comp(comp, comp_type)
     self.assertEqual(result, 10.0)
 
   def test_create_constant_from_scalar_int32x3(self):
     constant_type = computation_types.TensorType(np.int32, [3])
-    comp = self._factory.create_constant_from_scalar(10, constant_type)
-    comp_type = computation_types.FunctionType(None, constant_type)
+    comp, comp_type = self._factory.create_constant_from_scalar(
+        10, constant_type)
     result = self._run_comp(comp, comp_type)
     self.assertIsInstance(result, np.ndarray)
     self.assertEqual(result.dtype, np.int32)
@@ -48,8 +48,8 @@ class CompilerTest(absltest.TestCase):
 
   def test_create_constant_from_scalar_int32x3x2(self):
     constant_type = computation_types.TensorType(np.int32, [3, 2])
-    comp = self._factory.create_constant_from_scalar(10, constant_type)
-    comp_type = computation_types.FunctionType(None, constant_type)
+    comp, comp_type = self._factory.create_constant_from_scalar(
+        10, constant_type)
     result = self._run_comp(comp, comp_type)
     self.assertIsInstance(result, np.ndarray)
     self.assertEqual(result.dtype, np.int32)
@@ -59,8 +59,8 @@ class CompilerTest(absltest.TestCase):
   def test_create_constant_from_scalar_int32_struct(self):
     constant_type = computation_types.to_type(
         collections.OrderedDict([('a', np.int32), ('b', np.int32)]))
-    comp = self._factory.create_constant_from_scalar(10, constant_type)
-    comp_type = computation_types.FunctionType(None, constant_type)
+    comp, comp_type = self._factory.create_constant_from_scalar(
+        10, constant_type)
     result = self._run_comp(comp, comp_type)
     self.assertEqual(str(result), '<a=10,b=10>')
 
@@ -70,8 +70,8 @@ class CompilerTest(absltest.TestCase):
             ('a', np.float32),
             ('b', collections.OrderedDict([('c', np.float32)]))
         ]))
-    comp = self._factory.create_constant_from_scalar(10, constant_type)
-    comp_type = computation_types.FunctionType(None, constant_type)
+    comp, comp_type = self._factory.create_constant_from_scalar(
+        10, constant_type)
     result = self._run_comp(comp, comp_type)
     self.assertEqual(str(result), '<a=10.0,b=<c=10.0>>')
 

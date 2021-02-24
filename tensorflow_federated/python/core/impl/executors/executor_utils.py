@@ -24,7 +24,9 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
+from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
@@ -34,9 +36,6 @@ from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
-# TODO(b/140752097): Factor out more commonalities between executorts to place
-# in this helper file. The helpers that are currently here may not be the right
-# ones. Exploit commonalities with transformations.
 async def delegate_entirely_to_executor(arg, arg_type, executor):
   """Delegates `arg` in its entirety to the target executor.
 
@@ -103,7 +102,12 @@ def parse_federated_aggregate_argument_types(type_spec):
   return value_type, zero_type, accumulate_type, merge_type, report_type
 
 
-async def embed_tf_constant(executor, type_spec, value):
+async def embed_constant(
+    executor,
+    type_spec,
+    value,
+    local_computation_factory=tensorflow_computation_factory
+    .TensorFlowComputationFactory()):
   """Embeds a constant `val` of TFF type `type_spec` in `executor`.
 
   Args:
@@ -111,52 +115,94 @@ async def embed_tf_constant(executor, type_spec, value):
     type_spec: An instance of `tff.Type`.
     value: A value, must be a tensor or nested structure of tensors with the
       structure matching `type_spec`.
+    local_computation_factory: An instance of `LocalComputationFactory` to use.
 
   Returns:
     An instance of `tff.framework.ExecutorValue` containing an embedded value.
   """
   py_typecheck.check_type(executor, executor_base.Executor)
-  proto, type_signature = tensorflow_computation_factory.create_constant(
+  py_typecheck.check_type(
+      local_computation_factory,
+      local_computation_factory_base.LocalComputationFactory)
+  proto, type_signature = local_computation_factory.create_constant_from_scalar(
       value, type_spec)
   result = await executor.create_value(proto, type_signature)
   return await executor.create_call(result)
 
 
-async def embed_tf_binary_operator(executor, type_spec, op):
-  """Embeds a binary operator `op` on `type_spec`-typed values in `executor`.
+async def embed_plus_operator(
+    executor,
+    type_spec,
+    local_computation_factory=tensorflow_computation_factory
+    .TensorFlowComputationFactory()):
+  """Embeds a binary plus operator on `type_spec`-typed values in `executor`.
 
   Args:
     executor: An instance of `tff.framework.Executor`.
     type_spec: An instance of `tff.Type` of the type of values that the binary
       operator accepts as input and returns as output.
-    op: An operator function (such as `tf.add` or `tf.multiply`) to apply to the
-      tensor-level constituents of the values, pointwise.
+    local_computation_factory: An instance of `LocalComputationFactory` to use.
 
   Returns:
     An instance of `tff.framework.ExecutorValue` representing the operator in
     a form embedded into the executor.
   """
-  proto, type_signature = tensorflow_computation_factory.create_binary_operator(
-      op, type_spec)
+  py_typecheck.check_type(
+      local_computation_factory,
+      local_computation_factory_base.LocalComputationFactory)
+  proto, type_signature = local_computation_factory.create_plus_operator(
+      type_spec)
   return await executor.create_value(proto, type_signature)
 
 
-async def embed_tf_binary_operator_with_upcast(executor, type_spec, op):
-  """Embeds a binary operator `op` on `type_spec`-typed values in `executor`.
+async def embed_multiply_operator(
+    executor,
+    type_spec,
+    local_computation_factory=tensorflow_computation_factory
+    .TensorFlowComputationFactory()):
+  """Embeds a binary multiply operator on `type_spec` values in `executor`.
 
   Args:
     executor: An instance of `tff.framework.Executor`.
-    type_spec: An instance of `tff.StructType` with two elements, the types of
-      the first and second argument to the binary operator.
-    op: An operator function (such as `tf.add` or `tf.multiply`) to apply to the
-      tensor-level constituents of the values, pointwise.
+    type_spec: An instance of `tff.Type` of the type of values that the binary
+      operator accepts as input and returns as output.
+    local_computation_factory: An instance of `LocalComputationFactory` to use.
 
   Returns:
     An instance of `tff.framework.ExecutorValue` representing the operator in
     a form embedded into the executor.
   """
-  proto, type_signature = tensorflow_computation_factory.create_binary_operator_with_upcast(
-      operator=op, type_signature=type_spec)
+  py_typecheck.check_type(
+      local_computation_factory,
+      local_computation_factory_base.LocalComputationFactory)
+  proto, type_signature = local_computation_factory.create_multiply_operator(
+      type_spec)
+  return await executor.create_value(proto, type_signature)
+
+
+async def embed_scalar_multiply_operator(
+    executor,
+    operand_type,
+    scalar_type,
+    local_computation_factory=tensorflow_computation_factory
+    .TensorFlowComputationFactory()):
+  """Embeds a scalar multiply operator on `type_spec` values in `executor`.
+
+  The `type_spec` can be a complex structured type, to be accepted as the first
+  argument of the operator. The scalar to multiply by is the second argument.
+
+  Args:
+    executor: An instance of `tff.framework.Executor`.
+    operand_type: The type of the value to multiply by a scalar.
+    scalar_type: The type of the scalar to multiply by.
+    local_computation_factory: An instance of `LocalComputationFactory` to use.
+
+  Returns:
+    An instance of `tff.framework.ExecutorValue` representing the operator in
+    a form embedded into the executor.
+  """
+  proto, type_signature = local_computation_factory.create_scalar_multiply_operator(
+      operand_type, scalar_type)
   return await executor.create_value(proto, type_signature)
 
 
@@ -230,13 +276,21 @@ async def compute_intrinsic_federated_value(
 
 
 async def compute_intrinsic_federated_weighted_mean(
-    executor: executor_base.Executor, arg: executor_value_base.ExecutorValue
+    executor: executor_base.Executor,
+    arg: executor_value_base.ExecutorValue,
+    local_computation_factory: local_computation_factory_base
+    .LocalComputationFactory = tensorflow_computation_factory
+    .TensorFlowComputationFactory()
 ) -> executor_value_base.ExecutorValue:
   """Computes a federated weighted mean on the given `executor`.
 
   Args:
     executor: The executor to use.
     arg: The argument to embedded in `executor`.
+    local_computation_factory: An instance of `LocalComputationFactory` to use
+      to construct local computations used as parameters in certain federated
+      operators (such as `tff.federated_sum`, etc.). Defaults to a TensorFlow
+      computation factory that generates TensorFlow code.
 
   Returns:
     The result embedded in `executor`.
@@ -252,9 +306,12 @@ async def compute_intrinsic_federated_weighted_mean(
           computation_types.StructType(
               [arg.type_signature[0].member, arg.type_signature[1].member])))
 
-  multiply_blk = building_block_factory.create_tensorflow_binary_operator_with_upcast(
-      zip1_type.result.member, tf.multiply)
-
+  operand_type = zip1_type.result.member[0]
+  scalar_type = zip1_type.result.member[1]
+  multiply_comp_pb, multiply_comp_type = local_computation_factory.create_scalar_multiply_operator(
+      operand_type, scalar_type)
+  multiply_blk = building_blocks.CompiledComputation(
+      multiply_comp_pb, type_signature=multiply_comp_type)
   map_type = computation_types.FunctionType(
       computation_types.StructType(
           [multiply_blk.type_signature, zip1_type.result]),
@@ -414,3 +471,11 @@ def reconcile_value_type_with_type_spec(
       raise TypeError('Expected a value of type {}, found {}.'.format(
           type_spec, value_type))
   return type_spec if type_spec is not None else value_type
+
+# TODO(b/181132351): Remove any references to TensorFlow from this file,
+# including those in the default parameters (e.g., local_computation_factory,
+# by making this parameter required). Requires going through all call sites.
+
+# TODO(b/140752097): Factor out more commonalities between executorts to place
+# in this helper file. The helpers that are currently here may not be the right
+# ones. Exploit commonalities with transformations.
