@@ -10,4 +10,5 @@ exports_files([
     "federated_learning_for_text_generation.ipynb",
     "simulations.ipynb",
     "tff_for_federated_learning_research_compression.ipynb",
+    "working_with_client_data.ipynb",
 ])

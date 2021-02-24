@@ -27,6 +27,8 @@ upper_tabs:
         path: /federated/tutorials/simulations
       - title: "TFF for Federated Learning Research: Model and Update Compression"
         path: /federated/tutorials/tff_for_federated_learning_research_compression
+      - title: "Working with ClientData"
+        path: /federated/tutorials/working_with_client_data
     - name: Guide
       contents:
       # The first item serves as the landing page and transitively leads to all the remaining
