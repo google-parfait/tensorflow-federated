@@ -124,19 +124,23 @@ def transform_to_local_call_dominant(
   """Transforms local (non-federated) computations into call-dominant form.
 
   Args:
-    comp: A `building_blocks.Lambda` representing a local computation. Local
-      computations must not contain intrinsics or compiled computations with
-      higher-order parameters or results, such as the `federated_x` set of
-      intrinsics.
+    comp: A local computation. Local computations must not contain intrinsics
+      or compiled computations with higher-order parameters or results, such as
+      the `federated_x` set of intrinsics.
 
   Returns:
-    A transformed but semantically-equivalent `comp`. The new `result` of `comp`
-    will be a block with exactly one local per call to intrinsic or compiled
-    computation. This block will not contain any lambdas or blocks.
+    A transformed but semantically-equivalent `comp`. The resulting `comp` will
+    be in CDF (call-dominant form), as defined by the following CFG:
+    CDF ->
+     | External
+     | Reference to a bound call to an External
+     | Selection(CDF, index)
+     | Struct(CDF, ...)
+     | Lambda(Block([bindings for External calls], CDF))
+    External -> Intrinsic | Data | Compiled Computation
   """
   # Top-level comp must be a lambda to ensure that we create a set of bindings
   # immediately under it, as `_build` does for all lambdas.
-  comp.check_lambda()
   global_comp = comp
   name_generator = building_block_factory.unique_name_generator(comp)
 
@@ -201,13 +205,7 @@ def transform_to_local_call_dominant(
     """Transforms `comp` to CDF, possibly adding bindings to `scope`."""
     # The structure returned by this function is a generalized version of
     # call-dominant form. This function may result in the following patterns:
-    # CDF ->
-    #  | External
-    #  | Reference to a bound call to an External
-    #  | Selection(CDF, index)
-    #  | Struct(CDF, ...)
-    #  | Lambda(Block([bindings for External calls], CDF))
-    # External -> Intrinsic | Data | Compiled Computation
+
     if comp.is_reference():
       return scope.resolve(comp.name)
     elif comp.is_selection():
@@ -257,7 +255,9 @@ def transform_to_local_call_dominant(
       raise ValueError(
           f'Unrecognized computation kind\n{comp}\nin\n{global_comp}')
 
-  return _build(comp, _Scope())
+  scope = _Scope()
+  result = _build(comp, scope)
+  return scope.bindings_to_block_with_result(result)
 
 
 def remove_called_lambdas_and_blocks(comp):

@@ -185,6 +185,21 @@ class TransformToLocalCallDominantTest(test_case.TestCase):
     self.assertEqual(after.compact_representation(),
                      expected.compact_representation())
 
+  def test_creates_block_for_non_lambda(self):
+    bb = building_blocks
+    int_type = computation_types.TensorType(tf.int32)
+    two_int_type = computation_types.StructType([(None, int_type),
+                                                 (None, int_type)])
+    get_two_int_type = computation_types.FunctionType(None, two_int_type)
+    call_ext = bb.Call(bb.Data('ext', get_two_int_type))
+    before = bb.Selection(call_ext, index=0)
+    after = transformations.transform_to_local_call_dominant(before)
+    expected = bb.Block([
+        ('_var1', call_ext),
+    ], bb.Selection(bb.Reference('_var1', two_int_type), index=0))
+    self.assertEqual(after.compact_representation(),
+                     expected.compact_representation())
+
 
 class RemoveLambdasAndBlocksTest(test_case.TestCase):
 
