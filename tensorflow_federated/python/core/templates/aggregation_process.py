@@ -49,7 +49,7 @@ class AggregationProcess(measured_process.MeasuredProcess):
   aggregation.
 
   Compared to the `tff.templates.MeasuredProcess`, this class requires a second
-  input argument, which is a value placed at `CLIENTS` and to be aggregatred.
+  input argument, which is a value placed at `CLIENTS` and to be aggregated.
   The `result` field of returned `tff.templates.MeasuredProcessOutput` must have
   type signature equal to this value, but placed at `SERVER`.
 
@@ -80,9 +80,9 @@ class AggregationProcess(measured_process.MeasuredProcess):
       next_fn: A `tff.Computation` that defines an iterated function. If
         `initialize_fn` returns a type `S@SERVER`, then `next_fn` must return a
         `MeasuredProcessOutput` where the `state` attribute matches the type
-        `S@SERVER`, and accepts at least two argument of types `S@SERVER`
-        and `V@CLIENTS`, or more arguments where the first two argument must be
-        of types `S@SERVER` and `V@CLIENTS`. The `result` attribute of output
+        `S@SERVER`, and accepts at least two argument of types `S@SERVER` and
+        `V@CLIENTS`, or more arguments where the first two argument must be of
+        types `S@SERVER` and `V@CLIENTS`. The `result` attribute of output
         returned by `next_fn` must be of type `V@SERVER`.
 
     Raises:
@@ -178,3 +178,8 @@ class AggregationProcess(measured_process.MeasuredProcess):
       A `tff.Computation`.
     """
     return super().next
+
+  @property
+  def is_weighted(self) -> bool:
+    """True if `next` takes a third argument for weights."""
+    return len(self.next.type_signature.parameter) == 3

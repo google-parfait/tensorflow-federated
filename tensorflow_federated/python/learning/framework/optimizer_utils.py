@@ -415,6 +415,7 @@ def _build_one_round_computation(
     client_outputs = intrinsics.federated_map(
         _compute_local_training_and_client_delta,
         (federated_dataset, broadcast_output.result))
+    # TODO(b/181243799): Ensure AggregationProcess and call is_weighted.
     if len(aggregation_process.next.type_signature.parameter) == 3:
       aggregation_output = aggregation_process.next(
           server_state.delta_aggregate_state, client_outputs.weights_delta,
