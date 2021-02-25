@@ -101,70 +101,6 @@ def create_trainer(batch_size, step_size):
   local_training_process = tff.templates.IterativeProcess(
       initialize_fn=create_zero_model, next_fn=train_on_one_client)
 
-  # TODO(b/175888145): Switch to a simple tff.federated_mean after finding a
-  # way to reduce reliance on the auto-generated TF bits in the executor stack
-  # for the GENERIC_PLUS and similar intrinsics.
-
-  @tff.experimental.jax_computation
-  def create_zero_count():
-    return np.int32(0)
-
-  @tff.experimental.jax_computation
-  def create_one_count():
-    return np.int32(1)
-
-  @tff.experimental.jax_computation(model_type, model_type)
-  def combine_two_models(x, y):
-    return collections.OrderedDict([
-        ('weights', jax.numpy.add(x['weights'], y['weights'])),
-        ('bias', jax.numpy.add(x['bias'], y['bias']))
-    ])
-
-  @tff.experimental.jax_computation(model_type, np.int32)
-  def divide_model_by_count(model, count):
-    multiplier = 1.0 / count.astype(np.float32)
-    return collections.OrderedDict([
-        ('weights', jax.numpy.multiply(model['weights'], multiplier)),
-        ('bias', jax.numpy.multiply(model['bias'], multiplier))
-    ])
-
-  @tff.experimental.jax_computation(np.int32, np.int32)
-  def combine_two_counts(x, y):
-    return jax.numpy.add(x, y)
-
-  @tff.federated_computation
-  def make_zero_model_and_count():
-    return collections.OrderedDict([('model', create_zero_model()),
-                                    ('count', create_zero_count())])
-
-  model_and_count_type = make_zero_model_and_count.type_signature.result
-
-  @tff.federated_computation(model_and_count_type, model_type)
-  def accumulate(arg):
-    # TODO(b/175888145): Diagnose the newly emergent problem with tuple arg
-    # handling that gets in the way by forcing named elements here at input
-    # (i.e., we can't just declare `def accumulate(accumulator, model)` for
-    # reasons that yet need to be understood).
-    accumulator = arg[0]
-    model = arg[1]
-    return collections.OrderedDict([
-        ('model', combine_two_models(accumulator['model'], model)),
-        ('count', combine_two_counts(accumulator['count'], create_one_count()))
-    ])
-
-  @tff.federated_computation(model_and_count_type, model_and_count_type)
-  def merge(arg):
-    x = arg[0]
-    y = arg[1]
-    return collections.OrderedDict([
-        ('model', combine_two_models(x['model'], y['model'])),
-        ('count', combine_two_counts(x['count'], y['count']))
-    ])
-
-  @tff.federated_computation(model_and_count_type)
-  def report(x):
-    return divide_model_by_count(x['model'], x['count'])
-
   @tff.federated_computation
   def create_zero_model_on_server():
     return tff.federated_eval(create_zero_model, tff.SERVER)
@@ -177,9 +113,7 @@ def create_trainer(batch_size, step_size):
         train_on_one_client,
         collections.OrderedDict([('model', tff.federated_broadcast(model)),
                                  ('batches', federated_data)]))
-    return tff.federated_aggregate(locally_trained_models,
-                                   make_zero_model_and_count(), accumulate,
-                                   merge, report)
+    return tff.federated_mean(locally_trained_models)
 
   federated_averaging_process = tff.templates.IterativeProcess(
       initialize_fn=create_zero_model_on_server, next_fn=train_one_round)

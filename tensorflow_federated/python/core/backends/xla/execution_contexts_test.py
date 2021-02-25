@@ -60,6 +60,16 @@ class ExecutionContextsTest(absltest.TestCase):
     execution_contexts.set_local_execution_context()
     self.assertEqual(comp([1, 2, 3]), 6)
 
+  def test_unweighted_federated_mean_in_xla_execution_context(self):
+
+    @computations.federated_computation(
+        computation_types.FederatedType(np.float32, placements.CLIENTS))
+    def comp(x):
+      return intrinsics.federated_mean(x)
+
+    execution_contexts.set_local_execution_context()
+    self.assertEqual(comp([1.0, 2.0, 3.0]), 2.0)
+
 
 if __name__ == '__main__':
   absltest.main()
