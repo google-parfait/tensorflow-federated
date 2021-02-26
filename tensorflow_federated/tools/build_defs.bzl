@@ -19,7 +19,7 @@ def py_cpu_gpu_test(name, main = None, tags = [], **kwargs):
     py_test(
         name = name + "_cpu",
         main = main,
-        tags = tags,
+        tags = tags + ["-requires-gpu-nvidia"],
         **kwargs
     )
     py_test(
