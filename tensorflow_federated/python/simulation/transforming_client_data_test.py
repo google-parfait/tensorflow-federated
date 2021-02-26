@@ -60,12 +60,21 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
         client_data, _test_transform_cons, num_transformed_clients)
     client_ids = transformed_client_data.client_ids
     # Check length of client_ids.
-    self.assertLen(client_ids, 7)
+    self.assertLen(client_ids, num_transformed_clients)
     # Check that they are all strings.
     for client_id in client_ids:
       self.assertIsInstance(client_id, str)
     # Check ids are sorted.
     self.assertListEqual(client_ids, sorted(client_ids))
+
+  def test_default_num_transformed_clients(self):
+    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
+        TEST_DATA)
+    transformed_client_data = transforming_client_data.TransformingClientData(
+        client_data, _test_transform_cons)
+    client_ids = transformed_client_data.client_ids
+    # Check length of client_ids.
+    self.assertLen(client_ids, len(TEST_DATA))
 
   def test_fail_on_bad_client_id(self):
     client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(

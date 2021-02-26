@@ -15,6 +15,7 @@
 
 import bisect
 import re
+from typing import Any, Callable, List, Optional
 
 import tensorflow as tf
 
@@ -59,8 +60,10 @@ class TransformingClientData(client_data.ClientData):
   function if the identity is supported.
   """
 
-  def __init__(self, raw_client_data, make_transform_fn,
-               num_transformed_clients):
+  def __init__(self,
+               raw_client_data: client_data.ClientData,
+               make_transform_fn: Callable[[str, int], Callable[[Any], Any]],
+               num_transformed_clients: Optional[int] = None):
     """Initializes the TransformingClientData.
 
     Args:
@@ -76,24 +79,32 @@ class TransformingClientData(client_data.ClientData):
         Typically by convention the index 0 corresponds to the identity function
         if the identity is supported.
       num_transformed_clients: The total number of transformed clients to
-        produce. If it is an integer multiple k of the number of real clients,
-        there will be exactly k pseudo-clients per real client, with indices
-        0...k-1. Any remainder g will be generated from the first g real clients
-        and will be given index k.
+        produce. If `None`, only the original clients will be transformed. If it
+        is an integer multiple k of the number of real clients, there will be
+        exactly k pseudo-clients per real client, with indices 0...k-1. Any
+        remainder g will be generated from the first g real clients and will be
+        given index k.
     """
     py_typecheck.check_type(raw_client_data, client_data.ClientData)
     py_typecheck.check_callable(make_transform_fn)
-    py_typecheck.check_type(num_transformed_clients, int)
 
-    if num_transformed_clients <= 0:
-      raise ValueError('num_transformed_clients must be positive and finite.')
+    raw_client_ids = raw_client_data.client_ids
+    if not raw_client_ids:
+      raise ValueError('`raw_client_data` must be non-empty.')
+
+    if num_transformed_clients is None:
+      num_transformed_clients = len(raw_client_ids)
+    else:
+      py_typecheck.check_type(num_transformed_clients, int)
+      if num_transformed_clients <= 0:
+        raise ValueError('`num_transformed_clients` must be positive.')
+
     self._raw_client_data = raw_client_data
     self._make_transform_fn = make_transform_fn
 
     num_digits = len(str(num_transformed_clients - 1))
     format_str = '{}_{:0' + str(num_digits) + '}'
 
-    raw_client_ids = raw_client_data.client_ids
     k = num_transformed_clients // len(raw_client_ids)
     self._client_ids = []
     for raw_client_id in raw_client_ids:
@@ -107,10 +118,10 @@ class TransformingClientData(client_data.ClientData):
     self._client_ids = sorted(self._client_ids)
 
   @property
-  def client_ids(self):
+  def client_ids(self) -> List[str]:
     return self._client_ids
 
-  def create_tf_dataset_for_client(self, client_id):
+  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
     py_typecheck.check_type(client_id, str)
     i = bisect.bisect_left(self._client_ids, client_id)
     if i == len(self._client_ids) or self._client_ids[i] != client_id:
