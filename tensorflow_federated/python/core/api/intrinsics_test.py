@@ -206,6 +206,34 @@ class IntrinsicsTest(parameterized.TestCase):
         return intrinsics.federated_map(
             computations.tf_computation(lambda x: x > 10), x)
 
+  def test_federated_secure_select_succeeds(self):
+
+    @computations.federated_computation(
+        computation_types.at_server(computation_types.SequenceType(tf.string)),
+        computation_types.at_clients(tf.uint32))
+    def foo(database, keys):
+      val = intrinsics.federated_secure_select(database, keys)
+      self.assertIsInstance(val, value_base.Value)
+      return val
+
+    self.assert_type(
+        foo,
+        '(<database=string*@SERVER,keys={uint32}@CLIENTS> -> {string}@CLIENTS)')
+
+  def test_federated_select_succeeds(self):
+
+    @computations.federated_computation(
+        computation_types.at_server(computation_types.SequenceType(tf.string)),
+        computation_types.at_clients(tf.uint32))
+    def foo(database, keys):
+      val = intrinsics.federated_select(database, keys)
+      self.assertIsInstance(val, value_base.Value)
+      return val
+
+    self.assert_type(
+        foo,
+        '(<database=string*@SERVER,keys={uint32}@CLIENTS> -> {string}@CLIENTS)')
+
   def test_federated_sum_with_client_int(self):
 
     @computations.federated_computation(

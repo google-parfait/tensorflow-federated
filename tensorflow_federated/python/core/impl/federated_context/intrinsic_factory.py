@@ -13,6 +13,8 @@
 # limitations under the License.
 """A factory of intrinsics for use in composing federated computations."""
 
+import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
@@ -374,6 +376,34 @@ class IntrinsicFactory(object):
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_zip(value)
+    comp = self._bind_comp_as_reference(comp)
+    return value_impl.ValueImpl(comp, self._context_stack)
+
+  def federated_select(self, database, client_keys, secure):
+    """Implements `federated_select` as defined in `api/intrinsics.py`."""
+    database = value_impl.to_value(database, None, self._context_stack)
+    secure_string = '_secure' if secure else ''
+    if not (database.type_signature.is_federated() and
+            database.type_signature.member.is_sequence()):
+      raise TypeError(
+          f'Expected `federated{secure_string}_select` parameter `database` to '
+          'be a single federated sequence, found type '
+          f'{database.type_signature}')
+    client_keys = value_impl.to_value(client_keys, None, self._context_stack)
+    expected_keys_type = computation_types.at_clients(tf.uint32)
+    if not expected_keys_type.is_assignable_from(client_keys.type_signature):
+      raise TypeError(
+          f'Expected `federated{secure_string}_select` parameter `client_keys` '
+          'to be a 32-bit unsigned integer placed at clients:\n' +
+          computation_types.type_mismatch_error_message(
+              client_keys.type_signature,
+              expected_keys_type,
+              computation_types.TypeRelation.ASSIGNABLE,
+              second_is_expected=True))
+    database = value_impl.ValueImpl.get_comp(database)
+    client_keys = value_impl.ValueImpl.get_comp(client_keys)
+    comp = building_block_factory.create_federated_select(
+        database, client_keys, secure)
     comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 

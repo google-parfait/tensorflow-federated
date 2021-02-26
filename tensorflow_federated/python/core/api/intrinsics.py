@@ -301,6 +301,46 @@ def federated_secure_sum(value, bitwidth):
   return factory.federated_secure_sum(value, bitwidth)
 
 
+def federated_select(database, client_keys):
+  """Sends selected values from a server database to clients.
+
+  Args:
+    database: A `tff.SERVER`-placed sequence of values for clients to load from.
+    client_keys: `tff.CLIENTS`-placed `uint32` keys used to select the value
+      from `database` to load for each client.
+
+  Returns:
+    `tff.CLIENTS`-placed values loaded from the database.
+
+  Raises:
+    TypeError: If `database` is not a federated sequence type placed at
+      `tff.SERVER` or if `client_keys` is not of type `{uint32}@CLIENTS`.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.federated_select(database, client_keys, secure=False)
+
+
+def federated_secure_select(database, client_keys):
+  """Sends privately-selected values from a server database to  clients.
+
+  Args:
+    database: A `tff.SERVER`-placed sequence of values for clients to load from.
+    client_keys: `tff.CLIENTS`-placed `uint32` keys used to select the value
+      from `database` to load for each client. Unlike `federated_select`,
+      `federated_secure_select` guarantees that the key chosen by each client
+      remains private.
+
+  Returns:
+    `tff.CLIENTS`-placed values loaded from the database.
+
+  Raises:
+    TypeError: If `database` is not a federated sequence type placed at
+      `tff.SERVER` or if `client_keys` is not of type `{uint32}@CLIENTS`.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.federated_select(database, client_keys, secure=True)
+
+
 def federated_sum(value):
   """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
 

@@ -703,6 +703,25 @@ class CreateFederatedSecureSumTest(absltest.TestCase):
                      'int32@SERVER')
 
 
+class CreateFederatedSelectTest(absltest.TestCase):
+
+  def test_returns_federated_select(self):
+    for (secure, name) in [(False, 'federated_select'),
+                           (True, 'federated_secure_select')]:
+      value_type = computation_types.StructType([tf.int32, tf.int32])
+      database = building_blocks.Data(
+          'db',
+          computation_types.at_server(
+              computation_types.SequenceType(value_type)))
+      keys = building_blocks.Data('keys',
+                                  computation_types.at_clients(tf.uint32))
+      comp = building_block_factory.create_federated_select(
+          database, keys, secure)
+      self.assertEqual(comp.compact_representation(), f'{name}(<db,keys>)')
+      self.assertEqual(comp.type_signature.compact_representation(),
+                       '{<int32,int32>}@CLIENTS')
+
+
 class CreateFederatedSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
@@ -930,10 +949,8 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.StructType((type_signature, type_signature))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_zip_at_clients(v)'
-    )
+    self.assertEqual(comp.formatted_representation(),
+                     'federated_zip_at_clients(v)')
     self.assertEqual(str(comp.type_signature), '{<int32,int32>}@CLIENTS')
 
   def test_returns_federated_zip_at_clients_with_two_values_unnamed_tuple(self):
@@ -1103,10 +1120,8 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.StructType((type_signature, type_signature))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_zip_at_server(v)'
-    )
+    self.assertEqual(comp.formatted_representation(),
+                     'federated_zip_at_server(v)')
     self.assertEqual(str(comp.type_signature), '<int32,int32>@SERVER')
 
   def test_returns_federated_zip_at_server_with_two_values_named(self):
