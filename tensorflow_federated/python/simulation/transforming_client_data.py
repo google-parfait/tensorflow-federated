@@ -25,25 +25,6 @@ from tensorflow_federated.python.simulation import client_data
 CLIENT_ID_REGEX = re.compile(r'^(.*)_(\d+)$')
 
 
-def split_client_id(client_id):
-  """Splits pseudo-client id into raw client id and index components.
-
-  Args:
-    client_id: The pseudo-client id.
-
-  Returns:
-    A tuple (raw_client_id, index) where raw_client_id is the string of the raw
-    client_id, and index is the integer index of the pseudo-client.
-  """
-  py_typecheck.check_type(client_id, str)
-  match = CLIENT_ID_REGEX.search(client_id)
-  if not match:
-    raise ValueError('client_id must be a valid string from client_ids.')
-  raw_client_id = match.group(1)
-  index = int(match.group(2))
-  return raw_client_id, index
-
-
 class TransformingClientData(client_data.ClientData):
   """Transforms client data, potentially expanding by adding pseudo-clients.
 
@@ -102,17 +83,22 @@ class TransformingClientData(client_data.ClientData):
     self._raw_client_data = raw_client_data
     self._make_transform_fn = make_transform_fn
 
-    num_digits = len(str(num_transformed_clients - 1))
-    format_str = '{}_{:0' + str(num_digits) + '}'
+    self._has_pseudo_clients = num_transformed_clients > len(raw_client_ids)
 
-    k = num_transformed_clients // len(raw_client_ids)
-    self._client_ids = []
-    for raw_client_id in raw_client_ids:
-      for i in range(k):
-        self._client_ids.append(format_str.format(raw_client_id, i))
-    num_extra_client_ids = num_transformed_clients - k * len(raw_client_ids)
-    for c in range(num_extra_client_ids):
-      self._client_ids.append(format_str.format(raw_client_ids[c], k))
+    if self._has_pseudo_clients:
+      num_digits = len(str(num_transformed_clients - 1))
+      format_str = '{}_{:0' + str(num_digits) + '}'
+
+      k = num_transformed_clients // len(raw_client_ids)
+      self._client_ids = []
+      for raw_client_id in raw_client_ids:
+        for i in range(k):
+          self._client_ids.append(format_str.format(raw_client_id, i))
+      num_extra_client_ids = num_transformed_clients - k * len(raw_client_ids)
+      for c in range(num_extra_client_ids):
+        self._client_ids.append(format_str.format(raw_client_ids[c], k))
+    else:
+      self._client_ids = raw_client_ids
 
     # Already sorted if raw_client_data.client_ids are, but just to be sure...
     self._client_ids = sorted(self._client_ids)
@@ -121,13 +107,34 @@ class TransformingClientData(client_data.ClientData):
   def client_ids(self) -> List[str]:
     return self._client_ids
 
+  def split_client_id(self, client_id):
+    """Splits pseudo-client id into raw client id and index components.
+
+    Args:
+      client_id: The pseudo-client id.
+
+    Returns:
+      A tuple (raw_client_id, index) where raw_client_id is the string of the
+      raw client_id, and index is the integer index of the pseudo-client.
+    """
+    if not self._has_pseudo_clients:
+      return client_id, 0
+
+    py_typecheck.check_type(client_id, str)
+    match = CLIENT_ID_REGEX.search(client_id)
+    if not match:
+      raise ValueError('client_id must be a valid string from client_ids.')
+    raw_client_id = match.group(1)
+    index = int(match.group(2))
+    return raw_client_id, index
+
   def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
     py_typecheck.check_type(client_id, str)
     i = bisect.bisect_left(self._client_ids, client_id)
     if i == len(self._client_ids) or self._client_ids[i] != client_id:
       raise ValueError('client_id must be a valid string from client_ids.')
 
-    raw_client_id, index = split_client_id(client_id)
+    raw_client_id, index = self.split_client_id(client_id)
     raw_dataset = self._raw_client_data.create_tf_dataset_for_client(
         raw_client_id)
 
