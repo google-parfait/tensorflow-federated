@@ -33,6 +33,8 @@ upper_tabs:
         path: /federated/tutorials/tff_for_federated_learning_research_compression
       - title: "Working with ClientData"
         path: /federated/tutorials/working_with_client_data
+      - title: "Experimental support for JAX in TFF"
+        path: /federated/experimental/tutorials/jax_support
     - name: Guide
       contents:
       # The first item serves as the landing page and transitively leads to all the remaining
