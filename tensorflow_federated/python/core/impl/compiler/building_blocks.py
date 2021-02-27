@@ -338,14 +338,7 @@ class Selection(ComputationBuildingBlock):
     _check_computation_oneof(computation_proto, 'selection')
     selection = ComputationBuildingBlock.from_proto(
         computation_proto.selection.source)
-    selection_oneof = computation_proto.selection.WhichOneof('selection')
-    if selection_oneof == 'name':
-      return cls(selection, name=str(computation_proto.selection.name))
-    elif selection_oneof == 'index':
-      return cls(selection, index=computation_proto.selection.index)
-    else:
-      raise ValueError('Unknown selection type \'{}\' in {}.'.format(
-          selection_oneof, computation_proto))
+    return cls(selection, index=computation_proto.selection.index)
 
   def __init__(self, source, name=None, index=None):
     """A selection from 'source' by a string or numeric 'name_or_index'.
@@ -400,10 +393,7 @@ class Selection(ComputationBuildingBlock):
     self._index = index
 
   def _proto(self):
-    if self._name is not None:
-      selection = pb.Selection(source=self._source.proto, name=self._name)
-    else:
-      selection = pb.Selection(source=self._source.proto, index=self._index)
+    selection = pb.Selection(source=self._source.proto, index=self.as_index())
     return pb.Computation(
         type=type_serialization.serialize_type(self.type_signature),
         selection=selection)

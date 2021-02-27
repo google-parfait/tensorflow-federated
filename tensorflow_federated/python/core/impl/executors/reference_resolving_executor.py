@@ -457,10 +457,8 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       comp: pb.Computation,
       scope: ReferenceResolvingExecutorScope,
   ) -> ReferenceResolvingExecutorValue:
-    which_selection = comp.selection.WhichOneof('selection')
     source = await self._evaluate(comp.selection.source, scope=scope)
-    return await self.create_selection(
-        source, **{which_selection: getattr(comp.selection, which_selection)})
+    return await self.create_selection(source, index=comp.selection.index)
 
   @tracing.trace(stats=False)
   async def _evaluate_struct(

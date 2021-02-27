@@ -804,10 +804,7 @@ message Selection {
   // A specification of what to select from the context (Struct). Indexes,
   // when applied to Structs, are 0-based, i.e., "[0]" selects the first
   // element.
-  oneof selection {
-    string name = 2;
-    int32 index = 3;
-  }
+  int32 index = 3;
 }
 
 // A specification of an external source of data to be used by a computation.

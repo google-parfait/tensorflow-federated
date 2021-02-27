@@ -217,12 +217,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
 
       async def _processing():
         source = await asyncio.wrap_future(source_fut)
-        which_selection = request.WhichOneof('selection')
-        if which_selection == 'name':
-          coro = self.executor.create_selection(source, name=request.name)
-        else:
-          coro = self.executor.create_selection(source, index=request.index)
-        return await coro
+        return await self.executor.create_selection(source, index=request.index)
 
       result_fut = self._run_coro_threadsafe_with_tracing(_processing())
       result_id = str(uuid.uuid4())

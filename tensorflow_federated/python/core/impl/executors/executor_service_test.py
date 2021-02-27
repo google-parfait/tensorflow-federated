@@ -293,11 +293,10 @@ class ExecutorServiceTest(absltest.TestCase):
     tuple_ref = response.value_ref
     self.assertEqual(str(env.get_value(tuple_ref.id)), '<a=10,b=20>')
 
-    for arg_name, arg_val, result_val in [('name', 'a', 10), ('name', 'b', 20),
-                                          ('index', 0, 10), ('index', 1, 20)]:
+    for index, result_val in [(0, 10), (1, 20)]:
       response = env.stub.CreateSelection(
           executor_pb2.CreateSelectionRequest(
-              source_ref=tuple_ref, **{arg_name: arg_val}))
+              source_ref=tuple_ref, index=index))
       self.assertIsInstance(response, executor_pb2.CreateSelectionResponse)
       selection_ref = response.value_ref
       self.assertEqual(env.get_value(selection_ref.id), result_val)

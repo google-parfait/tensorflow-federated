@@ -78,7 +78,8 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
         type_serialization.deserialize_type(y_proto.type), y.type_signature)
     self.assertEqual(y_proto.WhichOneof('computation'), 'selection')
     self.assertEqual(str(y_proto.selection.source), str(x.proto))
-    self.assertEqual(y_proto.selection.name, 'bar')
+    # Our serialized representation only uses indices.
+    self.assertEqual(y_proto.selection.index, 0)
     self._serialize_deserialize_roundtrip_test(y)
     self._serialize_deserialize_roundtrip_test(z)
     self._serialize_deserialize_roundtrip_test(x0)

@@ -77,11 +77,7 @@ message CreateStructResponse {
 
 message CreateSelectionRequest {
   ValueRef source_ref = 1;
-
-  oneof selection {
-    string name = 2;
-    int32 index = 3;
-  }
+  int32 index = 3;
 }
 
 message CreateSelectionResponse {
