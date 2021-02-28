@@ -15,6 +15,8 @@
 
 from typing import Callable, List, Optional, Tuple, Type, Union
 
+import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
@@ -23,6 +25,7 @@ from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.tensorflow_libs import version_check
 
 _TypeOrTupleOfTypes = Union[
     Type[building_blocks.ComputationBuildingBlock],
@@ -465,13 +468,14 @@ def _compiled_comp_equal(comp_1, comp_2):
 
   graphdef_1 = serialization_utils.unpack_graph_def(tensorflow_1.graph_def)
   graphdef_2 = serialization_utils.unpack_graph_def(tensorflow_2.graph_def)
-  # TODO(b/174605105): We prefer to mitigate nans comparing unequal for now,
-  # given the severity of TFF's failure to handle this violation of its
-  # assumption that trees_equal is an equivalence relation on its ASTs. But this
-  # is not a long-term solution. To replace with more legitimate proto
-  # comparison which treats nans as equal.
-  return graphdef_1.SerializeToString(
-      deterministic=True) == graphdef_2.SerializeToString(deterministic=True)
+  # TODO(b/174605105): Remove this gating when TFF updates its TensorFlow
+  # dependency.
+  if version_check.is_tensorflow_version_newer('2.6.0', tf):
+    return tf.__internal__.graph_util.graph_defs_equal(
+        graphdef_1, graphdef_2, treat_nan_as_equal=True)
+  else:
+    return graphdef_1.SerializeToString(
+        deterministic=True) == graphdef_2.SerializeToString(deterministic=True)
 
 
 def trees_equal(comp_1, comp_2):
