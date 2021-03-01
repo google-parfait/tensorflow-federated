@@ -18,38 +18,59 @@ import collections
 import attr
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure as struct_lib
 
 
-def update_state(state, **kwargs):
-  """Returns a new `state` with new values for fields in `kwargs`.
+def update_state(structure, **kwargs):
+  """Constructs a new `structure` with new values for fields in `kwargs`.
+
+  This is a helper method for working structured objects in a functional manner.
+  This method will create a new structure where the fields named by keys in
+  `kwargs` replaced with the associated values.
+
+  NOTE: This method only works on the first level of `structure`, and does not
+  recurse in the case of nested structures. A field that is itself a structure
+  can be replaced with another structure.
 
   Args:
-    state: the structure with named fields to update.
-    **kwargs: the list of key-value pairs of fields to update in `state`.
+    structure: The structure with named fields to update.
+    **kwargs: The list of key-value pairs of fields to update inof `structure`.
+
+  Returns:
+    A new instance of the same type of `structure`, with the fields named
+    in the keys of `**kwargs` replaced with the associated values.
 
   Raises:
-    KeyError: if kwargs contains a field that is not in state.
-    TypeError: if state is not a structure with named fields.
+    KeyError: If kwargs contains a field that is not in structure.
+    TypeError: If structure is not a structure with named fields.
   """
-  # TODO(b/129569441): Support Struct as well.
-  if not (py_typecheck.is_named_tuple(state) or py_typecheck.is_attrs(state) or
-          isinstance(state, collections.abc.Mapping)):
-    raise TypeError('state must be a structure with named fields (e.g. '
-                    'dict, attrs class, collections.namedtuple), '
-                    'but found {}'.format(type(state)))
-  if py_typecheck.is_named_tuple(state):
+  if not (py_typecheck.is_named_tuple(structure) or
+          py_typecheck.is_attrs(structure) or
+          isinstance(structure, (struct_lib.Struct, collections.abc.Mapping))):
+    raise TypeError('`structure` must be a structure with named fields (e.g. '
+                    'dict, attrs class, collections.namedtuple, '
+                    'tff.structure.Struct), but found {}'.format(
+                        type(structure)))
+  if isinstance(structure, struct_lib.Struct):
+    elements = [(k, v) if k not in kwargs else (k, kwargs.pop(k))
+                for k, v in struct_lib.iter_elements(structure)]
+    if kwargs:
+      raise KeyError(f'`structure` does not contain fields named {kwargs}')
+    return struct_lib.Struct(elements)
+  elif py_typecheck.is_named_tuple(structure):
     # In Python 3.8 and later `_asdict` no longer return OrdereDict, rather a
-    # regular `dict`.
-    d = collections.OrderedDict(state._asdict())
-  elif py_typecheck.is_attrs(state):
-    d = attr.asdict(state, dict_factory=collections.OrderedDict)
+    # regular `dict`, so we wrap here to get consistent types across Python
+    # version.s
+    d = collections.OrderedDict(structure._asdict())
+  elif py_typecheck.is_attrs(structure):
+    d = attr.asdict(structure, dict_factory=collections.OrderedDict)
   else:
     for key in kwargs:
-      if key not in state:
+      if key not in structure:
         raise KeyError(
-            'state does not contain a field named "{!s}"'.format(key))
-    d = state
+            'structure does not contain a field named "{!s}"'.format(key))
+    d = structure
   d.update(kwargs)
-  if isinstance(state, collections.abc.Mapping):
+  if isinstance(structure, collections.abc.Mapping):
     return d
-  return type(state)(**d)
+  return type(structure)(**d)

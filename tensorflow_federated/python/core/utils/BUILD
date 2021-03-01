@@ -30,7 +30,10 @@ py_library(
     name = "computation_utils",
     srcs = ["computation_utils.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/common_libs:py_typecheck"],
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+    ],
 )
 
 py_test(
@@ -41,6 +44,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_utils",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:test_case",
     ],
 )

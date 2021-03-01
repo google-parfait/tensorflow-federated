@@ -16,11 +16,46 @@ import collections
 
 import attr
 
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.utils import computation_utils
 
 
+# Convenience alias.
+Struct = structure.Struct
+
+
 class ComputationUtilsTest(test_case.TestCase):
+
+  def test_update_state_tff_struct(self):
+    with self.subTest('fully_named'):
+      state = Struct([('a', 1), ('b', 2), ('c', 3)])
+      state = computation_utils.update_state(state, c=7)
+      self.assertEqual(state, Struct([('a', 1), ('b', 2), ('c', 7)]))
+      state = computation_utils.update_state(state, a=8)
+      self.assertEqual(state, Struct([('a', 8), ('b', 2), ('c', 7)]))
+    with self.subTest('partially_named'):
+      state = Struct([(None, 1), ('b', 2), (None, 3)])
+      state = computation_utils.update_state(state, b=7)
+      self.assertEqual(state, Struct([(None, 1), ('b', 7), (None, 3)]))
+      with self.assertRaises(KeyError):
+        computation_utils.update_state(state, a=8)
+    with self.subTest('nested'):
+      state = Struct([('a', {'a1': 1, 'a2': 2}), ('b', 2), ('c', 3)])
+      state = computation_utils.update_state(state, a=7)
+      self.assertEqual(state, Struct([('a', 7), ('b', 2), ('c', 3)]))
+      state = computation_utils.update_state(state, a={'foo': 1, 'bar': 2})
+      self.assertEqual(
+          state, Struct([('a', {
+              'foo': 1,
+              'bar': 2
+          }), ('b', 2), ('c', 3)]))
+    with self.subTest('unnamed'):
+      state = Struct((None, i) for i in range(3))
+      with self.assertRaises(KeyError):
+        computation_utils.update_state(state, a=1)
+      with self.assertRaises(KeyError):
+        computation_utils.update_state(state, b=1)
 
   def test_update_state_namedtuple(self):
     my_tuple_type = collections.namedtuple('my_tuple_type', 'a b c')
@@ -61,9 +96,9 @@ class ComputationUtilsTest(test_case.TestCase):
     self.assertEqual(state3, TestAttrsClass(8, 2, 7))
 
   def test_update_state_fails(self):
-    with self.assertRaisesRegex(TypeError, 'state must be a structure'):
+    with self.assertRaisesRegex(TypeError, '`structure` must be a structure'):
       computation_utils.update_state((1, 2, 3), a=8)
-    with self.assertRaisesRegex(TypeError, 'state must be a structure'):
+    with self.assertRaisesRegex(TypeError, '`structure` must be a structure'):
       computation_utils.update_state([1, 2, 3], a=8)
     with self.assertRaisesRegex(KeyError, 'does not contain a field'):
       computation_utils.update_state({'z': 1}, a=8)
