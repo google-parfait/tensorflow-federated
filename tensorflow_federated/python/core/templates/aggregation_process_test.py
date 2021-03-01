@@ -96,6 +96,19 @@ class AggregationProcessTest(test_case.TestCase):
       self.fail('Could not construct an AggregationProcess with parameter '
                 'types with statically unknown shape.')
 
+  def test_construction_with_value_type_mismatch_does_not_raise(self):
+
+    @computations.federated_computation(SERVER_INT, CLIENTS_FLOAT)
+    def next_fn(state, val):
+      del val
+      return MeasuredProcessOutput(state, state, server_zero())
+
+    try:
+      aggregation_process.AggregationProcess(test_initialize_fn, next_fn)
+    except:  # pylint: disable=bare-except
+      self.fail('Could not construct an AggregationProcess with different '
+                'client and server placed types.')
+
   def test_init_not_tff_computation_raises(self):
     with self.assertRaisesRegex(TypeError, r'Expected .*\.Computation, .*'):
       aggregation_process.AggregationProcess(
@@ -259,17 +272,6 @@ class AggregationProcessTest(test_case.TestCase):
       return MeasuredProcessOutput(state, intrinsics.federated_sum(val), val)
 
     with self.assertRaises(aggregation_process.AggregationPlacementError):
-      aggregation_process.AggregationProcess(test_initialize_fn, next_fn)
-
-  def test_next_value_type_mismatch_raises(self):
-
-    @computations.federated_computation(SERVER_INT, CLIENTS_FLOAT)
-    def next_fn(state, val):
-      del val
-      return MeasuredProcessOutput(state, state, server_zero())
-
-    with self.assertRaises(
-        aggregation_process.AggregationValueTypeMismatchError):
       aggregation_process.AggregationProcess(test_initialize_fn, next_fn)
 
   def test_is_weighted_property(self):

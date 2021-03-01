@@ -486,7 +486,7 @@ def _is_valid_broadcast_process(
           next_type.result.result.placement is placements.CLIENTS)
 
 
-def _is_valid_aggregation_process(
+def _is_valid_model_update_aggregation_process(
     process: measured_process.MeasuredProcess) -> bool:
   """Validates a `MeasuredProcess` adheres to the aggregation signature.
 
@@ -500,10 +500,13 @@ def _is_valid_aggregation_process(
     `True` iff the process is a validate aggregation process, otherwise `False`.
   """
   next_type = process.next.type_signature
+  input_client_value_type = next_type.parameter[1]
+  result_server_value_type = next_type.result[1]
   return (isinstance(process, measured_process.MeasuredProcess) and
           _is_valid_stateful_process(process) and
-          next_type.parameter[1].placement is placements.CLIENTS and
-          next_type.result.result.placement is placements.SERVER)
+          input_client_value_type.placement is placements.CLIENTS and
+          result_server_value_type.placement is placements.SERVER and
+          input_client_value_type.member == result_server_value_type.member)
 
 
 # ============================================================================
@@ -634,10 +637,8 @@ def build_model_delta_optimizer_process(
   if aggregation_process is None:
     if model_update_aggregation_factory is None:
       model_update_aggregation_factory = mean.MeanFactory()
-
     py_typecheck.check_type(model_update_aggregation_factory,
                             factory.AggregationFactory.__args__)
-
     if isinstance(model_update_aggregation_factory,
                   factory.WeightedAggregationFactory):
       aggregation_process = model_update_aggregation_factory.create(
@@ -646,6 +647,15 @@ def build_model_delta_optimizer_process(
     else:
       aggregation_process = model_update_aggregation_factory.create(
           model_weights_type.trainable)
+    process_signature = aggregation_process.next.type_signature
+    input_client_value_type = process_signature.parameter[1]
+    result_server_value_type = process_signature.result[1]
+    if input_client_value_type.member != result_server_value_type.member:
+      raise TypeError('`model_update_aggregation_factory` does not produce a '
+                      'compatible `AggregationProcess`. The processes must '
+                      'retain the type structure of the inputs on the '
+                      f'server, but got {input_client_value_type.member} != '
+                      f'{result_server_value_type.member}.')
   else:
     next_num_args = len(aggregation_process.next.type_signature.parameter)
     if next_num_args not in [2, 3]:
@@ -654,11 +664,12 @@ def build_model_delta_optimizer_process(
           f'unweighted aggregation) or three (for weighted aggregation) '
           f'arguments. Found {next_num_args}.')
 
-  if not _is_valid_aggregation_process(aggregation_process):
+  if not _is_valid_model_update_aggregation_process(aggregation_process):
     raise ProcessTypeError(
         'aggregation_process type signature does not conform to expected '
-        'signature (<state@S, input@C> -> <state@S, result@S, measurements@S>).'
-        ' Got: {t}'.format(t=aggregation_process.next.type_signature))
+        'signature (<state@S, model_udpate@C> -> <state@S, model_update@S, '
+        'measurements@S>). Got: {t}'.format(
+            t=aggregation_process.next.type_signature))
 
   initialize_computation = _build_initialize_computation(
       model_fn=model_fn,

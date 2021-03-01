@@ -90,6 +90,7 @@ py_cpu_gpu_test(
     deps = [
         ":optimizer_utils",
         "//tensorflow_federated/python/aggregators:mean",
+        "//tensorflow_federated/python/aggregators:sampling",
         "//tensorflow_federated/python/aggregators:sum_factory",
         "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computation_types",

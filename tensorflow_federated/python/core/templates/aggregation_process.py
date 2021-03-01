@@ -33,11 +33,6 @@ class AggregationPlacementError(TypeError):
   pass
 
 
-class AggregationValueTypeMismatchError(TypeError):
-  """`TypeError` for type mismatch of value being aggregated."""
-  pass
-
-
 class AggregationProcess(measured_process.MeasuredProcess):
   """A stateful process that aggregates values.
 
@@ -101,9 +96,6 @@ class AggregationProcess(measured_process.MeasuredProcess):
         computations operating on federated types.
       AggregationPlacementError: If the placements of `initialize_fn` and
         `next_fn` are not matching the expected type signature.
-      AggregationValueTypeMismatchError: If the second input argument of
-        `next_fn` does not have the same non-federated type as the "result"
-        attribute of the returned value.
     """
     # Calling super class __init__ first ensures that
     # next_fn.type_signature.result is a `MeasuredProcessOutput`, make our
@@ -154,16 +146,6 @@ class AggregationProcess(measured_process.MeasuredProcess):
       raise AggregationPlacementError(
           f'The "measurements" attribute of return type of `next_fn` must be '
           f'placed at SERVER, but found {next_fn_result.measurements}.')
-
-    if (next_fn_param[_INPUT_PARAM_INDEX].member !=
-        next_fn_result.result.member):
-      raise AggregationValueTypeMismatchError(
-          f'The second input argument of `next_fn` must be of the same '
-          f'non-federated type as the "result" attribute of the returned '
-          f'structure, but found:\n'
-          f'Second input argument of next_fn:\n'
-          f'{next_fn_param[_INPUT_PARAM_INDEX]}\n'
-          f'The "result" attribute:\n{next_fn_result.result}')
 
   @property
   def next(self) -> computation_base.Computation:

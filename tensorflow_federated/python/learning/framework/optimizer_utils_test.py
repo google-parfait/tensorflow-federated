@@ -20,6 +20,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import mean
+from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.aggregators import sum_factory
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
@@ -185,7 +186,6 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
   def test_construction(self, weighted):
     aggregation_factory = (
         mean.MeanFactory() if weighted else sum_factory.SumFactory())
-
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
@@ -211,12 +211,10 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             optimizer_state=[tf.int64],
             delta_aggregate_state=aggregate_state,
             model_broadcast_state=()), placements.SERVER)
-
-    self.assertEqual(
-        str(
-            computation_types.FunctionType(
-                parameter=None, result=server_state_type)),
-        str(iterative_process.initialize.type_signature))
+    self.assert_types_equivalent(
+        computation_types.FunctionType(
+            parameter=None, result=server_state_type),
+        iterative_process.initialize.type_signature)
 
     dataset_type = computation_types.FederatedType(
         computation_types.SequenceType(
@@ -224,7 +222,6 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
                 x=computation_types.TensorType(tf.float32, [None, 2]),
                 y=computation_types.TensorType(tf.float32, [None, 1]))),
         placements.CLIENTS)
-
     metrics_type = computation_types.FederatedType(
         collections.OrderedDict(
             broadcast=(),
@@ -235,16 +232,25 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             stat=collections.OrderedDict(
                 num_examples=computation_types.TensorType(tf.float32))),
         placements.SERVER)
+    self.assert_types_equivalent(
+        computation_types.FunctionType(
+            parameter=collections.OrderedDict(
+                server_state=server_state_type,
+                federated_dataset=dataset_type,
+            ),
+            result=(server_state_type, metrics_type)),
+        iterative_process.next.type_signature)
 
-    self.assertEqual(
-        str(
-            computation_types.FunctionType(
-                parameter=collections.OrderedDict(
-                    server_state=server_state_type,
-                    federated_dataset=dataset_type,
-                ),
-                result=(server_state_type, metrics_type))),
-        str(iterative_process.next.type_signature))
+  def test_construction_fails_with_invalid_aggregation_factory(self):
+    aggregation_factory = sampling.UnweightedReservoirSamplingFactory(
+        sample_size=1)
+    with self.assertRaisesRegex(
+        TypeError, 'does not produce a compatible `AggregationProcess`'):
+      optimizer_utils.build_model_delta_optimizer_process(
+          model_fn=model_examples.LinearRegression,
+          model_to_client_delta_fn=DummyClientDeltaFn,
+          server_optimizer_fn=tf.keras.optimizers.SGD,
+          model_update_aggregation_factory=aggregation_factory)
 
   def test_construction_with_adam_optimizer(self):
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
