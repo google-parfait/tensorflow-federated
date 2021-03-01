@@ -10,15 +10,6 @@ package_group(
 
         # Impl Dependencies
         "//tensorflow_federated/python/core/impl/wrappers/...",
-
-        # This package dependency is required to initialize a default executor
-        # in `core/__init__.py`; which is implicitly executed once the first
-        # time a module in the `core` package is imported.
-        "//tensorflow_federated/python/core",
-
-        # TODO(b/143772942): This package is temporary and can be removed once
-        # all the appropriate modules have been moved out of the `impl` package.
-        "//tensorflow_federated/python/core/impl",
     ],
 )
 

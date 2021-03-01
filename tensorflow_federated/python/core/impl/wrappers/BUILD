@@ -6,10 +6,6 @@ package_group(
     packages = [
         # Subpackages
         "//tensorflow_federated/python/core/impl/wrappers/...",
-
-        # TODO(b/143772942): This package is temporary and can be removed once
-        # all the appropriate modules have been moved out of the `impl` package.
-        "//tensorflow_federated/python/core/impl",
     ],
 )
 

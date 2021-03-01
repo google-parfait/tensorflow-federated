@@ -3,9 +3,7 @@ load("@rules_python//python:defs.bzl", "py_library")
 # Packages that have visibility into the `impl` package.
 package_group(
     name = "impl_visibility",
-    includes = [
-        "//tensorflow_federated/python/core:core_visibility",
-    ],
+    includes = ["//tensorflow_federated/python/core:core_visibility"],
     packages = [
         "//tensorflow_federated/python/core/api/...",
         "//tensorflow_federated/python/core/backends/...",
@@ -16,16 +14,7 @@ package_group(
     ],
 )
 
-package_group(
-    name = "default_visibility",
-    includes = [":impl_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/core/impl/...",
-    ],
-)
-
-package(default_visibility = [":default_visibility"])
+package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])
 
