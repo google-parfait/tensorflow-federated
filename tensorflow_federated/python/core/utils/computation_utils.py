@@ -34,7 +34,7 @@ def update_state(structure, **kwargs):
 
   Args:
     structure: The structure with named fields to update.
-    **kwargs: The list of key-value pairs of fields to update inof `structure`.
+    **kwargs: The list of key-value pairs of fields to update in `structure`.
 
   Returns:
     A new instance of the same type of `structure`, with the fields named
