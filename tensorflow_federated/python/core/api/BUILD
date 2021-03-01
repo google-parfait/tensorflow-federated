@@ -16,9 +16,8 @@ package_group(
         # Namespace Dependencies
         "//tensorflow_federated",
 
-        # TODO(b/143772942): This visibility is circular, it would be clearer if
-        # the `api` package could depend on the `impl` package but not the other
-        # way around.
+        # TODO(b/181569610): Clean up circular dependency between the `api` and
+        # `impl` packages.
         "//tensorflow_federated/python/core/impl/...",
     ],
 )
