@@ -33,7 +33,7 @@ types of logic.
 
 1.  An outer driver script that simulates the control logic of a production FL
     system, selecting simulated clients from a dataset and then executing
-    federated comptuations defined in 2. on those clients. For example,
+    federated computations defined in 2. on those clients. For example,
     [a Federated EMNIST experiment driver](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples/simple_fedavg/emnist_fedavg_main.py).
 
 ## Federated learning datasets
@@ -154,20 +154,15 @@ privacy. For an example of training with DP using
 [this experiment driver](https://github.com/google-research/federated/blob/master/differential_privacy/stackoverflow/run_federated.py).
 
 If you want to implement a custom DP algorithm and apply it to the aggregate
-updates of federated averaging, you can:
-
-1.  Implement a new DP mean algorithm as a subclass of
-    [`tensorflow_privacy.DPQuery`](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/dp_query/dp_query.py#L54),
-1.  construct your new `DPQuery` similarly to the way standard `DPQueries` are
-    constructed
-    [here](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/utils/differential_privacy.py#L37-L134),
-1.  and pass your query instance into `tff.utils.build_dp_aggregate()` similarly
-    to
-    [`run_federated`](https://github.com/google-research/federated/blob/master/differential_privacy/stackoverflow/run_federated.py#L199).
+updates of federated averaging, you can implement a new DP mean algorithm as a
+subclass of
+[`tensorflow_privacy.DPQuery`](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/dp_query/dp_query.py#L54)
+and create a `tff.aggregators.DifferentiallyPrivateFactory` with an instance of
+your query.
 
 Federated GANs (described [below](#generative_adversarial_networks)) are another
 example of a TFF project implementing user-level differential privacy (e.g.,
-[here in code](https://github.com/google-research/federated/blob/master/gans/tff_gans.py#L293)).
+[here in code](https://github.com/google-research/federated/blob/master/gans/tff_gans.py#L144)).
 
 ### Robustness and attacks
 
