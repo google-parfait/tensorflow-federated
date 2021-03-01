@@ -88,7 +88,7 @@ TODO(b/148163833): Refactor the `compiled_computation_transforms` into
 [TensorFlow computation](#tensorflow-computation) transformations.
 
 The
-[tree_to_cc_transformations](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/tree_to_cc_transformations.py)
+[tree_to_cc_transformations](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/compiler/tree_to_cc_transformations.py)
 module contains composite [building block](#building-block) transformations
 representing the syntax-directed definition (SDD) logic.
 

@@ -13,18 +13,17 @@
 # limitations under the License.
 
 import tensorflow as tf
+
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.impl import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
+from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
+from tensorflow_federated.python.core.impl.compiler import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.context_stack import set_default_context
-from tensorflow_federated.python.core.impl.executors import execution_context
-from tensorflow_federated.python.core.impl.executors import executor_stacks
-from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
 def _create_compiled_computation(py_fn, parameter_type):
@@ -53,7 +52,7 @@ class ParseTFFToTFTest(test_case.TestCase):
 
   def test_does_not_transform_standalone_intrinsic(self):
     type_signature = computation_types.TensorType(tf.int32)
-    standalone_intrinsic = building_blocks.Intrinsic('dummy', type_signature)
+    standalone_intrinsic = building_blocks.Intrinsic('test', type_signature)
     non_transformed, _ = parse_tff_to_tf(standalone_intrinsic)
     self.assertEqual(standalone_intrinsic.compact_representation(),
                      non_transformed.compact_representation())
@@ -71,16 +70,13 @@ class ParseTFFToTFTest(test_case.TestCase):
                                             selection_from_call)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
-    self.assertEqual(exec_lambda([0, 1.]), exec_tf([0, 1.]))
+    result = test_utils.run_tensorflow(parsed.proto, [0, 1.0])
+    self.assertEqual(1.0, result)
 
   def test_replaces_lambda_to_called_graph_with_tf_of_same_type(self):
     identity_tf_block_type = computation_types.TensorType(tf.int32)
@@ -91,16 +87,13 @@ class ParseTFFToTFTest(test_case.TestCase):
     lambda_wrapper = building_blocks.Lambda('x', tf.int32, called_tf_block)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
-    self.assertEqual(exec_lambda(2), exec_tf(2))
+    result = test_utils.run_tensorflow(parsed.proto, 2)
+    self.assertEqual(2, result)
 
   def test_replaces_lambda_to_called_graph_on_selection_from_arg_with_tf_of_same_type(
       self):
@@ -114,21 +107,13 @@ class ParseTFFToTFTest(test_case.TestCase):
                                             called_tf_block)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
-
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-    self.assertEqual(exec_lambda([3, 4.]), exec_tf([3, 4.]))
+    result = test_utils.run_tensorflow(parsed.proto, [3, 4.0])
+    self.assertEqual(3, result)
 
   def test_replaces_lambda_to_called_graph_on_selection_from_arg_with_tf_of_same_type_with_names(
       self):
@@ -144,15 +129,12 @@ class ParseTFFToTFTest(test_case.TestCase):
                                             called_tf_block)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    self.assertEqual(exec_lambda({'a': 5, 'b': 6.}), exec_tf({'a': 5, 'b': 6.}))
+    result = test_utils.run_tensorflow(parsed.proto, {'a': 5, 'b': 6.0})
+    self.assertEqual(5, result)
 
   def test_replaces_lambda_to_called_graph_on_tuple_of_selections_from_arg_with_tf_of_same_type(
       self):
@@ -169,20 +151,13 @@ class ParseTFFToTFTest(test_case.TestCase):
                                             called_tf_block)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-    self.assertEqual(exec_lambda([7, 8., True]), exec_tf([7, 8., True]))
+    result = test_utils.run_tensorflow(parsed.proto, [7, 8.0, True])
+    self.assertEqual(structure.Struct([(None, 7), (None, True)]), result)
 
   def test_replaces_lambda_to_called_graph_on_tuple_of_selections_from_arg_with_tf_of_same_type_with_names(
       self):
@@ -202,28 +177,16 @@ class ParseTFFToTFTest(test_case.TestCase):
                                             called_tf_block)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
     self.assertEqual(parsed.type_signature, lambda_wrapper.type_signature)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-    self.assertEqual(
-        exec_lambda({
-            'a': 9,
-            'b': 10.,
-            'c': False
-        }), exec_tf({
-            'a': 9,
-            'b': 10.,
-            'c': False
-        }))
+    result = test_utils.run_tensorflow(parsed.proto, {
+        'a': 9,
+        'b': 10.0,
+        'c': False,
+    })
+    self.assertEqual(structure.Struct([(None, 9), (None, False)]), result)
 
   def test_replaces_lambda_to_unnamed_tuple_of_called_graphs_with_tf_of_same_type(
       self):
@@ -247,21 +210,13 @@ class ParseTFFToTFTest(test_case.TestCase):
                                             tuple_of_called_graphs)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
-
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
-    self.assertEqual(exec_lambda([11, 12.]), exec_tf([11, 12.]))
+    result = test_utils.run_tensorflow(parsed.proto, [11, 12.0])
+    self.assertEqual(structure.Struct([(None, 11), (None, 12.0)]), result)
 
   def test_replaces_lambda_to_named_tuple_of_called_graphs_with_tf_of_same_type(
       self):
@@ -286,16 +241,13 @@ class ParseTFFToTFTest(test_case.TestCase):
                                             tuple_of_called_graphs)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
-    self.assertEqual(exec_lambda([13, 14.]), exec_tf([13, 14.]))
+    result = test_utils.run_tensorflow(parsed.proto, [13, 14.0])
+    self.assertEqual(structure.Struct([('a', 13), ('b', 14.0)]), result)
 
   def test_replaces_lambda_to_called_composition_of_tf_blocks_with_tf_of_same_type_named_param(
       self):
@@ -314,24 +266,13 @@ class ParseTFFToTFTest(test_case.TestCase):
                                                   ('b', tf.float32)], one_added)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
-
-    self.assertEqual(
-        exec_lambda({
-            'a': 15,
-            'b': 16.
-        }), exec_tf({
-            'a': 15,
-            'b': 16.
-        }))
+    result = test_utils.run_tensorflow(parsed.proto, {'a': 15, 'b': 16.0})
+    self.assertEqual(16.0, result)
 
   def test_replaces_lambda_to_called_tf_block_with_replicated_lambda_arg_with_tf_block_of_same_type(
       self):
@@ -344,21 +285,14 @@ class ParseTFFToTFTest(test_case.TestCase):
     lambda_wrapper = building_blocks.Lambda('x', tf.int32, summed)
 
     parsed, modified = parse_tff_to_tf(lambda_wrapper)
-    exec_lambda = computation_wrapper_instances.building_block_to_computation(
-        lambda_wrapper)
-    exec_tf = computation_wrapper_instances.building_block_to_computation(
-        parsed)
 
     self.assertIsInstance(parsed, building_blocks.CompiledComputation)
     self.assertTrue(modified)
     # TODO(b/157172423): change to assertEqual when Py container is preserved.
     parsed.type_signature.check_equivalent_to(lambda_wrapper.type_signature)
-
-    self.assertEqual(exec_lambda(17), exec_tf(17))
+    result = test_utils.run_tensorflow(parsed.proto, 17)
+    self.assertEqual(35, result)
 
 
 if __name__ == '__main__':
-  factory = executor_stacks.local_executor_factory()
-  context = execution_context.ExecutionContext(executor_fn=factory)
-  set_default_context.set_default_context(context)
   test_case.main()

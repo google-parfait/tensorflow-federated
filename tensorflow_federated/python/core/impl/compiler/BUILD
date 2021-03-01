@@ -492,10 +492,10 @@ py_library(
         ":compiled_computation_transforms",
         ":transformation_utils",
         ":tree_analysis",
+        ":tree_to_cc_transformations",
         ":tree_transformations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
     ],
 )
@@ -514,10 +514,10 @@ py_test(
         ":transformation_utils",
         ":transformations",
         ":tree_analysis",
+        ":tree_to_cc_transformations",
         ":tree_transformations",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/impl:tree_to_cc_transformations",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
     ],
 )
@@ -587,6 +587,37 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+    ],
+)
+
+py_library(
+    name = "tree_to_cc_transformations",
+    srcs = ["tree_to_cc_transformations.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":building_blocks",
+        ":compiled_computation_transforms",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+    ],
+)
+
+py_test(
+    name = "tree_to_cc_transformations_test",
+    size = "small",
+    srcs = ["tree_to_cc_transformations_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":building_block_factory",
+        ":building_blocks",
+        ":tensorflow_computation_factory",
+        ":test_utils",
+        ":transformation_utils",
+        ":tree_to_cc_transformations",
+        ":tree_transformations",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:test_case",
     ],
 )
 
