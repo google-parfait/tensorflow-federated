@@ -704,13 +704,12 @@ class EagerTFExecutor(executor_base.Executor):
         ]))
 
   @tracing.trace
-  async def create_selection(self, source, index=None, name=None):
+  async def create_selection(self, source, index):
     """Creates a selection from `source`.
 
     Args:
       source: As documented in `executor_base.Executor`.
       index: As documented in `executor_base.Executor`.
-      name: As documented in `executor_base.Executor`.
 
     Returns:
       An instance of `EagerValue` that represents the constructed selection.
@@ -722,22 +721,9 @@ class EagerTFExecutor(executor_base.Executor):
     py_typecheck.check_type(source, EagerValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
     py_typecheck.check_type(source.internal_representation, structure.Struct)
-    if index is not None:
-      py_typecheck.check_type(index, int)
-      if name is not None:
-        raise ValueError(
-            'Cannot simultaneously specify name {} and index {}.'.format(
-                name, index))
-      else:
-        return EagerValue(source.internal_representation[index],
-                          source.type_signature[index])
-    elif name is not None:
-      py_typecheck.check_type(name, str)
-      return EagerValue(
-          getattr(source.internal_representation, str(name)),
-          getattr(source.type_signature, str(name)))
-    else:
-      raise ValueError('Must specify either name or index.')
+    py_typecheck.check_type(index, int)
+    return EagerValue(source.internal_representation[index],
+                      source.type_signature[index])
 
   def close(self):
     pass

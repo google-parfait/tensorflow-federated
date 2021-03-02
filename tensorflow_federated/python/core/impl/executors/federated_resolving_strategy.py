@@ -528,7 +528,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     item_futures = asyncio.as_completed([_move(v) for v in val])
 
     zero = await child.create_value(
-        await (await self._executor.create_selection(arg, index=1)).compute(),
+        await (await self._executor.create_selection(arg, 1)).compute(),
         zero_type)
     op = await child.create_value(arg.internal_representation[2], op_type)
 

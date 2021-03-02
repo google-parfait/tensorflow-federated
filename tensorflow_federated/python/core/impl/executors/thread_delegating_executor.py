@@ -129,7 +129,7 @@ class ThreadDelegatingExecutor(eb.Executor):
         self._target_executor.create_struct(inner_elements))
 
   @tracing.trace
-  async def create_selection(self, source, index=None, name=None):
+  async def create_selection(self, source, index):
     source = source.internal_representation
     return await self._delegate(
-        self._target_executor.create_selection(source, index=index, name=name))
+        self._target_executor.create_selection(source, index))

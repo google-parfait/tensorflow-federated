@@ -680,20 +680,16 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(str(v3.type_signature), '<a=int32,b=int32>')
     self.assertEqual(v3.internal_representation[0], 10)
     self.assertEqual(v3.internal_representation[1], 20)
-    v4 = loop.run_until_complete(ex.create_selection(v3, name='a'))
+    v4 = loop.run_until_complete(ex.create_selection(v3, 0))
     self.assertIsInstance(v4, eager_tf_executor.EagerValue)
     self.assertIsInstance(v4.internal_representation, tf.Tensor)
     self.assertEqual(str(v4.type_signature), 'int32')
     self.assertEqual(v4.internal_representation, 10)
-    v5 = loop.run_until_complete(ex.create_selection(v3, index=1))
+    v5 = loop.run_until_complete(ex.create_selection(v3, 1))
     self.assertIsInstance(v5, eager_tf_executor.EagerValue)
     self.assertIsInstance(v5.internal_representation, tf.Tensor)
     self.assertEqual(str(v5.type_signature), 'int32')
     self.assertEqual(v5.internal_representation, 20)
-    with self.assertRaises(ValueError):
-      loop.run_until_complete(ex.create_selection(v3, name='a', index=1))
-    with self.assertRaises(ValueError):
-      loop.run_until_complete(ex.create_selection(v3))
 
   def test_executor_compute(self):
     ex = eager_tf_executor.EagerTFExecutor()

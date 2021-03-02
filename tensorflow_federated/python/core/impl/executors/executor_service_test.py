@@ -121,7 +121,7 @@ class ExecutorServiceTest(absltest.TestCase):
       async def create_struct(self, elements):
         raise NotImplementedError
 
-      async def create_selection(self, source, index=None, name=None):
+      async def create_selection(self, source, index):
         raise NotImplementedError
 
       def close(self):

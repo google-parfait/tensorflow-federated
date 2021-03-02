@@ -202,14 +202,12 @@ class TracingExecutor(executor_base.Executor):
   def close(self):
     self._target.close()
 
-  async def create_selection(self, source, index=None, name=None):
-    target_val = await self._target.create_selection(
-        source.value, index=index, name=name)
+  async def create_selection(self, source, index):
+    target_val = await self._target.create_selection(source.value, index)
     wrapped_val = TracingExecutorValue(self, self._get_new_value_index(),
                                        target_val)
     self._trace.append(
-        ('create_selection', source.index, index if index is not None else name,
-         wrapped_val.index))
+        ('create_selection', source.index, index, wrapped_val.index))
     return wrapped_val
 
 

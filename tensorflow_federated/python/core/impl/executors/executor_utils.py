@@ -362,7 +362,7 @@ async def compute_intrinsic_federated_weighted_mean(
     sum2_comp = create_intrinsic_comp(intrinsic_defs.FEDERATED_SUM, sum2_type)
     sum2_fn, sum2_arg = await asyncio.gather(
         executor.create_value(sum2_comp, sum2_type),
-        executor.create_selection(arg, index=1))
+        executor.create_selection(arg, 1))
     return await executor.create_call(sum2_fn, sum2_arg)
 
   async def _compute_sum_of_products():

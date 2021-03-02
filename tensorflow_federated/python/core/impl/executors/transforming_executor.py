@@ -67,9 +67,8 @@ class TransformingExecutor(executor_base.Executor):
   async def create_struct(self, elements):
     return await self._target_executor.create_struct(elements)
 
-  async def create_selection(self, source, index=None, name=None):
-    return await self._target_executor.create_selection(
-        source, index=index, name=name)
+  async def create_selection(self, source, index):
+    return await self._target_executor.create_selection(source, index)
 
   def close(self):
     self._target_executor.close()

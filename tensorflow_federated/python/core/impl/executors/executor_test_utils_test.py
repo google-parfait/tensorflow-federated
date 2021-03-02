@@ -91,7 +91,7 @@ class TracingExecutorTest(absltest.TestCase):
       v2 = await ex.create_value(10, tf.int32)
       v3 = await ex.create_call(v1, v2)
       v4 = await ex.create_struct(structure.Struct([('foo', v3)]))
-      v5 = await ex.create_selection(v4, name='foo')
+      v5 = await ex.create_selection(v4, 0)
       return await v5.compute()
 
     result = asyncio.get_event_loop().run_until_complete(_make())
@@ -101,7 +101,7 @@ class TracingExecutorTest(absltest.TestCase):
                       ('create_value', 10, tf.int32, 2),
                       ('create_call', 1, 2, 3),
                       ('create_struct', structure.Struct([('foo', 3)]), 4),
-                      ('create_selection', 4, 'foo', 5), ('compute', 5, result)]
+                      ('create_selection', 4, 0, 5), ('compute', 5, result)]
 
     self.assertLen(ex.trace, len(expected_trace))
     for x, y in zip(ex.trace, expected_trace):

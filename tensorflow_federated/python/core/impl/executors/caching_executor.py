@@ -330,25 +330,18 @@ class CachingExecutor(executor_base.Executor):
     type_spec.check_assignable_from(target_value.type_signature)
     return cached_value
 
-  async def create_selection(self, source, index=None, name=None):
+  async def create_selection(self, source, index):
     py_typecheck.check_type(source, CachedValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
     source_val = await source.target_future
-    if index is not None:
-      py_typecheck.check_none(name)
-      identifier_str = '{}[{}]'.format(source.identifier, index)
-      type_spec = source.type_signature[index]
-    else:
-      py_typecheck.check_not_none(name)
-      identifier_str = '{}.{}'.format(source.identifier, name)
-      type_spec = getattr(source.type_signature, name)
+    identifier_str = f'{source.identifier}[{index}]'
+    type_spec = source.type_signature[index]
     identifier = CachedValueIdentifier(identifier_str)
     try:
       cached_value = self._cache[identifier]
     except KeyError:
       target_future = asyncio.ensure_future(
-          self._target_executor.create_selection(
-              source_val, index=index, name=name))
+          self._target_executor.create_selection(source_val, index))
       cached_value = CachedValue(identifier, None, type_spec, target_future)
       self._cache[identifier] = cached_value
     try:

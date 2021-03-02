@@ -135,11 +135,9 @@ class SequenceExecutorTest(absltest.TestCase):
         collections.OrderedDict([('a', tf.int32), ('b', tf.int32)]))
     struct_val = _run_sync(
         self._sequence_executor.create_value(my_struct, type_spec))
-    el_0 = _run_sync(
-        self._sequence_executor.create_selection(struct_val, index=0))
+    el_0 = _run_sync(self._sequence_executor.create_selection(struct_val, 0))
     self.assertEqual(_run_sync(el_0.compute()), 10)
-    el_b = _run_sync(
-        self._sequence_executor.create_selection(struct_val, name='b'))
+    el_b = _run_sync(self._sequence_executor.create_selection(struct_val, 1))
     self.assertEqual(_run_sync(el_b.compute()), 20)
 
   def test_create_value_with_tf_computation(self):

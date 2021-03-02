@@ -361,7 +361,7 @@ class RemoteExecutorTest(absltest.TestCase):
     source = remote_executor.RemoteValue(executor_pb2.ValueRef(),
                                          type_signature, executor)
 
-    result = loop.run_until_complete(executor.create_selection(source, index=0))
+    result = loop.run_until_complete(executor.create_selection(source, 0))
 
     instance.CreateSelection.assert_called_once()
     self.assertIsInstance(result, remote_executor.RemoteValue)
@@ -378,7 +378,7 @@ class RemoteExecutorTest(absltest.TestCase):
                                          type_signature, executor)
 
     with self.assertRaises(execution_context.RetryableError):
-      loop.run_until_complete(executor.create_selection(source, index=0))
+      loop.run_until_complete(executor.create_selection(source, 0))
 
   def test_create_selection_reraises_non_retryable_grpc_error(self, mock_stub):
     instance = mock_stub.return_value
@@ -391,7 +391,7 @@ class RemoteExecutorTest(absltest.TestCase):
                                          type_signature, executor)
 
     with self.assertRaises(grpc.RpcError) as context:
-      loop.run_until_complete(executor.create_selection(source, index=0))
+      loop.run_until_complete(executor.create_selection(source, 0))
 
     self.assertEqual(context.exception.code(), grpc.StatusCode.ABORTED)
 
@@ -405,7 +405,7 @@ class RemoteExecutorTest(absltest.TestCase):
                                          type_signature, executor)
 
     with self.assertRaises(TypeError):
-      loop.run_until_complete(executor.create_selection(source, index=0))
+      loop.run_until_complete(executor.create_selection(source, 0))
 
 
 class RemoteExecutorIntegrationTest(parameterized.TestCase):

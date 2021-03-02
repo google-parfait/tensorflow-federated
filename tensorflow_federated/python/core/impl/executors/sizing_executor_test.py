@@ -45,7 +45,7 @@ class SizingExecutorTest(parameterized.TestCase):
           tf.constant([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], tf.int32), tensor_type)
       v3 = await ex.create_call(v1, v2)
       v4 = await ex.create_struct(structure.Struct([('foo', v3)]))
-      v5 = await ex.create_selection(v4, name='foo')
+      v5 = await ex.create_selection(v4, 0)
       return await v5.compute()
 
     asyncio.get_event_loop().run_until_complete(_make())

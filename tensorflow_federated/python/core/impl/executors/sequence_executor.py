@@ -465,29 +465,18 @@ class SequenceExecutor(executor_base.Executor):
         computation_types.StructType(type_elements))
 
   @tracing.trace
-  async def create_selection(self, source, index=None, name=None):
+  async def create_selection(self, source, index):
     py_typecheck.check_type(source, SequenceExecutorValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
     if isinstance(source.internal_representation,
                   executor_value_base.ExecutorValue):
       target_val = await self._target_executor.create_selection(
-          source.internal_representation, index=index, name=name)
+          source.internal_representation, index)
       return SequenceExecutorValue(target_val, target_val.type_signature)
     py_typecheck.check_type(source.internal_representation, structure.Struct)
-    if index is not None:
-      py_typecheck.check_type(index, int)
-      if name is not None:
-        raise ValueError(
-            'Cannot simultaneously specify name {} and index {}.'.format(
-                name, index))
-      return SequenceExecutorValue(source.internal_representation[index],
-                                   source.type_signature[index])
-    if name is not None:
-      py_typecheck.check_type(name, str)
-      return SequenceExecutorValue(
-          getattr(source.internal_representation, str(name)),
-          getattr(source.type_signature, str(name)))
-    raise ValueError('Must specify either name or index.')
+    py_typecheck.check_type(index, int)
+    return SequenceExecutorValue(source.internal_representation[index],
+                                 source.type_signature[index])
 
   def close(self):
     self._target_executor.close()

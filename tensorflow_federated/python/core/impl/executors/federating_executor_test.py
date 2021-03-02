@@ -728,7 +728,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
     source = self.run_sync(executor.create_value(source, type_signature))
     source = self.run_sync(executor.create_call(source))
-    result = self.run_sync(executor.create_selection(source, index=0))
+    result = self.run_sync(executor.create_selection(source, 0))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
@@ -745,7 +745,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     elements = [element] * 3
     type_signature = computation_types.StructType([element_type] * 3)
     source = self.run_sync(executor.create_struct(elements))
-    result = self.run_sync(executor.create_selection(source, index=0))
+    result = self.run_sync(executor.create_selection(source, 0))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
@@ -761,7 +761,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
     source = self.run_sync(executor.create_value(source, type_signature))
     source = self.run_sync(executor.create_call(source))
-    result = self.run_sync(executor.create_selection(source, name='a'))
+    result = self.run_sync(executor.create_selection(source, 0))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
@@ -780,7 +780,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     type_signature = computation_types.StructType(
         (n, element_type) for n in names)
     source = self.run_sync(executor.create_struct(elements))
-    result = self.run_sync(executor.create_selection(source, name='a'))
+    result = self.run_sync(executor.create_selection(source, 0))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     self.assertEqual(result.type_signature.compact_representation(),
@@ -796,7 +796,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
     element = self.run_sync(executor.create_value(element, element_type))
     source = [element] * 3
     with self.assertRaises(TypeError):
-      self.run_sync(executor.create_selection(source, index=0))
+      self.run_sync(executor.create_selection(source, 0))
 
   def test_raises_type_error_with_not_tuple_type(self):
     executor = create_test_executor()
@@ -804,17 +804,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
     source = self.run_sync(executor.create_value(element, element_type))
     with self.assertRaises(TypeError):
-      self.run_sync(executor.create_selection(source, index=0))
-
-  def test_raises_value_error_with_no_index_or_name(self):
-    executor = create_test_executor()
-    element, element_type = executor_test_utils.create_dummy_value_unplaced()
-
-    element = self.run_sync(executor.create_value(element, element_type))
-    elements = [element] * 3
-    source = self.run_sync(executor.create_struct(elements))
-    with self.assertRaises(ValueError):
-      self.run_sync(executor.create_selection(source))
+      self.run_sync(executor.create_selection(source, 0))
 
   def test_raises_value_error_with_unrecognized_generic_zero(self):
     executor = create_test_executor()
@@ -825,7 +815,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
     source = self.run_sync(executor.create_value(value, type_signature))
     with self.assertRaises(ValueError):
-      self.run_sync(executor.create_selection(source, index=0))
+      self.run_sync(executor.create_selection(source, 0))
 
 
 if __name__ == '__main__':

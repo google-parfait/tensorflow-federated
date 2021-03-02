@@ -135,9 +135,8 @@ class SizingExecutor(executor_base.Executor):
     wrapped_val = SizingExecutorValue(self, target_val)
     return wrapped_val
 
-  async def create_selection(self, source, index=None, name=None):
-    target_val = await self._target.create_selection(
-        source.value, index=index, name=name)
+  async def create_selection(self, source, index):
+    target_val = await self._target.create_selection(source.value, index)
     wrapped_val = SizingExecutorValue(self, target_val)
     return wrapped_val
 

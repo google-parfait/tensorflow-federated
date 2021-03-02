@@ -314,7 +314,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
         ]), computation_types.at_server(zero_type))
     aggr_comp = executor_utils.create_intrinsic_comp(
         intrinsic_defs.FEDERATED_AGGREGATE, aggr_type)
-    zero = await (await self._executor.create_selection(arg, index=1)).compute()
+    zero = await (await self._executor.create_selection(arg, 1)).compute()
     accumulate = arg.internal_representation[2]
     merge = arg.internal_representation[3]
     report = arg.internal_representation[4]

@@ -177,8 +177,8 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
     v2 = loop.run_until_complete(ex.create_value(20, tf.int32))
     v3 = loop.run_until_complete(
         ex.create_struct(structure.Struct([(None, v1), (None, v2)])))
-    v4 = loop.run_until_complete(ex.create_selection(v3, index=0))
-    v5 = loop.run_until_complete(ex.create_selection(v3, index=1))
+    v4 = loop.run_until_complete(ex.create_selection(v3, 0))
+    v5 = loop.run_until_complete(ex.create_selection(v3, 1))
     result0 = loop.run_until_complete(v4.compute())
     result1 = loop.run_until_complete(v5.compute())
     self.assertEqual(result0.numpy(), 10)

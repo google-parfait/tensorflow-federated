@@ -298,26 +298,18 @@ class ReferenceResolvingExecutor(executor_base.Executor):
     return ReferenceResolvingExecutorValue(structure.from_container(elements))
 
   @tracing.trace
-  async def create_selection(self, source, index=None, name=None):
+  async def create_selection(self, source, index):
     py_typecheck.check_type(source, ReferenceResolvingExecutorValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
     source_repr = source.internal_representation
     if isinstance(source_repr, executor_value_base.ExecutorValue):
       return ReferenceResolvingExecutorValue(
-          await self._target_executor.create_selection(
-              source_repr, index=index, name=name))
+          await self._target_executor.create_selection(source_repr, index))
     elif isinstance(source_repr, ScopedLambda):
       raise ValueError('Cannot index into a lambda.')
     else:
       py_typecheck.check_type(source_repr, structure.Struct)
-      if index is not None:
-        if name is not None:
-          raise ValueError('Cannot specify both index and name for selection.')
-        return source_repr[index]
-      elif name is not None:
-        return getattr(source_repr, name)
-      else:
-        raise ValueError('Either index or name must be present for selection.')
+      return source_repr[index]
 
   @tracing.trace
   async def create_call(self, comp, arg=None):
@@ -458,7 +450,7 @@ class ReferenceResolvingExecutor(executor_base.Executor):
       scope: ReferenceResolvingExecutorScope,
   ) -> ReferenceResolvingExecutorValue:
     source = await self._evaluate(comp.selection.source, scope=scope)
-    return await self.create_selection(source, index=comp.selection.index)
+    return await self.create_selection(source, comp.selection.index)
 
   @tracing.trace(stats=False)
   async def _evaluate_struct(

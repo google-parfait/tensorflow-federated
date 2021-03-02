@@ -486,11 +486,8 @@ class FederatingExecutor(executor_base.Executor):
     return self._strategy.ingest_value(value, type_signature)
 
   @tracing.trace
-  async def create_selection(
-      self,
-      source: executor_value_base.ExecutorValue,
-      index: Optional[int] = None,
-      name: Optional[str] = None) -> executor_value_base.ExecutorValue:
+  async def create_selection(self, source: executor_value_base.ExecutorValue,
+                             index: int) -> executor_value_base.ExecutorValue:
     """Creates an embedded selection from the given `source`.
 
     The kinds of supported `source`s are:
@@ -501,8 +498,7 @@ class FederatingExecutor(executor_base.Executor):
     Args:
       source: An embedded computation with a tuple type signature representing
         the source from which to make a selection.
-      index: An optional integer index. Either this, or `name` must be present.
-      name: An optional string name. Either this, or `index` must be present.
+      index: An integer index.
 
     Returns:
       An instance of `executor_value_base.ExecutorValue` representing the
@@ -516,22 +512,14 @@ class FederatingExecutor(executor_base.Executor):
     """
     py_typecheck.check_type(source, executor_value_base.ExecutorValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
-    if index is None and name is None:
-      raise ValueError(
-          'Expected either `index` or `name` to be specificed, found both are '
-          '`None`.')
     if isinstance(source.internal_representation,
                   executor_value_base.ExecutorValue):
       result = await self._unplaced_executor.create_selection(
-          source.internal_representation, index=index, name=name)
+          source.internal_representation, index)
       return self._strategy.ingest_value(result, result.type_signature)
     elif isinstance(source.internal_representation, structure.Struct):
-      if name is not None:
-        value = source.internal_representation[name]
-        type_signature = source.type_signature[name]
-      else:
-        value = source.internal_representation[index]
-        type_signature = source.type_signature[index]
+      value = source.internal_representation[index]
+      type_signature = source.type_signature[index]
       return self._strategy.ingest_value(value, type_signature)
     else:
       raise ValueError(

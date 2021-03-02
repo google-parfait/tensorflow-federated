@@ -240,12 +240,9 @@ class RemoteExecutor(executor_base.Executor):
     return RemoteValue(response.value_ref, result_type, self)
 
   @tracing.trace(span=True)
-  async def create_selection(self, source, index=None, name=None):
+  async def create_selection(self, source, index):
     py_typecheck.check_type(source, RemoteValue)
     py_typecheck.check_type(source.type_signature, computation_types.StructType)
-    if index is None:
-      py_typecheck.check_type(name, str)
-      index = structure.name_to_index_map(source.type_signature)[name]
     py_typecheck.check_type(index, int)
     result_type = source.type_signature[index]
     request = executor_pb2.CreateSelectionRequest(

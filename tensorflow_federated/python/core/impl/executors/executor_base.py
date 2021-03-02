@@ -95,17 +95,13 @@ class Executor(object, metaclass=abc.ABCMeta):
     raise NotImplementedError
 
   @abc.abstractmethod
-  async def create_selection(self,
-                             source,
-                             index=None,
-                             name=None) -> evb.ExecutorValue:
+  async def create_selection(self, source, index) -> evb.ExecutorValue:
     """A coroutine that creates a selection from `source`.
 
     Args:
       source: The source to select from. The source must have been embedded in
         this executor by invoking `create_value()` on it first.
-      index: An optional integer index. Either this, or `name` must be present.
-      name: An optional string name. Either this, or `index` must be present.
+      index: An integer index to select.
 
     Returns:
       An instance of `ExecutorValue` that represents the constructed selection.

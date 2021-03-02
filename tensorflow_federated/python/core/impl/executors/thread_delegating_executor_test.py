@@ -76,7 +76,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
       async def create_struct(self, elements):
         raise NotImplementedError
 
-      async def create_selection(self, source, index=None, name=None):
+      async def create_selection(self, source, index):
         raise NotImplementedError
 
       def close(self):
@@ -120,8 +120,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
                   ('a', await
                    ex.create_call(await ex.create_value(add_one), await
                                   ex.create_value(10, tf.int32)))
-              ])),
-          name='a')
+              ])), 0)
 
     result = asyncio.get_event_loop().run_until_complete(compute())
     self.assertEqual(self._threaded_eager_value_to_numpy(result), 11)
@@ -139,8 +138,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
                   ('a', await
                    ex.create_call(await ex.create_value(add_one), await
                                   ex.create_value(10, tf.int32)))
-              ])),
-          name='a')
+              ])), 0)
 
     return asyncio.get_event_loop().run_until_complete(compute())
 
@@ -176,8 +174,7 @@ class ThreadDelegatingExecutorTest(absltest.TestCase):
                   ('a', await
                    ex.create_call(await ex.create_value(add_one), await
                                   ex.create_value(10, tf.int32)))
-              ])),
-          name='a')
+              ])), 0)
 
     result = asyncio.get_event_loop().run_until_complete(compute())
     self.assertEqual(self._threaded_eager_value_to_numpy(result), 11)
