@@ -24,6 +24,7 @@ py_library(
         ":mean",
         ":quantile_estimation",
         ":robust",
+        ":sampling",
         ":secure",
         ":sum_factory",
     ],
