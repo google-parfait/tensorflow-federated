@@ -55,15 +55,16 @@ def robust_aggregator(
   """Creates aggregator for mean with adaptive zeroing and clipping.
 
   Zeroes out extremely large values for robustness to data corruption on
-  clients, and clips to moderately high norm for robustness to outliers.
+  clients, and clips in the L2 norm to moderately high norm for robustness to
+  outliers.
 
   For details on clipping and zeroing see `tff.aggregators.clipping_factory`
   and `tff.aggregators.zeroing_factory`. For details on the quantile-based
   adaptive algorithm see `tff.aggregators.PrivateQuantileEstimationProcess`.
 
   Args:
-    zeroing: Whether to enable adaptive zeroing.
-    clipping: Whether to enable adaptive clipping.
+    zeroing: Whether to enable adaptive zeroing for data corruption mitigation.
+    clipping: Whether to enable adaptive clipping in the L2 norm for robustness.
 
   Returns:
     A `tff.aggregators.WeightedAggregationFactory`.
@@ -98,7 +99,7 @@ def dp_aggregator(noise_multiplier: float,
       privacy guarantee.
     clients_per_round: A float specifying the expected number of clients per
       round. Must be positive.
-    zeroing: Whether to enable adaptive zeroing.
+    zeroing: Whether to enable adaptive zeroing for data corruption mitigation.
 
   Returns:
     A `tff.aggregators.UnweightedAggregationFactory`.
@@ -119,17 +120,19 @@ def compression_aggregator(
   """Creates aggregator with compression and adaptive zeroing and clipping.
 
   Zeroes out extremely large values for robustness to data corruption on
-  clients, clips to moderately high norm for robustness to outliers. After
-  weighting in mean, the weighted values are uniformly quantized to reduce the
-  size of the model update communicated from clients to the server. For details,
-  see Suresh et al. (2017)
+  clients and clips in the L2 norm to moderately high norm for robustness to
+  outliers. After weighting in mean, the weighted values are uniformly quantized
+  to reduce the size of the model update communicated from clients to the
+  server. For details, see Suresh et al. (2017)
   http://proceedings.mlr.press/v70/suresh17a/suresh17a.pdf. The default
   configuration is chosen such that compression does not have adverse effect on
   trained model quality in typical tasks.
 
   Args:
-    zeroing: Whether to enable adaptive zeroing.
-    clipping: Whether to enable adaptive clipping.
+    zeroing: Whether to enable adaptive zeroing for data corruption mitigation.
+    clipping: Whether to enable adaptive clipping in the L2 norm for robustness.
+      Note this clipping is performed prior to the per-coordinate clipping
+      required for quantization.
 
   Returns:
     A `tff.aggregators.WeightedAggregationFactory`.
@@ -161,8 +164,10 @@ def secure_aggregator(
   using the `tff.federated_secure_sum` operator.
 
   Args:
-    zeroing: Whether to enable adaptive zeroing.
-    clipping: Whether to enable adaptive clipping.
+    zeroing: Whether to enable adaptive zeroing for data corruption mitigation.
+    clipping: Whether to enable adaptive clipping in the L2 norm for robustness.
+      Note this clipping is performed prior to the per-coordinate clipping
+      required for secure aggregation.
 
   Returns:
     A `tff.aggregators.WeightedAggregationFactory`.
