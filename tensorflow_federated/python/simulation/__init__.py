@@ -27,5 +27,6 @@ from tensorflow_federated.python.simulation.sampling_utils import build_uniform_
 from tensorflow_federated.python.simulation.sampling_utils import build_uniform_sampling_fn
 from tensorflow_federated.python.simulation.server_utils import run_server
 from tensorflow_federated.python.simulation.server_utils import server_context
+from tensorflow_federated.python.simulation.sql_client_data import SqlClientData
 from tensorflow_federated.python.simulation.tensorboard_manager import TensorBoardManager
 from tensorflow_federated.python.simulation.transforming_client_data import TransformingClientData
