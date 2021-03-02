@@ -166,10 +166,9 @@ def server_update(model, server_optimizer, server_state, weights_delta,
   tff.utils.assign(server_optimizer.variables(), server_state.optimizer_state)
 
   # Apply the update to the model.
-  grads_and_vars = tf.nest.map_structure(
-      lambda x, v: (-1.0 * x, v), tf.nest.flatten(weights_delta),
-      tf.nest.flatten(model_weights.trainable))
-  server_optimizer.apply_gradients(grads_and_vars, name='server_update')
+  neg_weights_delta = [-1.0 * x for x in weights_delta]
+  server_optimizer.apply_gradients(
+      zip(neg_weights_delta, model_weights.trainable), name='server_update')
 
   # Create a new state based on the updated model.
   return tff.utils.update_state(
@@ -225,8 +224,7 @@ def client_update(model, dataset, client_state, server_message,
     with tf.GradientTape() as tape:
       outputs = model.forward_pass(batch)
     grads = tape.gradient(outputs.loss, model_weights.trainable)
-    grads_and_vars = zip(grads, model_weights.trainable)
-    client_optimizer.apply_gradients(grads_and_vars)
+    client_optimizer.apply_gradients(zip(grads, model_weights.trainable))
     batch_size = (tf.shape(batch['x'])[0])
     num_examples += batch_size
     loss_sum += outputs.loss * tf.cast(batch_size, tf.float32)

@@ -37,17 +37,13 @@ from tensorflow_federated.python.examples.stateful_clients.stateful_fedavg_tf im
 
 def _initialize_optimizer_vars(model, optimizer):
   """Creates optimizer variables to assign the optimizer's state."""
-  model_weights = model.weights
-  model_delta = tf.nest.map_structure(tf.zeros_like, model_weights.trainable)
   # Create zero gradients to force an update that doesn't modify.
   # Force eagerly constructing the optimizer variables. Normally Keras lazily
   # creates the variables on first usage of the optimizer. Optimizers such as
   # Adam, Adagrad, or using momentum need to create a new set of variables shape
   # like the model weights.
-  grads_and_vars = tf.nest.map_structure(
-      lambda x, v: (tf.zeros_like(x), v), tf.nest.flatten(model_delta),
-      tf.nest.flatten(model_weights.trainable))
-  optimizer.apply_gradients(grads_and_vars)
+  zero_gradient = [tf.zeros_like(t) for t in model.weights.trainable]
+  optimizer.apply_gradients(zip(zero_gradient, model.weights.trainable))
   assert optimizer.variables()
 
 
