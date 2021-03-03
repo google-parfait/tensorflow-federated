@@ -54,7 +54,7 @@ def robust_aggregator(
     zeroing: bool = True,
     clipping: bool = True,
     weighted: bool = True,
-) -> factory.WeightedAggregationFactory:
+) -> factory.AggregationFactory:
   """Creates aggregator for mean with adaptive zeroing and clipping.
 
   Zeroes out extremely large values for robustness to data corruption on
@@ -71,7 +71,7 @@ def robust_aggregator(
     weighted: Whether the mean is weighted (vs. unweighted).
 
   Returns:
-    A `tff.aggregators.WeightedAggregationFactory`.
+    A `tff.aggregators.AggregationFactory`.
   """
   factory_ = mean.MeanFactory() if weighted else mean.UnweightedMeanFactory()
 
@@ -119,8 +119,11 @@ def dp_aggregator(noise_multiplier: float,
 
 
 def compression_aggregator(
+    *,
     zeroing: bool = True,
-    clipping: bool = True) -> factory.WeightedAggregationFactory:
+    clipping: bool = True,
+    weighted: bool = True,
+) -> factory.AggregationFactory:
   """Creates aggregator with compression and adaptive zeroing and clipping.
 
   Zeroes out extremely large values for robustness to data corruption on
@@ -137,13 +140,17 @@ def compression_aggregator(
     clipping: Whether to enable adaptive clipping in the L2 norm for robustness.
       Note this clipping is performed prior to the per-coordinate clipping
       required for quantization.
+    weighted: Whether the mean is weighted (vs. unweighted).
 
   Returns:
-    A `tff.aggregators.WeightedAggregationFactory`.
+    A `tff.aggregators.AggregationFactory`.
   """
-  factory_ = mean.MeanFactory(
-      encoded.EncodedSumFactory.quantize_above_threshold(
-          quantization_bits=8, threshold=20000))
+  factory_ = encoded.EncodedSumFactory.quantize_above_threshold(
+      quantization_bits=8, threshold=20000)
+
+  factory_ = (
+      mean.MeanFactory(factory_)
+      if weighted else mean.UnweightedMeanFactory(factory_))
 
   if clipping:
     factory_ = _default_clipping(factory_)

@@ -50,7 +50,7 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
   )
   def test_robust_aggregator_unweighted(self, zeroing, clipping):
     factory_ = model_update_aggregator.robust_aggregator(
-        weighted=False, zeroing=zeroing, clipping=clipping)
+        zeroing=zeroing, clipping=clipping, weighted=False)
 
     self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
     process = factory_.create(_float_type)
@@ -90,13 +90,29 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
       ('clipping', False, True),
       ('zeroing_and_clipping', False, False),
   )
-  def test_compression_aggregator(self, zeroing, clipping):
-    factory_ = model_update_aggregator.compression_aggregator(zeroing, clipping)
+  def test_compression_aggregator_weighted(self, zeroing, clipping):
+    factory_ = model_update_aggregator.compression_aggregator(
+        zeroing=zeroing, clipping=clipping)
 
     self.assertIsInstance(factory_, factory.WeightedAggregationFactory)
     process = factory_.create(_float_type, _float_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertTrue(process.is_weighted)
+
+  @parameterized.named_parameters(
+      ('simple', False, False),
+      ('zeroing', True, False),
+      ('clipping', False, True),
+      ('zeroing_and_clipping', False, False),
+  )
+  def test_compression_aggregator_unweighted(self, zeroing, clipping):
+    factory_ = model_update_aggregator.compression_aggregator(
+        zeroing=zeroing, clipping=clipping, weighted=False)
+
+    self.assertIsInstance(factory_, factory.UnweightedAggregationFactory)
+    process = factory_.create(_float_type)
+    self.assertIsInstance(process, aggregation_process.AggregationProcess)
+    self.assertFalse(process.is_weighted)
 
 
 if __name__ == '__main__':
