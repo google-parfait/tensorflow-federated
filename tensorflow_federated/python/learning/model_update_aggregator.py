@@ -50,8 +50,11 @@ def _default_clipping(
 
 
 def robust_aggregator(
+    *,
     zeroing: bool = True,
-    clipping: bool = True) -> factory.WeightedAggregationFactory:
+    clipping: bool = True,
+    weighted: bool = True,
+) -> factory.WeightedAggregationFactory:
   """Creates aggregator for mean with adaptive zeroing and clipping.
 
   Zeroes out extremely large values for robustness to data corruption on
@@ -65,11 +68,12 @@ def robust_aggregator(
   Args:
     zeroing: Whether to enable adaptive zeroing for data corruption mitigation.
     clipping: Whether to enable adaptive clipping in the L2 norm for robustness.
+    weighted: Whether the mean is weighted (vs. unweighted).
 
   Returns:
     A `tff.aggregators.WeightedAggregationFactory`.
   """
-  factory_ = mean.MeanFactory()
+  factory_ = mean.MeanFactory() if weighted else mean.UnweightedMeanFactory()
 
   if clipping:
     factory_ = _default_clipping(factory_)
