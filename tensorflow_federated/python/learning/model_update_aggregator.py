@@ -162,8 +162,11 @@ def compression_aggregator(
 
 
 def secure_aggregator(
+    *,
     zeroing: bool = True,
-    clipping: bool = True) -> factory.WeightedAggregationFactory:
+    clipping: bool = True,
+    weighted: bool = True,
+) -> factory.AggregationFactory:
   """Creates secure aggregator with adaptive zeroing and clipping.
 
   Zeroes out extremely large values for robustness to data corruption on
@@ -179,16 +182,22 @@ def secure_aggregator(
     clipping: Whether to enable adaptive clipping in the L2 norm for robustness.
       Note this clipping is performed prior to the per-coordinate clipping
       required for secure aggregation.
+    weighted: Whether the mean is weighted (vs. unweighted).
 
   Returns:
-    A `tff.aggregators.WeightedAggregationFactory`.
+    A `tff.aggregators.AggregationFactory`.
   """
   secure_clip_bound = quantile_estimation.PrivateQuantileEstimationProcess.no_noise(
       initial_estimate=50.0,
       target_quantile=0.95,
       learning_rate=1.0,
       multiplier=2.0)
-  factory_ = mean.MeanFactory(secure.SecureSumFactory(secure_clip_bound))
+
+  factory_ = secure.SecureSumFactory(secure_clip_bound)
+
+  factory_ = (
+      mean.MeanFactory(factory_)
+      if weighted else mean.UnweightedMeanFactory(factory_))
 
   if clipping:
     factory_ = _default_clipping(factory_)
