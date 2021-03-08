@@ -47,6 +47,7 @@ class FileCheckpointManager():
   def __init__(self,
                root_dir: str,
                prefix: str = 'ckpt_',
+               step: int = 1,
                keep_total: int = 5,
                keep_first: bool = True):
     """Returns an initialized `FileCheckpointManager`.
@@ -54,6 +55,9 @@ class FileCheckpointManager():
     Args:
       root_dir: A path on the filesystem to store checkpoints.
       prefix: A string to use as the prefix for checkpoint names.
+      step: How often the checkpoint manager should save a checkpoint. When
+      calling `FileCheckpointManager.save_checkpoint`, a  checkpoint will only
+      be written for round numbers divisible by `step`.
       keep_total: An integer representing the total number of checkpoints to
         keep.
       keep_first: A boolean indicating if the first checkpoint should be kept,
@@ -64,9 +68,9 @@ class FileCheckpointManager():
         from the initial checkpoint, one can avoid re-initializing and obtaining
         different results.
     """
-    super().__init__()
     self._root_dir = root_dir
     self._prefix = prefix
+    self._step = step
     self._keep_total = keep_total
     self._keep_first = keep_first
     path = re.escape(os.path.join(root_dir, prefix))
@@ -150,8 +154,8 @@ class FileCheckpointManager():
     logging.info('Checkpoint loaded: %s', checkpoint_path)
     return state, round_num
 
-  def save_checkpoint(self, state: Any, round_num: int) -> None:
-    """Saves a new checkpointed `state` for the given `round_num`.
+  def _save_checkpoint(self, state: Any, round_num: int) -> None:
+    """Internal function to save a new checkpoint.
 
     Args:
       state: A nested structure which `tf.convert_to_tensor` supports.
@@ -179,6 +183,19 @@ class FileCheckpointManager():
     logging.info('Checkpoint saved: %s', checkpoint_path)
 
     self._clear_old_checkpoints()
+
+  def save_checkpoint(self, state: Any, round_num: int) -> None:
+    """Saves a new checkpointed `state` for the given `round_num`.
+
+    Note that a checkpoint is only written if `round_num` is divisible by the
+    `step` initialization argument of the manager.
+
+    Args:
+      state: A nested structure which `tf.convert_to_tensor` supports.
+      round_num: An integer representing the current training round.
+    """
+    if round_num % self._step == 0:
+      self._save_checkpoint(state, round_num)
 
   def _clear_old_checkpoints(self) -> None:
     """Removes old checkpoints."""

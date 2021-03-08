@@ -183,12 +183,9 @@ class FileCheckpointManagerSaveCheckpointTest(tf.test.TestCase):
     temp_dir = self.get_temp_dir()
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(temp_dir)
 
-    test_state_1 = _create_test_state(1)
-    checkpoint_mngr.save_checkpoint(test_state_1, 1)
-    test_state_2 = _create_test_state(2)
-    checkpoint_mngr.save_checkpoint(test_state_2, 2)
-    test_state_3 = _create_test_state(3)
-    checkpoint_mngr.save_checkpoint(test_state_3, 3)
+    for i in range(1, 4):
+      test_state = _create_test_state(i)
+      checkpoint_mngr.save_checkpoint(test_state, i)
 
     self.assertCountEqual(os.listdir(temp_dir), ['ckpt_1', 'ckpt_2', 'ckpt_3'])
 
@@ -197,14 +194,9 @@ class FileCheckpointManagerSaveCheckpointTest(tf.test.TestCase):
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(
         temp_dir, keep_total=3, keep_first=True)
 
-    test_state_1 = _create_test_state(1)
-    checkpoint_mngr.save_checkpoint(test_state_1, 1)
-    test_state_2 = _create_test_state(2)
-    checkpoint_mngr.save_checkpoint(test_state_2, 2)
-    test_state_3 = _create_test_state(3)
-    checkpoint_mngr.save_checkpoint(test_state_3, 3)
-    test_state_4 = _create_test_state(4)
-    checkpoint_mngr.save_checkpoint(test_state_4, 4)
+    for i in range(1, 5):
+      test_state = _create_test_state(i)
+      checkpoint_mngr.save_checkpoint(test_state, i)
 
     self.assertCountEqual(os.listdir(temp_dir), ['ckpt_1', 'ckpt_3', 'ckpt_4'])
 
@@ -213,14 +205,9 @@ class FileCheckpointManagerSaveCheckpointTest(tf.test.TestCase):
     checkpoint_mngr = checkpoint_manager.FileCheckpointManager(
         temp_dir, keep_total=3, keep_first=False)
 
-    test_state_1 = _create_test_state(1)
-    checkpoint_mngr.save_checkpoint(test_state_1, 1)
-    test_state_2 = _create_test_state(2)
-    checkpoint_mngr.save_checkpoint(test_state_2, 2)
-    test_state_3 = _create_test_state(3)
-    checkpoint_mngr.save_checkpoint(test_state_3, 3)
-    test_state_4 = _create_test_state(4)
-    checkpoint_mngr.save_checkpoint(test_state_4, 4)
+    for i in range(1, 5):
+      test_state = _create_test_state(i)
+      checkpoint_mngr.save_checkpoint(test_state, i)
 
     self.assertCountEqual(os.listdir(temp_dir), ['ckpt_2', 'ckpt_3', 'ckpt_4'])
 
@@ -233,6 +220,17 @@ class FileCheckpointManagerSaveCheckpointTest(tf.test.TestCase):
 
     with self.assertRaises(tf.errors.AlreadyExistsError):
       checkpoint_mngr.save_checkpoint(test_state_1, 1)
+
+  def test_save_with_nondefault_checkpoints_per_round(self):
+    temp_dir = self.get_temp_dir()
+    checkpoint_mngr = checkpoint_manager.FileCheckpointManager(
+        temp_dir, step=3, keep_total=3)
+
+    for i in range(8):
+      test_state = _create_test_state(i)
+      checkpoint_mngr.save_checkpoint(test_state, i)
+
+    self.assertCountEqual(os.listdir(temp_dir), ['ckpt_0', 'ckpt_3', 'ckpt_6'])
 
 
 if __name__ == '__main__':
