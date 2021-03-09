@@ -14,6 +14,7 @@
 """A simple implementation of federated evaluation."""
 
 import collections
+from typing import Optional
 
 import tensorflow as tf
 
@@ -21,13 +22,16 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.core.utils import tf_computation_utils
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 
 
-def build_federated_evaluation(model_fn,
-                               use_experimental_simulation_loop: bool = False):
+def build_federated_evaluation(
+    model_fn,
+    broadcast_process: Optional[measured_process.MeasuredProcess] = None,
+    use_experimental_simulation_loop: bool = False):
   """Builds the TFF computation for federated evaluation of the given model.
 
   Args:
@@ -35,8 +39,13 @@ def build_federated_evaluation(model_fn,
       must *not* capture TensorFlow tensors or variables and use them. The model
       must be constructed entirely from scratch on each invocation, returning
       the same pre-constructed model each call will result in an error.
+    broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
+      model weights on the server to the clients. It must support the signature
+      `(input_values@SERVER -> output_values@CLIENT)` and have empty state. If
+      set to default None, the server model is broadcast to the clients using
+      the default tff.federated_broadcast.
     use_experimental_simulation_loop: Controls the reduce loop function for
-        input dataset. An experimental reduce loop is used for simulation.
+      input dataset. An experimental reduce loop is used for simulation.
 
   Returns:
     A federated computation (an instance of `tff.Computation`) that accepts
@@ -84,9 +93,20 @@ def build_federated_evaluation(model_fn,
       computation_types.FederatedType(
           computation_types.SequenceType(batch_type), placements.CLIENTS))
   def server_eval(server_model_weights, federated_dataset):
-    client_outputs = intrinsics.federated_map(client_eval, [
-        intrinsics.federated_broadcast(server_model_weights), federated_dataset
-    ])
+    if broadcast_process is not None:
+      # TODO(b/179091838): Confirm that the process has no state.
+      # TODO(b/179091838): Zip the measurements from the broadcast_process with
+      # the result of `model.federated_output_computation` below to avoid
+      # dropping these metrics.
+      broadcast_output = broadcast_process.next(broadcast_process.initialize(),
+                                                server_model_weights)
+      client_outputs = intrinsics.federated_map(
+          client_eval, (broadcast_output.result, federated_dataset))
+    else:
+      client_outputs = intrinsics.federated_map(client_eval, [
+          intrinsics.federated_broadcast(server_model_weights),
+          federated_dataset
+      ])
     return model.federated_output_computation(client_outputs.local_outputs)
 
   return server_eval

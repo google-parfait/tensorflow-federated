@@ -591,7 +591,9 @@ def build_model_delta_optimizer_process(
       to the server model.
     broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
-      `(input_values@SERVER -> output_values@CLIENT)`.
+      `(input_values@SERVER -> output_values@CLIENT)`. If set to default None,
+      the server model is broadcast to the clients using the default
+      tff.federated_broadcast.
     aggregation_process: A `tff.templates.MeasuredProcess` that aggregates the
       model updates on the clients back to the server. It must support the
       signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be

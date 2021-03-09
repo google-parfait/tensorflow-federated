@@ -83,6 +83,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/utils:tf_computation_utils",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
     ],
@@ -99,11 +100,13 @@ py_cpu_gpu_test(
         ":model",
         ":model_utils",
         "//tensorflow_federated/python/common_libs:test_utils",
+        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "//tensorflow_federated/python/learning/framework:encoding_utils",
     ],
 )
 
