@@ -3,12 +3,29 @@
 # See https://docs.bazel.build/versions/master/user-manual.html#config for
 # details on the various configuration options.
 
+# Enable remote config
+common --experimental_repo_remote_exec
+
 # Build with optimization enabled.
 build --compilation_mode=opt
+
 # Enable fast C++ protocol buffers, 10x speedup over pure Python.
-build --define use_fast_cpp_protos=true
+build --define=use_fast_cpp_protos=true
 
 # Processor native optimizations (depends on build host capabilities).
 build --copt=-march=native
 build --host_copt=-march=native
 build --copt=-O3
+
+# TODO(b/181814870): Investigate targeting C++17, go/cstyle#C++_Version.
+# LLVM, MLIR and TF require C++14.
+build --cxxopt=-std=c++14
+build --host_cxxopt=-std=c++14
+
+# Creates parity with TF compilation options. It also addresses memory use due
+# to copy-on-write semantics of std::strings of the older ABI.
+build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0
+
+# Options to build TensorFlow 2.x.
+build --define=tf_api_version=2
+build --action_env=TF2_BEHAVIOR=1
