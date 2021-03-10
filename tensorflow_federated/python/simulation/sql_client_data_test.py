@@ -11,18 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tensorflow_federated.python.simulation.sql_client_data."""
 
 import os
+import warnings
 
 from absl import flags
 import sqlite3
 import tensorflow as tf
 
-from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation import sql_client_data
 
 FLAGS = flags.FLAGS
+
+# TODO(b/182305417): Delete this once the full deprecation period has passed.
 
 
 def test_dataset_filepath():
@@ -81,73 +82,16 @@ def setUpModule():
 
 class SqlClientDataTest(tf.test.TestCase):
 
-  def test_client_missing(self):
-    client_data = sql_client_data.SqlClientData(test_dataset_filepath())
-    with self.assertRaisesRegex(ValueError, 'not a client in this ClientData'):
-      client_data.create_tf_dataset_for_client('missing_client_id')
+  def test_deprecation_warning_raised_on_init(self):
 
-  def test_create_dataset_for_client(self):
-
-    def test_split(split_name, example_counts):
-      client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
-      self.assertEqual(client_data.client_ids, list(example_counts.keys()))
-      self.assertEqual(client_data.element_type_structure,
-                       tf.TensorSpec(shape=(), dtype=tf.string))
-      for client_id, expected_examples in example_counts.items():
-        dataset = client_data.create_tf_dataset_for_client(client_id)
-        actual_examples = dataset.reduce(0, lambda s, x: s + 1)
-        self.assertEqual(actual_examples, expected_examples, msg=client_id)
-
-    with self.subTest('no_split'):
-      test_split(None, {'test_a': 1, 'test_b': 2, 'test_c': 3})
-    with self.subTest('train_split'):
-      test_split('train', {'test_a': 1, 'test_b': 1, 'test_c': 2})
-    with self.subTest('test_split'):
-      # The `test` split has no examples for client `test_a`.
-      test_split('test', {'test_b': 1, 'test_c': 1})
-
-  def test_create_dataset_from_all_clients(self):
-
-    def test_split(split_name, example_counts):
-      client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
-      self.assertEqual(client_data.client_ids, list(example_counts.keys()))
-      self.assertEqual(client_data.element_type_structure,
-                       tf.TensorSpec(shape=(), dtype=tf.string))
-      expected_examples = sum(example_counts.values())
-      dataset = client_data.create_tf_dataset_from_all_clients()
-      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
-      self.assertEqual(actual_examples, expected_examples)
-
-    with self.subTest('no_split'):
-      test_split(None, {'test_a': 1, 'test_b': 2, 'test_c': 3})
-    with self.subTest('train_split'):
-      test_split('train', {'test_a': 1, 'test_b': 1, 'test_c': 2})
-    with self.subTest('test_split'):
-      # The `test` split has no examples for client `test_a`.
-      test_split('test', {'test_b': 1, 'test_c': 1})
-
-  def test_dataset_computation(self):
-
-    def test_split(split_name, expected_examples):
-      client_data = sql_client_data.SqlClientData(
-          test_dataset_filepath(), split_name=split_name)
-      self.assertEqual(
-          str(client_data.dataset_computation.type_signature),
-          '(string -> string*)')
-      dataset = client_data.dataset_computation('test_c')
-      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
-      self.assertEqual(actual_examples, expected_examples)
-
-    with self.subTest('no_split'):
-      test_split(None, 3)
-    with self.subTest('train'):
-      test_split('train', 2)
-    with self.subTest('test'):
-      test_split('test', 1)
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      sql_client_data.SqlClientData(test_dataset_filepath())
+      self.assertNotEmpty(w)
+      self.assertEqual(w[0].category, DeprecationWarning)
+      self.assertRegex(
+          str(w[0].message), 'tff.simulation.SqlClientData is deprecated')
 
 
 if __name__ == '__main__':
-  execution_contexts.set_local_execution_context()
   tf.test.main()

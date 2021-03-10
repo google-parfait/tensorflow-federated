@@ -25,8 +25,6 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 
-# TODO(b/182305417): Delete this once the full deprecation period has passed.
-
 
 class ClientData(object, metaclass=abc.ABCMeta):
   """Object to hold a federated dataset.
@@ -61,9 +59,6 @@ class ClientData(object, metaclass=abc.ABCMeta):
   If desiring a manner for constructing ClientData objects for testing purposes,
   please see the `tff.test.FromTensorSlicesClientData` class, as it provides an
   easy way to construct toy federated datasets.
-
-  WARNING: this class is deprecated and is slated for removal in April 2021.
-  Please use `tff.simulation.datasets.ClientData` instead.
   """
 
   @abc.abstractproperty
