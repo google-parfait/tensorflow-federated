@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -46,6 +47,8 @@ py_test(
         ":test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -75,6 +78,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -85,6 +89,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":form_utils",
         ":forms",
         ":test_utils",
@@ -103,6 +108,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -112,6 +119,7 @@ py_library(
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":forms",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -119,6 +127,7 @@ py_library(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -138,6 +147,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@absl_py//absl/logging",
     ],
 )
 
@@ -164,5 +174,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

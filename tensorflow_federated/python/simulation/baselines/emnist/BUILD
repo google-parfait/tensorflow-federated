@@ -24,6 +24,7 @@ py_library(
     name = "emnist_models",
     srcs = ["emnist_models.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
@@ -31,7 +32,10 @@ py_test(
     srcs = ["emnist_models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":emnist_models"],
+    deps = [
+        ":emnist_models",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -42,6 +46,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -54,5 +59,7 @@ py_test(
     deps = [
         ":emnist_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

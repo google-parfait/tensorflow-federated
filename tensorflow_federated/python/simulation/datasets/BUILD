@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -5,6 +6,7 @@ package_group(
     includes = ["//tensorflow_federated/python/simulation:simulation_visibility"],
     packages = [
         # Subpackages
+        "//tensorflow_federated/python/simulation/...",
         "//tensorflow_federated/python/simulation/datasets/...",
         "//tensorflow_federated/python/simulation/baselines/...",
     ],
@@ -21,11 +23,15 @@ py_library(
     visibility = ["//tensorflow_federated/python/simulation:__pkg__"],
     deps = [
         ":cifar100",
+        ":client_data",
         ":dataset_utils",
         ":emnist",
+        ":file_per_user_client_data",
         ":gldv2",
         ":shakespeare",
+        ":sql_client_data",
         ":stackoverflow",
+        ":transforming_client_data",
     ],
 )
 
@@ -36,6 +42,7 @@ py_library(
     deps = [
         ":download",
         "//tensorflow_federated/python/simulation:sql_client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -52,13 +59,18 @@ py_test(
         "nokokoro",
         "notap",
     ],
-    deps = [":cifar100"],
+    deps = [
+        ":cifar100",
+        "@absl_py//absl/flags",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
     name = "dataset_utils",
     srcs = ["dataset_utils.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
@@ -70,6 +82,7 @@ py_test(
     deps = [
         ":dataset_utils",
         "//tensorflow_federated/python/simulation:client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -77,6 +90,10 @@ py_library(
     name = "download",
     srcs = ["download.py"],
     srcs_version = "PY3",
+    deps = [
+        requirement("tqdm"),
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -85,7 +102,11 @@ py_test(
     srcs = ["download_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":download"],
+    deps = [
+        ":download",
+        "@absl_py//absl/flags",
+        "@absl_py//absl/testing:absltest",
+    ],
 )
 
 py_library(
@@ -93,11 +114,13 @@ py_library(
     srcs = ["emnist.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":download",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
         "//tensorflow_federated/python/simulation:sql_client_data",
         "//tensorflow_federated/python/simulation:transforming_client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -107,7 +130,13 @@ py_test(
     srcs = ["emnist_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":emnist"],
+    deps = [
+        requirement("numpy"),
+        ":emnist",
+        "@absl_py//absl/flags",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -119,6 +148,7 @@ py_library(
         "//tensorflow_federated/python/simulation:client_data",
         "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
         "//tensorflow_federated/python/simulation:sql_client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -128,7 +158,12 @@ py_test(
     srcs = ["shakespeare_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":shakespeare"],
+    deps = [
+        ":shakespeare",
+        "@absl_py//absl/flags",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -136,9 +171,11 @@ py_library(
     srcs = ["stackoverflow.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":download",
         "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
         "//tensorflow_federated/python/simulation:sql_client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -148,7 +185,12 @@ py_test(
     srcs = ["stackoverflow_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":stackoverflow"],
+    deps = [
+        ":stackoverflow",
+        "@absl_py//absl/flags",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -158,6 +200,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/simulation:client_data",
         "//tensorflow_federated/python/simulation:file_per_user_client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -167,5 +210,146 @@ py_test(
     srcs = ["gldv2_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":gldv2"],
+    deps = [
+        ":gldv2",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "client_data",
+    srcs = ["client_data.py"],
+    srcs_version = "PY3",
+    deps = [
+        requirement("numpy"),
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "client_data_test",
+    size = "small",
+    srcs = ["client_data_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":client_data",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "file_per_user_client_data",
+    srcs = ["file_per_user_client_data.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":client_data",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "file_per_user_client_data_test",
+    size = "small",
+    srcs = ["file_per_user_client_data_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        requirement("numpy"),
+        ":file_per_user_client_data",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "from_tensor_slices_client_data",
+    srcs = ["from_tensor_slices_client_data.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":client_data",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "from_tensor_slices_client_data_test",
+    size = "small",
+    srcs = ["from_tensor_slices_client_data_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        requirement("numpy"),
+        ":from_tensor_slices_client_data",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "sql_client_data",
+    srcs = ["sql_client_data.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":client_data",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "sql_client_data_test",
+    size = "small",
+    srcs = ["sql_client_data_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":sql_client_data",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@absl_py//absl/flags",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "transforming_client_data",
+    srcs = ["transforming_client_data.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":client_data",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "transforming_client_data_test",
+    size = "small",
+    srcs = ["transforming_client_data_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        requirement("numpy"),
+        ":from_tensor_slices_client_data",
+        ":transforming_client_data",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )

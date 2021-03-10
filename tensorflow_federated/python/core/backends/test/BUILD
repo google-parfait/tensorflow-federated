@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -45,6 +46,7 @@ py_library(
     srcs = ["federated_strategy.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",
@@ -55,6 +57,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -76,5 +80,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

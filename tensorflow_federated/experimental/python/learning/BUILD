@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -27,6 +28,8 @@ py_library(
     srcs = ["jax_components.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
         "//tensorflow_federated/experimental/python/core/api:computations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -45,8 +48,11 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
         ":jax_components",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/backends/xla:execution_contexts",
+        "@absl_py//absl/testing:absltest",
     ],
 )

@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -39,8 +40,11 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
+        requirement("numpy"),
         ":computation_wrapper_instances",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "@absl_py//absl/testing:absltest",
     ],
 )

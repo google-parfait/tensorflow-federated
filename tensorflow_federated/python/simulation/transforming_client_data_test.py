@@ -12,30 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
+import warnings
 
-from absl.testing import absltest
-import numpy as np
-import tensorflow as tf
-
-from tensorflow_federated.python.simulation import from_tensor_slices_client_data
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.simulation import transforming_client_data
+from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
+
+# TODO(b/182305417): Delete this once the full deprecation period has passed.
 
 TEST_DATA = {
     'CLIENT A': {
-        'x': np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4'),
-        'y': np.asarray([4.0, 5.0, 6.0], dtype='f4'),
-        'z': np.asarray(['a', 'b', 'c'], dtype='S'),
-    },
-    'CLIENT B': {
-        'x': np.asarray([[10, 11]], dtype='i4'),
-        'y': np.asarray([7.0], dtype='f4'),
-        'z': np.asarray(['d'], dtype='S'),
-    },
-    'CLIENT C': {
-        'x': np.asarray([[100, 101], [200, 201]], dtype='i4'),
-        'y': np.asarray([8.0, 9.0], dtype='f4'),
-        'z': np.asarray(['e', 'f'], dtype='S'),
+        'x': [[1, 2], [3, 4], [5, 6]],
     },
 }
 
@@ -50,91 +37,22 @@ def _test_transform_cons(raw_client_id, index):
   return fn
 
 
-class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
+class TransformingClientDataTest(test_case.TestCase):
 
   def test_client_ids_property(self):
     client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
         TEST_DATA)
-    num_transformed_clients = 7
-    transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform_cons, num_transformed_clients)
-    client_ids = transformed_client_data.client_ids
-    self.assertLen(client_ids, num_transformed_clients)
-    for client_id in client_ids:
-      self.assertIsInstance(client_id, str)
-    self.assertListEqual(client_ids, sorted(client_ids))
-    self.assertTrue(transformed_client_data._has_pseudo_clients)
 
-  def test_default_num_transformed_clients(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
-    transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform_cons)
-    client_ids = transformed_client_data.client_ids
-    self.assertLen(client_ids, len(TEST_DATA))
-    self.assertFalse(transformed_client_data._has_pseudo_clients)
-
-  def test_fail_on_bad_client_id(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
-    transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform_cons, 7)
-    # The following three should be valid.
-    transformed_client_data.create_tf_dataset_for_client('CLIENT A_1')
-    transformed_client_data.create_tf_dataset_for_client('CLIENT B_1')
-    transformed_client_data.create_tf_dataset_for_client('CLIENT A_2')
-    # This should not be valid: no corresponding client.
-    with self.assertRaisesRegex(
-        ValueError, 'client_id must be a valid string from client_ids.'):
-      transformed_client_data.create_tf_dataset_for_client('CLIENT D_0')
-    # This should not be valid: index out of range.
-    with self.assertRaisesRegex(
-        ValueError, 'client_id must be a valid string from client_ids.'):
-      transformed_client_data.create_tf_dataset_for_client('CLIENT B_2')
-
-  def test_create_tf_dataset_for_client(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
-    transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform_cons, 9)
-    for client_id in transformed_client_data.client_ids:
-      tf_dataset = transformed_client_data.create_tf_dataset_for_client(
-          client_id)
-      self.assertIsInstance(tf_dataset, tf.data.Dataset)
-      pattern = r'^(.*)_(\d*)$'
-      match = re.search(pattern, client_id)
-      client = match.group(1)
-      index = int(match.group(2))
-      for i, actual in enumerate(tf_dataset):
-        actual = self.evaluate(actual)
-        expected = {k: v[i].copy() for k, v in TEST_DATA[client].items()}
-        expected['x'] += 10 * index
-        self.assertCountEqual(actual, expected)
-        for k, v in actual.items():
-          self.assertAllEqual(v, expected[k])
-
-  def test_create_tf_dataset_from_all_clients(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
-    num_transformed_clients = 9
-    transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform_cons, num_transformed_clients)
-    expansion_factor = num_transformed_clients // len(TEST_DATA)
-    tf_dataset = transformed_client_data.create_tf_dataset_from_all_clients()
-    self.assertIsInstance(tf_dataset, tf.data.Dataset)
-    expected_examples = []
-    for expected_data in TEST_DATA.values():
-      for index in range(expansion_factor):
-        for i in range(len(expected_data['x'])):
-          example = {k: v[i].copy() for k, v in expected_data.items()}
-          example['x'] += 10 * index
-          expected_examples.append(example)
-    for actual in tf_dataset:
-      actual = self.evaluate(actual)
-      expected = expected_examples.pop(0)
-      self.assertCountEqual(actual, expected)
-    self.assertEmpty(expected_examples)
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      transforming_client_data.TransformingClientData(client_data,
+                                                      _test_transform_cons)
+      self.assertNotEmpty(w)
+      self.assertEqual(w[0].category, DeprecationWarning)
+      self.assertRegex(
+          str(w[0].message),
+          'tff.simulation.TransformingClientData is deprecated')
 
 
 if __name__ == '__main__':
-  tf.test.main()
+  test_case.main()

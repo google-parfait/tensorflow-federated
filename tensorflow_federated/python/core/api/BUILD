@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -48,10 +49,13 @@ py_library(
     srcs = ["computation_types.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("numpy"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -78,10 +82,15 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("numpy"),
         ":computation_types",
         ":placements",
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -109,6 +118,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":computation_types",
         ":computations",
         ":intrinsics",
@@ -117,6 +127,8 @@ py_test(
         ":value_base",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -131,7 +143,11 @@ py_library(
     name = "test_case",
     srcs = ["test_case.py"],
     srcs_version = "PY3",
-    deps = [":computation_types"],
+    deps = [
+        ":computation_types",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -180,5 +196,6 @@ py_test(
         ":values",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/federated_context:federated_computation_context",
+        "@absl_py//absl/testing:absltest",
     ],
 )

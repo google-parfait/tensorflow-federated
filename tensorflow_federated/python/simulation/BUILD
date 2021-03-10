@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 # Packages that have visibility into the `simulation` package.
@@ -45,6 +46,10 @@ py_library(
     name = "checkpoint_manager",
     srcs = ["checkpoint_manager.py"],
     srcs_version = "PY3",
+    deps = [
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -52,7 +57,10 @@ py_test(
     srcs = ["checkpoint_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":checkpoint_manager"],
+    deps = [
+        ":checkpoint_manager",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -60,9 +68,12 @@ py_library(
     srcs = ["client_data.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -72,14 +83,24 @@ py_test(
     srcs = ["client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":client_data"],
+    deps = [
+        ":client_data",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
     name = "csv_manager",
     srcs = ["csv_manager.py"],
     srcs_version = "PY3",
-    deps = [":metrics_manager"],
+    deps = [
+        requirement("dm-tree"),
+        requirement("numpy"),
+        ":metrics_manager",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -87,7 +108,10 @@ py_test(
     srcs = ["csv_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":csv_manager"],
+    deps = [
+        ":csv_manager",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -95,10 +119,8 @@ py_library(
     srcs = ["file_per_user_client_data.py"],
     srcs_version = "PY3",
     deps = [
-        ":client_data",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "//tensorflow_federated/python/simulation/datasets:file_per_user_client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -110,8 +132,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":file_per_user_client_data",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -120,9 +141,7 @@ py_library(
     srcs = ["from_tensor_slices_client_data.py"],
     srcs_version = "PY3",
     deps = [
-        ":client_data",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/simulation/datasets:from_tensor_slices_client_data",
     ],
 )
 
@@ -134,9 +153,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":from_tensor_slices_client_data",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/core/api:test_case",
     ],
 )
 
@@ -146,9 +163,11 @@ py_library(
     deprecation = "hdf5_client_data is deprecated and slated for removal April 2021",
     srcs_version = "PY3",
     deps = [
+        requirement("h5py"),
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -158,7 +177,13 @@ py_test(
     srcs = ["hdf5_client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":hdf5_client_data"],
+    deps = [
+        requirement("h5py"),
+        requirement("numpy"),
+        ":hdf5_client_data",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -191,6 +216,8 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -204,7 +231,10 @@ py_library(
     name = "sampling_utils",
     srcs = ["sampling_utils.py"],
     srcs_version = "PY3",
-    deps = [":client_data"],
+    deps = [
+        requirement("numpy"),
+        ":client_data",
+    ],
 )
 
 py_test(
@@ -216,6 +246,8 @@ py_test(
     deps = [
         ":client_data",
         ":sampling_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -224,9 +256,11 @@ py_library(
     srcs = ["server_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_service",
+        "@absl_py//absl/logging",
     ],
 )
 
@@ -237,6 +271,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("portpicker"),
         ":server_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
@@ -248,7 +283,13 @@ py_library(
     name = "tensorboard_manager",
     srcs = ["tensorboard_manager.py"],
     srcs_version = "PY3",
-    deps = [":metrics_manager"],
+    deps = [
+        requirement("dm-tree"),
+        requirement("numpy"),
+        ":metrics_manager",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -256,7 +297,10 @@ py_test(
     srcs = ["tensorboard_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tensorboard_manager"],
+    deps = [
+        ":tensorboard_manager",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -264,8 +308,8 @@ py_library(
     srcs = ["transforming_client_data.py"],
     srcs_version = "PY3",
     deps = [
-        ":client_data",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/simulation/datasets:client_data",
+        "//tensorflow_federated/python/simulation/datasets:transforming_client_data",
     ],
 )
 
@@ -276,8 +320,9 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":from_tensor_slices_client_data",
         ":transforming_client_data",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/simulation/datasets:from_tensor_slices_client_data",
     ],
 )
 
@@ -286,9 +331,7 @@ py_library(
     srcs = ["sql_client_data.py"],
     srcs_version = "PY3",
     deps = [
-        ":client_data",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/simulation/datasets:sql_client_data",
     ],
 )
 
@@ -300,6 +343,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":sql_client_data",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@absl_py//absl/flags",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

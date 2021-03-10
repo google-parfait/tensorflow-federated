@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -31,6 +32,7 @@ py_library(
     srcs = ["computation_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
     ],
@@ -43,6 +45,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":computation_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:test_case",
@@ -54,6 +57,9 @@ py_library(
     srcs = ["encoding_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("dm-tree"),
+        requirement("tensorflow-model-optimization"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -62,6 +68,7 @@ py_library(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -71,6 +78,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tensorflow-model-optimization"),
         ":encoding_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
@@ -78,6 +87,8 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -86,6 +97,7 @@ py_library(
     srcs = ["federated_aggregations.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -93,6 +105,7 @@ py_library(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/api:value_base",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -103,6 +116,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":federated_aggregations",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -111,6 +125,8 @@ py_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/core/test:static_assert",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -122,6 +138,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -135,5 +152,6 @@ py_test(
         ":tf_computation_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:test_case",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

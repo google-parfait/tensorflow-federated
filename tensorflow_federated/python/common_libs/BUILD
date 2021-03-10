@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = ["//tensorflow_federated:internal"])
@@ -21,6 +22,7 @@ py_library(
     testonly = True,
     srcs = ["golden.py"],
     srcs_version = "PY3",
+    deps = ["@absl_py//absl/flags"],
 )
 
 py_test(
@@ -45,13 +47,18 @@ py_test(
     ],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":golden"],
+    deps = [
+        ":golden",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:flagsaver",
+    ],
 )
 
 py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
     srcs_version = "PY3",
+    deps = [requirement("attrs")],
 )
 
 py_test(
@@ -61,8 +68,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":py_typecheck",
         ":structure",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -73,6 +82,7 @@ py_library(
     deps = [
         ":py_typecheck",
         "@com_google_protobuf//:protobuf_python",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -84,7 +94,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":serialization_utils",
+        "@absl_py//absl/testing:absltest",
         "@com_google_protobuf//:protobuf_python",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -96,7 +108,11 @@ py_library(
         "//tensorflow_federated:__pkg__",
         "//tensorflow_federated:internal",
     ],
-    deps = [":py_typecheck"],
+    deps = [
+        requirement("attrs"),
+        ":py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -105,13 +121,18 @@ py_test(
     srcs = ["structure_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":structure"],
+    deps = [
+        requirement("attrs"),
+        ":structure",
+        "@absl_py//absl/testing:absltest",
+    ],
 )
 
 py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_library(
@@ -122,7 +143,10 @@ py_library(
         "//tensorflow_federated:__pkg__",
         "//tensorflow_federated:internal",
     ],
-    deps = [":py_typecheck"],
+    deps = [
+        ":py_typecheck",
+        "@absl_py//absl/logging",
+    ],
 )
 
 py_test(
@@ -131,5 +155,9 @@ py_test(
     srcs = ["tracing_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tracing"],
+    deps = [
+        ":tracing",
+        "@absl_py//absl/logging",
+        "@absl_py//absl/testing:absltest",
+    ],
 )

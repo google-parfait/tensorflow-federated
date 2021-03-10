@@ -28,6 +28,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -40,6 +41,8 @@ py_test(
     deps = [
         ":cifar_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -47,6 +50,7 @@ py_library(
     name = "resnet_models",
     srcs = ["resnet_models.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
@@ -54,5 +58,8 @@ py_test(
     srcs = ["resnet_models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":resnet_models"],
+    deps = [
+        ":resnet_models",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )

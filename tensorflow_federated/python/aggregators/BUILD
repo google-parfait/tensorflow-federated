@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -35,6 +36,7 @@ py_library(
     srcs = ["differential_privacy.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tensorflow-privacy"),
         ":factory",
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -53,6 +55,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tensorflow-privacy"),
         ":differential_privacy",
         ":factory",
         ":test_utils",
@@ -63,6 +67,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -71,6 +77,8 @@ py_library(
     srcs = ["encoded.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("dm-tree"),
+        requirement("tensorflow-model-optimization"),
         ":factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -80,6 +88,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -90,6 +99,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("tensorflow-model-optimization"),
         ":encoded",
         ":factory",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -98,6 +108,8 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -126,6 +138,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -144,6 +157,8 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -152,6 +167,7 @@ py_library(
     srcs = ["quantile_estimation.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tensorflow-privacy"),
         ":factory",
         ":sum_factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -160,6 +176,7 @@ py_library(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/templates:estimation_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -169,6 +186,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tensorflow-privacy"),
         ":quantile_estimation",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:placements",
@@ -176,6 +195,8 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:estimation_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -196,6 +217,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -217,6 +239,8 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -237,6 +261,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_transformations",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -251,6 +276,8 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -259,6 +286,7 @@ py_library(
     srcs = ["secure.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":factory",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -270,6 +298,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/utils:federated_aggregations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -280,6 +309,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":factory",
         ":secure",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -291,6 +321,8 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -325,6 +357,8 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -342,6 +376,7 @@ py_library(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -360,5 +395,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

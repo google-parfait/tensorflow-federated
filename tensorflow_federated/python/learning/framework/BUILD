@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library")
 
@@ -36,12 +37,14 @@ py_library(
     srcs = ["encoding_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("tensorflow-model-optimization"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/utils:encoding_utils",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -51,12 +54,16 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
+        requirement("tensorflow-model-optimization"),
         ":encoding_utils",
         ":optimizer_utils",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -65,6 +72,8 @@ py_library(
     srcs = ["optimizer_utils.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("numpy"),
         "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -79,6 +88,7 @@ py_library(
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_utils",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -88,6 +98,7 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":optimizer_utils",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:sampling",
@@ -102,6 +113,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -109,6 +122,7 @@ py_library(
     name = "dataset_reduce",
     srcs = ["dataset_reduce.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_cpu_gpu_test(
@@ -116,5 +130,10 @@ py_cpu_gpu_test(
     srcs = ["dataset_reduce_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":dataset_reduce"],
+    deps = [
+        requirement("numpy"),
+        ":dataset_reduce",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )

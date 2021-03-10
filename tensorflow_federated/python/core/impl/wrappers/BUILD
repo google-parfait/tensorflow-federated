@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -40,6 +41,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":computation_wrapper",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -47,6 +49,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/computation:function_utils",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -88,6 +91,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":computation_wrapper",
         ":computation_wrapper_instances",
         "//tensorflow_federated/python/common_libs:golden",
@@ -98,5 +102,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/context_stack:runtime_error_context",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

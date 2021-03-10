@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
@@ -29,6 +30,8 @@ py_library(
     srcs = ["caching_executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("cachetools"),
+        requirement("numpy"),
         ":executor_base",
         ":executor_utils",
         ":executor_value_base",
@@ -37,6 +40,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -47,6 +51,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":caching_executor",
         ":eager_tf_executor",
         ":executor_base",
@@ -58,6 +63,8 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -83,6 +90,8 @@ py_test(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -106,6 +115,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -131,6 +141,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsic_factory",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -153,6 +165,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_factory",
+        "@absl_py//absl/logging",
     ],
 )
 
@@ -168,6 +181,8 @@ py_test(
         ":federated_resolving_strategy",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -176,6 +191,7 @@ py_library(
     srcs = ["eager_tf_executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("cachetools"),
         ":executor_base",
         ":executor_utils",
         ":executor_value_base",
@@ -194,6 +210,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:graph_merge",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -204,6 +221,7 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":eager_tf_executor",
         ":executor_stacks",
         ":executor_test_utils",
@@ -214,6 +232,8 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -227,10 +247,12 @@ py_test(
         "requires-gpu-nvidia",
     ],
     deps = [
+        requirement("numpy"),
         ":eager_tf_executor",
         "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -239,6 +261,7 @@ py_library(
     srcs = ["execution_context.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("retrying"),
         ":cardinalities_utils",
         ":executor_base",
         ":executor_factory",
@@ -252,6 +275,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:compiler_pipeline",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -262,6 +286,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":execution_context",
         ":executor_stacks",
         ":executor_test_utils",
@@ -269,6 +294,9 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -294,12 +322,14 @@ py_library(
     srcs = ["executor_service.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
         ":executor_factory",
         ":executor_serialization",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",
+        "@absl_py//absl/logging",
     ],
 )
 
@@ -310,6 +340,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
+        requirement("portpicker"),
         ":eager_tf_executor",
         ":executor_base",
         ":executor_factory",
@@ -321,6 +353,8 @@ py_test(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -329,6 +363,7 @@ py_library(
     srcs = ["executor_serialization.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":executor_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
@@ -342,6 +377,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "@com_google_protobuf//:protobuf_python",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -352,6 +388,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":executor_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/proto/v0:executor_py_pb2",
@@ -360,6 +397,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -368,6 +406,8 @@ py_library(
     srcs = ["executor_stacks.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
+        requirement("grpcio"),
         ":caching_executor",
         ":eager_tf_executor",
         ":execution_context",
@@ -385,6 +425,8 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:local_computation_factory_base",
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -396,6 +438,8 @@ py_cpu_gpu_test(
     shard_count = 5,
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
+        requirement("numpy"),
         ":eager_tf_executor",
         ":executor_base",
         ":executor_factory",
@@ -406,6 +450,9 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -418,6 +465,7 @@ py_test(
         "requires-gpu-nvidia",
     ],
     deps = [
+        requirement("numpy"),
         ":executor_base",
         ":executor_stacks",
         ":executor_test_utils",
@@ -425,6 +473,9 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -451,6 +502,9 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -466,6 +520,9 @@ py_test(
         ":executor_test_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -490,6 +547,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -512,6 +570,9 @@ py_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -564,6 +625,9 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -572,6 +636,7 @@ py_library(
     srcs = ["reference_resolving_executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("cachetools"),
         ":executor_base",
         ":executor_utils",
         ":executor_value_base",
@@ -606,6 +671,8 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -614,6 +681,7 @@ py_library(
     srcs = ["remote_executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
         ":execution_context",
         ":executor_base",
         ":executor_serialization",
@@ -624,6 +692,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@absl_py//absl/logging",
     ],
 )
 
@@ -634,6 +703,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("grpcio"),
+        requirement("portpicker"),
         ":execution_context",
         ":executor_service",
         ":executor_stacks",
@@ -645,7 +716,10 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
         "@com_google_protobuf//:protobuf_python",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -676,6 +750,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":eager_tf_executor",
         ":sequence_executor",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
@@ -686,6 +761,8 @@ py_test(
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -699,6 +776,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:typed_object",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -717,6 +795,9 @@ py_test(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -730,6 +811,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",
+        "@absl_py//absl/logging",
     ],
 )
 
@@ -745,6 +827,8 @@ py_test(
         ":executor_base",
         ":thread_delegating_executor",
         "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -776,5 +860,7 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
+        "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

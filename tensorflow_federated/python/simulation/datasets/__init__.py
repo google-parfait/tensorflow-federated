@@ -18,6 +18,10 @@ from tensorflow_federated.python.simulation.datasets import emnist
 from tensorflow_federated.python.simulation.datasets import gldv2
 from tensorflow_federated.python.simulation.datasets import shakespeare
 from tensorflow_federated.python.simulation.datasets import stackoverflow
+from tensorflow_federated.python.simulation.datasets.client_data import ClientData
 from tensorflow_federated.python.simulation.datasets.dataset_utils import build_dataset_mixture
 from tensorflow_federated.python.simulation.datasets.dataset_utils import build_single_label_dataset
 from tensorflow_federated.python.simulation.datasets.dataset_utils import build_synthethic_iid_datasets
+from tensorflow_federated.python.simulation.datasets.file_per_user_client_data import FilePerUserClientData
+from tensorflow_federated.python.simulation.datasets.sql_client_data import SqlClientData
+from tensorflow_federated.python.simulation.datasets.transforming_client_data import TransformingClientData

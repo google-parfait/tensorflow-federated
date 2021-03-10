@@ -25,4 +25,5 @@ py_library(
     name = "mnist",
     srcs = ["mnist.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )

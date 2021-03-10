@@ -10,6 +10,10 @@ py_binary(
     srcs = ["build_docs.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    deps = [
+        "@absl_py//absl:app",
+        "@absl_py//absl/flags",
+    ],
 )
 
 bzl_library(

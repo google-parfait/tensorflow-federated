@@ -15,9 +15,7 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import client_data as cd
-
-# TODO(b/182305417): Delete this once the full deprecation period has passed.
+from tensorflow_federated.python.simulation.datasets import client_data as cd
 
 
 class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):

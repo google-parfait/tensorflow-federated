@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -36,6 +37,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -52,6 +54,7 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -69,6 +72,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:variable_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -79,6 +83,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("numpy"),
         ":tensorflow_serialization",
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/common_libs:test_utils",
@@ -86,5 +91,6 @@ py_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
