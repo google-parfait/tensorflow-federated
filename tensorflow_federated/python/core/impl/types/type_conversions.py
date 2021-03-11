@@ -13,7 +13,7 @@
 """Utilities for type conversion, type checking, type inference, etc."""
 
 import collections
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import attr
 import numpy as np
@@ -427,6 +427,47 @@ def type_to_py_container(value, type_spec):
     # `collections.OrderedDict`, or `structure.Struct` when
     # elements has (name, value) tuples.
     return container_type(elements)
+
+
+def _type_to_tensor_structure_inner(fn, type_spec):
+  """Helper for `type_to_tensor_structure`."""
+  if type_spec.is_struct():
+
+    def _map_element(element):
+      name, nested_type = element
+      return (name, _type_to_tensor_structure_inner(fn, nested_type))
+
+    return structure.Struct(
+        map(_map_element, structure.iter_elements(type_spec)))
+  elif type_spec.is_tensor():
+    return fn(type_spec)
+  else:
+    raise ValueError('Expected tensor or structure type, found type:\n' +
+                     type_spec.formatted_representation())
+
+
+def type_to_tensor_structure(fn: Callable[[computation_types.TensorType],
+                                          tf.Tensor], type_spec):
+  """Constructs a structure of tensors conforming to `type_spec`.
+
+  Args:
+    fn: A callable used to generate the tensors with which to fill the resulting
+      structure. `fn` will be called exactly once per leaf `tff.TensorType` in
+      the order they appear in the `type_spec` structure.
+    type_spec: A TFF type or value convertible to TFF type. Once converted,
+      `type_spec` must be a `tff.TensorType` or `tff.StructType` containing only
+      other `tff.TensorType`s and `tff.StructType`s.
+
+  Returns:
+    A structure conforming to `type_spec` filled with tensors returned from
+    `fn`.
+
+  Raises:
+    ValueError: if the provided `type_spec` is not a structural or tensor type.
+  """
+  type_spec = computation_types.to_type(type_spec)
+  non_python_typed = _type_to_tensor_structure_inner(fn, type_spec)
+  return type_to_py_container(non_python_typed, type_spec)
 
 
 def type_to_non_all_equal(type_spec):

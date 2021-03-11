@@ -5,6 +5,7 @@ package_group(
     name = "impl_visibility",
     includes = ["//tensorflow_federated/python/core:core_visibility"],
     packages = [
+        "//tensorflow_federated",
         "//tensorflow_federated/python/core/api/...",
         "//tensorflow_federated/python/core/backends/...",
         "//tensorflow_federated/python/core/framework/...",
