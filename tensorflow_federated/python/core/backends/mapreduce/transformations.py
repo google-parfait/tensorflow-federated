@@ -224,16 +224,13 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
     if comp.is_compiled_computation():
       return comp
     elif not comp.is_lambda():
-      comp, _ = transformations.remove_called_lambdas_and_blocks(comp)
-      if not comp.is_lambda():
-        raise ValueError(
-            'Any `building_blocks.ComputationBuildingBlock` of '
-            'functional type passed to '
-            '`consolidate_and_extract_local_processing`  should be '
-            'either a `building_blocks.CompiledComputation` or a '
-            '`building_blocks.Lambda`, or convertible to one; '
-            'after removing lambdas and blocks, have a a {} of '
-            'type {}.'.format(type(comp), comp.type_signature))
+      # We normalize on lambdas for ease of calling unwrap_placement below.
+      # The constructed lambda here simply forwards its argument to `comp`.
+      arg = building_blocks.Reference(
+          next(building_block_factory.unique_name_generator(comp)),
+          comp.type_signature.parameter)
+      called_fn = building_blocks.Call(comp, arg)
+      comp = building_blocks.Lambda(arg.name, arg.type_signature, called_fn)
     if comp.type_signature.result.is_federated():
       unwrapped, _ = tree_transformations.unwrap_placement(comp.result)
       # Unwrapped can be a call to `federated_value_at_P`, or

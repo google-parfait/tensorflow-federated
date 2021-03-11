@@ -19,8 +19,6 @@ an AST either pointwise or serially.
 
 from typing import Mapping
 
-from absl import logging
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -204,8 +202,8 @@ def transform_to_local_call_dominant(
   def _build(comp, scope):
     """Transforms `comp` to CDF, possibly adding bindings to `scope`."""
     # The structure returned by this function is a generalized version of
-    # call-dominant form. This function may result in the following patterns:
-
+    # call-dominant form. This function may result in the patterns specified in
+    # the top-level function's docstring.
     if comp.is_reference():
       return scope.resolve(comp.name)
     elif comp.is_selection():
@@ -258,45 +256,6 @@ def transform_to_local_call_dominant(
   scope = _Scope()
   result = _build(comp, scope)
   return scope.bindings_to_block_with_result(result)
-
-
-def remove_called_lambdas_and_blocks(comp):
-  """Removes any called lambdas and blocks from `comp`.
-
-  This function first resolves any higher-order functions, so that replacing
-  called lambdas with blocks and then inlining the block locals cannot result
-  in more called lambdas. It then performs this sequence of transformations,
-  taking care to inline selections from tuples at appropriate stages to prevent
-  possible combinatorial growth of the generated AST.
-
-  Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` from which we
-      want to remove called lambdas and blocks.
-
-  Returns:
-    A transformed version of `comp` which has no called lambdas or blocks, and
-    no extraneous selections from tuples.
-  """
-  py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  comp, names_uniquified = tree_transformations.uniquify_reference_names(comp)
-  comp, fns_resolved = tree_transformations.resolve_higher_order_functions(comp)
-  comp, lambdas_replaced = tree_transformations.replace_called_lambda_with_block(
-      comp)
-  if fns_resolved or lambdas_replaced:
-    comp, _ = tree_transformations.uniquify_reference_names(comp)
-  comp, sels_removed = tree_transformations.inline_selections_from_tuple(comp)
-  if sels_removed:
-    comp, _ = tree_transformations.uniquify_reference_names(comp)
-  comp, locals_inlined = tree_transformations.inline_block_locals(comp)
-  if locals_inlined:
-    # Inlining local symbols may reintroduce selection-from-tuple pattern,
-    # combinatorially increasing build times in the worst case. We ensure
-    # here that remove_called_lambdas_and_blocks respects the postcondition that
-    # selections from tuples are always collapsed.
-    comp, _ = tree_transformations.inline_selections_from_tuple(comp)
-    comp, _ = tree_transformations.uniquify_reference_names(comp)
-  modified = names_uniquified or fns_resolved or lambdas_replaced or sels_removed or locals_inlined
-  return comp, modified
 
 
 def _generate_simple_tensorflow(comp):
@@ -558,21 +517,16 @@ def create_tensorflow_representing_block(block):
   return comp_called, True
 
 
-def remove_duplicate_called_graphs(comp):
-  """Deduplicates called graphs for a subset of TFF AST constructs.
+def generate_tensorflow_for_local_function(comp):
+  """Generates TensorFlow for a local TFF computation.
+
+  This function performs a deduplication of function invocations
+  according to `tree_analysis.trees_equal`, and hence may reduce the number
+  of calls under `comp`.
 
   Args:
-    comp: Instance of `building_blocks.ComputationBuildingBlock` whose called
-      graphs we wish to deduplicate, according to `tree_analysis.trees_equal`.
-      For `comp` to be eligible here, it must be either a lambda itself whose
-      body contains no lambdas or blocks, or another computation containing no
-      lambdas or blocks. This restriction is necessary because
-      `remove_duplicate_called_graphs` makes no effort to ensure that it is not
-      pulling references out of their defining scope, except for the case where
-      `comp` is a lambda itself. This function exits early and logs a warning if
-      this assumption is violated. Additionally, `comp` must contain only
-      computations which can be represented in TensorFlow, IE, satisfy the type
-      restriction in `type_analysis.is_tensorflow_compatible_type`.
+    comp: Instance of `building_blocks.ComputationBuildingBlock` for which we
+      wish to generate TensorFlow.
 
   Returns:
     Either a called instance of `building_blocks.CompiledComputation` or a
@@ -581,56 +535,27 @@ def remove_duplicate_called_graphs(comp):
     a boolean to match the `transformation_utils.TransformSpec` pattern.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  tree_analysis.check_has_unique_names(comp)
-  name_generator = building_block_factory.unique_name_generator(comp)
-  if comp.is_lambda():
-    comp_to_check = comp.result
-  else:
-    comp_to_check = comp
-  if tree_analysis.contains_types(comp_to_check, (
-      building_blocks.Block,
-      building_blocks.Lambda,
-  )):
-    logging.warning(
-        'The preprocessors have failed to remove called lambdas '
-        'and blocks; falling back to less efficient, but '
-        'guaranteed, TensorFlow generation with computation %s.', comp)
-    return comp, False
+  names_uniquified, _ = tree_transformations.uniquify_reference_names(comp)
+  comp = transform_to_local_call_dominant(names_uniquified)
 
-  leaf_called_graphs = []
-
-  def _pack_called_graphs_into_block(inner_comp):
-    """Packs deduplicated bindings to called graphs in `leaf_called_graphs`."""
-    if inner_comp.is_call() and inner_comp.function.is_compiled_computation():
-      for (name, x) in leaf_called_graphs:
-        if tree_analysis.trees_equal(x, inner_comp):
-          return building_blocks.Reference(name,
-                                           inner_comp.type_signature), True
-      new_name = next(name_generator)
-      leaf_called_graphs.append((new_name, inner_comp))
-      return building_blocks.Reference(new_name,
-                                       inner_comp.type_signature), True
-
-    return inner_comp, False
+  def _package_as_deduplicated_block(inner_comp):
+    repacked_block, _ = tree_transformations.remove_duplicate_block_locals(
+        inner_comp)
+    if not repacked_block.is_block():
+      repacked_block = building_blocks.Block([], repacked_block)
+    return repacked_block
 
   if comp.is_lambda():
-    transformed_result, _ = transformation_utils.transform_postorder(
-        comp.result, _pack_called_graphs_into_block)
-    packed_into_block = building_blocks.Block(leaf_called_graphs,
-                                              transformed_result)
-    parsed, _ = create_tensorflow_representing_block(packed_into_block)
+    repacked_block = _package_as_deduplicated_block(comp.result)
+    tf_generated, _ = create_tensorflow_representing_block(repacked_block)
     tff_func = building_blocks.Lambda(comp.parameter_name, comp.parameter_type,
-                                      parsed)
+                                      tf_generated)
     tf_parser_callable = tree_to_cc_transformations.TFParser()
-    comp, _ = tree_transformations.insert_called_tf_identity_at_leaves(tff_func)
     tf_generated, _ = transformation_utils.transform_postorder(
-        comp, tf_parser_callable)
+        tff_func, tf_parser_callable)
   else:
-    transformed_result, _ = transformation_utils.transform_postorder(
-        comp, _pack_called_graphs_into_block)
-    packed_into_block = building_blocks.Block(leaf_called_graphs,
-                                              transformed_result)
-    tf_generated, _ = create_tensorflow_representing_block(packed_into_block)
+    repacked_block = _package_as_deduplicated_block(comp)
+    tf_generated, _ = create_tensorflow_representing_block(repacked_block)
   return tf_generated, True
 
 
@@ -755,28 +680,18 @@ class TensorFlowGenerator(transformation_utils.TransformSpec):
   TensorFlow computation.
   """
 
-  def __init__(self):
-    self._naive_tf_parser = tree_to_cc_transformations.TFParser()
-
   def transform(self, local_function):
     if not self.should_transform(local_function):
       return local_function, False
-    refs_removed, _ = remove_called_lambdas_and_blocks(local_function)
-    parsed_to_tf, _ = remove_duplicate_called_graphs(refs_removed)
-    if parsed_to_tf.is_compiled_computation() or (
-        parsed_to_tf.is_call() and
-        parsed_to_tf.function.is_compiled_computation()):
-      return parsed_to_tf, True
-    # TODO(b/146430051): We should only end up in this case if
-    # `remove_called_lambdas_and_blocks` above is in its failure mode, IE,
-    # failing to resolve references due to too-deep indirection; we should
-    # remove this extra case and simply raise if we fail here when we fix the
-    # attached bug.
-    called_graphs_inserted, _ = tree_transformations.insert_called_tf_identity_at_leaves(
-        parsed_to_tf)
-    compiled_comp, _ = transformation_utils.transform_postorder(
-        called_graphs_inserted, self._naive_tf_parser)
-    return compiled_comp, True
+    parsed_to_tf, _ = generate_tensorflow_for_local_function(local_function)
+    if not (parsed_to_tf.is_compiled_computation() or
+            (parsed_to_tf.is_call() and
+             parsed_to_tf.function.is_compiled_computation())):
+      raise tree_transformations.TransformationError(
+          'Failed to generate TensorFlow for a local function. '
+          f'Generated a building block of type {type(parsed_to_tf)} with '
+          f'formatted rep {parsed_to_tf.formatted_representation()}.')
+    return parsed_to_tf, True
 
   def should_transform(self, comp):
     if not (type_analysis.is_tensorflow_compatible_type(comp.type_signature) or
@@ -808,9 +723,8 @@ def compile_local_computation_to_tensorflow(comp):
     # so we short-circuit here.
     return comp, False
   local_tf_generator = TensorFlowGenerator()
-  transformed, modified = transformation_utils.transform_preorder(
-      comp, local_tf_generator.transform)
-  return transformed, modified
+  return transformation_utils.transform_preorder(comp,
+                                                 local_tf_generator.transform)
 
 
 def transform_to_call_dominant(
