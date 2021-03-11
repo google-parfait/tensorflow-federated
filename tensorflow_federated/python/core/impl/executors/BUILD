@@ -407,6 +407,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         requirement("attrs"),
+        requirement("cachetools"),
         requirement("grpcio"),
         ":caching_executor",
         ":eager_tf_executor",

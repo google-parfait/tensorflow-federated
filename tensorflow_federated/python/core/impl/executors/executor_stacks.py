@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from absl import logging
 import attr
+import cachetools
 import grpc
 import tensorflow as tf
 
@@ -40,6 +41,12 @@ from tensorflow_federated.python.core.impl.executors import sequence_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
 from tensorflow_federated.python.core.impl.types import placement_literals
+
+
+# Place a limit on the maximum size of the executor caches managed by the
+# ExecutorFactories, to prevent unbounded thread and memory growth in the case
+# of rapidly-changing cross-round cardinalities.
+_EXECUTOR_CACHE_SIZE = 10
 
 
 def _get_hashable_key(cardinalities: executor_factory.CardinalitiesType):
@@ -71,7 +78,7 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
 
     py_typecheck.check_callable(executor_stack_fn)
     self._executor_stack_fn = executor_stack_fn
-    self._executors = {}
+    self._executors = cachetools.LRUCache(_EXECUTOR_CACHE_SIZE)
     if ensure_closed is None:
       ensure_closed = ()
     self._ensure_closed = ensure_closed
@@ -155,6 +162,9 @@ class SizingExecutorFactory(ResourceManagingExecutorFactory):
     """
 
     super().__init__(executor_stack_fn)
+    # Sizing executors are intended to record the entire history of execution,
+    # and therefore we don't want to be silently clearing them. So we leave
+    # sizing_executors as a proper dict.
     self._sizing_executors = {}
 
   def create_executor(
@@ -854,7 +864,7 @@ class ReconstructOnChangeExecutorFactory(executor_factory.ExecutorFactory):
                                       bool] = lambda _: True):
     self._change_query = change_query
     self._underlying_stack = underlying_stack
-    self._executors = {}
+    self._executors = cachetools.LRUCache(_EXECUTOR_CACHE_SIZE)
     if ensure_closed is None:
       ensure_closed = ()
     self._ensure_closed = ensure_closed
