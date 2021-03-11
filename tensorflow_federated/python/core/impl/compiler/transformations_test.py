@@ -201,127 +201,6 @@ class TransformToLocalCallDominantTest(test_case.TestCase):
                      expected.compact_representation())
 
 
-class RemoveLambdasAndBlocksTest(test_case.TestCase):
-
-  def assertNoLambdasOrBlocks(self, comp):
-
-    def _transform(comp):
-      if (comp.is_call() and comp.function.is_lambda()) or comp.is_block():
-        raise AssertionError('Encountered disallowed computation: {}'.format(
-            comp.compact_representation()))
-      return comp, True
-
-    transformation_utils.transform_postorder(comp, _transform)
-
-  def test_with_simple_called_lambda(self):
-    identity_lam = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32))
-    called_lambda = building_blocks.Call(identity_lam,
-                                         building_blocks.Data('a', tf.int32))
-    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
-        called_lambda)
-    self.assertTrue(modified)
-    self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
-    self.assertEqual(lambdas_and_blocks_removed.compact_representation(), 'a')
-
-  def test_with_simple_block(self):
-    data = building_blocks.Data('a', tf.int32)
-    simple_block = building_blocks.Block([('x', data)],
-                                         building_blocks.Reference(
-                                             'x', tf.int32))
-    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
-        simple_block)
-    self.assertTrue(modified)
-    self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
-    self.assertEqual(lambdas_and_blocks_removed.compact_representation(), 'a')
-
-  def test_with_structure_replacing_federated_map(self):
-    function_type = computation_types.FunctionType(tf.int32, tf.int32)
-    tuple_ref = building_blocks.Reference('arg', [
-        function_type,
-        tf.int32,
-    ])
-    fn = building_blocks.Selection(tuple_ref, index=0)
-    arg = building_blocks.Selection(tuple_ref, index=1)
-    called_fn = building_blocks.Call(fn, arg)
-    concrete_fn = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32))
-    concrete_arg = building_blocks.Data('a', tf.int32)
-    arg_tuple = building_blocks.Struct([concrete_fn, concrete_arg])
-    generated_structure = building_blocks.Block([('arg', arg_tuple)], called_fn)
-    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
-        generated_structure)
-    self.assertTrue(modified)
-    self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
-
-  def test_with_structure_replacing_federated_zip(self):
-    fed_tuple = building_blocks.Reference(
-        'tup',
-        computation_types.FederatedType([tf.int32] * 3,
-                                        placement_literals.CLIENTS))
-    unzipped = building_block_factory.create_federated_unzip(fed_tuple)
-    zipped = building_block_factory.create_federated_zip(unzipped)
-    placement_unwrapped, _ = tree_transformations.unwrap_placement(zipped)
-    placement_gone = placement_unwrapped.argument
-    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
-        placement_gone)
-    self.assertTrue(modified)
-    self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
-
-  def test_with_nested_called_lambdas(self):
-    identity_lam = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32))
-    ref_to_fn = building_blocks.Reference('fn', identity_lam.type_signature)
-    data = building_blocks.Data('a', tf.int32)
-    called_inner_lambda = building_blocks.Call(ref_to_fn, data)
-    higher_level_lambda = building_blocks.Lambda('fn',
-                                                 identity_lam.type_signature,
-                                                 called_inner_lambda)
-    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
-        higher_level_lambda)
-    self.assertTrue(modified)
-    self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
-
-  def test_with_multiple_reference_indirection(self):
-    identity_lam = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32))
-    tuple_wrapping_ref = building_blocks.Struct(
-        [building_blocks.Reference('a', identity_lam.type_signature)])
-    selection_from_ref = building_blocks.Selection(
-        building_blocks.Reference('b', tuple_wrapping_ref.type_signature),
-        index=0)
-    data = building_blocks.Data('a', tf.int32)
-    called_lambda_with_indirection = building_blocks.Call(
-        building_blocks.Reference('c', selection_from_ref.type_signature), data)
-    blk = building_blocks.Block([
-        ('a', identity_lam),
-        ('b', tuple_wrapping_ref),
-        ('c', selection_from_ref),
-    ], called_lambda_with_indirection)
-    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
-        blk)
-    self.assertTrue(modified)
-    self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
-
-  def test_with_higher_level_lambdas(self):
-    data = building_blocks.Data('a', tf.int32)
-    dummy = building_blocks.Reference('z', tf.int32)
-    lowest_lambda = building_blocks.Lambda(
-        'z', tf.int32,
-        building_blocks.Struct(
-            [dummy, building_blocks.Reference('x', tf.int32)]))
-    middle_lambda = building_blocks.Lambda('x', tf.int32, lowest_lambda)
-    lam_arg = building_blocks.Reference('x', middle_lambda.type_signature)
-    rez = building_blocks.Call(lam_arg, data)
-    left_lambda = building_blocks.Lambda('x', middle_lambda.type_signature, rez)
-    higher_call = building_blocks.Call(left_lambda, middle_lambda)
-    high_call = building_blocks.Call(higher_call, data)
-    lambdas_and_blocks_removed, modified = transformations.remove_called_lambdas_and_blocks(
-        high_call)
-    self.assertTrue(modified)
-    self.assertNoLambdasOrBlocks(lambdas_and_blocks_removed)
-
-
 class TensorFlowCallingLambdaOnConcreteArgTest(test_case.TestCase):
 
   def test_raises_wrong_arguments(self):
@@ -665,42 +544,24 @@ class BlockLocalsTFGraphTest(test_case.TestCase):
     self.assertEqual((tuple_ops_with_10_ids - tuple_ops_with_5_ids) / 5, 4)
 
 
-class DeduplicateCalledGraphsTest(test_case.TestCase):
+class GenerateTensorflowForLocalFunctionTest(test_case.TestCase):
 
   def test_raises_bad_type(self):
     with self.assertRaises(TypeError):
-      transformations.remove_duplicate_called_graphs(1)
+      transformations.generate_tensorflow_for_local_function(1)
 
   def test_raises_non_unique_names(self):
     data = building_blocks.Data('a', tf.int32)
     block = building_blocks.Block([('x', data), ('x', data)], data)
     with self.assertRaises(ValueError):
-      transformations.remove_duplicate_called_graphs(block)
-
-  def test_returns_higher_level_lambda_untransformed(self):
-    lower_level_lambda = building_blocks.Lambda(
-        'x', tf.int32, building_blocks.Reference('x', tf.int32))
-    higher_level_lambda = building_blocks.Lambda('y', tf.int32,
-                                                 lower_level_lambda)
-    untransformed, modified_indicator = transformations.remove_duplicate_called_graphs(
-        higher_level_lambda)
-    self.assertEqual(untransformed, higher_level_lambda)
-    self.assertFalse(modified_indicator)
-
-  def test_returns_comp_with_block_untransformed(self):
-    data = building_blocks.Data('a', tf.int32)
-    block = building_blocks.Block([('x', data), ('y', data)], data)
-    untransformed, modified_indicator = transformations.remove_duplicate_called_graphs(
-        block)
-    self.assertEqual(untransformed, block)
-    self.assertFalse(modified_indicator)
+      transformations.generate_tensorflow_for_local_function(block)
 
   def test_returns_tf_computation_with_functional_type(self):
     param = building_blocks.Reference('x', [('a', tf.int32), ('b', tf.float32)])
     sel = building_blocks.Selection(source=param, index=0)
     tup = building_blocks.Struct([sel, sel, sel])
     lam = building_blocks.Lambda(param.name, param.type_signature, tup)
-    transformed, modified_indicator = transformations.remove_duplicate_called_graphs(
+    transformed, modified_indicator = transformations.generate_tensorflow_for_local_function(
         lam)
     self.assertTrue(modified_indicator)
     self.assertIsInstance(transformed, building_blocks.CompiledComputation)
@@ -712,7 +573,7 @@ class DeduplicateCalledGraphsTest(test_case.TestCase):
         constant_tuple_type, 1)
     sel = building_blocks.Selection(source=constant_tuple, index=0)
     tup = building_blocks.Struct([sel, sel, sel])
-    transformed, modified_indicator = transformations.remove_duplicate_called_graphs(
+    transformed, modified_indicator = transformations.generate_tensorflow_for_local_function(
         tup)
     self.assertTrue(modified_indicator)
     self.assertEqual(transformed.type_signature, tup.type_signature)
@@ -739,7 +600,7 @@ class DeduplicateCalledGraphsTest(test_case.TestCase):
 
     def _count_ops_parameterized_by_layers(k):
       inlined_tuple_with_k_layers = _construct_inlined_tuple(k)
-      tf_representing_block_with_k_layers, _ = transformations.remove_duplicate_called_graphs(
+      tf_representing_block_with_k_layers, _ = transformations.generate_tensorflow_for_local_function(
           inlined_tuple_with_k_layers)
       block_ops_with_k_layers = tree_analysis.count_tensorflow_ops_under(
           tf_representing_block_with_k_layers)

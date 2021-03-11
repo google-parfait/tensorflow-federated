@@ -125,13 +125,6 @@ class ConsolidateAndExtractTest(absltest.TestCase):
       transformations.consolidate_and_extract_local_processing(
           None, DEFAULT_GRAPPLER_CONFIG)
 
-  def test_raises_reference_to_functional_type(self):
-    function_type = computation_types.FunctionType(tf.int32, tf.int32)
-    ref = building_blocks.Reference('x', function_type)
-    with self.assertRaisesRegex(ValueError, 'of functional type passed'):
-      transformations.consolidate_and_extract_local_processing(
-          ref, DEFAULT_GRAPPLER_CONFIG)
-
   def test_already_reduced_case(self):
     init = form_utils.get_iterative_process_for_canonical_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
