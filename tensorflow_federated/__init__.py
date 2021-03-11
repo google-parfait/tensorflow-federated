@@ -62,6 +62,7 @@ from tensorflow_federated.python.core.api.placements import SERVER
 from tensorflow_federated.python.core.api.typed_object import TypedObject
 from tensorflow_federated.python.core.api.value_base import Value
 from tensorflow_federated.python.core.api.values import to_value
+from tensorflow_federated.python.core.impl.types.type_conversions import type_to_tensor_structure
 
 if sys.version_info[0] < 3 or sys.version_info[1] < 6:
   raise Exception('TFF only supports Python versions 3.6 or later.')

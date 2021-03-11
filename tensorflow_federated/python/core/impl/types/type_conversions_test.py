@@ -647,6 +647,44 @@ class TypeToPyContainerTest(test_case.TestCase):
     self.assertAllEqual(actual_elements, expected_elements)
 
 
+class TypeToTensorStructureTest(test_case.TestCase):
+
+  def get_incrementing_function(self):
+    i = -1
+
+    def fn(ignored):
+      del ignored
+      nonlocal i
+      i += 1
+      return i
+
+    return fn
+
+  def test_single_tensor(self):
+
+    def expect_tfint32_return_5(tensor_type):
+      self.assert_types_identical(tensor_type,
+                                  computation_types.TensorType(tf.int32))
+      return 5
+
+    result = type_conversions.type_to_tensor_structure(expect_tfint32_return_5,
+                                                       tf.int32)
+    self.assertEqual(result, 5)
+
+  def test_structure(self):
+    struct_type = computation_types.StructType([('a', tf.int32),
+                                                (None, tf.int32)])
+    return_incr = self.get_incrementing_function()
+    result = type_conversions.type_to_tensor_structure(return_incr, struct_type)
+    self.assertEqual(result, structure.Struct([('a', 0), (None, 1)]))
+
+  def test_nested_python_type(self):
+    return_incr = self.get_incrementing_function()
+    result = type_conversions.type_to_tensor_structure(
+        return_incr, [tf.int32, (tf.string, tf.int32)])
+    self.assertEqual(result, [0, (1, 2)])
+
+
 class TypeToNonAllEqualTest(test_case.TestCase):
 
   def test_with_bool(self):
