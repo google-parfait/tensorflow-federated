@@ -253,6 +253,14 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
       factory.create_executor({placement_literals.SERVER: 1})
     self.assertEqual(num_times_invoked, 2)
 
+  def test_executors_persisted_is_capped(self):
+    ex = eager_tf_executor.EagerTFExecutor()
+
+    factory = executor_stacks.ResourceManagingExecutorFactory(lambda _: ex)
+    for num_clients in range(100):
+      factory.create_executor({placement_literals.CLIENTS: num_clients})
+    self.assertLess(len(factory._executors), 20)
+
 
 class ExecutorStacksTest(parameterized.TestCase):
 
