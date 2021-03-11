@@ -83,7 +83,7 @@ class TensorBoardManager(metrics_manager.MetricsManager):
     self._summary_writer = tf.summary.create_file_writer(self._logdir)
     self._latest_round_num = None
 
-  def save_metrics(self, round_num: int, metrics: Mapping[str, Any]):
+  def save_metrics(self, metrics: Mapping[str, Any], round_num: int):
     """Updates the stored metrics data with metrics for a specific round.
 
     The specified `round_num` must be later than the latest round number
@@ -100,9 +100,9 @@ class TensorBoardManager(metrics_manager.MetricsManager):
     will be written using `tf.summary.histogram`.
 
     Args:
-      round_num: Communication round at which `metrics` was collected.
       metrics: A nested structure of metrics collected during `round_num`. The
         nesting will be flattened for purposes of writing to TensorBoard.
+      round_num: Communication round at which `metrics` was collected.
 
     Returns:
       A `collections.OrderedDict` of the metrics used to update the manager.
