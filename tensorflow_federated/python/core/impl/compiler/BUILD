@@ -330,10 +330,6 @@ py_library(
     name = "intrinsic_reductions",
     srcs = ["intrinsic_reductions.py"],
     srcs_version = "PY3",
-    visibility = [
-        ":default_visibility",
-        "//tensorflow_federated/python/core/impl:__pkg__",
-    ],
     deps = [
         ":building_block_factory",
         ":building_blocks",
