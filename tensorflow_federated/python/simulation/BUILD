@@ -36,6 +36,7 @@ py_library(
         ":server_utils",
         ":sql_client_data",
         ":tensorboard_manager",
+        ":training_loop",
         ":transforming_client_data",
         "//tensorflow_federated/python/simulation/datasets",
         "//tensorflow_federated/python/simulation/models",
@@ -345,5 +346,33 @@ py_test(
         ":sql_client_data",
         "@absl_py//absl/flags",
         "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "training_loop",
+    srcs = ["training_loop.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/core/templates:iterative_process",
+        "//tensorflow_federated/python/simulation:checkpoint_manager",
+        "//tensorflow_federated/python/simulation:metrics_manager",
+        "@absl_py//absl/logging",
+    ],
+)
+
+py_test(
+    name = "training_loop_test",
+    size = "medium",
+    srcs = ["training_loop_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":training_loop",
+        "//tensorflow_federated/python/core/templates:iterative_process",
+        "//tensorflow_federated/python/simulation:checkpoint_manager",
+        "//tensorflow_federated/python/simulation:metrics_manager",
+        "@absl_py//absl/testing:absltest",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
