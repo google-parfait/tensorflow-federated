@@ -43,6 +43,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates",
         "//tensorflow_federated/python/core/test",
+        "//tensorflow_federated/python/core/types",
         "//tensorflow_federated/python/core/utils",
         "//tensorflow_federated/python/learning",
         "//tensorflow_federated/python/simulation",

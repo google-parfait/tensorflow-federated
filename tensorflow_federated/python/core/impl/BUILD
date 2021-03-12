@@ -11,6 +11,7 @@ package_group(
         "//tensorflow_federated/python/core/framework/...",
         "//tensorflow_federated/python/core/templates/...",
         "//tensorflow_federated/python/core/test/...",
+        "//tensorflow_federated/python/core/types/...",
         "//tensorflow_federated/python/core/utils/...",
     ],
 )
