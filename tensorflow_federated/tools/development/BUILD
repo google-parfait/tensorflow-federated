@@ -1,4 +1,4 @@
-package(default_visibility = ["//tensorflow_federated/tools:__subpackages__"])
+package(default_visibility = ["//visibility:private"])
 
 licenses(["notice"])
 

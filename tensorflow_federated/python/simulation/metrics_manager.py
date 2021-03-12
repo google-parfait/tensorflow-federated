@@ -25,13 +25,13 @@ class MetricsManager(metaclass=abc.ABCMeta):
   """
 
   @abc.abstractmethod
-  def save_metrics(self, metrics: Mapping[str, Any], round_num: int) -> None:
+  def save_metrics(self, round_num: int, metrics: Mapping[str, Any]) -> None:
     """Updates the metrics manager with metrics for a given round.
 
     Args:
-      metrics: A mapping with string valued keys.
       round_num: A nonnegative integer representing the round number associated
         with `metrics`.
+      metrics: A mapping with string valued keys.
     """
     raise NotImplementedError
 

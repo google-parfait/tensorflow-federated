@@ -49,14 +49,14 @@ class TensorBoardManagerTest(tf.test.TestCase):
   def test_scalar_metrics_are_written(self):
     summary_dir = os.path.join(self.get_temp_dir(), 'logdir')
     tb_mngr = tensorboard_manager.TensorBoardManager(summary_dir=summary_dir)
-    tb_mngr.save_metrics(_create_scalar_metrics(), 0)
+    tb_mngr.save_metrics(0, _create_scalar_metrics())
     self.assertTrue(tf.io.gfile.exists(summary_dir))
     self.assertLen(tf.io.gfile.listdir(summary_dir), 1)
 
   def test_nonscalar_metrics_are_written(self):
     summary_dir = os.path.join(self.get_temp_dir(), 'logdir')
     tb_mngr = tensorboard_manager.TensorBoardManager(summary_dir=summary_dir)
-    tb_mngr.save_metrics(_create_nonscalar_metrics(), 0)
+    tb_mngr.save_metrics(0, _create_nonscalar_metrics())
     self.assertTrue(tf.io.gfile.exists(summary_dir))
     self.assertLen(tf.io.gfile.listdir(summary_dir), 1)
 
@@ -73,16 +73,16 @@ class TensorBoardManagerTest(tf.test.TestCase):
         summary_dir=self.get_temp_dir())
 
     with self.assertRaises(ValueError):
-      tb_mngr.save_metrics(_create_scalar_metrics(), -1)
+      tb_mngr.save_metrics(-1, _create_scalar_metrics())
 
   def test_save_metrics_raises_value_error_if_round_num_is_out_of_order(self):
     tb_mngr = tensorboard_manager.TensorBoardManager(
         summary_dir=self.get_temp_dir())
 
-    tb_mngr.save_metrics(_create_scalar_metrics(), 1)
+    tb_mngr.save_metrics(1, _create_scalar_metrics())
 
     with self.assertRaises(ValueError):
-      tb_mngr.save_metrics(_create_scalar_metrics(), 0)
+      tb_mngr.save_metrics(0, _create_scalar_metrics())
 
 
 if __name__ == '__main__':

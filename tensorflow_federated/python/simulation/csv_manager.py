@@ -184,7 +184,7 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
     else:
       self._latest_round_num = current_metrics[-1]['round_num']
 
-  def save_metrics(self, metrics: Mapping[str, Any], round_num: int) -> None:
+  def save_metrics(self, round_num, metrics: Mapping[str, Any]) -> None:
     """Updates the stored metrics data with metrics for a specific round.
 
     The specified `round_num` must be nonnegative, and larger than the latest
@@ -205,10 +205,10 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
     `'[[1.0, 1.0], [1.0, 1.0]'`.
 
     Args:
+      round_num: Communication round at which `metrics_to_append` was collected.
       metrics: A nested structure of metrics collected during `round_num`. The
         nesting will be flattened for storage in the CSV (with the new keys
         equal to the paths in the nested structure).
-      round_num: Communication round at which `metrics_to_append` was collected.
 
     Raises:
       ValueError: If the provided round number is negative.
