@@ -155,10 +155,6 @@ Libraries for extending the [TensorFlow Federated core library](#tff-core).
 [impl](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl) The
 implementation of the [TensorFlow Federated core library](#tff-core).
 
-TODO(b/148163833): Some of the modules have not yet been moved from the
-[impl](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl) package
-to the approprate subpackage.
-
 [impl/wrappers](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/wrappers)
 Decorators for constructing computations.
 
