@@ -77,7 +77,7 @@ def make_remote_executor(inferred_cardinalities):
 
   for _ in range(num_clients or 0):
     channel = grpc.insecure_channel('{}:{}'.format(FLAGS.host, FLAGS.port))
-    remote_ex = tff.framework.RemoteExecutor(channel, rpc_mode='STREAMING')
+    remote_ex = tff.framework.RemoteExecutor(channel)
     worker_stack = create_worker_stack(remote_ex)
     client_ex.append(worker_stack)
 

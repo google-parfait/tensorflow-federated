@@ -194,8 +194,10 @@ class DPFactoryExecutionTest(test_case.TestCase):
     state = process.initialize()
     client_data = [0.36788]
     outputs = []
+    # num_iterations empirically chosen to flake < 1 in 10000 runs of this test.
+    num_iterations = 500
 
-    for _ in range(200):
+    for _ in range(num_iterations):
       output = process.next(state, client_data)
       outputs.append(output.result)
       state = output.state

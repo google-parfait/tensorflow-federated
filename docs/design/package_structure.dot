@@ -16,6 +16,7 @@ digraph {
   // TFF
   tff -> simulation
   tff -> learning
+  tff -> aggregators
   tff -> core
 
   tff [href="#tff" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
@@ -46,7 +47,11 @@ digraph {
   // TFF Aggregators
   learning -> aggregators
   aggregators -> core [arrowhead="none", style="invisible"]
-  aggregators [href="#tff-aggregators" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+
+  subgraph cluster_aggregators {
+    graph [label="Aggregators", href="#tff-aggregators" target="_parent"]
+    aggregators [href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+  }
 
   // TFF Core
   core -> core_utils
@@ -165,7 +170,7 @@ digraph {
   // Layout
   {rank=same; examples, tests, research}
   {rank=same; tff}
-  {rank=same; learning, simulation}
+  {rank=same; simulation, learning, aggregators}
   {rank=same; learning_framework, simulation_datasets, simulation_models}
   {rank=same; core}
   {rank=same; core_utils, core_backends}
