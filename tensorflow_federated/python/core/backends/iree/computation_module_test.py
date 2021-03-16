@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pyiree.compiler2 import tf as iree_compiler_tf
+from pyiree.compiler import tf as iree_compiler_tf
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types

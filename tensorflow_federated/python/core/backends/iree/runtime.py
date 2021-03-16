@@ -15,7 +15,7 @@
 
 import threading
 
-from pyiree import compiler2 as iree_compiler
+from pyiree import compiler as iree_compiler
 from pyiree import rt as iree_runtime
 
 from tensorflow_federated.python.common_libs import py_typecheck
