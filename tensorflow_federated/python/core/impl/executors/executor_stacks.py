@@ -416,8 +416,10 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
         self._num_clients != num_requested_clients):
       raise ValueError(
           'FederatingStackFactory configured to return {} '
-          'clients, but encountered a request for {} clients.'.format(
-              self._num_clients, num_requested_clients))
+          'clients, but encountered a request for {} clients.'
+          'If your computation accepts CLIENTS-placed arguments, it is '
+          'recommended to avoid setting the num_clients parameter in the TFF '
+          'runtime.'.format(self._num_clients, num_requested_clients))
     return num_requested_clients
 
   def create_executor(
