@@ -17,7 +17,7 @@ import tempfile
 import numpy as np
 
 from pyiree import rt as iree_runtime
-from pyiree.compiler2 import tf as iree_compiler_tf
+from pyiree.compiler import tf as iree_compiler_tf
 
 import tensorflow as tf
 
