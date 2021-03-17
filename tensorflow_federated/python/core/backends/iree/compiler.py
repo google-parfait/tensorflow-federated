@@ -15,7 +15,7 @@
 
 import tempfile
 
-from pyiree.compiler import tf as iree_compiler_tf
+import iree.compiler.tf
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -124,7 +124,7 @@ def import_tensorflow_computation(comp, name='fn'):
             legacy_init_op=initializer,
             strip_default_attrs=True)
         builder.save()
-      iree_module = iree_compiler_tf.compile_saved_model(
+      iree_module = iree.compiler.tf.compile_saved_model(
           model_dir,
           import_type='SIGNATURE_DEF',
           import_only=True,
