@@ -138,6 +138,27 @@ class WorkerFailureTest(parameterized.TestCase):
         result = map_add_one([0, 1])
         self.assertEqual(result, [1, 2])
 
+  def test_worker_going_down_with_fixed_clients_per_round(self):
+    tff_context = remote_runtime_test_utils.create_localhost_remote_context(
+        _WORKER_PORTS, default_num_clients=10)
+    worker_contexts = remote_runtime_test_utils.create_inprocess_worker_contexts(
+        _WORKER_PORTS)
+
+    @tff.federated_computation(tff.type_at_server(tf.int32))
+    def sum_arg(x):
+      return tff.federated_sum(tff.federated_broadcast(x))
+
+    context_stack = tff.framework.get_context_stack()
+    with context_stack.install(tff_context):
+
+      with worker_contexts[0]:
+        with worker_contexts[1]:
+          # With both workers live, we should get 10 back.
+          self.assertEqual(sum_arg(1), 10)
+        # Leaving the inner context kills the second worker, but should leave
+        # the result untouched.
+        self.assertEqual(sum_arg(1), 10)
+
 
 @parameterized.named_parameters((
     'native_remote',
