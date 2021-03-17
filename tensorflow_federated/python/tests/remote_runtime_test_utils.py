@@ -26,12 +26,17 @@ import tensorflow as tf
 import tensorflow_federated as tff
 
 
-def create_localhost_remote_context(ports: Sequence[str]):
+def create_localhost_remote_context(ports: Sequence[str],
+                                    default_num_clients=None):
   """Connects remote executors to `ports`."""
   channels = [
       grpc.insecure_channel('localhost:{}'.format(port)) for port in ports
   ]
-  context = tff.backends.native.create_remote_execution_context(channels)
+  if default_num_clients is None:
+    context = tff.backends.native.create_remote_execution_context(channels)
+  else:
+    context = tff.backends.native.create_remote_execution_context(
+        channels, default_num_clients=default_num_clients)
   return context
 
 
