@@ -14,11 +14,9 @@
 
 import tempfile
 
+import iree.compiler.tf
+import iree.rt
 import numpy as np
-
-from pyiree import rt as iree_runtime
-from pyiree.compiler import tf as iree_compiler_tf
-
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
@@ -31,11 +29,11 @@ class RuntimeTest(tf.test.TestCase):
 
   def test_get_config_for_driver(self):
     c1 = runtime._get_default_config_for_driver('vulkan')
-    self.assertIsInstance(c1, iree_runtime.Config)
+    self.assertIsInstance(c1, iree.rt.Config)
     c2 = runtime._get_default_config_for_driver('vulkan')
     self.assertIs(c1, c2)
     c3 = runtime._get_default_config_for_driver('vmla')
-    self.assertIsInstance(c3, iree_runtime.Config)
+    self.assertIsInstance(c3, iree.rt.Config)
     self.assertIsNot(c2, c3)
 
   def test_computation_callable(self):
@@ -46,7 +44,7 @@ class RuntimeTest(tf.test.TestCase):
     with tempfile.TemporaryDirectory() as model_dir:
       save_options = tf.saved_model.SaveOptions(save_debug_info=True)
       tf.saved_model.save(tf_module, model_dir, options=save_options)
-      iree_compiler_module = iree_compiler_tf.compile_saved_model(
+      iree_compiler_module = iree.compiler.tf.compile_saved_model(
           model_dir, import_only=True)
     my_computation_module = computation_module.ComputationModule(
         iree_compiler_module, 'foo',
