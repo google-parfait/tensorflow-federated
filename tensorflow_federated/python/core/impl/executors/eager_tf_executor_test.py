@@ -455,6 +455,20 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(val.internal_representation[0], 10)
     self.assertEqual(val.internal_representation[1][0], 20)
 
+  def test_executor_create_value_named_type_unnamed_value(self):
+    ex = eager_tf_executor.EagerTFExecutor()
+    val = asyncio.get_event_loop().run_until_complete(
+        ex.create_value([10, 20],
+                        collections.OrderedDict(a=tf.int32, b=tf.int32)))
+    self.assertIsInstance(val, eager_tf_executor.EagerValue)
+    self.assertEqual(str(val.type_signature), '<a=int32,b=int32>')
+    self.assertIsInstance(val.internal_representation, structure.Struct)
+    self.assertLen(val.internal_representation, 2)
+    self.assertIsInstance(val.internal_representation[0], tf.Tensor)
+    self.assertIsInstance(val.internal_representation[1], tf.Tensor)
+    self.assertEqual(val.internal_representation[0], 10)
+    self.assertEqual(val.internal_representation[1], 20)
+
   def test_executor_create_value_no_arg_computation(self):
     ex = eager_tf_executor.EagerTFExecutor()
 
