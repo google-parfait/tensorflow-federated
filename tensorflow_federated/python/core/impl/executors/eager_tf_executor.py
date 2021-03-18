@@ -395,7 +395,7 @@ def _to_struct_internal_rep(
   result_elem = []
   for (type_name, elem_type), (val_name,
                                elem_val) in zip(type_iterator, value_iterator):
-    if type_name != val_name:
+    if val_name is not None and type_name != val_name:
       raise TypeError(
           'Mismatching element names in type vs. value: {} vs. {}.'.format(
               type_name, val_name))
