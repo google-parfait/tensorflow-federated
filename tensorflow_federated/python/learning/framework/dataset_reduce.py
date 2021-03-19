@@ -32,7 +32,7 @@ def _for_iter_dataset_fn(
     reduce_fn: _ReduceFnCallable,
     dataset: Iterable,  # pylint: disable=g-bare-generic
     initial_state_fn: Callable[[], Any] = lambda: tf.constant(0)
-) -> tf.Tensor:
+) -> Any:
   """Performs dataset reduce for simulation performance."""
   # TODO(b/162683412): use `tf.data.Dataset` instead of `Iterable` for pytype.
   # TODO(b/155208489): this is a workaround for GPU simulation because
