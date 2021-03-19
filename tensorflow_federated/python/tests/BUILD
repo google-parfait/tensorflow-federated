@@ -1,7 +1,12 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
-package(default_visibility = ["//visibility:private"])
+package_group(
+    name = "default_visibility",
+    packages = ["//tensorflow_federated/python/tests/..."],
+)
+
+package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 
@@ -23,6 +28,7 @@ py_test(
     deps = [
         ":remote_runtime_test_utils",
         ":temperature_sensor_example",
+        ":test_contexts",
         "//tensorflow_federated",
     ],
 )
@@ -87,4 +93,15 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = ["//tensorflow_federated"],
+)
+
+py_library(
+    name = "test_contexts",
+    testonly = True,
+    srcs = ["test_contexts.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":remote_runtime_test_utils",
+        "//tensorflow_federated",
+    ],
 )
