@@ -16,7 +16,7 @@
 import threading
 
 import iree.compiler
-import iree.rt
+import iree.runtime
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import typed_object
@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.backends.iree import computation_module
 # A mutex that protects `_driver_name_to_config_dict`.
 _driver_name_to_config_lock = threading.Lock()
 
-# A mapping from driver names to `iree.rt.Config` instances.
+# A mapping from driver names to `iree.runtime.Config` instances.
 _driver_name_to_config_dict = {}
 
 
@@ -39,16 +39,16 @@ def _get_default_config_for_driver(driver_name):
     driver_name: A string that represents the name of the driver.
 
   Returns:
-    An instance of `iree.rt.Config` for this driver.
+    An instance of `iree.runtime.Config` for this driver.
   """
   # TODO(b/153499219): Upstream this to IREE in some form (we won't block on
   # this here, though, since upstreaming well would mean yanking the constructor
-  # for `iree.rt.Config` and updating all existing call sites that use it).
+  # for `iree.runtime.Config` and updating all existing call sites that use it).
   py_typecheck.check_type(driver_name, str)
   with _driver_name_to_config_lock:
     config = _driver_name_to_config_dict.get(driver_name)
     if config is None:
-      config = iree.rt.Config(driver_name=driver_name)
+      config = iree.runtime.Config(driver_name=driver_name)
       _driver_name_to_config_dict[driver_name] = config
     return config
 
@@ -76,7 +76,7 @@ class ComputationCallable(typed_object.TypedObject):
     # that wraps anything parsed from ASM that lacks an explicit module
     # declaration. Possibly manually surround with "module @myName { ... }" in
     # the compiler helpers.
-    self._vm_module = iree.rt.VmModule.from_flatbuffer(flatbuffer_blob)
+    self._vm_module = iree.runtime.VmModule.from_flatbuffer(flatbuffer_blob)
     self._config = _get_default_config_for_driver(backend.driver_name)
     self._function_name = module.function_name
     self._type_signature = module.type_signature
@@ -99,7 +99,7 @@ class ComputationCallable(typed_object.TypedObject):
     # less, so constructing one per call should be cheap enough, and can make
     # things simpler while we look for ways to support true local variables
     # in IREE and eliminate any kind of global state.
-    context = iree.rt.SystemContext(config=self._config)
+    context = iree.runtime.SystemContext(config=self._config)
     context.add_module(self._vm_module)
     callable_fn = getattr(context.modules.module, self._function_name)
     return callable_fn(*args, **kwargs)
