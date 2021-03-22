@@ -80,7 +80,7 @@ py_library(
 
 py_test(
     name = "building_block_factory_test",
-    size = "medium",
+    size = "small",
     srcs = ["building_block_factory_test.py"],
     args = [
         "--golden",

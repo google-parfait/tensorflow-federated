@@ -36,7 +36,7 @@ py_library(
 
 py_cpu_gpu_test(
     name = "simple_fedavg_test",
-    size = "large",
+    size = "medium",
     srcs = ["simple_fedavg_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

@@ -43,7 +43,7 @@ py_cpu_gpu_test(
 
 py_test(
     name = "canonical_form_test",
-    size = "large",
+    size = "medium",
     srcs = ["canonical_form_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

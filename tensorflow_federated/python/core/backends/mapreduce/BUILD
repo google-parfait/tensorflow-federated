@@ -80,7 +80,7 @@ py_library(
 
 py_test(
     name = "form_utils_test",
-    size = "large",
+    size = "medium",
     srcs = ["form_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

@@ -149,7 +149,7 @@ py_library(
 
 py_test(
     name = "stackoverflow_test",
-    size = "large",
+    size = "medium",
     srcs = ["stackoverflow_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

@@ -35,7 +35,7 @@ py_library(
 
 py_test(
     name = "stateful_fedavg_test",
-    size = "large",
+    size = "medium",
     srcs = ["stateful_fedavg_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",

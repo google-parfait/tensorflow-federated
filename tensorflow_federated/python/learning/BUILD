@@ -56,7 +56,7 @@ py_library(
 
 py_cpu_gpu_test(
     name = "federated_averaging_test",
-    size = "large",
+    size = "medium",
     srcs = ["federated_averaging_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
@@ -130,7 +130,7 @@ py_library(
 
 py_cpu_gpu_test(
     name = "federated_sgd_test",
-    size = "large",
+    size = "medium",
     srcs = ["federated_sgd_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
