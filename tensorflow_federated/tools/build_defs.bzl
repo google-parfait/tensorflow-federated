@@ -35,3 +35,31 @@ def py_cpu_gpu_test(name, main = None, tags = [], **kwargs):
             name + "_gpu",
         ],
     )
+
+def cc_cpu_gpu_test(name, tags = [], **kwargs):
+    """A version of `cc_test` that tests both cpu and gpu.
+
+    It accepts all `cc_test` arguments.
+
+    Args:
+      name: A unique name for this target.
+      tags: List of arbitrary text tags.
+      **kwargs: `cc_test` keyword arguments.
+    """
+    native.cc_test(
+        name = name + "_cpu",
+        tags = tags,
+        **kwargs
+    )
+    native.cc_test(
+        name = name + "_gpu",
+        tags = tags + ["requires-gpu-nvidia"],
+        **kwargs
+    )
+    native.test_suite(
+        name = name,
+        tests = [
+            name + "_cpu",
+            name + "_gpu",
+        ],
+    )
