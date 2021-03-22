@@ -49,6 +49,7 @@ py_library(
 
 py_test(
     name = "differential_privacy_test",
+    timeout = "long",
     srcs = ["differential_privacy_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
