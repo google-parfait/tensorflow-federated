@@ -39,6 +39,7 @@ class RuntimeTest(tf.test.TestCase):
   def test_computation_callable(self):
     tf_module = tf.Module()
     fn = lambda x: x + 1.0
+    # Hello there. DO NOT SUBMIT
     sig = [tf.TensorSpec([], tf.float32)]
     tf_module.foo = tf.function(fn, input_signature=sig)
     with tempfile.TemporaryDirectory() as model_dir:
