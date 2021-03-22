@@ -3,7 +3,14 @@
 # See https://docs.bazel.build/versions/master/user-manual.html#config for
 # details on the various configuration options.
 
-# Build with optimization enabled.
+# Enable logging rc options.
+common --announce_rc
+
+# Enable logging error output.
+test --test_output=errors
+test --test_summary=detailed
+
+# Enable build optimizations.
 build --compilation_mode=opt
 
 # Enable fast C++ protocol buffers, 10x speedup over pure Python.
