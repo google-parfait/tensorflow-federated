@@ -21,10 +21,10 @@ from tensorflow_federated.python.simulation.datasets import client_data as cd
 class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   def test_concrete_client_data(self):
-    client_ids = [1, 2, 3]
+    client_ids = ['1', '2', '3']
 
     def create_dataset_fn(client_id):
-      num_examples = client_id
+      num_examples = tf.strings.to_number(client_id, out_type=tf.int64)
       return tf.data.Dataset.range(num_examples)
 
     client_data = cd.ClientData.from_clients_and_fn(
@@ -80,6 +80,23 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
     expected = ds_iterable_to_list_set(
         (create_dataset_fn(cid) for cid in client_ids))
     self.assertEqual(datasets, expected)
+
+  def test_dataset_from_large_client_list(self):
+    self.skipTest('b/183118483: currently will timeout')
+    client_ids = [str(x) for x in range(1_000_000)]
+
+    def create_dataset(_):
+      return tf.data.Dataset.range(100)
+
+    client_data = cd.ClientData.from_clients_and_fn(
+        client_ids=client_ids, create_tf_dataset_for_client_fn=create_dataset)
+    # Ensure this completes within the test timeout without raising error.
+    # Previous implementations caused this to take an very long time via Python
+    # list -> generator -> list transformations.
+    try:
+      client_data.create_tf_dataset_from_all_clients(seed=42)
+    except Exception as e:  # pylint: disable=broad-except
+      self.fail(e)
 
   def test_datasets_is_lazy(self):
     client_ids = [1, 2, 3]
