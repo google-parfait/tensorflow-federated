@@ -311,19 +311,38 @@ class IntrinsicFactory(object):
         None,
         self._context_stack,
         parameter_type_hint=computation_types.StructType(
-            [zero.type_signature, value.type_signature.member]))
+            [value.type_signature.member] * 2))
     op.type_signature.check_function()
-    if not op.type_signature.result.is_assignable_from(zero.type_signature):
+
+    if not op.type_signature.parameter:
+      op_num_args = 0
+    elif not op.type_signature.parameter.is_struct():
+      op_num_args = 1
+    else:
+      op_num_args = len(op.type_signature.parameter)
+
+    if op_num_args != 2:
       raise TypeError(
-          '`zero` must be assignable to the result type from `op`:\n',
-          computation_types.type_mismatch_error_message(
-              zero.type_signature, op.type_signature.result,
-              computation_types.TypeRelation.ASSIGNABLE))
-    op_type_expected = type_factory.reduction_op(op.type_signature.result,
-                                                 value.type_signature.member)
-    if not op_type_expected.is_assignable_from(op.type_signature):
-      raise TypeError('Expected an operator of type {}, got {}.'.format(
-          op_type_expected, op.type_signature))
+          '`op` function must take two arguments, found function with '
+          f'{op_num_args} arguments: {op.type_signature}')
+
+    # zero, the elements, and the result must all be assignable to both
+    # argument positions of `op`.
+    for (to_assign_name, to_assign_type) in (
+        ('type returned from zero', zero.type_signature),
+        ('type of the client-placed values', value.type_signature.member),
+        ('result type of `op`', op.type_signature.result),
+    ):
+      for (assign_target_name, assign_target_type) in (
+          ('the first argument to `op`', op.type_signature.parameter[0]),
+          ('the second argument to `op`', op.type_signature.parameter[1]),
+      ):
+        if not assign_target_type.is_assignable_from(to_assign_type):
+          raise TypeError(f'The {to_assign_name} must be assignable to ' +
+                          f'{assign_target_name}:\n' +
+                          computation_types.type_mismatch_error_message(
+                              to_assign_type, assign_target_type,
+                              computation_types.TypeRelation.ASSIGNABLE))
 
     value = value_impl.ValueImpl.get_comp(value)
     zero = value_impl.ValueImpl.get_comp(zero)

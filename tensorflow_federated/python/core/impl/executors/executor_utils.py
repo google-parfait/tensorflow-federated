@@ -92,8 +92,11 @@ def parse_federated_aggregate_argument_types(type_spec):
   item_type = value_type.member
   zero_type = type_spec[1]
   accumulate_type = type_spec[2]
-  accumulate_type.check_equivalent_to(
-      type_factory.reduction_op(zero_type, item_type))
+  type_factory.binary_op(
+      accumulate_type.result).check_assignable_from(accumulate_type)
+  for param_ty in accumulate_type.parameter:
+    param_ty.check_assignable_from(item_type)
+    param_ty.check_assignable_from(zero_type)
   merge_type = type_spec[3]
   merge_type.check_equivalent_to(type_factory.binary_op(zero_type))
   report_type = type_spec[4]

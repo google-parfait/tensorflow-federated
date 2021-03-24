@@ -31,28 +31,28 @@ class FederatedReduceTest(absltest.TestCase):
     factory = intrinsic_factory.IntrinsicFactory(
         context_stack_impl.context_stack)
 
-    element_type = tf.string
-    zero_type = computation_types.TensorType(tf.string, [1])
+    zero_type = computation_types.TensorType(tf.string, [3])
+    element_type = computation_types.TensorType(tf.string, [1])
     reduced_type = computation_types.TensorType(tf.string, [None])
 
-    @computations.tf_computation(reduced_type, element_type)
+    @computations.tf_computation(reduced_type, reduced_type)
     @computations.check_returns_type(reduced_type)
-    def append(accumulator, element):
-      return tf.concat([accumulator, [element]], 0)
+    def concat(x, y):
+      return tf.concat([x, y], 0)
 
     @computations.tf_computation
     @computations.check_returns_type(zero_type)
     def zero():
-      return tf.convert_to_tensor(['The beginning'])
+      return tf.convert_to_tensor(['bad zero', 'has', 'values'])
 
     @computations.federated_computation(
         computation_types.at_clients(element_type))
     @computations.check_returns_type(computation_types.at_server(reduced_type))
     def collect(client_values):
-      return factory.federated_reduce(client_values, zero(), append)
+      return factory.federated_reduce(client_values, zero(), concat)
 
     self.assertEqual(collect.type_signature.compact_representation(),
-                     '({string}@CLIENTS -> string[?]@SERVER)')
+                     '({string[1]}@CLIENTS -> string[?]@SERVER)')
 
 
 class FederatedSecureSumTest(absltest.TestCase):

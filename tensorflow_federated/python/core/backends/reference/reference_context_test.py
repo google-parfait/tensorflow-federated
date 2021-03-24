@@ -1100,18 +1100,24 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
 
   def test_federated_reduce_with_integers(self):
 
-    @computations.tf_computation(tf.int32, tf.float32)
-    def foo(x, y):
-      return x + tf.cast(y > 0.5, tf.int32)
+    @computations.tf_computation(tf.float32)
+    def is_more_than_half(x):
+      return tf.cast(x > 0.5, tf.int32)
+
+    @computations.tf_computation(tf.int32, tf.int32)
+    def add(x, y):
+      return x + y
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
-    def bar(x):
-      return intrinsics.federated_reduce(x, 0, foo)
+        computation_types.at_clients(tf.float32))
+    def count_more_than_half(x):
+      x_as_ints = intrinsics.federated_map(is_more_than_half, x)
+      return intrinsics.federated_reduce(x_as_ints, 0, add)
 
     self.assertEqual(
-        str(bar.type_signature), '({float32}@CLIENTS -> int32@SERVER)')
-    self.assertEqual(bar([0.1, 0.6, 0.2, 0.4, 0.8]), 2)
+        str(count_more_than_half.type_signature),
+        '({float32}@CLIENTS -> int32@SERVER)')
+    self.assertEqual(count_more_than_half([0.1, 0.6, 0.2, 0.4, 0.8]), 2)
 
   def test_federated_mean_with_floats(self):
 

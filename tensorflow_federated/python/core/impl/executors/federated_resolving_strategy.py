@@ -516,7 +516,10 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     item_type = val_type.member
     zero_type = arg.type_signature[1]
     op_type = arg.type_signature[2]
-    op_type.check_equivalent_to(type_factory.reduction_op(zero_type, item_type))
+    type_factory.binary_op(op_type.result).check_assignable_from(op_type)
+    for param_ty in op_type.parameter:
+      param_ty.check_assignable_from(item_type)
+      param_ty.check_assignable_from(zero_type)
 
     val = arg.internal_representation[0]
     py_typecheck.check_type(val, list)
