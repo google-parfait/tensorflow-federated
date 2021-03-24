@@ -84,7 +84,7 @@ class TensorBoardManager(metrics_manager.MetricsManager):
     self._latest_round_num = None
 
   def save_metrics(self, metrics: Mapping[str, Any], round_num: int):
-    """Updates the stored metrics data with metrics for a specific round.
+    """Saves the stored metrics data with metrics for a specific round.
 
     The specified `round_num` must be later than the latest round number
     previously used with `save_metrics`. Note that we do not check whether
@@ -98,6 +98,9 @@ class TensorBoardManager(metrics_manager.MetricsManager):
     leaf node tensors of the metrics_to_append structure. Purely scalar tensors
     will be written using `tf.summary.scalar`, while tensors with non-zero rank
     will be written using `tf.summary.histogram`.
+
+    Note: Only metrics that can be converted to `float32` tensors will be
+    written. All other metrics will be ignored.
 
     Args:
       metrics: A nested structure of metrics collected during `round_num`. The
@@ -128,10 +131,13 @@ class TensorBoardManager(metrics_manager.MetricsManager):
     with self._summary_writer.as_default():
       for name, val in flat_metrics.items():
         val_array = np.array(val)
-        if val_array.shape:
-          tf.summary.histogram(name, val, step=round_num)
-        else:
-          tf.summary.scalar(name, val, step=round_num)
+        # We check to ensure the value contains only booleans, integers,
+        # unsigned integers, or floats.
+        if val_array.dtype.kind in ('b', 'i', 'u', 'f'):
+          if val_array.shape:
+            tf.summary.histogram(name, val, step=round_num)
+          else:
+            tf.summary.scalar(name, val, step=round_num)
 
     self._latest_round_num = round_num
     return flat_metrics

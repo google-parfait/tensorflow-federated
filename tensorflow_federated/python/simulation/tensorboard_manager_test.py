@@ -14,7 +14,10 @@
 
 import collections
 import os.path
+from unittest import mock
 
+from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import tensorboard_manager
@@ -44,7 +47,7 @@ def _create_scalar_metrics_with_extra_column():
   return metrics
 
 
-class TensorBoardManagerTest(tf.test.TestCase):
+class TensorBoardManagerTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_scalar_metrics_are_written(self):
     summary_dir = os.path.join(self.get_temp_dir(), 'logdir')
@@ -83,6 +86,70 @@ class TensorBoardManagerTest(tf.test.TestCase):
 
     with self.assertRaises(ValueError):
       tb_mngr.save_metrics(_create_scalar_metrics(), 0)
+
+  @parameterized.named_parameters(
+      ('data1', 'string'),
+      ('data2', None),
+      ('data3', object()),
+  )
+  @mock.patch('tensorflow.summary.scalar')
+  def test_save_metrics_skips_non_scalar_data(self, data_to_skip,
+                                              mock_summary_scalar):
+    metrics = {'metric_name': data_to_skip}
+    tb_mngr = tensorboard_manager.TensorBoardManager(
+        summary_dir=self.get_temp_dir())
+    tb_mngr.save_metrics(metrics, 0)
+    expected_calls = [mock.call('round_num', 0, step=0)]
+    self.assertCountEqual(expected_calls, mock_summary_scalar.call_args_list)
+
+  @parameterized.named_parameters(
+      ('data1', 0.0),
+      ('data2', 1),
+      ('data3', True),
+      ('data4', tf.constant(0, dtype=tf.uint8)),
+  )
+  @mock.patch('tensorflow.summary.scalar')
+  def test_save_metrics_logs_scalar_data(self, data, mock_summary_scalar):
+    metrics = {'metric_name': data}
+    tb_mngr = tensorboard_manager.TensorBoardManager(
+        summary_dir=self.get_temp_dir())
+    tb_mngr.save_metrics(metrics, 0)
+    expected_calls = [
+        mock.call('metric_name', data, step=0),
+        mock.call('round_num', 0, step=0),
+    ]
+    self.assertCountEqual(expected_calls, mock_summary_scalar.call_args_list)
+
+  @parameterized.named_parameters(
+      ('data1', np.array(['string1', 'string2'])),
+      ('data2', np.array([None, 0])),
+      ('data3', np.array([1.0, 2.0, object()])),
+  )
+  @mock.patch('tensorflow.summary.histogram')
+  def test_save_metrics_skips_non_float_histogram_data(self, data_to_skip,
+                                                       mock_summary_histogram):
+    metrics = {'metric_name': data_to_skip}
+    tb_mngr = tensorboard_manager.TensorBoardManager(
+        summary_dir=self.get_temp_dir())
+    tb_mngr.save_metrics(metrics, 0)
+    mock_summary_histogram.assert_not_called()
+
+  @parameterized.named_parameters(
+      ('data1', np.array([0.0, 1.0])),
+      ('data2', np.array([1, True])),
+      ('data3', tf.constant([0, 0], dtype=tf.uint8)),
+  )
+  @mock.patch('tensorflow.summary.histogram')
+  def test_save_metrics_logs_float_histogram_data(self, data,
+                                                  mock_summary_histogram):
+    metrics = {'metric_name': data}
+    tb_mngr = tensorboard_manager.TensorBoardManager(
+        summary_dir=self.get_temp_dir())
+    tb_mngr.save_metrics(metrics, 0)
+    expected_calls = [
+        mock.call('metric_name', data, step=0),
+    ]
+    self.assertCountEqual(expected_calls, mock_summary_histogram.call_args_list)
 
 
 if __name__ == '__main__':

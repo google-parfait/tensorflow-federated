@@ -26,7 +26,10 @@ class MetricsManager(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def save_metrics(self, metrics: Mapping[str, Any], round_num: int) -> None:
-    """Updates the metrics manager with metrics for a given round.
+    """Saves metrics data for a given round.
+
+    Note that different implementations may save metrics in markedly different
+    ways, including skipping metrics depending on their type or `round_num`.
 
     Args:
       metrics: A mapping with string valued keys.
