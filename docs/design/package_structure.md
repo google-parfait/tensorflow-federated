@@ -99,6 +99,9 @@ library.
 [simulation](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation)
 Libraries for running Federated Learning simulations.
 
+[simulation/baselines](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation/baselines)
+Baselines for running Federated Learning simulations.
+
 [simulation/datasets](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation/datasets)
 Datasets for running Federated Learning simulations.
 

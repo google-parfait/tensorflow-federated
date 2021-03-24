@@ -22,14 +22,17 @@ digraph {
   tff [href="#tff" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
 
   // TFF Simulation
+  simulation -> simulation_baselines
   simulation -> simulation_datasets
   simulation -> simulation_models
+  simulation_baselines -> core [arrowhead="none", style="invisible"]
   simulation_datasets -> core [arrowhead="none", style="invisible"]
   simulation_models -> core [arrowhead="none", style="invisible"]
 
   subgraph cluster_simulation {
     graph [label="Simulation", href="#tff-simulation" target="_parent"]
     simulation [href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    simulation_baselines [label="baselines", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     simulation_datasets [label="datasets", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     simulation_models [label="models", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
@@ -171,7 +174,7 @@ digraph {
   {rank=same; examples, tests, research}
   {rank=same; tff}
   {rank=same; simulation, learning, aggregators}
-  {rank=same; learning_framework, simulation_datasets, simulation_models}
+  {rank=same; learning_framework, simulation_baselines, simulation_datasets, simulation_models}
   {rank=same; core}
   {rank=same; core_utils, core_backends}
   {rank=same; core_backends_native, core_backends_mapreduce, core_backends_iree, core_backends_reference}

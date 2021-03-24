@@ -11,4 +11,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for configuring Federated Learning tasks on EMNIST datasets."""
+"""Libraries for constructing Federated Learning tasks on EMNIST datasets."""
