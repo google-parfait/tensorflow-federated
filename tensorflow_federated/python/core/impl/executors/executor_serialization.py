@@ -13,10 +13,12 @@
 # limitations under the License.
 """A set of utility methods for `executor_service.py` and its clients."""
 
+import collections
 import os
 import os.path
 import tempfile
 from typing import Any, Collection, Optional, List, Mapping, Tuple, Union
+import warnings
 import zipfile
 
 import numpy as np
@@ -32,8 +34,10 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
+from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
 _SerializeReturnType = Tuple[executor_pb2.Value, computation_types.Type]
@@ -120,36 +124,14 @@ def _serialize_dataset(
   """
   py_typecheck.check_type(dataset,
                           type_conversions.TF_DATASET_REPRESENTATION_TYPES)
-  module = tf.Module()
-  module.dataset = dataset
-  module.dataset_fn = tf.function(lambda: module.dataset, input_signature=())
-
-  temp_dir = tempfile.mkdtemp('dataset')
-  fd, temp_zip = tempfile.mkstemp('zip')
-  os.close(fd)
-  try:
-    tf.saved_model.save(module, temp_dir, signatures={})
-    with zipfile.ZipFile(temp_zip, 'w') as z:
-      for topdir, _, filenames in tf.io.gfile.walk(temp_dir):
-        dest_dir = topdir[len(temp_dir):]
-        for filename in filenames:
-          z.write(
-              os.path.join(topdir, filename), os.path.join(dest_dir, filename))
-    with open(temp_zip, 'rb') as z:
-      zip_bytes = z.read()
-  except Exception as e:  # pylint: disable=broad-except
-    raise DatasetSerializationError(
-        'Error serializing tff.Sequence value. Inner error: {!s}'.format(
-            e)) from e
-  finally:
-    tf.io.gfile.rmtree(temp_dir)
-    tf.io.gfile.remove(temp_zip)
-
-  if len(zip_bytes) > max_serialized_size_bytes:
+  dataset_graph_def_bytes = tf.raw_ops.DatasetToGraphV2(
+      input_dataset=tf.data.experimental.to_variant(dataset)).numpy()
+  if len(dataset_graph_def_bytes) > max_serialized_size_bytes:
     raise ValueError('Serialized size of Dataset ({:d} bytes) exceeds maximum '
                      'allowed ({:d} bytes)'.format(
-                         len(zip_bytes), max_serialized_size_bytes))
-  return zip_bytes
+                         len(dataset_graph_def_bytes),
+                         max_serialized_size_bytes))
+  return dataset_graph_def_bytes
 
 
 @tracing.trace
@@ -174,8 +156,8 @@ def _serialize_sequence_value(
             py_typecheck.type_string(type(value)),
             type_spec if type_spec is not None else 'unknown'))
 
-  value_type = computation_types.SequenceType(
-      computation_types.to_type(value.element_spec))
+  element_type = computation_types.to_type(value.element_spec)
+  value_type = computation_types.SequenceType(element_type)
   if not type_spec.is_assignable_from(value_type):
     raise TypeError(
         'Cannot serialize dataset with elements of type {!s} as TFF type {!s}.'
@@ -185,10 +167,9 @@ def _serialize_sequence_value(
   # names for `tf.data.Dataset` that return elements of
   # `collections.abc.Mapping` type. This allows TFF to preserve and restore the
   # key ordering upon deserialization.
-  element_type = computation_types.to_type(value.element_spec)
   return executor_pb2.Value(
       sequence=executor_pb2.Value.Sequence(
-          zipped_saved_model=_serialize_dataset(value),
+          serialized_graph_def=_serialize_dataset(value),
           element_type=type_serialization.serialize_type(
               element_type))), type_spec
 
@@ -328,12 +309,16 @@ def _deserialize_tensor_value(
   return tensor_value, value_type
 
 
-def _deserialize_dataset(serialized_bytes):
-  """Deserializes a `bytes` object to a `tf.data.Dataset`.
+def _deserialize_dataset_from_zipped_saved_model(serialized_bytes):
+  """Deserializes a zipped SavedModel `bytes` object to a `tf.data.Dataset`.
+
+  DEPRECATED: this method is deprecated and replaced by
+  `_deserialize_dataset_from_graph_def`.
 
   Args:
-    serialized_bytes: `bytes` object produced by
-      `tensorflow_serialization.serialize_dataset`
+    serialized_bytes: `bytes` object produced by older versions of
+      `tensorflow_serialization.serialize_dataset` that produced zipped
+      SavedModel `bytes` strings.
 
   Returns:
     A `tf.data.Dataset` instance.
@@ -367,6 +352,74 @@ def _deserialize_dataset(serialized_bytes):
   return ds
 
 
+def _deserialize_dataset_from_graph_def(serialized_graph_def: bytes,
+                                        element_type: computation_types.Type):
+  """Deserializes a serialized `tf.compat.v1.GraphDef` to a `tf.data.Dataset`.
+
+  Args:
+    serialized_graph_def: `bytes` object produced by
+      `tensorflow_serialization.serialize_dataset`
+    element_type: a `tff.Type` object representing the type structure of the
+      elements yielded from the dataset.
+
+  Returns:
+    A `tf.data.Dataset` instance.
+  """
+  py_typecheck.check_type(element_type, computation_types.Type)
+  type_analysis.check_tensorflow_compatible_type(element_type)
+
+  def transform_to_tff_known_type(
+      type_spec: computation_types.Type) -> Tuple[computation_types.Type, bool]:
+    """Transforms `StructType` to `StructWithPythonType`."""
+    if type_spec.is_struct() and not type_spec.is_struct_with_python():
+      field_is_named = tuple(
+          name is not None for name, _ in structure.iter_elements(type_spec))
+      has_names = any(field_is_named)
+      is_all_named = all(field_is_named)
+      if is_all_named:
+        return computation_types.StructWithPythonType(
+            elements=structure.iter_elements(type_spec),
+            container_type=collections.OrderedDict), True
+      elif not has_names:
+        return computation_types.StructWithPythonType(
+            elements=structure.iter_elements(type_spec),
+            container_type=tuple), True
+      else:
+        raise TypeError('Cannot represent TFF type in TF because it contains '
+                        f'partially named structures. Type: {type_spec}')
+    return type_spec, False
+
+  if element_type.is_struct():
+    # TF doesn't suppor `structure.Strut` types, so we must transform the
+    # `StructType` into a `StructWithPythonType` for use as the
+    # `tf.data.Dataset.element_spec` later.
+    tf_compatible_type, _ = type_transformations.transform_type_postorder(
+        element_type, transform_to_tff_known_type)
+  else:
+    # We've checked this is only a struct or tensors, so we know this is a
+    # `TensorType` here and will use as-is.
+    tf_compatible_type = element_type
+
+  def type_to_tensorspec(t: computation_types.TensorType) -> tf.TensorSpec:
+    return tf.TensorSpec(shape=t.shape, dtype=t.dtype)
+
+  element_spec = type_conversions.structure_from_tensor_type_tree(
+      type_to_tensorspec, tf_compatible_type)
+  ds = tf.data.experimental.from_variant(
+      tf.raw_ops.DatasetFromGraph(graph_def=serialized_graph_def),
+      structure=element_spec)
+  # If a serialized dataset had elements of nested structes of tensors (e.g.
+  # `dict`, `OrderedDict`), the deserialized dataset will return `dict`,
+  # `tuple`, or `namedtuple` (loses `collections.OrderedDict` in a conversion).
+  #
+  # Since the dataset will only be used inside TFF, we wrap the dictionary
+  # coming from TF in an `OrderedDict` when necessary (a type that both TF and
+  # TFF understand), using the field order stored in the TFF type stored during
+  # serialization.
+  return tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
+      ds, tf_compatible_type)
+
+
 @tracing.trace
 def _deserialize_sequence_value(
     sequence_value_proto: executor_pb2.Value.Sequence
@@ -379,28 +432,25 @@ def _deserialize_sequence_value(
   Returns:
     A tuple of `(tf.data.Dataset, tff.Type)`.
   """
+  element_type = type_serialization.deserialize_type(
+      sequence_value_proto.element_type)
   which_value = sequence_value_proto.WhichOneof('value')
   if which_value == 'zipped_saved_model':
-    ds = _deserialize_dataset(sequence_value_proto.zipped_saved_model)
+    warnings.warn(
+        'Deserializng a sequence value that was encoded as a zipped SavedModel.'
+        ' This is a deprecated path, please update the binary that is '
+        'serializing the sequences.', DeprecationWarning)
+    ds = _deserialize_dataset_from_zipped_saved_model(
+        sequence_value_proto.zipped_saved_model)
+    ds = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
+        ds, element_type)
+  elif which_value == 'serialized_graph_def':
+    ds = _deserialize_dataset_from_graph_def(
+        sequence_value_proto.serialized_graph_def, element_type)
   else:
     raise NotImplementedError(
         'Deserializing Sequences enocded as {!s} has not been implemented'
         .format(which_value))
-
-  element_type = type_serialization.deserialize_type(
-      sequence_value_proto.element_type)
-
-  # If a serialized dataset had elements of nested structes of tensors (e.g.
-  # `dict`, `OrderedDict`), the deserialized dataset will return `dict`,
-  # `tuple`, or `namedtuple` (loses `collections.OrderedDict` in a conversion).
-  #
-  # Since the dataset will only be used inside TFF, we wrap the dictionary
-  # coming from TF in an `OrderedDict` when necessary (a type that both TF and
-  # TFF understand), using the field order stored in the TFF type stored during
-  # serialization.
-  ds = tensorflow_utils.coerce_dataset_elements_to_tff_type_spec(
-      ds, element_type)
-
   return ds, computation_types.SequenceType(element=element_type)
 
 

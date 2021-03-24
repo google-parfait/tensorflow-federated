@@ -948,16 +948,36 @@ def coerce_dataset_elements_to_tff_type_spec(dataset, element_type):
   py_typecheck.check_type(dataset,
                           type_conversions.TF_DATASET_REPRESENTATION_TYPES)
   py_typecheck.check_type(element_type, computation_types.Type)
-
   if element_type.is_tensor():
     return dataset
-
   # This is a similar to `reference_context.to_representation_for_type`,
   # look for opportunities to consolidate?
   def _to_representative_value(type_spec, elements):
     """Convert to a container to a type understood by TF and TFF."""
     if type_spec.is_tensor():
       return elements
+    elif type_spec.is_struct_with_python():
+      if tf.is_tensor(elements):
+        # In this case we have a singleton tuple tensor that may have been
+        # unwrapped by tf.data.
+        elements = [elements]
+      py_type = computation_types.StructWithPythonType.get_container_type(
+          type_spec)
+      field_types = structure.iter_elements(type_spec)
+      if (issubclass(py_type, collections.abc.Mapping) or
+          py_typecheck.is_attrs(py_type)):
+        values = collections.OrderedDict(
+            (name, _to_representative_value(field_type, elements[name]))
+            for name, field_type in field_types)
+        return py_type(**values)
+      else:
+        values = [
+            _to_representative_value(field_type, e)
+            for (_, field_type), e in zip(field_types, elements)
+        ]
+        if py_typecheck.is_named_tuple(py_type):
+          return py_type(*values)
+        return py_type(values)
     elif type_spec.is_struct():
       field_types = structure.to_elements(type_spec)
       is_all_named = all([name is not None for name, _ in field_types])

@@ -139,7 +139,10 @@ message Value {
       // The bytes of a zip file over the files produced by a
       // `tf.saved_model.save()` operation, intended to be used with a
       // corresponding `tf.saved_model.load()` op.
-      bytes zipped_saved_model = 1;
+      bytes zipped_saved_model = 1 [deprecated = true];
+      // The result of the `DatasetToGraphV2` op called on a Dataset's variant
+      // tensor.
+      bytes serialized_graph_def = 3;
     }
     // The TensorFlow Federated `Type` of the elements in this
     // sequence.
