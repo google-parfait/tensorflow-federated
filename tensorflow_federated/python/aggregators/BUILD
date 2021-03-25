@@ -64,6 +64,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -81,6 +82,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -99,6 +101,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -127,6 +130,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -145,6 +149,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -161,6 +166,7 @@ py_library(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/templates:estimation_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -177,6 +183,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:estimation_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -197,6 +204,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -218,6 +226,7 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -238,6 +247,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_transformations",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -252,6 +262,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -271,6 +282,7 @@ py_library(
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/core/utils:federated_aggregations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -292,6 +304,7 @@ py_test(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -326,6 +339,7 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -343,6 +357,7 @@ py_library(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -361,5 +376,6 @@ py_test(
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

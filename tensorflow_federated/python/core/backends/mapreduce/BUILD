@@ -46,6 +46,7 @@ py_test(
         ":test_utils",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -75,6 +76,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -103,6 +105,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -119,6 +122,7 @@ py_library(
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -164,5 +168,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

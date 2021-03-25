@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = ["//tensorflow_federated:internal"])
@@ -52,6 +53,7 @@ py_library(
     name = "py_typecheck",
     srcs = ["py_typecheck.py"],
     srcs_version = "PY3",
+    deps = [requirement("attrs")],
 )
 
 py_test(
@@ -61,6 +63,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":py_typecheck",
         ":structure",
     ],
@@ -73,6 +76,7 @@ py_library(
     deps = [
         ":py_typecheck",
         "@com_google_protobuf//:protobuf_python",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -85,6 +89,7 @@ py_test(
     deps = [
         ":serialization_utils",
         "@com_google_protobuf//:protobuf_python",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -96,7 +101,11 @@ py_library(
         "//tensorflow_federated:__pkg__",
         "//tensorflow_federated:internal",
     ],
-    deps = [":py_typecheck"],
+    deps = [
+        requirement("attrs"),
+        ":py_typecheck",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -105,13 +114,17 @@ py_test(
     srcs = ["structure_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":structure"],
+    deps = [
+        requirement("attrs"),
+        ":structure",
+    ],
 )
 
 py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_library(

@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -49,10 +50,12 @@ py_library(
     srcs = ["computation_types.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -79,10 +82,12 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("attrs"),
         ":computation_types",
         ":placements",
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -118,6 +123,7 @@ py_test(
         ":value_base",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -132,7 +138,10 @@ py_library(
     name = "test_case",
     srcs = ["test_case.py"],
     srcs_version = "PY3",
-    deps = [":computation_types"],
+    deps = [
+        ":computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(

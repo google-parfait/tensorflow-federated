@@ -40,6 +40,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -56,6 +57,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -78,6 +80,7 @@ py_test(
     deps = [
         ":computation_module",
         "//tensorflow_federated/python/core/api:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -115,6 +118,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -140,5 +144,6 @@ py_test(
         ":computation_module",
         ":runtime",
         "//tensorflow_federated/python/core/api:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

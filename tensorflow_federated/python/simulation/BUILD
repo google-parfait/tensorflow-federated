@@ -46,6 +46,7 @@ py_library(
     name = "checkpoint_manager",
     srcs = ["checkpoint_manager.py"],
     srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
@@ -53,7 +54,10 @@ py_test(
     srcs = ["checkpoint_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":checkpoint_manager"],
+    deps = [
+        ":checkpoint_manager",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -64,6 +68,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -73,14 +78,20 @@ py_test(
     srcs = ["client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":client_data"],
+    deps = [
+        ":client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
     name = "csv_manager",
     srcs = ["csv_manager.py"],
     srcs_version = "PY3",
-    deps = [":metrics_manager"],
+    deps = [
+        ":metrics_manager",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -88,14 +99,20 @@ py_test(
     srcs = ["csv_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":csv_manager"],
+    deps = [
+        ":csv_manager",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
     name = "file_per_user_client_data",
     srcs = ["file_per_user_client_data.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation/datasets:file_per_user_client_data"],
+    deps = [
+        "//tensorflow_federated/python/simulation/datasets:file_per_user_client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -104,7 +121,10 @@ py_test(
     srcs = ["file_per_user_client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":file_per_user_client_data"],
+    deps = [
+        ":file_per_user_client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -137,6 +157,7 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/simulation/datasets:client_data",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -146,7 +167,10 @@ py_test(
     srcs = ["hdf5_client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":hdf5_client_data"],
+    deps = [
+        ":hdf5_client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -179,6 +203,7 @@ py_test(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/templates:iterative_process",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -204,6 +229,7 @@ py_test(
     deps = [
         ":sampling_utils",
         "//tensorflow_federated/python/simulation/datasets:client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -236,7 +262,10 @@ py_library(
     name = "tensorboard_manager",
     srcs = ["tensorboard_manager.py"],
     srcs_version = "PY3",
-    deps = [":metrics_manager"],
+    deps = [
+        ":metrics_manager",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_test(
@@ -244,7 +273,10 @@ py_test(
     srcs = ["tensorboard_manager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tensorboard_manager"],
+    deps = [
+        ":tensorboard_manager",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -285,7 +317,10 @@ py_test(
     srcs = ["sql_client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":sql_client_data"],
+    deps = [
+        ":sql_client_data",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(

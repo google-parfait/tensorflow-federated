@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
@@ -14,6 +15,7 @@ py_binary(
         ":simple_fedavg_tf",
         ":simple_fedavg_tff",
         "//tensorflow_federated",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -21,7 +23,11 @@ py_library(
     name = "simple_fedavg_tf",
     srcs = ["simple_fedavg_tf.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated"],
+    deps = [
+        requirement("attrs"),
+        "//tensorflow_federated",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(
@@ -31,6 +37,7 @@ py_library(
     deps = [
         ":simple_fedavg_tf",
         "//tensorflow_federated",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -44,5 +51,6 @@ py_cpu_gpu_test(
         ":simple_fedavg_tf",
         ":simple_fedavg_tff",
         "//tensorflow_federated",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

@@ -55,5 +55,6 @@ py_test(
         ":execution_contexts",
         "//tensorflow_federated/python/common_libs:test_utils",
         "//tensorflow_federated/python/core/api:computations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

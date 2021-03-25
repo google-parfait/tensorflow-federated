@@ -55,6 +55,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -76,5 +77,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
