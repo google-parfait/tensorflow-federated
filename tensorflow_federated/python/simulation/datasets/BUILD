@@ -42,7 +42,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":download",
-        "//tensorflow_federated/python/simulation:sql_client_data",
+        ":sql_client_data",
     ],
 )
 
@@ -75,8 +75,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":client_data",
         ":dataset_utils",
-        "//tensorflow_federated/python/simulation:client_data",
     ],
 )
 
@@ -101,10 +101,10 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":download",
+        ":from_tensor_slices_client_data",
+        ":sql_client_data",
+        ":transforming_client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
-        "//tensorflow_federated/python/simulation:sql_client_data",
-        "//tensorflow_federated/python/simulation:transforming_client_data",
     ],
 )
 
@@ -122,10 +122,10 @@ py_library(
     srcs = ["shakespeare.py"],
     srcs_version = "PY3",
     deps = [
+        ":client_data",
         ":download",
-        "//tensorflow_federated/python/simulation:client_data",
-        "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
-        "//tensorflow_federated/python/simulation:sql_client_data",
+        ":from_tensor_slices_client_data",
+        ":sql_client_data",
     ],
 )
 
@@ -144,8 +144,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":download",
-        "//tensorflow_federated/python/simulation:from_tensor_slices_client_data",
-        "//tensorflow_federated/python/simulation:sql_client_data",
+        ":from_tensor_slices_client_data",
+        ":sql_client_data",
     ],
 )
 
@@ -163,8 +163,8 @@ py_library(
     srcs = ["gldv2.py"],
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_federated/python/simulation:client_data",
-        "//tensorflow_federated/python/simulation:file_per_user_client_data",
+        ":client_data",
+        ":file_per_user_client_data",
     ],
 )
 

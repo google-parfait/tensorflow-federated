@@ -15,8 +15,8 @@
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import client_data
 from tensorflow_federated.python.simulation import sampling_utils
+from tensorflow_federated.python.simulation.datasets import client_data
 
 
 def create_tf_dataset_for_client(client_id):

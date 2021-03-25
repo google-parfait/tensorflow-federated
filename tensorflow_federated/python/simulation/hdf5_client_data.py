@@ -20,12 +20,12 @@ import h5py
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.simulation import client_data
+from tensorflow_federated.python.simulation.datasets import client_data
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
 class HDF5ClientData(client_data.ClientData):
-  """A `tff.simulation.ClientData` backed by an HDF5 file.
+  """A `tff.simulation.datasets.ClientData` backed by an HDF5 file.
 
   This class expects that the HDF5 file has a top-level group `examples` which
   contains further subgroups, one per user, named by the user ID.
@@ -41,7 +41,7 @@ class HDF5ClientData(client_data.ClientData):
   _EXAMPLES_GROUP = "examples"
 
   def __init__(self, hdf5_filepath):
-    """Constructs a `tff.simulation.ClientData` object.
+    """Constructs a `tff.simulation.datasets.ClientData` object.
 
     WARNING: this class is deprecated and is slated for removal in April 2021.
 

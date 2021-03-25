@@ -18,7 +18,7 @@ from typing import Callable, List, Optional, Sequence, TypeVar
 
 import numpy as np
 
-from tensorflow_federated.python.simulation import client_data
+from tensorflow_federated.python.simulation.datasets import client_data
 
 
 #  Settings for a multiplicative linear congruential generator (aka Lehmer
@@ -86,7 +86,7 @@ def build_uniform_client_sampling_fn(
   a given round, but with replacement across rounds) and returns their ids.
 
   Args:
-    dataset: A `tff.simulation.ClientData` object.
+    dataset: A `tff.simulation.datasets.ClientData` object.
     clients_per_round: The number of client participants in each round.
     random_seed: If random_seed is set as an integer, then we use it as a random
       seed for which clients are sampled at each round. In this case, we set a

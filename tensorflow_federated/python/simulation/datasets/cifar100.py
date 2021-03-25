@@ -17,8 +17,8 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import sql_client_data
 from tensorflow_federated.python.simulation.datasets import download
+from tensorflow_federated.python.simulation.datasets import sql_client_data
 
 
 def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
@@ -76,7 +76,7 @@ def load_data(cache_dir=None):
   -   test: 100,000 examples
 
   The `tf.data.Datasets` returned by
-  `tff.simulation.ClientData.create_tf_dataset_for_client` will yield
+  `tff.simulation.datasets.ClientData.create_tf_dataset_for_client` will yield
   `collections.OrderedDict` objects at each iteration, with the following keys
   and values, in lexicographic order by key:
 
@@ -95,7 +95,7 @@ def load_data(cache_dir=None):
 
   Returns:
     Tuple of (train, test) where the tuple elements are
-    `tff.simulation.ClientData` objects.
+    `tff.simulation.datasets.ClientData` objects.
   """
   database_path = download.get_compressed_file(
       origin='https://storage.googleapis.com/tff-datasets-public/cifar100.sqlite.lzma',

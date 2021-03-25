@@ -23,10 +23,10 @@ import tensorflow as tf
 import tensorflow_addons.image as tfa_image
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.simulation import from_tensor_slices_client_data
-from tensorflow_federated.python.simulation import sql_client_data
-from tensorflow_federated.python.simulation import transforming_client_data
 from tensorflow_federated.python.simulation.datasets import download
+from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
+from tensorflow_federated.python.simulation.datasets import sql_client_data
+from tensorflow_federated.python.simulation.datasets import transforming_client_data
 
 
 def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
@@ -84,7 +84,7 @@ def load_data(only_digits=True, cache_dir=None):
   the data set.
 
   The `tf.data.Datasets` returned by
-  `tff.simulation.ClientData.create_tf_dataset_for_client` will yield
+  `tff.simulation.datasets.ClientData.create_tf_dataset_for_client` will yield
   `collections.OrderedDict` objects at each iteration, with the following keys
   and values, in lexicographic order by key:
 
@@ -106,7 +106,7 @@ def load_data(only_digits=True, cache_dir=None):
 
   Returns:
     Tuple of (train, test) where the tuple elements are
-    `tff.simulation.ClientData` objects.
+    `tff.simulation.datasets.ClientData` objects.
   """
   database_path = download.get_compressed_file(
       origin='https://storage.googleapis.com/tff-datasets-public/emnist_all.sqlite.lzma',
@@ -136,8 +136,8 @@ def get_synthetic(num_clients=2):
     num_clients: The number of synthetic clients to generate.
 
   Returns:
-     A `tff.simulation.ClientData` object that matches the characteristics
-     (other than size) of those provided by
+     A `tff.simulation.datasets.ClientData` object that matches the
+     characteristics (other than size) of those provided by
      `tff.simulation.datasets.emnist.load_data`.
   """
   return get_infinite(
@@ -262,7 +262,7 @@ def get_infinite(emnist_client_data, num_pseudo_clients):
     4. A random translation between -5 and 5 pixels in both the x and y axes.
 
   Args:
-    emnist_client_data: The `tff.simulation.ClientData` to convert.
+    emnist_client_data: The `tff.simulation.datasets.ClientData` to convert.
     num_pseudo_clients: How many pseudo-clients to generate for each real
       client. Each pseudo-client is formed by applying a given random affine
       transformation to the characters written by a given real user. The first
@@ -270,7 +270,7 @@ def get_infinite(emnist_client_data, num_pseudo_clients):
       original users are always included.
 
   Returns:
-    An expanded `tff.simulation.ClientData`.
+    An expanded `tff.simulation.datasets.ClientData`.
   """
   num_client_ids = len(emnist_client_data.client_ids)
 

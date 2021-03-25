@@ -49,9 +49,9 @@ def get_emnist_dataset():
 
   Returns:
     A `(emnist_train, emnist_test)` tuple where `emnist_train` is a
-    `tff.simulation.ClientData` object representing the training data and
-    `emnist_test` is a single `tf.data.Dataset` representing the test data of
-    all clients.
+    `tff.simulation.datasets.ClientData` object representing the training data
+    and `emnist_test` is a single `tf.data.Dataset` representing the test data
+    of all clients.
   """
   emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data(
       only_digits=True)

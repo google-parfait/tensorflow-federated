@@ -336,10 +336,10 @@ represent that device's local `tf.data.Dataset`.
 ### Abstract interfaces
 
 In order to standardize dealing with simulated federated data sets, TFF provides
-an abstract interface `tff.simulation.ClientData`, which allows one to enumerate
-the set of clients, and to construct a `tf.data.Dataset` that contains the data
-of a particular client. Those `tf.data.Dataset`s can be fed directly as input to
-the generated federated computations in eager mode.
+an abstract interface `tff.simulation.datasets.ClientData`, which allows one to
+enumerate the set of clients, and to construct a `tf.data.Dataset` that contains
+the data of a particular client. Those `tf.data.Dataset`s can be fed directly as
+input to the generated federated computations in eager mode.
 
 It should be noted that the ability to access client identities is a feature
 that's only provided by the datasets for use in simulations, where the ability
@@ -353,8 +353,8 @@ identities no longer appear in it.
 ### Available data sets
 
 We have dedicated the namespace `tff.simulation.datasets` for datasets that
-implement the `tff.simulation.ClientData` interface for use in simulations, and
-seeded it with 2 data sets to support the
+implement the `tff.simulation.datasets.ClientData` interface for use in
+simulations, and seeded it with 2 data sets to support the
 [image classification](tutorials/federated_learning_for_image_classification.ipynb)
 and [text generation](tutorials/federated_learning_for_text_generation.ipynb)
 tutorials. We'd like to encourage you to contribute your own data sets to the

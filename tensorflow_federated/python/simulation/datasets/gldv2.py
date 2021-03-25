@@ -30,8 +30,8 @@ from typing import Tuple
 
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation.client_data import ClientData
-from tensorflow_federated.python.simulation.file_per_user_client_data import FilePerUserClientData
+from tensorflow_federated.python.simulation.datasets.client_data import ClientData
+from tensorflow_federated.python.simulation.datasets.file_per_user_client_data import FilePerUserClientData
 
 FED_GLD_SPLIT_FILE_BUNDLE = 'landmarks-user-160k'
 FED_GLD_SPLIT_FILE_DOWNLOAD_URL = 'http://storage.googleapis.com/gresearch/federated-vision-datasets/%s.zip' % FED_GLD_SPLIT_FILE_BUNDLE
@@ -316,7 +316,7 @@ def _filter_images(shard: int, all_images: Set[str], image_dir: str,
 def _download_data(
     num_worker: int, cache_dir: str, base_url: str
 ) -> Tuple[ClientData, tf.data.Dataset, ClientData, tf.data.Dataset]:
-  """Create a `tff.simulation.ClientData` for the chosen data split.
+  """Create a `tff.simulation.datasets.ClientData` for the chosen data split.
 
   Download the entire GLD v2 dataset, subset the dataset to only include the
   images in the federated GLD v2 dataset, and create both gld23k and gld160k
@@ -328,7 +328,7 @@ def _download_data(
     base_url: The base url for downloading GLD images.
 
   Returns:
-    A tuple of `tff.simulation.ClientData`, `tf.data.Dataset`.
+    A tuple of `tff.simulation.datasets.ClientData`, `tf.data.Dataset`.
   """
   logger = logging.getLogger(LOGGER)
   logger.info('Start to download fed gldv2 mapping files')
@@ -436,7 +436,7 @@ def load_data(num_worker: int = 1,
   tries to load the dataset from cache.
 
   The `tf.data.Datasets` returned by
-  `tff.simulation.ClientData.create_tf_dataset_for_client` will yield
+  `tff.simulation.datasets.ClientData.create_tf_dataset_for_client` will yield
   `collections.OrderedDict` objects at each iteration, with the following keys
   and values:
 
@@ -465,7 +465,7 @@ def load_data(num_worker: int = 1,
 
   Returns:
     Tuple of (train, test) where the tuple elements are
-    a `tff.simulation.ClientData` and a  `tf.data.Dataset`.
+    a `tff.simulation.datasets.ClientData` and a  `tf.data.Dataset`.
   """
   if not os.path.exists(cache_dir):
     os.mkdir(cache_dir)

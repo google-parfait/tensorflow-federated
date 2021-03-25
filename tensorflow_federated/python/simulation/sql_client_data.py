@@ -22,7 +22,7 @@ from tensorflow_federated.python.simulation.datasets import sql_client_data
 
 
 class SqlClientData(sql_client_data.SqlClientData):
-  """A `tff.simulation.ClientData` backed by an SQL file.
+  """A `tff.simulation.datasets.ClientData` backed by an SQL file.
 
   This class expects that the SQL file has an `examples` table where each
   row is an example in the dataset. The table must contain at least the
@@ -40,7 +40,7 @@ class SqlClientData(sql_client_data.SqlClientData):
   """
 
   def __init__(self, database_filepath: str, split_name: Optional[str] = None):
-    """Constructs a `tff.simulation.SqlClientData` object.
+    """Constructs a `tff.simulation.datasets.SqlClientData` object.
 
     WARNING: this class is deprecated and is slated for removal in April 2021.
     Please use `tff.simulation.datasets.SqlClientData` instead.

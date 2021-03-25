@@ -82,7 +82,7 @@ def build_synthethic_iid_datasets(client_data, client_dataset_size):
   `client_data` (so any example in `client_data` may be produced by any client).
 
   Args:
-    client_data: a `tff.simulation.ClientData`.
+    client_data: a `tff.simulation.datasets.ClientData`.
     client_dataset_size: the size of the `tf.data.Dataset` to yield from the
       returned dataset.
 

@@ -16,7 +16,7 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import client_data
+from tensorflow_federated.python.simulation.datasets import client_data
 from tensorflow_federated.python.simulation.datasets import dataset_utils
 
 

@@ -18,10 +18,10 @@ from typing import Optional, Tuple
 
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import client_data
-from tensorflow_federated.python.simulation import from_tensor_slices_client_data
-from tensorflow_federated.python.simulation import sql_client_data
+from tensorflow_federated.python.simulation.datasets import client_data
 from tensorflow_federated.python.simulation.datasets import download
+from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
+from tensorflow_federated.python.simulation.datasets import sql_client_data
 
 
 def _add_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
@@ -63,7 +63,7 @@ def load_data(
   from the data set.
 
   The `tf.data.Datasets` returned by
-  `tff.simulation.ClientData.create_tf_dataset_for_client` will yield
+  `tff.simulation.datasets.ClientData.create_tf_dataset_for_client` will yield
   `collections.OrderedDict` objects at each iteration, with the following keys
   and values:
 
@@ -76,7 +76,7 @@ def load_data(
 
   Returns:
     Tuple of (train, test) where the tuple elements are
-    `tff.simulation.ClientData` objects.
+    `tff.simulation.datasets.ClientData` objects.
   """
   database_path = download.get_compressed_file(
       origin='https://storage.googleapis.com/tff-datasets-public/shakespeare.sqlite.lzma',
@@ -89,15 +89,16 @@ def load_data(
 
 
 def get_synthetic() -> client_data.ClientData:
-  """Creates `tff.simulation.ClientData` for a synthetic in-memory example of Shakespeare.
+  """Creates `tff.simulation.datasets.ClientData` for a synthetic in-memory example of Shakespeare.
 
-  The returned `tff.simulation.ClientData` will have the same data schema as
-  `load_data()`, but uses a very small set of client data loaded in-memory.
+  The returned `tff.simulation.datasets.ClientData` will have the same data
+  schema as `load_data()`, but uses a very small set of client data loaded
+  in-memory.
 
   This synthetic data is useful for validation in small tests.
 
   Returns:
-    A `tff.simulation.ClientData` of synthentic Shakespeare text.
+    A `tff.simulation.datasets.ClientData` of synthentic Shakespeare text.
   """
   return from_tensor_slices_client_data.FromTensorSlicesClientData(
       _SYNTHETIC_SHAKESPEARE_DATA)

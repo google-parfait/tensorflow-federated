@@ -21,9 +21,9 @@ from typing import Optional
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.simulation import from_tensor_slices_client_data
-from tensorflow_federated.python.simulation import sql_client_data
 from tensorflow_federated.python.simulation.datasets import download
+from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
+from tensorflow_federated.python.simulation.datasets import sql_client_data
 
 
 def _add_proto_parsing(dataset: tf.data.Dataset) -> tf.data.Dataset:
@@ -87,7 +87,7 @@ def load_data(cache_dir=None):
         204,088 unique users with 16,586,035 examples.
 
   The `tf.data.Datasets` returned by
-  `tff.simulation.ClientData.create_tf_dataset_for_client` will yield
+  `tff.simulation.datasets.ClientData.create_tf_dataset_for_client` will yield
   `collections.OrderedDict` objects at each iteration, with the following keys
   and values, in lexicographic order by key:
 
@@ -111,7 +111,7 @@ def load_data(cache_dir=None):
 
   Returns:
     Tuple of (train, held_out, test) where the tuple elements are
-    `tff.simulation.ClientData` objects.
+    `tff.simulation.datasets.ClientData` objects.
   """
   database_path = download.get_compressed_file(
       origin='https://storage.googleapis.com/tff-datasets-public/stackoverflow.sqlite.lzma',
@@ -210,8 +210,8 @@ def get_synthetic():
   copies.
 
   Returns:
-     A `tff.simulation.ClientData` object that matches the characteristics
-     (other than size) of those provided by
+     A `tff.simulation.datasets.ClientData` object that matches the
+     characteristics (other than size) of those provided by
      `tff.simulation.datasets.stackoverflow.load_data`.
   """
   return from_tensor_slices_client_data.FromTensorSlicesClientData(

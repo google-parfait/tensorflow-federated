@@ -33,14 +33,14 @@ class FilePerUserClientData(client_data.ClientData):
 
   def __init__(self, client_ids_to_files: Mapping[str, str],
                dataset_fn: Callable[[str], tf.data.Dataset]):
-    """Constructs a `tf.simulation.ClientData` object.
+    """Constructs a `tff.simulation.datasets.ClientData` object.
 
     Args:
       client_ids_to_files: A mapping from string client IDs to filepaths
         containing the user's data.
-      dataset_fn: A factory function that takes a filepath (must accept
-        both strings and tensors) and returns a `tf.data.Dataset` corresponding
-        to this path.
+      dataset_fn: A factory function that takes a filepath (must accept both
+        strings and tensors) and returns a `tf.data.Dataset` corresponding to
+        this path.
     """
     py_typecheck.check_type(client_ids_to_files, collections.abc.Mapping)
     if not client_ids_to_files:
@@ -84,7 +84,7 @@ class FilePerUserClientData(client_data.ClientData):
 
   @classmethod
   def create_from_dir(cls, path, create_tf_dataset_fn=tf.data.TFRecordDataset):
-    """Builds a `tff.simulation.FilePerUserClientData`.
+    """Builds a `tff.simulation.datasets.FilePerUserClientData`.
 
     Iterates over all files in `path`, using the filename as the client ID. Does
     not recursively search `path`.
@@ -95,7 +95,7 @@ class FilePerUserClientData(client_data.ClientData):
         for a given file in the directory specified in `path`.
 
     Returns:
-      A `tff.simulation.FilePerUserClientData` object.
+      A `tff.simulation.datasets.FilePerUserClientData` object.
     """
     client_ids_to_paths_dict = {
         filename: os.path.join(path, filename)
