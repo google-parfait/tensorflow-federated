@@ -10,6 +10,7 @@ exports_files([
     "federated_learning_for_image_classification.ipynb",
     "federated_learning_for_text_generation.ipynb",
     "simulations.ipynb",
+    "simulations_with_accelerators.ipynb",
     "tuning_recommended_aggregators.ipynb",
     "tff_for_federated_learning_research_compression.ipynb",
     "working_with_client_data.ipynb",

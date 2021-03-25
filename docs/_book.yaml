@@ -35,6 +35,8 @@ upper_tabs:
         path: /federated/tutorials/working_with_client_data
       - title: "Experimental support for JAX in TFF"
         path: /federated/experimental/tutorials/jax_support
+      - title: "TFF simulation with accelerators (GPU)"
+        path: /federated/experimental/tutorials/simulations_with_accelerators
     - name: Guide
       contents:
       # The first item serves as the landing page and transitively leads to all the remaining
