@@ -746,14 +746,6 @@ def trivial_mean():
 
 
 @computations.federated_computation
-def trivial_reduce():
-  empty_at_clients = intrinsics.federated_value((), placement_literals.CLIENTS)
-  zero = ()
-  op = computations.tf_computation(lambda _a, _b: ())
-  return intrinsics.federated_reduce(empty_at_clients, zero, op)
-
-
-@computations.federated_computation
 def trivial_sum():
   empty_at_clients = intrinsics.federated_value((), placement_literals.CLIENTS)
   return intrinsics.federated_sum(empty_at_clients)
@@ -783,7 +775,6 @@ class ContainsAggregationShared(parameterized.TestCase):
       ('trivial_aggregate', trivial_aggregate),
       ('trivial_collect', trivial_collect),
       ('trivial_mean', trivial_mean),
-      ('trivial_reduce', trivial_reduce),
       ('trivial_sum', trivial_sum),
       # TODO(b/120439632) Enable once federated_mean accepts structured weight.
       # ('trivial_weighted_mean', trivial_weighted_mean),
@@ -856,14 +847,6 @@ def simple_mean():
 
 
 @computations.federated_computation
-def simple_reduce():
-  one_at_clients = intrinsics.federated_value(1, placement_literals.CLIENTS)
-  zero = 0
-  op = computations.tf_computation(lambda a, b: a + b)
-  return intrinsics.federated_reduce(one_at_clients, zero, op)
-
-
-@computations.federated_computation
 def simple_sum():
   one_at_clients = intrinsics.federated_value(1, placement_literals.CLIENTS)
   return intrinsics.federated_sum(one_at_clients)
@@ -888,7 +871,6 @@ class ContainsSecureAggregation(parameterized.TestCase):
       ('simple_aggregate', simple_aggregate),
       ('simple_collect', simple_collect),
       ('simple_mean', simple_mean),
-      ('simple_reduce', simple_reduce),
       ('simple_sum', simple_sum),
       ('simple_weighted_mean', simple_weighted_mean),
   ])
@@ -927,7 +909,6 @@ class ContainsUnsecureAggregation(parameterized.TestCase):
       ('simple_aggregate', simple_aggregate),
       ('simple_collect', simple_collect),
       ('simple_mean', simple_mean),
-      ('simple_reduce', simple_reduce),
       ('simple_sum', simple_sum),
       ('simple_weighted_mean', simple_weighted_mean),
   ])

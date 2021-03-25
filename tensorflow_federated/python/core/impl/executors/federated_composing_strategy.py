@@ -176,10 +176,10 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
         server-side processing, etc.
       target_executors: The list of executors that manage disjoint scopes to
         combine in this executor, delegate to and collect or aggregate from.
-      local_computation_factory: An instance of `LocalComputationFactory` to
-        use to construct local computations used as parameters in certain
-        federated operators (such as `tff.federated_sum`, etc.). Defaults to
-        a TensorFlow computation factory that generates TensorFlow code.
+      local_computation_factory: An instance of `LocalComputationFactory` to use
+        to construct local computations used as parameters in certain federated
+        operators (such as `tff.federated_sum`, etc.). Defaults to a TensorFlow
+        computation factory that generates TensorFlow code.
 
     Raises:
       TypeError: If `server_executor` is not an `executor_base.Executor` or if
@@ -518,13 +518,6 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     result = await self._server_executor.create_call(multiply_fn, multiply_arg)
     type_signature = computation_types.at_server(member_type)
     return FederatedComposingStrategyValue(result, type_signature)
-
-  @tracing.trace
-  async def compute_federated_reduce(
-      self,
-      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
-    raise NotImplementedError(
-        'The federated reduce intrinsic is not implemented.')
 
   @tracing.trace
   async def compute_federated_sum(

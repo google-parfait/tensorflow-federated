@@ -112,35 +112,6 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase):
     self.assertEqual(count_sum_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
 
-  def test_federated_reduce_not_reduced(self):
-    # It is in general unsafe to attempt to decompose a federated_reduce into a
-    # federated_aggregate, as not every reduction function can be decomposed
-    # into accumulate and merge calls without writing fundamentally new logic,
-    # e.g. 'return 1 if both arguments are 0'.
-    uri = intrinsic_defs.FEDERATED_REDUCE.uri
-
-    @computations.tf_computation(tf.float32, tf.float32)
-    def add(x, y):
-      return x + y
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
-    def foo(x):
-      return intrinsics.federated_reduce(x, 0., add)
-
-    foo_building_block = building_blocks.ComputationBuildingBlock.from_proto(
-        foo._computation_proto)
-
-    count_reduce_before_reduction = _count_intrinsics(foo_building_block, uri)
-    reduced, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
-        foo_building_block)
-    self.assert_types_identical(foo_building_block.type_signature,
-                                reduced.type_signature)
-    count_reduce_after_reduction = _count_intrinsics(reduced, uri)
-    self.assertGreater(count_reduce_before_reduction, 0)
-    self.assertEqual(count_reduce_after_reduction,
-                     count_reduce_before_reduction)
-
   def test_generic_divide_reduces(self):
     uri = intrinsic_defs.GENERIC_DIVIDE.uri
     comp = building_blocks.Intrinsic(

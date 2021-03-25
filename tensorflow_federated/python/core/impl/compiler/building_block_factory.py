@@ -865,52 +865,6 @@ def create_federated_mean(
     return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_reduce(
-    value: building_blocks.ComputationBuildingBlock,
-    zero: building_blocks.ComputationBuildingBlock,
-    op: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
-  r"""Creates a called federated reduce.
-
-            Call
-           /    \
-  Intrinsic      Tuple
-                 |
-                 [Comp, Comp, Comp]
-
-  Args:
-    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
-    zero: A `building_blocks.ComputationBuildingBlock` to use as the initial
-      value.
-    op: A `building_blocks.ComputationBuildingBlock` to use as the op function.
-
-  Returns:
-    A `building_blocks.Call`.
-
-  Raises:
-    TypeError: If any of the types do not match.
-  """
-  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(zero, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(op, building_blocks.ComputationBuildingBlock)
-  result_type = computation_types.FederatedType(op.type_signature.result,
-                                                placement_literals.SERVER)
-  # Remove names from `op`'s argument.
-  parameter_type = computation_types.StructType([
-      op.type_signature.parameter[0],
-      op.type_signature.parameter[1],
-  ])
-  op = _unname_fn_parameter(op, parameter_type)
-  intrinsic_type = computation_types.FunctionType((
-      type_conversions.type_to_non_all_equal(value.type_signature),
-      zero.type_signature,
-      op.type_signature,
-  ), result_type)
-  intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_REDUCE.uri,
-                                        intrinsic_type)
-  values = building_blocks.Struct((value, zero, op))
-  return building_blocks.Call(intrinsic, values)
-
-
 def create_federated_secure_sum(
     value: building_blocks.ComputationBuildingBlock,
     bitwidth: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:

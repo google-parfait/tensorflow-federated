@@ -294,44 +294,6 @@ class IntrinsicFactory(object):
     comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 
-  def federated_reduce(self, value, zero, op):
-    """Implements `federated_reduce` as defined in `api/intrinsics.py`."""
-    value = value_impl.to_value(value, None, self._context_stack)
-    value = value_utils.ensure_federated_value(value,
-                                               placement_literals.CLIENTS,
-                                               'value to be reduced')
-
-    zero = value_impl.to_value(zero, None, self._context_stack)
-    if type_analysis.contains_federated_types(zero.type_signature):
-      raise TypeError('`zero` may not contain a federated type, found type:\n' +
-                      str(zero.type_signature))
-
-    op = value_impl.to_value(
-        op,
-        None,
-        self._context_stack,
-        parameter_type_hint=computation_types.StructType(
-            [zero.type_signature, value.type_signature.member]))
-    op.type_signature.check_function()
-    if not op.type_signature.result.is_assignable_from(zero.type_signature):
-      raise TypeError(
-          '`zero` must be assignable to the result type from `op`:\n',
-          computation_types.type_mismatch_error_message(
-              zero.type_signature, op.type_signature.result,
-              computation_types.TypeRelation.ASSIGNABLE))
-    op_type_expected = type_factory.reduction_op(op.type_signature.result,
-                                                 value.type_signature.member)
-    if not op_type_expected.is_assignable_from(op.type_signature):
-      raise TypeError('Expected an operator of type {}, got {}.'.format(
-          op_type_expected, op.type_signature))
-
-    value = value_impl.ValueImpl.get_comp(value)
-    zero = value_impl.ValueImpl.get_comp(zero)
-    op = value_impl.ValueImpl.get_comp(op)
-    comp = building_block_factory.create_federated_reduce(value, zero, op)
-    comp = self._bind_comp_as_reference(comp)
-    return value_impl.ValueImpl(comp, self._context_stack)
-
   def federated_sum(self, value):
     """Implements `federated_sum` as defined in `api/intrinsics.py`."""
     value = value_impl.to_value(value, None, self._context_stack)

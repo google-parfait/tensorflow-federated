@@ -629,48 +629,6 @@ class CreateFederatedMeanTest(absltest.TestCase):
     self.assertEqual(str(comp.type_signature), 'int32@SERVER')
 
 
-class CreateFederatedReduceTest(absltest.TestCase):
-
-  def test_raises_type_error_with_none_value(self):
-    zero = building_blocks.Data('z', tf.int32)
-    op_type = computation_types.StructType((tf.int32, tf.int32))
-    op_result = building_blocks.Data('o', tf.int32)
-    op = building_blocks.Lambda('x', op_type, op_result)
-    with self.assertRaises(TypeError):
-      building_block_factory.create_federated_reduce(None, zero, op)
-
-  def test_raises_type_error_with_none_zero(self):
-    value_type = computation_types.FederatedType(tf.int32,
-                                                 placement_literals.CLIENTS)
-    value = building_blocks.Data('v', value_type)
-    op_type = computation_types.StructType((tf.int32, tf.int32))
-    op_result = building_blocks.Data('o', tf.int32)
-    op = building_blocks.Lambda('x', op_type, op_result)
-    with self.assertRaises(TypeError):
-      building_block_factory.create_federated_reduce(value, None, op)
-
-  def test_raises_type_error_with_none_op(self):
-    value_type = computation_types.FederatedType(tf.int32,
-                                                 placement_literals.CLIENTS)
-    value = building_blocks.Data('v', value_type)
-    zero = building_blocks.Data('z', tf.int32)
-    with self.assertRaises(TypeError):
-      building_block_factory.create_federated_reduce(value, zero, None)
-
-  def test_returns_federated_reduce(self):
-    value_type = computation_types.FederatedType(tf.int32,
-                                                 placement_literals.CLIENTS)
-    value = building_blocks.Data('v', value_type)
-    zero = building_blocks.Data('z', tf.int32)
-    op_type = computation_types.StructType((tf.int32, tf.int32))
-    op_result = building_blocks.Data('o', tf.int32)
-    op = building_blocks.Lambda('x', op_type, op_result)
-    comp = building_block_factory.create_federated_reduce(value, zero, op)
-    self.assertEqual(comp.compact_representation(),
-                     'federated_reduce(<v,z,(x -> o)>)')
-    self.assertEqual(str(comp.type_signature), 'int32@SERVER')
-
-
 class CreateFederatedSecureSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):

@@ -326,8 +326,8 @@ def capture_computed_value_from_graph(value, type_spec):
 
   Args:
     value: A Python object made of tensors in `graph`, `tf.data.Dataset`s,
-      `structure.Struct`s and other structures, to be captured as
-      an instance of `ComputedValue`.
+      `structure.Struct`s and other structures, to be captured as an instance of
+      `ComputedValue`.
     type_spec: The type of the value to be captured.
 
   Returns:
@@ -633,8 +633,6 @@ class ReferenceContext(context_base.Context):
             self._federated_map,
         intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri:
             self._federated_map_all_equal,
-        intrinsic_defs.FEDERATED_REDUCE.uri:
-            self._federated_reduce,
         intrinsic_defs.FEDERATED_SECURE_SUM.uri:
             self._federated_secure_sum,
         intrinsic_defs.FEDERATED_SUM.uri:
@@ -1127,25 +1125,6 @@ class ReferenceContext(context_base.Context):
               op_type.parameter))
     return total
 
-  def _federated_reduce(self, arg, context):
-    py_typecheck.check_type(arg.type_signature, computation_types.StructType)
-    federated_type = arg.type_signature[0]
-    type_analysis.check_federated_type(federated_type, None,
-                                       placement_literals.CLIENTS, False)
-    zero_type = arg.type_signature[1]
-    op_type = arg.type_signature[2]
-    py_typecheck.check_type(op_type, computation_types.FunctionType)
-    op_type.parameter.check_assignable_from(
-        computation_types.StructType([zero_type, federated_type.member]))
-    total = ComputedValue(arg.value[1], zero_type)
-    reduce_fn = arg.value[2]
-    for v in arg.value[0]:
-      total = reduce_fn(
-          ComputedValue(
-              structure.Struct([(None, total.value), (None, v)]),
-              op_type.parameter))
-    return self._federated_value_at_server(total, context)
-
   def _federated_mean(self, arg, context):
     type_analysis.check_federated_type(arg.type_signature, None,
                                        placement_literals.CLIENTS, False)
@@ -1197,14 +1176,25 @@ class ReferenceContext(context_base.Context):
     if len(arg.type_signature) != 5:
       raise TypeError('Expected a 5-tuple, found {}.'.format(
           arg.type_signature))
-    root_accumulator = self._federated_reduce(
-        ComputedValue(
-            structure.from_container([arg.value[k] for k in range(3)]),
-            [arg.type_signature[k] for k in range(3)]), context)
+    values, zero, reduce, merge, report = arg.value
+    values_type, zero_type, reduce_type, merge_type, report_type = arg.type_signature
+    del merge, merge_type
+    type_analysis.check_federated_type(values_type, None,
+                                       placement_literals.CLIENTS, False)
+    reduce_type.check_function()
+    reduce_type.parameter.check_assignable_from(
+        computation_types.StructType([zero_type, values_type.member]))
+    total = ComputedValue(zero, zero_type)
+    for v in values:
+      total = reduce(
+          ComputedValue(
+              structure.Struct([(None, total.value), (None, v)]),
+              reduce_type.parameter))
+    root_accumulator = self._federated_value_at_server(total, context)
+
     return self._federated_apply(
-        ComputedValue([arg.value[4], root_accumulator.value],
-                      [arg.type_signature[4], root_accumulator.type_signature]),
-        context)
+        ComputedValue([report, root_accumulator.value],
+                      [report_type, root_accumulator.type_signature]), context)
 
   def _federated_weighted_mean(self, arg, context):
     type_analysis.check_valid_federated_weighted_mean_argument_tuple_type(

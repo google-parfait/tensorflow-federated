@@ -14,7 +14,6 @@
 
 from absl.testing import absltest
 import numpy as np
-import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -23,36 +22,6 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 from tensorflow_federated.python.core.impl.federated_context import intrinsic_factory
 from tensorflow_federated.python.core.impl.types import placement_literals
-
-
-class FederatedReduceTest(absltest.TestCase):
-
-  def test_allows_assignable_but_not_equal_zero_and_reduction_types(self):
-    factory = intrinsic_factory.IntrinsicFactory(
-        context_stack_impl.context_stack)
-
-    element_type = tf.string
-    zero_type = computation_types.TensorType(tf.string, [1])
-    reduced_type = computation_types.TensorType(tf.string, [None])
-
-    @computations.tf_computation(reduced_type, element_type)
-    @computations.check_returns_type(reduced_type)
-    def append(accumulator, element):
-      return tf.concat([accumulator, [element]], 0)
-
-    @computations.tf_computation
-    @computations.check_returns_type(zero_type)
-    def zero():
-      return tf.convert_to_tensor(['The beginning'])
-
-    @computations.federated_computation(
-        computation_types.at_clients(element_type))
-    @computations.check_returns_type(computation_types.at_server(reduced_type))
-    def collect(client_values):
-      return factory.federated_reduce(client_values, zero(), append)
-
-    self.assertEqual(collect.type_signature.compact_representation(),
-                     '({string}@CLIENTS -> string[?]@SERVER)')
 
 
 class FederatedSecureSumTest(absltest.TestCase):

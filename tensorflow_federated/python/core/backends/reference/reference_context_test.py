@@ -1098,21 +1098,6 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
         str(bar([1, 2, 3, 4, 5])),
         "OrderedDict([('sum', 15), ('product', 120)])")
 
-  def test_federated_reduce_with_integers(self):
-
-    @computations.tf_computation(tf.int32, tf.float32)
-    def foo(x, y):
-      return x + tf.cast(y > 0.5, tf.int32)
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
-    def bar(x):
-      return intrinsics.federated_reduce(x, 0, foo)
-
-    self.assertEqual(
-        str(bar.type_signature), '({float32}@CLIENTS -> int32@SERVER)')
-    self.assertEqual(bar([0.1, 0.6, 0.2, 0.4, 0.8]), 2)
-
   def test_federated_mean_with_floats(self):
 
     @computations.federated_computation(

@@ -570,18 +570,6 @@ class IntrinsicsTest(parameterized.TestCase):
 
     self.assert_type(foo, '({int32}@CLIENTS -> <samples=int32[?]>@SERVER)')
 
-  def test_federated_reduce_with_tf_add_raw_constant(self):
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.CLIENTS))
-    def foo(x):
-      plus = computations.tf_computation(lambda a, b: tf.add(a, b))  # pylint: disable=unnecessary-lambda
-      val = intrinsics.federated_reduce(x, 0, plus)
-      self.assertIsInstance(val, value_base.Value)
-      return val
-
-    self.assert_type(foo, '({int32}@CLIENTS -> int32@SERVER)')
-
   def test_num_over_temperature_threshold_example(self):
 
     @computations.federated_computation([

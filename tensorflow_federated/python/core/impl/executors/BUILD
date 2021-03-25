@@ -152,7 +152,6 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/types:placement_literals",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
-        "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
 )
 

@@ -338,35 +338,6 @@ FEDERATED_MEAN = IntrinsicDef(
             computation_types.AbstractType('T'))),
     aggregation_kind=AggregationKind.DEFAULT)
 
-# Reduces a set of member constituents of a client value using a given 'zero' in
-# the algebra (i.e., the result of reducing an empty set) and a given reduction
-# operator with the signature U,T->U that incorporates a single T-typed element
-# into a U-typed result of partial reduction. In the special case of T = U, this
-# corresponds to the classical notion of reduction of a set using a commutative
-# associative binary operator. The generalized reduction operator (with T != U)
-# must yield the same results when repeatedly applied on sequences of elements
-# in any order.
-#
-# Type signature: <{T}@CLIENTS,U,(<U,T>->U)> -> U@SERVER
-FEDERATED_REDUCE = IntrinsicDef(
-    'FEDERATED_REDUCE',
-    'federated_reduce',
-    computation_types.FunctionType(
-        parameter=[
-            computation_types.at_clients(computation_types.AbstractType('T')),
-            # Note: zero is a separate type which must be assignable to `U`.
-            # It is not possible to deduce this assignability relationship from
-            # the structure of this function signature alone, so we use a
-            # separate type to enable variance.
-            computation_types.AbstractType('Z'),
-            type_factory.reduction_op(
-                computation_types.AbstractType('U'),
-                computation_types.AbstractType('T'))
-        ],
-        result=computation_types.at_server(
-            computation_types.AbstractType('U'))),
-    aggregation_kind=AggregationKind.DEFAULT)
-
 # Computes the sum of client values on the server, securely. Only supported for
 # numeric types, or nested structures made up of numeric computation_types.
 #
