@@ -17,6 +17,7 @@ import collections
 import math
 from typing import Callable, Union
 
+import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
@@ -355,11 +356,13 @@ def _check_value_type(value_type):
                     f'dtype. Provided value_type: {value_type}')
 
 
+@tf.function
 def _global_inf_norm(l):
-  norms = [tf.reduce_max(tf.abs(a)) for a in tf.nest.flatten(l)]
+  norms = [tf.norm(a, ord=np.inf) for a in tf.nest.flatten(l)]
   return tf.reduce_max(tf.stack(norms))
 
 
+@tf.function
 def _global_l1_norm(l):
-  norms = [tf.reduce_sum(tf.abs(a)) for a in tf.nest.flatten(l)]
+  norms = [tf.norm(a, ord=1) for a in tf.nest.flatten(l)]
   return tf.reduce_sum(tf.stack(norms))
