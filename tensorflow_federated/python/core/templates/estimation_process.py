@@ -13,6 +13,8 @@
 # limitations under the License.
 """Defines a template for a process that can compute an estimate."""
 
+from typing import Optional
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
@@ -38,22 +40,25 @@ class EstimationProcess(iterative_process.IterativeProcess):
   state, that is, the type of object returned by `initialize`.
   """
 
-  def __init__(self, initialize_fn: computation_base.Computation,
+  def __init__(self,
+               initialize_fn: computation_base.Computation,
                next_fn: computation_base.Computation,
-               report_fn: computation_base.Computation):
+               report_fn: computation_base.Computation,
+               next_is_multi_arg: Optional[bool] = None):
     """Creates a `tff.templates.EstimationProcess`.
 
     Args:
-      initialize_fn: A no-arg `tff.Computation` that creates the initial state
-        of the computation.
-      next_fn: A `tff.Computation` that represents the iterated function. If
-        `initialize_fn` returns a type `T`, then `next_fn` must either return a
-        type `U` which is compatible with `T` or multiple values where the first
-        type is `U`, and accept either a single argument of type `U` or multiple
-        arguments where the first argument must be of type `U`.
+      initialize_fn: A no-arg `tff.Computation` that returns the initial state
+        of the estimation process. Let the type of this state be called `S`.
+      next_fn: A `tff.Computation` that represents the iterated function. The
+        first or only argument must match the state type `S`. The first or only
+        return value must also match state type `S`.
       report_fn: A `tff.Computation` that represents the estimation based on
-        state. Its input argument must be assignable from return type of
-        `initialize_fn`.
+        state. Its input argument must match the state type `S`.
+      next_is_multi_arg: An optional boolean indicating that `next_fn` will
+        receive more than just the state argument (if `True`) or only the state
+        argument (if `False`). This parameter is primarily used to provide
+        better error messages.
 
     Raises:
       TypeError: If `initialize_fn`, `next_fn` and `report_fn` are not
@@ -64,7 +69,8 @@ class EstimationProcess(iterative_process.IterativeProcess):
         `initialize_fn` or `next_fn` is not assignable to the first input
         argument of `next_fn` and `report_fn`.
     """
-    super().__init__(initialize_fn, next_fn)
+    super().__init__(
+        initialize_fn, next_fn, next_is_multi_arg=next_is_multi_arg)
 
     py_typecheck.check_type(report_fn, computation_base.Computation)
     report_fn_arg_type = report_fn.type_signature.parameter
