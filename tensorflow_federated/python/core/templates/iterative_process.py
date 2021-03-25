@@ -13,10 +13,60 @@
 # limitations under the License.
 """Defines a template for a stateful process."""
 
+from typing import Optional
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.templates import errors
+
+
+def _is_nonempty_struct(type_signature) -> bool:
+  return type_signature.is_struct() and type_signature
+
+
+def _infer_state_type(initialize_result_type, next_parameter_type,
+                      next_is_multi_arg):
+  """Infers the state type from the `initialize` and `next` types."""
+  if next_is_multi_arg is None:
+    # `state_type` may be `next_parameter_type` or
+    # `next_parameter_type[0]`, depending on which one was assignable from
+    # `initialize_result_type`.
+    if next_parameter_type.is_assignable_from(initialize_result_type):
+      return next_parameter_type
+    if (_is_nonempty_struct(next_parameter_type) and
+        next_parameter_type[0].is_assignable_from(initialize_result_type)):
+      return next_parameter_type[0]
+    raise errors.TemplateStateNotAssignableError(
+        'The return type of `initialize_fn` must be assignable to either\n'
+        'the whole argument to `next_fn` or the first argument to `next_fn`,\n'
+        'but found `initialize_fn` return type:\n'
+        f'{initialize_result_type}\n'
+        'and `next_fn` with whole argument type:\n'
+        f'{next_parameter_type}')
+  elif next_is_multi_arg:
+    if not _is_nonempty_struct(next_parameter_type):
+      raise errors.TemplateNextFnNumArgsError(
+          'Expected `next_parameter_type` to be a structure type of at least '
+          f'length one, but found type:\n{next_parameter_type}')
+    if next_parameter_type[0].is_assignable_from(initialize_result_type):
+      return next_parameter_type[0]
+    raise errors.TemplateStateNotAssignableError(
+        'The return type of `initialize_fn` must be assignable to the first\n'
+        'argument to `next_fn`, but found `initialize_fn` return type:\n'
+        f'{initialize_result_type}\n'
+        'and `next_fn` whose first argument type is:\n'
+        f'{next_parameter_type}')
+  else:
+    # `next_is_multi_arg` is `False`
+    if next_parameter_type.is_assignable_from(initialize_result_type):
+      return next_parameter_type
+    raise errors.TemplateStateNotAssignableError(
+        'The return type of `initialize_fn` must be assignable to the whole\n'
+        'argument to `next_fn`, but found `initialize_fn` return type:\n'
+        f'{initialize_result_type}\n'
+        'and `next_fn` whose first argument type is:\n'
+        f'{next_parameter_type}')
 
 
 class IterativeProcess:
@@ -56,18 +106,22 @@ class IterativeProcess:
   ```
   """
 
-  def __init__(self, initialize_fn: computation_base.Computation,
-               next_fn: computation_base.Computation):
+  def __init__(self,
+               initialize_fn: computation_base.Computation,
+               next_fn: computation_base.Computation,
+               next_is_multi_arg: Optional[bool] = None):
     """Creates a `tff.templates.IterativeProcess`.
 
     Args:
-      initialize_fn: A no-arg `tff.Computation` that creates the initial state
-        of the computation.
-      next_fn: A `tff.Computation` that represents the iterated function. If
-        `initialize_fn` returns a type `T`, then `next_fn` must either return a
-        type `U` which is compatible with `T` or multiple values where the first
-        type is `U`, and accept either a single argument of type `U` or multiple
-        arguments where the first argument must be of type `U`.
+      initialize_fn: A no-arg `tff.Computation` that returns the initial state
+        of the iterative process. Let the type of this state be called `S`.
+      next_fn: A `tff.Computation` that represents the iterated function. The
+        first or only argument must match the state type `S`. The first or only
+        return value must also match state type `S`.
+      next_is_multi_arg: An optional boolean indicating that `next_fn` will
+        receive more than just the state argument (if `True`) or only the state
+        argument (if `False`). This parameter is primarily used to provide
+        better error messages.
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
@@ -87,29 +141,14 @@ class IterativeProcess:
 
     py_typecheck.check_type(next_fn, computation_base.Computation)
     next_parameter_type = next_fn.type_signature.parameter
-    # `next_first_parameter_type` may be `next_parameter_type` or
-    # `next_parameter_type[0]`, depending on which one was assignable from
-    # `initialize_result_type`.
-    if next_parameter_type.is_assignable_from(initialize_result_type):
-      # The only argument is the state type
-      state_type = next_parameter_type
-    elif (next_parameter_type.is_struct() and next_parameter_type and
-          next_parameter_type[0].is_assignable_from(initialize_result_type)):
-      # The first argument is the state type
-      state_type = next_parameter_type[0]
-    else:
-      raise errors.TemplateStateNotAssignableError(
-          f'The return type of `initialize_fn` must be assignable to '
-          f'the first input argument of `next_fn`, but:\n'
-          f'`initialize_fn` returned type:\n{initialize_result_type}\n'
-          f'and the first input argument of `next_fn` is:\n'
-          f'{next_parameter_type}')
+    state_type = _infer_state_type(initialize_result_type, next_parameter_type,
+                                   next_is_multi_arg)
 
     next_result_type = next_fn.type_signature.result
     if state_type.is_assignable_from(next_result_type):
       # The whole return value is the state type
       pass
-    elif (next_result_type.is_struct() and next_result_type and
+    elif (_is_nonempty_struct(next_result_type) and
           state_type.is_assignable_from(next_result_type[0])):
       # The first return value is state type
       pass

@@ -13,6 +13,8 @@
 # limitations under the License.
 """Define a template for a stateful process that produces metrics."""
 
+from typing import Optional
+
 import attr
 
 from tensorflow_federated.python.core.api import computation_base
@@ -41,6 +43,7 @@ class MeasuredProcessOutput:
   result = attr.ib()
   measurements = attr.ib()
 
+
 # The type signature of the result of MeasuredProcess must be a named tuple with
 # the following names in the same order.
 _RESULT_FIELD_NAMES = [f.name for f in attr.fields(MeasuredProcessOutput)]
@@ -52,19 +55,19 @@ class MeasuredProcess(iterative_process.IterativeProcess):
   This class inherits the constraints documented by
   `tff.templates.IterativeProcess`.
 
-  A `tff.templates.MeasuredProcess` is a `tff.templates.IterativeProcess` that
-  formalizes the output signature of the `next` property to be a containet with
-  named attributes `<state,result,measurements>`. This definition enables
-  `tff.templates.MeasuredProcess` to be composed following the rules below,
-  something that is not generally possible with the more generic, less defined
-  `tff.templates.IterativeProcess`.
+  A `tff.templates.MeasuredProcess` is a `tff.templates.IterativeProcess` whose
+  `next` computation returns a `tff.templates.MeasuredProcessOutput`.
+
+  Unlike `tff.templates.IterativeProcess`, the more generic but less-defined
+  template, arbitrary `tff.templates.MeasuredProcess`es can be composed together
+  as follows:
 
   *Guidance for Composition*
-  Given two `MeasuredProcess` _F(x)_ and _G(y)_, a new composition _C_ is
-  also a `MeasuredProcess` where:
+  Two `MeasuredProcess`es _F(x)_ and _G(y)_ can be composed into a new
+  `MeasuredProcess` called _C_ with the following properties:
     - `C.state` is the concatenation `<F.state, G.state>`.
-    - `C.result` is the result of _G_ applied to the result of
-      _F_: `G(G.state, F(F.state, x).result).result`.
+    - `C.next(C.state, x).result ==
+       G.next(G.state, F.next(F.state, x).result).result`
     - `C.measurements` is the concatenation `<F.measurements, G.measurements>`.
 
   The resulting composition _C_ would have the following type signatures:
@@ -76,19 +79,23 @@ class MeasuredProcess(iterative_process.IterativeProcess):
   to differ.
   """
 
-  def __init__(self, initialize_fn: computation_base.Computation,
-               next_fn: computation_base.Computation):
+  def __init__(self,
+               initialize_fn: computation_base.Computation,
+               next_fn: computation_base.Computation,
+               next_is_multi_arg: Optional[bool] = None):
     """Creates a `tff.templates.MeasuredProcess`.
 
     Args:
-      initialize_fn: A no-arg `tff.Computation` that creates the initial state
-        of the measured process.
-      next_fn: A `tff.Computation` that defines an iterated function. If
-        `initialize_fn` returns a non-federated type `S`, then `next_fn` must
-        return a `MeasuredProcessOutput` where the `state` attribute matches the
-        non-federated type `S`, and accept either a single argument of
-        non-federated type `S` or multiple arguments where the first argument
-        must be of non-federated type `S`.
+      initialize_fn: A no-arg `tff.Computation` that returns the initial state
+        of the measured process. Let the type of this state be called `S`.
+      next_fn: A `tff.Computation` that represents the iterated function. The
+        first or only argument must match the state type `S`. The return value
+        must be a `MeasuredProcessOutput` whose `state` member matches the
+        state type `S`.
+      next_is_multi_arg: An optional boolean indicating that `next_fn` will
+        receive more than just the state argument (if `True`) or only the state
+        argument (if `False`). This parameter is primarily used to provide
+        better error messages.
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
@@ -101,7 +108,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
       TemplateNotMeasuredProcessOutputError: If `next_fn` does not return a
         `MeasuredProcessOutput`.
     """
-    super().__init__(initialize_fn, next_fn)
+    super().__init__(initialize_fn, next_fn, next_is_multi_arg)
     next_result_type = next_fn.type_signature.result
     if not (isinstance(next_result_type, computation_types.StructWithPythonType)
             and next_result_type.python_container is MeasuredProcessOutput):
@@ -114,11 +121,7 @@ class MeasuredProcess(iterative_process.IterativeProcess):
     # of next_fn, and that this is in the returned structure. For
     # MeasuredProcess, this explicitly needs to be in the state attribute. See
     # `test_measured_process_output_as_state_raises` for an example.
-    if next_fn.type_signature.parameter.is_assignable_from(
-        initialize_fn.type_signature.result):
-      state_type = next_fn.type_signature.parameter
-    else:
-      state_type = next_fn.type_signature.parameter[0]
+    state_type = self.state_type
     if not state_type.is_assignable_from(next_fn.type_signature.result.state):
       raise errors.TemplateStateNotAssignableError(
           f'The state attrubute of returned MeasuredProcessOutput must be '

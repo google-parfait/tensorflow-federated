@@ -70,15 +70,15 @@ class AggregationProcess(measured_process.MeasuredProcess):
     """Creates a `tff.templates.AggregationProcess`.
 
     Args:
-      initialize_fn: A no-arg `tff.Computation` that creates the initial state
-        of the aggregation process.
-      next_fn: A `tff.Computation` that defines an iterated function. If
-        `initialize_fn` returns a type `S@SERVER`, then `next_fn` must return a
-        `MeasuredProcessOutput` where the `state` attribute matches the type
-        `S@SERVER`, and accepts at least two argument of types `S@SERVER` and
-        `V@CLIENTS`, or more arguments where the first two argument must be of
-        types `S@SERVER` and `V@CLIENTS`. The `result` attribute of output
-        returned by `next_fn` must be of type `V@SERVER`.
+      initialize_fn: A no-arg `tff.Computation` that returns the initial state
+        of the aggregation process. The returned state must be a server-placed
+        federated value. Let the type of this state be called `S@SERVER`.
+      next_fn: A `tff.Computation` that represents the iterated function.
+        `next_fn` must accept at least two arguments, the first of which is of
+        state type `S@SERVER` and the second of which is client-placed data of
+        type `V@CLIENTS`. `next_fn` must return a  `MeasuredProcessOutput` where
+        the `state` attribute matches the type `S@SERVER` and the `result`
+        attribute matches type `V@SERVER`.
 
     Raises:
       TypeError: If `initialize_fn` and `next_fn` are not instances of
@@ -100,7 +100,7 @@ class AggregationProcess(measured_process.MeasuredProcess):
     # Calling super class __init__ first ensures that
     # next_fn.type_signature.result is a `MeasuredProcessOutput`, make our
     # validation here easier as that must be true.
-    super().__init__(initialize_fn, next_fn)
+    super().__init__(initialize_fn, next_fn, next_is_multi_arg=True)
 
     if not initialize_fn.type_signature.result.is_federated():
       raise AggregationNotFederatedError(
