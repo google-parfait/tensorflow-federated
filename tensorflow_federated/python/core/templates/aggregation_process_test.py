@@ -291,6 +291,23 @@ class AggregationProcessTest(test_case.TestCase):
                                                      weighted_next_fn)
     self.assertTrue(process.is_weighted)
 
+  def test_is_weighted_property(self):
+    process = aggregation_process.AggregationProcess(test_initialize_fn,
+                                                     test_next_fn)
+    self.assertFalse(process.is_weighted)
+
+    @computations.federated_computation(SERVER_INT, CLIENTS_FLOAT,
+                                        CLIENTS_FLOAT)
+    def weighted_next_fn(state, value, weight):
+      del weight
+      return MeasuredProcessOutput(
+          state, intrinsics.federated_sum(value),
+          intrinsics.federated_value(1, placements.SERVER))
+
+    process = aggregation_process.AggregationProcess(test_initialize_fn,
+                                                     weighted_next_fn)
+    self.assertTrue(process.is_weighted)
+
 
 if __name__ == '__main__':
   test_case.main()
