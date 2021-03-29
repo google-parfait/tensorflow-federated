@@ -64,9 +64,9 @@ def _write_to_csv(metrics: List[Dict[str, Any]], file_name: str,
 
   # Copy to a temporary GFile next to the target, allowing for an atomic move.
   tmp_gfile_name = os.path.join(
-      os.path.dirname(file_name), '{}.tmp{}'.format(
-          os.path.basename(file_name),
-          np.random.randint(0, 2**63, dtype=np.int64)))
+      os.path.dirname(file_name), 'tmp{}.{}'.format(
+          np.random.randint(0, 2**63, dtype=np.int64),
+          os.path.basename(file_name)))
   tf.io.gfile.copy(src=tmp_name, dst=tmp_gfile_name, overwrite=True)
 
   # Finally, do an atomic rename and clean up.
