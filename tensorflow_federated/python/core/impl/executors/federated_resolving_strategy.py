@@ -379,7 +379,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     val_type, zero_type, accumulate_type, merge_type, report_type = (
         executor_utils.parse_federated_aggregate_argument_types(
             arg.type_signature))
-    del val_type, zero_type, merge_type
+    del val_type, merge_type
     py_typecheck.check_type(arg.internal_representation, structure.Struct)
     py_typecheck.check_len(arg.internal_representation, 5)
     val, zero, accumulate, merge, report = arg.internal_representation
@@ -387,6 +387,12 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
     # Discard `merge`. Since all aggregation happens on a single executor,
     # there's no need for this additional layer.
     del merge
+
+    # Re-wrap `zero` in a `FederatingResolvingStrategyValue` to ensure that it
+    # is an `ExecutorValue` rather than a `Struct` (since the internal
+    # representation can include embedded values, lists of embedded values
+    # (in the case of federated values), or `Struct`s.
+    zero = FederatedResolvingStrategyValue(zero, zero_type)
     pre_report = await self.reduce(val, zero, accumulate, accumulate_type)
 
     py_typecheck.check_type(pre_report.type_signature,
@@ -545,8 +551,7 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
             self._executor,
             arg.type_signature.member,
             local_computation_factory=self._local_computation_factory))
-    return await self.reduce(arg.internal_representation,
-                             zero.internal_representation,
+    return await self.reduce(arg.internal_representation, zero,
                              plus.internal_representation, plus.type_signature)
 
   @tracing.trace
