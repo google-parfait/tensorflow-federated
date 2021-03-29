@@ -81,7 +81,9 @@ for research productivity. Hence, TFF has invested heavily in providing
 high-performance single and multi-machine runtimes. Documentation is under
 development, but for now see the
 [High-performance simulations with TFF](https://www.tensorflow.org/federated/tutorials/simulations)
-tutorial as well as instructions on
+tutorial, instructions on
+[TFF simulations with accelerators](https://www.tensorflow.org/federated/tutorials/simulations_with_accelerators),
+and instructions on
 [setting up simulations with TFF on GCP](https://www.tensorflow.org/federated/gcp_setup).
 The high-performance TFF runtime is enabled by default.
 
