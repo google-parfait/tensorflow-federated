@@ -966,7 +966,7 @@ def to_type(spec) -> Type:
     def tff_type(cls) -> tff.Type:
       return tff.to_type(cls(
         int_scalar=tf.int32,
-        string_array=tff.TensorSpec(dtype=tf.string, shape=[3]),
+        string_array=tf.TensorSpec(dtype=tf.string, shape=[3]),
       ))
 
   @tff.tf_computation(MyDataClass.tff_type())
