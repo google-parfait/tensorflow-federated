@@ -16,9 +16,7 @@
 from tensorflow_federated.python.simulation import datasets
 from tensorflow_federated.python.simulation import models
 from tensorflow_federated.python.simulation.checkpoint_manager import FileCheckpointManager
-from tensorflow_federated.python.simulation.client_data import ClientData
 from tensorflow_federated.python.simulation.csv_manager import CSVMetricsManager
-from tensorflow_federated.python.simulation.file_per_user_client_data import FilePerUserClientData
 from tensorflow_federated.python.simulation.iterative_process_compositions import compose_dataset_computation_with_computation
 from tensorflow_federated.python.simulation.iterative_process_compositions import compose_dataset_computation_with_iterative_process
 from tensorflow_federated.python.simulation.metrics_manager import MetricsManager
@@ -26,7 +24,6 @@ from tensorflow_federated.python.simulation.sampling_utils import build_uniform_
 from tensorflow_federated.python.simulation.sampling_utils import build_uniform_sampling_fn
 from tensorflow_federated.python.simulation.server_utils import run_server
 from tensorflow_federated.python.simulation.server_utils import server_context
-from tensorflow_federated.python.simulation.sql_client_data import SqlClientData
 from tensorflow_federated.python.simulation.tensorboard_manager import TensorBoardManager
 from tensorflow_federated.python.simulation.training_loop import run_simulation
 from tensorflow_federated.python.simulation.training_loop import run_simulation_with_callbacks
@@ -34,4 +31,3 @@ from tensorflow_federated.python.simulation.training_loop import TRAIN_STEP_TIME
 from tensorflow_federated.python.simulation.training_loop import TRAIN_STEPS_PER_HOUR_KEY
 from tensorflow_federated.python.simulation.training_loop import VALIDATION_METRICS_PREFIX
 from tensorflow_federated.python.simulation.training_loop import VALIDATION_TIME_KEY
-from tensorflow_federated.python.simulation.transforming_client_data import TransformingClientData

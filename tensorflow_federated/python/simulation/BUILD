@@ -22,17 +22,13 @@ py_library(
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
         ":checkpoint_manager",
-        ":client_data",
         ":csv_manager",
-        ":file_per_user_client_data",
         ":iterative_process_compositions",
         ":metrics_manager",
         ":sampling_utils",
         ":server_utils",
-        ":sql_client_data",
         ":tensorboard_manager",
         ":training_loop",
-        ":transforming_client_data",
         "//tensorflow_federated/python/simulation/datasets",
         "//tensorflow_federated/python/simulation/models",
     ],
@@ -53,26 +49,6 @@ py_test(
 )
 
 py_library(
-    name = "client_data",
-    srcs = ["client_data.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_base",
-        "//tensorflow_federated/python/core/api:computations",
-    ],
-)
-
-py_test(
-    name = "client_data_test",
-    size = "small",
-    srcs = ["client_data_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":client_data"],
-)
-
-py_library(
     name = "csv_manager",
     srcs = ["csv_manager.py"],
     srcs_version = "PY3",
@@ -85,43 +61,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":csv_manager"],
-)
-
-py_library(
-    name = "file_per_user_client_data",
-    srcs = ["file_per_user_client_data.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation/datasets:file_per_user_client_data"],
-)
-
-py_test(
-    name = "file_per_user_client_data_test",
-    size = "small",
-    srcs = ["file_per_user_client_data_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":file_per_user_client_data"],
-)
-
-py_library(
-    name = "from_tensor_slices_client_data",
-    srcs = ["from_tensor_slices_client_data.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/simulation/datasets:from_tensor_slices_client_data",
-    ],
-)
-
-py_test(
-    name = "from_tensor_slices_client_data_test",
-    size = "small",
-    srcs = ["from_tensor_slices_client_data_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":from_tensor_slices_client_data",
-        "//tensorflow_federated/python/core/api:test_case",
-    ],
 )
 
 py_library(
@@ -220,47 +159,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":tensorboard_manager"],
-)
-
-py_library(
-    name = "transforming_client_data",
-    srcs = ["transforming_client_data.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/simulation/datasets:client_data",
-        "//tensorflow_federated/python/simulation/datasets:transforming_client_data",
-    ],
-)
-
-py_test(
-    name = "transforming_client_data_test",
-    size = "small",
-    srcs = ["transforming_client_data_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":transforming_client_data",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/simulation/datasets:from_tensor_slices_client_data",
-    ],
-)
-
-py_library(
-    name = "sql_client_data",
-    srcs = ["sql_client_data.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/simulation/datasets:sql_client_data",
-    ],
-)
-
-py_test(
-    name = "sql_client_data_test",
-    size = "small",
-    srcs = ["sql_client_data_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":sql_client_data"],
 )
 
 py_library(
