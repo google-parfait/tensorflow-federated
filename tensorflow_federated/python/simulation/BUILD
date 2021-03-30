@@ -28,7 +28,6 @@ py_library(
         ":client_data",
         ":csv_manager",
         ":file_per_user_client_data",
-        ":hdf5_client_data",
         ":iterative_process_compositions",
         ":metrics_manager",
         ":sampling_utils",
@@ -145,31 +144,6 @@ py_test(
     deps = [
         ":from_tensor_slices_client_data",
         "//tensorflow_federated/python/core/api:test_case",
-    ],
-)
-
-py_library(
-    name = "hdf5_client_data",
-    srcs = ["hdf5_client_data.py"],
-    deprecation = "hdf5_client_data is deprecated and slated for removal April 2021",
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/simulation/datasets:client_data",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_test(
-    name = "hdf5_client_data_test",
-    size = "small",
-    srcs = ["hdf5_client_data_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":hdf5_client_data",
-        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
