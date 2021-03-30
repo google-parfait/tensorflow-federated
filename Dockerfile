@@ -63,7 +63,6 @@ RUN ${PIP} install --no-cache-dir --upgrade \
     cachetools~=3.1.1 \
     dm-tree~=0.1.1 \
     grpcio~=1.34.0 \
-    h5py~=3.1.0 \
     jax~=0.2.8 \
     jaxlib~=0.1.55 \
     numpy~=1.19.2 \
