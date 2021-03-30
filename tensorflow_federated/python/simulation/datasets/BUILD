@@ -10,6 +10,9 @@ package_group(
         # TODO(b/182305417): Delete this once the full deprecation period has
         # passed.
         "//tensorflow_federated/python/simulation",
+
+        # Core Dependencies
+        "//tensorflow_federated/python/core/test/...",
     ],
 )
 
