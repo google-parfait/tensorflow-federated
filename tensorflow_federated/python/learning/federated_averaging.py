@@ -24,6 +24,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 import collections
 import enum
 from typing import Any, Callable, Optional, Union
+import warnings
 
 import tensorflow as tf
 
@@ -146,7 +147,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
 
-# TODO(b/170208719): remove `aggregation_process` after migration to
+# TODO(b/170208719): Remove `aggregation_process` after migration to
 # `model_update_aggregation_factory`.
 def build_federated_averaging_process(
     model_fn: Callable[[], model_lib.Model],
@@ -205,6 +206,12 @@ def build_federated_averaging_process(
   sophisticated federated averaging procedures may use different learning rates
   or server optimizers.
 
+  WARNING: `aggregation_process` argument is deprecated and will be removed in
+  a future version. Use `model_update_aggregation_factory` instead. See
+  https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators
+  and https://www.tensorflow.org/federated/tutorials/custom_aggregators
+  tutorials for details of use of `tff.aggregators` module.
+
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`. This method
       must *not* capture TensorFlow tensors or variables and use them. The model
@@ -252,6 +259,18 @@ def build_federated_averaging_process(
                        'unweighted aggregation.')
   elif not client_weighting:
     client_weighting = ClientWeighting.NUM_EXAMPLES
+
+  if aggregation_process is not None:
+    warnings.warn(
+        'The aggregation_process argument to '
+        'tff.learning.build_federated_averaging_process is deprecated and will '
+        'be removed in a future version. Use model_update_aggregation_factory '
+        'instead. See '
+        'https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators'
+        ' and '
+        'https://www.tensorflow.org/federated/tutorials/custom_aggregators '
+        'tutorials for details of use of tff.aggregators module.',
+        DeprecationWarning)
 
   def client_fed_avg(model_fn: Callable[[], model_lib.Model]) -> ClientFedAvg:
     return ClientFedAvg(model_fn(), client_optimizer_fn(), client_weighting,

@@ -22,6 +22,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 """
 
 from typing import Any, Callable, Optional
+import warnings
 
 import tensorflow as tf
 
@@ -143,7 +144,7 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
 
 
-# TODO(b/170208719): remove `aggregation_process` after migration to
+# TODO(b/170208719): Remove `aggregation_process` after migration to
 # `model_update_aggregation_factory`.
 def build_federated_sgd_process(
     model_fn: Callable[[], model_lib.Model],
@@ -198,6 +199,12 @@ def build_federated_sgd_process(
   with a learning rate of 0.1. More sophisticated federated SGD procedures may
   use different learning rates or server optimizers.
 
+  WARNING: `aggregation_process` argument is deprecated and will be removed in
+  a future version. Use `model_update_aggregation_factory` instead. See
+  https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators
+  and https://www.tensorflow.org/federated/tutorials/custom_aggregators
+  tutorials for details of use of `tff.aggregators` module.
+
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`. This method
       must *not* capture TensorFlow tensors or variables and use them. The model
@@ -229,6 +236,18 @@ def build_federated_sgd_process(
   Returns:
     A `tff.templates.IterativeProcess`.
   """
+
+  if aggregation_process is not None:
+    warnings.warn(
+        'The aggregation_process argument to '
+        'tff.learning.build_federated_averaging_process is deprecated and will '
+        'be removed in a future version. Use model_update_aggregation_factory '
+        'instead. See '
+        'https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators'
+        ' and '
+        'https://www.tensorflow.org/federated/tutorials/custom_aggregators '
+        'tutorials for details of use of tff.aggregators module.',
+        DeprecationWarning)
 
   def client_sgd_avg(model_fn: Callable[[], model_lib.Model]) -> ClientSgd:
     return ClientSgd(

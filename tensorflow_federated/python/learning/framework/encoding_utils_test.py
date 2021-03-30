@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import collections
-
+import warnings
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -32,14 +32,24 @@ class EncodingUtilsTest(test_case.TestCase, parameterized.TestCase):
 
   def test_mean_process_from_model(self):
     model_fn = model_examples.LinearRegression
-    gather_process = encoding_utils.build_encoded_mean_process_from_model(
-        model_fn, _test_encoder_fn('gather'))
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      gather_process = encoding_utils.build_encoded_mean_process_from_model(
+          model_fn, _test_encoder_fn('gather'))
+      self.assertNotEmpty(w)
+      self.assertEqual(w[0].category, DeprecationWarning)
+      self.assertRegex(str(w[0].message), 'This method is deprecated')
     self.assertIsInstance(gather_process, measured_process.MeasuredProcess)
 
   def test_sum_process_from_model(self):
     model_fn = model_examples.LinearRegression
-    gather_process = encoding_utils.build_encoded_sum_process_from_model(
-        model_fn, _test_encoder_fn('gather'))
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      gather_process = encoding_utils.build_encoded_sum_process_from_model(
+          model_fn, _test_encoder_fn('gather'))
+      self.assertNotEmpty(w)
+      self.assertEqual(w[0].category, DeprecationWarning)
+      self.assertRegex(str(w[0].message), 'This method is deprecated')
     self.assertIsInstance(gather_process, measured_process.MeasuredProcess)
 
   def test_broadcast_process_from_model(self):

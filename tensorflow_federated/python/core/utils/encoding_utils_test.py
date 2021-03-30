@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -101,8 +102,13 @@ class EncodedSumProcessTest(test_case.TestCase, parameterized.TestCase):
     value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
     value_type = computation_types.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
-    gather_process = encoding_utils.build_encoded_sum_process(
-        value_type, encoder)
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      gather_process = encoding_utils.build_encoded_sum_process(
+          value_type, encoder)
+      self.assertNotEmpty(w)
+      self.assertEqual(w[0].category, DeprecationWarning)
+      self.assertRegex(str(w[0].message), 'This method is deprecated')
     state_type = gather_process._initialize_fn.type_signature.result
     gather_signature = gather_process._next_fn.type_signature
 
@@ -172,8 +178,13 @@ class EncodedMeanProcessTest(test_case.TestCase, parameterized.TestCase):
     value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
     value_type = computation_types.to_type(value_spec)
     encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
-    gather_process = encoding_utils.build_encoded_mean_process(
-        value_type, encoder)
+    with warnings.catch_warnings(record=True) as w:
+      warnings.simplefilter('always')
+      gather_process = encoding_utils.build_encoded_mean_process(
+          value_type, encoder)
+      self.assertNotEmpty(w)
+      self.assertEqual(w[0].category, DeprecationWarning)
+      self.assertRegex(str(w[0].message), 'This method is deprecated')
     state_type = gather_process._initialize_fn.type_signature.result
     gather_signature = gather_process._next_fn.type_signature
 

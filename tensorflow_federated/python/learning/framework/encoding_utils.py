@@ -20,6 +20,7 @@ and `CLIENTS`.
 """
 
 from typing import Callable
+import warnings
 
 import tensorflow as tf
 
@@ -80,11 +81,17 @@ def build_encoded_broadcast_process_from_model(
   return encoding_utils.build_encoded_broadcast_process(weight_type, encoders)
 
 
-# TODO(b/138081552): Move to tff.learning when ready.
+# TODO(b/170208719): Delete when migration is complete.
 def build_encoded_sum_process_from_model(
     model_fn: _ModelConstructor,
     encoder_fn: _EncoderConstructor) -> measured_process.MeasuredProcess:
   """Builds `MeasuredProcess` for weights of model returned by `model_fn`.
+
+  WARNING: This method is deprecated and will be removed in a future version.
+  Use `tff.aggregators.EncodedSumFactory(encoder_fn)` instead. See
+  https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators
+  and https://www.tensorflow.org/federated/tutorials/custom_aggregators
+  tutorials for details of use of `tff.aggregators` module.
 
   This method creates a `GatherEncoder` for every trainable weight of model
   created by `model_fn`, as returned by `encoder_fn`.
@@ -104,6 +111,14 @@ def build_encoded_sum_process_from_model(
   Raises:
     TypeError: If `model_fn` or `encoder_fn` are not callable objects.
   """
+  warnings.warn(
+      'This method is deprecated and will be removed in a future version. Use '
+      '`tff.aggregators.EncodedSumFactory(encoder_fn)` instead. See '
+      'https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators'
+      ' and https://www.tensorflow.org/federated/tutorials/custom_aggregators '
+      'tutorials for details of use of `tff.aggregators` module.',
+      DeprecationWarning)
+
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
   trainable_weights = _weights_from_model_fn(model_fn).trainable
@@ -112,11 +127,19 @@ def build_encoded_sum_process_from_model(
   return encoding_utils.build_encoded_sum_process(weight_type, encoders)
 
 
-# TODO(b/138081552): Move to tff.learning when ready.
+# TODO(b/170208719): Delete when migration is complete.
 def build_encoded_mean_process_from_model(
     model_fn: _ModelConstructor,
     encoder_fn: _EncoderConstructor) -> measured_process.MeasuredProcess:
   """Builds `MeasuredProcess` for weights of model returned by `model_fn`.
+
+  WARNING: This method is deprecated and will be removed in a future version.
+  Use
+  `tff.aggregators.MeanFactory(tff.aggregators.EncodedSumFactory(encoder_fn))`
+  instead. See
+  https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators
+  and https://www.tensorflow.org/federated/tutorials/custom_aggregators
+  tutorials for details of use of `tff.aggregators` module.
 
   This method creates a `GatherEncoder` for every trainable weight of model
   created by `model_fn`, as returned by `encoder_fn`.
@@ -136,6 +159,15 @@ def build_encoded_mean_process_from_model(
   Raises:
     TypeError: If `model_fn` or `encoder_fn` are not callable objects.
   """
+  warnings.warn(
+      'This method is deprecated and will be removed in a future version. Use '
+      '`tff.aggregators.MeanFactory(tff.aggregators.EncodedSumFactory(encoder_fn))`'
+      ' instead. See '
+      'https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators'
+      ' and https://www.tensorflow.org/federated/tutorials/custom_aggregators '
+      'tutorials for details of use of `tff.aggregators` module.',
+      DeprecationWarning)
+
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(encoder_fn)
   trainable_weights = _weights_from_model_fn(model_fn).trainable
