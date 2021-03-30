@@ -118,6 +118,17 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
     self.assertEqual(
         as_list(client_data.create_tf_dataset_for_client('b')), [4, 5])
 
+  def test_create_tf_dataset_from_all_clients(self):
+    tensor_slices_dict = {'a': [1, 2, 3], 'b': [4, 5]}
+    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
+        tensor_slices_dict)
+    tf_dataset = client_data.create_tf_dataset_from_all_clients()
+
+    def as_list(dataset):
+      return [self.evaluate(x) for x in dataset]
+
+    self.assertCountEqual([1, 2, 3, 4, 5], as_list(tf_dataset))
+
   def test_where_client_data_is_tensors(self):
     client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
         TEST_DATA)

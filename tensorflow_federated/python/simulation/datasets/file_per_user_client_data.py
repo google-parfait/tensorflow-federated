@@ -48,11 +48,7 @@ class FilePerUserClientData(client_data.ClientData):
     py_typecheck.check_callable(dataset_fn)
     self._client_ids = sorted(client_ids_to_files.keys())
 
-    def create_dataset_for_filename_fn(client_id):
-      return dataset_fn(client_ids_to_files[client_id])
-
-    @computations.tf_computation(tf.string)
-    def dataset_computation(client_id):
+    def _create_dataset(client_id):
       client_ids_to_path = tf.lookup.StaticHashTable(
           tf.lookup.KeyValueTensorInitializer(
               list(client_ids_to_files.keys()),
@@ -60,20 +56,23 @@ class FilePerUserClientData(client_data.ClientData):
       client_path = client_ids_to_path.lookup(client_id)
       return dataset_fn(client_path)
 
-    self._create_tf_dataset_fn = create_dataset_for_filename_fn
-    self._dataset_computation = dataset_computation
+    self._create_dataset_fn = _create_dataset
+    self._cached_dataset_computation = None
 
     g = tf.Graph()
     with g.as_default():
-      tf_dataset = self._create_tf_dataset_fn(self._client_ids[0])
+      tf_dataset = self._create_dataset_fn(tf.constant(self._client_ids[0]))
       self._element_type_structure = tf_dataset.element_spec
+
+  def _create_dataset(self, client_id):
+    return self._create_dataset_fn(client_id)
 
   @property
   def client_ids(self):
     return self._client_ids
 
   def create_tf_dataset_for_client(self, client_id):
-    tf_dataset = self._create_tf_dataset_fn(client_id)
+    tf_dataset = self._create_dataset_fn(tf.constant(client_id))
     tensor_utils.check_nested_equal(tf_dataset.element_spec,
                                     self._element_type_structure)
     return tf_dataset
@@ -106,4 +105,11 @@ class FilePerUserClientData(client_data.ClientData):
 
   @property
   def dataset_computation(self):
-    return self._dataset_computation
+    if self._cached_dataset_computation is None:
+
+      @computations.tf_computation(tf.string)
+      def dataset_computation(client_id):
+        return self._create_dataset(client_id)
+
+      self._cached_dataset_computation = dataset_computation
+    return self._cached_dataset_computation

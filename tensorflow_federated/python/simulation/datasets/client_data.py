@@ -22,7 +22,6 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 
 
@@ -56,22 +55,20 @@ class ClientData(object, metaclass=abc.ABCMeta):
       print(example)
   ```
 
-  If desiring a manner for constructing ClientData objects for testing purposes,
-  please see the `tff.test.FromTensorSlicesClientData` class, as it provides an
-  easy way to construct toy federated datasets.
+  If desiring a manner for constructing `ClientData` objects for testing
+  purposes, please see the `tff.test.FromTensorSlicesClientData` class, as it
+  provides an easy way to construct toy federated datasets.
   """
 
-  @abc.abstractproperty
-  def client_ids(self) -> List[str]:
-    """A list of string identifiers for clients in this dataset."""
-    pass
-
   @abc.abstractmethod
-  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
-    """Creates a new `tf.data.Dataset` containing the client training examples.
+  def _create_dataset(self, client_id: str) -> tf.data.Dataset:
+    """Creates a new `tf.data.Dataset` for a given client.
+
+    Note that this method must be traceable by TF and TFF, as it will be used
+    in the context of a `tf.function` and a `tff.Computation`.
 
     Args:
-      client_id: The string client_id for the desired client.
+      client_id: The string representing the client_id.
 
     Returns:
       A `tf.data.Dataset` object.
@@ -79,17 +76,46 @@ class ClientData(object, metaclass=abc.ABCMeta):
     pass
 
   @abc.abstractproperty
-  def dataset_computation(self) -> computation_base.Computation:
+  def client_ids(self) -> List[str]:
+    """A list of string identifiers for clients in this dataset."""
+    pass
+
+  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
+    """Creates a new `tf.data.Dataset` containing the client training examples.
+
+    This function will create a dataset for a given client, given that
+    `client_id` is contained in the `client_ids` property of the `ClientData`.
+    Unlike `create_dataset`, this method need not be serializable.
+
+    Args:
+      client_id: The string client_id for the desired client.
+
+    Returns:
+      A `tf.data.Dataset` object.
+    """
+    if client_id not in self.client_ids:
+      raise ValueError(
+          'ID [{i}] is not a client in this ClientData. See '
+          'property `client_ids` for the list of valid ids.'.format(
+              i=client_id))
+    return self._create_dataset(client_id)
+
+  @property
+  def dataset_computation(self):
     """A `tff.Computation` accepting a client ID, returning a dataset.
 
     Note: the `dataset_computation` property is intended as a TFF-specific
-    performance optimization for distributed execution, and subclasses of
-    `ClientData` may or may not support it.
-
-    `ClientData` implementations that don't support `dataset_computation`
-    should raise `NotImplementedError` if this attribute is accessed.
+    performance optimization for distributed execution.
     """
-    pass
+    if (not hasattr(self, '_cached_dataset_computation')) or (
+        self._cached_dataset_computation is None):
+
+      @computations.tf_computation(tf.string)
+      def dataset_computation(client_id):
+        return self._create_dataset(client_id)
+
+      self._cached_dataset_computation = dataset_computation
+    return self._cached_dataset_computation
 
   @abc.abstractproperty
   def element_type_structure(self):
@@ -123,7 +149,7 @@ class ClientData(object, metaclass=abc.ABCMeta):
       if limit_count is not None and count >= limit_count:
         return
       count += 1
-      dataset = self.create_tf_dataset_for_client(client_id)
+      dataset = self._create_dataset(client_id)
       py_typecheck.check_type(dataset, tf.data.Dataset)
       yield dataset
 
@@ -148,12 +174,10 @@ class ClientData(object, metaclass=abc.ABCMeta):
     Returns:
       A `tf.data.Dataset` object.
     """
-    # Note: simply calling Dataset.concatenate() will result in too deep
-    # recursion depth.
-    # Note: Tests are via the simple concrete from_tensor_slices_client_data.
-    client_datasets = list(self.datasets(seed=seed))
-    nested_dataset = tf.data.Dataset.from_tensor_slices(client_datasets)
-    example_dataset = nested_dataset.flat_map(lambda x: x)
+    client_ids = self.client_ids.copy()
+    np.random.RandomState(seed=seed).shuffle(client_ids)
+    nested_dataset = tf.data.Dataset.from_tensor_slices(client_ids)
+    example_dataset = nested_dataset.flat_map(self._create_dataset)
     return example_dataset
 
   def preprocess(
@@ -167,23 +191,21 @@ class ClientData(object, metaclass=abc.ABCMeta):
   def from_clients_and_fn(
       cls,
       client_ids: Iterable[str],
-      create_tf_dataset_for_client_fn: Callable[[str], tf.data.Dataset],
+      create_dataset_fn: Callable[[str], tf.data.Dataset],
   ) -> 'ConcreteClientData':
     """Constructs a `ClientData` based on the given function.
 
     Args:
-      client_ids: A non-empty list of client_ids which are valid inputs to the
-        create_tf_dataset_for_client_fn.
-      create_tf_dataset_for_client_fn: A function that takes a client_id from
-        the above list, and returns a `tf.data.Dataset`. If this function is
-        additionally a `tff.Computation`, the constructed `ClientData`
-        will expose a `dataset_computation` attribute which can be used for
-        high-performance distributed simulations.
+      client_ids: A non-empty list of strings to use as input to
+        `create_dataset_fn`.
+      create_dataset_fn: A function that takes a client_id from the above list,
+        and returns a `tf.data.Dataset`. This function must be serializable and
+        usable within the context of a `tf.function` and `tff.Computation`.
 
     Returns:
-      A `ClientData`.
+      A `ClientData` object.
     """
-    return ConcreteClientData(client_ids, create_tf_dataset_for_client_fn)
+    return ConcreteClientData(client_ids, create_dataset_fn)
 
   @classmethod
   def train_test_client_split(
@@ -279,7 +301,11 @@ class PreprocessClientData(ClientData):
         self._underlying_client_data.create_tf_dataset_for_client(
             next(iter(underlying_client_data.client_ids))))
     self._element_type_structure = example_dataset.element_spec
-    self._dataset_computation = None
+    self._cached_dataset_computation = None
+
+  def _create_dataset(self, client_id: str) -> tf.data.Dataset:
+    return self._preprocess_fn(
+        self._underlying_client_data._create_dataset(client_id))  # pylint:disable=protected-access
 
   @property
   def client_ids(self):
@@ -291,16 +317,17 @@ class PreprocessClientData(ClientData):
 
   @property
   def dataset_computation(self):
-    if self._dataset_computation is None:
+    if (not hasattr(self, '_cached_dataset_computation')) or (
+        self._cached_dataset_computation is None):
 
       @computations.tf_computation(tf.string)
       def dataset_comp(client_id):
         return self._preprocess_fn(
             self._underlying_client_data.dataset_computation(client_id))
 
-      self._dataset_computation = dataset_comp
+      self._cached_dataset_computation = dataset_comp
 
-    return self._dataset_computation
+    return self._cached_dataset_computation
 
   @property
   def element_type_structure(self):
@@ -310,8 +337,8 @@ class PreprocessClientData(ClientData):
 class ConcreteClientData(ClientData):
   """A generic `ClientData` object.
 
-  This is a simple implementation of client_data, where Datasets are specified
-  as a function from client_id to Dataset.
+  This is a simple implementation of client_data, where each client dataset
+  is specified via a function mapping each `client_id` to a `tf.data.Dataset`.
 
   The `ConcreteClientData.preprocess` classmethod is provided as a utility
   used to wrap another `ClientData` with an additional preprocessing function.
@@ -320,49 +347,37 @@ class ConcreteClientData(ClientData):
   def __init__(
       self,
       client_ids: Iterable[str],
-      create_tf_dataset_for_client_fn: Callable[[str], tf.data.Dataset],
+      create_dataset_fn: Callable[[str], tf.data.Dataset],
   ):
     """Arguments correspond to the corresponding members of `ClientData`.
 
     Args:
       client_ids: A non-empty list of string client_ids.
-      create_tf_dataset_for_client_fn: A function that takes a client_id from
-        the above list, and returns a `tf.data.Dataset`. If this function is
-        additionally a `tff.Computation`, the constructed `ConcreteClientData`
-        will expose a `dataset_computation` attribute which can be used for
-        high-performance distributed simulations.
+      create_dataset_fn: A function that takes a client_id from the above list,
+        and returns a `tf.data.Dataset`. This must be traceable by TF and TFF.
+        That is, it must be compatible with both `tf.function` and
+        `tff.Computation` wrappers.
     """
     py_typecheck.check_type(client_ids, collections.abc.Iterable)
-    py_typecheck.check_callable(create_tf_dataset_for_client_fn)
+    py_typecheck.check_callable(create_dataset_fn)
 
     if not client_ids:
       raise ValueError('At least one client_id is required.')
 
     self._client_ids = list(client_ids)
-    self._create_tf_dataset_for_client_fn = create_tf_dataset_for_client_fn
+    self._create_dataset_fn = create_dataset_fn
+    self._cached_dataset_computation = None
 
-    if isinstance(self._create_tf_dataset_for_client_fn,
-                  computation_base.Computation):
-      self._dataset_computation = self._create_tf_dataset_for_client_fn
-    else:
-      self._dataset_computation = None
-
-    example_dataset = create_tf_dataset_for_client_fn(next(iter(client_ids)))
+    example_dataset = create_dataset_fn(next(iter(client_ids)))
     self._element_type_structure = example_dataset.element_spec
+
+  def _create_dataset(self, client_id: str) -> tf.data.Dataset:
+    return self._create_dataset_fn(client_id)
 
   @property
   def client_ids(self) -> List[str]:
     return self._client_ids
 
-  def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
-    return self._create_tf_dataset_for_client_fn(client_id)
-
   @property
   def element_type_structure(self):
     return self._element_type_structure
-
-  @property
-  def dataset_computation(self):
-    if self._dataset_computation is not None:
-      return self._dataset_computation
-    raise NotImplementedError

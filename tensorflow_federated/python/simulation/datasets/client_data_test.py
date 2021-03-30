@@ -28,8 +28,7 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
       return tf.data.Dataset.range(num_examples)
 
     client_data = cd.ClientData.from_clients_and_fn(
-        client_ids=client_ids,
-        create_tf_dataset_for_client_fn=create_dataset_fn)
+        client_ids=client_ids, create_dataset_fn=create_dataset_fn)
 
     self.assertEqual(client_data.element_type_structure,
                      tf.TensorSpec(shape=(), dtype=tf.int64))
@@ -59,8 +58,7 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
 
     client_ids = list(range(10))
     return cd.ClientData.from_clients_and_fn(
-        client_ids=client_ids,
-        create_tf_dataset_for_client_fn=create_dataset_fn)
+        client_ids=client_ids, create_dataset_fn=create_dataset_fn)
 
   def test_datasets_lists_all_elements(self):
     client_ids = [1, 2, 3]
@@ -70,8 +68,7 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
       return tf.data.Dataset.range(num_examples)
 
     client_data = cd.ClientData.from_clients_and_fn(
-        client_ids=client_ids,
-        create_tf_dataset_for_client_fn=create_dataset_fn)
+        client_ids=client_ids, create_dataset_fn=create_dataset_fn)
 
     def ds_iterable_to_list_set(datasets):
       return set(tuple(ds.as_numpy_iterator()) for ds in datasets)
@@ -82,14 +79,13 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
     self.assertEqual(datasets, expected)
 
   def test_dataset_from_large_client_list(self):
-    self.skipTest('b/183118483: currently will timeout')
     client_ids = [str(x) for x in range(1_000_000)]
 
     def create_dataset(_):
       return tf.data.Dataset.range(100)
 
     client_data = cd.ClientData.from_clients_and_fn(
-        client_ids=client_ids, create_tf_dataset_for_client_fn=create_dataset)
+        client_ids=client_ids, create_dataset_fn=create_dataset)
     # Ensure this completes within the test timeout without raising error.
     # Previous implementations caused this to take an very long time via Python
     # list -> generator -> list transformations.
@@ -118,8 +114,7 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
       return tf.data.Dataset.range(num_examples)
 
     client_data = cd.ClientData.from_clients_and_fn(
-        client_ids=client_ids,
-        create_tf_dataset_for_client_fn=only_call_me_thrice)
+        client_ids=client_ids, create_dataset_fn=only_call_me_thrice)
 
     datasets_iter = client_data.datasets()
     next(datasets_iter)
@@ -135,8 +130,7 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
       return tf.data.Dataset.range(num_examples)
 
     client_data = cd.ClientData.from_clients_and_fn(
-        client_ids=client_ids,
-        create_tf_dataset_for_client_fn=create_dataset_fn)
+        client_ids=client_ids, create_dataset_fn=create_dataset_fn)
 
     ds = list(client_data.datasets(limit_count=1))
     self.assertLen(ds, 1)
@@ -150,8 +144,7 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
       return tf.data.Dataset.range(num_examples)
 
     client_data = cd.ClientData.from_clients_and_fn(
-        client_ids=client_ids,
-        create_tf_dataset_for_client_fn=create_dataset_fn)
+        client_ids=client_ids, create_dataset_fn=create_dataset_fn)
 
     client_data.datasets()
     self.assertEqual(client_ids, client_ids_copy)
@@ -167,8 +160,7 @@ class ConcreteClientDataTest(tf.test.TestCase, absltest.TestCase):
       return tf.data.Dataset.from_tensor_slices([client_id])
 
     client_data = cd.ClientData.from_clients_and_fn(
-        client_ids=client_ids,
-        create_tf_dataset_for_client_fn=create_dataset_fn)
+        client_ids=client_ids, create_dataset_fn=create_dataset_fn)
 
     dataset = client_data.create_tf_dataset_from_all_clients()
     dataset_list = list(dataset.as_numpy_iterator())

@@ -14,15 +14,12 @@
 """Libraries for the federated EMNIST dataset for simulation."""
 
 import collections
-import hashlib
 import math
-import struct
 
 import numpy as np
 import tensorflow as tf
 import tensorflow_addons.image as tfa_image
 
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation.datasets import download
 from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
 from tensorflow_federated.python.simulation.datasets import sql_client_data
@@ -208,13 +205,8 @@ def _make_transform_fn(raw_client_id, index):
   if index == 0:
     return None
 
-  py_typecheck.check_type(raw_client_id, str)
-  # To be python2 compatible, we need to use struct.unpack() to convert bytes to
-  # int. (In python3, the int.from_bytes() method could be used instead.)
-  _, _, _, stable_hash_of_client_id = struct.unpack(
-      '>IIII',
-      hashlib.md5(raw_client_id.encode()).digest())
-  np.random.seed((stable_hash_of_client_id + index) % (2**32))
+  stable_hash = (tf.strings.to_hash_bucket(raw_client_id, 2**32) + index)
+  np.random.seed((stable_hash) % (2**32))
 
   def random_scale(min_val):
     b = math.log(min_val)

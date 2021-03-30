@@ -78,8 +78,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":client_data",
         ":dataset_utils",
+        ":from_tensor_slices_client_data",
     ],
 )
 
@@ -107,7 +107,6 @@ py_library(
         ":from_tensor_slices_client_data",
         ":sql_client_data",
         ":transforming_client_data",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 
@@ -186,7 +185,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
     ],
 )
@@ -280,6 +278,7 @@ py_library(
     deps = [
         ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/api:computations",
     ],
 )
 
@@ -292,5 +291,6 @@ py_test(
     deps = [
         ":from_tensor_slices_client_data",
         ":transforming_client_data",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
     ],
 )

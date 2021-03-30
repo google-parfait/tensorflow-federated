@@ -12,31 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import re
 
 from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
 from tensorflow_federated.python.simulation.datasets import transforming_client_data
 
 TEST_DATA = {
-    'CLIENT A': {
-        'x': np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4'),
-        'y': np.asarray([4.0, 5.0, 6.0], dtype='f4'),
-        'z': np.asarray(['a', 'b', 'c'], dtype='S'),
-    },
-    'CLIENT B': {
-        'x': np.asarray([[10, 11]], dtype='i4'),
-        'y': np.asarray([7.0], dtype='f4'),
-        'z': np.asarray(['d'], dtype='S'),
-    },
-    'CLIENT C': {
-        'x': np.asarray([[100, 101], [200, 201]], dtype='i4'),
-        'y': np.asarray([8.0, 9.0], dtype='f4'),
-        'z': np.asarray(['e', 'f'], dtype='S'),
-    },
+    'CLIENT A':
+        collections.OrderedDict([
+            ('x', np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4')),
+            ('y', np.asarray([4.0, 5.0, 6.0], dtype='f4')),
+            ('z', np.asarray(['a', 'b', 'c'], dtype='S')),
+        ]),
+    'CLIENT B':
+        collections.OrderedDict([
+            ('x', np.asarray([[10, 11]], dtype='i4')),
+            ('y', np.asarray([7.0], dtype='f4')),
+            ('z', np.asarray(['d'], dtype='S')),
+        ]),
+    'CLIENT C':
+        collections.OrderedDict([
+            ('x', np.asarray([[100, 101], [200, 201]], dtype='i4')),
+            ('y', np.asarray([8.0, 9.0], dtype='f4')),
+            ('z', np.asarray(['e', 'f'], dtype='S')),
+        ]),
 }
 
 
@@ -44,7 +49,7 @@ def _test_transform_cons(raw_client_id, index):
   del raw_client_id
 
   def fn(data):
-    data['x'] = data['x'] + 10 * index
+    data['x'] = data['x'] + 10 * tf.cast(index, dtype=tf.int32)
     return data
 
   return fn
@@ -135,6 +140,27 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
       self.assertCountEqual(actual, expected)
     self.assertEmpty(expected_examples)
 
+  def test_dataset_computation(self):
+    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
+        TEST_DATA)
+    transformed_client_data = transforming_client_data.TransformingClientData(
+        client_data, _test_transform_cons, 9)
+    for client_id in transformed_client_data.client_ids:
+      tf_dataset = transformed_client_data.dataset_computation(client_id)
+      self.assertIsInstance(tf_dataset, tf.data.Dataset)
+      pattern = r'^(.*)_(\d*)$'
+      match = re.search(pattern, client_id)
+      client = match.group(1)
+      index = int(match.group(2))
+      for i, actual in enumerate(tf_dataset):
+        actual = self.evaluate(actual)
+        expected = {k: v[i].copy() for k, v in TEST_DATA[client].items()}
+        expected['x'] += 10 * index
+        self.assertCountEqual(actual, expected)
+        for k, v in actual.items():
+          self.assertAllEqual(v, expected[k])
+
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   tf.test.main()

@@ -116,7 +116,7 @@ class SqlClientData(client_data.ClientData):
         list(_fetch_client_ids(database_filepath, split_name)))
     logging.info("Loaded %d client ids from SQL database.",
                  len(self._client_ids))
-    self._dataset_comp = None
+    self._cached_dataset_computation = None
     # SQLite returns a single column of bytes which are serialized protocol
     # buffer messages.
     self._element_type_structure = tf.TensorSpec(dtype=tf.string, shape=())
@@ -140,26 +140,17 @@ class SqlClientData(client_data.ClientData):
   def client_ids(self):
     return self._client_ids
 
-  def create_tf_dataset_for_client(self, client_id):
-    if client_id not in self.client_ids:
-      raise ValueError(
-          "ID [{i}] is not a client in this ClientData. See "
-          "property `client_ids` for the list of valid ids.".format(
-              i=client_id))
-    return self._create_dataset(client_id)
+  @property
+  def dataset_computation(self):
+    if self._cached_dataset_computation is None:
+
+      @computations.tf_computation(tf.string)
+      def dataset_computation(client_id):
+        return self._create_dataset(client_id)
+
+      self._cached_dataset_computation = dataset_computation
+    return self._cached_dataset_computation
 
   @property
   def element_type_structure(self):
     return self._element_type_structure
-
-  @property
-  def dataset_computation(self):
-    if self._dataset_comp is not None:
-      return self._dataset_comp
-
-    @computations.tf_computation(tf.string)
-    def dataset_comp(client_id):
-      return self._create_dataset(client_id)
-
-    self._dataset_comp = dataset_comp
-    return self._dataset_comp

@@ -60,9 +60,9 @@ class EMNISTTest(tf.test.TestCase, absltest.TestCase):
     img2_from_inf_dataset = next(inf_dataset_iter)['pixels']
     # Just take the first few images from the 'infinite' client's dataset, and
     # check that the average of the pixel values never changes.
-    self.assertAlmostEqual(np.average(img0_from_inf_dataset), 0.7939626)
-    self.assertAlmostEqual(np.average(img1_from_inf_dataset), 0.8418668)
-    self.assertAlmostEqual(np.average(img2_from_inf_dataset), 0.82563525)
+    self.assertAlmostEqual(np.average(img0_from_inf_dataset), 0.86234)
+    self.assertAlmostEqual(np.average(img1_from_inf_dataset), 0.89271706)
+    self.assertAlmostEqual(np.average(img2_from_inf_dataset), 0.88201284)
 
   def test_load_from_gcs(self):
     self.skipTest(
