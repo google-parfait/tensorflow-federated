@@ -20,6 +20,7 @@ to realize encoding (compression) of values being communicated between
 """
 
 import collections
+import warnings
 
 import attr
 import tensorflow as tf
@@ -144,8 +145,15 @@ def _build_encoded_sum_fn(nest_encoder):
   return encoded_sum_fn
 
 
+# TODO(b/170208719): Delete when migration is complete.
 def build_encoded_sum_process(value_type, encoders):
   """Builds `MeasuredProcess` for `value_type`, to be encoded by `encoders`.
+
+  WARNING: This method is deprecated and will be removed in a future version.
+  Use `tff.aggregators.EncodedSumFactory(encoder_fn)` instead. See
+  https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators
+  and https://www.tensorflow.org/federated/tutorials/custom_aggregators
+  tutorials for details of use of `tff.aggregators` module.
 
   The returned `MeasuredProcess` has a next function with the TFF type
   signature:
@@ -171,6 +179,14 @@ def build_encoded_sum_process(value_type, encoders):
     TypeError: If `encoders` are not instances of `GatherEncoder`, or if
       `value_type` are not compatible with the expected input of the `encoders`.
   """
+  warnings.warn(
+      'This method is deprecated and will be removed in a future version. Use '
+      '`tff.aggregators.EncodedSumFactory(encoder_fn)` instead. See '
+      'https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators'
+      ' and https://www.tensorflow.org/federated/tutorials/custom_aggregators '
+      'tutorials for details of use of `tff.aggregators` module.',
+      DeprecationWarning)
+
   py_typecheck.check_type(
       value_type, (computation_types.TensorType, computation_types.StructType))
 
@@ -201,8 +217,17 @@ def build_encoded_sum_process(value_type, encoders):
       initialize_fn=initial_state_comp, next_fn=encoded_sum_comp)
 
 
+# TODO(b/170208719): Delete when migration is complete.
 def build_encoded_mean_process(value_type, encoders):
   """Builds `MeasuredProcess` for `value_type`, to be encoded by `encoders`.
+
+  WARNING: This method is deprecated and will be removed in a future version.
+  Use
+  `tff.aggregators.MeanFactory(tff.aggregators.EncodedSumFactory(encoder_fn))`
+  instead. See
+  https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators
+  and https://www.tensorflow.org/federated/tutorials/custom_aggregators
+  tutorials for details of use of `tff.aggregators` module.
 
   The returned `MeasuredProcess` has a next function with the TFF type
   signature:
@@ -228,6 +253,15 @@ def build_encoded_mean_process(value_type, encoders):
     TypeError: If `encoders` are not instances of `GatherEncoder`, or if
       `value_type` are not compatible with the expected input of the `encoders`.
   """
+  warnings.warn(
+      'This method is deprecated and will be removed in a future version. Use '
+      '`tff.aggregators.MeanFactory(tff.aggregators.EncodedSumFactory(encoder_fn))`'
+      ' instead. See '
+      'https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators'
+      ' and https://www.tensorflow.org/federated/tutorials/custom_aggregators '
+      'tutorials for details of use of `tff.aggregators` module.',
+      DeprecationWarning)
+
   py_typecheck.check_type(
       value_type, (computation_types.TensorType, computation_types.StructType))
 
