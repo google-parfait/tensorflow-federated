@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import collections
-
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 from tensorflow_federated.python.core.api import computation_types
@@ -120,8 +120,7 @@ def _create_dataset(scale):
   """Constructs a dataset with three datapoints."""
   x = np.array([[-1.0, -1.0], [1.0, 1.0], [1.0, 1.0]]) * scale
   y = np.array([[1.0], [1.0], [1.0]]) * scale
-  ds = collections.OrderedDict([('x', x.astype(np.float32)),
-                                ('y', y.astype(np.float32))])
+  ds = collections.OrderedDict(x=x.astype(np.float32), y=y.astype(np.float32))
   # Note: batching is not needed here as the preprocessing of dataset is done
   # inside the personalization function.
   return tf.data.Dataset.from_tensor_slices(ds)
@@ -143,7 +142,7 @@ def _create_zero_model_weights(model_fn):
   return tf.nest.map_structure(tf.zeros_like, dummy_model.weights)
 
 
-class PersonalizationEvalTest(test_case.TestCase):
+class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
 
   def test_failure_with_invalid_model_fn(self):
     p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
@@ -173,21 +172,20 @@ class PersonalizationEvalTest(test_case.TestCase):
     with self.assertRaises(TypeError):
       # `personalize_fn_dict` should be a `OrderedDict` that maps a `string` to
       # a `callable`.
-      bad_p13n_fn_dict = collections.OrderedDict([('a', 6)])
+      bad_p13n_fn_dict = collections.OrderedDict(a=6)
       p13n_eval.build_personalization_eval(model_fn, bad_p13n_fn_dict,
                                            _evaluate_fn)
 
     with self.assertRaises(TypeError):
       # `personalize_fn_dict` should be a `OrderedDict` that maps a `string` to
       # a `callable` that when called, gives another `callable`.
-      bad_p13n_fn_dict = collections.OrderedDict([('a', lambda: 2)])
+      bad_p13n_fn_dict = collections.OrderedDict(x=lambda: 2)
       p13n_eval.build_personalization_eval(model_fn, bad_p13n_fn_dict,
                                            _evaluate_fn)
 
     with self.assertRaises(ValueError):
       # `personalize_fn_dict` should not use `baseline_metrics` as a key.
-      bad_p13n_fn_dict = collections.OrderedDict([('baseline_metrics',
-                                                   lambda: 2)])
+      bad_p13n_fn_dict = collections.OrderedDict(baseline_metrics=lambda: 2)
       p13n_eval.build_personalization_eval(model_fn, bad_p13n_fn_dict,
                                            _evaluate_fn)
 
@@ -267,16 +265,29 @@ class PersonalizationEvalTest(test_case.TestCase):
     self.assertAlmostEqual(bs2_test_outputs['loss'][client_1_idx], 0.0)
     self.assertAlmostEqual(bs2_test_outputs['loss'][client_2_idx], 0.5)
 
-  def test_success_with_model_constructed_from_keras(self):
+  @parameterized.named_parameters(
+      ('python_container',
+       collections.OrderedDict(
+           x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
+           y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))),
+      ('tff_struct_with_python_type',
+       computation_types.StructWithPythonType(
+           collections.OrderedDict(
+               x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
+               y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
+           container_type=collections.OrderedDict)),
+      ('tff_struct_type',
+       computation_types.StructType(
+           collections.OrderedDict(
+               x=tf.TensorSpec(shape=[None, 2], dtype=tf.float32),
+               y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32)))),
+  )
+  def test_success_with_model_constructed_from_keras(self, input_spec):
 
     def model_fn():
       inputs = tf.keras.Input(shape=(2,))  # feature dim = 2
       outputs = tf.keras.layers.Dense(1)(inputs)
       keras_model = tf.keras.Model(inputs=inputs, outputs=outputs)
-      input_spec = collections.OrderedDict([
-          ('x', tf.TensorSpec([None, 2], dtype=tf.float32)),
-          ('y', tf.TensorSpec([None, 1], dtype=tf.float32))
-      ])
       return keras_utils.from_keras_model(
           keras_model,
           input_spec=input_spec,
@@ -334,10 +345,9 @@ class PersonalizationEvalTest(test_case.TestCase):
 
     with self.assertRaises(TypeError):
       # client_input should not have batched datasets.
-      bad_client_input = collections.OrderedDict([
-          ('train_data', _create_dataset(scale=1.0).batch(1)),
-          ('test_data', _create_dataset(scale=1.0).batch(1))
-      ])
+      bad_client_input = collections.OrderedDict(
+          train_data=_create_dataset(scale=1.0).batch(1),
+          test_data=_create_dataset(scale=1.0).batch(1))
       federated_p13n_eval(zero_model_weights, [bad_client_input])
 
   def test_failure_with_invalid_context_type(self):

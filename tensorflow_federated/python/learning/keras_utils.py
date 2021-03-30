@@ -24,9 +24,10 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
-
 
 Loss = Union[tf.keras.losses.Loss, List[tf.keras.losses.Loss]]
 
@@ -66,11 +67,13 @@ def from_keras_model(
       model will attempt to minimize the sum of all individual losses
       (optionally weighted using the `loss_weights` argument).
     input_spec: A structure of `tf.TensorSpec`s or `tff.Type` specifying the
-      type of arguments the model expects. Notice this must be a compound
-      structure of two elements, specifying both the data fed into the model (x)
-      to generate predictions as well as the expected type of the ground truth
-      (y). If provided as a list, it must be in the order [x, y]. If provided as
-      a dictionary, the keys must explicitly be named `'x'` and `'y'`.
+      type of arguments the model expects. If `input_spec` is a `tff.Type`, its
+      leaf nodes must be `TensorType`s. Note that `input_spec` must be a
+      compound structure of two elements, specifying both the data fed into the
+      model (x) to generate predictions as well as the expected type of the
+      ground truth (y). If provided as a list, it must be in the order [x, y].
+      If provided as a dictionary, the keys must explicitly be named `'x'` and
+      `'y'`.
     loss_weights: (Optional) A list of Python floats used to weight the loss
       contribution of each model output (when providing a list of losses for the
       `loss` argument).
@@ -82,8 +85,9 @@ def from_keras_model(
   Raises:
     TypeError: If `keras_model` is not an instance of `tf.keras.Model`, if
       `loss` is not an instance of `tf.keras.losses.Loss` nor a list of
-      instances of `tf.keras.losses.Loss`, if `loss_weight` is provided but is
-      not a list of floats, or if `metrics` is provided but is not a list of
+      instances of `tf.keras.losses.Loss`, if `input_spec` is a `tff.Type` but
+      the leaf nodes are not `tff.TensorType`s, if `loss_weight` is provided but
+      is not a list of floats, or if `metrics` is provided but is not a list of
       instances of `tf.keras.metrics.Metric`.
     ValueError: If `keras_model` was compiled, if `loss` is a list of unequal
       length to the number of outputs of `keras_model`, if `loss_weights` is
@@ -131,12 +135,18 @@ def from_keras_model(
                      'exactly two top-level elements, as it must specify type '
                      'information for both inputs to and predictions from the '
                      'model. You passed input spec {}.'.format(input_spec))
-  if not isinstance(input_spec, computation_types.Type):
-    for input_spec_member in tf.nest.flatten(input_spec):
-      py_typecheck.check_type(input_spec_member, tf.TensorSpec)
+  if isinstance(input_spec, computation_types.Type):
+    if not type_analysis.is_structure_of_tensors(input_spec):
+      raise TypeError(
+          'Expected a `tff.Type` with all the leaf nodes being '
+          '`tff.TensorType`s, found an input spec {}.'.format(input_spec))
+    input_spec = type_conversions.structure_from_tensor_type_tree(
+        lambda tensor_type: tf.TensorSpec(tensor_type.shape, tensor_type.dtype),
+        input_spec)
   else:
-    for type_elem in input_spec:
-      py_typecheck.check_type(type_elem, computation_types.TensorType)
+    tf.nest.map_structure(
+        lambda s: py_typecheck.check_type(s, tf.TensorSpec, 'input spec member'
+                                         ), input_spec)
   if isinstance(input_spec, collections.abc.Mapping):
     if 'x' not in input_spec:
       raise ValueError(

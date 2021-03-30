@@ -21,6 +21,7 @@ import collections
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
@@ -72,6 +73,19 @@ def _create_tff_model_from_keras_model_tuples():
   return tuples
 
 
+def _create_input_spec_multiple_inputs_outputs():
+  return collections.OrderedDict(
+      x=[
+          tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+          tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
+      ],
+      y=[
+          tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+          tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+          tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
+      ])
+
+
 class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
 
   def setUp(self):
@@ -95,19 +109,19 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('container',
        collections.OrderedDict(
-           [('x', tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
-            ('y', tf.TensorSpec(shape=[None, 1], dtype=tf.float32))])),
+           x=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+           y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))),
       ('container_fn',
        _make_test_batch(
            x=tf.TensorSpec(shape=[1, 1], dtype=tf.float32),
            y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))),
-      ('tff_type',
-       computation_types.to_type(
+      ('tff_struct_with_python_type',
+       computation_types.StructWithPythonType(
            collections.OrderedDict(
-               [('x', tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
-                ('y', tf.TensorSpec(shape=[None, 1], dtype=tf.float32))]))),
-  )
-  def test_input_spec_batch_types(self, input_spec):
+               x=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+               y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
+           container_type=collections.OrderedDict)))
+  def test_input_spec_python_container(self, input_spec):
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=1)
     tff_model = keras_utils.from_keras_model(
@@ -115,6 +129,24 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         input_spec=input_spec,
         loss=tf.keras.losses.MeanSquaredError())
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+    tf.nest.map_structure(lambda x: self.assertIsInstance(x, tf.TensorSpec),
+                          tff_model.input_spec)
+
+  def test_input_spec_struct(self):
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=1)
+    input_spec = computation_types.StructType(
+        collections.OrderedDict(
+            x=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+            y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32)))
+    tff_model = keras_utils.from_keras_model(
+        keras_model=keras_model,
+        input_spec=input_spec,
+        loss=tf.keras.losses.MeanSquaredError())
+    self.assertIsInstance(tff_model, model_utils.EnhancedModel)
+    self.assertIsInstance(tff_model.input_spec, structure.Struct)
+    structure.map_structure(lambda x: self.assertIsInstance(x, tf.TensorSpec),
+                            tff_model.input_spec)
 
   @parameterized.named_parameters(
       ('more_than_two_elements', [
@@ -124,17 +156,39 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
       ]),
       ('dict_with_key_not_named_x',
        collections.OrderedDict(
-           [('foo', tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
-            ('y', tf.TensorSpec(shape=[None, 1], dtype=tf.float32))])),
+           foo=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+           y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))),
       ('dict_with_key_not_named_y',
        collections.OrderedDict(
-           [('x', tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
-            ('bar', tf.TensorSpec(shape=[None, 1], dtype=tf.float32))])),
+           x=tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
+           bar=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))),
   )
-  def test_input_spec_batch_types_errors(self, input_spec):
+  def test_input_spec_batch_types_value_errors(self, input_spec):
     keras_model = model_examples.build_linear_regression_keras_functional_model(
         feature_dims=1)
     with self.assertRaises(ValueError):
+      keras_utils.from_keras_model(
+          keras_model=keras_model,
+          input_spec=input_spec,
+          loss=tf.keras.losses.MeanSquaredError())
+
+  @parameterized.named_parameters(
+      ('python_container_not_tensorspec',
+       collections.OrderedDict(
+           x=tf.constant(0.0, dtype=tf.float32),
+           y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32)),
+       'Expected input spec member to be of type.*TensorSpec'),
+      ('tff_type_not_tensortype',
+       computation_types.to_type(
+           collections.OrderedDict(
+               x=computation_types.SequenceType(
+                   computation_types.TensorType(tf.float32)),
+               y=tf.TensorSpec(shape=[None, 1], dtype=tf.float32))),
+       'Expected a `tff.Type` with all the leaf nodes being `tff.TensorType`s'))
+  def test_input_spec_batch_types_type_errors(self, input_spec, error_message):
+    keras_model = model_examples.build_linear_regression_keras_functional_model(
+        feature_dims=1)
+    with self.assertRaisesRegex(TypeError, error_message):
       keras_utils.from_keras_model(
           keras_model=keras_model,
           input_spec=input_spec,
@@ -534,18 +588,22 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     keras_model = _make_keras_model()
     tff_weights.assign_weights_to(keras_model)
 
-  def test_keras_model_multiple_outputs(self):
+  @parameterized.named_parameters(
+      ('container', _create_input_spec_multiple_inputs_outputs()),
+      ('container_fn',
+       _make_test_batch(
+           x=_create_input_spec_multiple_inputs_outputs()['x'],
+           y=_create_input_spec_multiple_inputs_outputs()['y'])),
+      ('tff_struct_with_python_type',
+       computation_types.StructWithPythonType(
+           _create_input_spec_multiple_inputs_outputs(),
+           container_type=collections.OrderedDict)),
+      ('tff_struct_type',
+       computation_types.StructType(
+           _create_input_spec_multiple_inputs_outputs())),
+  )
+  def test_keras_model_multiple_outputs(self, input_spec):
     keras_model = model_examples.build_multiple_outputs_keras_model()
-    input_spec = collections.OrderedDict(
-        x=[
-            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
-            tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
-        ],
-        y=[
-            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
-            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
-            tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
-        ])
 
     with self.subTest('loss_output_len_mismatch'):
       with self.assertRaises(ValueError):
@@ -662,19 +720,23 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
                 'dummy': 0.4
             })
 
-  def test_regularized_keras_model_multiple_outputs(self):
+  @parameterized.named_parameters(
+      ('container', _create_input_spec_multiple_inputs_outputs()),
+      ('container_fn',
+       _make_test_batch(
+           x=_create_input_spec_multiple_inputs_outputs()['x'],
+           y=_create_input_spec_multiple_inputs_outputs()['y'])),
+      ('tff_struct_with_python_type',
+       computation_types.StructWithPythonType(
+           _create_input_spec_multiple_inputs_outputs(),
+           container_type=collections.OrderedDict)),
+      ('tff_struct_type',
+       computation_types.StructType(
+           _create_input_spec_multiple_inputs_outputs())),
+  )
+  def test_regularized_keras_model_multiple_outputs(self, input_spec):
     keras_model = model_examples.build_multiple_outputs_regularized_keras_model(
     )
-    input_spec = collections.OrderedDict(
-        x=[
-            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
-            tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
-        ],
-        y=[
-            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
-            tf.TensorSpec(shape=[None, 1], dtype=tf.float32),
-            tf.TensorSpec(shape=[None, 1], dtype=tf.float32)
-        ])
 
     with self.subTest('loss_output_len_mismatch'):
       with self.assertRaises(ValueError):

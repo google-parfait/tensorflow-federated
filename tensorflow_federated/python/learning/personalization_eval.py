@@ -18,6 +18,7 @@ import collections
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
+from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -50,7 +51,7 @@ def build_personalization_eval(model_fn,
       the same pre-constructed model each call will result in an error.
     personalize_fn_dict: An `OrderedDict` that maps a `string` (representing a
       strategy name) to a no-argument function that returns a `tf.function`.
-      Each `tf.function` represents a personalization strategy: it accepts a
+      Each `tf.function` represents a personalization strategy - it accepts a
       `tff.learning.Model` (with weights already initialized to the given model
       weights when users invoke the returned TFF computation), an unbatched
       `tf.data.Dataset` for train, an unbatched `tf.data.Dataset` for test, and
@@ -113,16 +114,16 @@ def build_personalization_eval(model_fn,
     py_typecheck.check_callable(model_fn)
     model = model_fn()
     model_weights_type = model_utils.weights_type_from_model(model)
-    batch_type = model.input_spec
+    batch_tff_type = computation_types.to_type(model.input_spec)
 
   # Define the `tff.Type` of each client's input. Since batching (as well as
   # other preprocessing of datasets) is done within each personalization
   # strategy (i.e., by functions in `personalize_fn_dict`), the client-side
   # input should contain unbatched elements.
-  element_type = _remove_batch_dim(batch_type)
+  element_tff_type = _remove_batch_dim(batch_tff_type)
   client_input_type = collections.OrderedDict(
-      train_data=computation_types.SequenceType(element_type),
-      test_data=computation_types.SequenceType(element_type))
+      train_data=computation_types.SequenceType(element_tff_type),
+      test_data=computation_types.SequenceType(element_tff_type))
   if context_tff_type is not None:
     py_typecheck.check_type(context_tff_type, computation_types.Type)
     client_input_type['context'] = context_tff_type
@@ -178,31 +179,33 @@ def build_personalization_eval(model_fn,
   return personalization_eval
 
 
-def _remove_batch_dim(spec):
-  """Creates a nested `tf.TensorSpec` by removing the batch dimension of `spec`.
+def _remove_batch_dim(
+    type_spec: computation_types.Type) -> computation_types.Type:
+  """Removes the batch dimension from the `tff.TensorType`s in `type_spec`.
 
   Args:
-    spec: A `tf.TensorSpec` or a nested `tf.TensorSpec`, with the first
-      dimension being the batch dimension.
+    type_spec: A `tff.Type` containing `tff.TensorType`s as leaves. The first
+      dimension in the leaf `tff.TensorType` is the batch dimension.
 
   Returns:
-    A `tf.TensorSpec` or a nested `tf.TensorSpec` that has the same structure of
-    the input `spec` object, with the batch dimension removed.
+    A `tff.Type` of the same structure as `type_spec`, with no batch dimensions
+    in all the leaf `tff.TensorType`s.
 
   Raises:
     TypeError: If the argument has the wrong type.
-    ValueError: If the `tf.TensorSpec` does not have the first dimension.
+    ValueError: If the `tff.TensorType` does not have the first dimension.
   """
 
-  def _remove_first_dim_for_tensorspec(ts):
-    """Return a new `tf.TensorSpec` after removing the first dimension."""
-    py_typecheck.check_type(ts, tf.TensorSpec)
-    if (ts.shape.rank is not None) and (ts.shape.rank >= 1):
-      return tf.TensorSpec(shape=ts.shape[1:], dtype=ts.dtype, name=ts.name)
+  def _remove_first_dim_in_tensortype(tensor_type):
+    """Return a new `tff.TensorType` after removing the first dimension."""
+    py_typecheck.check_type(tensor_type, computation_types.TensorType)
+    if (tensor_type.shape.rank is not None) and (tensor_type.shape.rank >= 1):
+      return computation_types.TensorType(
+          shape=tensor_type.shape[1:], dtype=tensor_type.dtype)
     else:
       raise ValueError('Provided shape must have rank 1 or higher.')
 
-  return tf.nest.map_structure(_remove_first_dim_for_tensorspec, spec)
+  return structure.map_structure(_remove_first_dim_in_tensortype, type_spec)
 
 
 def _compute_baseline_metrics(model_fn, initial_model_weights, test_data,
