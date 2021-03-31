@@ -56,6 +56,7 @@ def _tf_wrapper_fn(parameter_type, name):
   except Exception as e:  # pylint: disable=broad-except
     tf_serializer.throw(e)
   comp_pb, extra_type_spec = tf_serializer.send(result)
+  tf_serializer.close()
   yield computation_impl.ComputationImpl(comp_pb, ctx_stack, extra_type_spec)
 
 
@@ -85,6 +86,7 @@ def _federated_computation_wrapper_fn(parameter_type, name):
   except Exception as e:  # pylint: disable=broad-except
     fn_generator.throw(e)
   target_lambda, extra_type_spec = fn_generator.send(result)
+  fn_generator.close()
   yield computation_impl.ComputationImpl(target_lambda.proto, ctx_stack,
                                          extra_type_spec)
 
