@@ -836,12 +836,12 @@ class Block(ComputationBuildingBlock):
 class Intrinsic(ComputationBuildingBlock):
   """A representation of an intrinsic in TFF's internal language.
 
-  An instrinsic is a symbol known to the TFF's compiler pipeline, represended
-  a a known URI. It generally appears in expressions with a concrete type,
+  An instrinsic is a symbol known to the TFF's compiler pipeline, represented
+  as a known URI. It generally appears in expressions with a concrete type,
   although all intrinsic are defined with template types. This class does not
   deal with parsing intrinsic URIs and verifying their types, it is only a
-  container. Parsing and type analysis are a responsibility or the components
-  that manipulate ASTs.
+  container. Parsing and type analysis are a responsibility of the components
+  that manipulate ASTs. See intrinsic_defs.py for the list of known intrinsics.
   """
 
   @classmethod
