@@ -63,6 +63,7 @@ digraph {
   core -> core_test
   core -> core_api
   core -> core_framework
+  core -> core_types
   core_utils -> core_backends
   core_utils -> core_templates
   core_utils -> core_test
@@ -85,6 +86,7 @@ digraph {
   core_test -> impl [arrowhead="none", style="invisible"]
   core_api -> impl
   core_framework -> impl [arrowhead="none", style="invisible"]
+  core_types -> impl [arrowhead="none", style="invisible"]
 
   subgraph cluster_core {
     graph [label="Core", href="#tff-core" target="_parent"]
@@ -99,6 +101,7 @@ digraph {
     core_test [label="test", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     core_api [label="api", href="#tff-core" target="_parent"]
     core_framework [label="framework", href="#tff-core" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    core_types [label="types", href="#tff-types" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
   // TFF Impl
@@ -180,7 +183,7 @@ digraph {
   {rank=same; core_backends_native, core_backends_mapreduce, core_backends_iree, core_backends_reference}
   {rank=same; core_templates}
   {rank=same; core_test}
-  {rank=same; core_api, core_framework}
+  {rank=same; core_api, core_framework, core_types}
   // {rank=same; impl}
   // {rank=same; impl_wrappers}
   // {rank=same; impl_tensorflow_context, impl_federated_context, impl_executors}
