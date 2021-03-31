@@ -153,6 +153,9 @@ Libraries for using the [TensorFlow Federated core library](#tff-core).
 [core/framework](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/framework)
 Libraries for extending the [TensorFlow Federated core library](#tff-core).
 
+[core/types](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/types)
+Libraries for interacting with the type of a computation.
+
 #### TFF Impl
 
 [impl](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl) The

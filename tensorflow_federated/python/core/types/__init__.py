@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for extending the TensorFlow Federated core library."""
+"""Libraries for interacting with the type of a computation."""
 
 from tensorflow_federated.python.core.api.computation_types import *
 from tensorflow_federated.python.core.impl.types.type_analysis import contains
