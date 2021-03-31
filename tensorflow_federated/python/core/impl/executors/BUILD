@@ -7,9 +7,6 @@ package_group(
     packages = [
         # Subpackages
         "//tensorflow_federated/python/core/impl/executors/...",
-
-        # Impl Dependencies
-        "//tensorflow_federated/python/core/impl/wrappers/...",
     ],
 )
 
