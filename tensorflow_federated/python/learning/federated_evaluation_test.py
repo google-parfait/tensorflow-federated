@@ -324,7 +324,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
         _model_fn_from_keras, use_experimental_simulation_loop=simulation)
     initial_weights = tf.nest.map_structure(
         lambda x: x.read_value(),
-        model_utils.enhance(_model_fn_from_keras()).weights)
+        model_utils.ModelWeights.from_model(_model_fn_from_keras()))
 
     def _input_dict(temps):
       return collections.OrderedDict([
@@ -354,7 +354,7 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
         _model_fn_from_keras, use_experimental_simulation_loop=simulation)
     initial_weights = tf.nest.map_structure(
         lambda x: x.read_value(),
-        model_utils.enhance(_model_fn_from_keras()).weights)
+        model_utils.ModelWeights.from_model(_model_fn_from_keras()))
 
     def _input_dict(temps):
       return collections.OrderedDict([

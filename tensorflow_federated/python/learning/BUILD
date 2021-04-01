@@ -86,7 +86,6 @@ py_library(
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/core/utils:tf_computation_utils",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
     ],
 )

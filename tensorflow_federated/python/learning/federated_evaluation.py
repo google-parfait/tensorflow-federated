@@ -23,7 +23,6 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.core.utils import tf_computation_utils
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 
@@ -63,30 +62,26 @@ def build_federated_evaluation(
 
   @computations.tf_computation(model_weights_type,
                                computation_types.SequenceType(batch_type))
+  @tf.function
   def client_eval(incoming_model_weights, dataset):
     """Returns local outputs after evaluting `model_weights` on `dataset`."""
-    model = model_utils.enhance(model_fn())
+    with tf.init_scope():
+      model = model_fn()
+    model_weights = model_utils.ModelWeights.from_model(model)
+    tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
+                          incoming_model_weights)
 
-    @tf.function
-    def _tf_client_eval(incoming_model_weights, dataset):
-      """Evaluation TF work."""
-      tf_computation_utils.assign(model.weights, incoming_model_weights)
+    def reduce_fn(prev_loss, batch):
+      model_output = model.forward_pass(batch, training=False)
+      return prev_loss + tf.cast(model_output.loss, tf.float64)
 
-      def reduce_fn(prev_loss, batch):
-        model_output = model.forward_pass(batch, training=False)
-        return prev_loss + tf.cast(model_output.loss, tf.float64)
-
-      dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
-          use_experimental_simulation_loop)
-      dataset_reduce_fn(
-          reduce_fn=reduce_fn,
-          dataset=dataset,
-          initial_state_fn=lambda: tf.constant(0, dtype=tf.float64))
-
-      return collections.OrderedDict([('local_outputs',
-                                       model.report_local_outputs())])
-
-    return _tf_client_eval(incoming_model_weights, dataset)
+    dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
+        use_experimental_simulation_loop)
+    dataset_reduce_fn(
+        reduce_fn=reduce_fn,
+        dataset=dataset,
+        initial_state_fn=lambda: tf.constant(0, dtype=tf.float64))
+    return collections.OrderedDict(local_outputs=model.report_local_outputs())
 
   @computations.federated_computation(
       computation_types.FederatedType(model_weights_type, placements.SERVER),
