@@ -219,7 +219,6 @@ class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
         _create_client_input(train_scale=1.0, test_scale=1.0),
         _create_client_input(train_scale=1.0, test_scale=2.0)
     ])
-    results = results._asdict(recursive=True)
 
     # Check if the baseline metrics are correct.
     baseline_metrics = results['baseline_metrics']
@@ -305,7 +304,6 @@ class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
         _create_client_input(train_scale=1.0, test_scale=1.0),
         _create_client_input(train_scale=1.0, test_scale=2.0)
     ])
-    results = results._asdict(recursive=True)
 
     # Check if the baseline metrics are correct.
     baseline_metrics = results['baseline_metrics']
@@ -398,7 +396,6 @@ class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
         _create_client_input(train_scale=1.0, test_scale=1.0, context=2),
         _create_client_input(train_scale=1.0, test_scale=2.0, context=5)
     ])
-    results = results._asdict(recursive=True)
 
     bs1_metrics = results['batch_size_1']
     bs2_metrics = results['batch_size_2']
@@ -445,8 +442,6 @@ class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
         _create_client_input(train_scale=1.0, test_scale=1.0),
         _create_client_input(train_scale=1.0, test_scale=2.0)
     ])
-    results = results._asdict(recursive=True)
-
     # The results should only contain metrics from one client.
     self.assertAllEqual(len(results['baseline_metrics']['loss']), 1)
     self.assertAllEqual(len(results['batch_size_1']['test_outputs']['loss']), 1)

@@ -17,14 +17,13 @@ import collections
 
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import placements
-from tensorflow_federated.python.core.utils import federated_aggregations
-from tensorflow_federated.python.core.utils import tf_computation_utils
 from tensorflow_federated.python.learning import model_utils
 
 
@@ -160,6 +159,11 @@ def build_personalization_eval(model_fn,
   if max_num_clients <= 0:
     raise ValueError('max_num_clients must be a positive integer.')
 
+  reservoir_sampling_factory = sampling.UnweightedReservoirSamplingFactory(
+      sample_size=max_num_clients)
+  aggregation_process = reservoir_sampling_factory.create(
+      _client_computation.type_signature.result)
+
   @computations.federated_computation(
       computation_types.FederatedType(model_weights_type, placements.SERVER),
       computation_types.FederatedType(client_input_type, placements.CLIENTS))
@@ -172,9 +176,12 @@ def build_personalization_eval(model_fn,
     # WARNING: Collecting information from clients can be risky. Users have to
     # make sure that it is proper to collect those metrics from clients.
     # TODO(b/147889283): Add a link to the TFF doc once it exists.
-    results = federated_aggregations.federated_sample(client_final_metrics,
-                                                      max_num_clients)
-    return results
+    sampling_output = aggregation_process.next(
+        aggregation_process.initialize(),  # No state.
+        client_final_metrics)
+    # In the future we may want to output `sampling_output.measurements` also
+    # but currently it is empty.
+    return sampling_output.result
 
   return personalization_eval
 
@@ -216,7 +223,8 @@ def _compute_baseline_metrics(model_fn, initial_model_weights, test_data,
 
   @tf.function
   def assign_and_compute():
-    tf_computation_utils.assign(model_weights, initial_model_weights)
+    tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
+                          initial_model_weights)
     py_typecheck.check_callable(baseline_evaluate_fn)
     return baseline_evaluate_fn(model, test_data)
 
@@ -245,7 +253,8 @@ def _compute_p13n_metrics(model_fn, initial_model_weights, train_data,
   def loop_and_compute():
     p13n_metrics = collections.OrderedDict()
     for name, personalize_fn in personalize_fns.items():
-      tf_computation_utils.assign(model_weights, initial_model_weights)
+      tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
+                            initial_model_weights)
       py_typecheck.check_callable(personalize_fn)
       p13n_metrics[name] = personalize_fn(model, train_data, test_data, context)
     return p13n_metrics

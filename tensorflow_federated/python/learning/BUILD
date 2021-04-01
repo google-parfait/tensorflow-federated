@@ -297,14 +297,13 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":model_utils",
+        "//tensorflow_federated/python/aggregators:sampling",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/api:placements",
-        "//tensorflow_federated/python/core/utils:federated_aggregations",
-        "//tensorflow_federated/python/core/utils:tf_computation_utils",
     ],
 )
 
