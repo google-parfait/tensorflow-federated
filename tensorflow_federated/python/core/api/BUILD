@@ -80,9 +80,9 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_types",
-        ":placements",
         "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 
@@ -113,19 +113,12 @@ py_test(
         ":computation_types",
         ":computations",
         ":intrinsics",
-        ":placements",
         ":test_case",
         ":value_base",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
-)
-
-py_library(
-    name = "placements",
-    srcs = ["placements.py"],
-    srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl/types:placements"],
 )
 
 py_library(

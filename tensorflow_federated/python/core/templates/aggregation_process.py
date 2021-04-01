@@ -15,7 +15,7 @@
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import measured_process
 

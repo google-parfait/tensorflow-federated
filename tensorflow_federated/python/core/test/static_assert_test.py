@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for static_assert.py."""
 
 from absl.testing import absltest
 
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import placements
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.test import static_assert
 
 

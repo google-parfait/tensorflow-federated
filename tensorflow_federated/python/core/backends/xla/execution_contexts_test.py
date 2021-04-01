@@ -19,12 +19,12 @@ import numpy as np
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.xla import execution_contexts
 from tensorflow_federated.python.core.backends.xla import xla_serialization
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
+from tensorflow_federated.python.core.impl.types import placements
 
 
 # TODO(b/175888145): Plug this into `backends_test.py` after refactoring it to

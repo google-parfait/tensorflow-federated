@@ -47,6 +47,6 @@ py_test(
         ":static_assert",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/api:placements",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )

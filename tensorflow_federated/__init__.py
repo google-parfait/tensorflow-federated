@@ -57,11 +57,11 @@ from tensorflow_federated.python.core.api.intrinsics import federated_zip
 from tensorflow_federated.python.core.api.intrinsics import sequence_map
 from tensorflow_federated.python.core.api.intrinsics import sequence_reduce
 from tensorflow_federated.python.core.api.intrinsics import sequence_sum
-from tensorflow_federated.python.core.api.placements import CLIENTS
-from tensorflow_federated.python.core.api.placements import SERVER
 from tensorflow_federated.python.core.api.typed_object import TypedObject
 from tensorflow_federated.python.core.api.value_base import Value
 from tensorflow_federated.python.core.api.values import to_value
+from tensorflow_federated.python.core.impl.types.placements import CLIENTS
+from tensorflow_federated.python.core.impl.types.placements import SERVER
 from tensorflow_federated.python.core.impl.types.type_conversions import structure_from_tensor_type_tree
 
 if sys.version_info[0] < 3 or sys.version_info[1] < 6:
