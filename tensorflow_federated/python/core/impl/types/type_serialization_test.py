@@ -18,7 +18,7 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -118,13 +118,12 @@ class TypeSerializationTest(test_case.TestCase, parameterized.TestCase):
 
   def test_serialize_type_with_federated_bool(self):
     federated_type = computation_types.FederatedType(tf.bool,
-                                                     placement_literals.CLIENTS,
-                                                     True)
+                                                     placements.CLIENTS, True)
     actual_proto = type_serialization.serialize_type(federated_type)
     expected_proto = pb.Type(
         federated=pb.FederatedType(
             placement=pb.PlacementSpec(
-                value=pb.Placement(uri=placement_literals.CLIENTS.uri)),
+                value=pb.Placement(uri=placements.CLIENTS.uri)),
             all_equal=True,
             member=_create_scalar_tensor_type(tf.bool)))
     self.assertEqual(actual_proto, expected_proto)
@@ -180,9 +179,9 @@ class TypeSerializationTest(test_case.TestCase, parameterized.TestCase):
   def test_serialize_deserialize_federated_types(self):
     self._serialize_deserialize_roundtrip_test([
         computation_types.FederatedType(
-            tf.int32, placement_literals.CLIENTS, all_equal=True),
+            tf.int32, placements.CLIENTS, all_equal=True),
         computation_types.FederatedType(
-            tf.int32, placement_literals.CLIENTS, all_equal=False),
+            tf.int32, placements.CLIENTS, all_equal=False),
     ])
 
   def _serialize_deserialize_roundtrip_test(self, type_list):

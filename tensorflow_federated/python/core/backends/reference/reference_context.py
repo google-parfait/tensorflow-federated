@@ -38,7 +38,7 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -240,13 +240,13 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
     raise TypeError(
         'Abstract types are not supported by the reference context.')
   elif type_spec.is_placement():
-    py_typecheck.check_type(value, placement_literals.PlacementLiteral)
+    py_typecheck.check_type(value, placements.PlacementLiteral)
     return value
   elif type_spec.is_federated():
     if type_spec.all_equal:
       return to_representation_for_type(value, type_spec.member,
                                         callable_handler)
-    elif type_spec.placement is not placement_literals.CLIENTS:
+    elif type_spec.placement is not placements.CLIENTS:
       raise TypeError(
           'Unable to determine a valid value representation for a federated '
           'type with non-equal members placed at {}.'.format(
@@ -447,7 +447,7 @@ class ComputationContext(object):
       local_symbols: The dictionary of local symbols defined in this context, or
         `None` if there are none. The keys (names) are of a string type, and the
         values (what the names bind to) are of type `ComputedValue`.
-      cardinalities: placement_literals cardinalities, if defined.
+      cardinalities: placements cardinalities, if defined.
     """
     if parent_context is not None:
       py_typecheck.check_type(parent_context, ComputationContext)
@@ -462,7 +462,7 @@ class ComputationContext(object):
     if cardinalities is not None:
       py_typecheck.check_type(cardinalities, dict)
       for k, v in cardinalities.items():
-        py_typecheck.check_type(k, placement_literals.PlacementLiteral)
+        py_typecheck.check_type(k, placements.PlacementLiteral)
         py_typecheck.check_type(v, int)
       self._cardinalities = cardinalities
     else:
@@ -490,14 +490,13 @@ class ComputationContext(object):
       raise ValueError(
           'The name \'{}\' is not defined in this context.'.format(name))
 
-  def get_cardinality(self,
-                      placement: placement_literals.PlacementLiteral) -> int:
+  def get_cardinality(self, placement: placements.PlacementLiteral) -> int:
     """Returns the cardinality for `placement`.
 
     Args:
       placement: The placement for which to return cardinality.
     """
-    py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+    py_typecheck.check_type(placement, placements.PlacementLiteral)
     if self._cardinalities is not None and placement in self._cardinalities:
       return self._cardinalities[placement]
     elif self._parent_context is not None:
@@ -670,7 +669,7 @@ class ReferenceContext(context_base.Context):
 
   def invoke(self, fn, arg):
     comp = self._compile(fn)
-    cardinalities = {placement_literals.SERVER: 1}
+    cardinalities = {placements.SERVER: 1}
     root_context = ComputationContext(cardinalities=cardinalities)
     if arg is not None:
 
@@ -905,18 +904,18 @@ class ReferenceContext(context_base.Context):
   def _federated_collect(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape).
     type_analysis.check_federated_type(arg.type_signature, None,
-                                       placement_literals.CLIENTS, False)
+                                       placements.CLIENTS, False)
     return ComputedValue(
         arg.value,
         computation_types.FederatedType(
             computation_types.SequenceType(arg.type_signature.member),
-            placement_literals.SERVER, True))
+            placements.SERVER, True))
 
   def _federated_eval_shared(
       self,
       arg: ComputedValue,
       context: ComputationContext,
-      placement: placement_literals.PlacementLiteral,
+      placement: placements.PlacementLiteral,
       all_equal: bool,
   ) -> ComputedValue:
     py_typecheck.check_type(arg, ComputedValue)
@@ -937,12 +936,10 @@ class ReferenceContext(context_base.Context):
             arg.type_signature.result, placement, all_equal=all_equal))
 
   def _federated_eval_at_clients(self, arg, context):
-    return self._federated_eval_shared(arg, context, placement_literals.CLIENTS,
-                                       False)
+    return self._federated_eval_shared(arg, context, placements.CLIENTS, False)
 
   def _federated_eval_at_server(self, arg, context):
-    return self._federated_eval_shared(arg, context, placement_literals.SERVER,
-                                       True)
+    return self._federated_eval_shared(arg, context, placements.SERVER, True)
 
   def _federated_map(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape).
@@ -950,14 +947,13 @@ class ReferenceContext(context_base.Context):
     py_typecheck.check_type(mapping_type, computation_types.FunctionType)
     type_analysis.check_federated_type(arg.type_signature[1],
                                        mapping_type.parameter,
-                                       placement_literals.CLIENTS, False)
+                                       placements.CLIENTS, False)
     fn = arg.value[0]
     result_val = [
         fn(ComputedValue(x, mapping_type.parameter)).value for x in arg.value[1]
     ]
     result_type = computation_types.FederatedType(mapping_type.result,
-                                                  placement_literals.CLIENTS,
-                                                  False)
+                                                  placements.CLIENTS, False)
     return ComputedValue(result_val, result_type)
 
   def _federated_map_all_equal(self, arg, context):
@@ -967,12 +963,12 @@ class ReferenceContext(context_base.Context):
     type_analysis.check_federated_type(
         arg.type_signature[1],
         mapping_type.parameter,
-        placement_literals.CLIENTS,
+        placements.CLIENTS,
         all_equal=True)
     fn = arg.value[0]
     result_val = fn(ComputedValue(arg.value[1], mapping_type.parameter)).value
     result_type = computation_types.FederatedType(
-        mapping_type.result, placement_literals.CLIENTS, all_equal=True)
+        mapping_type.result, placements.CLIENTS, all_equal=True)
     return ComputedValue(result_val, result_type)
 
   def _federated_apply(self, arg, context):
@@ -981,12 +977,11 @@ class ReferenceContext(context_base.Context):
     py_typecheck.check_type(mapping_type, computation_types.FunctionType)
     type_analysis.check_federated_type(arg.type_signature[1],
                                        mapping_type.parameter,
-                                       placement_literals.SERVER, True)
+                                       placements.SERVER, True)
     fn = arg.value[0]
     result_val = fn(ComputedValue(arg.value[1], mapping_type.parameter)).value
     result_type = computation_types.FederatedType(mapping_type.result,
-                                                  placement_literals.SERVER,
-                                                  True)
+                                                  placements.SERVER, True)
     return ComputedValue(result_val, result_type)
 
   def _federated_secure_sum(self, arg, context):
@@ -997,7 +992,7 @@ class ReferenceContext(context_base.Context):
 
   def _federated_sum(self, arg, context):
     type_analysis.check_federated_type(arg.type_signature, None,
-                                       placement_literals.CLIENTS, False)
+                                       placements.CLIENTS, False)
     collected_val = self._federated_collect(arg, context)
     federated_apply_arg = structure.from_container(
         (lambda arg: self._sequence_sum(arg, context), collected_val.value))
@@ -1013,14 +1008,14 @@ class ReferenceContext(context_base.Context):
     return ComputedValue(
         arg.value,
         computation_types.FederatedType(
-            arg.type_signature, placement_literals.CLIENTS, all_equal=True))
+            arg.type_signature, placements.CLIENTS, all_equal=True))
 
   def _federated_value_at_server(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)
     return ComputedValue(
         arg.value,
         computation_types.FederatedType(
-            arg.type_signature, placement_literals.SERVER, all_equal=True))
+            arg.type_signature, placements.SERVER, all_equal=True))
 
   def _generic_zero(self, type_spec):
     if type_spec.is_tensor():
@@ -1127,7 +1122,7 @@ class ReferenceContext(context_base.Context):
 
   def _federated_mean(self, arg, context):
     type_analysis.check_federated_type(arg.type_signature, None,
-                                       placement_literals.CLIENTS, False)
+                                       placements.CLIENTS, False)
     py_typecheck.check_type(arg.value, list)
     server_sum = self._federated_sum(arg, context)
     unplaced_avg = multiply_by_scalar(
@@ -1142,7 +1137,7 @@ class ReferenceContext(context_base.Context):
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     for idx in range(len(arg.type_signature)):
       type_analysis.check_federated_type(arg.type_signature[idx], None,
-                                         placement_literals.SERVER, True)
+                                         placements.SERVER, True)
     return ComputedValue(
         arg.value,
         computation_types.at_server(
@@ -1162,8 +1157,8 @@ class ReferenceContext(context_base.Context):
       py_typecheck.check_type(val, list)
       zip_args.append(val)
       val_type = arg.type_signature[idx]
-      type_analysis.check_federated_type(val_type, None,
-                                         placement_literals.CLIENTS, False)
+      type_analysis.check_federated_type(val_type, None, placements.CLIENTS,
+                                         False)
       zip_arg_types.append(val_type.member)
     zipped_val = [structure.from_container(x) for x in zip(*zip_args)]
     return ComputedValue(
@@ -1179,8 +1174,8 @@ class ReferenceContext(context_base.Context):
     values, zero, reduce, merge, report = arg.value
     values_type, zero_type, reduce_type, merge_type, report_type = arg.type_signature
     del merge, merge_type
-    type_analysis.check_federated_type(values_type, None,
-                                       placement_literals.CLIENTS, False)
+    type_analysis.check_federated_type(values_type, None, placements.CLIENTS,
+                                       False)
     reduce_type.check_function()
     reduce_type.parameter.check_assignable_from(
         computation_types.StructType([zero_type, values_type.member]))
@@ -1212,11 +1207,11 @@ class ReferenceContext(context_base.Context):
   def _federated_broadcast(self, arg, context):
     del context  # Unused (left as arg b.c. functions must have same shape)
     type_analysis.check_federated_type(arg.type_signature, None,
-                                       placement_literals.SERVER, True)
+                                       placements.SERVER, True)
     return ComputedValue(
         arg.value,
         computation_types.FederatedType(arg.type_signature.member,
-                                        placement_literals.CLIENTS, True))
+                                        placements.CLIENTS, True))
 
 
 def create_reference_context():

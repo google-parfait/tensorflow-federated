@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_analys
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.tensorflow_libs import version_check
 
@@ -124,7 +124,7 @@ def check_has_single_placement(comp, single_placement):
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock`.
-    single_placement: Instance of `placement_literals.PlacementLiteral` which
+    single_placement: Instance of `placements.PlacementLiteral` which
       should be the only placement present under `comp`.
 
   Raises:
@@ -132,7 +132,7 @@ def check_has_single_placement(comp, single_placement):
     `computation_types.FederatedType` other than `single_placement`.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(single_placement, placement_literals.PlacementLiteral)
+  py_typecheck.check_type(single_placement, placements.PlacementLiteral)
 
   def _check_single_placement(comp):
     """Checks that the placement in `type_spec` matches `single_placement`."""

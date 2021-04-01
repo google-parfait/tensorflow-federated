@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -46,9 +46,9 @@ def create_test_executor(
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
   factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-      placement_literals.SERVER:
+      placements.SERVER:
           create_bottom_stack(),
-      placement_literals.CLIENTS: [
+      placements.CLIENTS: [
           create_bottom_stack() for _ in range(number_of_clients)
       ],
   })
@@ -96,8 +96,8 @@ class FederatingExecutorInitTest(executor_test_utils.AsyncTestCase):
 
   def test_raises_type_error_with_no_target_executor_unplaced(self):
     factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
-        placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
+        placements.SERVER: eager_tf_executor.EagerTFExecutor(),
+        placements.CLIENTS: eager_tf_executor.EagerTFExecutor(),
     })
 
     with self.assertRaises(TypeError):
@@ -301,7 +301,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   def test_raises_value_error_with_no_target_executor_clients(
       self, value, type_signature):
     factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placement_literals.SERVER: eager_tf_executor.EagerTFExecutor(),
+        placements.SERVER: eager_tf_executor.EagerTFExecutor(),
     })
     executor = federating_executor.FederatingExecutor(
         factory, eager_tf_executor.EagerTFExecutor())
@@ -336,7 +336,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   def test_raises_value_error_with_no_target_executor_server(
       self, value, type_signature):
     factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placement_literals.CLIENTS: eager_tf_executor.EagerTFExecutor(),
+        placements.CLIENTS: eager_tf_executor.EagerTFExecutor(),
     })
     executor = federating_executor.FederatingExecutor(
         factory, eager_tf_executor.EagerTFExecutor())

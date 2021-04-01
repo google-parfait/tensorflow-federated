@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
@@ -39,9 +39,9 @@ def create_test_executor(
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
   factory = federated_strategy.TestFederatedStrategy.factory({
-      placement_literals.SERVER:
+      placements.SERVER:
           create_bottom_stack(),
-      placement_literals.CLIENTS: [
+      placements.CLIENTS: [
           create_bottom_stack() for _ in range(number_of_clients)
       ],
   })

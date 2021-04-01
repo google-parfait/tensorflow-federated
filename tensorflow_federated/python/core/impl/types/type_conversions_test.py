@@ -23,7 +23,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.api import typed_object
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
@@ -504,13 +504,13 @@ class TypeToPyContainerTest(test_case.TestCase):
             anon_tuple,
             computation_types.FederatedType(
                 computation_types.StructWithPythonType(types, list),
-                placement_literals.SERVER)), [1, 2.0])
+                placements.SERVER)), [1, 2.0])
     self.assertSequenceEqual(
         type_conversions.type_to_py_container(
             anon_tuple,
             computation_types.FederatedType(
                 computation_types.StructWithPythonType(types, tuple),
-                placement_literals.SERVER)), (1, 2.0))
+                placements.SERVER)), (1, 2.0))
 
   def test_client_placed_tuple(self):
     value = [
@@ -520,7 +520,7 @@ class TypeToPyContainerTest(test_case.TestCase):
     type_spec = computation_types.FederatedType(
         computation_types.StructWithPythonType([(None, tf.int32),
                                                 (None, tf.int32)], tuple),
-        placement_literals.CLIENTS)
+        placements.CLIENTS)
     self.assertEqual([(1, 2), (3, 4)],
                      type_conversions.type_to_py_container(value, type_spec))
 
@@ -699,7 +699,7 @@ class TypeToNonAllEqualTest(test_case.TestCase):
           str(
               type_conversions.type_to_non_all_equal(
                   computation_types.FederatedType(
-                      tf.int32, placement_literals.CLIENTS, all_equal=x))),
+                      tf.int32, placements.CLIENTS, all_equal=x))),
           '{int32}@CLIENTS')
 
 

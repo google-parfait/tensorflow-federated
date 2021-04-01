@@ -33,7 +33,7 @@ from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import executor_utils
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -524,7 +524,7 @@ def deserialize_value(
         'Unable to deserialize a value of type {}.'.format(which_value))
 
 
-CardinalitiesType = Mapping[placement_literals.PlacementLiteral, int]
+CardinalitiesType = Mapping[placements.PlacementLiteral, int]
 
 
 def serialize_cardinalities(
@@ -545,7 +545,7 @@ def deserialize_cardinalities(
 ) -> CardinalitiesType:
   cardinalities_dict = {}
   for cardinality_spec in serialized_cardinalities:
-    literal = placement_literals.uri_to_placement_literal(
+    literal = placements.uri_to_placement_literal(
         cardinality_spec.placement.uri)
     cardinalities_dict[literal] = cardinality_spec.cardinality
   return cardinalities_dict

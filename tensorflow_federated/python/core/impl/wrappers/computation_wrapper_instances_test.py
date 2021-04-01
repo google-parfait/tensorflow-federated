@@ -24,7 +24,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
@@ -338,8 +338,7 @@ class TensorflowWrapperTest(test_case.TestCase):
   def test_fails_with_bad_types(self):
     function = computation_types.FunctionType(
         None, computation_types.TensorType(tf.int32))
-    federated = computation_types.FederatedType(tf.int32,
-                                                placement_literals.CLIENTS)
+    federated = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     tuple_on_function = computation_types.StructType([federated, function])
 
     def foo(x):  # pylint: disable=unused-variable

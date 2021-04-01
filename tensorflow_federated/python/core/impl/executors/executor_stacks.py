@@ -40,7 +40,7 @@ from tensorflow_federated.python.core.impl.executors import remote_executor
 from tensorflow_federated.python.core.impl.executors import sequence_executor
 from tensorflow_federated.python.core.impl.executors import sizing_executor
 from tensorflow_federated.python.core.impl.executors import thread_delegating_executor
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 # Place a limit on the maximum size of the executor caches managed by the
@@ -69,7 +69,7 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
 
     Args:
       executor_stack_fn: Callable taking a mapping from
-        `placement_literals.PlacementLiteral` to integers, and returning an
+        `placements.PlacementLiteral` to integers, and returning an
         `executor_base.Executor`. The returned executor will be configured to
         handle these cardinalities.
       ensure_closed: Optional sequence of `executor_base.Excutors` which should
@@ -93,7 +93,7 @@ class ResourceManagingExecutorFactory(executor_factory.ExecutorFactory):
     with `cardinalities` and returns the result.
 
     Args:
-      cardinalities: `dict` with `placement_literals.PlacementLiteral` keys and
+      cardinalities: `dict` with `placements.PlacementLiteral` keys and
         integer values, specifying the population size at each placement. The
         executor stacks returned from this method are not themselves
         polymorphic; a concrete stack must have fixed sizes at each placement.
@@ -307,15 +307,15 @@ class UnplacedExecutorFactory(executor_factory.ExecutorFactory):
       self,
       *,
       cardinalities: Optional[executor_factory.CardinalitiesType] = None,
-      placement: Optional[placement_literals.PlacementLiteral] = None
+      placement: Optional[placements.PlacementLiteral] = None
   ) -> executor_base.Executor:
     if cardinalities:
       raise ValueError(
           'Unplaced executors cannot accept nonempty cardinalities as '
           'arguments. Received cardinalities: {}.'.format(cardinalities))
-    if placement == placement_literals.CLIENTS:
+    if placement == placements.CLIENTS:
       device = self._get_next_client_device()
-    elif placement == placement_literals.SERVER:
+    elif placement == placements.SERVER:
       device = self._server_device
     else:
       device = None
@@ -406,7 +406,7 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
 
   def _validate_requested_clients(
       self, cardinalities: executor_factory.CardinalitiesType) -> int:
-    num_requested_clients = cardinalities.get(placement_literals.CLIENTS)
+    num_requested_clients = cardinalities.get(placements.CLIENTS)
     if num_requested_clients is None:
       if self._num_clients is not None:
         return self._num_clients
@@ -430,7 +430,7 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
     num_client_executors = math.ceil(num_clients / self._clients_per_thread)
     client_stacks = [
         self._unplaced_executor_factory.create_executor(
-            cardinalities={}, placement=placement_literals.CLIENTS)
+            cardinalities={}, placement=placements.CLIENTS)
         for _ in range(num_client_executors)
     ]
     if self._use_sizing:
@@ -441,13 +441,13 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
 
     federating_strategy_factory = self._federated_strategy_factory(
         {
-            placement_literals.CLIENTS: [
+            placements.CLIENTS: [
                 client_stacks[k % len(client_stacks)]
                 for k in range(num_clients)
             ],
-            placement_literals.SERVER:
+            placements.SERVER:
                 self._unplaced_executor_factory.create_executor(
-                    placement=placement_literals.SERVER),
+                    placement=placements.SERVER),
         },
         local_computation_factory=self._local_computation_factory)
     unplaced_executor = self._unplaced_executor_factory.create_executor()
@@ -490,7 +490,7 @@ def create_minimal_length_flat_stack_fn(
   def create_executor_list(
       cardinalities: executor_factory.CardinalitiesType
   ) -> List[executor_base.Executor]:
-    num_clients = cardinalities.get(placement_literals.CLIENTS, 0)
+    num_clients = cardinalities.get(placements.CLIENTS, 0)
     if num_clients < 0:
       raise ValueError('Number of clients cannot be negative.')
     elif num_clients < 1:
@@ -501,7 +501,7 @@ def create_minimal_length_flat_stack_fn(
     while num_clients > 0:
       n = min(num_clients, max_clients_per_stack)
       sub_executor_cardinalities = {**cardinalities}
-      sub_executor_cardinalities[placement_literals.CLIENTS] = n
+      sub_executor_cardinalities[placements.CLIENTS] = n
       executors.append(
           federated_stack_factory.create_executor(sub_executor_cardinalities))
       num_clients -= n
@@ -560,7 +560,7 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
       self, *, target_executors: Sequence[executor_base.Executor]
   ) -> executor_base.Executor:
     server_executor = self._unplaced_ex_factory.create_executor(
-        placement=placement_literals.SERVER)
+        placement=placements.SERVER)
     composing_strategy_factory = federated_composing_strategy.FederatedComposingStrategy.factory(
         server_executor,
         target_executors,
@@ -701,7 +701,7 @@ def local_executor_factory(
       local_computation_factory=local_computation_factory)
 
   def _factory_fn(cardinalities):
-    if cardinalities.get(placement_literals.CLIENTS, 0) < max_fanout:
+    if cardinalities.get(placements.CLIENTS, 0) < max_fanout:
       return federating_executor_factory.create_executor(cardinalities)
     return full_stack_factory.create_executor(cardinalities)
 
@@ -841,7 +841,7 @@ def sizing_executor_factory(
   def _factory_fn(
       cardinalities: executor_factory.CardinalitiesType
   ) -> executor_base.Executor:
-    if cardinalities.get(placement_literals.CLIENTS, 0) < max_fanout:
+    if cardinalities.get(placements.CLIENTS, 0) < max_fanout:
       executor = federating_executor_factory.create_executor(cardinalities)
     else:
       executor = full_stack_factory.create_executor(cardinalities)
@@ -972,8 +972,9 @@ def _configure_remote_workers(num_clients, remote_executors):
       num_clients_to_host = remaining_clients // remaining_executors
       remaining_clients -= num_clients_to_host
       if num_clients_to_host > 0:
-        _configure_remote_executor(
-            ex, {placement_literals.CLIENTS: num_clients_to_host}, loop)
+        _configure_remote_executor(ex,
+                                   {placements.CLIENTS: num_clients_to_host},
+                                   loop)
         live_workers.append(ex)
   finally:
     if must_close_loop:
@@ -1042,8 +1043,7 @@ def remote_executor_factory(
             dispose_batch_size=dispose_batch_size))
 
   def _flat_stack_fn(cardinalities):
-    num_clients = cardinalities.get(placement_literals.CLIENTS,
-                                    default_num_clients)
+    num_clients = cardinalities.get(placements.CLIENTS, default_num_clients)
     return _configure_remote_workers(num_clients, remote_executors)
 
   unplaced_ex_factory = UnplacedExecutorFactory(use_caching=False)

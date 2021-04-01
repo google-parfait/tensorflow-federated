@@ -51,7 +51,7 @@ py_library(
     deps = [
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
@@ -125,7 +125,7 @@ py_library(
     name = "placements",
     srcs = ["placements.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/impl/types:placement_literals"],
+    deps = ["//tensorflow_federated/python/core/impl/types:placements"],
 )
 
 py_library(

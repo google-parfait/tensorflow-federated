@@ -22,7 +22,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import test_utils
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def _construct_complex_symbol_tree():
@@ -110,7 +110,7 @@ def _construct_trivial_instance_of_all_computation_building_blocks():
   tensor_type = computation_types.TensorType(tf.int32)
   compiled_comp = building_block_factory.create_compiled_identity(tensor_type)
   cbb_list.append(('compiled_comp', compiled_comp))
-  placement = building_blocks.Placement(placement_literals.CLIENTS)
+  placement = building_blocks.Placement(placements.CLIENTS)
   cbb_list.append(('placement', placement))
   return cbb_list
 

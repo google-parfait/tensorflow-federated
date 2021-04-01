@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 
@@ -192,7 +192,7 @@ class IsSumCompatibleTest(parameterized.TestCase):
       ('tuple_type_float',
        computation_types.StructType([tf.complex128, tf.float32, tf.float64])),
       ('federated_type',
-       computation_types.FederatedType(tf.int32, placement_literals.CLIENTS)),
+       computation_types.FederatedType(tf.int32, placements.CLIENTS)),
   ])
   def test_positive_examples(self, type_spec):
     self.assertTrue(type_analysis.is_sum_compatible(type_spec))
@@ -220,7 +220,7 @@ class IsAverageCompatibleTest(parameterized.TestCase):
       ('tuple_type',
        computation_types.StructType([('x', tf.float32), ('y', tf.float64)])),
       ('federated_type',
-       computation_types.FederatedType(tf.float32, placement_literals.CLIENTS)),
+       computation_types.FederatedType(tf.float32, placements.CLIENTS)),
   ])
   def test_returns_true(self, type_spec):
     self.assertTrue(type_analysis.is_average_compatible(type_spec))
@@ -244,22 +244,21 @@ class CheckTypeTest(absltest.TestCase):
 class CheckFederatedTypeTest(absltest.TestCase):
 
   def test_passes_or_raises_type_error(self):
-    type_spec = computation_types.FederatedType(tf.int32,
-                                                placement_literals.CLIENTS,
+    type_spec = computation_types.FederatedType(tf.int32, placements.CLIENTS,
                                                 False)
     type_analysis.check_federated_type(type_spec,
                                        computation_types.TensorType(tf.int32),
-                                       placement_literals.CLIENTS, False)
+                                       placements.CLIENTS, False)
     type_analysis.check_federated_type(type_spec,
                                        computation_types.TensorType(tf.int32),
                                        None, None)
-    type_analysis.check_federated_type(type_spec, None,
-                                       placement_literals.CLIENTS, None)
+    type_analysis.check_federated_type(type_spec, None, placements.CLIENTS,
+                                       None)
     type_analysis.check_federated_type(type_spec, None, None, False)
     self.assertRaises(TypeError, type_analysis.check_federated_type, type_spec,
                       tf.bool, None, None)
     self.assertRaises(TypeError, type_analysis.check_federated_type, type_spec,
-                      None, placement_literals.SERVER, None)
+                      None, placements.SERVER, None)
     self.assertRaises(TypeError, type_analysis.check_federated_type, type_spec,
                       None, None, True)
 
@@ -276,7 +275,7 @@ class IsStructureOfFloatsTest(parameterized.TestCase):
            computation_types.StructType([tf.float32, tf.float32])
        ])),
       ('federated_float_at_clients',
-       computation_types.FederatedType(tf.float32, placement_literals.CLIENTS)),
+       computation_types.FederatedType(tf.float32, placements.CLIENTS)),
   )
   def test_returns_true(self, type_spec):
     self.assertTrue(type_analysis.is_structure_of_floats(type_spec))
@@ -312,7 +311,7 @@ class IsStructureOfIntegersTest(parameterized.TestCase):
            computation_types.StructType([tf.int32, tf.int32])
        ])),
       ('federated_int_at_clients',
-       computation_types.FederatedType(tf.int32, placement_literals.CLIENTS)),
+       computation_types.FederatedType(tf.int32, placements.CLIENTS)),
   )
   def test_returns_true(self, type_spec):
     self.assertTrue(type_analysis.is_structure_of_integers(type_spec))
@@ -528,22 +527,22 @@ class CheckConcreteInstanceOf(absltest.TestCase):
     t1 = self.func_with_param(
         computation_types.FederatedType(
             [computation_types.AbstractType('T1')] * 2,
-            placement_literals.CLIENTS,
+            placements.CLIENTS,
             all_equal=True))
     t2 = self.func_with_param(
         computation_types.FederatedType(
-            [tf.int32] * 2, placement_literals.CLIENTS, all_equal=True))
+            [tf.int32] * 2, placements.CLIENTS, all_equal=True))
     type_analysis.check_concrete_instance_of(t2, t1)
 
   def test_abstract_fails_on_different_federated_placements(self):
     t1 = self.func_with_param(
         computation_types.FederatedType(
             [computation_types.AbstractType('T1')] * 2,
-            placement_literals.CLIENTS,
+            placements.CLIENTS,
             all_equal=True))
     t2 = self.func_with_param(
         computation_types.FederatedType(
-            [tf.int32] * 2, placement_literals.SERVER, all_equal=True))
+            [tf.int32] * 2, placements.SERVER, all_equal=True))
     with self.assertRaises(type_analysis.MismatchedStructureError):
       type_analysis.check_concrete_instance_of(t2, t1)
 
@@ -551,11 +550,11 @@ class CheckConcreteInstanceOf(absltest.TestCase):
     t1 = self.func_with_param(
         computation_types.FederatedType(
             [computation_types.AbstractType('T1')] * 2,
-            placement_literals.CLIENTS,
+            placements.CLIENTS,
             all_equal=True))
     t2 = self.func_with_param(
         computation_types.FederatedType(
-            [tf.int32] * 2, placement_literals.SERVER, all_equal=True))
+            [tf.int32] * 2, placements.SERVER, all_equal=True))
     with self.assertRaises(type_analysis.MismatchedStructureError):
       type_analysis.check_concrete_instance_of(t2, t1)
 

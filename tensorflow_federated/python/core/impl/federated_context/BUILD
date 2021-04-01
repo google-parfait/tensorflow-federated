@@ -100,7 +100,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/context_stack:symbol_binding_context",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_factory",
     ],
@@ -118,7 +118,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:intrinsics",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 
@@ -141,7 +141,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/context_stack:symbol_binding_context",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
@@ -163,7 +163,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )
 
@@ -198,6 +198,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:tree_transformations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )

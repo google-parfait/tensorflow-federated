@@ -29,7 +29,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -564,7 +564,7 @@ def create_federated_aggregate(
   zero_arg_type = accumulate.type_signature.parameter[0]
   zero_arg_type.check_assignable_from(zero.type_signature)
   result_type = computation_types.FederatedType(report.type_signature.result,
-                                                placement_literals.SERVER)
+                                                placements.SERVER)
 
   accumulate_parameter_type = computation_types.StructType(
       [zero_arg_type, value.type_signature.member])
@@ -610,7 +610,7 @@ def create_federated_apply(
   py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(fn.type_signature.result,
-                                                placement_literals.SERVER)
+                                                placements.SERVER)
   intrinsic_type = computation_types.FunctionType(
       (fn.type_signature, arg.type_signature), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_APPLY.uri,
@@ -638,7 +638,7 @@ def create_federated_broadcast(
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(
-      value.type_signature.member, placement_literals.CLIENTS, all_equal=True)
+      value.type_signature.member, placements.CLIENTS, all_equal=True)
   intrinsic_type = computation_types.FunctionType(value.type_signature,
                                                   result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_BROADCAST.uri,
@@ -666,7 +666,7 @@ def create_federated_collect(
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   type_signature = computation_types.SequenceType(value.type_signature.member)
   result_type = computation_types.FederatedType(type_signature,
-                                                placement_literals.SERVER)
+                                                placements.SERVER)
   intrinsic_type = computation_types.FunctionType(
       type_conversions.type_to_non_all_equal(value.type_signature), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_COLLECT.uri,
@@ -676,7 +676,7 @@ def create_federated_collect(
 
 def create_federated_eval(
     fn: building_blocks.ComputationBuildingBlock,
-    placement: placement_literals.PlacementLiteral,
+    placement: placements.PlacementLiteral,
 ) -> building_blocks.Call:
   r"""Creates a called federated eval.
 
@@ -686,7 +686,7 @@ def create_federated_eval(
 
   Args:
     fn: A `building_blocks.ComputationBuildingBlock` to use as the function.
-    placement: A `placement_literals.PlacementLiteral` to use as the placement.
+    placement: A `placements.PlacementLiteral` to use as the placement.
 
   Returns:
     A `building_blocks.Call`.
@@ -696,10 +696,10 @@ def create_federated_eval(
   """
   py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(fn.type_signature, computation_types.FunctionType)
-  if placement is placement_literals.CLIENTS:
+  if placement is placements.CLIENTS:
     uri = intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri
     all_equal = False
-  elif placement is placement_literals.SERVER:
+  elif placement is placements.SERVER:
     uri = intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri
     all_equal = True
   else:
@@ -736,9 +736,9 @@ def create_federated_map(
   py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   parameter_type = computation_types.FederatedType(arg.type_signature.member,
-                                                   placement_literals.CLIENTS)
+                                                   placements.CLIENTS)
   result_type = computation_types.FederatedType(fn.type_signature.result,
-                                                placement_literals.CLIENTS)
+                                                placements.CLIENTS)
   intrinsic_type = computation_types.FunctionType(
       (fn.type_signature, parameter_type), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_MAP.uri,
@@ -774,9 +774,9 @@ def create_federated_map_all_equal(
   py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
   parameter_type = computation_types.FederatedType(
-      arg.type_signature.member, placement_literals.CLIENTS, all_equal=True)
+      arg.type_signature.member, placements.CLIENTS, all_equal=True)
   result_type = computation_types.FederatedType(
-      fn.type_signature.result, placement_literals.CLIENTS, all_equal=True)
+      fn.type_signature.result, placements.CLIENTS, all_equal=True)
   intrinsic_type = computation_types.FunctionType(
       (fn.type_signature, parameter_type), result_type)
   intrinsic = building_blocks.Intrinsic(
@@ -808,12 +808,12 @@ def create_federated_map_or_apply(
   """
   py_typecheck.check_type(fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(arg, building_blocks.ComputationBuildingBlock)
-  if arg.type_signature.placement is placement_literals.CLIENTS:
+  if arg.type_signature.placement is placements.CLIENTS:
     if arg.type_signature.all_equal:
       return create_federated_map_all_equal(fn, arg)
     else:
       return create_federated_map(fn, arg)
-  elif arg.type_signature.placement is placement_literals.SERVER:
+  elif arg.type_signature.placement is placements.SERVER:
     return create_federated_apply(fn, arg)
   else:
     raise TypeError('Unsupported placement {}.'.format(
@@ -846,7 +846,7 @@ def create_federated_mean(
   if weight is not None:
     py_typecheck.check_type(weight, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(value.type_signature.member,
-                                                placement_literals.SERVER)
+                                                placements.SERVER)
   if weight is not None:
     intrinsic_type = computation_types.FunctionType(
         (type_conversions.type_to_non_all_equal(value.type_signature),
@@ -888,7 +888,7 @@ def create_federated_secure_sum(
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(bitwidth, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(value.type_signature.member,
-                                                placement_literals.SERVER)
+                                                placements.SERVER)
   intrinsic_type = computation_types.FunctionType([
       type_conversions.type_to_non_all_equal(value.type_signature),
       bitwidth.type_signature,
@@ -918,7 +918,7 @@ def create_federated_sum(
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
   result_type = computation_types.FederatedType(value.type_signature.member,
-                                                placement_literals.SERVER)
+                                                placements.SERVER)
   intrinsic_type = computation_types.FunctionType(
       type_conversions.type_to_non_all_equal(value.type_signature), result_type)
   intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_SUM.uri,
@@ -979,7 +979,7 @@ def create_federated_unzip(
 
 def create_federated_value(
     value: building_blocks.ComputationBuildingBlock,
-    placement: placement_literals.PlacementLiteral) -> building_blocks.Call:
+    placement: placements.PlacementLiteral) -> building_blocks.Call:
   r"""Creates a called federated value.
 
             Call
@@ -988,7 +988,7 @@ def create_federated_value(
 
   Args:
     value: A `building_blocks.ComputationBuildingBlock` to use as the value.
-    placement: A `placement_literals.PlacementLiteral` to use as the placement.
+    placement: A `placements.PlacementLiteral` to use as the placement.
 
   Returns:
     A `building_blocks.Call`.
@@ -997,9 +997,9 @@ def create_federated_value(
     TypeError: If any of the types do not match.
   """
   py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
-  if placement is placement_literals.CLIENTS:
+  if placement is placements.CLIENTS:
     uri = intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri
-  elif placement is placement_literals.SERVER:
+  elif placement is placements.SERVER:
     uri = intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri
   else:
     raise TypeError('Unsupported placement {}.'.format(placement))
@@ -1042,9 +1042,9 @@ def _create_flat_federated_zip(value):
   if length == 0:
     raise ValueError('federated_zip is only supported on non-empty tuples.')
   first_name, first_type_signature = named_type_signatures[0]
-  if first_type_signature.placement == placement_literals.CLIENTS:
+  if first_type_signature.placement == placements.CLIENTS:
     map_fn = create_federated_map
-  elif first_type_signature.placement == placement_literals.SERVER:
+  elif first_type_signature.placement == placements.SERVER:
     map_fn = create_federated_apply
   else:
     raise TypeError('Unsupported placement {}.'.format(
@@ -1149,14 +1149,14 @@ def _selection_from_path(
 
 
 def _check_placements(
-    placements: AbstractSet[placement_literals.PlacementLiteral]):
+    placement_values: AbstractSet[placements.PlacementLiteral]):
   """Checks if the placements of the values being zipped are compatible."""
-  if not placements:
+  if not placement_values:
     raise TypeError('federated_zip is only supported on nested structures '
                     'containing at least one FederatedType, but none were '
                     'found.')
-  elif len(placements) > 1:
-    placement_list = ', '.join(placement.name for placement in placements)
+  elif len(placement_values) > 1:
+    placement_list = ', '.join(placement.name for placement in placement_values)
     raise TypeError('federated_zip requires all nested FederatedTypes to '
                     'have the same placement, but values placed at '
                     f'{placement_list} were found.')
@@ -1250,9 +1250,9 @@ def create_federated_zip(
   repacked, _ = _make_flat_selections(value.type_signature, 0)
   lam = building_blocks.Lambda('x', ref.type_signature, repacked)
 
-  if placement == placement_literals.CLIENTS:
+  if placement == placements.CLIENTS:
     return create_federated_map(lam, flat_zipped)
-  elif placement == placement_literals.SERVER:
+  elif placement == placements.SERVER:
     return create_federated_apply(lam, flat_zipped)
   else:
     raise TypeError('Unsupported placement {}.'.format(placement))
@@ -1296,14 +1296,14 @@ def create_generic_constant(
     return create_tensorflow_constant(type_spec, scalar_value)
   elif type_spec.is_federated():
     unplaced_zero = create_tensorflow_constant(type_spec.member, scalar_value)
-    if type_spec.placement == placement_literals.CLIENTS:
+    if type_spec.placement == placements.CLIENTS:
       placement_federated_type = computation_types.FederatedType(
           type_spec.member, type_spec.placement, all_equal=True)
       placement_fn_type = computation_types.FunctionType(
           type_spec.member, placement_federated_type)
       placement_function = building_blocks.Intrinsic(
           intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri, placement_fn_type)
-    elif type_spec.placement == placement_literals.SERVER:
+    elif type_spec.placement == placements.SERVER:
       placement_federated_type = computation_types.FederatedType(
           type_spec.member, type_spec.placement, all_equal=True)
       placement_fn_type = computation_types.FunctionType(
@@ -1363,10 +1363,10 @@ def create_zip_two_values(
         'Expected a value with exactly two elements, received {} elements.'
         .format(named_type_signatures))
   placement = value.type_signature[0].placement
-  if placement is placement_literals.CLIENTS:
+  if placement is placements.CLIENTS:
     uri = intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri
     all_equal = False
-  elif placement is placement_literals.SERVER:
+  elif placement is placements.SERVER:
     uri = intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri
     all_equal = True
   else:

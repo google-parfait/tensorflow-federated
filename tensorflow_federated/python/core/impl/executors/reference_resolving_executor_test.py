@@ -28,7 +28,7 @@ from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def create_test_executor_factory():
@@ -243,7 +243,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
   def test_with_federated_map(self):
     eager_ex = eager_tf_executor.EagerTFExecutor()
     factory = federated_resolving_strategy.FederatedResolvingStrategy.factory(
-        {placement_literals.SERVER: eager_ex})
+        {placements.SERVER: eager_ex})
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
     loop = asyncio.get_event_loop()
@@ -266,8 +266,8 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
   def test_with_federated_map_and_broadcast(self):
     eager_ex = eager_tf_executor.EagerTFExecutor()
     factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placement_literals.SERVER: eager_ex,
-        placement_literals.CLIENTS: [eager_ex for _ in range(3)]
+        placements.SERVER: eager_ex,
+        placements.CLIENTS: [eager_ex for _ in range(3)]
     })
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)
@@ -292,7 +292,7 @@ class ReferenceResolvingExecutorTest(absltest.TestCase):
   def test_raises_with_closure(self):
     eager_ex = eager_tf_executor.EagerTFExecutor()
     factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placement_literals.SERVER: eager_ex,
+        placements.SERVER: eager_ex,
     })
     federated_ex = federating_executor.FederatingExecutor(factory, eager_ex)
     ex = reference_resolving_executor.ReferenceResolvingExecutor(federated_ex)

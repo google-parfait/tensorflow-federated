@@ -17,9 +17,9 @@ import abc
 from typing import Mapping
 
 from tensorflow_federated.python.core.impl.executors import executor_base
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
-CardinalitiesType = Mapping[placement_literals.PlacementLiteral, int]
+CardinalitiesType = Mapping[placements.PlacementLiteral, int]
 
 
 class ExecutorFactory(metaclass=abc.ABCMeta):
@@ -42,12 +42,12 @@ class ExecutorFactory(metaclass=abc.ABCMeta):
     """Abstract method to construct instance of `executor_base.Executor`.
 
     `create_executor` must accept a dict mapping
-    `placement_literals.PlacementLiterals` to `ints`, and return an
+    `placements.PlacementLiterals` to `ints`, and return an
     `executor_base.Executor`.
 
     Args:
       cardinalities: a dict mapping instances of
-        `placement_literals.PlacementLiteral` to ints, specifying the population
+        `placements.PlacementLiteral` to ints, specifying the population
         size at each placement.
 
     Returns:

@@ -62,7 +62,7 @@ from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 
@@ -314,7 +314,7 @@ class FederatingExecutor(executor_base.Executor):
 
     * An instance of `intrinsic_defs.IntrinsicDef`.
 
-    * An instance of `placement_literals.PlacementLiteral`.
+    * An instance of `placements.PlacementLiteral`.
 
     * An instance of `pb.Computation` if of one of the following kinds:
       intrinsic, lambda, tensorflow, or xla.
@@ -346,7 +346,7 @@ class FederatingExecutor(executor_base.Executor):
     if isinstance(value, intrinsic_defs.IntrinsicDef):
       type_analysis.check_concrete_instance_of(type_spec, value.type_signature)
       return self._strategy.ingest_value(value, type_spec)
-    elif isinstance(value, placement_literals.PlacementLiteral):
+    elif isinstance(value, placements.PlacementLiteral):
       if type_spec is None:
         type_spec = computation_types.PlacementType()
       type_spec.check_placement()

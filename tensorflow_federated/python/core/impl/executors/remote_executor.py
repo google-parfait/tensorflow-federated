@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_serialization
 from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 _STREAM_CLOSE_WAIT_SECONDS = 10
 
@@ -177,7 +177,7 @@ class RemoteExecutor(executor_base.Executor):
 
   @tracing.trace(span=True)
   async def set_cardinalities(
-      self, cardinalities: Mapping[placement_literals.PlacementLiteral, int]):
+      self, cardinalities: Mapping[placements.PlacementLiteral, int]):
     serialized_cardinalities = executor_serialization.serialize_cardinalities(
         cardinalities)
     request = executor_pb2.SetCardinalitiesRequest(

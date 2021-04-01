@@ -76,7 +76,7 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 class CanonicalFormCompilationError(Exception):
@@ -1001,12 +1001,12 @@ def normalize_all_equal_bit(comp):
     parameter_type = [
         comp.type_signature.parameter[0],
         computation_types.FederatedType(comp.type_signature.parameter[1].member,
-                                        placement_literals.CLIENTS)
+                                        placements.CLIENTS)
     ]
     intrinsic_type = computation_types.FunctionType(
         parameter_type,
         computation_types.FederatedType(comp.type_signature.result.member,
-                                        placement_literals.CLIENTS))
+                                        placements.CLIENTS))
     new_intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_MAP.uri,
                                               intrinsic_type)
     return new_intrinsic, True

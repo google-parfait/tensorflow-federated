@@ -19,7 +19,7 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import iterative_process
 
@@ -103,8 +103,7 @@ def compose_dataset_computation_with_computation(
   if is_desired_federated_sequence(comp_body_param_type):
     # Single argument that matches, we compose in a straightforward manner.
     new_param_type = computation_types.FederatedType(
-        dataset_computation.type_signature.parameter,
-        placement_literals.CLIENTS)
+        dataset_computation.type_signature.parameter, placements.CLIENTS)
 
     @computations.federated_computation(new_param_type)
     def new_computation(param):
@@ -119,8 +118,7 @@ def compose_dataset_computation_with_computation(
     dataset_index = None
     new_param_elements = []
     federated_param_type = computation_types.FederatedType(
-        dataset_computation.type_signature.parameter,
-        placement_literals.CLIENTS)
+        dataset_computation.type_signature.parameter, placements.CLIENTS)
 
     for idx, (elem_name, elem_type) in enumerate(
         structure.iter_elements(comp_body_param_type)):

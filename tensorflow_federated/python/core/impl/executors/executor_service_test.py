@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.impl.executors import executor_serializati
 from tensorflow_federated.python.core.impl.executors import executor_service
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 class TestEnv(object):
@@ -53,7 +53,7 @@ class TestEnv(object):
     self._stub = executor_pb2_grpc.ExecutorStub(self._channel)
 
     serialized_cards = executor_serialization.serialize_cardinalities(
-        {placement_literals.CLIENTS: num_clients})
+        {placements.CLIENTS: num_clients})
     self._stub.SetCardinalities(
         executor_pb2.SetCardinalitiesRequest(cardinalities=serialized_cards))
 

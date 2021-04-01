@@ -97,6 +97,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/context_stack:runtime_error_context",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:placements",
     ],
 )

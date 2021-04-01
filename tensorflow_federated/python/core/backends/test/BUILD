@@ -52,7 +52,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/compiler:tensorflow_computation_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_utils",
         "//tensorflow_federated/python/core/impl/executors:federated_resolving_strategy",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_transformations",
     ],
@@ -74,7 +74,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/executors:executor_value_base",
         "//tensorflow_federated/python/core/impl/executors:federating_executor",
         "//tensorflow_federated/python/core/impl/executors:reference_resolving_executor",
-        "//tensorflow_federated/python/core/impl/types:placement_literals",
+        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )

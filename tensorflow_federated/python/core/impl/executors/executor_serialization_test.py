@@ -24,7 +24,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.executors import executor_serialization
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 class ExecutorServiceUtilsTest(test_case.TestCase):
@@ -362,8 +362,8 @@ class SerializeCardinalitiesTest(test_case.TestCase):
   def test_serialize_deserialize_clients_and_server_cardinalities_roundtrip(
       self):
     client_and_server_cardinalities = {
-        placement_literals.CLIENTS: 10,
-        placement_literals.SERVER: 1
+        placements.CLIENTS: 10,
+        placements.SERVER: 1
     }
     cardinalities_list = executor_serialization.serialize_cardinalities(
         client_and_server_cardinalities)
@@ -376,7 +376,7 @@ class SerializeCardinalitiesTest(test_case.TestCase):
                      reconstructed_cardinalities)
 
   def test_serialize_deserialize_clients_alone(self):
-    client_cardinalities = {placement_literals.CLIENTS: 10}
+    client_cardinalities = {placements.CLIENTS: 10}
     cardinalities_list = executor_serialization.serialize_cardinalities(
         client_cardinalities)
     for cardinality in cardinalities_list:

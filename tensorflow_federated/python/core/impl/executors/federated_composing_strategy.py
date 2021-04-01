@@ -61,7 +61,7 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import executor_value_base
 from tensorflow_federated.python.core.impl.executors import federating_executor
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 
@@ -260,7 +260,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
   async def compute_federated_value(
       self, value: Any, type_signature: computation_types.Type
   ) -> FederatedComposingStrategyValue:
-    if type_signature.placement == placement_literals.SERVER:
+    if type_signature.placement == placements.SERVER:
       if not type_signature.all_equal:
         raise ValueError(
             'Expected an all equal value at the `SERVER` placement, '
@@ -268,7 +268,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       results = await self._server_executor.create_value(
           value, type_signature.member)
       return FederatedComposingStrategyValue(results, type_signature)
-    elif type_signature.placement == placement_literals.CLIENTS:
+    elif type_signature.placement == placements.CLIENTS:
       if type_signature.all_equal:
         results = await asyncio.gather(*[
             c.create_value(value, type_signature)
@@ -363,7 +363,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     py_typecheck.check_type(fn_type, computation_types.FunctionType)
     val_type = arg.type_signature[1]
     type_analysis.check_federated_type(
-        val_type, fn_type.parameter, placement_literals.SERVER, all_equal=True)
+        val_type, fn_type.parameter, placements.SERVER, all_equal=True)
     fn = arg.internal_representation[0]
     py_typecheck.check_type(fn, pb.Computation)
     val = arg.internal_representation[1]
@@ -384,7 +384,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
   async def _eval(self, arg, intrinsic, placement, all_equal):
     py_typecheck.check_type(arg.type_signature, computation_types.FunctionType)
     py_typecheck.check_type(arg.internal_representation, pb.Computation)
-    py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+    py_typecheck.check_type(placement, placements.PlacementLiteral)
     fn = arg.internal_representation
     fn_type = arg.type_signature
     eval_type = computation_types.FunctionType(
@@ -419,7 +419,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     return await self._eval(arg, intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS,
-                            placement_literals.CLIENTS, False)
+                            placements.CLIENTS, False)
 
   @tracing.trace
   async def compute_federated_eval_at_server(
@@ -488,7 +488,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     type_analysis.check_federated_type(
-        arg.type_signature, placement=placement_literals.CLIENTS)
+        arg.type_signature, placement=placements.CLIENTS)
     member_type = arg.type_signature.member
 
     async def _create_total():
@@ -524,7 +524,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     type_analysis.check_federated_type(
-        arg.type_signature, placement=placement_literals.CLIENTS)
+        arg.type_signature, placement=placements.CLIENTS)
     id_comp, id_type = tensorflow_computation_factory.create_identity(
         arg.type_signature.member)
     zero, plus, identity = await asyncio.gather(
@@ -553,14 +553,14 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     return await executor_utils.compute_intrinsic_federated_value(
-        self._executor, arg, placement_literals.CLIENTS)
+        self._executor, arg, placements.CLIENTS)
 
   @tracing.trace
   async def compute_federated_value_at_server(
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     return await executor_utils.compute_intrinsic_federated_value(
-        self._executor, arg, placement_literals.SERVER)
+        self._executor, arg, placements.SERVER)
 
   @tracing.trace
   async def compute_federated_weighted_mean(
@@ -583,8 +583,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     vals = [arg.internal_representation[n] for n in [0, 1]]
     types = [arg.type_signature[n] for n in [0, 1]]
     for n in [0, 1]:
-      type_analysis.check_federated_type(
-          types[n], placement=placement_literals.CLIENTS)
+      type_analysis.check_federated_type(types[n], placement=placements.CLIENTS)
       types[n] = computation_types.at_clients(types[n].member)
       py_typecheck.check_type(vals[n], list)
       py_typecheck.check_len(vals[n], len(self._target_executors))
@@ -623,9 +622,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     py_typecheck.check_len(arg.internal_representation, 2)
     for n in [0, 1]:
       type_analysis.check_federated_type(
-          arg.type_signature[n],
-          placement=placement_literals.SERVER,
-          all_equal=True)
+          arg.type_signature[n], placement=placements.SERVER, all_equal=True)
     return FederatedComposingStrategyValue(
         await self._server_executor.create_struct(
             [arg.internal_representation[n] for n in [0, 1]]),

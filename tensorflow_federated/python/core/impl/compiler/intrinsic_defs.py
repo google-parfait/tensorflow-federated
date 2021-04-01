@@ -101,7 +101,7 @@ class IntrinsicDef(object):
 
 # TODO(b/113112885): Perhaps add a way for these to get auto-registered to
 # enable things like lookup by URI, etc., similarly to how it's handled in the
-# placement_literals.py.
+# placements.py.
 
 # TODO(b/113112885): Define the generic equivalents of all operators below,
 # i.e., intrinsics that support arbitrary placements, to allow the federated

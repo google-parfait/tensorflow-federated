@@ -13,10 +13,10 @@
 # limitations under the License.
 """Defines common types of placements for use in defining TFF computations."""
 
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 # The collective of all the client devices, a TFF placement constant.
-CLIENTS = placement_literals.CLIENTS
+CLIENTS = placements.CLIENTS
 
 # The single top-level central coordinator, a TFF placement constant.
-SERVER = placement_literals.SERVER
+SERVER = placements.SERVER

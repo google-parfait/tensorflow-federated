@@ -28,7 +28,6 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import placements
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -39,7 +38,7 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import iterative_process
@@ -140,12 +139,12 @@ def _check_len(
 
 def _check_placement(
     target,
-    placement: placement_literals.PlacementLiteral,
+    placement: placements.PlacementLiteral,
     err_fn: Callable[[str],
                      Exception] = transformations.CanonicalFormCompilationError,
 ):
   py_typecheck.check_type(target, computation_types.FederatedType)
-  py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+  py_typecheck.check_type(placement, placements.PlacementLiteral)
   if target.placement != placement:
     raise err_fn(
         'Expected value with placement {}, found value of type {}.'.format(

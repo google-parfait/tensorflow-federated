@@ -24,7 +24,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_serialization
 
@@ -1031,10 +1031,10 @@ class Placement(ComputationBuildingBlock):
   ) -> 'Placement':
     _check_computation_oneof(computation_proto, 'placement')
     return cls(
-        placement_literals.uri_to_placement_literal(
+        placements.uri_to_placement_literal(
             str(computation_proto.placement.uri)))
 
-  def __init__(self, literal: placement_literals.PlacementLiteral):
+  def __init__(self, literal: placements.PlacementLiteral):
     """Constructs a new placement instance for the given placement literal.
 
     Args:
@@ -1043,7 +1043,7 @@ class Placement(ComputationBuildingBlock):
     Raises:
       TypeError: if the arguments are of the wrong types.
     """
-    py_typecheck.check_type(literal, placement_literals.PlacementLiteral)
+    py_typecheck.check_type(literal, placements.PlacementLiteral)
     super().__init__(computation_types.PlacementType())
     self._literal = literal
 

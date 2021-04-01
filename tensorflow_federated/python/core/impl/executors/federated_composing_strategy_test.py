@@ -31,7 +31,7 @@ from tensorflow_federated.python.core.impl.executors import federated_resolving_
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.federated_context import intrinsic_factory
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -42,8 +42,8 @@ def _create_bottom_stack():
 
 def _create_worker_stack():
   factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-      placement_literals.SERVER: _create_bottom_stack(),
-      placement_literals.CLIENTS: [_create_bottom_stack() for _ in range(2)],
+      placements.SERVER: _create_bottom_stack(),
+      placements.CLIENTS: [_create_bottom_stack() for _ in range(2)],
   })
   return federating_executor.FederatingExecutor(factory, _create_bottom_stack())
 
@@ -100,8 +100,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     raising_executors = [_RaisingExecutor() for _ in range(2)]
 
     factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placement_literals.SERVER: _create_worker_stack(),
-        placement_literals.CLIENTS: raising_executors,
+        placements.SERVER: _create_worker_stack(),
+        placements.CLIENTS: raising_executors,
     })
     federating_ex = federating_executor.FederatingExecutor(
         factory, _create_worker_stack())
@@ -135,7 +135,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
     @computations.federated_computation
     def comp():
-      return intrinsics.federated_value(10, placement_literals.SERVER)
+      return intrinsics.federated_value(10, placements.SERVER)
 
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
@@ -145,7 +145,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
     @computations.federated_computation
     def comp():
-      return intrinsics.federated_value(10, placement_literals.CLIENTS)
+      return intrinsics.federated_value(10, placements.CLIENTS)
 
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
@@ -156,7 +156,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     @computations.federated_computation
     def comp():
       return_five = computations.tf_computation(lambda: 5)
-      return intrinsics.federated_eval(return_five, placement_literals.SERVER)
+      return intrinsics.federated_eval(return_five, placements.SERVER)
 
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)
@@ -171,8 +171,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     @computations.federated_computation
     def comp():
       return_five = computations.tf_computation(lambda: 5)
-      five_at_server = intrinsics.federated_eval(return_five,
-                                                 placement_literals.SERVER)
+      five_at_server = intrinsics.federated_eval(return_five, placements.SERVER)
       six_at_server = intrinsics.federated_apply(add_one, five_at_server)
       return six_at_server
 
@@ -185,7 +184,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     @computations.federated_computation
     def comp():
       return_five = computations.tf_computation(lambda: 5)
-      return intrinsics.federated_eval(return_five, placement_literals.CLIENTS)
+      return intrinsics.federated_eval(return_five, placements.CLIENTS)
 
     executor, num_clients = _create_test_executor()
     result = _invoke(executor, comp)
@@ -206,7 +205,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
     @computations.federated_computation
     def comp():
-      value = intrinsics.federated_value(10, placement_literals.CLIENTS)
+      value = intrinsics.federated_value(10, placements.CLIENTS)
       return intrinsics.federated_aggregate(value, 0, add_int, add_int,
                                             add_five)
 
@@ -232,8 +231,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     @computations.federated_computation
     def comp():
       value = intrinsics.federated_value(
-          collections.OrderedDict([('a', (10, 2.0))]),
-          placement_literals.CLIENTS)
+          collections.OrderedDict([('a', (10, 2.0))]), placements.CLIENTS)
       zero = collections.OrderedDict([('a', (0, 0.0))])
       return intrinsics.federated_aggregate(value, zero, add_test_type,
                                             add_test_type, add_five_and_three)
@@ -257,8 +255,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
     @computations.federated_computation
     def comp():
-      value_at_server = intrinsics.federated_value(10,
-                                                   placement_literals.SERVER)
+      value_at_server = intrinsics.federated_value(10, placements.SERVER)
       value_at_clients = intrinsics.federated_broadcast(value_at_server)
       return intrinsics.federated_map(add_one, value_at_clients)
 
@@ -274,7 +271,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
     @computations.federated_computation
     def comp():
-      value = intrinsics.federated_value(10, placement_literals.SERVER)
+      value = intrinsics.federated_value(10, placements.SERVER)
       return intrinsics.federated_map(add_one, value)
 
     executor, _ = _create_test_executor()
@@ -289,7 +286,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
     @computations.federated_computation
     def comp():
-      value = intrinsics.federated_value(10, placement_literals.CLIENTS)
+      value = intrinsics.federated_value(10, placements.CLIENTS)
       return intrinsics.federated_map(add_one, value)
 
     executor, num_clients = _create_test_executor()
@@ -306,7 +303,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
     @computations.federated_computation
     def comp():
-      value = intrinsics.federated_value(10, placement_literals.CLIENTS)
+      value = intrinsics.federated_value(10, placements.CLIENTS)
       return factory.federated_map_all_equal(add_one, value)
 
     executor, _ = _create_test_executor()
@@ -319,8 +316,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     @computations.federated_computation
     def comp():
       return intrinsics.federated_zip([
-          intrinsics.federated_value(10, placement_literals.SERVER),
-          intrinsics.federated_value(20, placement_literals.SERVER),
+          intrinsics.federated_value(10, placements.SERVER),
+          intrinsics.federated_value(20, placements.SERVER),
       ])
 
     self.assertEqual(comp.type_signature.compact_representation(),
@@ -336,8 +333,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     def comp():
       return intrinsics.federated_zip(
           collections.OrderedDict([
-              ('A', intrinsics.federated_value(10, placement_literals.SERVER)),
-              ('B', intrinsics.federated_value(20, placement_literals.SERVER)),
+              ('A', intrinsics.federated_value(10, placements.SERVER)),
+              ('B', intrinsics.federated_value(20, placements.SERVER)),
           ]))
 
     self.assertEqual(comp.type_signature.compact_representation(),
@@ -352,8 +349,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     @computations.federated_computation
     def comp():
       return intrinsics.federated_zip([
-          intrinsics.federated_value(10, placement_literals.CLIENTS),
-          intrinsics.federated_value(20, placement_literals.CLIENTS),
+          intrinsics.federated_value(10, placements.CLIENTS),
+          intrinsics.federated_value(20, placements.CLIENTS),
       ])
 
     self.assertEqual(comp.type_signature.compact_representation(),
@@ -370,8 +367,8 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     def comp():
       return intrinsics.federated_zip(
           collections.OrderedDict([
-              ('A', intrinsics.federated_value(10, placement_literals.CLIENTS)),
-              ('B', intrinsics.federated_value(20, placement_literals.CLIENTS)),
+              ('A', intrinsics.federated_value(10, placements.CLIENTS)),
+              ('B', intrinsics.federated_value(20, placements.CLIENTS)),
           ]))
 
     self.assertEqual(comp.type_signature.compact_representation(),
@@ -386,7 +383,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
 
     @computations.federated_computation
     def comp():
-      value = intrinsics.federated_value(10, placement_literals.CLIENTS)
+      value = intrinsics.federated_value(10, placements.CLIENTS)
       return intrinsics.federated_sum(value)
 
     executor, num_clients = _create_test_executor()

@@ -18,7 +18,7 @@ import collections
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def merge_cardinalities(existing, to_add):
@@ -26,7 +26,7 @@ def merge_cardinalities(existing, to_add):
   py_typecheck.check_type(existing, dict)
   py_typecheck.check_type(to_add, dict)
   for key, val in existing.items():
-    py_typecheck.check_type(key, placement_literals.PlacementLiteral)
+    py_typecheck.check_type(key, placements.PlacementLiteral)
     py_typecheck.check_type(val, int)
   if not to_add:
     return existing
@@ -35,7 +35,7 @@ def merge_cardinalities(existing, to_add):
   cardinalities = {}
   cardinalities.update(existing)
   for key, val in to_add.items():
-    py_typecheck.check_type(key, placement_literals.PlacementLiteral)
+    py_typecheck.check_type(key, placements.PlacementLiteral)
     py_typecheck.check_type(val, int)
     if key not in cardinalities:
       cardinalities[key] = val

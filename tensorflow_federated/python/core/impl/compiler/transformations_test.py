@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.impl.compiler import transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_to_cc_transformations
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 class DeduplicateBuildingBlocksTest(test_case.TestCase):
@@ -849,8 +849,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test_case.TestCase):
   def test_aggregate_with_selection_from_block_by_index_results_in_single_aggregate(
       self):
     data = building_blocks.Reference(
-        'a',
-        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
+        'a', computation_types.FederatedType(tf.int32, placements.CLIENTS))
     tup_of_data = building_blocks.Struct([data, data])
     block_holding_tup = building_blocks.Block([], tup_of_data)
     index_0_from_block = building_blocks.Selection(
@@ -895,8 +894,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test_case.TestCase):
   def test_aggregate_with_selection_from_block_by_name_results_in_single_aggregate(
       self):
     data = building_blocks.Reference(
-        'a',
-        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
+        'a', computation_types.FederatedType(tf.int32, placements.CLIENTS))
     tup_of_data = building_blocks.Struct([('a', data), ('b', data)])
     block_holding_tup = building_blocks.Block([], tup_of_data)
     index_0_from_block = building_blocks.Selection(
@@ -1000,8 +998,7 @@ class TensorFlowGeneratorTest(test_case.TestCase):
 
   def test_leaves_federated_comp_alone(self):
     ref_to_federated_x = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32,
-                                             placement_literals.SERVER))
+        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
     identity_lambda = building_blocks.Lambda(ref_to_federated_x.name,
                                              ref_to_federated_x.type_signature,
                                              ref_to_federated_x)
@@ -1021,7 +1018,7 @@ class TensorFlowGeneratorTest(test_case.TestCase):
         'a',
         computation_types.FederatedType(
             computation_types.StructType([tf.int32, tf.float32]),
-            placement_literals.SERVER))
+            placements.SERVER))
     applied = building_block_factory.create_federated_apply(
         identity_lambda, federated_data)
 

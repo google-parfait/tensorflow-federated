@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import type_transformations
 
@@ -412,7 +412,7 @@ def is_valid_bitwidth_type_for_value_type(
 def check_federated_type(
     type_spec: computation_types.Type,
     member: Optional[computation_types.Type] = None,
-    placement: Optional[placement_literals.PlacementLiteral] = None,
+    placement: Optional[placements.PlacementLiteral] = None,
     all_equal: Optional[bool] = None):
   """Checks that `type_spec` is a federated type with the given parameters.
 
@@ -432,7 +432,7 @@ def check_federated_type(
     py_typecheck.check_type(member, computation_types.Type)
     member.check_assignable_from(type_spec.member)
   if placement is not None:
-    py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+    py_typecheck.check_type(placement, placements.PlacementLiteral)
     if type_spec.placement is not placement:
       raise TypeError(
           'Expected federated type placed at {}, got one placed at {}.'.format(
@@ -667,7 +667,7 @@ def check_valid_federated_weighted_mean_argument_tuple_type(
   if len(type_spec) != 2:
     raise TypeError('Expected a 2-tuple, found {}.'.format(type_spec))
   for _, v in structure.iter_elements(type_spec):
-    check_federated_type(v, None, placement_literals.CLIENTS, False)
+    check_federated_type(v, None, placements.CLIENTS, False)
     if not is_average_compatible(v.member):
       raise TypeError(
           'Expected average-compatible args, got {} from argument of type {}.'

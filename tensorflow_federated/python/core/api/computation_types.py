@@ -27,7 +27,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 C = TypeVar('C')
@@ -829,7 +829,7 @@ class FederatedType(Type, metaclass=_Intern):
 
   @staticmethod
   def _normalize_init_args(member, placement, all_equal=None):
-    py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+    py_typecheck.check_type(placement, placements.PlacementLiteral)
     member = to_type(member)
     if all_equal is None:
       all_equal = placement.default_all_equal
@@ -905,7 +905,7 @@ class FederatedType(Type, metaclass=_Intern):
 
 def at_server(type_spec: Type) -> Type:
   """Constructs a federated type of the form `T@SERVER`."""
-  return FederatedType(type_spec, placement_literals.SERVER, all_equal=True)
+  return FederatedType(type_spec, placements.SERVER, all_equal=True)
 
 
 def at_clients(type_spec: Type, all_equal: bool = False) -> Type:
@@ -919,8 +919,7 @@ def at_clients(type_spec: Type, all_equal: bool = False) -> Type:
     The type of the form `{T}@CLIENTS` (by default) or `T@CLIENTS` (if specified
     by setting the `all_equal` bit), where `T` is the `type_spec`.
   """
-  return FederatedType(
-      type_spec, placement_literals.CLIENTS, all_equal=all_equal)
+  return FederatedType(type_spec, placements.CLIENTS, all_equal=all_equal)
 
 
 def to_type(spec) -> Type:

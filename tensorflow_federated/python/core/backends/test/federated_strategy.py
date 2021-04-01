@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_utils
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_transformations
 
@@ -164,9 +164,9 @@ class TestFederatedStrategy(
               value.type_signature.placement,
               all_equal=True))
       arg_struct = await self._executor.create_struct([value, placed_mask])
-      if value.type_signature.placement == placement_literals.SERVER:
+      if value.type_signature.placement == placements.SERVER:
         return await self.compute_federated_zip_at_server(arg_struct)
-      elif value.type_signature.placement == placement_literals.CLIENTS:
+      elif value.type_signature.placement == placements.CLIENTS:
         return await self.compute_federated_zip_at_clients(arg_struct)
       else:
         raise TypeError(

@@ -17,7 +17,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_transformations
 
 
@@ -91,10 +91,9 @@ class TransformTypePostorderTest(absltest.TestCase):
     self.assertFalse(not_mutated)
 
   def test_transforms_federated_type(self):
-    orig_type = computation_types.FederatedType(tf.int32,
-                                                placement_literals.CLIENTS)
+    orig_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     expected_type = computation_types.FederatedType(tf.float32,
-                                                    placement_literals.CLIENTS)
+                                                    placements.CLIENTS)
     result_type, mutated = type_transformations.transform_type_postorder(
         orig_type, _convert_tensor_to_float)
     noop_type, not_mutated = type_transformations.transform_type_postorder(
@@ -105,10 +104,9 @@ class TransformTypePostorderTest(absltest.TestCase):
     self.assertFalse(not_mutated)
 
   def test_recurses_under_federated_type(self):
-    orig_type = computation_types.FederatedType([tf.int32],
-                                                placement_literals.CLIENTS)
+    orig_type = computation_types.FederatedType([tf.int32], placements.CLIENTS)
     expected_type = computation_types.FederatedType([tf.float32],
-                                                    placement_literals.CLIENTS)
+                                                    placements.CLIENTS)
     result_type, mutated = type_transformations.transform_type_postorder(
         orig_type, _convert_tensor_to_float)
     noop_type, not_mutated = type_transformations.transform_type_postorder(
@@ -119,8 +117,7 @@ class TransformTypePostorderTest(absltest.TestCase):
     self.assertFalse(not_mutated)
 
   def test_updates_mutated_bit_at_federated(self):
-    orig_type = computation_types.FederatedType(tf.int32,
-                                                placement_literals.CLIENTS)
+    orig_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     _, mutated = type_transformations.transform_type_postorder(
         orig_type, _convert_federated_to_tensor)
     self.assertTrue(mutated)

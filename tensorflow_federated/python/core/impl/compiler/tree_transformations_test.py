@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.impl.compiler import test_utils as compile
 from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def _create_chained_dummy_federated_applys(functions, arg):
@@ -75,8 +75,7 @@ def _count_called_intrinsics(comp, uri=None):
 def _create_complex_computation():
   tensor_type = computation_types.TensorType(tf.int32)
   compiled = building_block_factory.create_compiled_identity(tensor_type, 'a')
-  federated_type = computation_types.FederatedType(tf.int32,
-                                                   placement_literals.SERVER)
+  federated_type = computation_types.FederatedType(tf.int32, placements.SERVER)
   ref = building_blocks.Reference('b', federated_type)
   called_federated_broadcast = building_block_factory.create_federated_broadcast(
       ref)
@@ -1614,8 +1613,7 @@ class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
 
   def test_merges_federated_applys(self):
     fn = compiler_test_utils.create_identity_function('a', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.SERVER)
+    arg_type = computation_types.FederatedType(tf.int32, placements.SERVER)
     arg = building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_applys([fn, fn], arg)
     comp = call
@@ -1636,8 +1634,7 @@ class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
 
   def test_merges_federated_maps(self):
     fn = compiler_test_utils.create_identity_function('a', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
@@ -1658,8 +1655,7 @@ class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
 
   def test_merges_federated_maps_with_different_names(self):
     fn_1 = compiler_test_utils.create_identity_function('a', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     fn_2 = compiler_test_utils.create_identity_function('b', tf.int32)
     call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
@@ -1681,8 +1677,7 @@ class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
 
   def test_merges_federated_maps_with_different_types(self):
     fn_1 = _create_lambda_to_dummy_cast('a', tf.int32, tf.float32)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     fn_2 = compiler_test_utils.create_identity_function('b', tf.float32)
     call = _create_chained_dummy_federated_maps([fn_1, fn_2], arg)
@@ -1706,7 +1701,7 @@ class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
     parameter_type = [('b', tf.int32), ('c', tf.int32)]
     fn = compiler_test_utils.create_identity_function('a', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
-                                               placement_literals.CLIENTS)
+                                               placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
@@ -1729,8 +1724,7 @@ class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
   def test_merges_federated_maps_with_unbound_references(self):
     ref = building_blocks.Reference('a', tf.int32)
     fn = building_blocks.Lambda('b', tf.int32, ref)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
@@ -1751,8 +1745,7 @@ class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
 
   def test_merges_nested_federated_maps(self):
     fn = compiler_test_utils.create_identity_function('a', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     block = compiler_test_utils.create_dummy_block(call, variable_name='b')
@@ -1775,8 +1768,7 @@ class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
 
   def test_merges_multiple_federated_maps(self):
     fn = compiler_test_utils.create_identity_function('a', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn, fn], arg)
     comp = call
@@ -1813,8 +1805,7 @@ class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
 
   def test_does_not_merge_one_federated_map(self):
     fn = compiler_test_utils.create_identity_function('a', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call = building_block_factory.create_federated_map(fn, arg)
     comp = call
@@ -1832,8 +1823,7 @@ class MergeChainedFederatedMapOrApplysTest(test_case.TestCase):
 
   def test_does_not_merge_separated_federated_maps(self):
     fn = compiler_test_utils.create_identity_function('a', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call_1 = building_block_factory.create_federated_map(fn, arg)
     block = compiler_test_utils.create_dummy_block(call_1, variable_name='b')
@@ -2007,7 +1997,7 @@ class MergeTupleIntrinsicsTest(test_case.TestCase):
   def test_merges_federated_aggregates_with_unknown_parameter_dim(self):
     value_type = tf.int32
     federated_value_type = computation_types.FederatedType(
-        value_type, placement_literals.CLIENTS)
+        value_type, placements.CLIENTS)
     value = building_blocks.Data('data', federated_value_type)
 
     # Concrete zero has fixed dimension, but the federated aggregate will
@@ -2601,8 +2591,7 @@ class MergeTupleIntrinsicsTest(test_case.TestCase):
   def test_merges_federated_maps_with_unbound_reference(self):
     ref = building_blocks.Reference('a', tf.int32)
     fn = building_blocks.Lambda('b', tf.int32, ref)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     called_intrinsic = building_block_factory.create_federated_map(fn, arg)
     calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
@@ -3233,7 +3222,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
     parameter_type = [('a', tf.int32), ('b', tf.int32)]
     fn = compiler_test_utils.create_identity_function('c', parameter_type)
     arg_type = computation_types.FederatedType(parameter_type,
-                                               placement_literals.CLIENTS)
+                                               placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call = building_block_factory.create_federated_map(fn, arg)
     comp = call
@@ -3266,8 +3255,7 @@ class RemoveMappedOrAppliedIdentityTest(parameterized.TestCase):
 
   def test_removes_chained_federated_maps(self):
     fn = compiler_test_utils.create_identity_function('a', tf.int32)
-    arg_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    arg_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     arg = building_blocks.Data('data', arg_type)
     call = _create_chained_dummy_federated_maps([fn, fn], arg)
     comp = call
@@ -4138,8 +4126,7 @@ class InsertTensorFlowIdentityAtLeavesTest(test_case.TestCase):
                      computation_types.TensorType(tf.int32))
 
   def test_does_not_transform_references_to_federated_types(self):
-    fed_type = computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)
+    fed_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     identity_lam = building_blocks.Lambda(
         'x', tf.int32, building_blocks.Reference('x', fed_type))
     untransformed_lam, _ = tree_transformations.insert_called_tf_identity_at_leaves(
@@ -4244,16 +4231,13 @@ class UnwrapPlacementTest(parameterized.TestCase):
     block = building_blocks.Block(
         [('x', building_blocks.Reference('y', tf.int32))],
         building_blocks.Reference(
-            'x',
-            computation_types.FederatedType(tf.int32,
-                                            placement_literals.CLIENTS)))
+            'x', computation_types.FederatedType(tf.int32, placements.CLIENTS)))
     with self.assertRaisesRegex(TypeError, 'lone unbound reference'):
       tree_transformations.unwrap_placement(block)
 
   def test_raises_two_unbound_references(self):
     ref_to_x = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32,
-                                             placement_literals.SERVER))
+        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
     ref_to_y = building_blocks.Reference(
         'y', computation_types.FunctionType(tf.int32, tf.float32))
     applied = building_block_factory.create_federated_apply(ref_to_y, ref_to_x)
@@ -4262,27 +4246,24 @@ class UnwrapPlacementTest(parameterized.TestCase):
 
   def test_raises_disallowed_intrinsic(self):
     fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32,
-                                             placement_literals.SERVER))
+        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
     broadcaster = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_BROADCAST.uri,
         computation_types.FunctionType(
             fed_ref.type_signature,
             computation_types.FederatedType(
                 fed_ref.type_signature.member,
-                placement_literals.CLIENTS,
+                placements.CLIENTS,
                 all_equal=True)))
     called_broadcast = building_blocks.Call(broadcaster, fed_ref)
     with self.assertRaises(ValueError):
       tree_transformations.unwrap_placement(called_broadcast)
 
-  def test_raises_multiple_placement_literals(self):
+  def test_raises_multiple_placements(self):
     server_placed_data = building_blocks.Data(
-        'x', computation_types.FederatedType(tf.int32,
-                                             placement_literals.SERVER))
+        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
     clients_placed_data = building_blocks.Data(
-        'y',
-        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
+        'y', computation_types.FederatedType(tf.int32, placements.CLIENTS))
     block_holding_both = building_blocks.Block([('x', server_placed_data)],
                                                clients_placed_data)
     with self.assertRaisesRegex(ValueError, 'contains a placement other than'):
@@ -4290,8 +4271,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
 
   def test_passes_unbound_type_signature_obscured_under_block(self):
     fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32,
-                                             placement_literals.SERVER))
+        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
     block = building_blocks.Block(
         [('y', fed_ref), ('x', building_blocks.Data('dummy', tf.int32)),
          ('z', building_blocks.Reference('x', tf.int32))],
@@ -4301,8 +4281,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
   def test_passes_noarg_lambda(self):
     lam = building_blocks.Lambda(None, None,
                                  building_blocks.Data('a', tf.int32))
-    fed_int_type = computation_types.FederatedType(tf.int32,
-                                                   placement_literals.SERVER)
+    fed_int_type = computation_types.FederatedType(tf.int32, placements.SERVER)
     fed_eval = building_blocks.Intrinsic(
         intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
         computation_types.FunctionType(lam.type_signature, fed_int_type))
@@ -4313,8 +4292,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_ref = building_blocks.Reference('x', tf.int32)
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
     fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32,
-                                             placement_literals.SERVER))
+        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
     applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
@@ -4336,8 +4314,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_ref = building_blocks.Reference('x', tf.int32)
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
     fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32,
-                                             placement_literals.SERVER))
+        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
     applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
@@ -4373,8 +4350,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_ref = building_blocks.Reference('x', tf.int32)
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
     fed_ref = building_blocks.Reference(
-        'x', computation_types.FederatedType(tf.int32,
-                                             placement_literals.SERVER))
+        'x', computation_types.FederatedType(tf.int32, placements.SERVER))
     applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
@@ -4396,8 +4372,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_ref = building_blocks.Reference('x', tf.int32)
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
     fed_ref = building_blocks.Reference(
-        'x',
-        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
+        'x', computation_types.FederatedType(tf.int32, placements.CLIENTS))
     applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
@@ -4432,8 +4407,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_ref = building_blocks.Reference('x', tf.int32)
     int_id = building_blocks.Lambda('x', tf.int32, int_ref)
     fed_ref = building_blocks.Reference(
-        'x',
-        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
+        'x', computation_types.FederatedType(tf.int32, placements.CLIENTS))
     applied_id = building_block_factory.create_federated_map_or_apply(
         int_id, fed_ref)
     second_applied_id = building_block_factory.create_federated_map_or_apply(
@@ -4455,7 +4429,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
     fed_tuple = building_blocks.Reference(
         'tup',
         computation_types.FederatedType([tf.int32, tf.float32] * 2,
-                                        placement_literals.SERVER))
+                                        placements.SERVER))
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     zipped = building_block_factory.create_federated_zip(unzipped)
     placement_unwrapped, modified = tree_transformations.unwrap_placement(
@@ -4475,7 +4449,7 @@ class UnwrapPlacementTest(parameterized.TestCase):
     fed_tuple = building_blocks.Reference(
         'tup',
         computation_types.FederatedType([tf.int32, tf.float32] * 2,
-                                        placement_literals.CLIENTS))
+                                        placements.CLIENTS))
     unzipped = building_block_factory.create_federated_unzip(fed_tuple)
     zipped = building_block_factory.create_federated_zip(unzipped)
     placement_unwrapped, modified = tree_transformations.unwrap_placement(
@@ -4498,9 +4472,9 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_data = building_blocks.Data('x', tf.int32)
     float_data = building_blocks.Data('x', tf.float32)
     fed_int = building_block_factory.create_federated_value(
-        int_data, placement_literals.SERVER)
+        int_data, placements.SERVER)
     fed_float = building_block_factory.create_federated_value(
-        float_data, placement_literals.SERVER)
+        float_data, placements.SERVER)
     tup = building_blocks.Struct([fed_int, fed_float])
     zipped = building_block_factory.create_federated_zip(tup)
     placement_unwrapped, modified = tree_transformations.unwrap_placement(
@@ -4526,9 +4500,9 @@ class UnwrapPlacementTest(parameterized.TestCase):
     int_data = building_blocks.Data('x', tf.int32)
     float_data = building_blocks.Data('x', tf.float32)
     fed_int = building_block_factory.create_federated_value(
-        int_data, placement_literals.CLIENTS)
+        int_data, placements.CLIENTS)
     fed_float = building_block_factory.create_federated_value(
-        float_data, placement_literals.CLIENTS)
+        float_data, placements.CLIENTS)
     tup = building_blocks.Struct([fed_int, fed_float])
     zipped = building_block_factory.create_federated_zip(tup)
     placement_unwrapped, modified = tree_transformations.unwrap_placement(
@@ -4554,11 +4528,11 @@ class UnwrapPlacementTest(parameterized.TestCase):
 
   def test_unwrap_placement_with_lambda_inserts_federated_apply(self):
     federated_ref = building_blocks.Reference(
-        'outer_ref',
-        computation_types.FederatedType(tf.int32, placement_literals.SERVER))
+        'outer_ref', computation_types.FederatedType(tf.int32,
+                                                     placements.SERVER))
     inner_federated_ref = building_blocks.Reference(
-        'inner_ref',
-        computation_types.FederatedType(tf.int32, placement_literals.SERVER))
+        'inner_ref', computation_types.FederatedType(tf.int32,
+                                                     placements.SERVER))
     identity_lambda = building_blocks.Lambda('inner_ref',
                                              inner_federated_ref.type_signature,
                                              inner_federated_ref)
@@ -4571,11 +4545,11 @@ class UnwrapPlacementTest(parameterized.TestCase):
   def test_unwrap_placement_with_lambda_produces_lambda_with_unplaced_type_signature(
       self):
     federated_ref = building_blocks.Reference(
-        'outer_ref',
-        computation_types.FederatedType(tf.int32, placement_literals.SERVER))
+        'outer_ref', computation_types.FederatedType(tf.int32,
+                                                     placements.SERVER))
     inner_federated_ref = building_blocks.Reference(
-        'inner_ref',
-        computation_types.FederatedType(tf.int32, placement_literals.SERVER))
+        'inner_ref', computation_types.FederatedType(tf.int32,
+                                                     placements.SERVER))
     identity_lambda = building_blocks.Lambda('inner_ref',
                                              inner_federated_ref.type_signature,
                                              inner_federated_ref)

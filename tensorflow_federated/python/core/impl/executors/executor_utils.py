@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.compiler import local_computation_fac
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
@@ -242,16 +242,16 @@ async def compute_intrinsic_federated_broadcast(
   py_typecheck.check_type(executor, executor_base.Executor)
   py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
   type_analysis.check_federated_type(
-      arg.type_signature, placement=placement_literals.SERVER, all_equal=True)
+      arg.type_signature, placement=placements.SERVER, all_equal=True)
   value = await arg.compute()
   type_signature = computation_types.FederatedType(
-      arg.type_signature.member, placement_literals.CLIENTS, all_equal=True)
+      arg.type_signature.member, placements.CLIENTS, all_equal=True)
   return await executor.create_value(value, type_signature)
 
 
 async def compute_intrinsic_federated_value(
     executor: executor_base.Executor, arg: executor_value_base.ExecutorValue,
-    placement: placement_literals.PlacementLiteral
+    placement: placements.PlacementLiteral
 ) -> executor_value_base.ExecutorValue:
   """Computes a federated value on the given `executor`.
 
@@ -268,7 +268,7 @@ async def compute_intrinsic_federated_value(
   """
   py_typecheck.check_type(executor, executor_base.Executor)
   py_typecheck.check_type(arg, executor_value_base.ExecutorValue)
-  py_typecheck.check_type(placement, placement_literals.PlacementLiteral)
+  py_typecheck.check_type(placement, placements.PlacementLiteral)
   value = await arg.compute()
   type_signature = computation_types.FederatedType(
       arg.type_signature, placement, all_equal=True)

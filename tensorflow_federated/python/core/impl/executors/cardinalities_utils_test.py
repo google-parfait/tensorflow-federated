@@ -18,7 +18,7 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.executors import cardinalities_utils
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 class InferCardinalitiesTest(absltest.TestCase):
@@ -39,7 +39,7 @@ class InferCardinalitiesTest(absltest.TestCase):
 
   def test_raises_federated_type_integer(self):
     federated_type = computation_types.FederatedType(
-        tf.int32, placement_literals.CLIENTS, all_equal=False)
+        tf.int32, placements.CLIENTS, all_equal=False)
     with self.assertRaises(TypeError):
       cardinalities_utils.infer_cardinalities(1, federated_type)
 
@@ -50,30 +50,30 @@ class InferCardinalitiesTest(absltest.TestCase):
 
     generator = generator_fn()
     federated_type = computation_types.FederatedType(
-        tf.int32, placement_literals.CLIENTS, all_equal=False)
+        tf.int32, placements.CLIENTS, all_equal=False)
     with self.assertRaises(TypeError):
       cardinalities_utils.infer_cardinalities(generator, federated_type)
 
   def test_passes_federated_type_tuple(self):
     tup = tuple(range(5))
     federated_type = computation_types.FederatedType(
-        tf.int32, placement_literals.CLIENTS, all_equal=False)
+        tf.int32, placements.CLIENTS, all_equal=False)
     cardinalities_utils.infer_cardinalities(tup, federated_type)
     five_client_cardinalities = cardinalities_utils.infer_cardinalities(
         tup, federated_type)
-    self.assertEqual(five_client_cardinalities[placement_literals.CLIENTS], 5)
+    self.assertEqual(five_client_cardinalities[placements.CLIENTS], 5)
 
   def test_adds_list_length_as_cardinality_at_clients(self):
     federated_type = computation_types.FederatedType(
-        tf.int32, placement_literals.CLIENTS, all_equal=False)
+        tf.int32, placements.CLIENTS, all_equal=False)
     five_clients = list(range(5))
     five_client_cardinalities = cardinalities_utils.infer_cardinalities(
         five_clients, federated_type)
-    self.assertEqual(five_client_cardinalities[placement_literals.CLIENTS], 5)
+    self.assertEqual(five_client_cardinalities[placements.CLIENTS], 5)
 
   def test_raises_conflicting_clients_sizes(self):
     federated_type = computation_types.FederatedType(
-        tf.int32, placement_literals.CLIENTS, all_equal=False)
+        tf.int32, placements.CLIENTS, all_equal=False)
     five_clients = list(range(5))
     ten_clients = list(range(10))
     tuple_of_federated_types = computation_types.StructType(
@@ -83,8 +83,8 @@ class InferCardinalitiesTest(absltest.TestCase):
                                               tuple_of_federated_types)
 
   def test_adds_list_length_as_cardinality_at_new_placement(self):
-    new_placement = placement_literals.PlacementLiteral(
-        'Agg', 'Agg', False, 'Intermediate aggregators')
+    new_placement = placements.PlacementLiteral('Agg', 'Agg', False,
+                                                'Intermediate aggregators')
     federated_type = computation_types.FederatedType(
         tf.int32, new_placement, all_equal=False)
     ten_aggregators = list(range(10))
@@ -94,9 +94,9 @@ class InferCardinalitiesTest(absltest.TestCase):
 
   def test_recurses_under_tuple_type(self):
     client_int = computation_types.FederatedType(
-        tf.int32, placement_literals.CLIENTS, all_equal=False)
-    new_placement = placement_literals.PlacementLiteral(
-        'Agg', 'Agg', False, 'Intermediate aggregators')
+        tf.int32, placements.CLIENTS, all_equal=False)
+    new_placement = placements.PlacementLiteral('Agg', 'Agg', False,
+                                                'Intermediate aggregators')
     aggregator_placed_int = computation_types.FederatedType(
         tf.int32, new_placement, all_equal=False)
     five_aggregators = list(range(5))
@@ -104,7 +104,7 @@ class InferCardinalitiesTest(absltest.TestCase):
     mixed_cardinalities = cardinalities_utils.infer_cardinalities(
         [ten_clients, five_aggregators],
         computation_types.StructType([client_int, aggregator_placed_int]))
-    self.assertEqual(mixed_cardinalities[placement_literals.CLIENTS], 10)
+    self.assertEqual(mixed_cardinalities[placements.CLIENTS], 10)
     self.assertEqual(mixed_cardinalities[new_placement], 5)
 
   def test_infer_cardinalities_success_structure(self):
@@ -114,31 +114,27 @@ class InferCardinalitiesTest(absltest.TestCase):
                            structure.Struct([('C', [[1, 2], [3, 4], [5, 6]]),
                                              ('D', [True, False, True])]))]),
         computation_types.StructType([
-            ('A',
-             computation_types.FederatedType(tf.int32,
-                                             placement_literals.CLIENTS)),
+            ('A', computation_types.FederatedType(tf.int32,
+                                                  placements.CLIENTS)),
             ('B', [('C',
                     computation_types.FederatedType(
                         computation_types.SequenceType(tf.int32),
-                        placement_literals.CLIENTS)),
+                        placements.CLIENTS)),
                    ('D',
                     computation_types.FederatedType(tf.bool,
-                                                    placement_literals.CLIENTS))
-                  ])
+                                                    placements.CLIENTS))])
         ]))
-    self.assertDictEqual(foo, {placement_literals.CLIENTS: 3})
+    self.assertDictEqual(foo, {placements.CLIENTS: 3})
 
   def test_infer_cardinalities_structure_failure(self):
     with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
       cardinalities_utils.infer_cardinalities(
           structure.Struct([('A', [1, 2, 3]), ('B', [1, 2])]),
           computation_types.StructType([
-              ('A',
-               computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS)),
-              ('B',
-               computation_types.FederatedType(tf.int32,
-                                               placement_literals.CLIENTS))
+              ('A', computation_types.FederatedType(tf.int32,
+                                                    placements.CLIENTS)),
+              ('B', computation_types.FederatedType(tf.int32,
+                                                    placements.CLIENTS))
           ]))
 
 
@@ -151,31 +147,28 @@ class MergeCardinalitiesTest(absltest.TestCase):
   def test_raises_non_placement_keyed_dict(self):
     with self.assertRaises(TypeError):
       cardinalities_utils.merge_cardinalities({'a': 1},
-                                              {placement_literals.CLIENTS: 10})
+                                              {placements.CLIENTS: 10})
     with self.assertRaises(TypeError):
-      cardinalities_utils.merge_cardinalities({placement_literals.CLIENTS: 10},
+      cardinalities_utils.merge_cardinalities({placements.CLIENTS: 10},
                                               {'a': 1})
 
   def test_raises_merge_conflicting_cardinalities(self):
     with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
-      cardinalities_utils.merge_cardinalities({placement_literals.CLIENTS: 10},
-                                              {placement_literals.CLIENTS: 11})
+      cardinalities_utils.merge_cardinalities({placements.CLIENTS: 10},
+                                              {placements.CLIENTS: 11})
 
   def test_noops_no_conflict(self):
-    clients_placed_cardinality = {placement_literals.CLIENTS: 10}
+    clients_placed_cardinality = {placements.CLIENTS: 10}
     noop = cardinalities_utils.merge_cardinalities(clients_placed_cardinality,
                                                    clients_placed_cardinality)
     self.assertEqual(noop, clients_placed_cardinality)
 
-  def test_merges_different_placement_literals(self):
-    clients_placed_cardinality = {placement_literals.CLIENTS: 10}
-    server_placed_cardinality = {placement_literals.SERVER: 1}
+  def test_merges_different_placements(self):
+    clients_placed_cardinality = {placements.CLIENTS: 10}
+    server_placed_cardinality = {placements.SERVER: 1}
     merged = cardinalities_utils.merge_cardinalities(clients_placed_cardinality,
                                                      server_placed_cardinality)
-    self.assertEqual(merged, {
-        placement_literals.CLIENTS: 10,
-        placement_literals.SERVER: 1
-    })
+    self.assertEqual(merged, {placements.CLIENTS: 10, placements.SERVER: 1})
 
 
 if __name__ == '__main__':

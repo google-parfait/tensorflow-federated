@@ -35,7 +35,7 @@ from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.context_stack import symbol_binding_context
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
@@ -380,7 +380,7 @@ def to_value(
     result = arg
   elif isinstance(arg, building_blocks.ComputationBuildingBlock):
     result = ValueImpl(arg, context_stack)
-  elif isinstance(arg, placement_literals.PlacementLiteral):
+  elif isinstance(arg, placements.PlacementLiteral):
     result = ValueImpl(building_blocks.Placement(arg), context_stack)
   elif isinstance(
       arg, (computation_base.Computation, function_utils.PolymorphicFunction)):

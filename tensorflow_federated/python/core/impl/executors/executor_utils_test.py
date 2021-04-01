@@ -27,7 +27,7 @@ from tensorflow_federated.python.core.impl.executors import federated_composing_
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def create_test_federated_stack(
@@ -38,11 +38,8 @@ def create_test_federated_stack(
     return reference_resolving_executor.ReferenceResolvingExecutor(executor)
 
   factory = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-      placement_literals.SERVER:
-          create_bottom_stack(),
-      placement_literals.CLIENTS: [
-          create_bottom_stack() for _ in range(num_clients)
-      ],
+      placements.SERVER: create_bottom_stack(),
+      placements.CLIENTS: [create_bottom_stack() for _ in range(num_clients)],
   })
   return federating_executor.FederatingExecutor(factory, create_bottom_stack())
 
@@ -58,9 +55,9 @@ def create_test_aggregated_stack(
 
   def create_worker_stack():
     factroy = federated_resolving_strategy.FederatedResolvingStrategy.factory({
-        placement_literals.SERVER:
+        placements.SERVER:
             create_bottom_stack(),
-        placement_literals.CLIENTS: [
+        placements.CLIENTS: [
             create_bottom_stack() for _ in range(clients_per_stack)
         ],
     })
@@ -159,7 +156,7 @@ class ComputeIntrinsicFederatedValueTest(executor_test_utils.AsyncTestCase,
     value = self.run_sync(executor.create_value(value, type_signature))
     result = self.run_sync(
         executor_utils.compute_intrinsic_federated_value(
-            executor, value, placement_literals.CLIENTS))
+            executor, value, placements.CLIENTS))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     expected_type = computation_types.at_clients(type_signature, all_equal=True)
@@ -174,7 +171,7 @@ class ComputeIntrinsicFederatedValueTest(executor_test_utils.AsyncTestCase,
     value = self.run_sync(executor.create_value(value, type_signature))
     result = self.run_sync(
         executor_utils.compute_intrinsic_federated_value(
-            executor, value, placement_literals.SERVER))
+            executor, value, placements.SERVER))
 
     self.assertIsInstance(result, executor_value_base.ExecutorValue)
     expected_type = computation_types.at_server(type_signature)

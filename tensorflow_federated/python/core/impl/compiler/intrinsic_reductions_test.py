@@ -23,7 +23,7 @@ from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def _count_intrinsics(comp, uri):
@@ -45,7 +45,7 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase):
     uri = intrinsic_defs.FEDERATED_MEAN.uri
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def foo(x):
       return intrinsics.federated_mean(x)
 
@@ -69,7 +69,7 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase):
     uri = intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def foo(x):
       return intrinsics.federated_mean(x, x)
 
@@ -92,7 +92,7 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase):
     uri = intrinsic_defs.FEDERATED_SUM.uri
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placement_literals.CLIENTS))
+        computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def foo(x):
       return intrinsics.federated_sum(x)
 

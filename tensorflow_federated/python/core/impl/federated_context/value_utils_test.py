@@ -25,7 +25,7 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
 from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.federated_context import value_utils
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 _context_stack = context_stack_impl.context_stack
 
@@ -58,30 +58,28 @@ class ValueUtilsTest(parameterized.TestCase):
   def test_ensure_federated_value(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def _(x):
       x = value_impl.to_value(x, None, _context_stack)
-      value_utils.ensure_federated_value(x, placement_literals.CLIENTS)
+      value_utils.ensure_federated_value(x, placements.CLIENTS)
       return x
 
   def test_ensure_federated_value_wrong_placement(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
+        computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def _(x):
       x = value_impl.to_value(x, None, _context_stack)
       with self.assertRaises(TypeError):
-        value_utils.ensure_federated_value(x, placement_literals.SERVER)
+        value_utils.ensure_federated_value(x, placements.SERVER)
       return x
 
   def test_ensure_federated_value_implicitly_zippable(self):
 
     @computations.federated_computation(
         computation_types.StructType(
-            (computation_types.FederatedType(tf.int32,
-                                             placement_literals.CLIENTS),
-             computation_types.FederatedType(tf.int32,
-                                             placement_literals.CLIENTS))))
+            (computation_types.FederatedType(tf.int32, placements.CLIENTS),
+             computation_types.FederatedType(tf.int32, placements.CLIENTS))))
     def _(x):
       x = value_impl.to_value(x, None, _context_stack)
       value_utils.ensure_federated_value(x)
@@ -91,10 +89,8 @@ class ValueUtilsTest(parameterized.TestCase):
 
     @computations.federated_computation(
         computation_types.StructType(
-            (computation_types.FederatedType(tf.int32,
-                                             placement_literals.CLIENTS),
-             computation_types.FederatedType(tf.int32,
-                                             placement_literals.SERVER))))
+            (computation_types.FederatedType(tf.int32, placements.CLIENTS),
+             computation_types.FederatedType(tf.int32, placements.SERVER))))
     def _(x):
       x = value_impl.to_value(x, None, _context_stack)
       with self.assertRaises(TypeError):

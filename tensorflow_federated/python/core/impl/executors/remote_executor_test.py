@@ -36,7 +36,7 @@ from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
 from tensorflow_federated.python.core.impl.executors import remote_executor
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def create_remote_executor():
@@ -69,7 +69,7 @@ def test_context():
 
   remote_exec = remote_executor.RemoteExecutor(channel)
   asyncio.get_event_loop().run_until_complete(
-      remote_exec.set_cardinalities({placement_literals.CLIENTS: 3}))
+      remote_exec.set_cardinalities({placements.CLIENTS: 3}))
   executor = reference_resolving_executor.ReferenceResolvingExecutor(
       remote_exec)
   try:
@@ -188,7 +188,7 @@ class RemoteExecutorTest(absltest.TestCase):
     executor = create_remote_executor()
     loop = asyncio.get_event_loop()
     result = loop.run_until_complete(
-        executor.set_cardinalities({placement_literals.CLIENTS: 3}))
+        executor.set_cardinalities({placements.CLIENTS: 3}))
     self.assertIsNone(result)
 
   def test_create_value_returns_remote_value(self, mock_stub):
@@ -482,7 +482,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
     with test_context() as context:
 
       @computations.federated_computation(
-          computation_types.FederatedType(tf.int32, placement_literals.CLIENTS))
+          computation_types.FederatedType(tf.int32, placements.CLIENTS))
       def foo(x):
         return intrinsics.federated_sum(x)
 
@@ -490,7 +490,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
       self.assertEqual(result, 60)
 
       @computations.federated_computation(
-          computation_types.FederatedType(tf.int32, placement_literals.SERVER))
+          computation_types.FederatedType(tf.int32, placements.SERVER))
       def bar(x):
         return intrinsics.federated_broadcast(x)
 
@@ -502,7 +502,7 @@ class RemoteExecutorIntegrationTest(parameterized.TestCase):
         return x + 1
 
       @computations.federated_computation(
-          computation_types.FederatedType(tf.int32, placement_literals.SERVER))
+          computation_types.FederatedType(tf.int32, placements.SERVER))
       def baz(x):
         value = intrinsics.federated_broadcast(x)
         return intrinsics.federated_map(add_one, value)

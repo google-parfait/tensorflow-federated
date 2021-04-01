@@ -22,7 +22,7 @@ from tensorflow_federated.python.core.impl.compiler import building_block_factor
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import test_utils
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
 
 
@@ -258,9 +258,9 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
   def test_intrinsic_class_succeeds_simple_federated_map(self):
     simple_function = computation_types.FunctionType(tf.int32, tf.float32)
     federated_arg = computation_types.FederatedType(simple_function.parameter,
-                                                    placement_literals.CLIENTS)
-    federated_result = computation_types.FederatedType(
-        simple_function.result, placement_literals.CLIENTS)
+                                                    placements.CLIENTS)
+    federated_result = computation_types.FederatedType(simple_function.result,
+                                                       placements.CLIENTS)
     federated_map_concrete_type = computation_types.FunctionType(
         computation_types.StructType((simple_function, federated_arg)),
         federated_result)
@@ -315,7 +315,7 @@ class ComputationBuildingBlocksTest(absltest.TestCase):
     self._serialize_deserialize_roundtrip_test(y)
 
   def test_basic_functionality_of_placement_class(self):
-    x = building_blocks.Placement(placement_literals.CLIENTS)
+    x = building_blocks.Placement(placements.CLIENTS)
     self.assertEqual(str(x.type_signature), 'placement')
     self.assertEqual(x.uri, 'clients')
     self.assertEqual(repr(x), 'Placement(\'clients\')')
@@ -440,7 +440,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_placement(self):
-    comp = building_blocks.Placement(placement_literals.CLIENTS)
+    comp = building_blocks.Placement(placements.CLIENTS)
 
     self.assertEqual(comp.compact_representation(), 'CLIENTS')
     self.assertEqual(comp.formatted_representation(), 'CLIENTS')

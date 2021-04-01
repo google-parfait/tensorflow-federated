@@ -32,7 +32,7 @@ from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_value_base
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_factory
 from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
@@ -385,8 +385,8 @@ def create_dummy_intrinsic_def_federated_zip_at_server():
 
 
 def create_dummy_placement_literal():
-  """Returns a `placement_literals.PlacementLiteral` and type."""
-  value = placement_literals.SERVER
+  """Returns a `placements.PlacementLiteral` and type."""
+  value = placements.SERVER
   type_signature = computation_types.PlacementType()
   return value, type_signature
 

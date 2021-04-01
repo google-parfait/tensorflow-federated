@@ -30,7 +30,7 @@ from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 def create_test_executor_factory():
@@ -138,7 +138,7 @@ class GetHashableKeyTest(absltest.TestCase):
 
   def test_get_key_for_identical_list_federated_type(self):
     federated_type = computation_types.FederatedType(
-        computation_types.TensorType(tf.float32), placement_literals.CLIENTS)
+        computation_types.TensorType(tf.float32), placements.CLIENTS)
     first_list = [0., 1.]
     first_key = caching_executor._get_hashable_key(first_list, federated_type)
     second_list = [0., 1.]
@@ -147,7 +147,7 @@ class GetHashableKeyTest(absltest.TestCase):
 
   def test_get_key_for_different_list_federated_type(self):
     federated_type = computation_types.FederatedType(
-        computation_types.TensorType(tf.float32), placement_literals.CLIENTS)
+        computation_types.TensorType(tf.float32), placements.CLIENTS)
     first_list = [0., 1.]
     first_key = caching_executor._get_hashable_key(first_list, federated_type)
     second_list = [0., 2.]

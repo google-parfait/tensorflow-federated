@@ -18,7 +18,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation_context
-from tensorflow_federated.python.core.impl.types import placement_literals
+from tensorflow_federated.python.core.impl.types import placements
 
 
 class TensorFlowComputationContextTest(test_case.TestCase):
@@ -26,8 +26,7 @@ class TensorFlowComputationContextTest(test_case.TestCase):
   def test_invoke_raises_value_error_with_federated_computation(self):
 
     @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placement_literals.SERVER,
-                                        True))
+        computation_types.FederatedType(tf.int32, placements.SERVER, True))
     def foo(x):
       return intrinsics.federated_broadcast(x)
 
