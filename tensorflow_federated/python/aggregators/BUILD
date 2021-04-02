@@ -22,6 +22,7 @@ py_library(
         ":encoded",
         ":factory",
         ":mean",
+        ":primitives",
         ":quantile_estimation",
         ":robust",
         ":sampling",
@@ -149,6 +150,39 @@ py_test(
 )
 
 py_library(
+    name = "primitives",
+    srcs = ["primitives.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:value_base",
+        "//tensorflow_federated/python/core/impl/types:placements",
+    ],
+)
+
+py_test(
+    name = "primitives_test",
+    timeout = "long",
+    srcs = ["primitives_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":primitives",
+        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/api:intrinsics",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/backends/test:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:placements",
+        "//tensorflow_federated/python/core/test:static_assert",
+    ],
+)
+
+py_library(
     name = "quantile_estimation",
     srcs = ["quantile_estimation.py"],
     srcs_version = "PY3",
@@ -261,6 +295,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":factory",
+        ":primitives",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
@@ -270,7 +305,6 @@ py_library(
         "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:estimation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
-        "//tensorflow_federated/python/core/utils:federated_aggregations",
     ],
 )
 

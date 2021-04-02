@@ -18,6 +18,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
@@ -25,7 +26,6 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.test import static_assert
-from tensorflow_federated.python.core.utils import federated_aggregations
 
 
 class FederatedMinTest(test_case.TestCase):
@@ -35,29 +35,25 @@ class FederatedMinTest(test_case.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_min(value):
-      return federated_aggregations.federated_min(value)
+      return primitives.federated_min(value)
 
     value = call_federated_min([1.0, 2.0, 5.0])
     self.assertEqual(value, 1.0)
 
   def test_federated_min_on_nested_scalars(self):
-    tuple_type = collections.OrderedDict([
-        ('x', tf.float32),
-        ('y', tf.float32),
-    ])
+    tuple_type = collections.OrderedDict(x=tf.float32, y=tf.float32)
 
     @computations.federated_computation(
         computation_types.FederatedType(tuple_type, placements.CLIENTS))
     def call_federated_min(value):
-      return federated_aggregations.federated_min(value)
+      return primitives.federated_min(value)
 
     test_type = collections.namedtuple('NestedScalars', ['x', 'y'])
     value = call_federated_min(
         [test_type(0.0, 1.0),
          test_type(-1.0, 5.0),
          test_type(2.0, -10.0)])
-    self.assertEqual(value, collections.OrderedDict([('x', -1.0),
-                                                     ('y', -10.0)]))
+    self.assertEqual(value, collections.OrderedDict(x=-1.0, y=-10.0))
 
   def test_federated_min_wrong_type(self):
     with self.assertRaisesRegex(TypeError,
@@ -66,7 +62,7 @@ class FederatedMinTest(test_case.TestCase):
       @computations.federated_computation(
           computation_types.FederatedType(tf.bool, placements.CLIENTS))
       def call_federated_min(value):
-        return federated_aggregations.federated_min(value)
+        return primitives.federated_min(value)
 
       call_federated_min([False])
 
@@ -77,7 +73,7 @@ class FederatedMinTest(test_case.TestCase):
       @computations.federated_computation(
           computation_types.FederatedType(tf.int32, placements.SERVER))
       def call_federated_min(value):
-        return federated_aggregations.federated_min(value)
+        return primitives.federated_min(value)
 
       call_federated_min([1, 2, 3])
 
@@ -89,7 +85,7 @@ class FederatedMaxTest(test_case.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType((tf.int32, [3]), placements.CLIENTS))
     def call_federated_max(value):
-      return federated_aggregations.federated_max(value)
+      return primitives.federated_max(value)
 
     client1 = np.array([1, -2, 3], dtype=np.int32)
     client2 = np.array([0, 7, 1], dtype=np.int32)
@@ -101,7 +97,7 @@ class FederatedMaxTest(test_case.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_max(value):
-      return federated_aggregations.federated_max(value)
+      return primitives.federated_max(value)
 
     value = call_federated_max([6.0, 4.0, 1.0, 7.0])
     self.assertEqual(value, 7.0)
@@ -113,37 +109,31 @@ class FederatedMaxTest(test_case.TestCase):
       @computations.federated_computation(
           computation_types.FederatedType(tf.bool, placements.CLIENTS))
       def call_federated_max(value):
-        return federated_aggregations.federated_max(value)
+        return primitives.federated_max(value)
 
       call_federated_max([True, False])
 
   def test_federated_max_on_nested_scalars(self):
-    tuple_type = collections.OrderedDict([
-        ('a', tf.int32),
-        ('b', tf.int32),
-    ])
+    tuple_type = collections.OrderedDict(a=tf.int32, b=tf.int32)
 
     @computations.federated_computation(
         computation_types.FederatedType(tuple_type, placements.CLIENTS))
     def call_federated_max(value):
-      return federated_aggregations.federated_max(value)
+      return primitives.federated_max(value)
 
     test_type = collections.namedtuple('NestedScalars', ['a', 'b'])
     value = call_federated_max(
         [test_type(1, 5), test_type(2, 3),
          test_type(1, 8)])
-    self.assertEqual(value, collections.OrderedDict([('a', 2), ('b', 8)]))
+    self.assertEqual(value, collections.OrderedDict(a=2, b=8))
 
   def test_federated_max_nested_tensor_value(self):
-    tuple_type = collections.OrderedDict([
-        ('a', (tf.int32, [2])),
-        ('b', (tf.int32, [3])),
-    ])
+    tuple_type = collections.OrderedDict(a=(tf.int32, [2]), b=(tf.int32, [3]))
 
     @computations.federated_computation(
         computation_types.FederatedType(tuple_type, placements.CLIENTS))
     def call_federated_max(value):
-      return federated_aggregations.federated_max(value)
+      return primitives.federated_max(value)
 
     test_type = collections.namedtuple('NestedScalars', ['a', 'b'])
     client1 = test_type(
@@ -161,7 +151,7 @@ class FederatedMaxTest(test_case.TestCase):
       @computations.federated_computation(
           computation_types.FederatedType(tf.float32, placements.SERVER))
       def call_federated_max(value):
-        return federated_aggregations.federated_max(value)
+        return primitives.federated_max(value)
 
       call_federated_max([1.0, 2.0, 3.0])
 
@@ -173,7 +163,7 @@ class FederatedSampleTest(tf.test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
-      return federated_aggregations.federated_sample(value)
+      return primitives.federated_sample(value)
 
     value = call_federated_sample([1.0, 2.0, 5.0])
     self.assertCountEqual(value, [1.0, 2.0, 5.0])
@@ -187,7 +177,7 @@ class FederatedSampleTest(tf.test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(tuple_type, placements.CLIENTS))
     def call_federated_sample(value):
-      return federated_aggregations.federated_sample(value)
+      return primitives.federated_sample(value)
 
     x0 = 0.0
     y0 = 1.0
@@ -213,7 +203,7 @@ class FederatedSampleTest(tf.test.TestCase):
       @computations.federated_computation(
           computation_types.FederatedType(tf.bool, placements.SERVER))
       def call_federated_sample(value):
-        return federated_aggregations.federated_sample(value)
+        return primitives.federated_sample(value)
 
       call_federated_sample([True, False, True, True])
 
@@ -222,7 +212,7 @@ class FederatedSampleTest(tf.test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
-      return federated_aggregations.federated_sample(value)
+      return primitives.federated_sample(value)
 
     value = call_federated_sample([1.0] * 100 + [0.0] * 100)
     self.assertLen(value, 100)
@@ -233,7 +223,7 @@ class FederatedSampleTest(tf.test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
-      return federated_aggregations.federated_sample(value)
+      return primitives.federated_sample(value)
 
     value = call_federated_sample([1.0] * 100 + [np.nan] * 100)
     self.assertAlmostEqual(np.count_nonzero(np.isnan(value)), 50, delta=20)
@@ -243,7 +233,7 @@ class FederatedSampleTest(tf.test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(tf.float32, placements.CLIENTS))
     def call_federated_sample(value):
-      return federated_aggregations.federated_sample(value)
+      return primitives.federated_sample(value)
 
     value = call_federated_sample([1.0] * 100 + [np.inf] * 100)
     self.assertAlmostEqual(np.count_nonzero(np.isinf(value)), 50, delta=20)
@@ -255,7 +245,7 @@ class FederatedSampleTest(tf.test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(dict_type, placements.CLIENTS))
     def call_federated_sample(value):
-      return federated_aggregations.federated_sample(value)
+      return primitives.federated_sample(value)
 
     x = 0.0
     y = 5.0
@@ -282,7 +272,7 @@ class FederatedSampleTest(tf.test.TestCase):
     @computations.federated_computation(
         computation_types.FederatedType(nested_tuple_type, placements.CLIENTS))
     def call_federated_sample(value):
-      return federated_aggregations.federated_sample(value)
+      return primitives.federated_sample(value)
 
     tuple_type = collections.namedtuple('NestedScalars', ['x', 'y'])
     dict_type = collections.namedtuple('NestedScalars', ['a', 'b'])
@@ -308,7 +298,7 @@ class SecureQuantizedSumStaticAssertsTest(tf.test.TestCase,
     @computations.federated_computation(
         computation_types.FederatedType((dtype, (2,)), placements.CLIENTS))
     def comp_py_bounds(value):
-      return federated_aggregations.secure_quantized_sum(
+      return primitives.secure_quantized_sum(
           value, np.array(-1.0, dtype.as_numpy_dtype),
           np.array(1.0, dtype.as_numpy_dtype))
 
@@ -320,8 +310,7 @@ class SecureQuantizedSumStaticAssertsTest(tf.test.TestCase,
         computation_types.FederatedType(dtype, placements.SERVER),
         computation_types.FederatedType(dtype, placements.SERVER))
     def comp_tff_bounds(value, upper_bound, lower_bound):
-      return federated_aggregations.secure_quantized_sum(
-          value, upper_bound, lower_bound)
+      return primitives.secure_quantized_sum(value, upper_bound, lower_bound)
 
     static_assert.assert_contains_secure_aggregation(comp_tff_bounds)
 
@@ -331,7 +320,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
   def test_client_tensor_shift_int_range(self, int_type):
     """Tests that client shift produces ints in expected range for SecAgg."""
-    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+    encoded = primitives._client_tensor_shift_for_secure_sum(
         tf.constant([0, 1, 2, 3, 5, -254, -255, -256, 255, 256, 257],
                     dtype=int_type), tf.constant(-255, dtype=int_type),
         tf.constant(256, dtype=int_type))
@@ -343,7 +332,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     """Tests that ints are in expected range for SecAgg for equal bounds."""
     # Ensure all outputs are exactly lower_bound == upper_bound and there are no
     # off by 1 errors.
-    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+    encoded = primitives._client_tensor_shift_for_secure_sum(
         tf.constant([-1, 0, 1, 2, 3, 5, -254, -255, -256, 255, 256, 257],
                     dtype=int_type), tf.constant(0, dtype=int_type),
         tf.constant(0, dtype=int_type))
@@ -354,7 +343,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     """Tests that ints are in expected range for SecAgg for equal nonzero bounds."""
     # Ensure all outputs are exactly lower_bound == upper_bound and there are no
     # off by 1 errors.
-    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+    encoded = primitives._client_tensor_shift_for_secure_sum(
         tf.constant([-1, 0, 1, 2, 3, 5, -254, -255, -256, 255, 256, 257],
                     dtype=int_type), tf.constant(1, dtype=int_type),
         tf.constant(1, dtype=int_type))
@@ -365,7 +354,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     # Check upper_bound - lower_bound == _SECAGG_MAX doesn't cause off by
     # 1 issue in calculating scale factor. We expect quantization with a scale
     # factor of 2.
-    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+    encoded = primitives._client_tensor_shift_for_secure_sum(
         tf.constant(
             [-1, 0, 2**31, 2**32, 2**32 - 1, 2**32 - 2, 2**32 - 3, 2**63 - 1],
             dtype=tf.int64), tf.constant(0, dtype=tf.int64),
@@ -379,7 +368,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     # Check upper_bound - lower_bound == _SECAGG_MAX - 1 doesn't cause off by
     # 1 issue in calculating scale factor. We expect exact results without
     # scaling.
-    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+    encoded = primitives._client_tensor_shift_for_secure_sum(
         tf.constant(
             [-1, 0, 2**31, 2**32, 2**32 - 1, 2**32 - 2, 2**32 - 3, 2**63 - 1],
             dtype=tf.int64), tf.constant(0, dtype=tf.int64),
@@ -393,7 +382,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
     # Check upper_bound - lower_bound == _SECAGG_MAX + 1 doesn't cause off by
     # 1 issue in calculating scale factor. We expect exact results without
     # scaling.
-    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+    encoded = primitives._client_tensor_shift_for_secure_sum(
         tf.constant(
             [-1, 0, 2**31, 2**32, 2**32 + 1, 2**32 - 2, 2**32 - 3, 2**63 - 1],
             dtype=tf.int64), tf.constant(0, dtype=tf.int64),
@@ -405,7 +394,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
                                   ('float64', tf.float64))
   def test_client_tensor_shift_float_range(self, float_type):
     """Tests that float client shift produces ints in expected range for SecAgg."""
-    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+    encoded = primitives._client_tensor_shift_for_secure_sum(
         tf.constant([-2.0, -1.0, 1.0, 2.0], dtype=float_type),
         tf.constant(-1.0, dtype=float_type), tf.constant(1.0, dtype=float_type))
     self.assertAllEqual([0, 0, 2**32 - 1, 2**32 - 1], encoded)
@@ -415,7 +404,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_client_tensor_shift_float_range_bounds_equal(self, float_type):
     """Tests that float client shift produces ints in expected range for SecAgg."""
     # Ensure lower_bound == upper_bound doesn't cause division by zero issues.
-    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+    encoded = primitives._client_tensor_shift_for_secure_sum(
         tf.constant([-1, 0, 1, 2, 3, 5, -254, -255, -256, 255, 256, 257],
                     dtype=float_type), tf.constant(0.0, dtype=float_type),
         tf.constant(0.0, dtype=float_type))
@@ -427,7 +416,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
       self, float_type):
     """Tests that float client shift produces ints in expected range for SecAgg."""
     # Ensure lower_bound == upper_bound doesn't cause division by zero issues.
-    encoded = federated_aggregations._client_tensor_shift_for_secure_sum(
+    encoded = primitives._client_tensor_shift_for_secure_sum(
         tf.constant([-1, 0, 1, 2, 3, 5, -254, -255, -256, 255, 256, 257],
                     dtype=float_type), tf.constant(1.1, dtype=float_type),
         tf.constant(1.1, dtype=float_type))
@@ -438,7 +427,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_client_tensor_shift_invalid_bounds_float(self, float_type):
     """Ensures lower_bound > upper_bound causes error."""
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      federated_aggregations._client_tensor_shift_for_secure_sum(
+      primitives._client_tensor_shift_for_secure_sum(
           tf.constant([-2.0, -1.0, 1.0, 2.0], dtype=float_type),
           tf.constant(1.0, dtype=float_type),
           tf.constant(-1.0, dtype=float_type))
@@ -447,7 +436,7 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   def test_client_tensor_shift_invalid_bounds_int(self, int_type):
     """Ensures lower_bound > upper_bound causes error."""
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      federated_aggregations._client_tensor_shift_for_secure_sum(
+      primitives._client_tensor_shift_for_secure_sum(
           tf.constant([-2, -1, 1, 2], dtype=int_type),
           tf.constant(1, dtype=int_type), tf.constant(-1, dtype=int_type))
 
@@ -460,14 +449,14 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
     # 2**32 is outside [0, 2**32 - 1], so expect an error.
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      federated_aggregations._server_tensor_shift_for_secure_sum(
+      primitives._server_tensor_shift_for_secure_sum(
           num_summands, tf.constant(2**32, tf.int64),
           tf.constant(-1.0, float_type), tf.constant(1.0, float_type),
           float_type)
 
     # -1 is outside [0, 2**32 - 1], so expect an error.
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      federated_aggregations._server_tensor_shift_for_secure_sum(
+      primitives._server_tensor_shift_for_secure_sum(
           num_summands, tf.constant(-1,
                                     tf.int64), tf.constant(-1.0, float_type),
           tf.constant(1.0, float_type), float_type)
@@ -481,21 +470,21 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
     # 2**33 - 1 is outside [0, (2**32 - 1) * 2], so expect an error.
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      federated_aggregations._server_tensor_shift_for_secure_sum(
+      primitives._server_tensor_shift_for_secure_sum(
           num_summands, tf.constant(2**33 - 1, tf.int64),
           tf.constant(-1.0, float_type), tf.constant(1.0, float_type),
           float_type)
 
     # -1 is outside [0, (2**32 - 1) * 2], so expect an error.
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      federated_aggregations._server_tensor_shift_for_secure_sum(
+      primitives._server_tensor_shift_for_secure_sum(
           num_summands, tf.constant(-1,
                                     tf.int64), tf.constant(-1.0, float_type),
           tf.constant(1.0, float_type), float_type)
 
     # This should work with 2 summands since 2**32 is within
     # [0, (2**32 - 1) * 2]. Note that this would cause an error with 1 summand.
-    federated_aggregations._server_tensor_shift_for_secure_sum(
+    primitives._server_tensor_shift_for_secure_sum(
         num_summands, tf.constant(2**32, tf.int64),
         tf.constant(-1.0, float_type), tf.constant(1.0, float_type), float_type)
 
@@ -506,15 +495,17 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
     # 2**32 is outside [0, 2**32 - 1], so expect an error.
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      federated_aggregations._server_tensor_shift_for_secure_sum(
+      primitives._server_tensor_shift_for_secure_sum(
           num_summands, tf.constant(2**32, tf.int64), tf.constant(-1, int_type),
           tf.constant(1, int_type), int_type)
 
     # -1 is outside [0, 2**32 - 1], so expect an error.
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      federated_aggregations._server_tensor_shift_for_secure_sum(
-          num_summands, tf.constant(-1, tf.int64), tf.constant(-1, int_type),
-          tf.constant(1, int_type), int_type)
+      primitives._server_tensor_shift_for_secure_sum(num_summands,
+                                                     tf.constant(-1, tf.int64),
+                                                     tf.constant(-1, int_type),
+                                                     tf.constant(1, int_type),
+                                                     int_type)
 
   @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
   def test_server_tensor_shift_invalid_int_value_multiple_summands_raises_error(
@@ -524,21 +515,25 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
 
     # 2**33 - 1 is outside [0, (2**32 - 1) * 2], so expect an error.
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      federated_aggregations._server_tensor_shift_for_secure_sum(
+      primitives._server_tensor_shift_for_secure_sum(
           num_summands, tf.constant(2**33 - 1, tf.int64),
           tf.constant(-1, int_type), tf.constant(1, int_type), int_type)
 
     # -1 is outside [0, (2**32 - 1) * 2], so expect an error.
     with self.assertRaises(tf.errors.InvalidArgumentError):
-      federated_aggregations._server_tensor_shift_for_secure_sum(
-          num_summands, tf.constant(-1, tf.int64), tf.constant(-1, int_type),
-          tf.constant(1, int_type), int_type)
+      primitives._server_tensor_shift_for_secure_sum(num_summands,
+                                                     tf.constant(-1, tf.int64),
+                                                     tf.constant(-1, int_type),
+                                                     tf.constant(1, int_type),
+                                                     int_type)
 
     # This should work with 2 summands since 2**32 is within
     # [0, (2**32 - 1) * 2]. Note that this would cause an error with 1 summand.
-    federated_aggregations._server_tensor_shift_for_secure_sum(
-        num_summands, tf.constant(2**32, tf.int64), tf.constant(-1, int_type),
-        tf.constant(1, int_type), int_type)
+    primitives._server_tensor_shift_for_secure_sum(num_summands,
+                                                   tf.constant(2**32, tf.int64),
+                                                   tf.constant(-1, int_type),
+                                                   tf.constant(1, int_type),
+                                                   int_type)
 
   @parameterized.named_parameters(('int32', tf.int32), ('int64', tf.int64))
   def test_scalar_int_type_py_range(self, int_type):
@@ -1091,62 +1086,54 @@ class SecureQuantizedSumTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(('int8', tf.int8), ('int16', tf.int16),
                                   ('float16', tf.float16))
   def test_client_value_bad_dtype_raises(self, bad_dtype):
-    with self.assertRaises(federated_aggregations.UnsupportedDTypeError):
+    with self.assertRaises(primitives.UnsupportedDTypeError):
       _build_test_sum_fn_py_bounds(bad_dtype,
                                    np.array(0, bad_dtype.as_numpy_dtype),
                                    np.array(1, bad_dtype.as_numpy_dtype))
 
   def test_range_type_mismatch_raises(self):
-    with self.assertRaises(
-        federated_aggregations.ScalarBoundSimpleValueDTypeError):
+    with self.assertRaises(primitives.ScalarBoundSimpleValueDTypeError):
       _build_test_sum_fn_py_bounds(tf.float32, 0, 1)
-    with self.assertRaises(
-        federated_aggregations.ScalarBoundSimpleValueDTypeError):
+    with self.assertRaises(primitives.ScalarBoundSimpleValueDTypeError):
       _build_test_sum_fn_py_bounds(tf.int32, 0.0, 1.0)
-    with self.assertRaises(
-        federated_aggregations.ScalarBoundStructValueDTypeError):
+    with self.assertRaises(primitives.ScalarBoundStructValueDTypeError):
       _build_test_sum_fn_py_bounds((tf.float32, tf.float64), 0.0, 1.0)
-    with self.assertRaises(
-        federated_aggregations.ScalarBoundStructValueDTypeError):
+    with self.assertRaises(primitives.ScalarBoundStructValueDTypeError):
       _build_test_sum_fn_py_bounds((tf.int32, tf.int64), 0, 1)
-    with self.assertRaises(
-        federated_aggregations.BoundsDifferentSignaturesError):
+    with self.assertRaises(primitives.BoundsDifferentSignaturesError):
       _build_test_sum_fn_py_bounds(tf.int32, 0, 1.0)
-    with self.assertRaises(
-        federated_aggregations.BoundsDifferentSignaturesError):
+    with self.assertRaises(primitives.BoundsDifferentSignaturesError):
       _build_test_sum_fn_py_bounds(tf.int32, 0.0, 1)
 
   def test_bounds_different_types_raises(self):
-    with self.assertRaises(federated_aggregations.BoundsDifferentTypesError):
+    with self.assertRaises(primitives.BoundsDifferentTypesError):
 
       @computations.federated_computation(
           computation_types.FederatedType(tf.int32, placements.CLIENTS))
       def call_secure_sum(value):  # pylint: disable=unused-variable
         lower_bound = intrinsics.federated_value(0, placements.SERVER)
         upper_bound = 1
-        summed_value = federated_aggregations.secure_quantized_sum(
-            value, lower_bound, upper_bound)
+        summed_value = primitives.secure_quantized_sum(value, lower_bound,
+                                                       upper_bound)
         return summed_value
 
   def test_clients_placed_bounds_raises(self):
-    with self.assertRaises(federated_aggregations.BoundsNotPlacedAtServerError):
+    with self.assertRaises(primitives.BoundsNotPlacedAtServerError):
 
       @computations.federated_computation(
           computation_types.FederatedType(tf.int32, placements.CLIENTS))
       def call_secure_sum(value):  # pylint: disable=unused-variable
         lower_bound = intrinsics.federated_value(0, placements.CLIENTS)
         upper_bound = intrinsics.federated_value(1, placements.CLIENTS)
-        summed_value = federated_aggregations.secure_quantized_sum(
-            value, lower_bound, upper_bound)
+        summed_value = primitives.secure_quantized_sum(value, lower_bound,
+                                                       upper_bound)
         return summed_value
 
   def test_range_structure_mismatch_raises(self):
-    with self.assertRaises(
-        federated_aggregations.StructuredBoundsTypeMismatchError):
+    with self.assertRaises(primitives.StructuredBoundsTypeMismatchError):
       _build_test_sum_fn_py_bounds((tf.int32, tf.int32, tf.int32), (0, 0),
                                    (1, 1))
-    with self.assertRaises(
-        federated_aggregations.StructuredBoundsTypeMismatchError):
+    with self.assertRaises(primitives.StructuredBoundsTypeMismatchError):
       _build_test_sum_fn_py_bounds((tf.int32, tf.int32, tf.int32),
                                    (0.0, 0.0, 0.0), (1.0, 1.0, 1.0))
 
@@ -1171,8 +1158,8 @@ def _build_test_sum_fn_py_bounds(value_type, lower_bound, upper_bound):
   @computations.federated_computation(
       computation_types.FederatedType(value_type, placements.CLIENTS))
   def call_secure_sum(value):
-    summed_value = federated_aggregations.secure_quantized_sum(
-        value, lower_bound, upper_bound)
+    summed_value = primitives.secure_quantized_sum(value, lower_bound,
+                                                   upper_bound)
     return summed_value
 
   return call_secure_sum
@@ -1201,8 +1188,8 @@ def _build_test_sum_fn_tff_bounds(value_type, lower_bound_type,
       computation_types.FederatedType(lower_bound_type, placements.SERVER),
       computation_types.FederatedType(upper_bound_type, placements.SERVER))
   def call_secure_sum(value, lower_bound, upper_bound):
-    summed_value = federated_aggregations.secure_quantized_sum(
-        value, lower_bound, upper_bound)
+    summed_value = primitives.secure_quantized_sum(value, lower_bound,
+                                                   upper_bound)
     return summed_value
 
   return call_secure_sum

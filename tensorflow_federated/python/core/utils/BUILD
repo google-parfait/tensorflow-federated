@@ -21,7 +21,6 @@ py_library(
     deps = [
         ":computation_utils",
         ":encoding_utils",
-        ":federated_aggregations",
         ":tf_computation_utils",
     ],
 )
@@ -78,39 +77,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:measured_process",
-    ],
-)
-
-py_library(
-    name = "federated_aggregations",
-    srcs = ["federated_aggregations.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/api:value_base",
-        "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_test(
-    name = "federated_aggregations_test",
-    timeout = "long",
-    srcs = ["federated_aggregations_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":federated_aggregations",
-        "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:computations",
-        "//tensorflow_federated/python/core/api:intrinsics",
-        "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/test:execution_contexts",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/core/test:static_assert",
     ],
 )
 

@@ -21,6 +21,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.aggregators import primitives
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
@@ -30,7 +31,6 @@ from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import estimation_process
 from tensorflow_federated.python.core.templates import measured_process
-from tensorflow_federated.python.core.utils import federated_aggregations
 
 NORM_TF_TYPE = tf.float32
 COUNT_TF_TYPE = tf.int32
@@ -262,8 +262,7 @@ class SecureSumFactory(factory.UnweightedAggregationFactory):
                                        (value, lower_bound, num_summands))
       return value
     elif self._config_mode == _Config.FLOAT:
-      return federated_aggregations.secure_quantized_sum(
-          value, lower_bound, upper_bound)
+      return primitives.secure_quantized_sum(value, lower_bound, upper_bound)
     else:
       raise ValueError(f'Unexpected internal config type: {self._config_mode}')
 
