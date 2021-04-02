@@ -57,8 +57,8 @@ class ClientData(object, metaclass=abc.ABCMeta):
   ```
 
   If desiring a manner for constructing ClientData objects for testing purposes,
-  please see the `tff.test.FromTensorSlicesClientData` class, as it provides an
-  easy way to construct toy federated datasets.
+  please see the `tff.simulation.datasets.TestClientData` class, as it provides
+  an easy way to construct toy federated datasets.
   """
 
   @abc.abstractproperty

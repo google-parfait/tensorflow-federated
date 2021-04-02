@@ -53,8 +53,7 @@ def _test_transform_cons(raw_client_id, index):
 class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   def test_client_ids_property(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
+    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     num_transformed_clients = 7
     transformed_client_data = transforming_client_data.TransformingClientData(
         client_data, _test_transform_cons, num_transformed_clients)
@@ -66,8 +65,7 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
     self.assertTrue(transformed_client_data._has_pseudo_clients)
 
   def test_default_num_transformed_clients(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
+    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     transformed_client_data = transforming_client_data.TransformingClientData(
         client_data, _test_transform_cons)
     client_ids = transformed_client_data.client_ids
@@ -75,8 +73,7 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
     self.assertFalse(transformed_client_data._has_pseudo_clients)
 
   def test_fail_on_bad_client_id(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
+    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     transformed_client_data = transforming_client_data.TransformingClientData(
         client_data, _test_transform_cons, 7)
     # The following three should be valid.
@@ -93,8 +90,7 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
       transformed_client_data.create_tf_dataset_for_client('CLIENT B_2')
 
   def test_create_tf_dataset_for_client(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
+    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     transformed_client_data = transforming_client_data.TransformingClientData(
         client_data, _test_transform_cons, 9)
     for client_id in transformed_client_data.client_ids:
@@ -114,8 +110,7 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
           self.assertAllEqual(v, expected[k])
 
   def test_create_tf_dataset_from_all_clients(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
+    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     num_transformed_clients = 9
     transformed_client_data = transforming_client_data.TransformingClientData(
         client_data, _test_transform_cons, num_transformed_clients)

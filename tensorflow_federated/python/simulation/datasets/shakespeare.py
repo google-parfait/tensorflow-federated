@@ -100,7 +100,7 @@ def get_synthetic() -> client_data.ClientData:
   Returns:
     A `tff.simulation.datasets.ClientData` of synthentic Shakespeare text.
   """
-  return from_tensor_slices_client_data.FromTensorSlicesClientData(
+  return from_tensor_slices_client_data.TestClientData(
       _SYNTHETIC_SHAKESPEARE_DATA)
 
 

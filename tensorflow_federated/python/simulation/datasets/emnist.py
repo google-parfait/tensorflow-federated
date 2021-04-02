@@ -142,7 +142,7 @@ def get_synthetic(num_clients=2):
   """
   return get_infinite(
       # Base ClientData with one client
-      from_tensor_slices_client_data.FromTensorSlicesClientData(
+      from_tensor_slices_client_data.TestClientData(
           {'synthetic': _get_synthetic_digits_data()}),
       num_pseudo_clients=num_clients)
 

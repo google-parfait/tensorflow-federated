@@ -23,5 +23,6 @@ from tensorflow_federated.python.simulation.datasets.dataset_utils import build_
 from tensorflow_federated.python.simulation.datasets.dataset_utils import build_single_label_dataset
 from tensorflow_federated.python.simulation.datasets.dataset_utils import build_synthethic_iid_datasets
 from tensorflow_federated.python.simulation.datasets.file_per_user_client_data import FilePerUserClientData
+from tensorflow_federated.python.simulation.datasets.from_tensor_slices_client_data import TestClientData
 from tensorflow_federated.python.simulation.datasets.sql_client_data import SqlClientData
 from tensorflow_federated.python.simulation.datasets.transforming_client_data import TransformingClientData

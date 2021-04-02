@@ -25,13 +25,14 @@ def isnamedtuple(example_structure):
       example_structure, '_fields')
 
 
-class FromTensorSlicesClientData(client_data.ClientData):
-  """ClientData based on `tf.data.Dataset.from_tensor_slices`.
+class TestClientData(client_data.ClientData):
+  """"A `tff.simulation.datasets.ClientData` intended for test purposes.
 
-  Useful for constructing toy federated datasets for testing purposes.
-
-  Using this ClientData for large datasets is *not* recommended, as all the data
-  gets directly baked into the TensorFlow graph (which is memory intensive).
+  The implementation is based on `tf.data.Dataset.from_tensor_slices.` This
+  class is intended only for constructing toy federated datasets, especially
+  to support simulation tests. Using this for large datasets is *not*
+  recommended, as it requires putting all client data into the underlying
+  TensorFlow graph (which is memory intensive).
   """
 
   def __init__(self, tensor_slices_dict):

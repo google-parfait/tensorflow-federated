@@ -82,7 +82,7 @@ TEST_DATA_WITH_PART_LIST_AND_PART_DICT = {
 }
 
 
-class FromTensorSlicesClientDataTest(tf.test.TestCase):
+class TestClientDataTest(tf.test.TestCase):
 
   def assertSameDatasets(self, a_dataset, b_dataset):
     self.assertEqual(len(a_dataset), len(b_dataset))
@@ -104,7 +104,7 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
 
   def test_basic(self):
     tensor_slices_dict = {'a': [1, 2, 3], 'b': [4, 5]}
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
+    client_data = from_tensor_slices_client_data.TestClientData(
         tensor_slices_dict)
     self.assertCountEqual(client_data.client_ids, ['a', 'b'])
     self.assertEqual(client_data.element_type_structure,
@@ -119,8 +119,7 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
         as_list(client_data.create_tf_dataset_for_client('b')), [4, 5])
 
   def test_where_client_data_is_tensors(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
+    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     self.assertCountEqual(TEST_DATA.keys(), client_data.client_ids)
 
     self.assertEqual(client_data.element_type_structure,
@@ -132,7 +131,7 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
           client_data.create_tf_dataset_for_client(client_id))
 
   def test_where_client_data_is_tuples(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
+    client_data = from_tensor_slices_client_data.TestClientData(
         TEST_DATA_WITH_TUPLES)
     self.assertCountEqual(TEST_DATA_WITH_TUPLES.keys(), client_data.client_ids)
 
@@ -145,7 +144,7 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
           client_data.create_tf_dataset_for_client(client_id))
 
   def test_where_client_data_is_ordered_dicts(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
+    client_data = from_tensor_slices_client_data.TestClientData(
         TEST_DATA_WITH_ORDEREDDICTS)
     self.assertCountEqual(TEST_DATA_WITH_ORDEREDDICTS.keys(),
                           client_data.client_ids)
@@ -164,32 +163,30 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
 
   def test_raises_error_if_empty_client_found(self):
     with self.assertRaises(ValueError):
-      from_tensor_slices_client_data.FromTensorSlicesClientData({'a': []})
+      from_tensor_slices_client_data.TestClientData({'a': []})
 
   def test_init_raises_error_if_slices_is_not_dict(self):
     with self.assertRaises(TypeError):
-      from_tensor_slices_client_data.FromTensorSlicesClientData(
-          TEST_DATA_NOT_DICT)
+      from_tensor_slices_client_data.TestClientData(TEST_DATA_NOT_DICT)
 
   def test_init_raises_error_if_slices_are_namedtuples(self):
     with self.assertRaises(TypeError):
-      from_tensor_slices_client_data.FromTensorSlicesClientData(
-          TEST_DATA_WITH_NAMEDTUPLES)
+      from_tensor_slices_client_data.TestClientData(TEST_DATA_WITH_NAMEDTUPLES)
 
   def test_init_raises_error_if_slices_are_inconsistent_type(self):
     with self.assertRaises(TypeError):
-      from_tensor_slices_client_data.FromTensorSlicesClientData(
+      from_tensor_slices_client_data.TestClientData(
           TEST_DATA_WITH_INCONSISTENT_TYPE)
 
   def test_init_raises_error_if_slices_are_part_list_and_part_dict(self):
     with self.assertRaises(TypeError):
-      from_tensor_slices_client_data.FromTensorSlicesClientData(
+      from_tensor_slices_client_data.TestClientData(
           TEST_DATA_WITH_PART_LIST_AND_PART_DICT)
 
   def test_shuffle_client_ids(self):
     tensor_slices_dict = {'a': [1, 1], 'b': [2, 2, 2], 'c': [3], 'd': [4, 4]}
     all_examples = [1, 1, 2, 2, 2, 3, 4, 4]
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
+    client_data = from_tensor_slices_client_data.TestClientData(
         tensor_slices_dict)
 
     def get_flat_dataset(seed):
@@ -213,8 +210,7 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
     self.assertTrue(found_not_equal)
 
   def test_dataset_computation_where_client_data_is_tensors(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
+    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
 
     dataset_computation = client_data.dataset_computation
     self.assertIsInstance(dataset_computation, computation_base.Computation)
@@ -242,7 +238,7 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
         self.assertAllEqual(np.asarray(expected), actual.numpy())
 
   def test_dataset_computation_where_client_data_is_tuples(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
+    client_data = from_tensor_slices_client_data.TestClientData(
         TEST_DATA_WITH_TUPLES)
 
     dataset_computation = client_data.dataset_computation
@@ -271,7 +267,7 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
         self.assertAllEqual(np.asarray(expected), actual.numpy())
 
   def test_dataset_computation_where_client_data_is_ordered_dicts(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
+    client_data = from_tensor_slices_client_data.TestClientData(
         TEST_DATA_WITH_ORDEREDDICTS)
 
     dataset_computation = client_data.dataset_computation
@@ -308,8 +304,7 @@ class FromTensorSlicesClientDataTest(tf.test.TestCase):
       self.assertSameDatasetsOfDicts(expected_dataset, dataset)
 
   def test_dataset_computation_raises_error_if_unknown_client_id(self):
-    client_data = from_tensor_slices_client_data.FromTensorSlicesClientData(
-        TEST_DATA)
+    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
 
     dataset_computation = client_data.dataset_computation
 

@@ -214,7 +214,7 @@ def get_synthetic():
      characteristics (other than size) of those provided by
      `tff.simulation.datasets.stackoverflow.load_data`.
   """
-  return from_tensor_slices_client_data.FromTensorSlicesClientData(
+  return from_tensor_slices_client_data.TestClientData(
       _SYNTHETIC_STACKOVERFLOW_DATA)
 
 

@@ -21,7 +21,6 @@ py_library(
         ":static_assert",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
-        "//tensorflow_federated/python/simulation/datasets:from_tensor_slices_client_data",
     ],
 )
 
