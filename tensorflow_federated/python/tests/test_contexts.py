@@ -13,13 +13,10 @@
 # limitations under the License.
 """Contexts and constructors for integration testing."""
 
-import asyncio
 import contextlib
 import functools
-from typing import Sequence
 
 from absl.testing import parameterized
-import grpc
 import portpicker
 import tensorflow_federated as tff
 
@@ -27,13 +24,6 @@ from tensorflow_federated.python.tests import remote_runtime_test_utils
 
 WORKER_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
 AGGREGATOR_PORTS = [portpicker.pick_unused_port() for _ in range(2)]
-
-_GRPC_MAX_MESSAGE_LENGTH_BYTES = 1024 * 1024 * 1024
-_GRPC_CHANNEL_OPTIONS = [
-    ('grpc.max_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
-    ('grpc.max_receive_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES),
-    ('grpc.max_send_message_length', _GRPC_MAX_MESSAGE_LENGTH_BYTES)
-]
 
 
 def create_native_local_caching_context():
@@ -46,60 +36,6 @@ def create_native_local_caching_context():
   return tff.framework.ExecutionContext(
       tff.framework.ResourceManagingExecutorFactory(
           _wrap_local_executor_with_caching))
-
-
-def _get_remote_executors_for_ports(ports):
-  executors = []
-  for port in ports:
-    server_endpoint = f'[::]:{port}'
-    channel = grpc.insecure_channel(
-        server_endpoint, options=_GRPC_CHANNEL_OPTIONS)
-    executors.append(tff.framework.RemoteExecutor(channel=channel))
-  return executors
-
-
-def create_localhost_remote_tf_context(
-    tf_serving_ports: Sequence[str]) -> tff.framework.ExecutionContext:
-  """Creates an execution context which pushes TensorFlow to remote workers."""
-  remote_executors = _get_remote_executors_for_ports(tf_serving_ports)
-
-  workers = [
-      tff.framework.ThreadDelegatingExecutor(ex) for ex in remote_executors
-  ]
-
-  def _stack_fn(cardinalities):
-    event_loop = asyncio.new_event_loop()
-    for ex in remote_executors:
-      # Configure each remote worker to have a single client.
-      event_loop.run_until_complete(ex.set_cardinalities({tff.CLIENTS: 1}))
-    if cardinalities.get(tff.CLIENTS) is not None and cardinalities[
-        tff.CLIENTS] > len(remote_executors):
-      raise ValueError(
-          'Requested {} clients but this stack can only support at most {}.'
-          .format(cardinalities.get(tff.CLIENTS), len(remote_executors)))
-
-    if cardinalities.get(tff.CLIENTS) is None:
-      requested_workers = workers
-    else:
-      requested_workers = workers[:cardinalities[tff.CLIENTS]]
-
-    federating_strategy_factory = tff.framework.FederatedResolvingStrategy.factory(
-        {
-            tff.CLIENTS: requested_workers,
-            tff.SERVER: tff.framework.EagerTFExecutor()
-        })
-    fed_ex = tff.framework.FederatingExecutor(federating_strategy_factory,
-                                              tff.framework.EagerTFExecutor())
-    top_rre = tff.framework.ReferenceResolvingExecutor(fed_ex)
-    return top_rre
-
-  ex_factory = tff.framework.ResourceManagingExecutorFactory(
-      _stack_fn, ensure_closed=remote_executors)
-  # When the RRE goes in we wont need this anymore
-  compiler_fn = tff.backends.native.transform_mathematical_functions_to_tensorflow
-
-  return tff.framework.ExecutionContext(
-      executor_fn=ex_factory, compiler_fn=compiler_fn)
 
 
 def _get_all_contexts():
