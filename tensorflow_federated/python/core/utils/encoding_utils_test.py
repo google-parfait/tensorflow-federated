@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -22,7 +20,6 @@ from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import placements
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates.measured_process import MeasuredProcess
 from tensorflow_federated.python.core.utils import encoding_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
@@ -85,159 +82,6 @@ class EncodedBroadcastProcessTest(test_case.TestCase, parameterized.TestCase):
                                             tf.TensorSpec((2,)))
     with self.assertRaises(ValueError):
       encoding_utils.build_encoded_broadcast_process(value_type, encoder)
-
-
-class EncodedSumProcessTest(test_case.TestCase, parameterized.TestCase):
-  """Tests for build_encoded_sum_process method."""
-
-  @parameterized.named_parameters(
-      ('tf_constant_identity', tf.constant, te.encoders.identity),
-      ('tf_constant_uniform_quantization', tf.constant,
-       lambda: te.encoders.uniform_quantization(8)),
-      ('numpy_identity', lambda x: x, te.encoders.identity),
-      ('numpy_uniform_quantization', lambda x: x,
-       lambda: te.encoders.uniform_quantization(8)),
-  )
-  def test_build_encoded_sum_process(self, value_constructor,
-                                     encoder_constructor):
-    value = value_constructor(np.random.rand(20))
-    value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
-    value_type = computation_types.to_type(value_spec)
-    encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
-      gather_process = encoding_utils.build_encoded_sum_process(
-          value_type, encoder)
-      self.assertNotEmpty(w)
-      self.assertEqual(w[0].category, DeprecationWarning)
-      self.assertRegex(str(w[0].message), 'This method is deprecated')
-    state_type = gather_process._initialize_fn.type_signature.result
-    gather_signature = gather_process._next_fn.type_signature
-
-    self.assertIsInstance(gather_process, MeasuredProcess)
-    self.assertEqual(state_type, gather_signature.result[0])
-    self.assertEqual(placements.SERVER, gather_signature.result[0].placement)
-    self.assertEqual(value_type, gather_signature.result[1].member)
-    self.assertEqual(placements.SERVER, gather_signature.result[1].placement)
-
-  def test_run_encoded_sum_process(self):
-    value = np.array([0.0, 1.0, 2.0, -1.0])
-    value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
-    encoder = te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
-    value_type = type_conversions.type_from_tensors(value)
-    gather_process = encoding_utils.build_encoded_sum_process(
-        value_type, encoder)
-    initial_state = gather_process.initialize()
-    call_gather = gather_process._next_fn
-
-    output = call_gather(initial_state, [value, value])
-    self.assertAllClose(2 * value, output.result)
-
-    output = call_gather(initial_state, [value, -value])
-    self.assertAllClose(0 * value, output.result)
-
-    output = call_gather(initial_state, [value, 2 * value])
-    self.assertAllClose(3 * value, output.result)
-
-  @parameterized.named_parameters(*_bad_encoder_named_parameters)
-  def test_build_encoded_sum_process_raises_bad_encoder(self, bad_encoder):
-    value_type = computation_types.TensorType(tf.float32, shape=[2])
-    with self.assertRaises(TypeError):
-      encoding_utils.build_encoded_sum_process(value_type, bad_encoder)
-
-  def test_build_encoded_sum_process_raises_incompatible_encoder(self):
-    value_type = computation_types.TensorType(tf.float32, shape=[2])
-    incompatible_encoder = te.encoders.as_gather_encoder(
-        te.encoders.identity(), tf.TensorSpec((3,)))
-    with self.assertRaises(TypeError):
-      encoding_utils.build_encoded_sum_process(value_type, incompatible_encoder)
-
-  def test_build_encoded_sum_process_raises_bad_structure(self):
-    value_type = computation_types.StructType([
-        computation_types.TensorType(tf.float32, shape=[2]),
-        computation_types.TensorType(tf.float32, shape=[2])
-    ])
-    encoder = te.encoders.as_gather_encoder(te.encoders.identity(),
-                                            tf.TensorSpec((2,)))
-    with self.assertRaises(ValueError):
-      encoding_utils.build_encoded_sum_process(value_type, encoder)
-
-
-class EncodedMeanProcessTest(test_case.TestCase, parameterized.TestCase):
-  """Tests for build_encoded_mean_process method."""
-
-  @parameterized.named_parameters(
-      ('tf_constant_identity', tf.constant, te.encoders.identity),
-      ('tf_constant_uniform_quantization', tf.constant,
-       lambda: te.encoders.uniform_quantization(8)),
-      ('numpy_identity', lambda x: x, te.encoders.identity),
-      ('numpy_uniform_quantization', lambda x: x,
-       lambda: te.encoders.uniform_quantization(8)),
-  )
-  def test_build_encoded_mean_process(self, value_constructor,
-                                      encoder_constructor):
-    value = value_constructor(np.random.rand(20))
-    value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
-    value_type = computation_types.to_type(value_spec)
-    encoder = te.encoders.as_gather_encoder(encoder_constructor(), value_spec)
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
-      gather_process = encoding_utils.build_encoded_mean_process(
-          value_type, encoder)
-      self.assertNotEmpty(w)
-      self.assertEqual(w[0].category, DeprecationWarning)
-      self.assertRegex(str(w[0].message), 'This method is deprecated')
-    state_type = gather_process._initialize_fn.type_signature.result
-    gather_signature = gather_process._next_fn.type_signature
-
-    self.assertIsInstance(gather_process, MeasuredProcess)
-    self.assertEqual(state_type, gather_signature.result[0])
-    self.assertEqual(placements.SERVER, gather_signature.result[0].placement)
-    self.assertEqual(value_type, gather_signature.result[1].member)
-    self.assertEqual(placements.SERVER, gather_signature.result[1].placement)
-
-  def test_run_encoded_mean_process(self):
-    value = np.array([0.0, 1.0, 2.0, -1.0])
-    value_spec = tf.TensorSpec(value.shape, tf.dtypes.as_dtype(value.dtype))
-    encoder = te.encoders.as_gather_encoder(te.encoders.identity(), value_spec)
-    value_type = type_conversions.type_from_tensors(value)
-    gather_process = encoding_utils.build_encoded_mean_process(
-        value_type, encoder)
-    initial_state = gather_process.initialize()
-    call_gather = gather_process._next_fn
-
-    output = call_gather(initial_state, [value, value], [1.0, 1.0])
-    self.assertAllClose(1 * value, output.result)
-
-    output = call_gather(initial_state, [value, value], [0.3, 0.7])
-    self.assertAllClose(1 * value, output.result)
-
-    output = call_gather(initial_state, [value, 2 * value], [1.0, 2.0])
-    self.assertAllClose(5 / 3 * value, output.result)
-
-  @parameterized.named_parameters(*_bad_encoder_named_parameters)
-  def test_build_encoded_mean_process_raises_bad_encoder(self, bad_encoder):
-    value_type = computation_types.TensorType(tf.float32, shape=[2])
-    with self.assertRaises(TypeError):
-      encoding_utils.build_encoded_mean_process(value_type, bad_encoder)
-
-  def test_build_encoded_mean_process_raises_incompatible_encoder(self):
-    value_type = computation_types.TensorType(tf.float32, shape=[2])
-    incompatible_encoder = te.encoders.as_gather_encoder(
-        te.encoders.identity(), tf.TensorSpec((3,)))
-    with self.assertRaises(TypeError):
-      encoding_utils.build_encoded_mean_process(value_type,
-                                                incompatible_encoder)
-
-  def test_build_encoded_mean_process_raises_bad_structure(self):
-    value_type = computation_types.StructType([
-        computation_types.TensorType(tf.float32, shape=[2]),
-        computation_types.TensorType(tf.float32, shape=[2])
-    ])
-    encoder = te.encoders.as_gather_encoder(te.encoders.identity(),
-                                            tf.TensorSpec((2,)))
-    with self.assertRaises(ValueError):
-      encoding_utils.build_encoded_mean_process(value_type, encoder)
 
 
 class EncodingUtilsTest(test_case.TestCase, parameterized.TestCase):

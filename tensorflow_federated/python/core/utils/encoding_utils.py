@@ -20,18 +20,17 @@ to realize encoding (compression) of values being communicated between
 """
 
 import collections
-import warnings
 
 import attr
 import tensorflow as tf
 import tree
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_model_optimization.python.core.internal import tensor_encoding
@@ -111,200 +110,6 @@ def build_encoded_broadcast_process(value_type, encoders):
 
   return measured_process.MeasuredProcess(
       initialize_fn=initial_state_comp, next_fn=encoded_broadcast_comp)
-
-
-def _build_encoded_sum_fn(nest_encoder):
-  """Utility for creating encoded_sum based on _NestGatherEncoder."""
-
-  def encoded_sum_fn(state, values, weight=None):
-    """Encoded sum federated_computation."""
-    del weight  # Unused.
-    encode_params, decode_before_sum_params, decode_after_sum_params = (
-        intrinsics.federated_map(nest_encoder.get_params_fn, state))
-    encode_params = intrinsics.federated_broadcast(encode_params)
-    decode_before_sum_params = intrinsics.federated_broadcast(
-        decode_before_sum_params)
-
-    encoded_values = intrinsics.federated_map(
-        nest_encoder.encode_fn,
-        [values, encode_params, decode_before_sum_params])
-
-    aggregated_values = intrinsics.federated_aggregate(
-        encoded_values, nest_encoder.zero_fn(), nest_encoder.accumulate_fn,
-        nest_encoder.merge_fn, nest_encoder.report_fn)
-
-    decoded_values = intrinsics.federated_map(
-        nest_encoder.decode_after_sum_fn,
-        [aggregated_values.values, decode_after_sum_params])
-
-    updated_state = intrinsics.federated_map(
-        nest_encoder.update_state_fn,
-        [state, aggregated_values.state_update_tensors])
-    return updated_state, decoded_values
-
-  return encoded_sum_fn
-
-
-# TODO(b/170208719): Delete when migration is complete.
-def build_encoded_sum_process(value_type, encoders):
-  """Builds `MeasuredProcess` for `value_type`, to be encoded by `encoders`.
-
-  WARNING: This method is deprecated and will be removed in a future version.
-  Use `tff.aggregators.EncodedSumFactory(encoder_fn)` instead. See
-  https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators
-  and https://www.tensorflow.org/federated/tutorials/custom_aggregators
-  tutorials for details of use of `tff.aggregators` module.
-
-  The returned `MeasuredProcess` has a next function with the TFF type
-  signature:
-
-  ```
-  (<state_type@SERVER, {value_type}@CLIENTS> ->
-   <state=state_type@SERVER, result=value_type@SERVER, measurements=()@SERVER>)
-  ```
-
-  Args:
-    value_type: The type of values to be encoded by the `MeasuredProcess`.
-      Either a `tff.TensorType` or a `tff.StructType`.
-    encoders: A collection of `GatherEncoder` objects to be used for encoding
-      `values`. Must have the same structure as `values`.
-
-  Returns:
-    A `MeasuredProcess` of which `next_fn` encodes the input at `tff.CLIENTS`,
-    and computes their sum at `tff.SERVER`, automatically splitting the decoding
-    part based on its commutativity with sum.
-
-  Raises:
-    ValueError: If `value_type` and `encoders` do not have the same structure.
-    TypeError: If `encoders` are not instances of `GatherEncoder`, or if
-      `value_type` are not compatible with the expected input of the `encoders`.
-  """
-  warnings.warn(
-      'This method is deprecated and will be removed in a future version. Use '
-      '`tff.aggregators.EncodedSumFactory(encoder_fn)` instead. See '
-      'https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators'
-      ' and https://www.tensorflow.org/federated/tutorials/custom_aggregators '
-      'tutorials for details of use of `tff.aggregators` module.',
-      DeprecationWarning)
-
-  py_typecheck.check_type(
-      value_type, (computation_types.TensorType, computation_types.StructType))
-
-  _validate_value_type_and_encoders(value_type, encoders,
-                                    tensor_encoding.core.GatherEncoder)
-
-  initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
-
-  @computations.federated_computation()
-  def initial_state_comp():
-    return intrinsics.federated_eval(initial_state_fn, placements.SERVER)
-
-  nest_encoder = _build_tf_computations_for_gather(state_type, value_type,
-                                                   encoders)
-  encoded_sum_fn = _build_encoded_sum_fn(nest_encoder)
-
-  @computations.federated_computation(initial_state_comp.type_signature.result,
-                                      computation_types.FederatedType(
-                                          value_type, placements.CLIENTS))
-  def encoded_sum_comp(state, values):
-    """Encoded sum federated_computation."""
-    empty_metrics = intrinsics.federated_value((), placements.SERVER)
-    state, result = encoded_sum_fn(state, values)
-    return measured_process.MeasuredProcessOutput(
-        state=state, result=result, measurements=empty_metrics)
-
-  return measured_process.MeasuredProcess(
-      initialize_fn=initial_state_comp, next_fn=encoded_sum_comp)
-
-
-# TODO(b/170208719): Delete when migration is complete.
-def build_encoded_mean_process(value_type, encoders):
-  """Builds `MeasuredProcess` for `value_type`, to be encoded by `encoders`.
-
-  WARNING: This method is deprecated and will be removed in a future version.
-  Use
-  `tff.aggregators.MeanFactory(tff.aggregators.EncodedSumFactory(encoder_fn))`
-  instead. See
-  https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators
-  and https://www.tensorflow.org/federated/tutorials/custom_aggregators
-  tutorials for details of use of `tff.aggregators` module.
-
-  The returned `MeasuredProcess` has a next function with the TFF type
-  signature:
-
-  ```
-  (<state_type@SERVER, {value_type}@CLIENTS> ->
-   <state=state_type@SERVER, result=value_type@SERVER, measurements=()@SERVER>)
-  ```
-
-  Args:
-    value_type: The type of values to be encoded by the `MeasuredProcess`.
-      Either a `tff.TensorType` or a `tff.StructType`.
-    encoders: A collection of `GatherEncoder` objects to be used for encoding
-      `values`. Must have the same structure as `values`.
-
-  Returns:
-    A `MeasuredProcess` of which `next_fn` encodes the input at `tff.CLIENTS`,
-    and computes their mean at `tff.SERVER`, automatically splitting the
-    decoding part based on its commutativity with sum.
-
-  Raises:
-    ValueError: If `value_type` and `encoders` do not have the same structure.
-    TypeError: If `encoders` are not instances of `GatherEncoder`, or if
-      `value_type` are not compatible with the expected input of the `encoders`.
-  """
-  warnings.warn(
-      'This method is deprecated and will be removed in a future version. Use '
-      '`tff.aggregators.MeanFactory(tff.aggregators.EncodedSumFactory(encoder_fn))`'
-      ' instead. See '
-      'https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators'
-      ' and https://www.tensorflow.org/federated/tutorials/custom_aggregators '
-      'tutorials for details of use of `tff.aggregators` module.',
-      DeprecationWarning)
-
-  py_typecheck.check_type(
-      value_type, (computation_types.TensorType, computation_types.StructType))
-
-  _validate_value_type_and_encoders(value_type, encoders,
-                                    tensor_encoding.core.GatherEncoder)
-
-  initial_state_fn, state_type = _build_initial_state_tf_computation(encoders)
-
-  @computations.federated_computation()
-  def initial_state_comp():
-    return intrinsics.federated_eval(initial_state_fn, placements.SERVER)
-
-  nest_encoder = _build_tf_computations_for_gather(state_type, value_type,
-                                                   encoders)
-  encoded_sum_fn = _build_encoded_sum_fn(nest_encoder)
-
-  @computations.tf_computation(value_type, tf.float32)
-  def multiply_fn(value, weight):
-    return tf.nest.map_structure(lambda v: v * tf.cast(weight, v.dtype), value)
-
-  @computations.tf_computation(value_type, tf.float32)
-  def divide_fn(value, denominator):
-    return tf.nest.map_structure(lambda v: v / tf.cast(denominator, v.dtype),
-                                 value)
-
-  @computations.federated_computation(
-      initial_state_comp.type_signature.result,
-      computation_types.FederatedType(value_type, placements.CLIENTS),
-      computation_types.FederatedType(tf.float32, placements.CLIENTS))
-  def encoded_mean_comp(state, values, weight):
-    """Encoded mean federated_computation."""
-    empty_metrics = intrinsics.federated_value((), placements.SERVER)
-    weighted_values = intrinsics.federated_map(multiply_fn, (values, weight))
-    updated_state, summed_decoded_values = encoded_sum_fn(
-        state, weighted_values)
-    summed_weights = intrinsics.federated_sum(weight)
-    decoded_values = intrinsics.federated_map(
-        divide_fn, (summed_decoded_values, summed_weights))
-    return measured_process.MeasuredProcessOutput(
-        state=updated_state, result=decoded_values, measurements=empty_metrics)
-
-  return measured_process.MeasuredProcess(
-      initialize_fn=initial_state_comp, next_fn=encoded_mean_comp)
 
 
 def _build_initial_state_tf_computation(encoders):
@@ -520,12 +325,12 @@ def _validate_value_type_and_encoders(value_type, encoders, encoder_type):
   else:
     # If `encoders` is a container, then `value_type` should be an instance of
     # `tff.StructType.`
-    if not isinstance(value_type, computation_types.StructType):
+    if not type_analysis.is_structure_of_tensors(value_type):
       raise TypeError('`value_type` is not compatible with the expected input '
                       'of the `encoders`.')
-    structure.map_structure(lambda e, v: _validate_encoder(e, v, encoder_type),
-                            structure.from_container(encoders, recursive=True),
-                            value_type)
+    value_tensorspecs = type_conversions.type_to_tf_tensor_specs(value_type)
+    tf.nest.map_structure(lambda e, v: _validate_encoder(e, v, encoder_type),
+                          encoders, value_tensorspecs)
 
 
 def _accmulate_state_update_tensor(a, b, mode):

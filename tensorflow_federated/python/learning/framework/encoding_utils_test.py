@@ -12,116 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
-import warnings
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import test_case
-from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning.framework import encoding_utils
-from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
 
 
-class EncodingUtilsTest(test_case.TestCase, parameterized.TestCase):
-  """Tests for utilities for building StatefulFns."""
-
-  def test_mean_process_from_model(self):
-    model_fn = model_examples.LinearRegression
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
-      gather_process = encoding_utils.build_encoded_mean_process_from_model(
-          model_fn, _test_encoder_fn('gather'))
-      self.assertNotEmpty(w)
-      self.assertEqual(w[0].category, DeprecationWarning)
-      self.assertRegex(str(w[0].message), 'This method is deprecated')
-    self.assertIsInstance(gather_process, measured_process.MeasuredProcess)
-
-  def test_sum_process_from_model(self):
-    model_fn = model_examples.LinearRegression
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
-      gather_process = encoding_utils.build_encoded_sum_process_from_model(
-          model_fn, _test_encoder_fn('gather'))
-      self.assertNotEmpty(w)
-      self.assertEqual(w[0].category, DeprecationWarning)
-      self.assertRegex(str(w[0].message), 'This method is deprecated')
-    self.assertIsInstance(gather_process, measured_process.MeasuredProcess)
-
-  def test_broadcast_process_from_model(self):
-    model_fn = model_examples.LinearRegression
-    broadcast_process = (
-        encoding_utils.build_encoded_broadcast_process_from_model(
-            model_fn, _test_encoder_fn('simple')))
-    self.assertIsInstance(broadcast_process, measured_process.MeasuredProcess)
-
-
-class IterativeProcessTest(test_case.TestCase, parameterized.TestCase):
-  """End-to-end tests using `tff.templates.IterativeProcess`."""
-
-  def _verify_iterative_process(self, iterative_process):
-    ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(
-            x=[[1.0, 2.0], [3.0, 4.0]],
-            y=[[5.0], [6.0]],
-        )).batch(2)
-    federated_ds = [ds] * 3
-
-    state = iterative_process.initialize()
-    self.assertEqual(state.model_broadcast_state.trainable[0][0], 1)
-
-    state, _ = iterative_process.next(state, federated_ds)
-    self.assertEqual(state.model_broadcast_state.trainable[0][0], 2)
-
-  def test_iterative_process_with_encoding_process(self):
-    model_fn = model_examples.LinearRegression
-    gather_process = encoding_utils.build_encoded_mean_process_from_model(
-        model_fn, _test_encoder_fn('gather'))
-    broadcast_process = (
-        encoding_utils.build_encoded_broadcast_process_from_model(
-            model_fn, _test_encoder_fn('simple')))
-    iterative_process = optimizer_utils.build_model_delta_optimizer_process(
-        model_fn=model_fn,
-        model_to_client_delta_fn=DummyClientDeltaFn,
-        server_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=1.0),
-        aggregation_process=gather_process,
-        broadcast_process=broadcast_process)
-    self._verify_iterative_process(iterative_process)
-
-
-class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
-
-  def __init__(self, model_fn):
-    self._model = model_fn()
-
-  @property
-  def variables(self):
-    return []
-
-  @tf.function
-  def __call__(self, dataset, initial_weights):
-    """Dummy client delta which simply returns 1.0 for all parameters."""
-    client_weight = tf.constant(1.0)
-    return optimizer_utils.ClientOutput(
-        tf.nest.map_structure(tf.ones_like, initial_weights.trainable),
-        weights_delta_weight=client_weight,
-        model_output=self._model.report_local_outputs(),
-        optimizer_output={'client_weight': client_weight})
-
-
-def _test_encoder_fn(top_level_encoder):
+def _test_encoder_fn():
   """Returns an example mapping of tensor to encoder, determined by shape."""
-  if top_level_encoder == 'simple':
-    encoder_constructor = te.encoders.as_simple_encoder
-  elif top_level_encoder == 'gather':
-    encoder_constructor = te.encoders.as_gather_encoder
-  else:
-    raise ValueError('Unknown top_level_encoder.')
-
+  encoder_constructor = te.encoders.as_simple_encoder
   identity_encoder = te.encoders.identity()
   test_encoder = te.core.EncoderComposer(
       te.testing.PlusOneOverNEncodingStage()).make()
@@ -138,6 +42,16 @@ def _test_encoder_fn(top_level_encoder):
   return encoder_fn
 
 
+class EncodingUtilsTest(test_case.TestCase, parameterized.TestCase):
+  """Tests for utilities for building StatefulFns."""
+
+  def test_broadcast_process_from_model(self):
+    model_fn = model_examples.LinearRegression
+    broadcast_process = (
+        encoding_utils.build_encoded_broadcast_process_from_model(
+            model_fn, _test_encoder_fn()))
+    self.assertIsInstance(broadcast_process, measured_process.MeasuredProcess)
+
+
 if __name__ == '__main__':
-  execution_contexts.set_local_execution_context()
   test_case.main()

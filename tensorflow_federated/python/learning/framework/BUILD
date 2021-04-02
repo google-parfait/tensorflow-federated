@@ -52,9 +52,7 @@ py_cpu_gpu_test(
     srcs_version = "PY3",
     deps = [
         ":encoding_utils",
-        ":optimizer_utils",
         "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
     ],

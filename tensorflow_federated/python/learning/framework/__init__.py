@@ -14,8 +14,6 @@
 """Libraries for developing Federated Learning algorithms."""
 
 from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_broadcast_process_from_model
-from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_mean_process_from_model
-from tensorflow_federated.python.learning.framework.encoding_utils import build_encoded_sum_process_from_model
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_model_delta_optimizer_process
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_stateless_broadcaster
 from tensorflow_federated.python.learning.framework.optimizer_utils import build_stateless_mean
