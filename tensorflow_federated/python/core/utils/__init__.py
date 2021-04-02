@@ -14,7 +14,6 @@
 """Libraries for using and developing Federated algorithms."""
 
 from tensorflow_federated.python.core.utils.computation_utils import update_state
-from tensorflow_federated.python.core.utils.encoding_utils import build_encoded_broadcast_process
 from tensorflow_federated.python.core.utils.tf_computation_utils import assign
 from tensorflow_federated.python.core.utils.tf_computation_utils import create_variables
 from tensorflow_federated.python.core.utils.tf_computation_utils import identity
