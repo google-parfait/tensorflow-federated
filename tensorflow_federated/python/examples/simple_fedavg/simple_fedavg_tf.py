@@ -74,10 +74,12 @@ class KerasModelWrapper(object):
         non_trainable=self.keras_model.non_trainable_variables)
 
   def from_weights(self, model_weights):
-    tff.utils.assign(self.keras_model.trainable_variables,
-                     list(model_weights.trainable))
-    tff.utils.assign(self.keras_model.non_trainable_variables,
-                     list(model_weights.non_trainable))
+    tf.nest.map_structure(lambda v, t: v.assign(t),
+                          self.keras_model.trainable_variables,
+                          list(model_weights.trainable))
+    tf.nest.map_structure(lambda v, t: v.assign(t),
+                          self.keras_model.non_trainable_variables,
+                          list(model_weights.non_trainable))
 
 
 def keras_evaluate(model, test_data, metric):
@@ -152,8 +154,10 @@ def server_update(model, server_optimizer, server_state, weights_delta):
   """
   # Initialize the model with the current state.
   model_weights = model.weights
-  tff.utils.assign(model_weights, server_state.model_weights)
-  tff.utils.assign(server_optimizer.variables(), server_state.optimizer_state)
+  tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
+                        server_state.model_weights)
+  tf.nest.map_structure(lambda v, t: v.assign(t), server_optimizer.variables(),
+                        server_state.optimizer_state)
 
   # Apply the update to the model.
   neg_weights_delta = [-1.0 * x for x in weights_delta]
@@ -202,7 +206,8 @@ def client_update(model, dataset, server_message, client_optimizer):
   """
   model_weights = model.weights
   initial_weights = server_message.model_weights
-  tff.utils.assign(model_weights, initial_weights)
+  tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
+                        initial_weights)
 
   num_examples = tf.constant(0, dtype=tf.int32)
   loss_sum = tf.constant(0, dtype=tf.float32)

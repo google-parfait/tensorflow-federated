@@ -70,34 +70,6 @@ def create_variables(name, type_spec, **kwargs):
         'found {}.'.format(type_spec))
 
 
-def assign(target, source):
-  """Creates an op that assigns `target` from `source`.
-
-  This utility function provides the exact same behavior as
-  `tf.Variable.assign`, but it generalizes to a wider class of objects,
-  including ordinary variables as well as various types of nested structures.
-
-  Args:
-    target: A nested structure composed of variables embedded in containers that
-      are compatible with `tf.nest`, or instances of
-      `structure.Struct`.
-    source: A nested structure composed of tensors, matching that of `target`.
-
-  Returns:
-    A single op that represents the assignment.
-
-  Raises:
-    TypeError: If types mismatch.
-  """
-  # TODO(b/113112108): Extend this to containers of mixed types.
-  if isinstance(target, structure.Struct):
-    return tf.group(*structure.flatten(
-        structure.map_structure(lambda a, b: a.assign(b), target, source)))
-  else:
-    return tf.group(*tf.nest.flatten(
-        tf.nest.map_structure(lambda a, b: a.assign(b), target, source)))
-
-
 def identity(source):
   """Applies `tf.identity` pointwise to `source`.
 

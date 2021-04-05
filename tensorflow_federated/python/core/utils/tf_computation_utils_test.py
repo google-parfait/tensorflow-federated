@@ -45,43 +45,6 @@ class TfComputationUtilsTest(test_case.TestCase):
     self._assertMatchesVariable(x[1], 'foo/y:0', (), tf.string)
     self._assertMatchesVariable(x[2], 'foo/2:0', (), tf.bool)
 
-  def test_assign_with_unordered_dict(self):
-    with tf.Graph().as_default() as graph:
-      v = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
-      c = tf.constant(10, dtype=tf.int32, shape=[])
-      v_dict = {'bar': v}
-      c_dict = {'bar': c}
-      op = tf_computation_utils.assign(v_dict, c_dict)
-    with tf.compat.v1.Session(graph=graph) as sess:
-      sess.run(v.initializer)
-      sess.run(op)
-      result = sess.run(v)
-    self.assertEqual(result, 10)
-
-  def test_assign_with_structure(self):
-    with tf.Graph().as_default() as graph:
-      v = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
-      c = tf.constant(10, dtype=tf.int32, shape=[])
-      v_tuple = structure.Struct([('bar', v)])
-      c_tuple = structure.Struct([('bar', c)])
-      op = tf_computation_utils.assign(v_tuple, c_tuple)
-    with tf.compat.v1.Session(graph=graph) as sess:
-      sess.run(v.initializer)
-      sess.run(op)
-      result = sess.run(v)
-    self.assertEqual(result, 10)
-
-  def test_assign_with_no_nesting(self):
-    with tf.Graph().as_default() as graph:
-      v = tf.Variable(0, name='foo', dtype=tf.int32, shape=[])
-      c = tf.constant(10, dtype=tf.int32, shape=[])
-      op = tf_computation_utils.assign(v, c)
-    with tf.compat.v1.Session(graph=graph) as sess:
-      sess.run(v.initializer)
-      sess.run(op)
-      result = sess.run(v)
-    self.assertEqual(result, 10)
-
   def test_identity_with_unordered_dict(self):
     with tf.Graph().as_default() as graph:
       c1 = {'foo': tf.constant(10, dtype=tf.int32, shape=[])}
