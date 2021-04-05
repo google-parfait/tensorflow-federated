@@ -15,4 +15,3 @@
 
 from tensorflow_federated.python.core.utils.computation_utils import update_state
 from tensorflow_federated.python.core.utils.tf_computation_utils import create_variables
-from tensorflow_federated.python.core.utils.tf_computation_utils import identity
