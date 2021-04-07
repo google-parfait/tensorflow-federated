@@ -13,6 +13,8 @@
 # limitations under the License.
 """A factory of intrinsics for use in composing federated computations."""
 
+import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
@@ -331,6 +333,93 @@ class IntrinsicFactory(object):
 
     value = value_impl.ValueImpl.get_comp(value)
     comp = building_block_factory.create_federated_zip(value)
+    comp = self._bind_comp_as_reference(comp)
+    return value_impl.ValueImpl(comp, self._context_stack)
+
+  def _select_parameter_mismatch(
+      self,
+      param_type,
+      type_desc,
+      name,
+      secure,
+      expected_type=None,
+  ):
+    """Throws a `TypeError` indicating a mismatched `select` parameter type."""
+    secure_string = '_secure' if secure else ''
+    intrinsic_name = f'federated{secure_string}_select'
+    message = (
+        f'Expected `{intrinsic_name}` parameter `{name}` to be {type_desc}')
+    if expected_type is None:
+      raise TypeError(f'{message}, found value of type {param_type}')
+    else:
+      raise TypeError(f'{message}:\n' +
+                      computation_types.type_mismatch_error_message(
+                          param_type,
+                          expected_type,
+                          computation_types.TypeRelation.ASSIGNABLE,
+                          second_is_expected=True))
+
+  def _check_select_keys_type(self, keys_type, secure):
+    if not (keys_type.is_federated and keys_type.placement.is_clients()):
+      self._select_parameter_mismatch(keys_type,
+                                      'a federated value placed at clients',
+                                      'client_keys', secure)
+    if not (keys_type.member.is_tensor() and keys_type.member.dtype == tf.int32
+            and keys_type.member.shape.rank == 1 and
+            keys_type.member.shape.dims[0].value is not None):
+      self._select_parameter_mismatch(
+          keys_type.member, 'a one-dimensional fixed-length tf.int32 tensor',
+          'client_keys.type_signature.member', secure)
+
+  def federated_select(self, client_keys, max_key, server_val, select_fn,
+                       secure):
+    """Implements `federated_select` as defined in `api/intrinsics.py`."""
+    client_keys = value_impl.to_value(client_keys, None, self._context_stack)
+    self._check_select_keys_type(client_keys.type_signature, secure)
+    max_key = value_impl.to_value(max_key, None, self._context_stack)
+    expected_max_key_type = computation_types.at_server(tf.int32)
+    if not expected_max_key_type.is_assignable_from(max_key.type_signature):
+      self._select_parameter_mismatch(
+          max_key.type_signature,
+          'a 32-bit unsigned integer placed at server',
+          'max_key',
+          secure,
+          expected_type=expected_max_key_type)
+    server_val = value_impl.to_value(server_val, None, self._context_stack)
+    expected_server_val_type = computation_types.at_server(
+        computation_types.AbstractType('T'))
+    if (not server_val.type_signature.is_federated() or
+        not server_val.type_signature.placement.is_server()):
+      self._select_parameter_mismatch(
+          server_val.type_signature,
+          'a value placed at server',
+          'server_val',
+          secure,
+          expected_type=expected_server_val_type)
+    select_fn_param_type = computation_types.to_type(
+        [server_val.type_signature.member, tf.int32])
+    select_fn = value_impl.to_value(
+        select_fn,
+        None,
+        self._context_stack,
+        parameter_type_hint=select_fn_param_type)
+    expected_select_fn_type = computation_types.FunctionType(
+        select_fn_param_type, computation_types.AbstractType('U'))
+    if (not select_fn.type_signature.is_function() or
+        not select_fn.type_signature.parameter.is_assignable_from(
+            select_fn_param_type)):
+      self._select_parameter_mismatch(
+          select_fn.type_signature,
+          'a function from state and key to result',
+          'select_fn',
+          secure,
+          expected_type=expected_select_fn_type)
+    client_keys = value_impl.ValueImpl.get_comp(client_keys)
+    max_key = value_impl.ValueImpl.get_comp(max_key)
+    server_val = value_impl.ValueImpl.get_comp(server_val)
+    select_fn = value_impl.ValueImpl.get_comp(select_fn)
+    comp = building_block_factory.create_federated_select(
+        client_keys, max_key, server_val, select_fn, secure)
     comp = self._bind_comp_as_reference(comp)
     return value_impl.ValueImpl(comp, self._context_stack)
 

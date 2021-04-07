@@ -644,6 +644,31 @@ class CreateFederatedSecureSumTest(absltest.TestCase):
                      'int32@SERVER')
 
 
+class CreateFederatedSelectTest(parameterized.TestCase):
+
+  @parameterized.named_parameters(('non_secure', False, 'federated_select'),
+                                  ('secure', True, 'federated_secure_select'))
+  def test_returns_federated_select(self, secure, name):
+    client_keys = building_blocks.Data(
+        'client_keys',
+        computation_types.at_clients(
+            computation_types.TensorType(tf.int32, [5])))
+    max_key = building_blocks.Data('max_key',
+                                   computation_types.at_server(tf.int32))
+    server_val_type = computation_types.SequenceType(tf.string)
+    server_val = building_blocks.Data(
+        'server_val', computation_types.at_server(server_val_type))
+    select_fn = building_blocks.Data(
+        'select_fn',
+        computation_types.FunctionType((server_val_type, tf.int32), tf.string))
+    comp = building_block_factory.create_federated_select(
+        client_keys, max_key, server_val, select_fn, secure)
+    self.assertEqual(comp.compact_representation(),
+                     f'{name}(<client_keys,max_key,server_val,select_fn>)')
+    self.assertEqual(comp.type_signature.compact_representation(),
+                     '{string*}@CLIENTS')
+
+
 class CreateFederatedSumTest(absltest.TestCase):
 
   def test_raises_type_error_with_none_value(self):
@@ -866,10 +891,8 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.StructType((type_signature, type_signature))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_zip_at_clients(v)'
-    )
+    self.assertEqual(comp.formatted_representation(),
+                     'federated_zip_at_clients(v)')
     self.assertEqual(str(comp.type_signature), '{<int32,int32>}@CLIENTS')
 
   def test_returns_federated_zip_at_clients_with_two_values_unnamed_tuple(self):
@@ -1029,10 +1052,8 @@ class CreateFederatedZipTest(parameterized.TestCase):
     value_type = computation_types.StructType((type_signature, type_signature))
     value = building_blocks.Data('v', value_type)
     comp = building_block_factory.create_federated_zip(value)
-    self.assertEqual(
-        comp.formatted_representation(),
-        'federated_zip_at_server(v)'
-    )
+    self.assertEqual(comp.formatted_representation(),
+                     'federated_zip_at_server(v)')
     self.assertEqual(str(comp.type_signature), '<int32,int32>@SERVER')
 
   def test_returns_federated_zip_at_server_with_two_values_named(self):

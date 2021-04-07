@@ -263,6 +263,68 @@ def federated_secure_sum(value, bitwidth):
   return factory.federated_secure_sum(value, bitwidth)
 
 
+def federated_select(client_keys, max_key, server_val, select_fn):
+  """Sends selected values from a server database to clients.
+
+  Args:
+    client_keys: `tff.CLIENTS`-placed one-dimensional fixed-size `int32` keys
+      used to select values from `database` to load for each client.
+    max_key: A `tff.SERVER`-placed `int32` which is guaranteed to be greater
+      than any of `client_keys`. Lower values may permit more optimizations.
+    server_val: `tff.SERVER`-placed value used as an input to `select_fn`.
+    select_fn: A function which accepts `server_val` and a `int32` client key
+      and returns a value to be sent to the client. `select_fn` should be
+      deterministic (nonrandom).
+
+  Returns:
+    `tff.CLIENTS`-placed sequences of values returned from `select_fn`. In each
+    sequence, the order of values will match the order of keys in the
+    corresponding `client_keys` tensor. For example, a client with keys
+    `[1, 2, ...]` will receive a sequence of values
+    `[select_fn(server_val, 1), select_fn(server_val, 2), ...]`.
+
+  Raises:
+    TypeError: If `client_keys` is not of type `{int32[N]}@CLIENTS`, if
+      `max_key` is not of type `int32@SERVER`, if `server_val` is not a
+      server-placed value (`S@SERVER`), or if `select_fn` is not a function
+      of type `<S, int32> -> RESULT`.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.federated_select(
+      client_keys, max_key, server_val, select_fn, secure=False)
+
+
+def federated_secure_select(client_keys, max_key, server_val, select_fn):
+  """Sends privately-selected values from a server database to  clients.
+
+  Args:
+    client_keys: `tff.CLIENTS`-placed one-dimensional fixed-size `int32` keys
+      used to select values from `database` to load for each client.
+    max_key: A `tff.SERVER`-placed `int32` which is guaranteed to be greater
+      than any of `client_keys`. Lower values may permit more optimizations.
+    server_val: `tff.SERVER`-placed value used as an input to `select_fn`.
+    select_fn: A function which accepts `server_val` and a `int32` client key
+      and returns a value to be sent to the client. `select_fn` should be
+      deterministic (nonrandom).
+
+  Returns:
+    `tff.CLIENTS`-placed sequences of values returned from `select_fn`. In each
+    sequence, the order of values will match the order of keys in the
+    corresponding `client_keys` tensor. For example, a client with keys
+    `[1, 2, ...]` will receive a sequence of values
+    `[select_fn(server_val, 1), select_fn(server_val, 2), ...]`.
+
+  Raises:
+    TypeError: If `client_keys` is not of type `{int32[N]}@CLIENTS`, if
+      `max_key` is not of type `int32@SERVER`, if `server_val` is not a
+      server-placed value (`S@SERVER`), or if `select_fn` is not a function
+      of type `<S, int32> -> RESULT`.
+  """
+  factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
+  return factory.federated_select(
+      client_keys, max_key, server_val, select_fn, secure=True)
+
+
 def federated_sum(value):
   """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
 

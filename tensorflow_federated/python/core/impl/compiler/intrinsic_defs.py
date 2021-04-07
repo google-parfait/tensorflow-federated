@@ -16,6 +16,8 @@
 import enum
 from typing import Optional
 
+import tensorflow as tf
+
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.types import type_factory
@@ -26,6 +28,7 @@ _intrinsic_registry = {}
 @enum.unique
 class BroadcastKind(enum.Enum):
   DEFAULT = 1
+  SECURE = 2
 
 
 @enum.unique
@@ -353,6 +356,34 @@ FEDERATED_SECURE_SUM = IntrinsicDef(
         result=computation_types.at_server(
             computation_types.AbstractType('V'))),
     aggregation_kind=AggregationKind.SECURE)
+
+_SELECT_TYPE = computation_types.FunctionType(
+    parameter=[
+        computation_types.at_clients(
+            computation_types.AbstractType('Ks')),  # client_keys
+        computation_types.at_server(tf.int32),  # max_key
+        computation_types.at_server(
+            computation_types.AbstractType('T')),  # server_state
+        computation_types.FunctionType(
+            [computation_types.AbstractType('T'), tf.int32],
+            computation_types.AbstractType('U'))  # select_fn
+    ],
+    result=computation_types.at_clients(
+        computation_types.SequenceType(computation_types.AbstractType('U'))))
+
+# Distributes server values to clients based on client keys.
+FEDERATED_SELECT = IntrinsicDef(
+    'FEDERATED_SELECT',
+    'federated_select',
+    _SELECT_TYPE,
+    broadcast_kind=BroadcastKind.DEFAULT)
+
+# Securely distributes server values to clients based on private client keys.
+FEDERATED_SECURE_SELECT = IntrinsicDef(
+    'FEDERATED_SECURE_SELECT',
+    'federated_secure_select',
+    _SELECT_TYPE,
+    broadcast_kind=BroadcastKind.SECURE)
 
 # Computes the sum of client values on the server. Only supported for numeric
 # types, or nested structures made up of numeric computation_types.

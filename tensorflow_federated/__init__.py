@@ -50,7 +50,9 @@ from tensorflow_federated.python.core.api.intrinsics import federated_collect
 from tensorflow_federated.python.core.api.intrinsics import federated_eval
 from tensorflow_federated.python.core.api.intrinsics import federated_map
 from tensorflow_federated.python.core.api.intrinsics import federated_mean
+from tensorflow_federated.python.core.api.intrinsics import federated_secure_select
 from tensorflow_federated.python.core.api.intrinsics import federated_secure_sum
+from tensorflow_federated.python.core.api.intrinsics import federated_select
 from tensorflow_federated.python.core.api.intrinsics import federated_sum
 from tensorflow_federated.python.core.api.intrinsics import federated_value
 from tensorflow_federated.python.core.api.intrinsics import federated_zip

@@ -206,6 +206,136 @@ class IntrinsicsTest(parameterized.TestCase):
         return intrinsics.federated_map(
             computations.tf_computation(lambda x: x > 10), x)
 
+  def basic_federated_select_args(self):
+    values = ['first', 'second', 'third']
+    server_val = intrinsics.federated_value(values, placements.SERVER)
+
+    max_key_py = len(values)
+    max_key = intrinsics.federated_value(max_key_py, placements.SERVER)
+
+    @computations.tf_computation
+    def get_three_random_keys():
+      return tf.random.uniform(
+          shape=[3], minval=0, maxval=max_key_py, dtype=tf.int32)
+
+    client_keys = intrinsics.federated_eval(get_three_random_keys,
+                                            placements.CLIENTS)
+
+    @computations.tf_computation
+    def select_fn(state, key):
+      return tf.gather(state, key)
+
+    return (client_keys, max_key, server_val, select_fn)
+
+  @parameterized.named_parameters(
+      ('non_secure', intrinsics.federated_select),
+      ('secure', intrinsics.federated_secure_select))
+  def test_federated_select_succeeds(self, federated_select):
+
+    @computations.federated_computation
+    def foo():
+      val = federated_select(*self.basic_federated_select_args())
+      self.assertIsInstance(val, value_base.Value)
+      return val
+
+    self.assert_type(foo, '( -> {string*}@CLIENTS)')
+
+  @parameterized.named_parameters(
+      ('non_secure', intrinsics.federated_select),
+      ('secure', intrinsics.federated_secure_select))
+  def test_federated_select_keys_must_be_client_placed(self, federated_select):
+
+    @computations.federated_computation
+    def _():
+      client_keys, max_key, server_val, select_fn = (
+          self.basic_federated_select_args())
+      del client_keys
+
+      @computations.tf_computation
+      def get_three_random_keys():
+        return tf.random.uniform(shape=[3], minval=0, maxval=3, dtype=tf.int32)
+
+      bad_keys = intrinsics.federated_eval(get_three_random_keys,
+                                           placements.SERVER)
+      with self.assertRaises(TypeError):
+        federated_select(bad_keys, max_key, server_val, select_fn)
+      return ()
+
+  @parameterized.named_parameters(
+      ('non_secure', intrinsics.federated_select),
+      ('secure', intrinsics.federated_secure_select))
+  def test_federated_select_keys_must_be_int32(self, federated_select):
+
+    @computations.federated_computation
+    def _():
+      client_keys, max_key, server_val, select_fn = (
+          self.basic_federated_select_args())
+      del client_keys
+
+      @computations.tf_computation
+      def get_three_random_int64_keys():
+        return tf.random.uniform(shape=[3], minval=0, maxval=3, dtype=tf.int64)
+
+      bad_keys = intrinsics.federated_eval(get_three_random_int64_keys,
+                                           placements.CLIENTS)
+      with self.assertRaises(TypeError):
+        federated_select(bad_keys, max_key, server_val, select_fn)
+      return ()
+
+  @parameterized.named_parameters(
+      ('non_secure', intrinsics.federated_select),
+      ('secure', intrinsics.federated_secure_select))
+  def test_federated_select_keys_cannot_be_scalar(self, federated_select):
+
+    @computations.federated_computation
+    def _():
+      client_keys, max_key, server_val, select_fn = (
+          self.basic_federated_select_args())
+      del client_keys
+      bad_keys = intrinsics.federated_value(1, placements.CLIENTS)
+      with self.assertRaises(TypeError):
+        federated_select(bad_keys, max_key, server_val, select_fn)
+      return ()
+
+  @parameterized.named_parameters(
+      ('non_secure', intrinsics.federated_select),
+      ('secure', intrinsics.federated_secure_select))
+  def test_federated_select_keys_must_be_fixed_length(self, federated_select):
+
+    @computations.federated_computation
+    def _():
+      client_keys, max_key, server_val, select_fn = (
+          self.basic_federated_select_args())
+
+      @computations.tf_computation(
+          computation_types.TensorType(tf.int32, [None]))
+      def unshape(x):
+        return x
+
+      bad_keys = intrinsics.federated_map(unshape, client_keys)
+      with self.assertRaises(TypeError):
+        federated_select(bad_keys, max_key, server_val, select_fn)
+      return ()
+
+  @parameterized.named_parameters(
+      ('non_secure', intrinsics.federated_select),
+      ('secure', intrinsics.federated_secure_select))
+  def test_federated_select_fn_must_take_int32_keys(self, federated_select):
+
+    @computations.federated_computation
+    def _():
+      client_keys, max_key, server_val, select_fn = (
+          self.basic_federated_select_args())
+      del select_fn
+
+      @computations.tf_computation(server_val.type_signature.member, tf.int64)
+      def bad_select_fn(server_value, key):
+        return tf.gather(server_value, key)
+
+      with self.assertRaises(TypeError):
+        federated_select(client_keys, max_key, server_val, bad_select_fn)
+      return ()
+
   def test_federated_sum_with_client_int(self):
 
     @computations.federated_computation(

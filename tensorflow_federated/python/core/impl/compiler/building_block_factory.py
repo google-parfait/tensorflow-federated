@@ -899,6 +899,32 @@ def create_federated_secure_sum(
   return building_blocks.Call(intrinsic, values)
 
 
+def create_federated_select(
+    client_keys,
+    max_key,
+    server_val,
+    select_fn,
+    secure: bool,
+) -> building_blocks.Call:
+  """Creates a called `federated_select` or `federated_secure_select`."""
+  py_typecheck.check_type(client_keys, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(max_key, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(server_val, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(select_fn, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(secure, bool)
+  result_type = computation_types.at_clients(
+      computation_types.SequenceType(select_fn.type_signature.result))
+  intrinsic_type = computation_types.FunctionType([
+      type_conversions.type_to_non_all_equal(
+          client_keys.type_signature), max_key.type_signature,
+      server_val.type_signature, select_fn.type_signature
+  ], result_type)
+  intrinsic_def = intrinsic_defs.FEDERATED_SECURE_SELECT if secure else intrinsic_defs.FEDERATED_SELECT
+  intrinsic = building_blocks.Intrinsic(intrinsic_def.uri, intrinsic_type)
+  values = building_blocks.Struct([client_keys, max_key, server_val, select_fn])
+  return building_blocks.Call(intrinsic, values)
+
+
 def create_federated_sum(
     value: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called federated sum.
