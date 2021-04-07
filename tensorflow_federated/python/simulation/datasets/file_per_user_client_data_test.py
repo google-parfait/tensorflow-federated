@@ -200,6 +200,14 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
             self.assertAlmostEqual(actual[i], e, places=4)
       self.assertEmpty(expected_examples)
 
+  def test_create_tf_dataset_from_all_clients(self):
+    data = self._create_fake_client_data()
+    expected_num_examples = len(FAKE_TEST_DATA)
+    tf_dataset = data.create_tf_dataset_from_all_clients()
+    self.assertIsInstance(tf_dataset, tf.data.Dataset)
+    actual_num_examples = tf_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+    self.assertEqual(self.evaluate(actual_num_examples), expected_num_examples)
+
   def test_dataset_computation(self):
     data = self._create_fake_client_data()
     self.assertIsInstance(data.dataset_computation,
@@ -244,6 +252,104 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
         path=temp_dir)
     expected_client_ids = set(example[0] for example in FAKE_TEST_DATA)
     self.assertLen(data.client_ids, len(expected_client_ids))
+
+  def test_dataset_from_large_number_of_clients(self):
+    # This pattern of using FilePerUserClientData to do a dictionary lookup
+    # is not its intended use case. The test here is only to verify performance
+    # in settings with large numbers of clients.
+    client_ids_to_files = {str(x): str(x) for x in range(500_000)}
+
+    def dataset_fn(_):
+      return tf.data.Dataset.range(100)
+
+    client_data = file_per_user_client_data.FilePerUserClientData(
+        client_ids_to_files=client_ids_to_files, dataset_fn=dataset_fn)
+    # Ensure this completes within the test timeout without raising error.
+    # Previous implementations caused this to take an very long time via Python
+    # list -> generator -> list transformations.
+    try:
+      client_data.create_tf_dataset_from_all_clients(seed=42)
+    except Exception as e:  # pylint: disable=broad-except
+      self.fail(e)
+
+
+class PreprocessFilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    cls.temp_dir = tempfile.mkdtemp()
+    cls.fake_user_data = FakeUserData(FAKE_TEST_DATA, cls.temp_dir)
+
+  @classmethod
+  def tearDownClass(cls):
+    for test_data_path in os.listdir(cls.temp_dir):
+      os.remove(os.path.join(cls.temp_dir, test_data_path))
+    super().tearDownClass()
+
+  def _create_fake_client_data(self):
+    fake_user_data = PreprocessFilePerUserClientDataTest.fake_user_data
+    return file_per_user_client_data.FilePerUserClientData(
+        fake_user_data.client_data_file_dict,
+        fake_user_data.create_test_dataset_fn,
+    )
+
+  def test_preprocess_with_identity_gives_same_structure(self):
+    data = self._create_fake_client_data().preprocess(lambda x: x)
+    self.assertIsInstance(
+        data, file_per_user_client_data.PreprocessFilePerUserClientData)
+    expected_structure = (tf.TensorSpec(shape=[], dtype=tf.int64),
+                          tf.TensorSpec(shape=[], dtype=tf.float32),
+                          tf.TensorSpec(shape=[2], dtype=tf.float32))
+    actual_structure = data.element_type_structure
+    self.assertEqual(expected_structure, actual_structure)
+
+  def test_preprocess_with_identity_gives_same_num_elements(self):
+    data = self._create_fake_client_data().preprocess(lambda x: x)
+    expected_num_examples = len(FAKE_TEST_DATA)
+    tf_dataset = data.create_tf_dataset_from_all_clients()
+    self.assertIsInstance(tf_dataset, tf.data.Dataset)
+    actual_num_examples = tf_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+    self.assertEqual(self.evaluate(actual_num_examples), expected_num_examples)
+
+  def test_preprocess_with_take_and_create_tf_dataset(self):
+    data = self._create_fake_client_data().preprocess(lambda x: x.take(1))
+
+    for client_id in data.client_ids:
+      client_dataset = data.create_tf_dataset_for_client(client_id)
+      self.assertIsInstance(client_dataset, tf.data.Dataset)
+      num_examples = client_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+      self.assertEqual(num_examples, 1)
+
+  def test_preprocess_with_take_and_dataset_computation(self):
+    data = self._create_fake_client_data().preprocess(lambda x: x.take(1))
+
+    for client_id in data.client_ids:
+      client_dataset = data.dataset_computation(client_id)
+      self.assertIsInstance(client_dataset, tf.data.Dataset)
+      num_examples = client_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+      self.assertEqual(num_examples, 1)
+
+  def test_dataset_from_large_number_of_clients(self):
+    # This pattern of using FilePerUserClientData to do a dictionary lookup
+    # is not its intended use case. The test here is only to verify performance
+    # in settings with large numbers of clients.
+    client_ids_to_files = {str(x): str(x) for x in range(500_000)}
+
+    def dataset_fn(_):
+      return tf.data.Dataset.range(100)
+
+    client_data = file_per_user_client_data.FilePerUserClientData(
+        client_ids_to_files=client_ids_to_files, dataset_fn=dataset_fn)
+    client_data = client_data.preprocess(lambda x: x)
+    # Ensure this completes within the test timeout without raising error.
+    # Previous implementations caused this to take an very long time via Python
+    # list -> generator -> list transformations.
+    try:
+      client_data.create_tf_dataset_from_all_clients(seed=42)
+    except Exception as e:  # pylint: disable=broad-except
+      self.fail(e)
+
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()

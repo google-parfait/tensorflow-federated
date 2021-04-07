@@ -29,6 +29,10 @@ def test_dataset_filepath():
   return os.path.join(FLAGS.test_tmpdir, 'test.sqlite')
 
 
+def large_dataset_filepath():
+  return os.path.join(FLAGS.test_tmpdir, 'large_test.sqlite')
+
+
 def make_test_example(client_id: str, e: int) -> bytes:
   return tf.train.Example(
       features=tf.train.Features(
@@ -77,6 +81,37 @@ def setUpModule():
         connection.execute(
             'INSERT INTO client_metadata (client_id, split_name, num_examples) '
             'VALUES (?, ?, ?);', (client_id, split_name, count))
+
+  with sqlite3.connect(large_dataset_filepath()) as connection:
+    test_setup_queries = [
+        """CREATE TABLE examples (
+           split_name TEXT NOT NULL,
+           client_id TEXT NOT NULL,
+           serialized_example_proto BLOB NOT NULL);""",
+        """CREATE INDEX idx_client_id_split
+           ON examples (split_name, client_id);""",
+        """CREATE TABLE client_metadata (
+           client_id TEXT NOT NULL,
+           split_name TEXT NOT NULL,
+           num_examples INTEGER NOT NULL);""",
+        """CREATE INDEX idx_metadata_client_id
+           ON client_metadata (client_id);""",
+    ]
+    for q in test_setup_queries:
+      connection.execute(q)
+    examples_per_client = 10
+    for i in range(100_000):
+      client_id = 'client_{}'.format(i)
+      only_split = 'train'
+      for e in range(examples_per_client):
+        connection.execute(
+            'INSERT INTO examples '
+            '(split_name, client_id, serialized_example_proto) '
+            'VALUES (?, ?, ?);',
+            (only_split, client_id, make_test_example(client_id, e)))
+      connection.execute(
+          'INSERT INTO client_metadata (client_id, split_name, num_examples) '
+          'VALUES (?, ?, ?);', (client_id, only_split, examples_per_client))
 
 
 class SqlClientDataTest(tf.test.TestCase):
@@ -146,6 +181,166 @@ class SqlClientDataTest(tf.test.TestCase):
       test_split('train', 2)
     with self.subTest('test'):
       test_split('test', 1)
+
+  def test_dataset_from_large_number_of_clients(self):
+    client_data = sql_client_data.SqlClientData(large_dataset_filepath())
+    try:
+      client_data.create_tf_dataset_from_all_clients(seed=42)
+    except Exception as e:  # pylint: disable=broad-except
+      self.fail(e)
+
+
+class PreprocessSqlClientDataTest(tf.test.TestCase):
+
+  def test_preprocess_with_identity_gives_same_structure(self):
+
+    def test_split(split_name):
+      client_data = sql_client_data.SqlClientData(
+          test_dataset_filepath(), split_name=split_name)
+      preprocessed_client_data = client_data.preprocess(lambda x: x)
+      self.assertIsInstance(preprocessed_client_data,
+                            sql_client_data.PreprocessSqlClientData)
+      self.assertEqual(preprocessed_client_data.element_type_structure,
+                       client_data.element_type_structure)
+
+    with self.subTest('no_split'):
+      test_split(None)
+    with self.subTest('train_split'):
+      test_split('train')
+    with self.subTest('test_split'):
+      test_split('test')
+
+  def test_create_dataset_for_client_with_identity_preprocess(self):
+
+    def test_split(split_name, example_counts):
+      client_data = sql_client_data.SqlClientData(
+          test_dataset_filepath(), split_name=split_name)
+      client_data = client_data.preprocess(lambda x: x)
+      self.assertEqual(client_data.client_ids, list(example_counts.keys()))
+      self.assertEqual(client_data.element_type_structure,
+                       tf.TensorSpec(shape=(), dtype=tf.string))
+      for client_id, expected_examples in example_counts.items():
+        dataset = client_data.create_tf_dataset_for_client(client_id)
+        actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+        self.assertEqual(actual_examples, expected_examples, msg=client_id)
+
+    with self.subTest('no_split'):
+      test_split(None, {'test_a': 1, 'test_b': 2, 'test_c': 3})
+    with self.subTest('train_split'):
+      test_split('train', {'test_a': 1, 'test_b': 1, 'test_c': 2})
+    with self.subTest('test_split'):
+      # The `test` split has no examples for client `test_a`.
+      test_split('test', {'test_b': 1, 'test_c': 1})
+
+  def test_create_dataset_from_all_clients_with_identity_preprocess(self):
+
+    def test_split(split_name, example_counts):
+      client_data = sql_client_data.SqlClientData(
+          test_dataset_filepath(), split_name=split_name)
+      client_data = client_data.preprocess(lambda x: x)
+      self.assertEqual(client_data.client_ids, list(example_counts.keys()))
+      self.assertEqual(client_data.element_type_structure,
+                       tf.TensorSpec(shape=(), dtype=tf.string))
+      expected_examples = sum(example_counts.values())
+      dataset = client_data.create_tf_dataset_from_all_clients()
+      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+      self.assertEqual(actual_examples, expected_examples)
+
+    with self.subTest('no_split'):
+      test_split(None, {'test_a': 1, 'test_b': 2, 'test_c': 3})
+    with self.subTest('train_split'):
+      test_split('train', {'test_a': 1, 'test_b': 1, 'test_c': 2})
+    with self.subTest('test_split'):
+      # The `test` split has no examples for client `test_a`.
+      test_split('test', {'test_b': 1, 'test_c': 1})
+
+  def test_dataset_computation_with_identity_preprocess(self):
+
+    def test_split(split_name, expected_examples):
+      client_data = sql_client_data.SqlClientData(
+          test_dataset_filepath(), split_name=split_name)
+      client_data = client_data.preprocess(lambda x: x)
+      self.assertEqual(
+          str(client_data.dataset_computation.type_signature),
+          '(string -> string*)')
+      dataset = client_data.dataset_computation('test_c')
+      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+      self.assertEqual(actual_examples, expected_examples)
+
+    with self.subTest('no_split'):
+      test_split(None, 3)
+    with self.subTest('train'):
+      test_split('train', 2)
+    with self.subTest('test'):
+      test_split('test', 1)
+
+  def test_create_dataset_for_client_with_take_preprocess(self):
+
+    def test_split(split_name, example_counts):
+      client_data = sql_client_data.SqlClientData(
+          test_dataset_filepath(), split_name=split_name)
+      client_data = client_data.preprocess(lambda x: x.take(1))
+      self.assertEqual(client_data.client_ids, list(example_counts.keys()))
+      self.assertEqual(client_data.element_type_structure,
+                       tf.TensorSpec(shape=(), dtype=tf.string))
+      for client_id, expected_examples in example_counts.items():
+        dataset = client_data.create_tf_dataset_for_client(client_id)
+        actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+        self.assertEqual(actual_examples, expected_examples, msg=client_id)
+
+    with self.subTest('no_split'):
+      test_split(None, {'test_a': 1, 'test_b': 1, 'test_c': 1})
+    with self.subTest('train_split'):
+      test_split('train', {'test_a': 1, 'test_b': 1, 'test_c': 1})
+    with self.subTest('test_split'):
+      # The `test` split has no examples for client `test_a`.
+      test_split('test', {'test_b': 1, 'test_c': 1})
+
+  def test_create_dataset_from_all_clients_with_take_preprocess(self):
+
+    def test_split(split_name):
+      client_data = sql_client_data.SqlClientData(
+          test_dataset_filepath(), split_name=split_name)
+      client_data = client_data.preprocess(lambda x: x.take(1))
+      expected_examples = len(client_data.client_ids)
+      dataset = client_data.create_tf_dataset_from_all_clients()
+      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+      self.assertEqual(actual_examples, expected_examples)
+
+    with self.subTest('no_split'):
+      test_split(None)
+    with self.subTest('train_split'):
+      test_split('train')
+    with self.subTest('test_split'):
+      test_split('test')
+
+  def test_dataset_computation_with_take_preprocess(self):
+
+    def test_split(split_name, expected_examples):
+      client_data = sql_client_data.SqlClientData(
+          test_dataset_filepath(), split_name=split_name)
+      client_data = client_data.preprocess(lambda x: x.take(1))
+      self.assertEqual(
+          str(client_data.dataset_computation.type_signature),
+          '(string -> string*)')
+      dataset = client_data.dataset_computation('test_c')
+      actual_examples = dataset.reduce(0, lambda s, x: s + 1)
+      self.assertEqual(actual_examples, expected_examples)
+
+    with self.subTest('no_split'):
+      test_split(None, 1)
+    with self.subTest('train'):
+      test_split('train', 1)
+    with self.subTest('test'):
+      test_split('test', 1)
+
+  def test_dataset_from_large_number_of_clients(self):
+    client_data = sql_client_data.SqlClientData(large_dataset_filepath())
+    client_data = client_data.preprocess(lambda x: x)
+    try:
+      client_data.create_tf_dataset_from_all_clients(seed=42)
+    except Exception as e:  # pylint: disable=broad-except
+      self.fail(e)
 
 
 if __name__ == '__main__':
