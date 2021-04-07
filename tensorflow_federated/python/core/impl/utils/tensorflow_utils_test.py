@@ -232,6 +232,34 @@ class GraphUtilsTest(test_case.TestCase):
           np.ndarray(shape=(2, 0), dtype=np.int32), graph)
     self._assert_captured_result_eq_dtype(type_spec, binding, 'int32[2,0]')
 
+  def test_capture_result_with_ragged_tensor(self):
+    with tf.Graph().as_default() as graph:
+      type_spec, binding = tensorflow_utils.capture_result_from_graph(
+          tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4]), graph)
+      del binding
+      self.assert_types_identical(
+          type_spec,
+          computation_types.StructWithPythonType([
+              ('flat_values', computation_types.TensorType(tf.int32, [4])),
+              ('nested_row_splits',
+               computation_types.StructWithPythonType([
+                   (None, computation_types.TensorType(tf.int64, [3]))
+               ], tuple)),
+          ], tf.RaggedTensor))
+
+  def test_capture_result_with_sparse_tensor(self):
+    with tf.Graph().as_default() as graph:
+      type_spec, binding = tensorflow_utils.capture_result_from_graph(
+          tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5]), graph)
+      del binding
+      self.assert_types_identical(
+          type_spec,
+          computation_types.StructWithPythonType([
+              ('indices', computation_types.TensorType(tf.int64, [1, 1])),
+              ('values', computation_types.TensorType(tf.int32, [1])),
+              ('dense_shape', computation_types.TensorType(tf.int64, [1])),
+          ], tf.SparseTensor))
+
   @test_utils.graph_mode_test
   def test_capture_result_with_int_placeholder(self):
     self.assertEqual(

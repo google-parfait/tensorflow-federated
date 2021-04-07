@@ -193,9 +193,30 @@ def capture_result_from_graph(result, graph):
       # We have a tf.Variable-like result, get a proper tensor to fetch.
       with graph.as_default():
         result = result.read_value()
-    return (computation_types.TensorType(result.dtype.base_dtype, result.shape),
-            pb.TensorFlow.Binding(
-                tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)))
+    # `tf.is_tensor` returns true for some things that are not actually single
+    # `tf.Tensor`s, including `tf.SparseTensor`s and `tf.RaggedTensor`s.
+    if isinstance(result, tf.RaggedTensor):
+      name_value_pairs = (('flat_values', result.flat_values),
+                          ('nested_row_splits', result.nested_row_splits))
+      return _get_bindings_for_elements(
+          name_value_pairs, graph,
+          functools.partial(
+              computation_types.StructWithPythonType,
+              container_type=tf.RaggedTensor))
+    elif isinstance(result, tf.SparseTensor):
+      name_value_pairs = (('indices', result.indices),
+                          ('values', result.values), ('dense_shape',
+                                                      result.dense_shape))
+      return _get_bindings_for_elements(
+          name_value_pairs, graph,
+          functools.partial(
+              computation_types.StructWithPythonType,
+              container_type=tf.SparseTensor))
+    else:
+      return (computation_types.TensorType(result.dtype.base_dtype,
+                                           result.shape),
+              pb.TensorFlow.Binding(
+                  tensor=pb.TensorFlow.TensorBinding(tensor_name=result.name)))
   elif py_typecheck.is_named_tuple(result):
     # Special handling needed for collections.namedtuples since they do not have
     # anything in the way of a shared base class. Note we don't want to rely on

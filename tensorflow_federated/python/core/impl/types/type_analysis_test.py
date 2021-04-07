@@ -195,7 +195,7 @@ class IsSumCompatibleTest(parameterized.TestCase):
        computation_types.FederatedType(tf.int32, placements.CLIENTS)),
   ])
   def test_positive_examples(self, type_spec):
-    self.assertTrue(type_analysis.is_sum_compatible(type_spec))
+    type_analysis.check_is_sum_compatible(type_spec)
 
   @parameterized.named_parameters([
       ('tensor_type_bool', computation_types.TensorType(tf.bool)),
@@ -207,9 +207,14 @@ class IsSumCompatibleTest(parameterized.TestCase):
       ('placement_type', computation_types.PlacementType()),
       ('function_type', computation_types.FunctionType(tf.int32, tf.int32)),
       ('abstract_type', computation_types.AbstractType('T')),
+      ('ragged_tensor',
+       computation_types.StructWithPythonType([], tf.RaggedTensor)),
+      ('sparse_tensor',
+       computation_types.StructWithPythonType([], tf.SparseTensor)),
   ])
   def test_negative_examples(self, type_spec):
-    self.assertFalse(type_analysis.is_sum_compatible(type_spec))
+    with self.assertRaises(type_analysis.SumIncompatibleError):
+      type_analysis.check_is_sum_compatible(type_spec)
 
 
 class IsAverageCompatibleTest(parameterized.TestCase):

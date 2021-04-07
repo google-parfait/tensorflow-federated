@@ -54,13 +54,25 @@ def infer_type(arg: Any) -> Optional[computation_types.Type]:
     Either an instance of `computation_types.Type`, or `None` if the argument is
     `None`.
   """
-  # TODO(b/113112885): Implement the remaining cases here on the need basis.
   if arg is None:
     return None
   elif isinstance(arg, typed_object.TypedObject):
     return arg.type_signature
   elif tf.is_tensor(arg):
-    return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)
+    # `tf.is_tensor` returns true for some things that are not actually single
+    # `tf.Tensor`s, including `tf.SparseTensor`s and `tf.RaggedTensor`s.
+    if isinstance(arg, tf.RaggedTensor):
+      return computation_types.StructWithPythonType(
+          (('flat_values', infer_type(arg.flat_values)),
+           ('nested_row_splits', infer_type(arg.nested_row_splits))),
+          tf.RaggedTensor)
+    elif isinstance(arg, tf.SparseTensor):
+      return computation_types.StructWithPythonType(
+          (('indices', infer_type(arg.indices)),
+           ('values', infer_type(arg.values)),
+           ('dense_shape', infer_type(arg.dense_shape))), tf.SparseTensor)
+    else:
+      return computation_types.TensorType(arg.dtype.base_dtype, arg.shape)
   elif isinstance(arg, TF_DATASET_REPRESENTATION_TYPES):
     element_type = computation_types.to_type(arg.element_spec)
     return computation_types.SequenceType(element_type)
@@ -416,12 +428,17 @@ def type_to_py_container(value, type_spec):
       elements.append((elem_name, value))
 
   if (py_typecheck.is_named_tuple(container_type) or
-      py_typecheck.is_attrs(container_type)):
+      py_typecheck.is_attrs(container_type) or
+      container_type is tf.SparseTensor):
     # The namedtuple and attr.s class constructors cannot interpret a list of
     # (name, value) tuples; instead call constructor using kwargs. Note that
     # these classes already define an order of names internally, so order does
     # not matter.
     return container_type(**dict(elements))
+  elif container_type is tf.RaggedTensor:
+    elements = dict(elements)
+    return tf.RaggedTensor.from_nested_row_splits(elements['flat_values'],
+                                                  elements['nested_row_splits'])
   else:
     # E.g., tuple and list when elements only has values, but also `dict`,
     # `collections.OrderedDict`, or `structure.Struct` when

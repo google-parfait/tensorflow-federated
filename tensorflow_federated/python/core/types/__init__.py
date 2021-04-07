@@ -17,7 +17,6 @@ from tensorflow_federated.python.core.api.computation_types import *
 from tensorflow_federated.python.core.impl.types.type_analysis import contains
 from tensorflow_federated.python.core.impl.types.type_analysis import count
 from tensorflow_federated.python.core.impl.types.type_analysis import is_structure_of_tensors
-from tensorflow_federated.python.core.impl.types.type_analysis import is_sum_compatible
 from tensorflow_federated.python.core.impl.types.type_analysis import is_tensorflow_compatible_type
 from tensorflow_federated.python.core.impl.types.type_conversions import type_from_tensors
 from tensorflow_federated.python.core.impl.types.type_conversions import type_to_tf_tensor_specs

@@ -278,7 +278,17 @@ def is_numeric_dtype(dtype):
   return dtype.is_integer or dtype.is_floating or dtype.is_complex
 
 
-def is_sum_compatible(type_spec: computation_types.Type) -> bool:
+class SumIncompatibleError(TypeError):
+
+  def __init__(self, type_spec, type_spec_context, reason):
+    message = (
+        'Expected a type which is compatible with the sum operator, found\n'
+        f'{type_spec_context}\nwhich contains\n{type_spec}\nwhich is not '
+        f'sum-compatible because {reason}.')
+    super().__init__(message)
+
+
+def check_is_sum_compatible(type_spec, type_spec_context=None):
   """Determines if `type_spec` is a type that can be added to itself.
 
   Types that are sum-compatible are composed of scalars of numeric types,
@@ -288,28 +298,37 @@ def is_sum_compatible(type_spec: computation_types.Type) -> bool:
 
   Args:
     type_spec: A `computation_types.Type`.
+    type_spec_context: An optional parent type to include in the error message.
 
-  Returns:
-    `True` iff `type_spec` is sum-compatible, `False` otherwise.
+  Raises:
+     SumIncompatibleError: if `type_spec` is not sum-compatible.
   """
   py_typecheck.check_type(type_spec, computation_types.Type)
+  if type_spec_context is None:
+    type_spec_context = type_spec
+  py_typecheck.check_type(type_spec_context, computation_types.Type)
   if type_spec.is_tensor():
-    return is_numeric_dtype(
-        type_spec.dtype) and type_spec.shape.is_fully_defined()
+    if not is_numeric_dtype(type_spec.dtype):
+      raise SumIncompatibleError(type_spec, type_spec_context,
+                                 f'{type_spec.dtype} is not numeric')
+    if not type_spec.shape.is_fully_defined():
+      raise SumIncompatibleError(type_spec, type_spec_context,
+                                 f'{type_spec.shape} is not fully defined')
   elif type_spec.is_struct():
-    return all(
-        is_sum_compatible(v) for _, v in structure.iter_elements(type_spec))
+    if (type_spec.python_container is tf.RaggedTensor or
+        type_spec.python_container is tf.sparse.SparseTensor):
+      raise SumIncompatibleError(
+          type_spec, type_spec_context,
+          '`tf.RaggedTensor` and `tf.sparse.SparseTensor` cannot be used with '
+          'simple summation')
+    for _, element_type in structure.iter_elements(type_spec):
+      check_is_sum_compatible(element_type, type_spec_context)
   elif type_spec.is_federated():
-    return is_sum_compatible(type_spec.member)
+    check_is_sum_compatible(type_spec.member, type_spec_context)
   else:
-    return False
-
-
-def check_is_sum_compatible(type_spec):
-  if not is_sum_compatible(type_spec):
-    raise TypeError(
-        'Expected a type which is compatible with the sum operator, found {}.'
-        .format(type_spec))
+    raise SumIncompatibleError(
+        type_spec, type_spec_context,
+        'only structures of tensors (possibly federated) may be summed')
 
 
 def is_structure_of_floats(type_spec: computation_types.Type) -> bool:
