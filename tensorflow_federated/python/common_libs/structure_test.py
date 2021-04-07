@@ -487,6 +487,84 @@ class StructTest(absltest.TestCase):
     expected_name_to_index_map = {'b': 0, 'a': 1}
     self.assertEqual(name_to_index_dict, expected_name_to_index_map)
 
+  def test_update_struct(self):
+    with self.subTest('fully_named'):
+      state = structure.Struct([('a', 1), ('b', 2), ('c', 3)])
+      state = structure.update_struct(state, c=7)
+      self.assertEqual(state, structure.Struct([('a', 1), ('b', 2), ('c', 7)]))
+      state = structure.update_struct(state, a=8)
+      self.assertEqual(state, structure.Struct([('a', 8), ('b', 2), ('c', 7)]))
+    with self.subTest('partially_named'):
+      state = structure.Struct([(None, 1), ('b', 2), (None, 3)])
+      state = structure.update_struct(state, b=7)
+      self.assertEqual(state, structure.Struct([(None, 1), ('b', 7),
+                                                (None, 3)]))
+      with self.assertRaises(KeyError):
+        structure.update_struct(state, a=8)
+    with self.subTest('nested'):
+      state = structure.Struct([('a', {'a1': 1, 'a2': 2}), ('b', 2), ('c', 3)])
+      state = structure.update_struct(state, a=7)
+      self.assertEqual(state, structure.Struct([('a', 7), ('b', 2), ('c', 3)]))
+      state = structure.update_struct(state, a={'foo': 1, 'bar': 2})
+      self.assertEqual(
+          state,
+          structure.Struct([('a', {
+              'foo': 1,
+              'bar': 2
+          }), ('b', 2), ('c', 3)]))
+    with self.subTest('unnamed'):
+      state = structure.Struct((None, i) for i in range(3))
+      with self.assertRaises(KeyError):
+        structure.update_struct(state, a=1)
+      with self.assertRaises(KeyError):
+        structure.update_struct(state, b=1)
+
+  def test_update_struct_namedtuple(self):
+    my_tuple_type = collections.namedtuple('my_tuple_type', 'a b c')
+    state = my_tuple_type(1, 2, 3)
+    state2 = structure.update_struct(state, c=7)
+    self.assertEqual(state2, my_tuple_type(1, 2, 7))
+    state3 = structure.update_struct(state2, a=8)
+    self.assertEqual(state3, my_tuple_type(8, 2, 7))
+
+  def test_update_struct_dict(self):
+    state = collections.OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+    state2 = structure.update_struct(state, c=7)
+    self.assertEqual(state2, {'a': 1, 'b': 2, 'c': 7})
+    state3 = structure.update_struct(state2, a=8)
+    self.assertEqual(state3, {'a': 8, 'b': 2, 'c': 7})
+
+  def test_update_struct_ordereddict(self):
+    state = collections.OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+    state2 = structure.update_struct(state, c=7)
+    self.assertEqual(state2,
+                     collections.OrderedDict([('a', 1), ('b', 2), ('c', 7)]))
+    state3 = structure.update_struct(state2, a=8)
+    self.assertEqual(state3,
+                     collections.OrderedDict([('a', 8), ('b', 2), ('c', 7)]))
+
+  def test_update_struct_attrs(self):
+
+    @attr.s
+    class TestAttrsClass(object):
+      a = attr.ib()
+      b = attr.ib()
+      c = attr.ib()
+
+    state = TestAttrsClass(1, 2, 3)
+    state2 = structure.update_struct(state, c=7)
+    self.assertEqual(state2, TestAttrsClass(1, 2, 7))
+    state3 = structure.update_struct(state2, a=8)
+    self.assertEqual(state3, TestAttrsClass(8, 2, 7))
+
+  def test_update_struct_fails(self):
+    with self.assertRaisesRegex(TypeError, '`structure` must be a structure'):
+      structure.update_struct((1, 2, 3), a=8)
+    with self.assertRaisesRegex(TypeError, '`structure` must be a structure'):
+      structure.update_struct([1, 2, 3], a=8)
+    with self.assertRaisesRegex(KeyError, 'does not contain a field'):
+      structure.update_struct({'z': 1}, a=8)
+
 
 if __name__ == '__main__':
   absltest.main()

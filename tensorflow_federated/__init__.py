@@ -28,7 +28,6 @@ from tensorflow_federated.python.core import framework
 from tensorflow_federated.python.core import templates
 from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core import types
-from tensorflow_federated.python.core import utils
 from tensorflow_federated.python.core.api.computation_base import Computation
 from tensorflow_federated.python.core.api.computation_types import at_clients as type_at_clients
 from tensorflow_federated.python.core.api.computation_types import at_server as type_at_server

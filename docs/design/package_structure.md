@@ -141,9 +141,6 @@ Libraries for interacting with IREE backends.
 [core/templates](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/templates)
 Templates for commonly used computations.
 
-[core/utils](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/utils)
-Libraries for using and developing Federated algorithms.
-
 [core/test](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/test)
 Libraries for testing TensorFlow Federated.
 
