@@ -21,13 +21,13 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
-from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.types import placements
 
 
 def _validate_value_on_clients(value):
-  py_typecheck.check_type(value, value_base.Value)
+  py_typecheck.check_type(value, value_impl.Value)
   py_typecheck.check_type(value.type_signature, computation_types.FederatedType)
   if value.type_signature.placement is not placements.CLIENTS:
     raise TypeError(
@@ -410,10 +410,10 @@ def _normalize_secure_quantized_sum_args(client_value, lower_bound,
     _check_secure_quantized_sum_dtype(dtypes)
 
   # Validation of bounds.
-  if isinstance(lower_bound, value_base.Value) != isinstance(
-      upper_bound, value_base.Value):
+  if isinstance(lower_bound, value_impl.Value) != isinstance(
+      upper_bound, value_impl.Value):
     raise BoundsDifferentTypesError(lower_bound, upper_bound)
-  elif not isinstance(lower_bound, value_base.Value):
+  elif not isinstance(lower_bound, value_impl.Value):
     # Normalization of bounds to federated values.
     lower_bound = intrinsics.federated_value(lower_bound, placements.SERVER)
     upper_bound = intrinsics.federated_value(upper_bound, placements.SERVER)

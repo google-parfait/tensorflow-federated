@@ -19,7 +19,7 @@ import functools
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.learning import model
 
 

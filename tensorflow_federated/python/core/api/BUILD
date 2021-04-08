@@ -94,34 +94,6 @@ py_library(
 )
 
 py_library(
-    name = "intrinsics",
-    srcs = ["intrinsics.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/federated_context:intrinsic_factory",
-    ],
-)
-
-py_test(
-    name = "intrinsics_test",
-    size = "small",
-    srcs = ["intrinsics_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":computation_types",
-        ":computations",
-        ":intrinsics",
-        ":test_case",
-        ":value_base",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/context_stack:context_base",
-        "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_library(
     name = "test_case",
     srcs = ["test_case.py"],
     srcs_version = "PY3",
@@ -144,35 +116,4 @@ py_library(
     name = "typed_object",
     srcs = ["typed_object.py"],
     srcs_version = "PY3",
-)
-
-py_library(
-    name = "value_base",
-    srcs = ["value_base.py"],
-    srcs_version = "PY3",
-    deps = [":typed_object"],
-)
-
-py_library(
-    name = "values",
-    srcs = ["values.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/federated_context:value_impl",
-    ],
-)
-
-py_test(
-    name = "values_test",
-    size = "small",
-    srcs = ["values_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":value_base",
-        ":values",
-        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/federated_context:federated_computation_context",
-    ],
 )

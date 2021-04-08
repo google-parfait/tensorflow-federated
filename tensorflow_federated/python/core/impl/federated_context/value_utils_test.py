@@ -39,19 +39,18 @@ class ValueUtilsTest(parameterized.TestCase):
       super(ValueUtilsTest, self).run(result)
 
   def test_get_curried(self):
-    add_numbers = value_impl.ValueImpl(
+    add_numbers = value_impl.Value(
         building_blocks.ComputationBuildingBlock.from_proto(
             computation_impl.ComputationImpl.get_proto(
                 computations.tf_computation(
                     lambda a, b: tf.add(a, b),  # pylint: disable=unnecessary-lambda
-                    [tf.int32, tf.int32]))),
-        _context_stack)
+                    [tf.int32, tf.int32]))))
 
     curried = value_utils.get_curried(add_numbers)
     self.assertEqual(str(curried.type_signature), '(int32 -> (int32 -> int32))')
 
     comp, _ = tree_transformations.uniquify_compiled_computation_names(
-        value_impl.ValueImpl.get_comp(curried))
+        curried.comp)
     self.assertEqual(comp.compact_representation(),
                      '(arg0 -> (arg1 -> comp#1(<arg0,arg1>)))')
 

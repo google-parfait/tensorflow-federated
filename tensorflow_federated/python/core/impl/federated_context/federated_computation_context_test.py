@@ -16,10 +16,10 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import value_base
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.federated_context import federated_computation_context
+from tensorflow_federated.python.core.impl.federated_context import value_impl
 
 
 class FederatedComputationContextTest(absltest.TestCase):
@@ -30,7 +30,7 @@ class FederatedComputationContextTest(absltest.TestCase):
     comp = computations.tf_computation(lambda: tf.constant(10))
     with context_stack_impl.context_stack.install(context):
       result = context.invoke(comp, None)
-    self.assertIsInstance(result, value_base.Value)
+    self.assertIsInstance(result, value_impl.Value)
     self.assertEqual(str(result.type_signature), 'int32')
 
   def test_construction_populates_name(self):

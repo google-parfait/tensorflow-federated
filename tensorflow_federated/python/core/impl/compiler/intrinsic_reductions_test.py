@@ -16,14 +16,11 @@ from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import intrinsic_reductions
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
-from tensorflow_federated.python.core.impl.types import placements
 
 
 def _count_intrinsics(comp, uri):
@@ -44,23 +41,21 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase):
   def test_federated_mean_reduces_to_aggregate(self):
     uri = intrinsic_defs.FEDERATED_MEAN.uri
 
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
-    def foo(x):
-      return intrinsics.federated_mean(x)
+    comp = building_blocks.Intrinsic(
+        uri,
+        computation_types.FunctionType(
+            computation_types.at_clients(tf.float32),
+            computation_types.at_server(tf.float32)))
 
-    foo_building_block = building_blocks.ComputationBuildingBlock.from_proto(
-        foo._computation_proto)
-    count_means_before_reduction = _count_intrinsics(foo_building_block, uri)
+    count_means_before_reduction = _count_intrinsics(comp, uri)
     reduced, modified = intrinsic_reductions.replace_intrinsics_with_bodies(
-        foo_building_block)
+        comp)
     count_means_after_reduction = _count_intrinsics(reduced, uri)
     count_aggregations = _count_intrinsics(
         reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri)
     count_means_after_reduction = _count_intrinsics(reduced, uri)
     self.assertTrue(modified)
-    self.assert_types_identical(foo_building_block.type_signature,
-                                reduced.type_signature)
+    self.assert_types_identical(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_means_before_reduction, 0)
     self.assertEqual(count_means_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
@@ -68,22 +63,20 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase):
   def test_federated_weighted_mean_reduces_to_aggregate(self):
     uri = intrinsic_defs.FEDERATED_WEIGHTED_MEAN.uri
 
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
-    def foo(x):
-      return intrinsics.federated_mean(x, x)
+    comp = building_blocks.Intrinsic(
+        uri,
+        computation_types.FunctionType(
+            (computation_types.at_clients(tf.float32),) * 2,
+            computation_types.at_server(tf.float32)))
 
-    foo_building_block = building_blocks.ComputationBuildingBlock.from_proto(
-        foo._computation_proto)
-    count_means_before_reduction = _count_intrinsics(foo_building_block, uri)
+    count_means_before_reduction = _count_intrinsics(comp, uri)
     reduced, modified = intrinsic_reductions.replace_intrinsics_with_bodies(
-        foo_building_block)
+        comp)
     count_aggregations = _count_intrinsics(
         reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri)
     count_means_after_reduction = _count_intrinsics(reduced, uri)
     self.assertTrue(modified)
-    self.assert_types_identical(foo_building_block.type_signature,
-                                reduced.type_signature)
+    self.assert_types_identical(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_means_before_reduction, 0)
     self.assertEqual(count_means_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)
@@ -91,23 +84,20 @@ class ReplaceIntrinsicsWithBodiesTest(test_case.TestCase):
   def test_federated_sum_reduces_to_aggregate(self):
     uri = intrinsic_defs.FEDERATED_SUM.uri
 
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
-    def foo(x):
-      return intrinsics.federated_sum(x)
+    comp = building_blocks.Intrinsic(
+        uri,
+        computation_types.FunctionType(
+            computation_types.at_clients(tf.float32),
+            computation_types.at_server(tf.float32)))
 
-    foo_building_block = building_blocks.ComputationBuildingBlock.from_proto(
-        foo._computation_proto)
-
-    count_sum_before_reduction = _count_intrinsics(foo_building_block, uri)
+    count_sum_before_reduction = _count_intrinsics(comp, uri)
     reduced, modified = intrinsic_reductions.replace_intrinsics_with_bodies(
-        foo_building_block)
+        comp)
     count_sum_after_reduction = _count_intrinsics(reduced, uri)
     count_aggregations = _count_intrinsics(
         reduced, intrinsic_defs.FEDERATED_AGGREGATE.uri)
     self.assertTrue(modified)
-    self.assert_types_identical(foo_building_block.type_signature,
-                                reduced.type_signature)
+    self.assert_types_identical(comp.type_signature, reduced.type_signature)
     self.assertGreater(count_sum_before_reduction, 0)
     self.assertEqual(count_sum_after_reduction, 0)
     self.assertGreater(count_aggregations, 0)

@@ -13,22 +13,26 @@
 # limitations under the License.
 
 import tensorflow as tf
+from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.tensorflow_context import tensorflow_computation_context
-from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 class TensorFlowComputationContextTest(test_case.TestCase):
 
   def test_invoke_raises_value_error_with_federated_computation(self):
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.int32, placements.SERVER, True))
-    def foo(x):
-      return intrinsics.federated_broadcast(x)
+    bogus_proto = pb.Computation(
+        type=type_serialization.serialize_type(
+            computation_types.to_type(
+                computation_types.FunctionType(tf.int32, tf.int32))),
+        reference=pb.Reference(name='boogledy'))
+    non_tf_computation = computation_impl.ComputationImpl(
+        bogus_proto, context_stack_impl.context_stack)
 
     context = tensorflow_computation_context.TensorFlowComputationContext(
         tf.compat.v1.get_default_graph())
@@ -36,7 +40,7 @@ class TensorFlowComputationContextTest(test_case.TestCase):
     with self.assertRaisesRegex(
         ValueError, 'Can only invoke TensorFlow in the body of '
         'a TensorFlow computation'):
-      context.invoke(foo, None)
+      context.invoke(non_tf_computation, None)
 
   def test_invoke_returns_result_with_tf_computation(self):
     make_10 = computations.tf_computation(lambda: tf.constant(10))
@@ -70,6 +74,7 @@ class TensorFlowComputationContextTest(test_case.TestCase):
         sess.run(context.init_ops)
       result = sess.run(x)
     self.assertEqual(result, 13)
+
 
 if __name__ == '__main__':
   test_case.main()

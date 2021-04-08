@@ -32,7 +32,7 @@ for more information.
 ### Tracing the function
 
 When tracing a `federated_computation`, the user's function is called using
-[value_base.Value](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/api/value_base.py)
+[value_impl.Value](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/impl/federated_context/value_impl.py)
 as a stand-in replacement for each argument. `Value` attempts to emulate the
 behavior of the original argument type by implementing common Python dunder
 methods (e.g. `__getattr__`).

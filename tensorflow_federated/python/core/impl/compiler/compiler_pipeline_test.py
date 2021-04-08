@@ -12,41 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from absl.testing import absltest
-import tensorflow as tf
-
-from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
+from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import compiler_pipeline
-from tensorflow_federated.python.core.impl.types import placements
 
 
-class CompilerPipelineTest(absltest.TestCase):
+class CompilerPipelineTest(test_case.TestCase):
 
   def test_compile_computation_with_identity(self):
 
-    @computations.federated_computation([
-        computation_types.FederatedType(tf.float32, placements.CLIENTS),
-        computation_types.FederatedType(tf.float32, placements.SERVER, True)
-    ])
-    def foo(temperatures, threshold):
-      return intrinsics.federated_sum(
-          intrinsics.federated_map(
-              computations.tf_computation(
-                  lambda x, y: tf.cast(tf.greater(x, y), tf.int32),
-                  [tf.float32, tf.float32]),
-              [temperatures,
-               intrinsics.federated_broadcast(threshold)]))
+    class BogusComputation(computation_base.Computation):
 
-    pipeline = compiler_pipeline.CompilerPipeline(lambda x: x)
+      def __init__(self, v: int):
+        self.v = v
 
-    compiled_foo = pipeline.compile(foo)
+      def __call__(self):
+        raise NotImplementedError()
 
-    self.assertEqual(hash(foo), hash(compiled_foo))
+      def __hash__(self):
+        return hash(self.v)
+
+      def to_building_block(self):
+        raise NotImplementedError()
+
+      def type_signature(self):
+        raise NotImplementedError()
+
+    id_pipeline = compiler_pipeline.CompilerPipeline(lambda x: x)
+    compiled_bogus = id_pipeline.compile(BogusComputation(5))
+    self.assertEqual(compiled_bogus.v, 5)
 
     # TODO(b/113123410): Expand the test with more structural invariants.
 
 
 if __name__ == '__main__':
-  absltest.main()
+  test_case.main()

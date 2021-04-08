@@ -27,7 +27,6 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import transformations
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -38,6 +37,7 @@ from tensorflow_federated.python.core.impl.compiler import transformation_utils
 from tensorflow_federated.python.core.impl.compiler import transformations as compiler_transformations
 from tensorflow_federated.python.core.impl.compiler import tree_analysis
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
@@ -1358,8 +1358,8 @@ def get_canonical_form_for_iterative_process(
       process fails.
   """
   py_typecheck.check_type(ip, iterative_process.IterativeProcess)
-  initialize_bb, next_bb = \
-      check_iterative_process_compatible_with_canonical_form(ip)
+  initialize_bb, next_bb = (
+      check_iterative_process_compatible_with_canonical_form(ip))
   if grappler_config is not None:
     grappler_config = _merge_grappler_config_with_default(grappler_config)
 

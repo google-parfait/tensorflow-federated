@@ -94,10 +94,11 @@ def create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
   return building_blocks.Call(intrinsic, ref)
 
 
-def create_dummy_called_federated_aggregate(accumulate_parameter_name,
-                                            merge_parameter_name,
-                                            report_parameter_name,
-                                            value_type=tf.int32):
+def create_dummy_called_federated_aggregate(
+    accumulate_parameter_name='acc_param',
+    merge_parameter_name='merge_param',
+    report_parameter_name='report_param',
+    value_type=tf.int32):
   r"""Returns a dummy called federated aggregate.
 
                       Call
@@ -117,16 +118,16 @@ def create_dummy_called_federated_aggregate(accumulate_parameter_name,
   federated_value_type = computation_types.FederatedType(
       value_type, placements.CLIENTS)
   value = building_blocks.Data('data', federated_value_type)
-  zero = building_blocks.Data('data', tf.float32)
-  accumulate_type = computation_types.StructType((tf.float32, value_type))
-  accumulate_result = building_blocks.Data('data', tf.float32)
+  zero = building_blocks.Data('data', value_type)
+  accumulate_type = computation_types.StructType((value_type, value_type))
+  accumulate_result = building_blocks.Data('data', value_type)
   accumulate = building_blocks.Lambda(accumulate_parameter_name,
                                       accumulate_type, accumulate_result)
-  merge_type = computation_types.StructType((tf.float32, tf.float32))
-  merge_result = building_blocks.Data('data', tf.float32)
+  merge_type = computation_types.StructType((value_type, value_type))
+  merge_result = building_blocks.Data('data', value_type)
   merge = building_blocks.Lambda(merge_parameter_name, merge_type, merge_result)
-  report_result = building_blocks.Data('data', tf.bool)
-  report = building_blocks.Lambda(report_parameter_name, tf.float32,
+  report_result = building_blocks.Data('data', value_type)
+  report = building_blocks.Lambda(report_parameter_name, value_type,
                                   report_result)
   return building_block_factory.create_federated_aggregate(
       value, zero, accumulate, merge, report)
@@ -168,6 +169,12 @@ def create_dummy_called_federated_broadcast(value_type=tf.int32):
                                                    placements.SERVER)
   value = building_blocks.Data('data', federated_type)
   return building_block_factory.create_federated_broadcast(value)
+
+
+def create_dummy_called_federated_collect(value_type=tf.int32):
+  federated_type = computation_types.at_clients(value_type)
+  value = building_blocks.Data('data', federated_type)
+  return building_block_factory.create_federated_collect(value)
 
 
 def create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
@@ -212,6 +219,18 @@ def create_dummy_called_federated_map_all_equal(parameter_name,
       parameter_type, placements.CLIENTS, all_equal=True)
   arg = building_blocks.Data('data', arg_type)
   return building_block_factory.create_federated_map_all_equal(fn, arg)
+
+
+def create_dummy_called_federated_mean(value_type=tf.float32,
+                                       weights_type=None):
+  fed_value_type = computation_types.at_clients(value_type)
+  values = building_blocks.Data('values', fed_value_type)
+  if weights_type is not None:
+    fed_weights_type = computation_types.at_clients(weights_type)
+    weights = building_blocks.Data('weights', fed_weights_type)
+  else:
+    weights = None
+  return building_block_factory.create_federated_mean(values, weights)
 
 
 def create_dummy_called_federated_secure_sum(value_type=tf.int32):
@@ -262,6 +281,12 @@ def create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
   arg_type = computation_types.SequenceType(parameter_type)
   arg = building_blocks.Data('data', arg_type)
   return building_block_factory.create_sequence_map(fn, arg)
+
+
+def create_dummy_called_federated_value(placement: placements.PlacementLiteral,
+                                        value_type=tf.int32):
+  value = building_blocks.Data('data', value_type)
+  return building_block_factory.create_federated_value(value, placement)
 
 
 def create_identity_block(variable_name, comp):

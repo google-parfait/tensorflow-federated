@@ -22,15 +22,13 @@ from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
-from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import federated_composing_strategy
 from tensorflow_federated.python.core.impl.executors import federated_resolving_strategy
 from tensorflow_federated.python.core.impl.executors import federating_executor
 from tensorflow_federated.python.core.impl.executors import reference_resolving_executor
-from tensorflow_federated.python.core.impl.federated_context import intrinsic_factory
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_serialization
 
@@ -162,7 +160,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     result = _invoke(executor, comp)
     self.assertEqual(result, 5)
 
-  def test_federated_eval_at_server_then_apply(self):
+  def test_federated_eval_at_server_then_map(self):
 
     @computations.tf_computation(tf.int32)
     def add_one(x):
@@ -172,7 +170,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     def comp():
       return_five = computations.tf_computation(lambda: 5)
       five_at_server = intrinsics.federated_eval(return_five, placements.SERVER)
-      six_at_server = intrinsics.federated_apply(add_one, five_at_server)
+      six_at_server = intrinsics.federated_map(add_one, five_at_server)
       return six_at_server
 
     executor, _ = _create_test_executor()
@@ -294,9 +292,6 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     self.assertEqual(result, [10 + 1] * num_clients)
 
   def test_federated_map_all_equal(self):
-    factory = intrinsic_factory.IntrinsicFactory(
-        context_stack_impl.context_stack)
-
     @computations.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
@@ -304,7 +299,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     @computations.federated_computation
     def comp():
       value = intrinsics.federated_value(10, placements.CLIENTS)
-      return factory.federated_map_all_equal(add_one, value)
+      return intrinsics.federated_map_all_equal(add_one, value)
 
     executor, _ = _create_test_executor()
     result = _invoke(executor, comp)

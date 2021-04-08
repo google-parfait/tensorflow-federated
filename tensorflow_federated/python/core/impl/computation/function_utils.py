@@ -23,7 +23,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.context_stack import context_base
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
@@ -118,7 +118,7 @@ def is_argument_struct(arg) -> bool:
   """
   if isinstance(arg, structure.Struct):
     elements = structure.to_elements(arg)
-  elif isinstance(arg, value_base.Value):
+  elif isinstance(arg, typed_object.TypedObject):
     return is_argument_struct(arg.type_signature)
   else:
     arg = computation_types.to_type(arg)
@@ -155,7 +155,7 @@ def unpack_args_from_struct(
     raise TypeError('Not an argument struct: {}.'.format(struct_with_args))
   if isinstance(struct_with_args, structure.Struct):
     elements = structure.to_elements(struct_with_args)
-  elif isinstance(struct_with_args, value_base.Value):
+  elif isinstance(struct_with_args, typed_object.TypedObject):
     elements = []
     for index, (name, _) in enumerate(
         structure.to_elements(struct_with_args.type_signature)):
@@ -391,7 +391,6 @@ _Arguments = Tuple[List[Any], Dict[str, Any]]
 
 def _unpack_arg(arg_types, kwarg_types, arg) -> _Arguments:
   """Unpacks 'arg' into an argument list based on types."""
-  py_typecheck.check_type(arg, (structure.Struct, value_base.Value))
   args = []
   for idx, expected_type in enumerate(arg_types):
     element_value = arg[idx]

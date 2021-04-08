@@ -55,6 +55,9 @@ class TestCase(tf.test.TestCase, absltest.TestCase):
     if message is not None:
       self.fail(message)
 
+  def assert_type_string(self, type_signature, expected_string):
+    self.assertEqual(type_signature.compact_representation(), expected_string)
+
   def assert_nested_struct_eq(self, x, y):
     """Asserts that nested structures 'x' and 'y' are the same.
 

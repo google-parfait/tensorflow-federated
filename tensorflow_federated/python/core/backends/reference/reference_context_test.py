@@ -21,7 +21,6 @@ import tensorflow as tf
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.reference import reference_context
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
@@ -31,18 +30,17 @@ from tensorflow_federated.python.core.impl.compiler import test_utils as compile
 from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
-from tensorflow_federated.python.core.impl.federated_context import intrinsic_factory
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.federated_context import value_impl
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 
 
-def zero_for(type_spec, context_stack):
+def zero_for(type_spec):
   type_spec = computation_types.to_type(type_spec)
-  return value_impl.ValueImpl(
-      building_block_factory.create_generic_constant(type_spec, 0),
-      context_stack)
+  return value_impl.Value(
+      building_block_factory.create_generic_constant(type_spec, 0))
 
 
 class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
@@ -877,9 +875,7 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
         computation_types.FederatedType(
             tf.int32, placements.CLIENTS, all_equal=True))
     def bar(x):
-      factory = intrinsic_factory.IntrinsicFactory(
-          context_stack_impl.context_stack)
-      return factory.federated_map_all_equal(foo, x)
+      return intrinsics.federated_map_all_equal(foo, x)
 
     self.assertEqual(
         str(bar.type_signature), '(int32@CLIENTS -> int32@CLIENTS)')
@@ -981,7 +977,7 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
 
     @computations.federated_computation
     def foo():
-      return zero_for(tf.int32, context_stack_impl.context_stack)
+      return zero_for(tf.int32)
 
     self.assertEqual(str(foo.type_signature), '( -> int32)')
     self.assertEqual(foo(), 0)
@@ -990,9 +986,7 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
 
     @computations.federated_computation
     def foo():
-      return zero_for(
-          computation_types.TensorType(tf.float32, [2, 3]),
-          context_stack_impl.context_stack)
+      return zero_for(computation_types.TensorType(tf.float32, [2, 3]))
 
     self.assertEqual(str(foo.type_signature), '( -> float32[2,3])')
     foo_result = foo()
@@ -1003,8 +997,7 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
 
     @computations.federated_computation
     def foo():
-      return zero_for([('A', tf.int32), ('B', tf.float32)],
-                      context_stack_impl.context_stack)
+      return zero_for([('A', tf.int32), ('B', tf.float32)])
 
     self.assertEqual(str(foo.type_signature), '( -> <A=int32,B=float32>)')
     self.assertEqual(str(foo()), '<A=0,B=0.0>')
@@ -1015,8 +1008,7 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
     def foo():
       return zero_for(
           computation_types.FederatedType(
-              tf.int32, placements.SERVER, all_equal=True),
-          context_stack_impl.context_stack)
+              tf.int32, placements.SERVER, all_equal=True))
 
     self.assertEqual(str(foo.type_signature), '( -> int32@SERVER)')
     self.assertEqual(foo(), 0)

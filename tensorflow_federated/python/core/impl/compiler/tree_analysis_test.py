@@ -20,8 +20,6 @@ import tensorflow as tf
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import serialization_utils
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.impl.compiler import building_block_analysis
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
@@ -190,8 +188,7 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
         aggregate_dependent_on_broadcast)
 
   def test_finds_broadcast_dependent_on_aggregate(self):
-    aggregate = test_utils.create_dummy_called_federated_aggregate(
-        'accumulate_parameter', 'merge_parameter', 'report_parameter')
+    aggregate = test_utils.create_dummy_called_federated_aggregate()
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
         aggregate)
     with self.assertRaises(ValueError):
@@ -199,11 +196,10 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
           broadcasted_aggregate)
 
   def test_returns_correct_example_of_broadcast_dependent_on_aggregate(self):
-    aggregate = test_utils.create_dummy_called_federated_aggregate(
-        'accumulate_parameter', 'merge_parameter', 'report_parameter')
+    aggregate = test_utils.create_dummy_called_federated_aggregate()
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
         aggregate)
-    with self.assertRaisesRegex(ValueError, 'accumulate_parameter'):
+    with self.assertRaisesRegex(ValueError, 'acc_param'):
       tree_analysis.check_broadcast_not_dependent_on_aggregate(
           broadcasted_aggregate)
 
@@ -708,62 +704,25 @@ class TreesEqualTest(absltest.TestCase):
     self.assertTrue(tree_analysis.trees_equal(tf_comp1, tf_comp2))
 
 
-@computations.federated_computation
-def non_aggregation_intrinsics():
-  return intrinsics.federated_broadcast(
-      intrinsics.federated_value(5, placements.SERVER))
+non_aggregation_intrinsics = building_blocks.Struct([
+    (None, test_utils.create_dummy_called_federated_broadcast()),
+    (None, test_utils.create_dummy_called_federated_value(placements.CLIENTS))
+])
 
-
-@computations.federated_computation
-def trivial_aggregate():
-  empty_at_clients = intrinsics.federated_value((), placements.CLIENTS)
-  zero = ()
-  accumulate = computations.tf_computation(lambda _a, _b: ())
-  merge = computations.tf_computation(lambda _a, _b: ())
-  report = computations.tf_computation(lambda _: ())
-
-  return intrinsics.federated_aggregate(empty_at_clients, zero, accumulate,
-                                        merge, report)
-
-
-@computations.federated_computation
-def trivial_collect():
-  empty_at_clients = intrinsics.federated_value((), placements.CLIENTS)
-  return intrinsics.federated_collect(empty_at_clients)
-
-
-@computations.federated_computation
-def trivial_mean():
-  empty_at_clients = intrinsics.federated_value((), placements.CLIENTS)
-  return intrinsics.federated_mean(empty_at_clients)
-
-
-@computations.federated_computation
-def trivial_sum():
-  empty_at_clients = intrinsics.federated_value((), placements.CLIENTS)
-  return intrinsics.federated_sum(empty_at_clients)
-
-
+unit = computation_types.StructType([])
+trivial_aggregate = test_utils.create_dummy_called_federated_aggregate(
+    value_type=unit)
+trivial_collect = test_utils.create_dummy_called_federated_collect(unit)
+trivial_mean = test_utils.create_dummy_called_federated_mean(unit)
+trivial_sum = test_utils.create_dummy_called_federated_sum(unit)
 # TODO(b/120439632) Enable once federated_mean accepts structured weights.
-# @computations.federated_computation
-# def trivial_weighted_mean():
-#   empty_at_clients = intrinsics.federated_value(
-#       (), placements.CLIENTS)
-#   return intrinsics.federated_mean(empty_at_clients, weight=empty_at_clients)
-
-
-@computations.federated_computation
-def trivial_secure_sum():
-  empty_at_clients = intrinsics.federated_value((), placements.CLIENTS)
-  bitwidth = ()
-  return intrinsics.federated_secure_sum(empty_at_clients, bitwidth)
+# trivial_weighted_mean = ...
+trivial_secure_sum = test_utils.create_dummy_called_federated_secure_sum(unit)
 
 
 class ContainsAggregationShared(parameterized.TestCase):
 
   @parameterized.named_parameters([
-      ('trivial_tf', computations.tf_computation(lambda: ())),
-      ('trivial_tff', computations.federated_computation(lambda: ())),
       ('non_aggregation_intrinsics', non_aggregation_intrinsics),
       ('trivial_aggregate', trivial_aggregate),
       ('trivial_collect', trivial_collect),
@@ -774,85 +733,42 @@ class ContainsAggregationShared(parameterized.TestCase):
       ('trivial_secure_sum', trivial_secure_sum),
   ])
   def test_returns_none(self, comp):
-    self.assertEmpty(
-        tree_analysis.find_unsecure_aggregation_in_tree(
-            comp.to_building_block()))
-    self.assertEmpty(
-        tree_analysis.find_secure_aggregation_in_tree(comp.to_building_block()))
+    self.assertEmpty(tree_analysis.find_unsecure_aggregation_in_tree(comp))
+    self.assertEmpty(tree_analysis.find_secure_aggregation_in_tree(comp))
 
   def test_throws_on_unresolvable_function_call(self):
-    input_ty = ()
-    output_ty = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-
-    @computations.federated_computation(
-        computation_types.FunctionType(input_ty, output_ty))
-    def comp(unknown_func):
-      return unknown_func(())
-
+    comp = building_blocks.Call(
+        building_blocks.Data(
+            'unknown_func',
+            computation_types.FunctionType(
+                None, computation_types.at_clients(tf.int32))))
     with self.assertRaises(ValueError):
-      tree_analysis.find_unsecure_aggregation_in_tree(comp.to_building_block())
+      tree_analysis.find_unsecure_aggregation_in_tree(comp)
     with self.assertRaises(ValueError):
-      tree_analysis.find_secure_aggregation_in_tree(comp.to_building_block())
+      tree_analysis.find_secure_aggregation_in_tree(comp)
 
   # functions without a federated output can't aggregate
   def test_returns_none_on_unresolvable_function_call_with_non_federated_output(
       self):
-    input_ty = computation_types.FederatedType(tf.int32, placements.CLIENTS)
-    output_ty = tf.int32
+    input_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
+    output_type = tf.int32
+    comp = building_blocks.Call(
+        building_blocks.Data(
+            'unknown_func',
+            computation_types.FunctionType(input_type, output_type)),
+        building_blocks.Data('client_data', input_type))
 
-    @computations.federated_computation(
-        computation_types.FunctionType(input_ty, output_ty))
-    def comp(unknown_func):
-      return unknown_func(intrinsics.federated_value(1, placements.CLIENTS))
-
-    self.assertEmpty(
-        tree_analysis.find_unsecure_aggregation_in_tree(
-            comp.to_building_block()))
-    self.assertEmpty(
-        tree_analysis.find_secure_aggregation_in_tree(comp.to_building_block()))
+    self.assertEmpty(tree_analysis.find_unsecure_aggregation_in_tree(comp))
+    self.assertEmpty(tree_analysis.find_secure_aggregation_in_tree(comp))
 
 
-@computations.federated_computation
-def simple_aggregate():
-  one_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
-  zero = 0
-  accumulate = computations.tf_computation(lambda a, b: a + b)
-  merge = computations.tf_computation(lambda a, b: a + b)
-  report = computations.tf_computation(lambda a: a)
-
-  return intrinsics.federated_aggregate(one_at_clients, zero, accumulate, merge,
-                                        report)
-
-
-@computations.federated_computation
-def simple_collect():
-  one_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
-  return intrinsics.federated_collect(one_at_clients)
-
-
-@computations.federated_computation
-def simple_mean():
-  one_at_clients = intrinsics.federated_value(1.0, placements.CLIENTS)
-  return intrinsics.federated_mean(one_at_clients)
-
-
-@computations.federated_computation
-def simple_sum():
-  one_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
-  return intrinsics.federated_sum(one_at_clients)
-
-
-@computations.federated_computation
-def simple_weighted_mean():
-  one_at_clients = intrinsics.federated_value(1.0, placements.CLIENTS)
-  return intrinsics.federated_mean(one_at_clients, weight=one_at_clients)
-
-
-@computations.federated_computation
-def simple_secure_sum():
-  one_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
-  bitwidth = 1
-  return intrinsics.federated_secure_sum(one_at_clients, bitwidth)
+simple_aggregate = test_utils.create_dummy_called_federated_aggregate()
+simple_collect = test_utils.create_dummy_called_federated_collect()
+simple_mean = test_utils.create_dummy_called_federated_mean()
+simple_sum = test_utils.create_dummy_called_federated_sum()
+simple_weighted_mean = test_utils.create_dummy_called_federated_mean(
+    tf.float32, tf.float32)
+simple_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
 
 
 class ContainsSecureAggregation(parameterized.TestCase):
@@ -865,25 +781,17 @@ class ContainsSecureAggregation(parameterized.TestCase):
       ('simple_weighted_mean', simple_weighted_mean),
   ])
   def test_returns_none_on_unsecure_aggregation(self, comp):
-    self.assertEmpty(
-        tree_analysis.find_secure_aggregation_in_tree(comp.to_building_block()))
+    self.assertEmpty(tree_analysis.find_secure_aggregation_in_tree(comp))
 
   def assert_one_aggregation(self, comp):
-    self.assertLen(
-        tree_analysis.find_secure_aggregation_in_tree(comp.to_building_block()),
-        1)
+    self.assertLen(tree_analysis.find_secure_aggregation_in_tree(comp), 1)
 
   def test_returns_str_on_simple_secure_aggregation(self):
     self.assert_one_aggregation(simple_secure_sum)
 
   def test_returns_str_on_nested_secure_aggregation(self):
-
-    @computations.federated_computation
-    def comp():
-      ones_at_clients = intrinsics.federated_value((1, 1), placements.CLIENTS)
-      bitwidth = (1, 1)
-      return intrinsics.federated_secure_sum(ones_at_clients, bitwidth)
-
+    comp = test_utils.create_dummy_called_federated_secure_sum(
+        (tf.int32, tf.int32))
     self.assert_one_aggregation(comp)
 
 
@@ -891,8 +799,7 @@ class ContainsUnsecureAggregation(parameterized.TestCase):
 
   def test_returns_none_on_secure_aggregation(self):
     self.assertEmpty(
-        tree_analysis.find_unsecure_aggregation_in_tree(
-            simple_secure_sum.to_building_block()))
+        tree_analysis.find_unsecure_aggregation_in_tree(simple_secure_sum))
 
   @parameterized.named_parameters([
       ('simple_aggregate', simple_aggregate),
@@ -902,9 +809,7 @@ class ContainsUnsecureAggregation(parameterized.TestCase):
       ('simple_weighted_mean', simple_weighted_mean),
   ])
   def test_returns_one_on_unsecure_aggregation(self, comp):
-    self.assertLen(
-        tree_analysis.find_unsecure_aggregation_in_tree(
-            comp.to_building_block()), 1)
+    self.assertLen(tree_analysis.find_unsecure_aggregation_in_tree(comp), 1)
 
 
 if __name__ == '__main__':

@@ -62,12 +62,11 @@ def federated_computation_serializer(
     if parameter_type is None:
       result = yield None
     else:
-      result = yield (value_impl.ValueImpl(
-          building_blocks.Reference(parameter_name, parameter_type),
-          context_stack))
+      result = yield value_impl.Value(
+          building_blocks.Reference(parameter_name, parameter_type))
     annotated_result_type = type_conversions.infer_type(result)
     result = value_impl.to_value(result, annotated_result_type, context_stack)
-    result_comp = value_impl.ValueImpl.get_comp(result)
+    result_comp = result.comp
     symbols_bound_in_context = context_stack.current.symbol_bindings
     if symbols_bound_in_context:
       result_comp = building_blocks.Block(

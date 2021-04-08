@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Implementations of the abstract interface Value in api/value_base."""
+"""Representation of values inside a federated computation."""
 
 import abc
 import collections
@@ -26,14 +26,14 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import value_base
+from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.compiler import building_block_factory
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import intrinsic_defs
 from tensorflow_federated.python.core.impl.compiler import tensorflow_computation_factory
 from tensorflow_federated.python.core.impl.computation import function_utils
 from tensorflow_federated.python.core.impl.context_stack import context_base
-from tensorflow_federated.python.core.impl.context_stack import context_stack_base
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.context_stack import symbol_binding_context
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_conversions
@@ -46,17 +46,17 @@ def _unfederated(type_signature):
   return type_signature
 
 
-def _is_federated_named_tuple(vimpl: 'ValueImpl') -> bool:
+def _is_federated_named_tuple(vimpl: 'Value') -> bool:
   comp_ty = vimpl.type_signature
   return comp_ty.is_federated() and comp_ty.member.is_struct()
 
 
-def _is_named_tuple(vimpl: 'ValueImpl') -> bool:
+def _is_named_tuple(vimpl: 'Value') -> bool:
   return vimpl.type_signature.is_struct()  # pylint: disable=protected-access
 
 
 def _check_struct_or_federated_struct(
-    vimpl: 'ValueImpl',
+    vimpl: 'Value',
     attribute: str,
 ):
   if not (_is_named_tuple(vimpl) or _is_federated_named_tuple(vimpl)):
@@ -65,18 +65,18 @@ def _check_struct_or_federated_struct(
         f'attribute {attribute}')
 
 
-def _check_symbol_binding_context(context: context_base.Context):
+def _bind_computation_to_reference(comp, op: str):
+  context = context_stack_impl.context_stack.current
   if not isinstance(context, symbol_binding_context.SymbolBindingContext):
-    raise context_base.ContextError('TFF values should only be materialized '
-                                    'inside a context which can bind '
-                                    'references, generally a '
-                                    '`FederatedComputationContext`. Attempted '
-                                    'to materialize a TFF value in a context '
-                                    '{c} of type {t}.'.format(
-                                        c=context, t=type(context)))
+    raise context_base.ContextError(
+        '`tff.Value`s should only be used in contexts which can bind '
+        'references, generally a `FederatedComputationContext`. Attempted '
+        f'to bind the result of {op} in a context {context} of '
+        f'type {type(context)}.')
+  return context.bind_computation_to_reference(comp)
 
 
-class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
+class Value(typed_object.TypedObject, metaclass=abc.ABCMeta):
   """A generic base class for values that appear in TFF computations.
 
   If the value in this class is of `StructType` or `FederatedType` containing a
@@ -87,35 +87,24 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
   def __init__(
       self,
       comp: building_blocks.ComputationBuildingBlock,
-      context_stack: context_stack_base.ContextStack,
   ):
     """Constructs a value of the given type.
 
     Args:
       comp: An instance of building_blocks.ComputationBuildingBlock that
         contains the logic that computes this value.
-      context_stack: The context stack to use.
     """
     super()
     py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-    py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-    _check_symbol_binding_context(context_stack.current)
     self._comp = comp
-    self._context_stack = context_stack
 
   @property
   def type_signature(self):
     return self._comp.type_signature
 
-  @classmethod
-  def get_comp(cls, value):
-    py_typecheck.check_type(value, cls)
-    return value._comp  # pylint: disable=protected-access
-
-  @classmethod
-  def get_context_stack(cls, value):
-    py_typecheck.check_type(value, cls)
-    return value._context_stack  # pylint: disable=protected-access
+  @property
+  def comp(self) -> building_blocks.ComputationBuildingBlock:
+    return self._comp
 
   def __repr__(self):
     return repr(self._comp)
@@ -124,7 +113,7 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     return str(self._comp)
 
   def __dir__(self):
-    attributes = ['type_signature']
+    attributes = ['type_signature', 'comp']
     type_signature = _unfederated(self.type_signature)
     if type_signature.is_struct():
       attributes.extend(dir(type_signature))
@@ -140,17 +129,16 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
             'attributes: ({})'.format(
                 name, ', '.join(dir(self.type_signature.member))))
 
-      return ValueImpl(
+      return Value(
           building_block_factory.create_federated_getattr_call(
-              self._comp, name), self._context_stack)
+              self._comp, name))
     if name not in dir(self.type_signature):
       raise AttributeError(
           'There is no such attribute \'{}\' in this tuple. Valid attributes: ({})'
           .format(name, ', '.join(dir(self.type_signature))))
     if self._comp.is_struct():
-      return ValueImpl(getattr(self._comp, name), self._context_stack)
-    return ValueImpl(
-        building_blocks.Selection(self._comp, name=name), self._context_stack)
+      return Value(getattr(self._comp, name))
+    return Value(building_blocks.Selection(self._comp, name=name))
 
   def __bool__(self):
     raise TypeError(
@@ -172,9 +160,9 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
     if isinstance(key, str):
       return getattr(self, key)
     if _is_federated_named_tuple(self):
-      return ValueImpl(
-          building_block_factory.create_federated_getitem_call(self._comp, key),
-          self._context_stack)
+      return Value(
+          building_block_factory.create_federated_getitem_call(self._comp,
+                                                               key),)
     if not _is_named_tuple(self):
       raise TypeError(
           'Operator getitem() is only supported for structure types, but the '
@@ -186,17 +174,15 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
         raise IndexError(
             'The index of the selected element {} is out of range.'.format(key))
       if self._comp.is_struct():
-        return ValueImpl(self._comp[key], self._context_stack)
+        return Value(self._comp[key])
       else:
-        return ValueImpl(
-            building_blocks.Selection(self._comp, index=key),
-            self._context_stack)
+        return Value(building_blocks.Selection(self._comp, index=key))
     elif isinstance(key, slice):
       index_range = range(*key.indices(elem_length))
       if not index_range:
         raise IndexError('Attempted to slice 0 elements, which is not '
                          'currently supported.')
-      return to_value([self[k] for k in index_range], None, self._context_stack)
+      return to_value([self[k] for k in index_range], None)
 
   def __iter__(self):
     type_signature = _unfederated(self.type_signature)
@@ -215,22 +201,20 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
           'types, but the value being invoked is of type {} that does not '
           'support invocation.'.format(self.type_signature))
     if args or kwargs:
-      args = [to_value(x, None, self._context_stack) for x in args]
-      kwargs = {
-          k: to_value(v, None, self._context_stack) for k, v in kwargs.items()
-      }
+      args = [to_value(x, None) for x in args]
+      kwargs = {k: to_value(v, None) for k, v in kwargs.items()}
       arg = function_utils.pack_args(self.type_signature.parameter, args,
-                                     kwargs, self._context_stack.current)
-      arg = ValueImpl.get_comp(to_value(arg, None, self._context_stack))
+                                     kwargs,
+                                     context_stack_impl.context_stack.current)
+      arg = to_value(arg, None, self).comp
     else:
       arg = None
-    fc_context = self._context_stack.current
     call = building_blocks.Call(self._comp, arg)
-    ref = fc_context.bind_computation_to_reference(call)
-    return ValueImpl(ref, self._context_stack)
+    ref = _bind_computation_to_reference(call, 'calling a `tff.Value`')
+    return Value(ref)
 
   def __add__(self, other):
-    other = to_value(other, None, self._context_stack)
+    other = to_value(other, None)
     if not self.type_signature.is_equivalent_to(other.type_signature):
       raise TypeError('Cannot add {} and {}.'.format(self.type_signature,
                                                      other.type_signature))
@@ -240,57 +224,42 @@ class ValueImpl(value_base.Value, metaclass=abc.ABCMeta):
             computation_types.FunctionType(
                 [self.type_signature, self.type_signature],
                 self.type_signature)),
-        ValueImpl.get_comp(to_value([self, other], None, self._context_stack)))
-    fc_context = self._context_stack.current
-    ref = fc_context.bind_computation_to_reference(call)
-    return ValueImpl(ref, self._context_stack)
+        to_value([self, other], None).comp)
+    ref = _bind_computation_to_reference(call, 'adding a tff.Value')
+    return Value(ref)
 
 
-def _wrap_computation_as_value(
-    proto: pb.Computation,
-    context_stack: context_stack_base.ContextStack) -> value_base.Value:
-  """Wraps the given computation as a `tff.Value`.
-
-  Args:
-    proto: A pb.Computation.
-    context_stack: The context stack to use.
-
-  Returns:
-    A `value_base.Value`.
-  """
+def _wrap_computation_as_value(proto: pb.Computation) -> Value:
+  """Wraps the given computation as a `tff.Value`."""
   py_typecheck.check_type(proto, pb.Computation)
-  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   compiled = building_blocks.CompiledComputation(proto)
   call = building_blocks.Call(compiled)
-  federated_computation_context = context_stack.current
-  ref = federated_computation_context.bind_computation_to_reference(call)
-  return ValueImpl(ref, context_stack)
+  ref = _bind_computation_to_reference(call,
+                                       'wrapping a computation as a value')
+  return Value(ref)
 
 
-def _wrap_constant_as_value(const, context_stack):
+def _wrap_constant_as_value(const) -> Value:
   """Wraps the given Python constant as a `tff.Value`.
 
   Args:
-    const: Python constant to be converted to TFF value. Anything convertible to
-      Tensor via `tf.constant` can be passed in.
-    context_stack: The context stack to use.
+    const: Python constant convertible to Tensor via `tf.constant`.
 
   Returns:
-    An instance of `value_base.Value`.
+    An instance of `tff.Value`.
   """
   tf_comp, _ = tensorflow_computation_factory.create_computation_for_py_fn(
       fn=lambda: tf.constant(const), parameter_type=None)
-  return _wrap_computation_as_value(tf_comp, context_stack)
+  return _wrap_computation_as_value(tf_comp)
 
 
-def _wrap_sequence_as_value(elements, element_type, context_stack):
+def _wrap_sequence_as_value(elements, element_type) -> Value:
   """Wraps `elements` as a TFF sequence with elements of type `element_type`.
 
   Args:
     elements: Python object to the wrapped as a TFF sequence value.
     element_type: An instance of `Type` that determines the type of elements of
       the sequence.
-    context_stack: The context stack to use.
 
   Returns:
     An instance of `tff.Value`.
@@ -300,7 +269,6 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
   """
   # TODO(b/113116813): Add support for other representations of sequences.
   py_typecheck.check_type(elements, list)
-  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
   for element in elements:
     inferred_type = type_conversions.infer_type(element)
     if not element_type.is_assignable_from(inferred_type):
@@ -314,57 +282,66 @@ def _wrap_sequence_as_value(elements, element_type, context_stack):
 
   proto, _ = tensorflow_computation_factory.create_computation_for_py_fn(
       fn=_create_dataset_from_elements, parameter_type=None)
-  return _wrap_computation_as_value(proto, context_stack)
+  return _wrap_computation_as_value(proto)
 
 
-def _dictlike_items_to_value(items, type_spec, context_stack,
-                             container_type) -> ValueImpl:
+def _dictlike_items_to_value(items, type_spec, container_type) -> Value:
   elements = []
   for (i, (k, v)) in enumerate(items):
     element_type = None if type_spec is None else type_spec[i]
-    element_value = to_value(v, element_type, context_stack)
-    elements.append((k, ValueImpl.get_comp(element_value)))
-  return ValueImpl(
-      building_blocks.Struct(elements, container_type), context_stack)
+    element_value = to_value(v, element_type)
+    elements.append((k, element_value.comp))
+  return Value(building_blocks.Struct(elements, container_type))
 
 
 def to_value(
     arg: Any,
     type_spec,
-    context_stack: context_stack_base.ContextStack,
     parameter_type_hint=None,
-) -> ValueImpl:
-  """Converts the argument into an instance of `tff.Value`.
+) -> Value:
+  """Converts the argument into an instance of the abstract class `tff.Value`.
 
-  The types of non-`tff.Value` arguments that are currently convertible to
-  `tff.Value` include the following:
+  Instances of `tff.Value` represent TFF values that appear internally in
+  federated computations. This helper function can be used to wrap a variety of
+  Python objects as `tff.Value` instances to allow them to be passed as
+  arguments, used as functions, or otherwise manipulated within bodies of
+  federated computations.
 
-  * Lists, tuples, `structure.Struct`s, named tuples, and dictionaries, all
-    of which are converted into instances of `tff.Tuple`.
-  * Placement literals, converted into instances of `tff.Placement`.
-  * Computations.
-  * Python constants of type `str`, `int`, `float`, `bool`
-  * Numpy objects inherting from `np.ndarray` or `np.generic` (the parent
-    of numpy scalar types)
+  At the moment, the supported types include:
+
+  * Simple constants of `str`, `int`, `float`, and `bool` types, mapped to
+    values of a TFF tensor type.
+
+  * Numpy arrays (`np.ndarray` objects), also mapped to TFF tensors.
+
+  * Dictionaries (`collections.OrderedDict` and unordered `dict`), `list`s,
+    `tuple`s, `namedtuple`s, and `Struct`s, all of which are mapped to
+    TFF tuple type.
+
+  * Computations (constructed with either the `tff.tf_computation` or with the
+    `tff.federated_computation` decorator), typically mapped to TFF functions.
+
+  * Placement literals (`tff.CLIENTS`, `tff.SERVER`), mapped to values of the
+    TFF placement type.
+
+  This function is also invoked when attempting to execute a TFF computation.
+  All arguments supplied in the invocation are converted into TFF values prior
+  to execution. The types of Python objects that can be passed as arguments to
+  computations thus matches the types listed here.
 
   Args:
-    arg: Either an instance of `tff.Value`, or an argument convertible to
-      `tff.Value`. The argument must not be `None`.
-    type_spec: An optional `computation_types.Type` or value convertible to it
-      by `computation_types.to_type` which specifies the desired type signature
-      of the resulting value. This allows for disambiguating the target type
-      (e.g., when two TFF types can be mapped to the same Python
-      representations), or `None` if none available, in which case TFF tries to
-      determine the type of the TFF value automatically.
-    context_stack: The context stack to use.
-    parameter_type_hint: An optional `computation_types.Type` or value
-      convertible to it by `computation_types.to_type` which specifies an
-      argument type to use in the case that `arg` is a
-      `function_utils.PolymorphicFunction`.
+    arg: An instance of one of the Python types that are convertible to TFF
+      values (instances of `tff.Value`).
+    type_spec: An optional type specifier that allows for disambiguating the
+      target type (e.g., when two TFF types can be mapped to the same Python
+      representations). If not specified, TFF tried to determine the type of the
+      TFF value automatically.
+    parameter_type_hint: An optional `tff.Type` or value convertible to it by
+      `tff.to_type()` which specifies an argument type to use in the case that
+      `arg` is a `function_utils.PolymorphicFunction`.
 
   Returns:
-    An instance of `tff.Value` corresponding to the given `arg`, and of TFF type
-    matching the `type_spec` if specified (not `None`).
+    An instance of `tff.Value` as described above.
 
   Raises:
     TypeError: if `arg` is of an unsupported type, or of a type that does not
@@ -372,59 +349,53 @@ def to_value(
       are encountered, as TensorFlow code should be sealed away from TFF
       federated context.
   """
-  py_typecheck.check_type(context_stack, context_stack_base.ContextStack)
-  _check_symbol_binding_context(context_stack.current)
   if type_spec is not None:
     type_spec = computation_types.to_type(type_spec)
-  if isinstance(arg, ValueImpl):
+  if isinstance(arg, Value):
     result = arg
   elif isinstance(arg, building_blocks.ComputationBuildingBlock):
-    result = ValueImpl(arg, context_stack)
+    result = Value(arg)
   elif isinstance(arg, placements.PlacementLiteral):
-    result = ValueImpl(building_blocks.Placement(arg), context_stack)
+    result = Value(building_blocks.Placement(arg))
   elif isinstance(
       arg, (computation_base.Computation, function_utils.PolymorphicFunction)):
     if isinstance(arg, function_utils.PolymorphicFunction):
       if parameter_type_hint is None:
         raise TypeError(
-            'Polymorphic computations cannot be converted to TFF values '
+            'Polymorphic computations cannot be converted to `tff.Value`s '
             'without a type hint. Consider explicitly specifying the '
             'argument types of a computation before passing it to a '
-            'function that requires a TFF value (such as a TFF intrinsic '
+            'function that requires a `tff.Value` (such as a TFF intrinsic '
             'like `federated_map`). If you are a TFF developer and think '
             'this should be supported, consider providing `parameter_type_hint` '
             'as an argument to the encompassing `to_value` conversion.')
       parameter_type_hint = computation_types.to_type(parameter_type_hint)
       arg = arg.fn_for_argument_type(parameter_type_hint)
     py_typecheck.check_type(arg, computation_base.Computation)
-    result = ValueImpl(arg.to_compiled_building_block(), context_stack)
+    result = Value(arg.to_compiled_building_block())
   elif type_spec is not None and type_spec.is_sequence():
-    result = _wrap_sequence_as_value(arg, type_spec.element, context_stack)
+    result = _wrap_sequence_as_value(arg, type_spec.element)
   elif isinstance(arg, structure.Struct):
     items = structure.iter_elements(arg)
-    result = _dictlike_items_to_value(items, type_spec, context_stack, None)
+    result = _dictlike_items_to_value(items, type_spec, None)
   elif py_typecheck.is_named_tuple(arg):
     items = arg._asdict().items()
-    result = _dictlike_items_to_value(items, type_spec, context_stack,
-                                      type(arg))
+    result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif py_typecheck.is_attrs(arg):
     items = attr.asdict(
         arg, dict_factory=collections.OrderedDict, recurse=False).items()
-    result = _dictlike_items_to_value(items, type_spec, context_stack,
-                                      type(arg))
+    result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif isinstance(arg, dict):
     if isinstance(arg, collections.OrderedDict):
       items = arg.items()
     else:
       items = sorted(arg.items())
-    result = _dictlike_items_to_value(items, type_spec, context_stack,
-                                      type(arg))
+    result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif isinstance(arg, (tuple, list)):
     items = zip(itertools.repeat(None), arg)
-    result = _dictlike_items_to_value(items, type_spec, context_stack,
-                                      type(arg))
+    result = _dictlike_items_to_value(items, type_spec, type(arg))
   elif isinstance(arg, tensorflow_utils.TENSOR_REPRESENTATION_TYPES):
-    result = _wrap_constant_as_value(arg, context_stack)
+    result = _wrap_constant_as_value(arg)
   elif isinstance(arg, (tf.Tensor, tf.Variable)):
     raise TypeError(
         'TensorFlow construct {} has been encountered in a federated '
@@ -433,9 +404,9 @@ def to_value(
         '`tff.tf_computation`.'.format(arg))
   else:
     raise TypeError(
-        'Unable to interpret an argument of type {} as a TFF value.'.format(
+        'Unable to interpret an argument of type {} as a `tff.Value`.'.format(
             py_typecheck.type_string(type(arg))))
-  py_typecheck.check_type(result, ValueImpl)
+  py_typecheck.check_type(result, Value)
   if (type_spec is not None and
       not type_spec.is_assignable_from(result.type_signature)):
     raise TypeError(

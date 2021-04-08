@@ -1991,7 +1991,7 @@ class MergeTupleIntrinsicsTest(test_case.TestCase):
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
-        str(transformed_comp.type_signature), '<bool@SERVER,bool@SERVER>')
+        str(transformed_comp.type_signature), '<int32@SERVER,int32@SERVER>')
     self.assertTrue(modified)
 
   def test_merges_federated_aggregates_with_unknown_parameter_dim(self):
@@ -2227,7 +2227,7 @@ class MergeTupleIntrinsicsTest(test_case.TestCase):
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
         str(transformed_comp.type_signature),
-        '<bool@SERVER,bool@SERVER,bool@SERVER>')
+        '<int32@SERVER,int32@SERVER,int32@SERVER>')
     self.assertTrue(modified)
 
   def test_merges_federated_applys(self):
@@ -2896,7 +2896,7 @@ class MergeTupleIntrinsicsTest(test_case.TestCase):
     )
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
     self.assertEqual(
-        str(transformed_comp.type_signature), '<bool@SERVER,{int32}@CLIENTS>')
+        str(transformed_comp.type_signature), '<int32@SERVER,{int32}@CLIENTS>')
     self.assertFalse(modified)
 
   def test_does_not_merge_intrinsics_with_different_uri(self):
@@ -2979,21 +2979,19 @@ class RemoveDuplicateBlockLocals(test_case.TestCase):
         '  _dep3=data,\n'
         '  _dep5=(_dep4 -> _dep3),\n'
         '  _dep7=(_dep6 -> _dep3),\n'
-        '  _dep8=data,\n'
-        '  _dep10=(_dep9 -> _dep8),\n'
-        '  _dep11=<\n'
+        '  _dep8=<\n'
         '    _dep2,\n'
         '    _dep3,\n'
         '    _dep5,\n'
-        '    _dep7,\n'
-        '    _dep10\n'
+        '    _dep5,\n'
+        '    _dep7\n'
         '  >,\n'
-        '  _dep12=_dep1(_dep11),\n'
-        '  _dep13=<\n'
-        '    _dep12,\n'
-        '    _dep12\n'
+        '  _dep9=_dep1(_dep8),\n'
+        '  _dep10=<\n'
+        '    _dep9,\n'
+        '    _dep9\n'
         '  >\n'
-        ' in _dep13)'
+        ' in _dep10)'
     )
     # pyformat: enable
     self.assertEqual(transformed_comp.type_signature, comp.type_signature)
