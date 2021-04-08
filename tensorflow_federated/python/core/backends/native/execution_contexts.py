@@ -99,7 +99,6 @@ def set_thread_debugging_execution_context(num_clients=None,
 
 
 def create_remote_execution_context(channels,
-                                    rpc_mode='REQUEST_REPLY',
                                     thread_pool_executor=None,
                                     dispose_batch_size=20,
                                     max_fanout: int = 100,
@@ -107,7 +106,6 @@ def create_remote_execution_context(channels,
   """Creates context to execute computations with workers on `channels`."""
   factory = executor_stacks.remote_executor_factory(
       channels=channels,
-      rpc_mode=rpc_mode,
       thread_pool_executor=thread_pool_executor,
       dispose_batch_size=dispose_batch_size,
       max_fanout=max_fanout,
@@ -119,7 +117,6 @@ def create_remote_execution_context(channels,
 
 
 def set_remote_execution_context(channels,
-                                 rpc_mode='REQUEST_REPLY',
                                  thread_pool_executor=None,
                                  dispose_batch_size=20,
                                  max_fanout: int = 100,
@@ -127,7 +124,6 @@ def set_remote_execution_context(channels,
   """Installs context to execute computations with workers on `channels`."""
   context = create_remote_execution_context(
       channels=channels,
-      rpc_mode=rpc_mode,
       thread_pool_executor=thread_pool_executor,
       dispose_batch_size=dispose_batch_size,
       max_fanout=max_fanout,
