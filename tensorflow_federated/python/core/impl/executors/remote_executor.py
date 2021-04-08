@@ -14,7 +14,6 @@
 """A local proxy for a remote executor service hosted on a separate machine."""
 
 from typing import Mapping
-import warnings
 import weakref
 
 from absl import logging
@@ -114,7 +113,6 @@ class RemoteExecutor(executor_base.Executor):
 
   def __init__(self,
                channel,
-               rpc_mode=None,
                thread_pool_executor=None,
                dispose_batch_size=20):
     """Creates a remote executor.
@@ -122,8 +120,6 @@ class RemoteExecutor(executor_base.Executor):
     Args:
       channel: An instance of `grpc.Channel` to use for communication with the
         remote executor service.
-      rpc_mode: (Deprecated) string, one of 'REQUEST_REPLY' or 'STREAMING'.
-        Unused, still here for backwards compatibility.
       thread_pool_executor: Optional concurrent.futures.Executor used to wait
         for the reply to a streaming RPC message. Uses the default Executor if
         not specified.
@@ -135,11 +131,6 @@ class RemoteExecutor(executor_base.Executor):
 
     py_typecheck.check_type(channel, grpc.Channel)
     py_typecheck.check_type(dispose_batch_size, int)
-    if rpc_mode is not None:
-      warnings.warn('The rpc_mode argument is deprecated and slated for '
-                    'removal. Please update your callsites to avoid specifying '
-                    'rpc_mode.')
-    del rpc_mode
 
     logging.debug('Creating new ExecutorStub')
 

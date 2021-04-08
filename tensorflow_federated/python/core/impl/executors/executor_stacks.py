@@ -988,7 +988,6 @@ def _configure_remote_workers(num_clients, remote_executors):
 
 def remote_executor_factory(
     channels: List[grpc.Channel],
-    rpc_mode: str = 'REQUEST_REPLY',
     thread_pool_executor: Optional[futures.Executor] = None,
     dispose_batch_size: int = 20,
     max_fanout: int = 100,
@@ -999,8 +998,6 @@ def remote_executor_factory(
   Args:
     channels: A list of `grpc.Channels` hosting services which can execute TFF
       work.
-    rpc_mode: A string specifying the connection mode between the local host and
-      `channels`.
     thread_pool_executor: Optional concurrent.futures.Executor used to wait for
       the reply to a streaming RPC message. Uses the default Executor if not
       specified.
@@ -1026,7 +1023,6 @@ def remote_executor_factory(
   py_typecheck.check_type(channels, list)
   if not channels:
     raise ValueError('The list of channels cannot be empty.')
-  py_typecheck.check_type(rpc_mode, str)
   if thread_pool_executor is not None:
     py_typecheck.check_type(thread_pool_executor, futures.Executor)
   py_typecheck.check_type(dispose_batch_size, int)
@@ -1038,7 +1034,6 @@ def remote_executor_factory(
     remote_executors.append(
         remote_executor.RemoteExecutor(
             channel=channel,
-            rpc_mode=rpc_mode,
             thread_pool_executor=thread_pool_executor,
             dispose_batch_size=dispose_batch_size))
 
