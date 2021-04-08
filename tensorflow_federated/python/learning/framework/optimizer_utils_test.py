@@ -29,6 +29,7 @@ from tensorflow_federated.python.core.api import intrinsics
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
@@ -240,6 +241,53 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             ),
             result=(server_state_type, metrics_type)),
         iterative_process.next.type_signature)
+
+  def test_initial_weights_pulled_from_model(self):
+
+    self.skipTest('b/184855264')
+
+    def _model_fn_with_zero_weights():
+      linear_regression_model = model_examples.LinearRegression()
+      weights = model_utils.ModelWeights.from_model(linear_regression_model)
+      zero_trainable = [tf.zeros_like(x) for x in weights.trainable]
+      zero_non_trainable = [tf.zeros_like(x) for x in weights.non_trainable]
+      zero_weights = model_utils.ModelWeights(
+          trainable=zero_trainable, non_trainable=zero_non_trainable)
+      zero_weights.assign_weights_to(linear_regression_model)
+      return linear_regression_model
+
+    def _model_fn_with_one_weights():
+      linear_regression_model = model_examples.LinearRegression()
+      weights = model_utils.ModelWeights.from_model(linear_regression_model)
+      ones_trainable = [tf.ones_like(x) for x in weights.trainable]
+      ones_non_trainable = [tf.ones_like(x) for x in weights.non_trainable]
+      ones_weights = model_utils.ModelWeights(
+          trainable=ones_trainable, non_trainable=ones_non_trainable)
+      ones_weights.assign_weights_to(linear_regression_model)
+      return linear_regression_model
+
+    iterative_process_returning_zeros = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=_model_fn_with_zero_weights,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=tf.keras.optimizers.SGD)
+
+    iterative_process_returning_ones = optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=_model_fn_with_one_weights,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=tf.keras.optimizers.SGD)
+
+    zero_weights_expected = iterative_process_returning_zeros.initialize().model
+    one_weights_expected = iterative_process_returning_ones.initialize().model
+
+    self.assertEqual(
+        sum(tf.reduce_sum(x) for x in zero_weights_expected.trainable) +
+        sum(tf.reduce_sum(x) for x in zero_weights_expected.non_trainable), 0)
+    self.assertEqual(
+        sum(tf.reduce_sum(x) for x in one_weights_expected.trainable) +
+        sum(tf.reduce_sum(x) for x in one_weights_expected.non_trainable),
+        type_analysis.count_tensors_in_type(
+            iterative_process_returning_ones.initialize.type_signature.result
+            .member.model)['parameters'])
 
   def test_construction_fails_with_invalid_aggregation_factory(self):
     aggregation_factory = sampling.UnweightedReservoirSamplingFactory(
