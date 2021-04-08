@@ -13,6 +13,8 @@
 # limitations under the License.
 """A factory of intrinsics for use in composing federated computations."""
 
+import warnings
+
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -305,6 +307,12 @@ class IntrinsicFactory(object):
 
   def federated_value(self, value, placement):
     """Implements `federated_value` as defined in `api/intrinsics.py`."""
+    if isinstance(value, value_impl.ValueImpl):
+      warnings.warn(
+          'Deprecation warning: Using `tff.federated_value` with arguments '
+          'other than simple Python constants is deprecated. When placing the '
+          'result of a `tf_computation`, prefer `tff.federated_eval`.',
+          DeprecationWarning)
     value = value_impl.to_value(value, None, self._context_stack)
     if type_analysis.contains(value.type_signature, lambda t: t.is_federated()):
       raise TypeError('Cannot place value {} containing federated types at '

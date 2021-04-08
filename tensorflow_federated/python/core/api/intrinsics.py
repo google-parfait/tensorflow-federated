@@ -349,8 +349,9 @@ def federated_sum(value):
 def federated_value(value, placement):
   """Returns a federated value at `placement`, with `value` as the constituent.
 
-  Deprecation warning: `tff.federated_value()` is deprecated, use
-  `tff.federated_eval()` instead.
+  Deprecation warning: Using `tff.federated_value` with arguments other than
+  simple Python constants is deprecated. When placing the result of a
+  `tf_computation`, prefer `tff.federated_eval`.
 
   Args:
     value: A value of a non-federated TFF type to be placed.
@@ -364,9 +365,6 @@ def federated_value(value, placement):
   Raises:
     TypeError: If the arguments are not of the appropriate types.
   """
-  warnings.warn(
-      'Deprecation warning: tff.federated_value() is deprecated, use '
-      'tff.federated_eval() instead.', DeprecationWarning)
   factory = intrinsic_factory.IntrinsicFactory(context_stack_impl.context_stack)
   return factory.federated_value(value, placement)
 
