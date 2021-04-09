@@ -44,7 +44,6 @@ from tensorflow_federated.python.core.api.computations import federated_computat
 from tensorflow_federated.python.core.api.computations import tf_computation
 from tensorflow_federated.python.core.api.typed_object import TypedObject
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_aggregate
-from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_apply
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_collect
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_eval

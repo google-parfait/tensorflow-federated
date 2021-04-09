@@ -289,10 +289,6 @@ def federated_map(fn, arg):
   return value_impl.Value(comp)
 
 
-# Temporary alias: delete when remaining usages are removed
-federated_apply = federated_map
-
-
 def federated_map_all_equal(fn, arg):
   """`federated_map` with the `all_equal` bit set in the `arg` and return."""
   # TODO(b/113112108): Possibly lift the restriction that the mapped value
