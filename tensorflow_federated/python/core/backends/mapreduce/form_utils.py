@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utils for converting to/from the canonical form.
+"""Utils for converting to/from the MapReduce form.
 
-Note: Refer to `get_iterative_process_for_canonical_form()` for the meaning of
+Note: Refer to `get_iterative_process_for_map_reduce_form()` for the meaning of
 variable names used in this module.
 """
 
@@ -76,29 +76,29 @@ def get_computation_for_broadcast_form(
   return computation
 
 
-def get_iterative_process_for_canonical_form(
-    cf: forms.CanonicalForm) -> iterative_process.IterativeProcess:
-  """Creates `tff.templates.IterativeProcess` from a canonical form.
+def get_iterative_process_for_map_reduce_form(
+    mrf: forms.MapReduceForm) -> iterative_process.IterativeProcess:
+  """Creates `tff.templates.IterativeProcess` from a MapReduce form.
 
   Args:
-    cf: An instance of `tff.backends.mapreduce.CanonicalForm`.
+    mrf: An instance of `tff.backends.mapreduce.MapReduceForm`.
 
   Returns:
-    An instance of `tff.templates.IterativeProcess` that corresponds to `cf`.
+    An instance of `tff.templates.IterativeProcess` that corresponds to `mrf`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  py_typecheck.check_type(cf, forms.CanonicalForm)
+  py_typecheck.check_type(mrf, forms.MapReduceForm)
 
   @computations.federated_computation
   def init_computation():
-    return intrinsics.federated_value(cf.initialize(), placements.SERVER)
+    return intrinsics.federated_value(mrf.initialize(), placements.SERVER)
 
   next_parameter_type = computation_types.StructType([
-      (cf.server_state_label, init_computation.type_signature.result),
-      (cf.client_data_label,
-       computation_types.FederatedType(cf.work.type_signature.parameter[0],
+      (mrf.server_state_label, init_computation.type_signature.result),
+      (mrf.client_data_label,
+       computation_types.FederatedType(mrf.work.type_signature.parameter[0],
                                        placements.CLIENTS)),
   ])
 
@@ -107,18 +107,18 @@ def get_iterative_process_for_canonical_form(
     """The logic of a single MapReduce processing round."""
     s1 = arg[0]
     c1 = arg[1]
-    s2 = intrinsics.federated_map(cf.prepare, s1)
+    s2 = intrinsics.federated_map(mrf.prepare, s1)
     c2 = intrinsics.federated_broadcast(s2)
     c3 = intrinsics.federated_zip([c1, c2])
-    c4 = intrinsics.federated_map(cf.work, c3)
+    c4 = intrinsics.federated_map(mrf.work, c3)
     c5 = c4[0]
     c6 = c4[1]
-    s3 = intrinsics.federated_aggregate(c5, cf.zero(), cf.accumulate, cf.merge,
-                                        cf.report)
-    s4 = intrinsics.federated_secure_sum(c6, cf.bitwidth())
+    s3 = intrinsics.federated_aggregate(c5, mrf.zero(), mrf.accumulate,
+                                        mrf.merge, mrf.report)
+    s4 = intrinsics.federated_secure_sum(c6, mrf.bitwidth())
     s5 = intrinsics.federated_zip([s3, s4])
     s6 = intrinsics.federated_zip([s1, s5])
-    s7 = intrinsics.federated_map(cf.update, s6)
+    s7 = intrinsics.federated_map(mrf.update, s6)
     s8 = s7[0]
     s9 = s7[1]
     return s8, s9
@@ -130,7 +130,7 @@ def _check_len(
     target,
     length,
     err_fn: Callable[[str],
-                     Exception] = transformations.CanonicalFormCompilationError,
+                     Exception] = transformations.MapReduceFormCompilationError,
 ):
   py_typecheck.check_type(length, int)
   if len(target) != length:
@@ -141,7 +141,7 @@ def _check_placement(
     target,
     placement: placements.PlacementLiteral,
     err_fn: Callable[[str],
-                     Exception] = transformations.CanonicalFormCompilationError,
+                     Exception] = transformations.MapReduceFormCompilationError,
 ):
   py_typecheck.check_type(target, computation_types.FederatedType)
   py_typecheck.check_type(placement, placements.PlacementLiteral)
@@ -155,7 +155,7 @@ def _check_type_equal(
     actual,
     expected,
     err_fn: Callable[[str],
-                     Exception] = transformations.CanonicalFormCompilationError,
+                     Exception] = transformations.MapReduceFormCompilationError,
 ):
   py_typecheck.check_type(actual, computation_types.Type)
   py_typecheck.check_type(expected, computation_types.Type)
@@ -167,7 +167,7 @@ def _check_type(
     target,
     type_spec,
     err_fn: Callable[[str],
-                     Exception] = transformations.CanonicalFormCompilationError,
+                     Exception] = transformations.MapReduceFormCompilationError,
 ):
   py_typecheck.check_type(type_spec, type)
   if not isinstance(target, type_spec):
@@ -179,7 +179,7 @@ def _check_type_is_fn(
     target: computation_types.Type,
     name: str,
     err_fn: Callable[[str],
-                     Exception] = transformations.CanonicalFormCompilationError,
+                     Exception] = transformations.MapReduceFormCompilationError,
 ):
   if not target.is_function():
     raise err_fn(f'Expected {name} to be a function, but {name} had type '
@@ -190,7 +190,7 @@ def _check_type_is_no_arg_fn(
     target: computation_types.Type,
     name: str,
     err_fn: Callable[[str],
-                     Exception] = transformations.CanonicalFormCompilationError,
+                     Exception] = transformations.MapReduceFormCompilationError,
 ):
   _check_type_is_fn(target, name, err_fn)
   if target.parameter is not None:
@@ -229,17 +229,17 @@ def _check_function_signature_compatible_with_broadcast_form(
         f'{result_type}')
 
 
-def check_iterative_process_compatible_with_canonical_form(
+def check_iterative_process_compatible_with_map_reduce_form(
     ip: iterative_process.IterativeProcess):
-  """Tests compatibility with `tff.backends.mapreduce.CanonicalForm`.
+  """Tests compatibility with `tff.backends.mapreduce.MapReduceForm`.
 
   Note: the conditions here are specified in the documentation for
-    `get_canonical_form_for_iterative_process`. Changes to this function should
+    `get_map_reduce_form_for_iterative_process`. Changes to this function should
     be propagated to that documentation.
 
   Args:
     ip: An instance of `tff.templates.IterativeProcess` to check for
-    compatibility with `tff.backends.mapreduce.CanonicalForm`.
+      compatibility with `tff.backends.mapreduce.MapReduceForm`.
 
   Returns:
     TFF-internal building-blocks representing the validated and simplified
@@ -309,7 +309,7 @@ def _create_before_and_after_broadcast_for_no_broadcast(tree):
   floor.
 
   This function is intended to be used by
-  `get_canonical_form_for_iterative_process` to create before and after
+  `get_map_reduce_form_for_iterative_process` to create before and after
   broadcast computations for the given `tree` when there is no
   `intrinsic_defs.FEDERATED_BROADCAST` in `tree`. As a result, this function
   does not assert that there is no `intrinsic_defs.FEDERATED_BROADCAST` in
@@ -453,7 +453,7 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
   intentionally drops `s3` on the floor.
 
   This function is intended to be used by
-  `get_canonical_form_for_iterative_process` to create before and after
+  `get_map_reduce_form_for_iterative_process` to create before and after
   broadcast computations for the given `tree` when there is no
   `intrinsic_defs.FEDERATED_AGGREGATE` in `tree`. As a result, this function
   does not assert that there is no `intrinsic_defs.FEDERATED_AGGREGATE` in
@@ -552,7 +552,7 @@ def _create_before_and_after_aggregate_for_no_federated_secure_sum(tree):
   intentionally drops `s4` on the floor.
 
   This function is intended to be used by
-  `get_canonical_form_for_iterative_process` to create before and after
+  `get_map_reduce_form_for_iterative_process` to create before and after
   broadcast computations for the given `tree` when there is no
   `intrinsic_defs.FEDERATED_SECURE_SUM` in `tree`. As a result, this function
   does not assert that there is no `intrinsic_defs.FEDERATED_SECURE_SUM` in
@@ -805,7 +805,7 @@ def _extract_prepare(before_broadcast, grappler_config):
   """extracts `prepare` from `before_broadcast`.
 
   This function is intended to be used by
-  `get_canonical_form_for_iterative_process` only. As a result, this function
+  `get_map_reduce_form_for_iterative_process` only. As a result, this function
   does not assert that `before_broadcast` has the expected structure, the
   caller is expected to perform these checks before calling this function.
 
@@ -816,11 +816,11 @@ def _extract_prepare(before_broadcast, grappler_config):
       Grappler graph optimization.
 
   Returns:
-    `prepare` as specified by `forms.CanonicalForm`, an instance of
+    `prepare` as specified by `forms.MapReduceForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we extract an AST of the
+    transformations.MapReduceFormCompilationError: If we extract an AST of the
       wrong type.
   """
   s1_index_in_before_broadcast = 0
@@ -834,7 +834,7 @@ def _extract_work(before_aggregate, grappler_config):
   """Extracts `work` from `before_aggregate`.
 
   This function is intended to be used by
-  `get_canonical_form_for_iterative_process` only. As a result, this function
+  `get_map_reduce_form_for_iterative_process` only. As a result, this function
   does not assert that `before_aggregate` has the expected structure, the caller
   is expected to perform these checks before calling this function.
 
@@ -845,11 +845,11 @@ def _extract_work(before_aggregate, grappler_config):
       Grappler graph optimization.
 
   Returns:
-    `work` as specified by `forms.CanonicalForm`, an instance of
+    `work` as specified by `forms.MapReduceForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we extract an AST of the
+    transformations.MapReduceFormCompilationError: If we extract an AST of the
       wrong type.
   """
   c3_elements_in_before_aggregate_parameter = [(0, 1), (1,)]
@@ -872,7 +872,7 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
   """Extracts federated aggregate functions from `before_aggregate`.
 
   This function is intended to be used by
-  `get_canonical_form_for_iterative_process` only. As a result, this function
+  `get_map_reduce_form_for_iterative_process` only. As a result, this function
   does not assert that `before_aggregate` has the expected structure, the
   caller is expected to perform these checks before calling this function.
 
@@ -884,11 +884,11 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
 
   Returns:
     `zero`, `accumulate`, `merge` and `report` as specified by
-    `forms.CanonicalForm`. All are instances of
+    `forms.MapReduceForm`. All are instances of
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we extract an ASTs of the
+    transformations.MapReduceFormCompilationError: If we extract an ASTs of the
       wrong type.
   """
   federated_aggregate_index_in_before_aggregate_result = 0
@@ -923,7 +923,7 @@ def _extract_federated_secure_sum_functions(before_aggregate, grappler_config):
   """Extracts secure sum from `before_aggregate`.
 
   This function is intended to be used by
-  `get_canonical_form_for_iterative_process` only. As a result, this function
+  `get_map_reduce_form_for_iterative_process` only. As a result, this function
   does not assert that `before_aggregate` has the expected structure, the
   caller is expected to perform these checks before calling this function.
 
@@ -934,11 +934,11 @@ def _extract_federated_secure_sum_functions(before_aggregate, grappler_config):
       Grappler graph optimization.
 
   Returns:
-    `bitwidth` as specified by `forms.CanonicalForm`, an instance of
+    `bitwidth` as specified by `forms.MapReduceForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we extract an AST of the
+    transformations.MapReduceFormCompilationError: If we extract an AST of the
       wrong type.
   """
   federated_secure_sum_index_in_before_aggregate_result = 1
@@ -957,7 +957,7 @@ def _extract_update(after_aggregate, grappler_config):
   """Extracts `update` from `after_aggregate`.
 
   This function is intended to be used by
-  `get_canonical_form_for_iterative_process` only. As a result, this function
+  `get_map_reduce_form_for_iterative_process` only. As a result, this function
   does not assert that `after_aggregate` has the expected structure, the
   caller is expected to perform these checks before calling this function.
 
@@ -968,11 +968,11 @@ def _extract_update(after_aggregate, grappler_config):
       Grappler graph optimization.
 
   Returns:
-    `update` as specified by `forms.CanonicalForm`, an instance of
+    `update` as specified by `forms.MapReduceForm`, an instance of
     `building_blocks.CompiledComputation`.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If we extract an AST of the
+    transformations.MapReduceFormCompilationError: If we extract an AST of the
       wrong type.
   """
   s7_elements_in_after_aggregate_result = [0, 1]
@@ -1028,12 +1028,12 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   """Returns type information for an `tff.templates.IterativeProcess`.
 
   This function is intended to be used by
-  `get_canonical_form_for_iterative_process` to create the expected type
+  `get_map_reduce_form_for_iterative_process` to create the expected type
   signatures when compiling a given `tff.templates.IterativeProcess` into a
-  `tff.backends.mapreduce.CanonicalForm` and returns a `collections.OrderedDict`
+  `tff.backends.mapreduce.MapReduceForm` and returns a `collections.OrderedDict`
   whose keys and order match the explicit and intermediate componets of
-  `tff.backends.mapreduce.CanonicalForm` defined in the body of the
-  `next_computation` in `get_iterative_process_for_canonical_form`.
+  `tff.backends.mapreduce.MapReduceForm` defined in the body of the
+  `next_computation` in `get_iterative_process_for_map_reduce_form`.
 
   Note that the type signatures for the `initalize` and `next` components of the
   `tff.templates.IterativeProcess` are (with the implicit understanding that
@@ -1073,7 +1073,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
       `tff.templates.IterativeProcess` on aggregate.
 
   Raises:
-    transformations.CanonicalFormCompilationError: If the arguments are of the
+    transformations.MapReduceFormCompilationError: If the arguments are of the
       wrong types.
   """
 
@@ -1082,7 +1082,7 @@ def _get_type_info(initialize_tree, before_broadcast, after_broadcast,
   _check_type_is_no_arg_fn(init_tree_ty, '`initialize`')
   _check_type(init_tree_ty.result, computation_types.FederatedType)
   _check_placement(init_tree_ty.result, placements.SERVER)
-  # The named components of canonical form have no placement, so we must
+  # The named components of MapReduce form have no placement, so we must
   # remove the placement on the return type of initialize_tree
   initialize_type = computation_types.FunctionType(
       initialize_tree.type_signature.parameter,
@@ -1329,37 +1329,37 @@ def get_broadcast_form_for_computation(
       client_data_label=client_data_label)
 
 
-def get_canonical_form_for_iterative_process(
+def get_map_reduce_form_for_iterative_process(
     ip: iterative_process.IterativeProcess,
     grappler_config: Optional[
         tf.compat.v1.ConfigProto] = _GRAPPLER_DEFAULT_CONFIG
-) -> forms.CanonicalForm:
-  """Constructs `tff.backends.mapreduce.CanonicalForm` given iterative process.
+) -> forms.MapReduceForm:
+  """Constructs `tff.backends.mapreduce.MapReduceForm` given iterative process.
 
   Args:
     ip: An instance of `tff.templates.IterativeProcess` that is compatible with
-      canonical form. Iterative processes are only compatible if `initialize_fn`
+      MapReduce form. Iterative processes are only compatible if `initialize_fn`
       returns a single federated value placed at `SERVER` and `next` takes
       exactly two arguments. The first must be the state value placed at
       `SERVER`. - `next` returns exactly two values.
     grappler_config: An optional instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the TensorFlow graphs backing the
-      resulting `tff.backends.mapreduce.CanonicalForm`. These options are
+      resulting `tff.backends.mapreduce.MapReduceForm`. These options are
       combined with a set of defaults that aggressively configure Grappler. If
       `None`, Grappler is bypassed.
 
   Returns:
-    An instance of `tff.backends.mapreduce.CanonicalForm` equivalent to the
+    An instance of `tff.backends.mapreduce.MapReduceForm` equivalent to the
     provided `tff.templates.IterativeProcess`.
 
   Raises:
     TypeError: If the arguments are of the wrong types.
-    transformations.CanonicalFormCompilationError: If the compilation
+    transformations.MapReduceFormCompilationError: If the compilation
       process fails.
   """
   py_typecheck.check_type(ip, iterative_process.IterativeProcess)
   initialize_bb, next_bb = (
-      check_iterative_process_compatible_with_canonical_form(ip))
+      check_iterative_process_compatible_with_map_reduce_form(ip))
   if grappler_config is not None:
     grappler_config = _merge_grappler_config_with_default(grappler_config)
 
@@ -1400,7 +1400,7 @@ def get_canonical_form_for_iterative_process(
       computation_wrapper_instances.building_block_to_computation(bb)
       for bb in (initialize, prepare, work, zero, accumulate, merge, report,
                  bitwidth, update))
-  return forms.CanonicalForm(
+  return forms.MapReduceForm(
       *comps,
       server_state_label=server_state_label,
       client_data_label=client_data_label)

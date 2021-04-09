@@ -77,26 +77,26 @@ class CheckExtractionResultTest(absltest.TestCase):
         'f', computation_types.FunctionType(tf.int32, tf.int32))
     integer_ref = building_blocks.Reference('x', tf.int32)
     call = building_blocks.Call(function, integer_ref)
-    with self.assertRaisesRegex(transformations.CanonicalFormCompilationError,
+    with self.assertRaisesRegex(transformations.MapReduceFormCompilationError,
                                 'we have the functional type'):
       transformations.check_extraction_result(function, call)
 
   def test_raises_non_function_and_compiled_computation(self):
-    init = form_utils.get_iterative_process_for_canonical_form(
+    init = form_utils.get_iterative_process_for_map_reduce_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = self.compiled_computation_for_initialize(init)
     integer_ref = building_blocks.Reference('x', tf.int32)
-    with self.assertRaisesRegex(transformations.CanonicalFormCompilationError,
+    with self.assertRaisesRegex(transformations.MapReduceFormCompilationError,
                                 'we have the non-functional type'):
       transformations.check_extraction_result(integer_ref, compiled_computation)
 
   def test_raises_function_and_compiled_computation_of_different_type(self):
-    init = form_utils.get_iterative_process_for_canonical_form(
+    init = form_utils.get_iterative_process_for_map_reduce_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference(
         'f', computation_types.FunctionType(tf.int32, tf.int32))
-    with self.assertRaisesRegex(transformations.CanonicalFormCompilationError,
+    with self.assertRaisesRegex(transformations.MapReduceFormCompilationError,
                                 'incorrect TFF type'):
       transformations.check_extraction_result(function, compiled_computation)
 
@@ -105,12 +105,12 @@ class CheckExtractionResultTest(absltest.TestCase):
         'f', computation_types.FunctionType(tf.int32, tf.int32))
     ref_to_int = building_blocks.Reference('x', tf.int32)
     called_fn = building_blocks.Call(function, ref_to_int)
-    with self.assertRaisesRegex(transformations.CanonicalFormCompilationError,
+    with self.assertRaisesRegex(transformations.MapReduceFormCompilationError,
                                 'missing'):
       transformations.check_extraction_result(ref_to_int, called_fn)
 
   def test_passes_function_and_compiled_computation_of_same_type(self):
-    init = form_utils.get_iterative_process_for_canonical_form(
+    init = form_utils.get_iterative_process_for_map_reduce_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
     compiled_computation = self.compiled_computation_for_initialize(init)
     function = building_blocks.Reference('f',
@@ -126,7 +126,7 @@ class ConsolidateAndExtractTest(absltest.TestCase):
           None, DEFAULT_GRAPPLER_CONFIG)
 
   def test_already_reduced_case(self):
-    init = form_utils.get_iterative_process_for_canonical_form(
+    init = form_utils.get_iterative_process_for_map_reduce_form(
         mapreduce_test_utils.get_temperature_sensor_example()).initialize
 
     comp = init.to_building_block()

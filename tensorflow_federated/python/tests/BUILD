@@ -42,9 +42,9 @@ py_cpu_gpu_test(
 )
 
 py_test(
-    name = "canonical_form_test",
+    name = "map_reduce_form_test",
     size = "medium",
-    srcs = ["canonical_form_test.py"],
+    srcs = ["map_reduce_form_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = ["//tensorflow_federated"],

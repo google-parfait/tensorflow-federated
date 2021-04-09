@@ -28,13 +28,13 @@ from tensorflow_federated.python.core.templates import iterative_process
 
 
 def get_temperature_sensor_example():
-  """Constructs `forms.CanonicalForm` for temperature sensors example.
+  """Constructs `forms.MapReduceForm` for temperature sensors example.
 
   The temperature sensor example computes the fraction of sensors that report
   temperatures over the threshold.
 
   Returns:
-    An instance of `forms.CanonicalForm`.
+    An instance of `forms.MapReduceForm`.
   """
 
   @computations.tf_computation
@@ -59,7 +59,7 @@ def get_temperature_sensor_example():
 
   @computations.tf_computation(client_data_type, client_state_type)
   def work(data, state):
-    """See the `forms.CanonicalForm` definition of `work`."""
+    """See the `forms.MapReduceForm` definition of `work`."""
 
     def fn(s, x):
       return {
@@ -118,20 +118,20 @@ def get_temperature_sensor_example():
     return (collections.OrderedDict(num_rounds=state['num_rounds'] + 1),
             update[0])
 
-  return forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+  return forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                              report, bitwidth, update)
 
 
 def get_federated_sum_example(*,
-                              secure_sum: bool = False) -> forms.CanonicalForm:
-  """Constructs `forms.CanonicalForm` which performs a sum aggregation.
+                              secure_sum: bool = False) -> forms.MapReduceForm:
+  """Constructs `forms.MapReduceForm` which performs a sum aggregation.
 
   Args:
     secure_sum: Whether to use `federated_secure_sum`. Defaults to
       `federated_sum`.
 
   Returns:
-    An instance of `forms.CanonicalForm`.
+    An instance of `forms.MapReduceForm`.
   """
 
   @computations.tf_computation
@@ -194,15 +194,15 @@ def get_federated_sum_example(*,
     else:
       return state, update[0]
 
-  return forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+  return forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                              report, bitwidth, update)
 
 
 def get_mnist_training_example():
-  """Constructs `forms.CanonicalForm` for mnist training.
+  """Constructs `forms.MapReduceForm` for mnist training.
 
   Returns:
-    An instance of `forms.CanonicalForm`.
+    An instance of `forms.MapReduceForm`.
   """
   model_nt = collections.namedtuple('Model', 'weights bias')
   server_state_nt = (collections.namedtuple('ServerState', 'model num_rounds'))
@@ -344,7 +344,7 @@ def get_mnist_training_example():
                 num_examples=report.num_examples,
                 loss=report.loss))
 
-  return forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+  return forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                              report, bitwidth, update)
 
 

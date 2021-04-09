@@ -25,18 +25,18 @@ MapReduce backends involves a three-stage process:
 
 2. Top-down transformation phase specific to MapReduce backends. Our knowledge
    of the specific structure of the kind of processing these backends can
-   support, captured in the definition of the "canonical form" and encoded in
-   the definition of the `CanonicalForm` class in `canonical_form.py`, allows
+   support, captured in the definition of the "MapReduce form" and encoded in
+   the definition of the `MapReduceForm` class in `map_reduce_form.py`, allows
    us to organize transformations in a manner that specifically supports the
-   goal of converting a computation AST into the `CanonicalForm` eight-tuple
+   goal of converting a computation AST into the `MapReduceForm` eight-tuple
    of TensorFlow computations. This phase is top-down, in the sense that the
-   converter from AST to `CanonicalForm` drives the process (e.g., it triggers
+   converter from AST to `MapReduceForm` drives the process (e.g., it triggers
    what we may call a "force align" of certain communication operators, which
    may not make sense or be a valid and safe operation in general, but that is
    possible in the context of the kinds of computations that are convertible
    into a form consumable by MapReduce-like backends).
 
-3. Final conversion from `CanonicalForm` into the form accepted by a given type
+3. Final conversion from `MapReduceForm` into the form accepted by a given type
    of MapReduce backend, to be handled by the backend-specific code.
 
 The second phase is essentially a form of "divide and conquer" that involves
@@ -79,7 +79,7 @@ from tensorflow_federated.python.core.impl.compiler import tree_transformations
 from tensorflow_federated.python.core.impl.types import placements
 
 
-class CanonicalFormCompilationError(Exception):
+class MapReduceFormCompilationError(Exception):
   pass
 
 
@@ -90,7 +90,7 @@ def check_extraction_result(before_extraction, extracted):
   py_typecheck.check_type(extracted, building_blocks.ComputationBuildingBlock)
   if before_extraction.type_signature.is_function():
     if not extracted.is_compiled_computation():
-      raise CanonicalFormCompilationError(
+      raise MapReduceFormCompilationError(
           'We expect to parse down to a `building_blocks.CompiledComputation`, '
           'since we have the functional type {} after unwrapping placement. '
           'Instead we have the computation {} of type {}'.format(
@@ -98,14 +98,14 @@ def check_extraction_result(before_extraction, extracted):
               extracted.type_signature))
   else:
     if not extracted.is_call():
-      raise CanonicalFormCompilationError(
+      raise MapReduceFormCompilationError(
           'We expect to parse down to a `building_blocks.Call`, since we have '
           'the non-functional type {} after unwrapping placement. Instead we '
           'have the computation {} of type {}'.format(
               before_extraction.type_signature, extracted,
               extracted.type_signature))
     if not extracted.function.is_compiled_computation():
-      raise CanonicalFormCompilationError(
+      raise MapReduceFormCompilationError(
           'We expect to parse a computation of the non-functional type {} down '
           'to a called TensorFlow block. Instead we hav a call to the '
           'computation {} of type {}. This likely means that we the '
@@ -114,7 +114,7 @@ def check_extraction_result(before_extraction, extracted):
                   extracted.function.type_signature, before_extraction))
   if not before_extraction.type_signature.is_equivalent_to(
       extracted.type_signature):
-    raise CanonicalFormCompilationError(
+    raise MapReduceFormCompilationError(
         'We have extracted a TensorFlow block of the correct Python type, but '
         'incorrect TFF type signature. Before extraction, we had a TFF '
         'object of type signature {}, but after extraction, we have instead '
@@ -295,7 +295,7 @@ def parse_tff_to_tf(comp, grappler_config_proto):
   tf_parsed, _ = transformations.compile_local_computation_to_tensorflow(comp)
 
   if grappler_config_proto is not None:
-    logging.info('Using Grappler on `CanonicalForm` TensorFlow graphs.')
+    logging.info('Using Grappler on `MapReduceForm` TensorFlow graphs.')
     tf_parsed, _ = transformations.optimize_tensorflow_graphs(
         tf_parsed, grappler_config_proto)
 
@@ -953,7 +953,7 @@ def normalize_all_equal_bit(comp):
   """Normalizes the all equal bits under `comp`.
 
   For any computation of `tff.FederatedType`, we rely on uniformity of the
-  `all_equal` bit to compile down to canonical form. For example, the values
+  `all_equal` bit to compile down to MapReduce form. For example, the values
   processed on the clients can only be accessed through a `federated_zip`,
   which produces a value with its `all_equal` bit set to `False`. Therefore
   any client processing cannot rely on processing values with `True`

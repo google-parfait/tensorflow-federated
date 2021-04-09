@@ -48,13 +48,13 @@ def construct_example_training_comp():
       client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
 
 
-class CanonicalFormTest(tff.test.TestCase):
+class MapReduceFormTest(tff.test.TestCase):
 
-  def test_canonical_form_with_learning_structure_contains_only_one_broadcast_and_one_aggregate(
+  def test_map_reduce_form_with_learning_structure_contains_only_one_broadcast_and_one_aggregate(
       self):
     ip = construct_example_training_comp()
 
-    cf = tff.backends.mapreduce.get_canonical_form_for_iterative_process(ip)
+    cf = tff.backends.mapreduce.get_map_reduce_form_for_iterative_process(ip)
 
     # This type spec test actually carries the meaning that TFF's vanilla path
     # to canonical form will broadcast and aggregate exactly one copy of the
@@ -100,14 +100,14 @@ class CanonicalFormTest(tff.test.TestCase):
         cf.work.type_signature.formatted_representation())
     # pyformat: enable
 
-  def test_canonical_form_with_learning_structure_does_not_change_execution_of_iterative_process(
+  def test_map_reduce_form_with_learning_structure_does_not_change_execution_of_iterative_process(
       self):
     if tf.config.list_logical_devices('GPU'):
       self.skipTest(
           'b/137602785: bring GPU test back after the fix for `wrap_function`')
     ip_1 = construct_example_training_comp()
-    cf = tff.backends.mapreduce.get_canonical_form_for_iterative_process(ip_1)
-    ip_2 = tff.backends.mapreduce.get_iterative_process_for_canonical_form(cf)
+    cf = tff.backends.mapreduce.get_map_reduce_form_for_iterative_process(ip_1)
+    ip_2 = tff.backends.mapreduce.get_iterative_process_for_map_reduce_form(cf)
 
     ip_1.initialize.type_signature.check_equivalent_to(
         ip_2.initialize.type_signature)

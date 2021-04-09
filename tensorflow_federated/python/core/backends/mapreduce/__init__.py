@@ -22,13 +22,13 @@ many examples of TFF computations, including those constructed by
 `tff.learning`, can be compiled by TFF into a form that can be deployed on such
 systems.
 
-This package defines a data structure `CanonicalForm`, parameterized by
+This package defines a data structure `MapReduceForm`, parameterized by
 TensorFlow functions, which expresses the logic of a single MapReduce-style
 round (plus initialization) and serves as a target for TFF's compiler pipeline.
 
-`CanonicalForm` serves as the conceptual core of this package, and represents
+`MapReduceForm` serves as the conceptual core of this package, and represents
 a manner of specifying a round of federated computation quite distinct from
-TFF's usual `computation.proto`. However, as `CanonicalForm` can express only a
+TFF's usual `computation.proto`. However, as `MapReduceForm` can express only a
 strict subset of the logic expressible via `computation.proto`, we discuss the
 mapping between the two here.
 
@@ -93,7 +93,7 @@ while True:
   server_state, server_outputs = next(server_state, client_data)
 ```
 
-The logic of `next` in `CanonicalForm` is factored into seven
+The logic of `next` in `MapReduceForm` is factored into seven
 variable components `prepare`, `work`, `zero`, `accumulate`, `merge`,
 `report`, and `update` (in addition to `initialize` that produces the server
 state component for the initial round and `bitwidth` that specifies runtime
@@ -101,10 +101,10 @@ parameters for `federated_secure_sum`). The pseudocode below uses common
 syntactic shortcuts (such as implicit zipping) for brevity.
 
 For a concise representation of the logic embedded in the discussion below,
-specifying the manner in which an instance `cf` of `CanonicalForm` maps to
+specifying the manner in which an instance `mrf` of `MapReduceForm` maps to
 a single federated round, see the definitions of `init_computation` and
 `next_computation` in
-`form_utils.get_iterative_process_for_canonical_form`.
+`form_utils.get_iterative_process_for_map_reduce_form`.
 
 ```python
 @tff.federated_computation
@@ -146,7 +146,7 @@ def next(server_state, client_data):
 ```
 
 The above characterization of `next` forms the relationship between
-`CanonicalForm` and `tff.templates.IterativeProcess`. It depends on the seven
+`MapReduceForm` and `tff.templates.IterativeProcess`. It depends on the seven
 pieces of pure TensorFlow logic defined as follows. Please also consult the
 documentation for related federated operators for more detail (particularly
 the `tff.federated_aggregate()`, as several of the components below correspond
@@ -229,10 +229,10 @@ abstract types in addition to those defined earlier:
 
 # TODO(b/138261370): Cover this in the general set of guidelines for deployment.
 
-from tensorflow_federated.python.core.backends.mapreduce.form_utils import check_iterative_process_compatible_with_canonical_form
+from tensorflow_federated.python.core.backends.mapreduce.form_utils import check_iterative_process_compatible_with_map_reduce_form
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_broadcast_form_for_computation
-from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_canonical_form_for_iterative_process
 from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_computation_for_broadcast_form
-from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_iterative_process_for_canonical_form
+from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_iterative_process_for_map_reduce_form
+from tensorflow_federated.python.core.backends.mapreduce.form_utils import get_map_reduce_form_for_iterative_process
 from tensorflow_federated.python.core.backends.mapreduce.forms import BroadcastForm
-from tensorflow_federated.python.core.backends.mapreduce.forms import CanonicalForm
+from tensorflow_federated.python.core.backends.mapreduce.forms import MapReduceForm

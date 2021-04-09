@@ -21,7 +21,7 @@ from tensorflow_federated.python.core.backends.mapreduce import forms
 from tensorflow_federated.python.core.backends.mapreduce import test_utils
 
 
-def _dummy_broadcast_form_computations():
+def _test_broadcast_form_computations():
   server_data_type = (tf.int32, tf.int32)
   context_type = tf.int32
   client_data_type = computation_types.SequenceType(tf.float32)
@@ -40,7 +40,7 @@ def _dummy_broadcast_form_computations():
   return (compute_server_context, client_processing)
 
 
-def _dummy_canonical_form_computations():
+def _test_map_reduce_form_computations():
 
   @computations.tf_computation
   def initialize():
@@ -98,7 +98,7 @@ class BroadcastFormTest(absltest.TestCase):
 
   def test_init_does_not_raise_type_error(self):
     (compute_server_context,
-     client_processing) = _dummy_broadcast_form_computations()
+     client_processing) = _test_broadcast_form_computations()
     try:
       forms.BroadcastForm(compute_server_context, client_processing)
     except TypeError:
@@ -122,14 +122,14 @@ class BroadcastFormTest(absltest.TestCase):
       forms.BroadcastForm(compute_server_context, client_processing)
 
 
-class CanonicalFormTest(absltest.TestCase):
+class MapReduceFormTest(absltest.TestCase):
 
   def test_init_does_not_raise_type_error(self):
     (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     try:
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
@@ -196,26 +196,26 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant([1]), []
 
     try:
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
     except TypeError:
       self.fail('Raised TypeError unexpectedly.')
 
   def test_init_raises_type_error_with_bad_initialize_result_type(self):
     (_, prepare, work, zero, accumulate, merge, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation
     def initialize():
       return tf.constant(0.0)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_prepare_parameter_type(self):
     (initialize, _, work, zero, accumulate, merge, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation(tf.float32)
     def prepare(server_state):
@@ -223,12 +223,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1.0)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_prepare_result_type(self):
     (initialize, _, work, zero, accumulate, merge, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation(tf.int32)
     def prepare(server_state):
@@ -236,12 +236,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_work_second_parameter_type(self):
     (initialize, prepare, _, zero, accumulate, merge, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation(
         computation_types.SequenceType(tf.float32), tf.int32)
@@ -251,12 +251,12 @@ class CanonicalFormTest(absltest.TestCase):
       return True, []
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_work_result_type(self):
     (initialize, prepare, _, zero, accumulate, merge, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation(
         computation_types.SequenceType(tf.float32), tf.float32)
@@ -266,25 +266,25 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant('abc'), []
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_zero_result_type(self):
     (initialize, prepare, work, _, accumulate, merge, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation
     def zero():
       return tf.constant(0.0), tf.constant(0)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_accumulate_first_parameter_type(
       self):
     (initialize, prepare, work, zero, _, merge, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation((tf.float32, tf.int32), tf.bool)
     def accumulate(accumulator, client_update):
@@ -293,13 +293,13 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_accumulate_second_parameter_type(
       self):
     (initialize, prepare, work, zero, _, merge, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation((tf.float32, tf.float32), tf.string)
     def accumulate(accumulator, client_update):
@@ -308,12 +308,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_accumulate_result_type(self):
     (initialize, prepare, work, zero, _, merge, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation((tf.float32, tf.float32), tf.bool)
     def accumulate(accumulator, client_update):
@@ -322,12 +322,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1.0), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_merge_first_parameter_type(self):
     (initialize, prepare, work, zero, accumulate, _, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation((tf.float32, tf.int32), (tf.int32, tf.int32))
     def merge(accumulator1, accumulator2):
@@ -336,12 +336,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_merge_second_parameter_type(self):
     (initialize, prepare, work, zero, accumulate, _, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation((tf.int32, tf.int32), (tf.float32, tf.int32))
     def merge(accumulator1, accumulator2):
@@ -350,12 +350,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_merge_result_type(self):
     (initialize, prepare, work, zero, accumulate, _, report, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation((tf.int32, tf.int32), (tf.int32, tf.int32))
     def merge(accumulator1, accumulator2):
@@ -364,12 +364,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1.0), tf.constant(1)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_report_parameter_type(self):
     (initialize, prepare, work, zero, accumulate, merge, _, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation(tf.float32, tf.int32)
     def report(accumulator):
@@ -377,12 +377,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1.0)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_report_result_type(self):
     (initialize, prepare, work, zero, accumulate, merge, _, bitwidth,
-     update) = _dummy_canonical_form_computations()
+     update) = _test_map_reduce_form_computations()
 
     @computations.tf_computation(tf.int32, tf.int32)
     def report(accumulator):
@@ -390,12 +390,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1)
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_update_first_parameter_type(self):
     (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
-     _) = _dummy_canonical_form_computations()
+     _) = _test_map_reduce_form_computations()
 
     @computations.tf_computation(tf.float32,
                                  (tf.float32, computation_types.StructType([])))
@@ -405,12 +405,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), []
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_update_second_parameter_type(self):
     (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
-     _) = _dummy_canonical_form_computations()
+     _) = _test_map_reduce_form_computations()
 
     @computations.tf_computation(tf.int32,
                                  (tf.int32, computation_types.StructType([])))
@@ -420,12 +420,12 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1), []
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_init_raises_type_error_with_bad_update_result_type(self):
     (initialize, prepare, work, zero, accumulate, merge, report, bitwidth,
-     _) = _dummy_canonical_form_computations()
+     _) = _test_map_reduce_form_computations()
 
     @computations.tf_computation(tf.int32,
                                  (tf.float32, computation_types.StructType([])))
@@ -435,7 +435,7 @@ class CanonicalFormTest(absltest.TestCase):
       return tf.constant(1.0), []
 
     with self.assertRaises(TypeError):
-      forms.CanonicalForm(initialize, prepare, work, zero, accumulate, merge,
+      forms.MapReduceForm(initialize, prepare, work, zero, accumulate, merge,
                           report, bitwidth, update)
 
   def test_securely_aggregates_tensors_true(self):
@@ -448,7 +448,7 @@ class CanonicalFormTest(absltest.TestCase):
     self.assertFalse(cf_with_no_secure_sum.securely_aggregates_tensors)
 
   def test_summary(self):
-    cf = test_utils.get_temperature_sensor_example()
+    mrf = test_utils.get_temperature_sensor_example()
 
     class CapturePrint(object):
 
@@ -459,7 +459,7 @@ class CanonicalFormTest(absltest.TestCase):
         self.summary += msg + '\n'
 
     capture = CapturePrint()
-    cf.summary(print_fn=capture)
+    mrf.summary(print_fn=capture)
     # pyformat: disable
     self.assertEqual(
         capture.summary,

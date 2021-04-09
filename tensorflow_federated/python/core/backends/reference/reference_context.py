@@ -143,7 +143,7 @@ def to_representation_for_type(value, type_spec, callable_handler=None):
 
   Args:
     value: The raw representation of a value to compare against `type_spec` and
-      potentially to be converted into a canonical form for the given TFF type.
+      potentially to be converted into a MapReduce form for the given TFF type.
     type_spec: The TFF type, an instance of `tff.Type` or something convertible
       to it that determines what the valid representation should be.
     callable_handler: The function to invoke to handle TFF functional types. If

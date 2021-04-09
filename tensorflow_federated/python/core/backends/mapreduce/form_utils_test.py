@@ -42,7 +42,7 @@ def get_iterative_process_for_sum_example():
   """Returns an iterative process for a sum example.
 
   This iterative process contains all the components required to compile to
-  `forms.CanonicalForm`.
+  `forms.MapReduceForm`.
   """
 
   @computations.federated_computation
@@ -89,7 +89,7 @@ def get_iterative_process_with_nested_broadcasts():
   """Returns an iterative process with nested federated broadcasts.
 
   This iterative process contains all the components required to compile to
-  `forms.CanonicalForm`.
+  `forms.MapReduceForm`.
   """
 
   @computations.federated_computation
@@ -407,7 +407,7 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
 
   This iterative process does not have a call to `federated_aggregate` or
   `federated_secure_sum` and as a result it should fail to compile to
-  `forms.CanonicalForm`.
+  `forms.MapReduceForm`.
   """
 
   @computations.federated_computation
@@ -443,7 +443,7 @@ def get_iterative_process_for_minimal_sum_example():
   """Returns an iterative process for a sum example.
 
   This iterative process contains the fewest components required to compile to
-  `forms.CanonicalForm`.
+  `forms.MapReduceForm`.
   """
 
   @computations.federated_computation
@@ -504,7 +504,7 @@ def get_example_cf_compatible_iterative_processes():
   # pyformat: enable
 
 
-class CanonicalFormTestCase(test_case.TestCase):
+class MapReduceFormTestCase(test_case.TestCase):
   """A base class that overrides evaluate to handle various executors."""
 
   def evaluate(self, value):
@@ -517,11 +517,11 @@ class CanonicalFormTestCase(test_case.TestCase):
           type(value)))
 
 
-class GetIterativeProcessForCanonicalFormTest(CanonicalFormTestCase):
+class GetIterativeProcessForMapReduceFormTest(MapReduceFormTestCase):
 
   def test_with_temperature_sensor_example(self):
-    cf = mapreduce_test_utils.get_temperature_sensor_example()
-    it = form_utils.get_iterative_process_for_canonical_form(cf)
+    mrf = mapreduce_test_utils.get_temperature_sensor_example()
+    it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
 
     state = it.initialize()
     self.assertAllEqual(state, collections.OrderedDict(num_rounds=0))
@@ -761,7 +761,7 @@ class GetTypeInfoTest(test_case.TestCase):
     # `form_utils._get_type_info`, but instead to act as a signal when
     # refactoring the code involved in compiling an
     # `tff.templates.IterativeProcess` into a
-    # `tff.backends.mapreduce.CanonicalForm`. If you are sure this needs to be
+    # `tff.backends.mapreduce.MapReduceForm`. If you are sure this needs to be
     # updated, one recommendation is to print 'k=\'v\',' while iterating over
     # the k-v pairs of the ordereddict.
     # pyformat: disable
@@ -802,13 +802,13 @@ class GetTypeInfoTest(test_case.TestCase):
               actual_key))
 
 
-class CheckCanonicalFormCompatibleWithIterativeProcessTest(
-    CanonicalFormTestCase, parameterized.TestCase):
+class CheckMapReduceFormCompatibleWithIterativeProcessTest(
+    MapReduceFormTestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       *get_example_cf_compatible_iterative_processes())
   def test_allows_valid_computation(self, ip):
-    form_utils.check_iterative_process_compatible_with_canonical_form(ip)
+    form_utils.check_iterative_process_compatible_with_map_reduce_form(ip)
 
   def test_disallows_broadcast_dependent_on_aggregate(self):
 
@@ -823,7 +823,7 @@ class CheckCanonicalFormCompatibleWithIterativeProcessTest(
       client_val = intrinsics.federated_value(0, placements.CLIENTS)
       server_agg = intrinsics.federated_sum(client_val)
       # This broadcast is dependent on the result of the above aggregation,
-      # which is not supported by canonical form.
+      # which is not supported by MapReduce form.
       broadcasted = intrinsics.federated_broadcast(server_agg)
       server_agg_again = intrinsics.federated_sum(broadcasted)
       # `next` must return two values.
@@ -832,15 +832,15 @@ class CheckCanonicalFormCompatibleWithIterativeProcessTest(
     ip = iterative_process.IterativeProcess(init_comp, next_comp)
 
     with self.assertRaises(ValueError):
-      form_utils.check_iterative_process_compatible_with_canonical_form(ip)
+      form_utils.check_iterative_process_compatible_with_map_reduce_form(ip)
 
 
-class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
+class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
                                               parameterized.TestCase):
 
   def test_next_computation_returning_tensor_fails_well(self):
-    cf = mapreduce_test_utils.get_temperature_sensor_example()
-    it = form_utils.get_iterative_process_for_canonical_form(cf)
+    mrf = mapreduce_test_utils.get_temperature_sensor_example()
+    it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
     init_result = it.initialize.type_signature.result
     lam = building_blocks.Lambda('x', init_result,
                                  building_blocks.Reference('x', init_result))
@@ -848,11 +848,11 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
         it.initialize,
         computation_wrapper_instances.building_block_to_computation(lam))
     with self.assertRaises(TypeError):
-      form_utils.get_canonical_form_for_iterative_process(bad_it)
+      form_utils.get_map_reduce_form_for_iterative_process(bad_it)
 
   def test_broadcast_dependent_on_aggregate_fails_well(self):
-    cf = mapreduce_test_utils.get_temperature_sensor_example()
-    it = form_utils.get_iterative_process_for_canonical_form(cf)
+    mrf = mapreduce_test_utils.get_temperature_sensor_example()
+    it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
     next_comp = it.next.to_building_block()
     top_level_param = building_blocks.Reference(next_comp.parameter_name,
                                                 next_comp.parameter_type)
@@ -871,26 +871,26 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
             not_reducible))
 
     with self.assertRaisesRegex(ValueError, 'broadcast dependent on aggregate'):
-      form_utils.get_canonical_form_for_iterative_process(not_reducible_it)
+      form_utils.get_map_reduce_form_for_iterative_process(not_reducible_it)
 
-  def test_gets_canonical_form_for_nested_broadcast(self):
+  def test_gets_map_reduce_form_for_nested_broadcast(self):
     ip = get_iterative_process_with_nested_broadcasts()
-    cf = form_utils.get_canonical_form_for_iterative_process(ip)
-    self.assertIsInstance(cf, forms.CanonicalForm)
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(ip)
+    self.assertIsInstance(mrf, forms.MapReduceForm)
 
-  def test_constructs_canonical_form_from_mnist_training_example(self):
-    it = form_utils.get_iterative_process_for_canonical_form(
+  def test_constructs_map_reduce_form_from_mnist_training_example(self):
+    it = form_utils.get_iterative_process_for_map_reduce_form(
         mapreduce_test_utils.get_mnist_training_example())
-    cf = form_utils.get_canonical_form_for_iterative_process(it)
-    self.assertIsInstance(cf, forms.CanonicalForm)
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(it)
+    self.assertIsInstance(mrf, forms.MapReduceForm)
 
   def test_temperature_example_round_trip(self):
-    # NOTE: the roundtrip through CanonicalForm->IterProc->CanonicalForm seems
+    # NOTE: the roundtrip through MapReduceForm->IterProc->MapReduceForm seems
     # to lose the python container annotations on the StructType.
-    it = form_utils.get_iterative_process_for_canonical_form(
+    it = form_utils.get_iterative_process_for_map_reduce_form(
         mapreduce_test_utils.get_temperature_sensor_example())
-    cf = form_utils.get_canonical_form_for_iterative_process(it)
-    new_it = form_utils.get_iterative_process_for_canonical_form(cf)
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(it)
+    new_it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
     state = new_it.initialize()
     self.assertEqual(state.num_rounds, 0)
 
@@ -909,10 +909,10 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
             new_it.next.to_building_block()))
 
   def test_mnist_training_round_trip(self):
-    it = form_utils.get_iterative_process_for_canonical_form(
+    it = form_utils.get_iterative_process_for_map_reduce_form(
         mapreduce_test_utils.get_mnist_training_example())
-    cf = form_utils.get_canonical_form_for_iterative_process(it)
-    new_it = form_utils.get_iterative_process_for_canonical_form(cf)
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(it)
+    new_it = form_utils.get_iterative_process_for_map_reduce_form(mrf)
     state1 = it.initialize()
     state2 = new_it.initialize()
     self.assertAllClose(state1, state2)
@@ -935,17 +935,17 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
 
   @parameterized.named_parameters(
       *get_example_cf_compatible_iterative_processes())
-  def test_returns_canonical_form(self, ip):
-    cf = form_utils.get_canonical_form_for_iterative_process(ip)
+  def test_returns_map_reduce_form(self, ip):
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(ip)
 
-    self.assertIsInstance(cf, forms.CanonicalForm)
+    self.assertIsInstance(mrf, forms.MapReduceForm)
 
   @parameterized.named_parameters(
       *get_example_cf_compatible_iterative_processes())
-  def test_returns_canonical_form_with_grappler_disabled(self, ip):
-    cf = form_utils.get_canonical_form_for_iterative_process(ip, None)
+  def test_returns_map_reduce_form_with_grappler_disabled(self, ip):
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(ip, None)
 
-    self.assertIsInstance(cf, forms.CanonicalForm)
+    self.assertIsInstance(mrf, forms.MapReduceForm)
 
   def test_raises_value_error_for_sum_example_with_no_aggregation(self):
     ip = get_iterative_process_for_sum_example_with_no_aggregation()
@@ -954,15 +954,15 @@ class GetCanonicalFormForIterativeProcessTest(CanonicalFormTestCase,
         ValueError,
         r'Expected .* containing at least one `federated_aggregate` or '
         r'`federated_secure_sum`'):
-      form_utils.get_canonical_form_for_iterative_process(ip)
+      form_utils.get_map_reduce_form_for_iterative_process(ip)
 
-  def test_returns_canonical_form_with_indirection_to_intrinsic(self):
+  def test_returns_map_reduce_form_with_indirection_to_intrinsic(self):
     ip = mapreduce_test_utils.get_iterative_process_for_example_with_lambda_returning_aggregation(
     )
 
-    cf = form_utils.get_canonical_form_for_iterative_process(ip)
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(ip)
 
-    self.assertIsInstance(cf, forms.CanonicalForm)
+    self.assertIsInstance(mrf, forms.MapReduceForm)
 
 
 class BroadcastFormTest(test_case.TestCase):
