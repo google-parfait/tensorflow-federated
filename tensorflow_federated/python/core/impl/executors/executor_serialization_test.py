@@ -25,6 +25,7 @@ from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.executors import executor_serialization
 from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_serialization
 
 
 class ExecutorServiceUtilsTest(test_case.TestCase):
@@ -244,6 +245,89 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
     self.assert_types_identical(type_spec,
                                 computation_types.at_clients(tf.int32))
     self.assertEqual(y, [10, 20])
+
+  def test_deserialize_federated_value_with_unset_member_type(self):
+    x = 10
+    x_type = computation_types.to_type(tf.int32)
+    member_proto, _ = executor_serialization.serialize_value(x, x_type)
+    fully_specified_type_at_clients = type_serialization.serialize_type(
+        computation_types.at_clients(tf.int32))
+
+    unspecified_member_federated_type = computation_pb2.FederatedType(
+        placement=fully_specified_type_at_clients.federated.placement,
+        all_equal=fully_specified_type_at_clients.federated.all_equal)
+
+    federated_proto = executor_pb2.Value.Federated(
+        type=unspecified_member_federated_type, value=[member_proto])
+    federated_value_proto = executor_pb2.Value(federated=federated_proto)
+
+    self.assertIsInstance(member_proto, executor_pb2.Value)
+    self.assertIsInstance(federated_value_proto, executor_pb2.Value)
+
+    deserialized_federated_value, deserialized_type_spec = executor_serialization.deserialize_value(
+        federated_value_proto)
+    self.assert_types_identical(deserialized_type_spec,
+                                computation_types.at_clients(tf.int32))
+    self.assertEqual(deserialized_federated_value, [10])
+
+  def test_deserialize_federated_value_with_incompatible_member_types_raises(
+      self):
+    x = 10
+    x_type = computation_types.to_type(tf.int32)
+    int_member_proto, _ = executor_serialization.serialize_value(x, x_type)
+    y = 10.
+    y_type = computation_types.to_type(tf.float32)
+    float_member_proto, _ = executor_serialization.serialize_value(y, y_type)
+    fully_specified_type_at_clients = type_serialization.serialize_type(
+        computation_types.at_clients(tf.int32))
+
+    unspecified_member_federated_type = computation_pb2.FederatedType(
+        placement=fully_specified_type_at_clients.federated.placement,
+        all_equal=False)
+
+    federated_proto = executor_pb2.Value.Federated(
+        type=unspecified_member_federated_type,
+        value=[int_member_proto, float_member_proto])
+    federated_value_proto = executor_pb2.Value(federated=federated_proto)
+
+    self.assertIsInstance(int_member_proto, executor_pb2.Value)
+    self.assertIsInstance(float_member_proto, executor_pb2.Value)
+    self.assertIsInstance(federated_value_proto, executor_pb2.Value)
+
+    with self.assertRaises(TypeError):
+      executor_serialization.deserialize_value(federated_value_proto)
+
+  def test_deserialize_federated_value_promotes_types(self):
+    x = [10]
+    smaller_type = computation_types.StructType([
+        (None, computation_types.to_type(tf.int32))
+    ])
+    smaller_type_member_proto, _ = executor_serialization.serialize_value(
+        x, smaller_type)
+    larger_type = computation_types.StructType([
+        ('a', computation_types.to_type(tf.int32))
+    ])
+    larger_type_member_proto, _ = executor_serialization.serialize_value(
+        x, larger_type)
+    type_at_clients = type_serialization.serialize_type(
+        computation_types.at_clients(tf.int32))
+
+    unspecified_member_federated_type = computation_pb2.FederatedType(
+        placement=type_at_clients.federated.placement, all_equal=False)
+
+    federated_proto = executor_pb2.Value.Federated(
+        type=unspecified_member_federated_type,
+        value=[larger_type_member_proto, smaller_type_member_proto])
+    federated_value_proto = executor_pb2.Value(federated=federated_proto)
+
+    self.assertIsInstance(smaller_type_member_proto, executor_pb2.Value)
+    self.assertIsInstance(larger_type_member_proto, executor_pb2.Value)
+    self.assertIsInstance(federated_value_proto, executor_pb2.Value)
+
+    _, deserialized_type_spec = executor_serialization.deserialize_value(
+        federated_value_proto)
+    self.assert_types_identical(deserialized_type_spec,
+                                computation_types.at_clients(larger_type))
 
   def test_serialize_deserialize_federated_at_server(self):
     x = 10

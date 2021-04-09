@@ -468,24 +468,63 @@ def _deserialize_struct_value(
   return (structure.Struct(val_elems), computation_types.StructType(type_elems))
 
 
+def _ensure_deserialized_types_compatible(
+    previous_type: Optional[computation_types.Type],
+    next_type: computation_types.Type) -> computation_types.Type:
+  """Ensures one of `previous_type` or `next_type` is assignable to the other.
+
+  Returns the type which is assignable from the other.
+
+  Args:
+    previous_type: Instance of `computation_types.Type` or `None`.
+    next_type: Instance of `computation_types.Type`.
+
+  Returns:
+    The supertype of `previous_type` and `next_type`.
+
+  Raises:
+    TypeError if neither type is assignable from the other.
+  """
+  if previous_type is None:
+    return next_type
+  else:
+    if next_type.is_assignable_from(previous_type):
+      return next_type
+    elif previous_type.is_assignable_from(next_type):
+      return previous_type
+    raise TypeError('Type mismatch checking member assignability under a '
+                    'federated value. Deserialized type {} is incompatible '
+                    'with previously deserialized {}.'.format(
+                        next_type, previous_type))
+
+
 @tracing.trace
 def _deserialize_federated_value(
     value_proto: executor_pb2.Value) -> _DeserializeReturnType:
   """Deserializes a value of federated type."""
-  type_spec = type_serialization.deserialize_type(
-      computation_pb2.Type(federated=value_proto.federated.type))
+  all_equal = value_proto.federated.type.all_equal
+  placement_uri = value_proto.federated.type.placement.value.uri
+  if not value_proto.federated.value:
+    raise ValueError('Attempting to deserialize federated value with no data.')
   value = []
+  # item_type will represent a supertype of all deserialized member types in the
+  # federated value.
+  item_type = None
   for item in value_proto.federated.value:
-    item_value, item_type = deserialize_value(item)
-    type_spec.member.check_assignable_from(item_type)
+    item_value, next_item_type = deserialize_value(item)
+    item_type = _ensure_deserialized_types_compatible(item_type, next_item_type)
     value.append(item_value)
-  if type_spec.all_equal:
+  if all_equal:
     if len(value) == 1:
       value = value[0]
     else:
       raise ValueError(
           'Encountered an all_equal value with {} member constituents. '
           'Expected exactly 1.'.format(len(value)))
+  type_spec = computation_types.FederatedType(
+      item_type,
+      placement=placements.uri_to_placement_literal(placement_uri),
+      all_equal=all_equal)
   return value, type_spec
 
 
