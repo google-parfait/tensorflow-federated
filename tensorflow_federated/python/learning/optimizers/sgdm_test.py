@@ -78,7 +78,8 @@ class SGDTest(test_case.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('no_momentum', None), ('momentum_0_5', 0.5))
   def test_convergence(self, momentum):
-    weights, fn, grad_fn = optimizer_test_utils.test_quadratic_problem()
+    init_w, fn, grad_fn = optimizer_test_utils.test_quadratic_problem()
+    weights = init_w()
     self.assertGreater(fn(weights), 5.0)
 
     optimizer = sgdm.SGD(0.1, momentum=momentum)

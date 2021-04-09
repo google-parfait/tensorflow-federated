@@ -28,7 +28,7 @@ _TEST_MATRIX = [
     [-1.23950244, -0.27436542, 3.10724048, 1.48831719, 4.52992126],
 ]
 
-_ITITIAL_W = [
+_INITIAL_W = [
     [-0.60170661],
     [1.85227818],
     [-0.01349722],
@@ -49,9 +49,10 @@ def test_quadratic_problem():
   testing optimizers.
 
   Returns:
-    A tuple (initial_w, f, grad_w), where these are initial point for
-    optimization and one-arg callables returning the function value and gradient
-    given a point w, respectively.
+    A tuple (initial_w, f, grad_w), where these are functions. First is a no-arg
+    callable for creating the initial point w for optimization and others are
+    one-arg callables returning the function value and gradient given a point w,
+    respectively.
   """
 
   @tf.function
@@ -64,6 +65,8 @@ def test_quadratic_problem():
     a = tf.constant(_TEST_MATRIX, tf.float32)
     return tf.matmul(a, w)
 
-  initial_w = tf.constant(_ITITIAL_W, tf.float32)
+  @tf.function
+  def initial_w():
+    return tf.constant(_INITIAL_W, tf.float32)
 
   return initial_w, fn, grad_fn

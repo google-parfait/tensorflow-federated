@@ -21,7 +21,8 @@ from tensorflow_federated.python.learning.optimizers import optimizer_test_utils
 class OptimizerTestUtilsTest(test_case.TestCase):
 
   def test_test_problem(self):
-    weights, fn, grad_fn = optimizer_test_utils.test_quadratic_problem()
+    init_w, fn, grad_fn = optimizer_test_utils.test_quadratic_problem()
+    weights = init_w()
 
     # Function value in initial point is not negligible and gradient non-zero.
     self.assertGreater(fn(weights), 5.0)
