@@ -47,6 +47,7 @@ py_library(
     name = "resnet_models",
     srcs = ["resnet_models.py"],
     srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/simulation/models:group_norm"],
 )
 
 py_test(

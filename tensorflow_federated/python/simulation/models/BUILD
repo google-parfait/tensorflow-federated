@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
     name = "default_visibility",
@@ -6,6 +6,7 @@ package_group(
     packages = [
         # Subpackages
         "//tensorflow_federated/python/simulation/models/...",
+        "//tensorflow_federated/python/simulation/baselines/cifar/...",
     ],
 )
 
@@ -19,6 +20,21 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation:__pkg__"],
     deps = [":mnist"],
+)
+
+py_library(
+    name = "group_norm",
+    srcs = ["group_norm.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "group_norm_test",
+    size = "small",
+    srcs = ["group_norm_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":group_norm"],
 )
 
 py_library(

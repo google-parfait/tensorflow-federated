@@ -23,7 +23,8 @@ import enum
 from typing import List, Optional, Tuple
 
 import tensorflow as tf
-import tensorflow_addons.layers.normalizations as tfa_norms
+
+from tensorflow_federated.python.simulation.models import group_norm
 
 BATCH_NORM_DECAY = 0.997
 BATCH_NORM_EPSILON = 1e-5
@@ -62,7 +63,7 @@ def _norm_relu(input_tensor, norm):
     channel_axis = 1
 
   if norm is NormLayer.group_norm:
-    x = tfa_norms.GroupNormalization(axis=channel_axis)(input_tensor)
+    x = group_norm.GroupNormalization(axis=channel_axis)(input_tensor)
   elif norm is NormLayer.batch_norm:
     x = tf.keras.layers.BatchNormalization(
         axis=channel_axis,
@@ -182,7 +183,7 @@ def _shortcut(input_tensor, residual, norm):
             shortcut)
 
     if norm is NormLayer.group_norm:
-      shortcut = tfa_norms.GroupNormalization(axis=channel_axis)(shortcut)
+      shortcut = group_norm.GroupNormalization(axis=channel_axis)(shortcut)
     elif norm is NormLayer.batch_norm:
       shortcut = tf.keras.layers.BatchNormalization(
           axis=channel_axis,
