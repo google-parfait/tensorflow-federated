@@ -213,7 +213,9 @@ def consolidate_and_extract_local_processing(comp, grappler_config_proto):
       as the input to this transformation, as described above.
     grappler_config_proto: An instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the generated TensorFlow graph.
-      If `None`, Grappler is bypassed.
+      If `grappler_config_proto` has
+      `graph_options.rewrite_options.disable_meta_optimizer=True`, Grappler is
+      bypassed.
 
   Returns:
     An instance of `building_blocks.CompiledComputation` that holds the
@@ -283,7 +285,9 @@ def parse_tff_to_tf(comp, grappler_config_proto):
       to a single TF block.
     grappler_config_proto: An instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the generated TensorFlow graph.
-      If `None`, Grappler is bypassed.
+      If `grappler_config_proto` has
+      `graph_options.rewrite_options.disable_meta_optimizer=True`, Grappler is
+      bypassed.
 
   Returns:
     The result of parsing TFF to TF. If successful, this is either a single
@@ -294,7 +298,14 @@ def parse_tff_to_tf(comp, grappler_config_proto):
   """
   tf_parsed, _ = transformations.compile_local_computation_to_tensorflow(comp)
 
-  if grappler_config_proto is not None:
+  # TODO(b/184883078): Remove this check and trust Grappler to disable itself
+  # based on the `disable_meta_optimizer` config.
+  should_skip_grappler = (
+      grappler_config_proto.HasField('graph_options') and
+      grappler_config_proto.graph_options.HasField('rewrite_options') and
+      grappler_config_proto.graph_options.rewrite_options.disable_meta_optimizer
+  )
+  if not should_skip_grappler:
     logging.info('Using Grappler on `MapReduceForm` TensorFlow graphs.')
     tf_parsed, _ = transformations.optimize_tensorflow_graphs(
         tf_parsed, grappler_config_proto)

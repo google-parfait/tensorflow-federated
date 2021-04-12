@@ -942,8 +942,11 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
 
   @parameterized.named_parameters(
       *get_example_cf_compatible_iterative_processes())
-  def test_returns_map_reduce_form_with_grappler_disabled(self, ip):
-    mrf = form_utils.get_map_reduce_form_for_iterative_process(ip, None)
+  def test_returns_canonical_form_with_grappler_disabled(self, ip):
+    grappler_config = tf.compat.v1.ConfigProto()
+    grappler_config.graph_options.rewrite_options.disable_meta_optimizer = True
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(
+        ip, grappler_config)
 
     self.assertIsInstance(mrf, forms.MapReduceForm)
 

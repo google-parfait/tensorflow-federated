@@ -18,7 +18,7 @@ variable names used in this module.
 """
 
 import collections
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Tuple
 
 import tensorflow as tf
 
@@ -1271,8 +1271,7 @@ def _merge_grappler_config_with_default(
 
 def get_broadcast_form_for_computation(
     comp: computation_base.Computation,
-    grappler_config: Optional[
-        tf.compat.v1.ConfigProto] = _GRAPPLER_DEFAULT_CONFIG
+    grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG
 ) -> forms.BroadcastForm:
   """Constructs `tff.backends.mapreduce.BroadcastForm` given a computation.
 
@@ -1281,11 +1280,13 @@ def get_broadcast_form_for_computation(
       form. Computations are only compatible if they take in a single value
       placed at server, return a single value placed at clients, and do not
       contain any aggregations.
-    grappler_config: AN optional instance of `tf.compat.v1.ConfigProto` to
+    grappler_config: An instance of `tf.compat.v1.ConfigProto` to
       configure Grappler graph optimization of the Tensorflow graphs backing the
       resulting `tff.backends.mapreduce.BroadcastForm`. These options are
       combined with a set of defaults that aggressively configure Grappler. If
-      `None`, grappler is bypassed.
+      `grappler_config_proto` has
+      `graph_options.rewrite_options.disable_meta_optimizer=True`, Grappler is
+      bypassed.
 
   Returns:
     An instance of `tff.backends.mapreduce.BroadcastForm` equivalent to the
@@ -1293,8 +1294,8 @@ def get_broadcast_form_for_computation(
   """
   py_typecheck.check_type(comp, computation_base.Computation)
   _check_function_signature_compatible_with_broadcast_form(comp.type_signature)
-  if grappler_config is not None:
-    grappler_config = _merge_grappler_config_with_default(grappler_config)
+  py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
+  grappler_config = _merge_grappler_config_with_default(grappler_config)
 
   bb = comp.to_building_block()
   bb, _ = intrinsic_reductions.replace_intrinsics_with_bodies(bb)
@@ -1331,8 +1332,7 @@ def get_broadcast_form_for_computation(
 
 def get_map_reduce_form_for_iterative_process(
     ip: iterative_process.IterativeProcess,
-    grappler_config: Optional[
-        tf.compat.v1.ConfigProto] = _GRAPPLER_DEFAULT_CONFIG
+    grappler_config: tf.compat.v1.ConfigProto = _GRAPPLER_DEFAULT_CONFIG
 ) -> forms.MapReduceForm:
   """Constructs `tff.backends.mapreduce.MapReduceForm` given iterative process.
 
@@ -1346,7 +1346,9 @@ def get_map_reduce_form_for_iterative_process(
       configure Grappler graph optimization of the TensorFlow graphs backing the
       resulting `tff.backends.mapreduce.MapReduceForm`. These options are
       combined with a set of defaults that aggressively configure Grappler. If
-      `None`, Grappler is bypassed.
+      the input `grappler_config` has
+      `graph_options.rewrite_options.disable_meta_optimizer=True`, Grappler is
+      bypassed.
 
   Returns:
     An instance of `tff.backends.mapreduce.MapReduceForm` equivalent to the
@@ -1360,8 +1362,8 @@ def get_map_reduce_form_for_iterative_process(
   py_typecheck.check_type(ip, iterative_process.IterativeProcess)
   initialize_bb, next_bb = (
       check_iterative_process_compatible_with_map_reduce_form(ip))
-  if grappler_config is not None:
-    grappler_config = _merge_grappler_config_with_default(grappler_config)
+  py_typecheck.check_type(grappler_config, tf.compat.v1.ConfigProto)
+  grappler_config = _merge_grappler_config_with_default(grappler_config)
 
   before_broadcast, after_broadcast = _split_ast_on_broadcast(next_bb)
   before_aggregate, after_aggregate = _split_ast_on_aggregate(after_broadcast)
