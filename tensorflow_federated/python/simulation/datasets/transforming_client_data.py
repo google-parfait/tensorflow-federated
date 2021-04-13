@@ -151,4 +151,6 @@ class TransformingClientData(client_data.ClientData):
 
   @property
   def dataset_computation(self):
-    raise NotImplementedError('b/XXXXXXXXXXXX')
+    raise NotImplementedError('TranscormingClientData contains non-TensorFlow '
+                              'logic and is currently incompatible with '
+                              'dataset_computation.')
