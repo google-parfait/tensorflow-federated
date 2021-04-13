@@ -295,7 +295,7 @@ def _deserialize_tensor_value(
     raise ValueError('Not a tensor value: {}'.format(which_value))
 
   # TODO(b/134543154): Find some way of creating the `TensorProto` using a
-  # proper public interface rather than creating a dummy value that we will
+  # proper public interface rather than creating a whimsy value that we will
   # overwrite right away.
   tensor_proto = tf.make_tensor_proto(values=0)
   if not value_proto.tensor.Unpack(tensor_proto):

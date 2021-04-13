@@ -28,7 +28,7 @@ def _make_add_one_graph():
 
 class GraphSpecTest(tf.test.TestCase):
 
-  def test_graph_spec_constructs_dummy_data(self):
+  def test_graph_spec_constructs_whimsy_data(self):
     graph_def = _make_add_one_graph()[0].as_graph_def()
     init_op = 'init'
     in_names = ['in']

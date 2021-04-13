@@ -51,8 +51,8 @@ class NumExamplesCounter(tf.keras.metrics.Sum):
     return super().update_state(tf.shape(y_pred)[0], sample_weight)
 
 
-def _create_dummy_types(feature_dims):
-  """Creates a dummy batch of zeros."""
+def _create_whimsy_types(feature_dims):
+  """Creates a whimsy batch of zeros."""
   return collections.OrderedDict(
       x=tf.TensorSpec(shape=[1, feature_dims], dtype=tf.float32),
       y=tf.TensorSpec(shape=[1], dtype=tf.float32))
@@ -100,7 +100,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(TypeError, r'keras\..*\.Model'):
       keras_utils.from_keras_model(
           keras_model=0,  # not a tf.keras.Model
-          input_spec=_create_dummy_types(1),
+          input_spec=_create_whimsy_types(1),
           loss=tf.keras.losses.MeanSquaredError())
 
   # Test class for batches using namedtuple.
@@ -201,7 +201,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     keras_model = model_fn(feature_dims)
     tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,
-        input_spec=_create_dummy_types(feature_dims),
+        input_spec=_create_whimsy_types(feature_dims),
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
@@ -251,7 +251,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         3)
     tff_model = keras_utils.from_keras_model(
         keras_model=keras_model,
-        input_spec=_create_dummy_types(3),
+        input_spec=_create_whimsy_types(3),
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()])
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
@@ -303,7 +303,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
         keras_model=keras_model,
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[NumBatchesCounter(), NumExamplesCounter()],
-        input_spec=_create_dummy_types(feature_dims))
+        input_spec=_create_whimsy_types(feature_dims))
     self.assertIsInstance(tff_model, model_utils.EnhancedModel)
 
     # Metrics should be zero, though the model wrapper internally executes the
@@ -546,7 +546,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     def _model_fn():
       return keras_utils.from_keras_model(
           keras_model=_make_keras_model(),
-          input_spec=_create_dummy_types(feature_dims),
+          input_spec=_create_whimsy_types(feature_dims),
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[NumBatchesCounter(),
                    NumExamplesCounter()])
@@ -628,7 +628,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
             loss={
                 'dense_5': tf.keras.losses.MeanSquaredError(),
                 'dense_6': tf.keras.losses.MeanSquaredError(),
-                'dummy': tf.keras.losses.MeanSquaredError()
+                'whimsy': tf.keras.losses.MeanSquaredError()
             })
 
     with self.subTest('loss_list_no_opt'):
@@ -717,7 +717,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
             loss_weights={
                 'dense_5': 0.1,
                 'dense_6': 0.2,
-                'dummy': 0.4
+                'whimsy': 0.4
             })
 
   @parameterized.named_parameters(
@@ -835,7 +835,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
             loss_weights={
                 'dense_5': 0.1,
                 'dense_6': 0.2,
-                'dummy': 0.4
+                'whimsy': 0.4
             })
 
   def test_keras_model_lookup_table(self):
@@ -933,7 +933,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, 'compile'):
       keras_utils.from_keras_model(
           keras_model=keras_model,
-          input_spec=_create_dummy_types(feature_dims),
+          input_spec=_create_whimsy_types(feature_dims),
           loss=tf.keras.losses.MeanSquaredError(),
           metrics=[NumBatchesCounter(),
                    NumExamplesCounter()])

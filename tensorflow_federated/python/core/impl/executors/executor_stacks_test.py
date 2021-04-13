@@ -122,7 +122,7 @@ class ConcreteExecutorFactoryTest(parameterized.TestCase):
   def _maybe_wrap_stack_fn(self, stack_fn, ex_factory):
     """The stack_fn for SizingExecutorFactory requires two outputs.
 
-    If required, we will wrap the stack_fn and provide a dummy value as the
+    If required, we will wrap the stack_fn and provide a whimsy value as the
     second return value.
 
     Args:

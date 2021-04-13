@@ -40,8 +40,8 @@ class InferTypeTest(parameterized.TestCase, test_case.TestCase):
       def type_signature(self):
         return computation_types.TensorType(tf.bool)
 
-    dummy_type = type_conversions.infer_type(DummyTypedObject())
-    self.assertEqual(dummy_type.compact_representation(), 'bool')
+    whimsy_type = type_conversions.infer_type(DummyTypedObject())
+    self.assertEqual(whimsy_type.compact_representation(), 'bool')
 
   def test_with_scalar_int_tensor(self):
     self.assertEqual(str(type_conversions.infer_type(tf.constant(1))), 'int32')

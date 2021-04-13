@@ -49,13 +49,13 @@ class DummyClientDeltaFn(optimizer_utils.ClientDeltaFn):
   @tf.function
   def __call__(self, dataset, initial_weights):
     # Iterate over the dataset to get new metric values.
-    def reduce_fn(dummy, batch):
+    def reduce_fn(whimsy, batch):
       with tf.GradientTape() as tape:
         output = self._model.forward_pass(batch)
       gradients = tape.gradient(output.loss, self._model.trainable_variables)
       self._optimizer.apply_gradients(
           zip(gradients, self._model.trainable_variables))
-      return dummy
+      return whimsy
 
     dataset.reduce(tf.constant(0.0), reduce_fn)
 

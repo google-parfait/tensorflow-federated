@@ -295,15 +295,15 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
     @computations.tf_computation(
         computation_types.SequenceType(tf.int64),
         computation_types.TensorType(tf.int64))
-    def dataset_reduce_fn_wrapper(ds, dummy_val):
-      initial_val = tf.Variable(np.int64(1.0)) + dummy_val
+    def dataset_reduce_fn_wrapper(ds, whimsy_val):
+      initial_val = tf.Variable(np.int64(1.0)) + whimsy_val
       return dataset_reduce_fn(ds, initial_val)
 
     @computations.tf_computation
     def comp():
       ds = tf.data.Dataset.range(10).map(lambda x: x + 1)
-      dummy_val = tf.Variable(np.int64(1.0))
-      return dataset_reduce_fn_wrapper(ds, dummy_val)
+      whimsy_val = tf.Variable(np.int64(1.0))
+      return dataset_reduce_fn_wrapper(ds, whimsy_val)
 
     wrapped_fn = eager_tf_executor._get_wrapped_function_from_comp(
         computation_impl.ComputationImpl.get_proto(comp),

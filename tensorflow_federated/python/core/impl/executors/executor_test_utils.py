@@ -247,7 +247,7 @@ class TracingExecutorValue(executor_value_base.ExecutorValue):
     return result
 
 
-def create_dummy_intrinsic_def_federated_aggregate():
+def create_whimsy_intrinsic_def_federated_aggregate():
   value = intrinsic_defs.FEDERATED_AGGREGATE
   type_signature = computation_types.FunctionType([
       computation_types.at_clients(tf.float32),
@@ -259,7 +259,7 @@ def create_dummy_intrinsic_def_federated_aggregate():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_apply():
+def create_whimsy_intrinsic_def_federated_apply():
   value = intrinsic_defs.FEDERATED_APPLY
   type_signature = computation_types.FunctionType([
       type_factory.unary_op(tf.float32),
@@ -268,7 +268,7 @@ def create_dummy_intrinsic_def_federated_apply():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_broadcast():
+def create_whimsy_intrinsic_def_federated_broadcast():
   value = intrinsic_defs.FEDERATED_BROADCAST
   type_signature = computation_types.FunctionType(
       computation_types.at_server(tf.float32),
@@ -276,7 +276,7 @@ def create_dummy_intrinsic_def_federated_broadcast():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_collect():
+def create_whimsy_intrinsic_def_federated_collect():
   value = intrinsic_defs.FEDERATED_COLLECT
   type_signature = computation_types.FunctionType(
       computation_types.at_clients(tf.float32),
@@ -284,7 +284,7 @@ def create_dummy_intrinsic_def_federated_collect():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_eval_at_clients():
+def create_whimsy_intrinsic_def_federated_eval_at_clients():
   value = intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS
   type_signature = computation_types.FunctionType(
       computation_types.FunctionType(None, tf.float32),
@@ -292,7 +292,7 @@ def create_dummy_intrinsic_def_federated_eval_at_clients():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_eval_at_server():
+def create_whimsy_intrinsic_def_federated_eval_at_server():
   value = intrinsic_defs.FEDERATED_EVAL_AT_SERVER
   type_signature = computation_types.FunctionType(
       computation_types.FunctionType(None, tf.float32),
@@ -300,7 +300,7 @@ def create_dummy_intrinsic_def_federated_eval_at_server():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_map():
+def create_whimsy_intrinsic_def_federated_map():
   value = intrinsic_defs.FEDERATED_MAP
   type_signature = computation_types.FunctionType([
       type_factory.unary_op(tf.float32),
@@ -309,7 +309,7 @@ def create_dummy_intrinsic_def_federated_map():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_map_all_equal():
+def create_whimsy_intrinsic_def_federated_map_all_equal():
   value = intrinsic_defs.FEDERATED_MAP_ALL_EQUAL
   type_signature = computation_types.FunctionType([
       type_factory.unary_op(tf.float32),
@@ -318,7 +318,7 @@ def create_dummy_intrinsic_def_federated_map_all_equal():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_mean():
+def create_whimsy_intrinsic_def_federated_mean():
   value = intrinsic_defs.FEDERATED_MEAN
   type_signature = computation_types.FunctionType(
       computation_types.at_clients(tf.float32),
@@ -326,7 +326,7 @@ def create_dummy_intrinsic_def_federated_mean():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_secure_sum():
+def create_whimsy_intrinsic_def_federated_secure_sum():
   value = intrinsic_defs.FEDERATED_SECURE_SUM
   type_signature = computation_types.FunctionType([
       computation_types.at_clients(tf.int32),
@@ -335,7 +335,7 @@ def create_dummy_intrinsic_def_federated_secure_sum():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_sum():
+def create_whimsy_intrinsic_def_federated_sum():
   value = intrinsic_defs.FEDERATED_SUM
   type_signature = computation_types.FunctionType(
       computation_types.at_clients(tf.float32),
@@ -343,21 +343,21 @@ def create_dummy_intrinsic_def_federated_sum():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_value_at_clients():
+def create_whimsy_intrinsic_def_federated_value_at_clients():
   value = intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS
   type_signature = computation_types.FunctionType(
       tf.float32, computation_types.at_clients(tf.float32, all_equal=True))
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_value_at_server():
+def create_whimsy_intrinsic_def_federated_value_at_server():
   value = intrinsic_defs.FEDERATED_VALUE_AT_SERVER
   type_signature = computation_types.FunctionType(
       tf.float32, computation_types.at_server(tf.float32))
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_weighted_mean():
+def create_whimsy_intrinsic_def_federated_weighted_mean():
   value = intrinsic_defs.FEDERATED_WEIGHTED_MEAN
   type_signature = computation_types.FunctionType([
       computation_types.at_clients(tf.float32),
@@ -366,7 +366,7 @@ def create_dummy_intrinsic_def_federated_weighted_mean():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_zip_at_clients():
+def create_whimsy_intrinsic_def_federated_zip_at_clients():
   value = intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS
   type_signature = computation_types.FunctionType([
       computation_types.at_clients(tf.float32),
@@ -375,7 +375,7 @@ def create_dummy_intrinsic_def_federated_zip_at_clients():
   return value, type_signature
 
 
-def create_dummy_intrinsic_def_federated_zip_at_server():
+def create_whimsy_intrinsic_def_federated_zip_at_server():
   value = intrinsic_defs.FEDERATED_ZIP_AT_SERVER
   type_signature = computation_types.FunctionType([
       computation_types.at_server(tf.float32),
@@ -384,16 +384,16 @@ def create_dummy_intrinsic_def_federated_zip_at_server():
   return value, type_signature
 
 
-def create_dummy_placement_literal():
+def create_whimsy_placement_literal():
   """Returns a `placements.PlacementLiteral` and type."""
   value = placements.SERVER
   type_signature = computation_types.PlacementType()
   return value, type_signature
 
 
-def create_dummy_computation_call():
+def create_whimsy_computation_call():
   """Returns a call computation and type."""
-  fn, fn_type = create_dummy_computation_tensorflow_constant()
+  fn, fn_type = create_whimsy_computation_tensorflow_constant()
   type_signature = fn_type.result
   value = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
@@ -401,9 +401,9 @@ def create_dummy_computation_call():
   return value, type_signature
 
 
-def create_dummy_computation_intrinsic():
+def create_whimsy_computation_intrinsic():
   """Returns a intrinsic computation and type."""
-  intrinsic_def, type_signature = create_dummy_intrinsic_def_federated_eval_at_server(
+  intrinsic_def, type_signature = create_whimsy_intrinsic_def_federated_eval_at_server(
   )
   value = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
@@ -411,14 +411,14 @@ def create_dummy_computation_intrinsic():
   return value, type_signature
 
 
-def create_dummy_computation_lambda_empty():
+def create_whimsy_computation_lambda_empty():
   """Returns a lambda computation and type `( -> <>)`."""
   value = computation_factory.create_lambda_empty_struct()
   type_signature = computation_types.FunctionType(None, [])
   return value, type_signature
 
 
-def create_dummy_computation_lambda_identity():
+def create_whimsy_computation_lambda_identity():
   """Returns a lambda computation and type `(float32 -> float32)`."""
   tensor_type = computation_types.TensorType(tf.float32)
   value = computation_factory.create_lambda_identity(tensor_type)
@@ -426,16 +426,16 @@ def create_dummy_computation_lambda_identity():
   return value, type_signature
 
 
-def create_dummy_computation_placement():
+def create_whimsy_computation_placement():
   """Returns a placement computation and type."""
-  placement_literal, type_signature = create_dummy_placement_literal()
+  placement_literal, type_signature = create_whimsy_placement_literal()
   value = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
       placement=pb.Placement(uri=placement_literal.uri))
   return value, type_signature
 
 
-def create_dummy_computation_reference():
+def create_whimsy_computation_reference():
   """Returns a reference computation and type."""
   type_signature = computation_types.TensorType(tf.float32)
   value = pb.Computation(
@@ -444,9 +444,9 @@ def create_dummy_computation_reference():
   return value, type_signature
 
 
-def create_dummy_computation_selection():
+def create_whimsy_computation_selection():
   """Returns a selection computation and type."""
-  source, source_type = create_dummy_computation_tuple()
+  source, source_type = create_whimsy_computation_tuple()
   type_signature = source_type[0]
   value = pb.Computation(
       type=type_serialization.serialize_type(type_signature),
@@ -454,7 +454,7 @@ def create_dummy_computation_selection():
   return value, type_signature
 
 
-def create_dummy_computation_tensorflow_add():
+def create_whimsy_computation_tensorflow_add():
   """Returns a tensorflow computation and type.
 
   `(<float32,float32> -> float32)`
@@ -485,7 +485,7 @@ def create_dummy_computation_tensorflow_add():
   return value, type_signature
 
 
-def create_dummy_computation_tensorflow_constant():
+def create_whimsy_computation_tensorflow_constant():
   """Returns a tensorflow computation and type `( -> float32)`."""
   value = 10.0
   tensor_type = computation_types.TensorType(tf.float32)
@@ -494,13 +494,13 @@ def create_dummy_computation_tensorflow_constant():
   return value, type_signature
 
 
-def create_dummy_computation_tensorflow_empty():
+def create_whimsy_computation_tensorflow_empty():
   """Returns a tensorflow computation and type `( -> <>)`."""
   value, type_signature = tensorflow_computation_factory.create_empty_tuple()
   return value, type_signature
 
 
-def create_dummy_computation_tensorflow_identity():
+def create_whimsy_computation_tensorflow_identity():
   """Returns a tensorflow computation and type `(float32 -> float32)`."""
   tensor_type = computation_types.TensorType(tf.float32)
   value, type_signature = tensorflow_computation_factory.create_identity(
@@ -508,7 +508,7 @@ def create_dummy_computation_tensorflow_identity():
   return value, type_signature
 
 
-def create_dummy_computation_tensorflow_random():
+def create_whimsy_computation_tensorflow_random():
   """Returns a tensorflow computation and type `( -> float32)`."""
 
   with tf.Graph().as_default() as graph:
@@ -527,7 +527,7 @@ def create_dummy_computation_tensorflow_random():
   return value, type_signature
 
 
-def create_dummy_computation_tensorflow_tuple():
+def create_whimsy_computation_tensorflow_tuple():
   """Returns a tensorflow computation and type.
 
   `( -> <('a', float32), ('b', float32), ('c', float32)>)`
@@ -551,10 +551,10 @@ def create_dummy_computation_tensorflow_tuple():
   return value, type_signature
 
 
-def create_dummy_computation_tuple():
+def create_whimsy_computation_tuple():
   """Returns a tuple computation and type."""
   names = ['a', 'b', 'c']
-  fn, fn_type = create_dummy_computation_tensorflow_constant()
+  fn, fn_type = create_whimsy_computation_tensorflow_constant()
   element_value = pb.Computation(
       type=type_serialization.serialize_type(fn_type),
       call=pb.Call(function=fn))
@@ -568,28 +568,28 @@ def create_dummy_computation_tuple():
   return value, type_signature
 
 
-def create_dummy_value_at_clients(number_of_clients: int = 3):
+def create_whimsy_value_at_clients(number_of_clients: int = 3):
   """Returns a Python value and federated type at clients."""
   value = [float(x) for x in range(10, number_of_clients + 10)]
   type_signature = computation_types.at_clients(tf.float32)
   return value, type_signature
 
 
-def create_dummy_value_at_clients_all_equal():
+def create_whimsy_value_at_clients_all_equal():
   """Returns a Python value and federated type at clients and all equal."""
   value = 10.0
   type_signature = computation_types.at_clients(tf.float32, all_equal=True)
   return value, type_signature
 
 
-def create_dummy_value_at_server():
+def create_whimsy_value_at_server():
   """Returns a Python value and federated type at server."""
   value = 10.0
   type_signature = computation_types.at_server(tf.float32)
   return value, type_signature
 
 
-def create_dummy_value_unplaced():
+def create_whimsy_value_unplaced():
   """Returns a Python value and unplaced type."""
   value = 10.0
   type_signature = computation_types.TensorType(tf.float32)

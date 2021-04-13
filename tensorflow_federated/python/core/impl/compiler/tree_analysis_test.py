@@ -57,8 +57,8 @@ class TestCheckContainsOnlyReducibleIntrinsics(absltest.TestCase):
       tree_analysis.check_contains_only_reducible_intrinsics(intrinsic)
 
 
-def dummy_intrinsic_predicate(x):
-  return x.is_intrinsic() and x.uri == 'dummy_intrinsic'
+def whimsy_intrinsic_predicate(x):
+  return x.is_intrinsic() and x.uri == 'whimsy_intrinsic'
 
 
 class NodesDependentOnPredicateTest(absltest.TestCase):
@@ -69,7 +69,7 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
 
   def test_raises_on_none_predicate(self):
     data_type = computation_types.StructType([])
-    data = building_blocks.Data('dummy', data_type)
+    data = building_blocks.Data('whimsy', data_type)
     with self.assertRaises(TypeError):
       tree_analysis.extract_nodes_consuming(data, None)
 
@@ -88,61 +88,61 @@ class NodesDependentOnPredicateTest(absltest.TestCase):
 
   def test_propogates_dependence_up_through_lambda(self):
     type_signature = computation_types.TensorType(tf.int32)
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
-                                                type_signature)
-    lam = building_blocks.Lambda('x', tf.int32, dummy_intrinsic)
+    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
+                                                 type_signature)
+    lam = building_blocks.Lambda('x', tf.int32, whimsy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        lam, dummy_intrinsic_predicate)
+        lam, whimsy_intrinsic_predicate)
     self.assertIn(lam, dependent_nodes)
 
   def test_propogates_dependence_up_through_block_result(self):
     type_signature = computation_types.TensorType(tf.int32)
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
-                                                type_signature)
+    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
+                                                 type_signature)
     integer_reference = building_blocks.Reference('int', tf.int32)
-    block = building_blocks.Block([('x', integer_reference)], dummy_intrinsic)
+    block = building_blocks.Block([('x', integer_reference)], whimsy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        block, dummy_intrinsic_predicate)
+        block, whimsy_intrinsic_predicate)
     self.assertIn(block, dependent_nodes)
 
   def test_propogates_dependence_up_through_block_locals(self):
     type_signature = computation_types.TensorType(tf.int32)
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
-                                                type_signature)
+    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
+                                                 type_signature)
     integer_reference = building_blocks.Reference('int', tf.int32)
-    block = building_blocks.Block([('x', dummy_intrinsic)], integer_reference)
+    block = building_blocks.Block([('x', whimsy_intrinsic)], integer_reference)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        block, dummy_intrinsic_predicate)
+        block, whimsy_intrinsic_predicate)
     self.assertIn(block, dependent_nodes)
 
   def test_propogates_dependence_up_through_tuple(self):
     type_signature = computation_types.TensorType(tf.int32)
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
-                                                type_signature)
+    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
+                                                 type_signature)
     integer_reference = building_blocks.Reference('int', tf.int32)
-    tup = building_blocks.Struct([integer_reference, dummy_intrinsic])
+    tup = building_blocks.Struct([integer_reference, whimsy_intrinsic])
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        tup, dummy_intrinsic_predicate)
+        tup, whimsy_intrinsic_predicate)
     self.assertIn(tup, dependent_nodes)
 
   def test_propogates_dependence_up_through_selection(self):
     type_signature = computation_types.StructType([tf.int32])
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
-                                                type_signature)
-    selection = building_blocks.Selection(dummy_intrinsic, index=0)
+    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
+                                                 type_signature)
+    selection = building_blocks.Selection(whimsy_intrinsic, index=0)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        selection, dummy_intrinsic_predicate)
+        selection, whimsy_intrinsic_predicate)
     self.assertIn(selection, dependent_nodes)
 
   def test_propogates_dependence_up_through_call(self):
     type_signature = computation_types.TensorType(tf.int32)
-    dummy_intrinsic = building_blocks.Intrinsic('dummy_intrinsic',
-                                                type_signature)
+    whimsy_intrinsic = building_blocks.Intrinsic('whimsy_intrinsic',
+                                                 type_signature)
     ref_to_x = building_blocks.Reference('x', tf.int32)
     identity_lambda = building_blocks.Lambda('x', tf.int32, ref_to_x)
-    called_lambda = building_blocks.Call(identity_lambda, dummy_intrinsic)
+    called_lambda = building_blocks.Call(identity_lambda, whimsy_intrinsic)
     dependent_nodes = tree_analysis.extract_nodes_consuming(
-        called_lambda, dummy_intrinsic_predicate)
+        called_lambda, whimsy_intrinsic_predicate)
     self.assertIn(called_lambda, dependent_nodes)
 
   def test_propogates_dependence_into_binding_to_reference(self):
@@ -167,7 +167,7 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
       tree_analysis.check_broadcast_not_dependent_on_aggregate(None)
 
   def test_does_not_find_aggregate_dependent_on_broadcast(self):
-    broadcast = test_utils.create_dummy_called_federated_broadcast()
+    broadcast = test_utils.create_whimsy_called_federated_broadcast()
     value_type = broadcast.type_signature
     zero = building_blocks.Data('zero', value_type.member)
     accumulate_result = building_blocks.Data('accumulate_result',
@@ -188,7 +188,7 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
         aggregate_dependent_on_broadcast)
 
   def test_finds_broadcast_dependent_on_aggregate(self):
-    aggregate = test_utils.create_dummy_called_federated_aggregate()
+    aggregate = test_utils.create_whimsy_called_federated_aggregate()
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
         aggregate)
     with self.assertRaises(ValueError):
@@ -196,7 +196,7 @@ class BroadcastDependentOnAggregateTest(absltest.TestCase):
           broadcasted_aggregate)
 
   def test_returns_correct_example_of_broadcast_dependent_on_aggregate(self):
-    aggregate = test_utils.create_dummy_called_federated_aggregate()
+    aggregate = test_utils.create_whimsy_called_federated_aggregate()
     broadcasted_aggregate = building_block_factory.create_federated_broadcast(
         aggregate)
     with self.assertRaisesRegex(ValueError, 'acc_param'):
@@ -313,11 +313,11 @@ class ContainsCalledIntrinsic(absltest.TestCase):
       tree_analysis.contains_called_intrinsic(None)
 
   def test_returns_true_with_none_uri(self):
-    comp = test_utils.create_dummy_called_federated_broadcast()
+    comp = test_utils.create_whimsy_called_federated_broadcast()
     self.assertTrue(tree_analysis.contains_called_intrinsic(comp))
 
   def test_returns_true_with_matching_uri(self):
-    comp = test_utils.create_dummy_called_federated_broadcast()
+    comp = test_utils.create_whimsy_called_federated_broadcast()
     uri = intrinsic_defs.FEDERATED_BROADCAST.uri
     self.assertTrue(tree_analysis.contains_called_intrinsic(comp, uri))
 
@@ -326,7 +326,7 @@ class ContainsCalledIntrinsic(absltest.TestCase):
     self.assertFalse(tree_analysis.contains_called_intrinsic(comp))
 
   def test_returns_false_with_unmatched_called_intrinsic(self):
-    comp = test_utils.create_dummy_called_federated_broadcast()
+    comp = test_utils.create_whimsy_called_federated_broadcast()
     uri = intrinsic_defs.FEDERATED_MAP.uri
     self.assertFalse(tree_analysis.contains_called_intrinsic(comp, uri))
 
@@ -705,19 +705,19 @@ class TreesEqualTest(absltest.TestCase):
 
 
 non_aggregation_intrinsics = building_blocks.Struct([
-    (None, test_utils.create_dummy_called_federated_broadcast()),
-    (None, test_utils.create_dummy_called_federated_value(placements.CLIENTS))
+    (None, test_utils.create_whimsy_called_federated_broadcast()),
+    (None, test_utils.create_whimsy_called_federated_value(placements.CLIENTS))
 ])
 
 unit = computation_types.StructType([])
-trivial_aggregate = test_utils.create_dummy_called_federated_aggregate(
+trivial_aggregate = test_utils.create_whimsy_called_federated_aggregate(
     value_type=unit)
-trivial_collect = test_utils.create_dummy_called_federated_collect(unit)
-trivial_mean = test_utils.create_dummy_called_federated_mean(unit)
-trivial_sum = test_utils.create_dummy_called_federated_sum(unit)
+trivial_collect = test_utils.create_whimsy_called_federated_collect(unit)
+trivial_mean = test_utils.create_whimsy_called_federated_mean(unit)
+trivial_sum = test_utils.create_whimsy_called_federated_sum(unit)
 # TODO(b/120439632) Enable once federated_mean accepts structured weights.
 # trivial_weighted_mean = ...
-trivial_secure_sum = test_utils.create_dummy_called_federated_secure_sum(unit)
+trivial_secure_sum = test_utils.create_whimsy_called_federated_secure_sum(unit)
 
 
 class ContainsAggregationShared(parameterized.TestCase):
@@ -762,13 +762,13 @@ class ContainsAggregationShared(parameterized.TestCase):
     self.assertEmpty(tree_analysis.find_secure_aggregation_in_tree(comp))
 
 
-simple_aggregate = test_utils.create_dummy_called_federated_aggregate()
-simple_collect = test_utils.create_dummy_called_federated_collect()
-simple_mean = test_utils.create_dummy_called_federated_mean()
-simple_sum = test_utils.create_dummy_called_federated_sum()
-simple_weighted_mean = test_utils.create_dummy_called_federated_mean(
+simple_aggregate = test_utils.create_whimsy_called_federated_aggregate()
+simple_collect = test_utils.create_whimsy_called_federated_collect()
+simple_mean = test_utils.create_whimsy_called_federated_mean()
+simple_sum = test_utils.create_whimsy_called_federated_sum()
+simple_weighted_mean = test_utils.create_whimsy_called_federated_mean(
     tf.float32, tf.float32)
-simple_secure_sum = test_utils.create_dummy_called_federated_secure_sum()
+simple_secure_sum = test_utils.create_whimsy_called_federated_secure_sum()
 
 
 class ContainsSecureAggregation(parameterized.TestCase):
@@ -790,7 +790,7 @@ class ContainsSecureAggregation(parameterized.TestCase):
     self.assert_one_aggregation(simple_secure_sum)
 
   def test_returns_str_on_nested_secure_aggregation(self):
-    comp = test_utils.create_dummy_called_federated_secure_sum(
+    comp = test_utils.create_whimsy_called_federated_secure_sum(
         (tf.int32, tf.int32))
     self.assert_one_aggregation(comp)
 

@@ -540,7 +540,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_federated_aggregate(self):
-    comp = test_utils.create_dummy_called_federated_aggregate(
+    comp = test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -572,7 +572,7 @@ class RepresentationTest(absltest.TestCase):
     # pyformat: enable
 
   def test_returns_string_for_federated_map(self):
-    comp = test_utils.create_dummy_called_federated_map(parameter_name='a')
+    comp = test_utils.create_whimsy_called_federated_map(parameter_name='a')
 
     self.assertEqual(comp.compact_representation(),
                      'federated_map(<(a -> a),data>)')

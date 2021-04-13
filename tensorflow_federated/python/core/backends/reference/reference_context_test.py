@@ -200,7 +200,7 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
 
   def test_to_representation_for_type_with_sequence_type_empty_generator(self):
 
-    # A dummy generator to be able to force the types and shapes of the empty
+    # A whimsy generator to be able to force the types and shapes of the empty
     # dataset.
     def _empty_generator():
       return iter(())

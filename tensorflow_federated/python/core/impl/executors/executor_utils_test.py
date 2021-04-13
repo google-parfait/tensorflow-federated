@@ -99,7 +99,7 @@ class ComputeIntrinsicFederatedBroadcastTest(executor_test_utils.AsyncTestCase,
   def test_returns_value_with_federated_type_at_server(self, executor,
                                                        num_clients):
     del num_clients  # Unused.
-    value, type_signature = executor_test_utils.create_dummy_value_at_server()
+    value, type_signature = executor_test_utils.create_whimsy_value_at_server()
 
     value = self.run_sync(executor.create_value(value, type_signature))
     result = self.run_sync(
@@ -115,7 +115,7 @@ class ComputeIntrinsicFederatedBroadcastTest(executor_test_utils.AsyncTestCase,
 
   def test_raises_type_error_with_federated_type_at_clients(
       self, executor, num_clients):
-    value, type_signature = executor_test_utils.create_dummy_value_at_clients(
+    value, type_signature = executor_test_utils.create_whimsy_value_at_clients(
         num_clients)
 
     value = self.run_sync(executor.create_value(value, type_signature))
@@ -126,7 +126,7 @@ class ComputeIntrinsicFederatedBroadcastTest(executor_test_utils.AsyncTestCase,
 
   def test_raises_type_error_with_unplaced_type(self, executor, num_clients):
     del num_clients  # Unused.
-    value, type_signature = executor_test_utils.create_dummy_value_unplaced()
+    value, type_signature = executor_test_utils.create_whimsy_value_unplaced()
 
     value = self.run_sync(executor.create_value(value, type_signature))
 
@@ -151,7 +151,7 @@ class ComputeIntrinsicFederatedValueTest(executor_test_utils.AsyncTestCase,
                                          parameterized.TestCase):
 
   def test_returns_value_with_unplaced_type_and_clients(self, executor):
-    value, type_signature = executor_test_utils.create_dummy_value_unplaced()
+    value, type_signature = executor_test_utils.create_whimsy_value_unplaced()
 
     value = self.run_sync(executor.create_value(value, type_signature))
     result = self.run_sync(
@@ -166,7 +166,7 @@ class ComputeIntrinsicFederatedValueTest(executor_test_utils.AsyncTestCase,
     self.assertEqual(actual_result, 10.0)
 
   def test_returns_value_with_unplaced_type_and_server(self, executor):
-    value, type_signature = executor_test_utils.create_dummy_value_unplaced()
+    value, type_signature = executor_test_utils.create_whimsy_value_unplaced()
 
     value = self.run_sync(executor.create_value(value, type_signature))
     result = self.run_sync(
@@ -207,7 +207,7 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
       executor,
       num_clients,
   ):
-    value, type_signature = executor_test_utils.create_dummy_value_at_clients(
+    value, type_signature = executor_test_utils.create_whimsy_value_at_clients(
         num_clients)
 
     # Weighted mean computed in Python
@@ -229,16 +229,16 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
   @parameterized.named_parameters([
       ('default_strategy_unplaced_type',
        create_test_federated_stack(),
-       executor_test_utils.create_dummy_value_unplaced()),
+       executor_test_utils.create_whimsy_value_unplaced()),
       ('composing_strategy_unplaced_type',
        create_test_aggregated_stack(),
-       executor_test_utils.create_dummy_value_unplaced()),
+       executor_test_utils.create_whimsy_value_unplaced()),
       ('default_strategy_server_placement',
        create_test_federated_stack(),
-       executor_test_utils.create_dummy_value_at_server()),
+       executor_test_utils.create_whimsy_value_at_server()),
       ('composing_strategy_server_placement',
        create_test_aggregated_stack(),
-       executor_test_utils.create_dummy_value_at_server()),
+       executor_test_utils.create_whimsy_value_at_server()),
   ])
   # pyformat: enable
   def test_raises_type_error(self, executor, value_and_type_signature):
@@ -266,7 +266,7 @@ class ComputeIntrinsicFederatedWeightedMeanTest(
       executor,
       num_clients,
   ):
-    value, type_signature = executor_test_utils.create_dummy_value_at_clients(
+    value, type_signature = executor_test_utils.create_whimsy_value_at_clients(
         num_clients)
     value = self.run_sync(executor.create_value(value, type_signature))
     arg = self.run_sync(executor.create_struct([value]))

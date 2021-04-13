@@ -40,10 +40,10 @@ def _evaluate_fn(model, dataset, batch_size=1):
     else:
       var.assign(tf.zeros_like(var))
 
-  def eval_fn(dummy_state, batch):
+  def eval_fn(whimsy_state, batch):
     """Evaluates the model on a batch."""
     model.forward_pass(batch, training=False)
-    return dummy_state
+    return whimsy_state
 
   # Evaluate on the dataset.
   batched_dataset = dataset.batch(batch_size)
@@ -138,8 +138,8 @@ def _create_client_input(train_scale, test_scale, context=None):
 
 def _create_zero_model_weights(model_fn):
   """Creates the model weights with all zeros."""
-  dummy_model = model_utils.enhance(model_fn())
-  return tf.nest.map_structure(tf.zeros_like, dummy_model.weights)
+  whimsy_model = model_utils.enhance(model_fn())
+  return tf.nest.map_structure(tf.zeros_like, whimsy_model.weights)
 
 
 class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):

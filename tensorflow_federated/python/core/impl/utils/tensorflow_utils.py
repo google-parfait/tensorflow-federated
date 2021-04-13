@@ -94,9 +94,10 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
     # ignore that for now. Instead, the proper containers will be inserted at
     # call time by function_utils.wrap_as_zero_or_one_arg_callable.
     if not parameter_type:
-      # Stamps dummy element to "populate" graph, as TensorFlow does not support
-      # empty graphs.
-      dummy_tensor = tf.no_op()
+      # Stamps whimsy element to "populate" graph, as TensorFlow does not
+      # support empty graphs.
+      whimsy_tensor = tf.no_op()
+      del whimsy_tensor  # Unused
     element_name_value_pairs = []
     element_bindings = []
     for e in structure.iter_elements(parameter_type):
@@ -513,7 +514,7 @@ def make_empty_list_structure_for_element_type_spec(type_spec):
         'Expected a tensor or named tuple type, found {}.'.format(type_spec))
 
 
-def make_dummy_element_for_type_spec(type_spec, none_dim_replacement=0):
+def make_whimsy_element_for_type_spec(type_spec, none_dim_replacement=0):
   """Creates ndarray of zeros corresponding to `type_spec`.
 
   Returns a list containing this ndarray, whose type is *compatible* with, not
@@ -522,9 +523,9 @@ def make_dummy_element_for_type_spec(type_spec, none_dim_replacement=0):
   of `type_spec` with any number (e.g. leaving a batch dimension indeterminate
   to signify compatibility with batches of any size). However a concrete
   structure (like the ndarray) must have specified sizes for its dimensions.
-  So we construct a dummy element where any `None` dimensions of the shape
+  So we construct a whimsy element where any `None` dimensions of the shape
   of `type_spec` are replaced with the value `none_dim_replacement`.The
-  default value of 0 therefore returns a dummy element of minimal size which
+  default value of 0 therefore returns a whimsy element of minimal size which
   matches `type_spec`.
 
   Args:
@@ -558,15 +559,15 @@ def make_dummy_element_for_type_spec(type_spec, none_dim_replacement=0):
     return x
 
   if type_spec.is_tensor():
-    dummy_shape = [_handle_none_dimension(x) for x in type_spec.shape]
+    whimsy_shape = [_handle_none_dimension(x) for x in type_spec.shape]
     if type_spec.dtype == tf.string:
-      return np.empty(dummy_shape, dtype=str)
-    return np.zeros(dummy_shape, type_spec.dtype.as_numpy_dtype)
+      return np.empty(whimsy_shape, dtype=str)
+    return np.zeros(whimsy_shape, type_spec.dtype.as_numpy_dtype)
   elif type_spec.is_struct():
     elements = structure.to_elements(type_spec)
     elem_list = []
     for _, elem_type in elements:
-      elem_list.append(make_dummy_element_for_type_spec(elem_type))
+      elem_list.append(make_whimsy_element_for_type_spec(elem_type))
     return elem_list
 
 
@@ -752,8 +753,8 @@ def make_data_set_from_elements(graph, elements, element_type):
   def _work():  # pylint: disable=missing-docstring
     if not elements:
       # Just return an empty data set with the appropriate types.
-      dummy_element = make_dummy_element_for_type_spec(element_type)
-      ds = _make([dummy_element]).take(0)
+      whimsy_element = make_whimsy_element_for_type_spec(element_type)
+      ds = _make([whimsy_element]).take(0)
     elif len(elements) == 1:
       ds = _make(elements)
     else:
@@ -833,8 +834,8 @@ def fetch_value_in_session(sess, value):
           # An empty list has been returned; we must pack the shape information
           # back in or the result won't typecheck.
           element_structure = v.element_spec
-          dummy_elem = make_dummy_element_for_type_spec(element_structure)
-          dataset_tensors = [dummy_elem]
+          whimsy_elem = make_whimsy_element_for_type_spec(element_structure)
+          dataset_tensors = [whimsy_elem]
         dataset_results[idx] = dataset_tensors
       elif tf.is_tensor(v):
         flat_tensors.append(v)

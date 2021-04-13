@@ -60,7 +60,7 @@ def create_chained_calls(functions, arg):
   return call
 
 
-def create_dummy_block(comp, variable_name, variable_type=tf.int32):
+def create_whimsy_block(comp, variable_name, variable_type=tf.int32):
   r"""Returns an identity block.
 
            Block
@@ -76,8 +76,8 @@ def create_dummy_block(comp, variable_name, variable_type=tf.int32):
   return building_blocks.Block([(variable_name, data)], comp)
 
 
-def create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
-  r"""Returns a dummy called intrinsic.
+def create_whimsy_called_intrinsic(parameter_name, parameter_type=tf.int32):
+  r"""Returns a whimsy called intrinsic.
 
             Call
            /    \
@@ -94,12 +94,12 @@ def create_dummy_called_intrinsic(parameter_name, parameter_type=tf.int32):
   return building_blocks.Call(intrinsic, ref)
 
 
-def create_dummy_called_federated_aggregate(
+def create_whimsy_called_federated_aggregate(
     accumulate_parameter_name='acc_param',
     merge_parameter_name='merge_param',
     report_parameter_name='report_param',
     value_type=tf.int32):
-  r"""Returns a dummy called federated aggregate.
+  r"""Returns a whimsy called federated aggregate.
 
                       Call
                      /    \
@@ -133,9 +133,9 @@ def create_dummy_called_federated_aggregate(
       value, zero, accumulate, merge, report)
 
 
-def create_dummy_called_federated_apply(parameter_name,
-                                        parameter_type=tf.int32):
-  r"""Returns a dummy called federated apply.
+def create_whimsy_called_federated_apply(parameter_name,
+                                         parameter_type=tf.int32):
+  r"""Returns a whimsy called federated apply.
 
                   Call
                  /    \
@@ -155,8 +155,8 @@ def create_dummy_called_federated_apply(parameter_name,
   return building_block_factory.create_federated_apply(fn, arg)
 
 
-def create_dummy_called_federated_broadcast(value_type=tf.int32):
-  r"""Returns a dummy called federated broadcast.
+def create_whimsy_called_federated_broadcast(value_type=tf.int32):
+  r"""Returns a whimsy called federated broadcast.
 
                       Call
                      /    \
@@ -171,14 +171,14 @@ def create_dummy_called_federated_broadcast(value_type=tf.int32):
   return building_block_factory.create_federated_broadcast(value)
 
 
-def create_dummy_called_federated_collect(value_type=tf.int32):
+def create_whimsy_called_federated_collect(value_type=tf.int32):
   federated_type = computation_types.at_clients(value_type)
   value = building_blocks.Data('data', federated_type)
   return building_block_factory.create_federated_collect(value)
 
 
-def create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
-  r"""Returns a dummy called federated map.
+def create_whimsy_called_federated_map(parameter_name, parameter_type=tf.int32):
+  r"""Returns a whimsy called federated map.
 
                 Call
                /    \
@@ -198,9 +198,9 @@ def create_dummy_called_federated_map(parameter_name, parameter_type=tf.int32):
   return building_block_factory.create_federated_map(fn, arg)
 
 
-def create_dummy_called_federated_map_all_equal(parameter_name,
-                                                parameter_type=tf.int32):
-  r"""Returns a dummy called federated map.
+def create_whimsy_called_federated_map_all_equal(parameter_name,
+                                                 parameter_type=tf.int32):
+  r"""Returns a whimsy called federated map.
 
                           Call
                          /    \
@@ -221,8 +221,8 @@ def create_dummy_called_federated_map_all_equal(parameter_name,
   return building_block_factory.create_federated_map_all_equal(fn, arg)
 
 
-def create_dummy_called_federated_mean(value_type=tf.float32,
-                                       weights_type=None):
+def create_whimsy_called_federated_mean(value_type=tf.float32,
+                                        weights_type=None):
   fed_value_type = computation_types.at_clients(value_type)
   values = building_blocks.Data('values', fed_value_type)
   if weights_type is not None:
@@ -233,8 +233,8 @@ def create_dummy_called_federated_mean(value_type=tf.float32,
   return building_block_factory.create_federated_mean(values, weights)
 
 
-def create_dummy_called_federated_secure_sum(value_type=tf.int32):
-  r"""Returns a dummy called secure sum.
+def create_whimsy_called_federated_secure_sum(value_type=tf.int32):
+  r"""Returns a whimsy called secure sum.
 
                        Call
                       /    \
@@ -250,8 +250,8 @@ def create_dummy_called_federated_secure_sum(value_type=tf.int32):
   return building_block_factory.create_federated_secure_sum(value, bitwidth)
 
 
-def create_dummy_called_federated_sum(value_type=tf.int32):
-  r"""Returns a dummy called federated sum.
+def create_whimsy_called_federated_sum(value_type=tf.int32):
+  r"""Returns a whimsy called federated sum.
 
                 Call
                /    \
@@ -266,8 +266,8 @@ def create_dummy_called_federated_sum(value_type=tf.int32):
   return building_block_factory.create_federated_sum(value)
 
 
-def create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
-  r"""Returns a dummy called sequence map.
+def create_whimsy_called_sequence_map(parameter_name, parameter_type=tf.int32):
+  r"""Returns a whimsy called sequence map.
 
                Call
               /    \
@@ -283,8 +283,8 @@ def create_dummy_called_sequence_map(parameter_name, parameter_type=tf.int32):
   return building_block_factory.create_sequence_map(fn, arg)
 
 
-def create_dummy_called_federated_value(placement: placements.PlacementLiteral,
-                                        value_type=tf.int32):
+def create_whimsy_called_federated_value(placement: placements.PlacementLiteral,
+                                         value_type=tf.int32):
   value = building_blocks.Data('data', value_type)
   return building_block_factory.create_federated_value(value, placement)
 
@@ -304,9 +304,9 @@ def create_identity_block(variable_name, comp):
   return building_blocks.Block([(variable_name, comp)], ref)
 
 
-def create_identity_block_with_dummy_data(variable_name,
-                                          variable_type=tf.int32):
-  r"""Returns an identity block with a dummy `Data` computation.
+def create_identity_block_with_whimsy_data(variable_name,
+                                           variable_type=tf.int32):
+  r"""Returns an identity block with a whimsy `Data` computation.
 
            Block
           /     \
@@ -335,9 +335,9 @@ def create_identity_function(parameter_name, parameter_type=tf.int32):
   return building_blocks.Lambda(ref.name, ref.type_signature, ref)
 
 
-def create_lambda_to_dummy_called_intrinsic(parameter_name,
-                                            parameter_type=tf.int32):
-  r"""Returns a lambda to call a dummy intrinsic.
+def create_lambda_to_whimsy_called_intrinsic(parameter_name,
+                                             parameter_type=tf.int32):
+  r"""Returns a lambda to call a whimsy intrinsic.
 
             Lambda(x)
             |
@@ -349,7 +349,7 @@ def create_lambda_to_dummy_called_intrinsic(parameter_name,
     parameter_name: The name of the parameter.
     parameter_type: The type of the parameter.
   """
-  call = create_dummy_called_intrinsic(
+  call = create_whimsy_called_intrinsic(
       parameter_name=parameter_name, parameter_type=parameter_type)
   return building_blocks.Lambda(parameter_name, parameter_type, call)
 
@@ -448,11 +448,11 @@ def create_nested_syntax_tree():
   result = building_blocks.Struct([middle_block, right_child])
   data_a = building_blocks.Data('a', tf.float32)
   data_b = building_blocks.Data('b', tf.float32)
-  dummy_outer_block = building_blocks.Block([('y', data_a), ('z', data_b)],
-                                            result)
-  dummy_lambda = building_blocks.Lambda('arg', tf.float32, dummy_outer_block)
-  dummy_arg = building_blocks.Data('k', tf.float32)
-  called_lambda = building_blocks.Call(dummy_lambda, dummy_arg)
+  whimsy_outer_block = building_blocks.Block([('y', data_a), ('z', data_b)],
+                                             result)
+  whimsy_lambda = building_blocks.Lambda('arg', tf.float32, whimsy_outer_block)
+  whimsy_arg = building_blocks.Data('k', tf.float32)
+  called_lambda = building_blocks.Call(whimsy_lambda, whimsy_arg)
 
   return called_lambda
 

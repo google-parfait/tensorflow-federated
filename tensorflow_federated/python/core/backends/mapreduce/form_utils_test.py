@@ -598,20 +598,20 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
     # pyformat: enable
 
     # trees_equal will fail if computations refer to unbound references, so we
-    # create a new dummy computation to bind them.
+    # create a new whimsy computation to bind them.
     unbound_refs_in_before_agg_result = transformation_utils.get_map_of_unbound_references(
         before_aggregate.result[1])[before_aggregate.result[1]]
     unbound_refs_in_before_secure_sum_result = transformation_utils.get_map_of_unbound_references(
         before_federated_secure_sum.result)[before_federated_secure_sum.result]
 
-    dummy_data = building_blocks.Data('data',
-                                      computation_types.AbstractType('T'))
+    whimsy_data = building_blocks.Data('data',
+                                       computation_types.AbstractType('T'))
 
     blk_binding_refs_in_before_agg = building_blocks.Block(
-        [(name, dummy_data) for name in unbound_refs_in_before_agg_result],
+        [(name, whimsy_data) for name in unbound_refs_in_before_agg_result],
         before_aggregate.result[1])
     blk_binding_refs_in_before_secure_sum = building_blocks.Block([
-        (name, dummy_data) for name in unbound_refs_in_before_secure_sum_result
+        (name, whimsy_data) for name in unbound_refs_in_before_secure_sum_result
     ], before_federated_secure_sum.result)
 
     self.assertTrue(
@@ -659,20 +659,20 @@ class CreateBeforeAndAfterAggregateForNoSecureSumTest(test_case.TestCase):
     self.assertLen(before_aggregate.result, 2)
 
     # trees_equal will fail if computations refer to unbound references, so we
-    # create a new dummy computation to bind them.
+    # create a new whimsy computation to bind them.
     unbound_refs_in_before_agg_result = transformation_utils.get_map_of_unbound_references(
         before_aggregate.result[0])[before_aggregate.result[0]]
     unbound_refs_in_before_fed_agg_result = transformation_utils.get_map_of_unbound_references(
         before_federated_aggregate.result)[before_federated_aggregate.result]
 
-    dummy_data = building_blocks.Data('data',
-                                      computation_types.AbstractType('T'))
+    whimsy_data = building_blocks.Data('data',
+                                       computation_types.AbstractType('T'))
 
     blk_binding_refs_in_before_agg = building_blocks.Block(
-        [(name, dummy_data) for name in unbound_refs_in_before_agg_result],
+        [(name, whimsy_data) for name in unbound_refs_in_before_agg_result],
         before_aggregate.result[0])
     blk_binding_refs_in_before_fed_agg = building_blocks.Block(
-        [(name, dummy_data) for name in unbound_refs_in_before_fed_agg_result],
+        [(name, whimsy_data) for name in unbound_refs_in_before_fed_agg_result],
         before_federated_aggregate.result)
 
     self.assertTrue(
@@ -916,9 +916,9 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
     state1 = it.initialize()
     state2 = new_it.initialize()
     self.assertAllClose(state1, state2)
-    dummy_x = np.array([[0.5] * 784], dtype=np.float32)
-    dummy_y = np.array([1], dtype=np.int32)
-    client_data = [collections.OrderedDict(x=dummy_x, y=dummy_y)]
+    whimsy_x = np.array([[0.5] * 784], dtype=np.float32)
+    whimsy_y = np.array([1], dtype=np.int32)
+    client_data = [collections.OrderedDict(x=whimsy_x, y=whimsy_y)]
     round_1 = it.next(state1, [client_data])
     state = round_1[0]
     metrics = round_1[1]

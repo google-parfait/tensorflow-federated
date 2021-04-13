@@ -87,7 +87,7 @@ test_wrap = computation_wrapper.ComputationWrapper(
 class ComputationWrapperTest(test_case.TestCase):
 
   # Note: Many tests below silence certain linter warnings. These warnings are
-  # not applicable, since it's the wrapper code, not not the dummy functions
+  # not applicable, since it's the wrapper code, not not the whimsy functions
   # that are being tested, so whether the specific function declarations used
   # here follow good practices is not really relevant. The purpose of the test
   # is to exercise various corner cases that the wrapper needs to be able to

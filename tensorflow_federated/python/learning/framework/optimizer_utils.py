@@ -326,16 +326,16 @@ def _build_one_round_computation(
   # TODO(b/144382142): Keras name uniquification is probably the main reason we
   # still need this.
   with tf.Graph().as_default():
-    dummy_model_for_metadata = model_fn()
+    whimsy_model_for_metadata = model_fn()
     model_weights_type = model_utils.weights_type_from_model(
-        dummy_model_for_metadata)
+        whimsy_model_for_metadata)
 
-    dummy_optimizer = server_optimizer_fn()
+    whimsy_optimizer = server_optimizer_fn()
     # We must force variable creation for momentum and adaptive optimizers.
     _eagerly_create_optimizer_variables(
-        model=dummy_model_for_metadata, optimizer=dummy_optimizer)
+        model=whimsy_model_for_metadata, optimizer=whimsy_optimizer)
     optimizer_variable_type = type_conversions.type_from_tensors(
-        dummy_optimizer.variables())
+        whimsy_optimizer.variables())
 
   @computations.tf_computation(model_weights_type, model_weights_type.trainable,
                                optimizer_variable_type)
@@ -366,7 +366,7 @@ def _build_one_round_computation(
     return model_variables, optimizer_variables
 
   dataset_type = computation_types.SequenceType(
-      dummy_model_for_metadata.input_spec)
+      whimsy_model_for_metadata.input_spec)
 
   @computations.tf_computation(dataset_type, model_weights_type)
   @tf.function
@@ -429,7 +429,7 @@ def _build_one_round_computation(
     new_server_state = intrinsics.federated_zip(
         ServerState(new_global_model, new_optimizer_state,
                     aggregation_output.state, broadcast_output.state))
-    aggregated_outputs = dummy_model_for_metadata.federated_output_computation(
+    aggregated_outputs = whimsy_model_for_metadata.federated_output_computation(
         client_outputs.model_output)
     optimizer_outputs = intrinsics.federated_sum(
         client_outputs.optimizer_output)

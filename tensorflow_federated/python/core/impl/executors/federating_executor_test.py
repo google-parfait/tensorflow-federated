@@ -59,35 +59,35 @@ def get_named_parameters_for_supported_intrinsics() -> List[Tuple[str, Any]]:
   # pyformat: disable
   return [
       ('intrinsic_def_federated_aggregate',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_aggregate()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_aggregate()),
       ('intrinsic_def_federated_apply',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_apply()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_apply()),
       ('intrinsic_def_federated_broadcast',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_broadcast()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_broadcast()),
       ('intrinsic_def_federated_collect',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_collect()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_collect()),
       ('intrinsic_def_federated_eval_at_clients',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_clients()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_clients()),
       ('intrinsic_def_federated_eval_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_server()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_server()),
       ('intrinsic_def_federated_map',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_map()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_map()),
       ('intrinsic_def_federated_map_all_equal',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_map_all_equal()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_map_all_equal()),
       ('intrinsic_def_federated_mean',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_mean()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_mean()),
       ('intrinsic_def_federated_sum',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_sum()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_sum()),
       ('intrinsic_def_federated_value_at_clients',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_clients()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_value_at_clients()),
       ('intrinsic_def_federated_value_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_server()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_value_at_server()),
       ('intrinsic_def_federated_weighted_mean',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_weighted_mean()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_weighted_mean()),
       ('intrinsic_def_federated_zip_at_clients',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_clients()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_zip_at_clients()),
       ('intrinsic_def_federated_zip_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_server()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_zip_at_server()),
   ]
   # pyformat: enable
 
@@ -110,21 +110,21 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('placement_literal',
-       *executor_test_utils.create_dummy_placement_literal()),
+       *executor_test_utils.create_whimsy_placement_literal()),
       ('computation_intrinsic',
-       *executor_test_utils.create_dummy_computation_intrinsic()),
+       *executor_test_utils.create_whimsy_computation_intrinsic()),
       ('computation_lambda',
-       *executor_test_utils.create_dummy_computation_lambda_empty()),
+       *executor_test_utils.create_whimsy_computation_lambda_empty()),
       ('computation_tensorflow',
-       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+       *executor_test_utils.create_whimsy_computation_tensorflow_empty()),
       ('federated_type_at_clients',
-       *executor_test_utils.create_dummy_value_at_clients()),
+       *executor_test_utils.create_whimsy_value_at_clients()),
       ('federated_type_at_clients_all_equal',
-       *executor_test_utils.create_dummy_value_at_clients_all_equal()),
+       *executor_test_utils.create_whimsy_value_at_clients_all_equal()),
       ('federated_type_at_server',
-       *executor_test_utils.create_dummy_value_at_server()),
+       *executor_test_utils.create_whimsy_value_at_server()),
       ('unplaced_type',
-       *executor_test_utils.create_dummy_value_unplaced()),
+       *executor_test_utils.create_whimsy_value_unplaced()),
   ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_returns_value_with_value_and_type(self, value, type_signature):
@@ -139,13 +139,13 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('placement_literal',
-       *executor_test_utils.create_dummy_placement_literal()),
+       *executor_test_utils.create_whimsy_placement_literal()),
       ('computation_intrinsic',
-       *executor_test_utils.create_dummy_computation_intrinsic()),
+       *executor_test_utils.create_whimsy_computation_intrinsic()),
       ('computation_lambda',
-       *executor_test_utils.create_dummy_computation_lambda_empty()),
+       *executor_test_utils.create_whimsy_computation_lambda_empty()),
       ('computation_tensorflow',
-       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+       *executor_test_utils.create_whimsy_computation_tensorflow_empty()),
   ])
   # pyformat: enable
   def test_returns_value_with_value_only(self, value, type_signature):
@@ -160,11 +160,11 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('computation_intrinsic',
-       *executor_test_utils.create_dummy_computation_intrinsic()),
+       *executor_test_utils.create_whimsy_computation_intrinsic()),
       ('computation_lambda',
-       *executor_test_utils.create_dummy_computation_lambda_empty()),
+       *executor_test_utils.create_whimsy_computation_lambda_empty()),
       ('computation_tensorflow',
-       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+       *executor_test_utils.create_whimsy_computation_tensorflow_empty()),
   ])
   # pyformat: enable
   def test_returns_value_with_computation_impl(self, proto, type_signature):
@@ -181,13 +181,13 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('federated_type_at_clients',
-       *executor_test_utils.create_dummy_value_at_clients()),
+       *executor_test_utils.create_whimsy_value_at_clients()),
       ('federated_type_at_clients_all_equal',
-       *executor_test_utils.create_dummy_value_at_clients_all_equal()),
+       *executor_test_utils.create_whimsy_value_at_clients_all_equal()),
       ('federated_type_at_server',
-       *executor_test_utils.create_dummy_value_at_server()),
+       *executor_test_utils.create_whimsy_value_at_server()),
       ('unplaced_type',
-       *executor_test_utils.create_dummy_value_unplaced()),
+       *executor_test_utils.create_whimsy_value_unplaced()),
   ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_raises_type_error_with_value_only(self, value, type_signature):
@@ -200,27 +200,27 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('placement_literal',
-       *executor_test_utils.create_dummy_placement_literal()),
+       *executor_test_utils.create_whimsy_placement_literal()),
       ('computation_call',
-       *executor_test_utils.create_dummy_computation_call()),
+       *executor_test_utils.create_whimsy_computation_call()),
       ('computation_intrinsic',
-       *executor_test_utils.create_dummy_computation_intrinsic()),
+       *executor_test_utils.create_whimsy_computation_intrinsic()),
       ('computation_lambda',
-       *executor_test_utils.create_dummy_computation_lambda_empty()),
+       *executor_test_utils.create_whimsy_computation_lambda_empty()),
       ('computation_selection',
-       *executor_test_utils.create_dummy_computation_selection()),
+       *executor_test_utils.create_whimsy_computation_selection()),
       ('computation_tensorflow',
-       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+       *executor_test_utils.create_whimsy_computation_tensorflow_empty()),
       ('computation_tuple',
-       *executor_test_utils.create_dummy_computation_tuple()),
+       *executor_test_utils.create_whimsy_computation_tuple()),
       ('federated_type_at_clients',
-       *executor_test_utils.create_dummy_value_at_clients()),
+       *executor_test_utils.create_whimsy_value_at_clients()),
       ('federated_type_at_clients_all_equal',
-       *executor_test_utils.create_dummy_value_at_clients_all_equal()),
+       *executor_test_utils.create_whimsy_value_at_clients_all_equal()),
       ('federated_type_at_server',
-       *executor_test_utils.create_dummy_value_at_server()),
+       *executor_test_utils.create_whimsy_value_at_server()),
       ('unplaced_type',
-       *executor_test_utils.create_dummy_value_unplaced()),
+       *executor_test_utils.create_whimsy_value_unplaced()),
   ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_raises_type_error_with_value_and_bad_type(self, value,
@@ -235,15 +235,15 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('computation_call',
-       *executor_test_utils.create_dummy_computation_call()),
+       *executor_test_utils.create_whimsy_computation_call()),
       ('computation_placement',
-       *executor_test_utils.create_dummy_computation_placement()),
+       *executor_test_utils.create_whimsy_computation_placement()),
       ('computation_reference',
-       *executor_test_utils.create_dummy_computation_reference()),
+       *executor_test_utils.create_whimsy_computation_reference()),
       ('computation_selection',
-       *executor_test_utils.create_dummy_computation_selection()),
+       *executor_test_utils.create_whimsy_computation_selection()),
       ('computation_tuple',
-       *executor_test_utils.create_dummy_computation_tuple()),
+       *executor_test_utils.create_whimsy_computation_tuple()),
   ])
   # pyformat: enable
   def test_raises_value_error_with_value(self, value, type_signature):
@@ -268,7 +268,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
 
   def test_raises_value_error_with_unrecognized_computation_selection(self):
     executor = create_test_executor()
-    source, _ = executor_test_utils.create_dummy_computation_tuple()
+    source, _ = executor_test_utils.create_whimsy_computation_tuple()
     type_signature = computation_types.StructType([])
     # A `ValueError` will be raised because `create_value` can not handle the
     # following `pb.Selection`, because does not set either a name or an index
@@ -283,19 +283,19 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('intrinsic_def_federated_broadcast',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_broadcast()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_broadcast()),
       ('intrinsic_def_federated_eval_at_clients',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_clients()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_clients()),
       ('intrinsic_def_federated_map',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_map()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_map()),
       ('intrinsic_def_federated_map_all_equal',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_map_all_equal()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_map_all_equal()),
       ('intrinsic_def_federated_value_at_clients',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_clients()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_value_at_clients()),
       ('federated_type_at_clients_all_equal',
-       *executor_test_utils.create_dummy_value_at_clients_all_equal()),
+       *executor_test_utils.create_whimsy_value_at_clients_all_equal()),
       ('federated_type_at_clients',
-       *executor_test_utils.create_dummy_value_at_clients())
+       *executor_test_utils.create_whimsy_value_at_clients())
   ])
   # pyformat: enable
   def test_raises_value_error_with_no_target_executor_clients(
@@ -312,25 +312,25 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('intrinsic_def_federated_aggregate',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_aggregate()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_aggregate()),
       ('intrinsic_def_federated_apply',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_apply()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_apply()),
       ('intrinsic_def_federated_collect',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_collect()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_collect()),
       ('intrinsic_def_federated_eval_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_server()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_server()),
       ('intrinsic_def_federated_mean',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_mean()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_mean()),
       ('intrinsic_def_federated_sum',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_sum()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_sum()),
       ('intrinsic_def_federated_value_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_server()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_value_at_server()),
       ('intrinsic_def_federated_weighted_mean',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_weighted_mean()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_weighted_mean()),
       ('intrinsic_def_federated_zip_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_server()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_zip_at_server()),
       ('federated_type_at_server',
-       *executor_test_utils.create_dummy_value_at_server()),
+       *executor_test_utils.create_whimsy_value_at_server()),
   ])
   # pyformat: enable
   def test_raises_value_error_with_no_target_executor_server(
@@ -340,7 +340,7 @@ class FederatingExecutorCreateValueTest(executor_test_utils.AsyncTestCase,
     })
     executor = federating_executor.FederatingExecutor(
         factory, eager_tf_executor.EagerTFExecutor())
-    value, type_signature = executor_test_utils.create_dummy_value_at_server()
+    value, type_signature = executor_test_utils.create_whimsy_value_at_server()
 
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_value(value, type_signature))
@@ -369,84 +369,84 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('intrinsic_def_federated_aggregate',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_aggregate(),
-       [executor_test_utils.create_dummy_value_at_clients(),
-        executor_test_utils.create_dummy_value_unplaced(),
-        executor_test_utils.create_dummy_computation_tensorflow_add(),
-        executor_test_utils.create_dummy_computation_tensorflow_add(),
-        executor_test_utils.create_dummy_computation_tensorflow_identity()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_aggregate(),
+       [executor_test_utils.create_whimsy_value_at_clients(),
+        executor_test_utils.create_whimsy_value_unplaced(),
+        executor_test_utils.create_whimsy_computation_tensorflow_add(),
+        executor_test_utils.create_whimsy_computation_tensorflow_add(),
+        executor_test_utils.create_whimsy_computation_tensorflow_identity()],
        43.0),
       ('intrinsic_def_federated_apply',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_apply(),
-       [executor_test_utils.create_dummy_computation_tensorflow_identity(),
-        executor_test_utils.create_dummy_value_at_server()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_apply(),
+       [executor_test_utils.create_whimsy_computation_tensorflow_identity(),
+        executor_test_utils.create_whimsy_value_at_server()],
        10.0),
       ('intrinsic_def_federated_broadcast',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_broadcast(),
-       [executor_test_utils.create_dummy_value_at_server()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_broadcast(),
+       [executor_test_utils.create_whimsy_value_at_server()],
        10.0),
       ('intrinsic_def_federated_collect',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_collect(),
-       [executor_test_utils.create_dummy_value_at_clients()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_collect(),
+       [executor_test_utils.create_whimsy_value_at_clients()],
        tf.data.Dataset.from_tensor_slices([10.0, 11.0, 12.0])),
       ('intrinsic_def_federated_eval_at_clients',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_clients(),
-       [executor_test_utils.create_dummy_computation_tensorflow_constant()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_clients(),
+       [executor_test_utils.create_whimsy_computation_tensorflow_constant()],
        [10.0] * 3),
       ('intrinsic_def_federated_eval_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_server(),
-       [executor_test_utils.create_dummy_computation_tensorflow_constant()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_server(),
+       [executor_test_utils.create_whimsy_computation_tensorflow_constant()],
        10.0),
       ('intrinsic_def_federated_map',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_map(),
-       [executor_test_utils.create_dummy_computation_tensorflow_identity(),
-        executor_test_utils.create_dummy_value_at_clients()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_map(),
+       [executor_test_utils.create_whimsy_computation_tensorflow_identity(),
+        executor_test_utils.create_whimsy_value_at_clients()],
        [10.0, 11.0, 12.0]),
       ('intrinsic_def_federated_map_all_equal',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_map_all_equal(),
-       [executor_test_utils.create_dummy_computation_tensorflow_identity(),
-        executor_test_utils.create_dummy_value_at_clients_all_equal()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_map_all_equal(),
+       [executor_test_utils.create_whimsy_computation_tensorflow_identity(),
+        executor_test_utils.create_whimsy_value_at_clients_all_equal()],
        10.0),
       ('intrinsic_def_federated_mean',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_mean(),
-       [executor_test_utils.create_dummy_value_at_clients()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_mean(),
+       [executor_test_utils.create_whimsy_value_at_clients()],
        11.0),
       ('intrinsic_def_federated_sum',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_sum(),
-       [executor_test_utils.create_dummy_value_at_clients()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_sum(),
+       [executor_test_utils.create_whimsy_value_at_clients()],
        33.0),
       ('intrinsic_def_federated_value_at_clients',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_clients(),
-       [executor_test_utils.create_dummy_value_unplaced()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_value_at_clients(),
+       [executor_test_utils.create_whimsy_value_unplaced()],
        10.0),
       ('intrinsic_def_federated_value_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_value_at_server(),
-       [executor_test_utils.create_dummy_value_unplaced()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_value_at_server(),
+       [executor_test_utils.create_whimsy_value_unplaced()],
        10.0),
       ('intrinsic_def_federated_weighted_mean',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_weighted_mean(),
-       [executor_test_utils.create_dummy_value_at_clients(),
-        executor_test_utils.create_dummy_value_at_clients()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_weighted_mean(),
+       [executor_test_utils.create_whimsy_value_at_clients(),
+        executor_test_utils.create_whimsy_value_at_clients()],
        11.060606),
       ('intrinsic_def_federated_zip_at_clients',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_clients(),
-       [executor_test_utils.create_dummy_value_at_clients(),
-        executor_test_utils.create_dummy_value_at_clients()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_zip_at_clients(),
+       [executor_test_utils.create_whimsy_value_at_clients(),
+        executor_test_utils.create_whimsy_value_at_clients()],
        [structure.Struct([(None, 10.0), (None, 10.0)]),
         structure.Struct([(None, 11.0), (None, 11.0)]),
         structure.Struct([(None, 12.0), (None, 12.0)])]),
       ('intrinsic_def_federated_zip_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_zip_at_server(),
-       [executor_test_utils.create_dummy_value_at_server(),
-        executor_test_utils.create_dummy_value_at_server()],
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_zip_at_server(),
+       [executor_test_utils.create_whimsy_value_at_server(),
+        executor_test_utils.create_whimsy_value_at_server()],
        structure.Struct([(None, 10.0), (None, 10.0)])),
       ('computation_intrinsic',
-       *executor_test_utils.create_dummy_computation_intrinsic(),
-       [executor_test_utils.create_dummy_computation_tensorflow_constant()],
+       *executor_test_utils.create_whimsy_computation_intrinsic(),
+       [executor_test_utils.create_whimsy_computation_tensorflow_constant()],
        10.0),
       ('computation_tensorflow',
-       *executor_test_utils.create_dummy_computation_tensorflow_identity(),
-       [executor_test_utils.create_dummy_value_unplaced()],
+       *executor_test_utils.create_whimsy_computation_tensorflow_identity(),
+       [executor_test_utils.create_whimsy_value_unplaced()],
        10.0),
   ])
   # pyformat: enable
@@ -477,9 +477,9 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   def test_returns_value_with_intrinsic_def_federated_eval_at_clients_and_random(
       self):
     executor = create_test_executor(number_of_clients=3)
-    comp, comp_type = executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_clients(
+    comp, comp_type = executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_clients(
     )
-    arg, arg_type = executor_test_utils.create_dummy_computation_tensorflow_random(
+    arg, arg_type = executor_test_utils.create_whimsy_computation_tensorflow_random(
     )
 
     comp = self.run_sync(executor.create_value(comp, comp_type))
@@ -499,7 +499,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('computation_tensorflow',
-       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+       *executor_test_utils.create_whimsy_computation_tensorflow_empty()),
   ])
   # pyformat: enable
   def test_returns_value_with_comp_only(self, comp, comp_type):
@@ -517,8 +517,9 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
 
   def test_raises_type_error_with_unembedded_comp(self):
     executor = create_test_executor()
-    comp, _ = executor_test_utils.create_dummy_computation_tensorflow_identity()
-    arg, arg_type = executor_test_utils.create_dummy_value_unplaced()
+    comp, _ = executor_test_utils.create_whimsy_computation_tensorflow_identity(
+    )
+    arg, arg_type = executor_test_utils.create_whimsy_value_unplaced()
 
     arg = self.run_sync(executor.create_value(arg, arg_type))
     with self.assertRaises(TypeError):
@@ -526,9 +527,9 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
 
   def test_raises_type_error_with_unembedded_arg(self):
     executor = create_test_executor()
-    comp, comp_type = executor_test_utils.create_dummy_computation_tensorflow_identity(
+    comp, comp_type = executor_test_utils.create_whimsy_computation_tensorflow_identity(
     )
-    arg, _ = executor_test_utils.create_dummy_value_unplaced()
+    arg, _ = executor_test_utils.create_whimsy_value_unplaced()
 
     comp = self.run_sync(executor.create_value(comp, comp_type))
     with self.assertRaises(TypeError):
@@ -537,11 +538,11 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('computation_intrinsic',
-       *executor_test_utils.create_dummy_computation_intrinsic()),
+       *executor_test_utils.create_whimsy_computation_intrinsic()),
       ('computation_lambda',
-       *executor_test_utils.create_dummy_computation_lambda_identity()),
+       *executor_test_utils.create_whimsy_computation_lambda_identity()),
       ('computation_tensorflow',
-       *executor_test_utils.create_dummy_computation_tensorflow_identity()),
+       *executor_test_utils.create_whimsy_computation_tensorflow_identity()),
   ] + get_named_parameters_for_supported_intrinsics())
   # pyformat: enable
   def test_raises_type_error_with_comp_and_bad_arg(self, comp, comp_type):
@@ -557,15 +558,15 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('computation_lambda',
-       *executor_test_utils.create_dummy_computation_lambda_empty()),
+       *executor_test_utils.create_whimsy_computation_lambda_empty()),
       ('federated_type_at_clients',
-       *executor_test_utils.create_dummy_value_at_clients()),
+       *executor_test_utils.create_whimsy_value_at_clients()),
       ('federated_type_at_clients_all_equal',
-       *executor_test_utils.create_dummy_value_at_clients_all_equal()),
+       *executor_test_utils.create_whimsy_value_at_clients_all_equal()),
       ('federated_type_at_server',
-       *executor_test_utils.create_dummy_value_at_server()),
+       *executor_test_utils.create_whimsy_value_at_server()),
       ('unplaced_type',
-       *executor_test_utils.create_dummy_value_unplaced()),
+       *executor_test_utils.create_whimsy_value_unplaced()),
   ])
   # pyformat: enable
   def test_raises_value_error_with_comp(self, comp, comp_type):
@@ -578,7 +579,7 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
   def test_raises_not_implemented_error_with_intrinsic_def_federated_secure_sum(
       self):
     executor = create_test_executor()
-    comp, comp_type = executor_test_utils.create_dummy_intrinsic_def_federated_secure_sum(
+    comp, comp_type = executor_test_utils.create_whimsy_intrinsic_def_federated_secure_sum(
     )
     arg_1 = [10, 11, 12]
     arg_1_type = computation_types.at_clients(tf.int32, all_equal=False)
@@ -594,13 +595,15 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
 
   def test_raises_not_implemented_error_with_unimplemented_intrinsic(self):
     executor = create_test_executor()
-    dummy_intrinsic = intrinsic_defs.IntrinsicDef(
-        'DUMMY_INTRINSIC', 'dummy_intrinsic',
+    # `whimsy_intrinsic` definition is needed to allow lookup.
+    whimsy_intrinsic = intrinsic_defs.IntrinsicDef(
+        'WHIMSY_INTRINSIC', 'whimsy_intrinsic',
         computation_types.AbstractType('T'))
     type_signature = computation_types.TensorType(tf.int32)
     comp = pb.Computation(
-        intrinsic=pb.Intrinsic(uri='dummy_intrinsic'),
+        intrinsic=pb.Intrinsic(uri='whimsy_intrinsic'),
         type=type_serialization.serialize_type(type_signature))
+    del whimsy_intrinsic
 
     comp = self.run_sync(executor.create_value(comp))
     with self.assertRaises(NotImplementedError):
@@ -613,13 +616,13 @@ class FederatingExecutorCreateStructTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('federated_type_at_clients',
-       *executor_test_utils.create_dummy_value_at_clients()),
+       *executor_test_utils.create_whimsy_value_at_clients()),
       ('federated_type_at_clients_all_equal',
-       *executor_test_utils.create_dummy_value_at_clients_all_equal()),
+       *executor_test_utils.create_whimsy_value_at_clients_all_equal()),
       ('federated_type_at_server',
-       *executor_test_utils.create_dummy_value_at_server()),
+       *executor_test_utils.create_whimsy_value_at_server()),
       ('unplaced_type',
-       *executor_test_utils.create_dummy_value_unplaced()),
+       *executor_test_utils.create_whimsy_value_unplaced()),
   ])
   # pyformat: enable
   def test_returns_value_with_elements_value(self, value, type_signature):
@@ -639,7 +642,8 @@ class FederatingExecutorCreateStructTest(executor_test_utils.AsyncTestCase,
 
   def test_returns_value_with_elements_value_placement_literal(self):
     executor = create_test_executor()
-    value, type_signature = executor_test_utils.create_dummy_placement_literal()
+    value, type_signature = executor_test_utils.create_whimsy_placement_literal(
+    )
 
     element = self.run_sync(executor.create_value(value, type_signature))
     elements = [element] * 3
@@ -653,11 +657,11 @@ class FederatingExecutorCreateStructTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('intrinsic_def_federated_eval_at_server',
-       *executor_test_utils.create_dummy_intrinsic_def_federated_eval_at_server(),
-       *executor_test_utils.create_dummy_computation_tensorflow_constant()),
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_eval_at_server(),
+       *executor_test_utils.create_whimsy_computation_tensorflow_constant()),
       ('computation_intrinsic',
-       *executor_test_utils.create_dummy_computation_intrinsic(),
-       *executor_test_utils.create_dummy_computation_tensorflow_constant()),
+       *executor_test_utils.create_whimsy_computation_intrinsic(),
+       *executor_test_utils.create_whimsy_computation_tensorflow_constant()),
   ])
   # pyformat: enable
   def test_returns_value_with_elements_fn_and_arg(self, fn, fn_type, arg,
@@ -681,7 +685,7 @@ class FederatingExecutorCreateStructTest(executor_test_utils.AsyncTestCase,
   # pyformat: disable
   @parameterized.named_parameters([
       ('computation_tensorflow',
-       *executor_test_utils.create_dummy_computation_tensorflow_empty()),
+       *executor_test_utils.create_whimsy_computation_tensorflow_empty()),
   ])
   # pyformat: enable
   def test_returns_value_with_elements_fn_only(self, fn, fn_type):
@@ -702,7 +706,7 @@ class FederatingExecutorCreateStructTest(executor_test_utils.AsyncTestCase,
 
   def test_raises_type_error_with_unembedded_elements(self):
     executor = create_test_executor()
-    element, _ = executor_test_utils.create_dummy_value_unplaced()
+    element, _ = executor_test_utils.create_whimsy_value_unplaced()
 
     elements = [element] * 3
     with self.assertRaises(TypeError):
@@ -713,7 +717,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
   def test_returns_value_with_source_and_index_computation_tensorflow(self):
     executor = create_test_executor()
-    source, type_signature = executor_test_utils.create_dummy_computation_tensorflow_tuple(
+    source, type_signature = executor_test_utils.create_whimsy_computation_tensorflow_tuple(
     )
 
     source = self.run_sync(executor.create_value(source, type_signature))
@@ -729,7 +733,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
   def test_returns_value_with_source_and_index_structure(self):
     executor = create_test_executor()
-    element, element_type = executor_test_utils.create_dummy_value_unplaced()
+    element, element_type = executor_test_utils.create_whimsy_value_unplaced()
 
     element = self.run_sync(executor.create_value(element, element_type))
     elements = [element] * 3
@@ -746,7 +750,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
   def test_returns_value_with_source_and_name_computation_tensorflow(self):
     executor = create_test_executor()
-    source, type_signature = executor_test_utils.create_dummy_computation_tensorflow_tuple(
+    source, type_signature = executor_test_utils.create_whimsy_computation_tensorflow_tuple(
     )
 
     source = self.run_sync(executor.create_value(source, type_signature))
@@ -762,7 +766,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
   def test_returns_value_with_source_and_name_structure(self):
     executor = create_test_executor()
-    element, element_type = executor_test_utils.create_dummy_value_unplaced()
+    element, element_type = executor_test_utils.create_whimsy_value_unplaced()
 
     names = ['a', 'b', 'c']
     element = self.run_sync(executor.create_value(element, element_type))
@@ -781,7 +785,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
   def test_raises_type_error_with_unembedded_source(self):
     executor = create_test_executor()
-    element, element_type = executor_test_utils.create_dummy_value_unplaced()
+    element, element_type = executor_test_utils.create_whimsy_value_unplaced()
 
     element = self.run_sync(executor.create_value(element, element_type))
     source = [element] * 3
@@ -790,7 +794,7 @@ class FederatingExecutorCreateSelectionTest(executor_test_utils.AsyncTestCase):
 
   def test_raises_type_error_with_not_tuple_type(self):
     executor = create_test_executor()
-    element, element_type = executor_test_utils.create_dummy_value_unplaced()
+    element, element_type = executor_test_utils.create_whimsy_value_unplaced()
 
     source = self.run_sync(executor.create_value(element, element_type))
     with self.assertRaises(TypeError):

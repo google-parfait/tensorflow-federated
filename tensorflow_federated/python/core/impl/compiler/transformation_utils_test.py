@@ -99,7 +99,7 @@ def _construct_trivial_instance_of_all_computation_building_blocks():
   data = building_blocks.Data('x', tf.int32)
   cbb_list.append(('data', data))
   function_type = computation_types.FunctionType(tf.int32, tf.int32)
-  intrinsic = building_blocks.Intrinsic('dummy_intrinsic', function_type)
+  intrinsic = building_blocks.Intrinsic('whimsy_intrinsic', function_type)
   cbb_list.append(('intrinsic', intrinsic))
   tff_struct = building_blocks.Struct([ref_to_x])
   cbb_list.append(('struct', tff_struct))
@@ -340,15 +340,15 @@ class TransformationUtilsTest(parameterized.TestCase):
   def test_transform_postorder_with_symbol_bindings_fails_on_none_transform(
       self):
     empty_symbol_tree = transformation_utils.SymbolTree(FakeTracker)
-    dummy_comp = building_blocks.Reference('x', tf.int32)
+    whimsy_comp = building_blocks.Reference('x', tf.int32)
 
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder_with_symbol_bindings(
-          dummy_comp, None, empty_symbol_tree)
+          whimsy_comp, None, empty_symbol_tree)
 
   def test_transform_postorder_with_symbol_bindings_fails_on_none_symbol_tree(
       self):
-    dummy_comp = building_blocks.Reference('x', tf.int32)
+    whimsy_comp = building_blocks.Reference('x', tf.int32)
 
     def transform(comp, ctxt_tree):
       del ctxt_tree
@@ -356,7 +356,7 @@ class TransformationUtilsTest(parameterized.TestCase):
 
     with self.assertRaises(TypeError):
       transformation_utils.transform_postorder_with_symbol_bindings(
-          dummy_comp, transform, None)
+          whimsy_comp, transform, None)
 
   @parameterized.named_parameters(
       _construct_trivial_instance_of_all_computation_building_blocks() +
@@ -1149,20 +1149,20 @@ class TransformationUtilsTest(parameterized.TestCase):
 
   def test_bound_variable_tracker_equality_names(self):
     data = building_blocks.Data('bound_data', tf.int32)
-    dummy_tracker = TrivialBoundVariableTracker('x', data)
-    second_dummy_tracker = TrivialBoundVariableTracker('x', data)
-    self.assertEqual(dummy_tracker, second_dummy_tracker)
-    second_dummy_tracker.name = 'y'
-    self.assertNotEqual(dummy_tracker, second_dummy_tracker)
-    dummy_tracker.name = 'y'
-    self.assertEqual(dummy_tracker, second_dummy_tracker)
+    whimsy_tracker = TrivialBoundVariableTracker('x', data)
+    second_whimsy_tracker = TrivialBoundVariableTracker('x', data)
+    self.assertEqual(whimsy_tracker, second_whimsy_tracker)
+    second_whimsy_tracker.name = 'y'
+    self.assertNotEqual(whimsy_tracker, second_whimsy_tracker)
+    whimsy_tracker.name = 'y'
+    self.assertEqual(whimsy_tracker, second_whimsy_tracker)
 
   def test_bound_variable_tracker_equality_values(self):
-    dummy_tracker = TrivialBoundVariableTracker(
+    whimsy_tracker = TrivialBoundVariableTracker(
         'x', building_blocks.Data('bound_data', tf.int32))
-    second_dummy_tracker = TrivialBoundVariableTracker(
+    second_whimsy_tracker = TrivialBoundVariableTracker(
         'x', building_blocks.Data('other_data', tf.int32))
-    self.assertNotEqual(dummy_tracker, second_dummy_tracker)
+    self.assertNotEqual(whimsy_tracker, second_whimsy_tracker)
 
   def test_outer_context_pointer_equality(self):
     outer_context = transformation_utils._BeginScopePointer()
@@ -1177,28 +1177,29 @@ class TransformationUtilsTest(parameterized.TestCase):
       outer_context.update()
 
   def test_reference_tracker_initializes(self):
-    dummy_tracker = transformation_utils.ReferenceCounter(
+    whimsy_tracker = transformation_utils.ReferenceCounter(
         'x', building_blocks.Data('bound_data', tf.int32))
-    self.assertEqual(dummy_tracker.name, 'x')
-    self.assertEqual(dummy_tracker.value.compact_representation(), 'bound_data')
-    self.assertEqual(dummy_tracker.count, 0)
+    self.assertEqual(whimsy_tracker.name, 'x')
+    self.assertEqual(whimsy_tracker.value.compact_representation(),
+                     'bound_data')
+    self.assertEqual(whimsy_tracker.count, 0)
 
   def test_reference_tracker_updates(self):
-    dummy_tracker = transformation_utils.ReferenceCounter(
+    whimsy_tracker = transformation_utils.ReferenceCounter(
         'x', building_blocks.Data('bound_data', tf.int32))
     for k in range(10):
-      dummy_tracker.update()
-      self.assertEqual(dummy_tracker.count, k + 1)
+      whimsy_tracker.update()
+      self.assertEqual(whimsy_tracker.count, k + 1)
 
   def test_reference_tracker_equality_instances(self):
     data = building_blocks.Data('bound_data', tf.int32)
-    dummy_tracker = transformation_utils.ReferenceCounter('x', data)
-    second_dummy_tracker = transformation_utils.ReferenceCounter('x', data)
-    self.assertEqual(dummy_tracker, second_dummy_tracker)
-    dummy_tracker.update()
-    self.assertNotEqual(dummy_tracker, second_dummy_tracker)
-    second_dummy_tracker.update()
-    self.assertEqual(dummy_tracker, second_dummy_tracker)
+    whimsy_tracker = transformation_utils.ReferenceCounter('x', data)
+    second_whimsy_tracker = transformation_utils.ReferenceCounter('x', data)
+    self.assertEqual(whimsy_tracker, second_whimsy_tracker)
+    whimsy_tracker.update()
+    self.assertNotEqual(whimsy_tracker, second_whimsy_tracker)
+    second_whimsy_tracker.update()
+    self.assertEqual(whimsy_tracker, second_whimsy_tracker)
 
   def test_get_count_of_references_to_variables_simple_block(self):
     simple_block = _construct_simple_block(tf.int32)
@@ -1458,14 +1459,14 @@ class TransformationUtilsTest(parameterized.TestCase):
     tensor_type = computation_types.TensorType(tf.int32)
     make_10 = building_block_factory.create_tensorflow_constant(tensor_type, 10)
 
-    dummy_x_reference = building_blocks.Reference('x', tf.int32)
+    whimsy_x_reference = building_blocks.Reference('x', tf.int32)
 
     make_13 = building_blocks.Block([
         ('x', make_10),
-        ('x', dummy_x_reference),
-        ('x', dummy_x_reference),
-        ('x', dummy_x_reference),
-    ], dummy_x_reference)
+        ('x', whimsy_x_reference),
+        ('x', whimsy_x_reference),
+        ('x', whimsy_x_reference),
+    ], whimsy_x_reference)
 
     references = transformation_utils.get_count_of_references_to_variables(
         make_13)
@@ -1478,16 +1479,20 @@ class TransformationUtilsTest(parameterized.TestCase):
       constructed_context_stack.drop_scope_down(child_id)
       constructed_context_stack.ingest_variable_binding(make_13.locals[0][0],
                                                         make_13.locals[0][1])
-      constructed_context_stack.update_payload_with_name(dummy_x_reference.name)
+      constructed_context_stack.update_payload_with_name(
+          whimsy_x_reference.name)
       constructed_context_stack.ingest_variable_binding(make_13.locals[1][0],
                                                         make_13.locals[1][1])
-      constructed_context_stack.update_payload_with_name(dummy_x_reference.name)
+      constructed_context_stack.update_payload_with_name(
+          whimsy_x_reference.name)
       constructed_context_stack.ingest_variable_binding(make_13.locals[2][0],
                                                         make_13.locals[2][1])
-      constructed_context_stack.update_payload_with_name(dummy_x_reference.name)
+      constructed_context_stack.update_payload_with_name(
+          whimsy_x_reference.name)
       constructed_context_stack.ingest_variable_binding(make_13.locals[3][0],
                                                         make_13.locals[3][1])
-      constructed_context_stack.update_payload_with_name(dummy_x_reference.name)
+      constructed_context_stack.update_payload_with_name(
+          whimsy_x_reference.name)
       constructed_context_stack.walk_to_scope_beginning()
       return constructed_context_stack
 

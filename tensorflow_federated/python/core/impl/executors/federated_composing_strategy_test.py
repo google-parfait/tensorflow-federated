@@ -412,13 +412,15 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     self.assertAlmostEqual(result, 6.83333333333, places=3)
 
   def test_executor_call_unsupported_intrinsic(self):
-    dummy_intrinsic = intrinsic_defs.IntrinsicDef(
-        'DUMMY_INTRINSIC', 'dummy_intrinsic',
+    # `whimsy_intrinsic` definition is needed to allow successful lookup.
+    whimsy_intrinsic = intrinsic_defs.IntrinsicDef(
+        'WHIMSY_INTRINSIC', 'whimsy_intrinsic',
         computation_types.AbstractType('T'))
     type_signature = computation_types.TensorType(tf.int32)
     comp = pb.Computation(
         type=type_serialization.serialize_type(type_signature),
-        intrinsic=pb.Intrinsic(uri='dummy_intrinsic'))
+        intrinsic=pb.Intrinsic(uri='whimsy_intrinsic'))
+    del whimsy_intrinsic
 
     loop = asyncio.get_event_loop()
     factory = federated_composing_strategy.FederatedComposingStrategy.factory(

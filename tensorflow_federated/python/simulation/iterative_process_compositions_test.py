@@ -26,7 +26,7 @@ from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.simulation import iterative_process_compositions
 
 
-def _create_dummy_iterative_process():
+def _create_whimsy_iterative_process():
 
   @computations.tf_computation()
   def init():
@@ -240,7 +240,7 @@ class ConstructDatasetsOnClientsIterativeProcessTest(absltest.TestCase):
           int_identity, iterproc)
 
   def test_raises_iterative_process_no_dataset_parameter(self):
-    iterproc = _create_dummy_iterative_process()
+    iterproc = _create_whimsy_iterative_process()
 
     with self.assertRaises(TypeError):
       iterative_process_compositions.compose_dataset_computation_with_iterative_process(

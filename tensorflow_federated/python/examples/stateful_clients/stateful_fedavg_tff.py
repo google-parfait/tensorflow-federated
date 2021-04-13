@@ -67,7 +67,7 @@ def build_federated_averaging_process(
     A `tff.templates.IterativeProcess`.
   """
 
-  dummy_model = model_fn()
+  whimsy_model = model_fn()
 
   @tff.tf_computation
   def server_init_tf():
@@ -100,7 +100,7 @@ def build_federated_averaging_process(
     return build_server_broadcast_message(server_state)
 
   server_message_type = server_message_fn.type_signature.result
-  tf_dataset_type = tff.SequenceType(dummy_model.input_spec)
+  tf_dataset_type = tff.SequenceType(whimsy_model.input_spec)
 
   @tff.tf_computation(tf_dataset_type, client_state_type, server_message_type)
   def client_update_fn(tf_dataset, client_state, server_message):

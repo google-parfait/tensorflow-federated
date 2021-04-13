@@ -331,7 +331,7 @@ def bind_graph_result_as_tuple(comp, name=None):
 def pad_graph_inputs_to_match_type(comp, type_signature):
   r"""Pads the parameter bindings of `comp` to match `type_signature`.
 
-  The padded parameters here are in effect dummy bindings--they are not
+  The padded parameters here are in effect whimsy bindings--they are not
   plugged in elsewhere in `comp`. This pattern is necessary to transform TFF
   expressions of the form:
 

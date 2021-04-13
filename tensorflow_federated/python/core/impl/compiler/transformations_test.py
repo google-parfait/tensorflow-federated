@@ -637,9 +637,9 @@ class GenerateTensorflowForLocalFunctionTest(test_case.TestCase):
 class DedupeAndMergeTupleIntrinsicsTest(test_case.TestCase):
 
   def test_noops_in_case_of_distinct_maps(self):
-    called_intrinsic1 = compiler_test_utils.create_dummy_called_federated_map(
+    called_intrinsic1 = compiler_test_utils.create_whimsy_called_federated_map(
         parameter_name='a', parameter_type=tf.int32)
-    called_intrinsic2 = compiler_test_utils.create_dummy_called_federated_map(
+    called_intrinsic2 = compiler_test_utils.create_whimsy_called_federated_map(
         parameter_name='a', parameter_type=tf.float32)
     calls = building_blocks.Struct((called_intrinsic1, called_intrinsic2))
     comp = calls
@@ -655,9 +655,9 @@ class DedupeAndMergeTupleIntrinsicsTest(test_case.TestCase):
                      directly_merged_comp.compact_representation())
 
   def test_noops_in_case_of_distinct_applies(self):
-    called_intrinsic1 = compiler_test_utils.create_dummy_called_federated_apply(
+    called_intrinsic1 = compiler_test_utils.create_whimsy_called_federated_apply(
         parameter_name='a', parameter_type=tf.int32)
-    called_intrinsic2 = compiler_test_utils.create_dummy_called_federated_apply(
+    called_intrinsic2 = compiler_test_utils.create_whimsy_called_federated_apply(
         parameter_name='a', parameter_type=tf.float32)
     calls = building_blocks.Struct((called_intrinsic1, called_intrinsic2))
     comp = calls
@@ -673,7 +673,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test_case.TestCase):
                      directly_merged_comp.compact_representation())
 
   def test_constructs_broadcast_of_tuple_with_one_element(self):
-    called_intrinsic = compiler_test_utils.create_dummy_called_federated_broadcast(
+    called_intrinsic = compiler_test_utils.create_whimsy_called_federated_broadcast(
     )
     calls = building_blocks.Struct((called_intrinsic, called_intrinsic))
     comp = calls
@@ -721,9 +721,9 @@ class DedupeAndMergeTupleIntrinsicsTest(test_case.TestCase):
         '>)))')
 
   def test_dedupe_noops_in_case_of_distinct_broadcasts(self):
-    called_intrinsic1 = compiler_test_utils.create_dummy_called_federated_broadcast(
+    called_intrinsic1 = compiler_test_utils.create_whimsy_called_federated_broadcast(
         tf.int32)
-    called_intrinsic2 = compiler_test_utils.create_dummy_called_federated_broadcast(
+    called_intrinsic2 = compiler_test_utils.create_whimsy_called_federated_broadcast(
         tf.float32)
     calls = building_blocks.Struct((called_intrinsic1, called_intrinsic2))
     comp = calls
@@ -740,7 +740,7 @@ class DedupeAndMergeTupleIntrinsicsTest(test_case.TestCase):
                      directly_merged_comp.compact_representation())
 
   def test_constructs_aggregate_of_tuple_with_one_element(self):
-    called_intrinsic = compiler_test_utils.create_dummy_called_federated_aggregate(
+    called_intrinsic = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -822,13 +822,13 @@ class DedupeAndMergeTupleIntrinsicsTest(test_case.TestCase):
         '>)))')
 
   def test_identical_to_merge_tuple_intrinsics_with_different_intrinsics(self):
-    called_intrinsic1 = compiler_test_utils.create_dummy_called_federated_aggregate(
+    called_intrinsic1 = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c',
         value_type=tf.int32)
     # These compare as not equal.
-    called_intrinsic2 = compiler_test_utils.create_dummy_called_federated_aggregate(
+    called_intrinsic2 = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='x',
         merge_parameter_name='y',
         report_parameter_name='z',
@@ -1138,7 +1138,7 @@ class TestTransformToCallDominantForm(test_case.TestCase):
                           [r'\(let _([a-z]{3})1=a in _(\1)1\)'])
 
   def test_extracts_called_intrinsics_to_block(self):
-    called_aggregate = compiler_test_utils.create_dummy_called_federated_aggregate(
+    called_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -1159,11 +1159,11 @@ class TestTransformToCallDominantForm(test_case.TestCase):
             intrinsic_defs.FEDERATED_AGGREGATE.uri))
 
   def test_deduplicates_called_intrinsics(self):
-    called_aggregate1 = compiler_test_utils.create_dummy_called_federated_aggregate(
+    called_aggregate1 = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    called_aggregate2 = compiler_test_utils.create_dummy_called_federated_aggregate(
+    called_aggregate2 = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
@@ -1184,12 +1184,12 @@ class TestTransformToCallDominantForm(test_case.TestCase):
             intrinsic_defs.FEDERATED_AGGREGATE.uri))
 
   def test_hoists_aggregations_packed_in_tuple(self):
-    called_aggregate1 = compiler_test_utils.create_dummy_called_federated_aggregate(
+    called_aggregate1 = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c',
         value_type=tf.int32)
-    called_aggregate2 = compiler_test_utils.create_dummy_called_federated_aggregate(
+    called_aggregate2 = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c',
