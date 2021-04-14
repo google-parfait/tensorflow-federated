@@ -170,7 +170,7 @@ In addition, the abstract interface `tff.learning.Model` exposes a property
 property mentioned earlier, allows you to control the process of aggregating
 summary statistics.
 
-You can find examples of how to define your own custom `tf.learning.Model` in
+You can find examples of how to define your own custom `tff.learning.Model` in
 the second part of our
 [image classification](tutorials/federated_learning_for_image_classification.ipynb)
 tutorial, as well as in the example models we use for testing in
