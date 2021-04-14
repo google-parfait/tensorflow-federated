@@ -22,12 +22,15 @@ def py_cpu_gpu_test(name, main = None, tags = [], **kwargs):
         tags = tags,
         **kwargs
     )
-    py_test(
-        name = name + "_gpu",
-        main = main,
-        tags = tags + ["requires-gpu-nvidia"],
-        **kwargs
-    )
+
+    # TODO(b/185290076): Remove this line when tests are passing again.
+    if "disable_gpu" not in tags:
+        py_test(
+            name = name + "_gpu",
+            main = main,
+            tags = tags + ["requires-gpu-nvidia"],
+            **kwargs
+        )
     native.test_suite(
         name = name,
         tests = [

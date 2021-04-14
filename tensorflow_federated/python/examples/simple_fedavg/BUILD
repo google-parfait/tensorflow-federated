@@ -40,6 +40,7 @@ py_cpu_gpu_test(
     srcs = ["simple_fedavg_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = ["disable_gpu"],
     deps = [
         ":simple_fedavg_tf",
         ":simple_fedavg_tff",

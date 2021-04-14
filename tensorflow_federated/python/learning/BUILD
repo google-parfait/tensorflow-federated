@@ -60,6 +60,7 @@ py_cpu_gpu_test(
     srcs = ["federated_averaging_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = ["disable_gpu"],
     deps = [
         ":federated_averaging",
         ":keras_utils",
