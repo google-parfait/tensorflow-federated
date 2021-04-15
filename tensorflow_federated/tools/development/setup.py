@@ -67,7 +67,6 @@ REQUIRED_PACKAGES = [
     'portpicker~=1.3.1',
     'retrying~=1.3.3',
     'semantic-version~=2.8.5',
-    'tensorflow-addons~=0.12.0',
     'tensorflow-model-optimization~=0.5.0',
     'tensorflow-privacy~=0.5.0',
     'tensorflow~=2.4.0',
@@ -100,8 +99,6 @@ if '--nightly' in sys.argv:
       REQUIRED_PACKAGES[index] = 'grpcio~=1.34.0'
     elif package_name == 'tensorflow':
       REQUIRED_PACKAGES[index] = 'tf-nightly'
-    elif package_name == 'tensorflow-addons':
-      REQUIRED_PACKAGES[index] = 'tfa-nightly'
 else:
   PROJECT_NAME = 'tensorflow_federated'
 

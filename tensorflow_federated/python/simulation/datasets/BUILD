@@ -107,8 +107,6 @@ py_library(
         ":download",
         ":from_tensor_slices_client_data",
         ":sql_client_data",
-        ":transforming_client_data",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
     ],
 )
 
@@ -286,7 +284,6 @@ py_library(
 
 py_test(
     name = "transforming_client_data_test",
-    size = "small",
     srcs = ["transforming_client_data_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
