@@ -660,11 +660,16 @@ class CreateFederatedSelectTest(parameterized.TestCase):
         'server_val', computation_types.at_server(server_val_type))
     select_fn = building_blocks.Data(
         'select_fn',
-        computation_types.FunctionType((server_val_type, tf.int32), tf.string))
+        computation_types.FunctionType(
+            computation_types.StructType([
+                ('some_name_for_server_val', server_val_type),
+                ('some_namme_for_key', tf.int32),
+            ]), tf.string))
     comp = building_block_factory.create_federated_select(
         client_keys, max_key, server_val, select_fn, secure)
-    self.assertEqual(comp.compact_representation(),
-                     f'{name}(<client_keys,max_key,server_val,select_fn>)')
+    self.assertEqual(
+        comp.compact_representation(),
+        f'{name}(<client_keys,max_key,server_val,(a -> select_fn(a))>)')
     self.assertEqual(comp.type_signature.compact_representation(),
                      '{string*}@CLIENTS')
 

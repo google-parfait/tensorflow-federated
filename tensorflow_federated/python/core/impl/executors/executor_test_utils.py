@@ -335,6 +335,59 @@ def create_whimsy_intrinsic_def_federated_secure_sum():
   return value, type_signature
 
 
+_WHIMSY_SELECT_CLIENT_KEYS_TYPE = computation_types.at_clients(
+    computation_types.TensorType(tf.int32, [3]))
+_WHIMSY_SELECT_MAX_KEY_TYPE = computation_types.at_server(tf.int32)
+_WHIMSY_SELECT_SERVER_STATE_TYPE = computation_types.at_server(tf.string)
+_WHIMSY_SELECTED_TYPE = computation_types.to_type((tf.string, tf.int32))
+_WHIMSY_SELECT_SELECT_FN_TYPE = computation_types.FunctionType(
+    (tf.string, tf.int32), _WHIMSY_SELECTED_TYPE)
+_WHIMSY_SELECT_RESULT_TYPE = computation_types.at_clients(
+    computation_types.SequenceType(_WHIMSY_SELECTED_TYPE))
+_WHIMSY_SELECT_TYPE = computation_types.FunctionType([
+    _WHIMSY_SELECT_CLIENT_KEYS_TYPE,
+    _WHIMSY_SELECT_MAX_KEY_TYPE,
+    _WHIMSY_SELECT_SERVER_STATE_TYPE,
+    _WHIMSY_SELECT_SELECT_FN_TYPE,
+], _WHIMSY_SELECT_RESULT_TYPE)
+_WHIMSY_SELECT_NUM_CLIENTS = 3
+
+
+def create_whimsy_intrinsic_def_federated_secure_select():
+  return intrinsic_defs.FEDERATED_SECURE_SELECT, _WHIMSY_SELECT_TYPE
+
+
+def create_whimsy_intrinsic_def_federated_select():
+  return intrinsic_defs.FEDERATED_SELECT, _WHIMSY_SELECT_TYPE
+
+
+def create_whimsy_federated_select_args():
+  client_keys = [[0, 1, 2]] * _WHIMSY_SELECT_NUM_CLIENTS
+  max_key = 2
+  server_state = 'abc'
+  select_fn = create_whimsy_computation_tensorflow_identity(
+      _WHIMSY_SELECTED_TYPE)
+  return [
+      (client_keys, _WHIMSY_SELECT_CLIENT_KEYS_TYPE),
+      (max_key, _WHIMSY_SELECT_MAX_KEY_TYPE),
+      (server_state, _WHIMSY_SELECT_SERVER_STATE_TYPE),
+      select_fn,
+  ]
+
+
+def create_whimsy_federated_select_expected_result():
+  """Constructs the expected result of the `whimsy` `federated_select`."""
+  results = []
+  for _ in range(_WHIMSY_SELECT_NUM_CLIENTS):
+    result = [('abc', 0), ('abc', 1), ('abc', 2)]
+    element_spec = computation_types.StructType([(None, tf.string),
+                                                 (None, tf.int32)])
+    results.append(
+        tensorflow_utils.make_data_set_from_elements(None, result,
+                                                     element_spec))
+  return results
+
+
 def create_whimsy_intrinsic_def_federated_sum():
   value = intrinsic_defs.FEDERATED_SUM
   type_signature = computation_types.FunctionType(
@@ -500,11 +553,10 @@ def create_whimsy_computation_tensorflow_empty():
   return value, type_signature
 
 
-def create_whimsy_computation_tensorflow_identity():
+def create_whimsy_computation_tensorflow_identity(arg_type=tf.float32):
   """Returns a tensorflow computation and type `(float32 -> float32)`."""
-  tensor_type = computation_types.TensorType(tf.float32)
   value, type_signature = tensorflow_computation_factory.create_identity(
-      tensor_type)
+      computation_types.to_type(arg_type))
   return value, type_signature
 
 

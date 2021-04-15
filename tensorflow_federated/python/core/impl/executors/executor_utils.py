@@ -206,6 +206,18 @@ async def embed_scalar_multiply_operator(
   return await executor.create_value(proto, type_signature)
 
 
+async def embed_indexing_operator(
+    executor,
+    operand_type: computation_types.TensorType,
+    index_type: computation_types.TensorType,
+    local_computation_factory=tensorflow_computation_factory
+    .TensorFlowComputationFactory()):
+  """Embeds a binary indexing operator in `executor`."""
+  proto, type_signature = local_computation_factory.create_indexing_operator(
+      operand_type, index_type)
+  return await executor.create_value(proto, type_signature)
+
+
 def create_intrinsic_comp(intrinsic_def, type_spec):
   """Creates an intrinsic `pb.Computation`.
 
@@ -471,6 +483,7 @@ def reconcile_value_type_with_type_spec(
       raise TypeError('Expected a value of type {}, found {}.'.format(
           type_spec, value_type))
   return type_spec if type_spec is not None else value_type
+
 
 # TODO(b/181132351): Remove any references to TensorFlow from this file,
 # including those in the default parameters (e.g., local_computation_factory,

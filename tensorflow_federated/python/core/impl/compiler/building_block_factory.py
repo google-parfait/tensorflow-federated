@@ -912,6 +912,12 @@ def create_federated_select(
   py_typecheck.check_type(server_val, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(select_fn, building_blocks.ComputationBuildingBlock)
   py_typecheck.check_type(secure, bool)
+  single_key_type = max_key.type_signature.member
+  select_fn_unnamed_param_type = computation_types.StructType([
+      (None, server_val.type_signature.member),
+      (None, single_key_type),
+  ])
+  select_fn = _unname_fn_parameter(select_fn, select_fn_unnamed_param_type)
   result_type = computation_types.at_clients(
       computation_types.SequenceType(select_fn.type_signature.result))
   intrinsic_type = computation_types.FunctionType([

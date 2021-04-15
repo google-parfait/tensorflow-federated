@@ -113,3 +113,19 @@ class LocalComputationFactory(metaclass=abc.ABCMeta):
       element representing the formal type of that computation.
     """
     raise NotImplementedError
+
+  def create_indexing_operator(
+      self, operand_type: computation_types.TensorType,
+      index_type: computation_types.TensorType) -> ComputationProtoAndType:
+    """Creates a TFF computation selecting an index from an argument.
+
+    Args:
+      operand_type: The type of the value to be indexed into.
+      index_type: The type of the index. Must be a scalar.
+
+    Returns:
+      A tuple `(pb.Computation, computation_types.Type)' with the first element
+      being a TFF computation with semantics as described above, and the second
+      element representing the formal type of that computation.
+    """
+    raise NotImplementedError

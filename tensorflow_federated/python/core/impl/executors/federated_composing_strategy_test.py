@@ -292,6 +292,7 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     self.assertEqual(result, [10 + 1] * num_clients)
 
   def test_federated_map_all_equal(self):
+
     @computations.tf_computation(tf.int32)
     def add_one(x):
       return x + 1
@@ -305,6 +306,34 @@ class FederatedComposingStrategyTest(absltest.TestCase):
     result = _invoke(executor, comp)
     for value in result:
       self.assertEqual(value.numpy(), 10 + 1)
+
+  def test_federated_select(self):
+
+    @computations.tf_computation
+    def get_keys():
+      return tf.constant([1, 2, 5])
+
+    @computations.tf_computation(tf.string, tf.int32)
+    def select_fn(database, key):
+      return collections.OrderedDict(database=database, key=key)
+
+    @computations.federated_computation
+    def comp():
+      client_keys = intrinsics.federated_eval(get_keys, placements.CLIENTS)
+      max_key = intrinsics.federated_value(5, placements.SERVER)
+      server_val = intrinsics.federated_value('db', placements.SERVER)
+      return intrinsics.federated_select(client_keys, max_key, server_val,
+                                         select_fn)
+
+    executor, num_clients = _create_test_executor()
+    results = _invoke(executor, comp)
+    self.assertIsInstance(results, list)
+    self.assertLen(results, num_clients)
+    for client_result in results:
+      self.assertIsInstance(client_result, tf.data.Dataset)
+      for actual, expected_key in zip(client_result, [1, 2, 5]):
+        expected = collections.OrderedDict(database='db', key=expected_key)
+        self.assertEqual(actual, expected)
 
   def test_federated_zip_at_server_unnamed(self):
 

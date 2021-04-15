@@ -31,7 +31,6 @@ from tensorflow_federated.python.core.impl.types import type_serialization
 from tensorflow_federated.python.core.impl.types import type_transformations
 from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 
-
 # TODO(b/181028772): Move this and similar code to `backends/tensorflow`.
 
 # TODO(b/181131807): Remove independent invocations of the helper methods, and
@@ -67,6 +66,13 @@ class TensorFlowComputationFactory(
     return create_binary_operator_with_upcast(
         computation_types.StructType([(None, operand_type),
                                       (None, scalar_type)]), tf.multiply)
+
+  def create_indexing_operator(
+      self,
+      operand_type: computation_types.TensorType,
+      index_type: computation_types.TensorType,
+  ) -> ComputationProtoAndType:
+    return create_indexing_operator(operand_type, index_type)
 
 
 def _tensorflow_comp(
@@ -305,6 +311,35 @@ def create_binary_operator_with_upcast(
   parameter_binding = pb.TensorFlow.Binding(
       struct=pb.TensorFlow.StructBinding(
           element=[operand_1_binding, operand_2_binding]))
+  tensorflow = pb.TensorFlow(
+      graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
+      parameter=parameter_binding,
+      result=result_binding)
+  return _tensorflow_comp(tensorflow, type_signature)
+
+
+def create_indexing_operator(
+    operand_type: computation_types.TensorType,
+    index_type: computation_types.TensorType,
+) -> ComputationProtoAndType:
+  """Returns a tensorflow computation computing an indexing operation."""
+  operand_type.check_tensor()
+  index_type.check_tensor()
+  if index_type.shape.rank != 0:
+    raise TypeError(f'Expected index type to be a scalar, found {index_type}.')
+  with tf.Graph().as_default() as graph:
+    operand_value, operand_binding = tensorflow_utils.stamp_parameter_in_graph(
+        'indexing_operand', operand_type, graph)
+    index_value, index_binding = tensorflow_utils.stamp_parameter_in_graph(
+        'index', index_type, graph)
+    result_value = tf.gather(operand_value, index_value)
+    result_type, result_binding = tensorflow_utils.capture_result_from_graph(
+        result_value, graph)
+  type_signature = computation_types.FunctionType(
+      computation_types.StructType((operand_type, index_type)), result_type)
+  parameter_binding = pb.TensorFlow.Binding(
+      struct=pb.TensorFlow.StructBinding(
+          element=[operand_binding, index_binding]))
   tensorflow = pb.TensorFlow(
       graph_def=serialization_utils.pack_graph_def(graph.as_graph_def()),
       parameter=parameter_binding,

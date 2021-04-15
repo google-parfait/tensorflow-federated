@@ -549,6 +549,57 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     raise NotImplementedError('The secure sum intrinsic is not implemented.')
 
   @tracing.trace
+  async def compute_federated_secure_select(
+      self,
+      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+    raise NotImplementedError('The secure select intrinsic is not implemented.')
+
+  @tracing.trace
+  async def compute_federated_select(
+      self,
+      arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
+    client_keys_type, max_key_type, server_val_type, select_fn_type = (
+        arg.type_signature)
+    del client_keys_type  # Unused
+    py_typecheck.check_type(arg.internal_representation, structure.Struct)
+    client_keys, max_key, server_val, select_fn = arg.internal_representation
+    py_typecheck.check_type(client_keys, list)
+    py_typecheck.check_len(client_keys, len(self._target_executors))
+    py_typecheck.check_type(max_key, executor_value_base.ExecutorValue)
+    py_typecheck.check_type(server_val, executor_value_base.ExecutorValue)
+    py_typecheck.check_type(select_fn, pb.Computation)
+    unplaced_server_val, unplaced_max_key = await asyncio.gather(
+        server_val.compute(), max_key.compute())
+    select_type = computation_types.FunctionType(
+        arg.type_signature,
+        computation_types.at_clients(
+            computation_types.SequenceType(select_fn_type.result)))
+    select_pb = executor_utils.create_intrinsic_comp(
+        intrinsic_defs.FEDERATED_SELECT, select_type)
+
+    async def child_fn(child, child_client_keys):
+      child_max_key_fut = child.create_value(unplaced_max_key, max_key_type)
+      child_server_val_fut = child.create_value(unplaced_server_val,
+                                                server_val_type)
+      child_select_fn_fut = child.create_value(select_fn, select_fn_type)
+      child_max_key, child_server_val, child_select_fn = await asyncio.gather(
+          child_max_key_fut, child_server_val_fut, child_select_fn_fut)
+      child_fn_fut = child.create_value(select_pb, select_type)
+      child_arg_fut = child.create_struct(
+          structure.Struct([(None, child_client_keys), (None, child_max_key),
+                            (None, child_server_val), (None, child_select_fn)]))
+      child_fn, child_arg = await asyncio.gather(child_fn_fut, child_arg_fut)
+      return await child.create_call(child_fn, child_arg)
+
+    return FederatedComposingStrategyValue(
+        list(await asyncio.gather(*[
+            child_fn(ex, ex_keys)
+            for (ex, ex_keys) in zip(self._target_executors, client_keys)
+        ])),
+        computation_types.at_clients(
+            computation_types.SequenceType(select_fn_type.result)))
+
+  @tracing.trace
   async def compute_federated_value_at_clients(
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:

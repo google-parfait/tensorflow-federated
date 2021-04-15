@@ -507,7 +507,8 @@ def to_representation_for_type(
   elif type_spec.is_sequence():
     return _to_sequence_internal_rep(value=value, type_spec=type_spec)
   else:
-    raise TypeError('Unexpected type {}.'.format(type_spec))
+    raise TypeError(
+        f'Unexpected type {type_spec} for value of type {type(value)}: {value}')
 
 
 class EagerValue(executor_value_base.ExecutorValue):

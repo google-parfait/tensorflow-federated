@@ -109,6 +109,12 @@ class TestFederatedStrategy(
   which can be useful for testing federated algorithms that use this intrinsic.
   """
 
+  @tracing.trace
+  async def compute_federated_secure_select(
+      self, arg: federated_resolving_strategy.FederatedResolvingStrategyValue
+  ) -> federated_resolving_strategy.FederatedResolvingStrategyValue:
+    self.compute_federated_select(arg)
+
   # Note: we intentionally do not cache the result of
   # _compute_extra_bits_for_secagg() to caching failures, and keeping this
   # stateless is easier to reason about. As this is a test backend, we're less

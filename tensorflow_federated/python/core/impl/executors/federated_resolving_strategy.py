@@ -45,6 +45,7 @@ import asyncio
 from typing import Any, Dict, List
 
 import absl.logging as logging
+import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -535,6 +536,78 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
         'testing, consider using the test executor context by adding the '
         'following during initialization: '
         '`tff.backends.test.set_test_execution_context()`')
+
+  @tracing.trace
+  async def compute_federated_secure_select(
+      self,
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
+    raise NotImplementedError(
+        '`tff.federated_secure_select()` is not implemented in this executor. '
+        'For a fake implementation of `federated_secure_select` suitable for '
+        'testing, consider using the test executor context by adding the '
+        'following during initialization: '
+        '`tff.backends.test.set_test_execution_context()`')
+
+  @tracing.trace
+  async def compute_federated_select(
+      self,
+      arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
+    client_keys_type, max_key_type, server_val_type, select_fn_type = (
+        arg.type_signature)
+    py_typecheck.check_type(arg.internal_representation, structure.Struct)
+    client_keys, max_key, server_val, select_fn = arg.internal_representation
+    # We slice up the value as-needed, so `max_key` is not used.
+    del max_key, max_key_type
+    del server_val_type  # unused
+    py_typecheck.check_type(client_keys, list)
+    py_typecheck.check_type(server_val, list)
+    server_val_at_server = server_val[0]
+    py_typecheck.check_type(server_val_at_server,
+                            executor_value_base.ExecutorValue)
+    py_typecheck.check_type(select_fn, pb.Computation)
+    server = self._target_executors[placements.SERVER][0]
+    clients = self._target_executors[placements.CLIENTS]
+    single_key_type = computation_types.TensorType(tf.int32)
+    client_keys_type.member.check_tensor()
+    if (client_keys_type.member.dtype != tf.int32 or
+        client_keys_type.member.shape.rank != 1):
+      raise TypeError(f'Unexpected `client_keys_type`: {client_keys_type}')
+    num_keys_per_client: int = client_keys_type.member.shape.dims[0].value
+    unplaced_result_type = computation_types.SequenceType(select_fn_type.result)
+    select_fn_at_server = await server.create_value(select_fn, select_fn_type)
+    index_fn_at_server = await executor_utils.embed_indexing_operator(
+        server, client_keys_type.member, single_key_type)
+
+    async def select_single_key(keys_at_server, key_index):
+      # Grab the `key_index`th key from the keys tensor.
+      index_arg = await server.create_struct(
+          structure.Struct([
+              (None, keys_at_server),
+              (None, await server.create_value(key_index, single_key_type)),
+          ]))
+      key_at_server = await server.create_call(index_fn_at_server, index_arg)
+      select_fn_arg = await server.create_struct(
+          structure.Struct([
+              (None, server_val_at_server),
+              (None, key_at_server),
+          ]))
+      selected = await server.create_call(select_fn_at_server, select_fn_arg)
+      return await selected.compute()
+
+    async def select_single_client(client, keys_at_client):
+      keys_at_server = await server.create_value(await keys_at_client.compute(),
+                                                 client_keys_type.member)
+      unplaced_values = await asyncio.gather(*[
+          select_single_key(keys_at_server, i)
+          for i in range(num_keys_per_client)
+      ])
+      return await client.create_value(unplaced_values, unplaced_result_type)
+
+    return FederatedResolvingStrategyValue(
+        list(await asyncio.gather(*[
+            select_single_client(client, keys_at_client)
+            for client, keys_at_client in zip(clients, client_keys)
+        ])), computation_types.at_clients(unplaced_result_type))
 
   @tracing.trace
   async def compute_federated_sum(

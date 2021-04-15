@@ -211,6 +211,20 @@ class FederatingStrategy(abc.ABC):
     raise NotImplementedError()
 
   @abc.abstractmethod
+  async def compute_federated_secure_select(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated secure select."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  async def compute_federated_select(
+      self, arg: executor_value_base.ExecutorValue
+  ) -> executor_value_base.ExecutorValue:
+    """Returns an embedded call for a federated select."""
+    raise NotImplementedError()
+
+  @abc.abstractmethod
   async def compute_federated_sum(
       self, arg: executor_value_base.ExecutorValue
   ) -> executor_value_base.ExecutorValue:

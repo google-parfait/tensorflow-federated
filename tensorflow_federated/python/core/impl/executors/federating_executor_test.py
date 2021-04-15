@@ -76,6 +76,8 @@ def get_named_parameters_for_supported_intrinsics() -> List[Tuple[str, Any]]:
        *executor_test_utils.create_whimsy_intrinsic_def_federated_map_all_equal()),
       ('intrinsic_def_federated_mean',
        *executor_test_utils.create_whimsy_intrinsic_def_federated_mean()),
+      ('intrinsic_def_federated_select',
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_select()),
       ('intrinsic_def_federated_sum',
        *executor_test_utils.create_whimsy_intrinsic_def_federated_sum()),
       ('intrinsic_def_federated_value_at_clients',
@@ -411,6 +413,11 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
        *executor_test_utils.create_whimsy_intrinsic_def_federated_mean(),
        [executor_test_utils.create_whimsy_value_at_clients()],
        11.0),
+      ('intrinsic_def_federated_select',
+       *executor_test_utils.create_whimsy_intrinsic_def_federated_select(),
+       executor_test_utils.create_whimsy_federated_select_args(),
+       executor_test_utils.create_whimsy_federated_select_expected_result(),
+       ),
       ('intrinsic_def_federated_sum',
        *executor_test_utils.create_whimsy_intrinsic_def_federated_sum(),
        [executor_test_utils.create_whimsy_value_at_clients()],
@@ -466,11 +473,14 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     self.assertEqual(result.type_signature.compact_representation(),
                      comp_type.result.compact_representation())
     actual_result = self.run_sync(result.compute())
+    self.assert_maybe_list_equal(actual_result, expected_result)
+
+  def assert_maybe_list_equal(self, actual_result, expected_result):
     if (all_isinstance([actual_result, expected_result], list) or
         all_isinstance([actual_result, expected_result], tf.data.Dataset)):
       for actual_element, expected_element in zip(actual_result,
                                                   expected_result):
-        self.assertEqual(actual_element, expected_element)
+        self.assert_maybe_list_equal(actual_element, expected_element)
     else:
       self.assertEqual(actual_result, expected_result)
 
