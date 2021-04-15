@@ -51,13 +51,17 @@ See the [README](../README.md) and
 ## What is the relationship between FedJAX and TensorFlow Federated?
 
 TensorFlow Federated (TFF) is a full-fledged framework for federated learning
-that is designed to facilitate composing different algorithms and features, and
-to enable porting code across different simulation and deployment scenarios. TFF
-provides a scalable runtime and supports several privacy, compression
-algorithms, and optimizers, as outlined in
-https://www.tensorflow.org/federated/tff_for_research. In contrast,
-[FedJAX](https://github.com/google/fedjax) is a lightweight Python- and
-JAX-based simulation library that focuses on ease of use and rapid prototyping
-of federated learning algorithms for research purposes. TensorFlow Federated and
-FedJAX are developed as separate projects, without expectation of code
-portability.
+and analytics that is designed to facilitate composing different algorithms and
+features, and to enable porting code across different simulation and deployment
+scenarios. TFF provides a scalable runtime and supports many privacy,
+compression, and optimization algorithms via its standard APIs. TFF also
+supports
+[many types of FL research](https://www.tensorflow.org/federated/tff_for_research),
+with a collection of examples from published Google papers appearing in the
+[google-research repo](https://github.com/google-research/federated).
+
+In contrast, [FedJAX](https://github.com/google/fedjax) is a lightweight Python-
+and JAX-based simulation library that focuses on ease of use and rapid
+prototyping of federated learning algorithms for research purposes. TensorFlow
+Federated and FedJAX are developed as separate projects, without expectation of
+code portability.
