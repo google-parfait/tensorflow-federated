@@ -219,8 +219,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "requires-gpu-nvidia",
-        # TODO(b/185290076): Re-enable this test on TAP when possible.
-        "notap",
     ],
     deps = [
         ":eager_tf_executor",
@@ -416,8 +414,6 @@ py_test(
     srcs_version = "PY3",
     tags = [
         "requires-gpu-nvidia",
-        # TODO(b/185290076): Re-enable this test on TAP when possible.
-        "notap",
     ],
     deps = [
         ":executor_base",
