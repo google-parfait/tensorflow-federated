@@ -30,7 +30,7 @@ py_library(
 
 py_test(
     name = "group_norm_test",
-    size = "small",
+    timeout = "moderate",
     srcs = ["group_norm_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
