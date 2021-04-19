@@ -32,6 +32,7 @@ from tensorflow_federated.python.core.impl.executors import cardinalities_utils
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_factory
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.executors import ingestable_base
 from tensorflow_federated.python.core.impl.types import type_conversions
 
 
@@ -86,6 +87,11 @@ async def _ingest(executor, val, type_spec):
   """
   if isinstance(val, executor_value_base.ExecutorValue):
     return val
+  elif isinstance(val, ingestable_base.Ingestable):
+    val_type = val.type_signature
+    py_typecheck.check_type(val_type, computation_types.Type)
+    type_spec.check_assignable_from(val_type)
+    return await val.ingest(executor)
   elif (isinstance(val, structure.Struct) and not type_spec.is_federated()):
     type_spec.check_struct()
     v_elem = structure.to_elements(val)

@@ -18,6 +18,7 @@ import collections
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.executors import cardinality_carrying_base
 from tensorflow_federated.python.core.impl.types import placements
 
 
@@ -69,6 +70,8 @@ def infer_cardinalities(value, type_spec):
   """
   py_typecheck.check_not_none(value)
   py_typecheck.check_type(type_spec, computation_types.Type)
+  if isinstance(value, cardinality_carrying_base.CardinalityCarrying):
+    return value.cardinality
   if type_spec.is_federated():
     if type_spec.all_equal:
       return {}

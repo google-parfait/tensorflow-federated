@@ -63,6 +63,7 @@ py_library(
     srcs = ["cardinalities_utils.py"],
     srcs_version = "PY3",
     deps = [
+        ":cardinality_carrying_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
@@ -81,6 +82,13 @@ py_test(
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
     ],
+)
+
+py_library(
+    name = "cardinality_carrying_base",
+    srcs = ["cardinality_carrying_base.py"],
+    srcs_version = "PY3",
+    deps = [],
 )
 
 py_library(
@@ -237,6 +245,7 @@ py_library(
         ":executor_base",
         ":executor_factory",
         ":executor_value_base",
+        ":ingestable_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",
@@ -563,6 +572,13 @@ py_test(
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
     ],
+)
+
+py_library(
+    name = "ingestable_base",
+    srcs = ["ingestable_base.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/core/api:typed_object"],
 )
 
 py_library(
