@@ -564,6 +564,71 @@ class ClippingFactoryExecutionTest(test_case.TestCase):
     self.assertAllClose(3.0, output.measurements['zeroing_norm'])
     self.assertEqual(0, output.measurements['zeroed_count'])
 
+  def test_increasing_zero_clip_sum(self):
+    # Tests when zeroing and clipping are performed with non-integer clips.
+    # Zeroing norm grows by 0.75 each time, clipping norm grows by 0.25.
+
+    @computations.federated_computation(_float_at_server, _float_at_clients)
+    def zeroing_next_fn(state, value):
+      del value
+      return intrinsics.federated_map(
+          computations.tf_computation(lambda x: x + 0.75, tf.float32), state)
+
+    @computations.federated_computation(_float_at_server, _float_at_clients)
+    def clipping_next_fn(state, value):
+      del value
+      return intrinsics.federated_map(
+          computations.tf_computation(lambda x: x + 0.25, tf.float32), state)
+
+    zeroing_norm_process = estimation_process.EstimationProcess(
+        _test_init_fn, zeroing_next_fn, _test_report_fn)
+    clipping_norm_process = estimation_process.EstimationProcess(
+        _test_init_fn, clipping_next_fn, _test_report_fn)
+
+    factory = robust.zeroing_factory(zeroing_norm_process,
+                                     _clipped_sum(clipping_norm_process))
+
+    value_type = computation_types.to_type(tf.float32)
+    process = factory.create(value_type)
+
+    state = process.initialize()
+
+    client_data = [1.0, 2.0, 3.0]
+    output = process.next(state, client_data)
+    self.assertAllClose(1.0, output.measurements['zeroing_norm'])
+    self.assertAllClose(1.0, output.measurements['zeroing']['clipping_norm'])
+    self.assertEqual(2, output.measurements['zeroed_count'])
+    self.assertEqual(0, output.measurements['zeroing']['clipped_count'])
+    self.assertAllClose(1.0, output.result)
+
+    output = process.next(output.state, client_data)
+    self.assertAllClose(1.75, output.measurements['zeroing_norm'])
+    self.assertAllClose(1.25, output.measurements['zeroing']['clipping_norm'])
+    self.assertEqual(2, output.measurements['zeroed_count'])
+    self.assertEqual(0, output.measurements['zeroing']['clipped_count'])
+    self.assertAllClose(1.0, output.result)
+
+    output = process.next(output.state, client_data)
+    self.assertAllClose(2.5, output.measurements['zeroing_norm'])
+    self.assertAllClose(1.5, output.measurements['zeroing']['clipping_norm'])
+    self.assertEqual(1, output.measurements['zeroed_count'])
+    self.assertEqual(1, output.measurements['zeroing']['clipped_count'])
+    self.assertAllClose(2.5, output.result)
+
+    output = process.next(output.state, client_data)
+    self.assertAllClose(3.25, output.measurements['zeroing_norm'])
+    self.assertAllClose(1.75, output.measurements['zeroing']['clipping_norm'])
+    self.assertEqual(0, output.measurements['zeroed_count'])
+    self.assertEqual(2, output.measurements['zeroing']['clipped_count'])
+    self.assertAllClose(4.5, output.result)
+
+    output = process.next(output.state, client_data)
+    self.assertAllClose(4.0, output.measurements['zeroing_norm'])
+    self.assertAllClose(2.0, output.measurements['zeroing']['clipping_norm'])
+    self.assertEqual(0, output.measurements['zeroed_count'])
+    self.assertEqual(1, output.measurements['zeroing']['clipped_count'])
+    self.assertAllClose(5.0, output.result)
+
 
 class NormTest(test_case.TestCase):
 
