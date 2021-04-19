@@ -114,7 +114,7 @@ def main(argv):
 
   def model_fn():
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Input(shape=(784,)),
+        tf.keras.layers.InputLayer(input_shape=(784,)),
         tf.keras.layers.Dense(10, kernel_initializer='zeros'),
         tf.keras.layers.Softmax(),
     ])

@@ -390,7 +390,7 @@ class KerasIntegrationTest(parameterized.TestCase):
 
     def model_fn():
       model = tf.keras.models.Sequential([
-          tf.keras.layers.Input(shape=(input_dim,)),
+          tf.keras.layers.InputLayer(input_shape=(input_dim,)),
           tf.keras.layers.Dense(
               50, activity_regularizer=tf.keras.regularizers.l1(.1)),
           tf.keras.layers.Dense(input_dim, activation='sigmoid'),

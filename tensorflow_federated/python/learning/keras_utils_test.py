@@ -379,7 +379,7 @@ class KerasUtilsTest(test_case.TestCase, parameterized.TestCase):
 
   def test_tff_model_type_spec_from_keras_model_unspecified_sequence_len(self):
     keras_model = tf.keras.Sequential([
-        tf.keras.layers.Input(shape=(None,)),
+        tf.keras.layers.InputLayer(input_shape=(None,)),
         tf.keras.layers.Embedding(input_dim=10, output_dim=10),
         tf.keras.layers.LSTM(1)
     ])

@@ -144,7 +144,7 @@ class TestModelQuant(model.Model):
 
 def _model_fn_from_keras():
   keras_model = tf.keras.Sequential([
-      tf.keras.layers.Input(shape=(1,)),
+      tf.keras.layers.InputLayer(input_shape=(1,)),
       tf.keras.layers.Dense(
           1,
           kernel_initializer='ones',
