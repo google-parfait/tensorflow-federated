@@ -14,15 +14,12 @@
 """Expands ClientData by performing transformations."""
 
 import bisect
-import re
 from typing import Any, Callable, List, Optional
 
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation.datasets import client_data
-
-CLIENT_ID_REGEX = re.compile(r'^(.*)_(\d+)$')
 
 
 class TransformingClientData(client_data.ClientData):
@@ -85,23 +82,21 @@ class TransformingClientData(client_data.ClientData):
 
     self._has_pseudo_clients = num_transformed_clients > len(raw_client_ids)
 
-    if self._has_pseudo_clients:
-      num_digits = len(str(num_transformed_clients - 1))
-      format_str = '{}_{:0' + str(num_digits) + '}'
+    num_digits = len(str(num_transformed_clients - 1))
+    format_str = '{}_{:0' + str(num_digits) + '}'
 
-      k = num_transformed_clients // len(raw_client_ids)
-      self._client_ids = []
-      for raw_client_id in raw_client_ids:
-        for i in range(k):
-          self._client_ids.append(format_str.format(raw_client_id, i))
-      num_extra_client_ids = num_transformed_clients - k * len(raw_client_ids)
-      for c in range(num_extra_client_ids):
-        self._client_ids.append(format_str.format(raw_client_ids[c], k))
-    else:
-      self._client_ids = raw_client_ids
+    k = num_transformed_clients // len(raw_client_ids)
+    self._client_ids = []
+    for raw_client_id in raw_client_ids:
+      for i in range(k):
+        self._client_ids.append(format_str.format(raw_client_id, i))
+    num_extra_client_ids = num_transformed_clients - k * len(raw_client_ids)
+    for c in range(num_extra_client_ids):
+      self._client_ids.append(format_str.format(raw_client_ids[c], k))
 
-    # Already sorted if raw_client_data.client_ids are, but just to be sure...
+    # Already sorted if raw_client_data.client_ids are, but just to be sure.
     self._client_ids = sorted(self._client_ids)
+    self._cached_dataset_computation = None
 
   @property
   def client_ids(self) -> List[str]:
@@ -114,19 +109,25 @@ class TransformingClientData(client_data.ClientData):
       client_id: The pseudo-client id.
 
     Returns:
-      A tuple (raw_client_id, index) where raw_client_id is the string of the
-      raw client_id, and index is the integer index of the pseudo-client.
+      A tuple (raw_client_id, index) where raw_client_id is a `tf.string` of the
+      raw client_id, and index is the integer index of the pseudo-client,
+      represented as a `tf.int64`.
     """
-    if not self._has_pseudo_clients:
-      return client_id, 0
-
-    py_typecheck.check_type(client_id, str)
-    match = CLIENT_ID_REGEX.search(client_id)
-    if not match:
-      raise ValueError('client_id must be a valid string from client_ids.')
-    raw_client_id = match.group(1)
-    index = int(match.group(2))
+    split_string = tf.strings.split(client_id, sep='_')
+    raw_client_id = tf.strings.reduce_join(split_string[:-1], separator='_')
+    index_as_string = split_string[-1]
+    index = tf.strings.to_number(index_as_string, out_type=tf.int64)
     return raw_client_id, index
+
+  def _create_dataset(self, client_id: str):
+    raw_client_id, index = self.split_client_id(client_id)
+    raw_dataset = self._raw_client_data._create_dataset(raw_client_id)  # pylint:disable=protected-access
+    transform_fn = self._make_transform_fn(raw_client_id, index)
+    return raw_dataset.map(transform_fn, tf.data.experimental.AUTOTUNE)
+
+  @property
+  def serializable_dataset_fn(self):
+    return self._create_dataset
 
   def create_tf_dataset_for_client(self, client_id: str) -> tf.data.Dataset:
     py_typecheck.check_type(client_id, str)
@@ -136,7 +137,7 @@ class TransformingClientData(client_data.ClientData):
 
     raw_client_id, index = self.split_client_id(client_id)
     raw_dataset = self._raw_client_data.create_tf_dataset_for_client(
-        raw_client_id)
+        raw_client_id.numpy().decode())
 
     transform_fn = self._make_transform_fn(raw_client_id, index)
     if not transform_fn:
@@ -148,9 +149,3 @@ class TransformingClientData(client_data.ClientData):
   @property
   def element_type_structure(self):
     return self._raw_client_data.element_type_structure
-
-  @property
-  def dataset_computation(self):
-    raise NotImplementedError('TranscormingClientData contains non-TensorFlow '
-                              'logic and is currently incompatible with '
-                              'dataset_computation.')

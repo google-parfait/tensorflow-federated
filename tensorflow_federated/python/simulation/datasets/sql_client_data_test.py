@@ -156,8 +156,6 @@ class PreprocessSqlClientDataTest(tf.test.TestCase):
       client_data = sql_client_data.SqlClientData(
           test_dataset_filepath(), split_name=split_name)
       preprocessed_client_data = client_data.preprocess(lambda x: x)
-      self.assertIsInstance(preprocessed_client_data,
-                            sql_client_data.PreprocessSqlClientData)
       self.assertEqual(preprocessed_client_data.element_type_structure,
                        client_data.element_type_structure)
 

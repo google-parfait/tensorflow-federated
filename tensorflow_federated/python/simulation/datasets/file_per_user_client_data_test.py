@@ -296,8 +296,6 @@ class PreprocessFilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   def test_preprocess_with_identity_gives_same_structure(self):
     data = self._create_fake_client_data().preprocess(lambda x: x)
-    self.assertIsInstance(
-        data, file_per_user_client_data.PreprocessFilePerUserClientData)
     expected_structure = (tf.TensorSpec(shape=[], dtype=tf.int64),
                           tf.TensorSpec(shape=[], dtype=tf.float32),
                           tf.TensorSpec(shape=[2], dtype=tf.float32))

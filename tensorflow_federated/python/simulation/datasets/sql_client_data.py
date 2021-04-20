@@ -13,15 +13,13 @@
 # limitations under the License.
 """Implementation of `ClientData` backed by an SQL database."""
 
-from typing import Callable, Iterator, Optional
+from typing import Iterator, Optional
 
 from absl import logging
-import numpy as np
 import sqlite3
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.simulation.datasets import client_data
 
 
@@ -117,7 +115,6 @@ class SqlClientData(client_data.ClientData):
         list(_fetch_client_ids(database_filepath, split_name)))
     logging.info("Loaded %d client ids from SQL database.",
                  len(self._client_ids))
-    self._cached_dataset_computation = None
     # SQLite returns a single column of bytes which are serialized protocol
     # buffer messages.
     self._element_type_structure = tf.TensorSpec(dtype=tf.string, shape=())
@@ -137,6 +134,10 @@ class SqlClientData(client_data.ClientData):
         output_types=(tf.string))
 
   @property
+  def serializable_dataset_fn(self):
+    return self._create_dataset
+
+  @property
   def client_ids(self):
     return self._client_ids
 
@@ -145,7 +146,7 @@ class SqlClientData(client_data.ClientData):
 
     This function will create a dataset for a given client if `client_id` is
     contained in the `client_ids` property of the `SQLClientData`. Unlike
-    `_create_dataset`, this method is not serializable.
+    `self.serializable_dataset_fn`, this method is not serializable.
 
     Args:
       client_id: The string identifier for the desired client.
@@ -163,137 +164,3 @@ class SqlClientData(client_data.ClientData):
   @property
   def element_type_structure(self):
     return self._element_type_structure
-
-  def create_tf_dataset_from_all_clients(self, seed: Optional[int] = None):
-    """Creates a new `tf.data.Dataset` containing _all_ client examples.
-
-    This function is intended for use training centralized, non-distributed
-    models (num_clients=1). This can be useful as a point of comparison
-    against federated models.
-
-    Currently, the implementation produces a dataset that contains
-    all examples from a single client in order, and so generally additional
-    shuffling should be performed.
-
-    Args:
-      seed: Optional, a seed to determine the order in which clients are
-        processed in the joined dataset. The seed can be any 32-bit unsigned
-        integer or an array of such integers.
-
-    Returns:
-      A `tf.data.Dataset` object.
-    """
-    client_ids = self.client_ids.copy()
-    np.random.RandomState(seed=seed).shuffle(client_ids)
-    nested_dataset = tf.data.Dataset.from_tensor_slices(client_ids)
-    # We apply _create_dataset here to avoid loading all client datasets
-    # in memory, which is slow. Note that tf.data.Dataset.map implicitly wraps
-    # the input mapping in a tf.function, requiring ._create_dataset to be
-    # traceable by TF.
-    example_dataset = nested_dataset.flat_map(self._create_dataset)
-    return example_dataset
-
-  @property
-  def dataset_computation(self):
-    if self._cached_dataset_computation is None:
-
-      @computations.tf_computation(tf.string)
-      def dataset_computation(client_id):
-        return self._create_dataset(client_id)
-
-      self._cached_dataset_computation = dataset_computation
-    return self._cached_dataset_computation
-
-  def preprocess(
-      self, preprocess_fn: Callable[[tf.data.Dataset], tf.data.Dataset]
-  ) -> "PreprocessSqlClientData":
-    """Applies `preprocess_fn` to each client's data."""
-    py_typecheck.check_callable(preprocess_fn)
-    return PreprocessSqlClientData(self, preprocess_fn)
-
-
-class PreprocessSqlClientData(client_data.ClientData):
-  """Applies a preprocessing function to every dataset it returns.
-
-  This class delegates all other aspects of implementation to its underlying
-  `SqlClientData` object, simply wiring in its `preprocess_fn` where
-  necessary.
-  """
-
-  def __init__(self, underlying_client_data, preprocess_fn):
-    """Performs client-level preprocessing on a SqlClientData.
-
-    Args:
-      underlying_client_data: A SqlClientData instance.
-      preprocess_fn: A callable accepting a `tf.data.Dataset` and returning a
-        preprocessed `tf.data.Dataset`.
-    """
-    py_typecheck.check_type(underlying_client_data, SqlClientData)
-    py_typecheck.check_callable(preprocess_fn)
-    self._underlying_client_data = underlying_client_data
-    self._preprocess_fn = preprocess_fn
-    example_dataset = self._preprocess_fn(
-        self._underlying_client_data.create_tf_dataset_for_client(
-            next(iter(underlying_client_data.client_ids))))
-    self._element_type_structure = example_dataset.element_spec
-    self._cached_dataset_computation = None
-
-  def _create_dataset(self, client_id: str):
-    return self._preprocess_fn(
-        self._underlying_client_data._create_dataset(client_id))  # pylint:disable=protected-access
-
-  @property
-  def client_ids(self):
-    return self._underlying_client_data.client_ids
-
-  def create_tf_dataset_for_client(self, client_id: str):
-    return self._preprocess_fn(
-        self._underlying_client_data.create_tf_dataset_for_client(client_id))
-
-  @property
-  def dataset_computation(self):
-    if self._cached_dataset_computation is None:
-
-      @computations.tf_computation(tf.string)
-      def dataset_comp(client_id):
-        return self._preprocess_fn(
-            self._underlying_client_data.dataset_computation(client_id))
-
-      self._cached_dataset_computation = dataset_comp
-
-    return self._cached_dataset_computation
-
-  @property
-  def element_type_structure(self):
-    return self._element_type_structure
-
-  def create_tf_dataset_from_all_clients(self,
-                                         seed: Optional[int] = None
-                                        ) -> tf.data.Dataset:
-    """Creates a new `tf.data.Dataset` containing _all_ client examples.
-
-    This function is intended for use training centralized, non-distributed
-    models (num_clients=1). This can be useful as a point of comparison
-    against federated models.
-
-    Currently, the implementation produces a dataset that contains
-    all examples from a single client in order, and so generally additional
-    shuffling should be performed.
-
-    Args:
-      seed: Optional, a seed to determine the order in which clients are
-        processed in the joined dataset. The seed can be any 32-bit unsigned
-        integer or an array of such integers.
-
-    Returns:
-      A `tf.data.Dataset` object.
-    """
-    client_ids = self.client_ids.copy()
-    np.random.RandomState(seed=seed).shuffle(client_ids)
-    nested_dataset = tf.data.Dataset.from_tensor_slices(client_ids)
-    # We apply _create_dataset here to avoid loading all client datasets
-    # in memory, which is slow. Note that tf.data.Dataset.map implicitly wraps
-    # the input mapping in a tf.function, requiring ._create_dataset to be
-    # traceable by TF.
-    example_dataset = nested_dataset.flat_map(self._create_dataset)
-    return example_dataset
