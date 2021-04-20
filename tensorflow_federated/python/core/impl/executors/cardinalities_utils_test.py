@@ -23,10 +23,10 @@ from tensorflow_federated.python.core.impl.types import placements
 
 class InferCardinalitiesTest(absltest.TestCase):
 
-  def test_returns_empty_dict_none_value(self):
+  def test_raises_none_value(self):
     type_signature = computation_types.TensorType(tf.int32)
-    self.assertEqual(
-        cardinalities_utils.infer_cardinalities(None, type_signature), {})
+    with self.assertRaises(TypeError):
+      cardinalities_utils.infer_cardinalities(None, type_signature)
 
   def test_raises_none_type(self):
     with self.assertRaises(TypeError):

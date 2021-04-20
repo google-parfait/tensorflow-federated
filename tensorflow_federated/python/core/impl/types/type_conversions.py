@@ -394,7 +394,7 @@ def type_to_py_container(value, type_spec):
   container_type = structure_type_spec.python_container or structure.Struct
   container_is_anon_tuple = structure_type_spec.python_container is None
 
-  # Avoid projecting the `structure.StructType`d TFF value into a Python
+  # Avoid projecting the `structure.Struct` into a Python
   # container that is not supported.
   if not container_is_anon_tuple:
     num_named_elements = len(dir(anon_tuple))
@@ -405,21 +405,17 @@ def type_to_py_container(value, type_spec):
                        'elements.'.format(anon_tuple, container_type))
     if (num_named_elements > 0 and
         is_container_type_without_names(container_type)):
+      # Note: This could be relaxed in some cases if needed.
       raise ValueError(
           'Cannot represent value {} with named elements '
-          'using container type {} which does not support names. In TFF\'s '
-          'typesystem, this corresponds to an implicit downcast'.format(
+          'using container type {} which does not support names.'.format(
               anon_tuple, container_type))
-  if (is_container_type_with_names(container_type) and
-      len(dir(structure_type_spec)) != len(anon_tuple)):
-    # If the type specifies the names, we have all the information we need.
-    # Otherwise we must raise here.
-    raise ValueError('When packaging as a Python value which requires names, '
-                     'the TFF type spec must have all names specified. Found '
-                     '{} names in type spec {} of length {}, with requested'
-                     'python type {}.'.format(
-                         len(dir(structure_type_spec)), structure_type_spec,
-                         len(anon_tuple), container_type))
+    if (num_unnamed_elements > 0 and
+        is_container_type_with_names(container_type)):
+      # Note: This could be relaxed in some cases if needed.
+      raise ValueError('Cannot represent value {} with unnamed elements '
+                       'with container type {} which requires names.'.format(
+                           anon_tuple, container_type))
 
   elements = []
   for index, (elem_name, elem_type) in enumerate(
