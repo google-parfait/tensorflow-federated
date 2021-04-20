@@ -592,33 +592,32 @@ class TypeToPyContainerTest(test_case.TestCase):
             anon_tuple, computation_types.StructWithPythonType(types, TestFoo)),
         TestFoo(a=1, b=2.0))
 
-  def test_anon_tuple_without_names_to_container_with_names_fails(self):
+  def test_anon_tuple_without_names_promoted_to_container_with_names(self):
     anon_tuple = structure.Struct([(None, 1), (None, 2.0)])
     types = [('a', tf.int32), ('b', tf.float32)]
-    with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
-      type_conversions.type_to_py_container(
-          anon_tuple, computation_types.StructWithPythonType(types, dict))
-
-    with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
-      type_conversions.type_to_py_container(
-          anon_tuple,
-          computation_types.StructWithPythonType(types,
-                                                 collections.OrderedDict))
+    dict_converted_value = type_conversions.type_to_py_container(
+        anon_tuple, computation_types.StructWithPythonType(types, dict))
+    odict_converted_value = type_conversions.type_to_py_container(
+        anon_tuple,
+        computation_types.StructWithPythonType(types, collections.OrderedDict))
 
     test_named_tuple = collections.namedtuple('TestNamedTuple', ['a', 'b'])
-    with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
-      type_conversions.type_to_py_container(
-          anon_tuple,
-          computation_types.StructWithPythonType(types, test_named_tuple))
+    named_tuple_converted_value = type_conversions.type_to_py_container(
+        anon_tuple,
+        computation_types.StructWithPythonType(types, test_named_tuple))
 
     @attr.s
     class TestFoo(object):
       a = attr.ib()
       b = attr.ib()
 
-    with self.assertRaisesRegex(ValueError, 'value.*with unnamed elements'):
-      type_conversions.type_to_py_container(
-          anon_tuple, computation_types.StructWithPythonType(types, TestFoo))
+    attr_converted_value = type_conversions.type_to_py_container(
+        anon_tuple, computation_types.StructWithPythonType(types, TestFoo))
+
+    self.assertIsInstance(dict_converted_value, dict)
+    self.assertIsInstance(odict_converted_value, collections.OrderedDict)
+    self.assertIsInstance(named_tuple_converted_value, test_named_tuple)
+    self.assertIsInstance(attr_converted_value, TestFoo)
 
   def test_nested_py_containers(self):
     anon_tuple = structure.Struct([
