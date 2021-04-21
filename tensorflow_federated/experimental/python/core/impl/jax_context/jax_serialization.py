@@ -20,10 +20,10 @@ from tensorflow_federated.experimental.python.core.impl.jax_context import jax_c
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.backends.xla import xla_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.types import type_conversions
+from tensorflow_federated.python.core.impl.types import typed_object
 
 
 class _XlaSerializerTensorArg(jax.ShapeDtypeStruct, typed_object.TypedObject):

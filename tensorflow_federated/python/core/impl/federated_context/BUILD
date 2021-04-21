@@ -136,7 +136,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:typed_object",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
@@ -147,6 +146,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/context_stack:symbol_binding_context",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/impl/types:typed_object",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
     ],
 )

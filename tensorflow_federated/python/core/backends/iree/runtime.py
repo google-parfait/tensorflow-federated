@@ -19,9 +19,9 @@ import iree.compiler
 import iree.runtime
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import computation_module
+from tensorflow_federated.python.core.impl.types import typed_object
 
 # A mutex that protects `_driver_name_to_config_dict`.
 _driver_name_to_config_lock = threading.Lock()

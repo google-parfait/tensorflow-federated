@@ -188,12 +188,12 @@ py_library(
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:typed_object",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/types:typed_object",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
         "//tensorflow_federated/python/tensorflow_libs:graph_merge",
     ],
@@ -251,10 +251,10 @@ py_library(
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:typed_object",
         "//tensorflow_federated/python/core/impl/compiler:compiler_pipeline",
         "//tensorflow_federated/python/core/impl/context_stack:context_base",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
+        "//tensorflow_federated/python/core/impl/types:typed_object",
     ],
 )
 
@@ -487,7 +487,6 @@ py_library(
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:typed_object",
         "//tensorflow_federated/python/core/impl/compiler:building_block_factory",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
@@ -497,6 +496,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_factory",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/types:typed_object",
     ],
 )
 
@@ -526,7 +526,7 @@ py_library(
     name = "executor_value_base",
     srcs = ["executor_value_base.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/api:typed_object"],
+    deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
 )
 
 py_library(
@@ -578,7 +578,7 @@ py_library(
     name = "ingestable_base",
     srcs = ["ingestable_base.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/core/api:typed_object"],
+    deps = ["//tensorflow_federated/python/core/impl/types:typed_object"],
 )
 
 py_library(
@@ -675,11 +675,11 @@ py_library(
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:typed_object",
         "//tensorflow_federated/python/core/impl/compiler:intrinsic_defs",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "//tensorflow_federated/python/core/impl/types:typed_object",
     ],
 )
 
@@ -712,7 +712,7 @@ py_library(
         ":executor_value_base",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:typed_object",
+        "//tensorflow_federated/python/core/impl/types:typed_object",
     ],
 )
 

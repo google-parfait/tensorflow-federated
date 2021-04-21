@@ -14,7 +14,7 @@
 """Abstract interface for objects able to ingest themselves into an executor."""
 
 import abc
-from tensorflow_federated.python.core.api import typed_object
+from tensorflow_federated.python.core.impl.types import typed_object
 
 
 class Ingestable(typed_object.TypedObject, metaclass=abc.ABCMeta):

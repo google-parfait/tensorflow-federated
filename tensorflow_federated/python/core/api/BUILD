@@ -39,8 +39,8 @@ py_library(
     srcs = ["computation_base.py"],
     srcs_version = "PY3",
     deps = [
-        ":typed_object",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/types:typed_object",
     ],
 )
 
@@ -110,10 +110,4 @@ py_test(
         ":computation_types",
         ":test_case",
     ],
-)
-
-py_library(
-    name = "typed_object",
-    srcs = ["typed_object.py"],
-    srcs_version = "PY3",
 )

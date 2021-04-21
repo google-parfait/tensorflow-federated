@@ -78,10 +78,10 @@ py_library(
     srcs = ["type_conversions.py"],
     srcs_version = "PY3",
     deps = [
+        ":typed_object",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
-        "//tensorflow_federated/python/core/api:typed_object",
     ],
 )
 
@@ -94,10 +94,10 @@ py_test(
     deps = [
         ":placements",
         ":type_conversions",
+        ":typed_object",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:test_case",
-        "//tensorflow_federated/python/core/api:typed_object",
     ],
 )
 
@@ -170,4 +170,10 @@ py_test(
         ":type_transformations",
         "//tensorflow_federated/python/core/api:computation_types",
     ],
+)
+
+py_library(
+    name = "typed_object",
+    srcs = ["typed_object.py"],
+    srcs_version = "PY3",
 )

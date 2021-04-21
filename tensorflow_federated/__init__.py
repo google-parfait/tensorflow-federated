@@ -42,7 +42,6 @@ from tensorflow_federated.python.core.api.computation_types import Type
 from tensorflow_federated.python.core.api.computations import check_returns_type
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
-from tensorflow_federated.python.core.api.typed_object import TypedObject
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_aggregate
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_broadcast
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_collect
@@ -63,6 +62,7 @@ from tensorflow_federated.python.core.impl.federated_context.value_impl import V
 from tensorflow_federated.python.core.impl.types.placements import CLIENTS
 from tensorflow_federated.python.core.impl.types.placements import SERVER
 from tensorflow_federated.python.core.impl.types.type_conversions import structure_from_tensor_type_tree
+from tensorflow_federated.python.core.impl.types.typed_object import TypedObject
 
 if sys.version_info[0] < 3 or sys.version_info[1] < 6:
   raise Exception('TFF only supports Python versions 3.6 or later.')

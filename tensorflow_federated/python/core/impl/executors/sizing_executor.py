@@ -20,9 +20,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.types import typed_object
 
 # This type is used to pass around information related to tensors. The int
 # describes the number of elements of a tensor, the DType is the same tensor's

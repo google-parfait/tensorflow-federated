@@ -15,8 +15,8 @@
 
 import abc
 
-from tensorflow_federated.python.core.api import typed_object
 from tensorflow_federated.python.core.impl.compiler import building_blocks
+from tensorflow_federated.python.core.impl.types import typed_object
 
 
 class Computation(typed_object.TypedObject, metaclass=abc.ABCMeta):

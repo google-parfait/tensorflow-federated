@@ -15,7 +15,7 @@
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_types
-from tensorflow_federated.python.core.api import typed_object
+from tensorflow_federated.python.core.impl.types import typed_object
 
 
 class ComputationModule(typed_object.TypedObject):
