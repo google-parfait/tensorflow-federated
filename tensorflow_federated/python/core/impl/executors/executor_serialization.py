@@ -546,7 +546,9 @@ def deserialize_value(
     TypeError: If the arguments are of the wrong types.
     ValueError: If the value is malformed.
   """
-  py_typecheck.check_type(value_proto, executor_pb2.Value)
+  if not hasattr(value_proto, 'WhichOneof'):
+    raise TypeError('`value_proto` must be a protocol buffer message with a '
+                    '`value` oneof field.')
   which_value = value_proto.WhichOneof('value')
   if which_value == 'tensor':
     return _deserialize_tensor_value(value_proto)
