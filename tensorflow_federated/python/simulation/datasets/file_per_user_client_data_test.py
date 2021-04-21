@@ -257,7 +257,7 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
     # This pattern of using FilePerUserClientData to do a dictionary lookup
     # is not its intended use case. The test here is only to verify performance
     # in settings with large numbers of clients.
-    client_ids_to_files = {str(x): str(x) for x in range(500_000)}
+    client_ids_to_files = {str(x): str(x) for x in range(100_000)}
 
     def dataset_fn(_):
       return tf.data.Dataset.range(100)
@@ -334,7 +334,7 @@ class PreprocessFilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
     # This pattern of using FilePerUserClientData to do a dictionary lookup
     # is not its intended use case. The test here is only to verify performance
     # in settings with large numbers of clients.
-    client_ids_to_files = {str(x): str(x) for x in range(500_000)}
+    client_ids_to_files = {str(x): str(x) for x in range(100_000)}
 
     def dataset_fn(_):
       return tf.data.Dataset.range(100)
