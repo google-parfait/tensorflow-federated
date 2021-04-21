@@ -13,32 +13,43 @@ upper_tabs:
     other:
     - name: Tutorials
       contents:
+      - title: "Overview"
+        path: /federated/tutorials/tutorials_overview
+      - heading: Federated learning
       - title: "Federated Learning for Image Classification"
         path: /federated/tutorials/federated_learning_for_image_classification
       - title: "Federated Learning for Text Generation"
         path: /federated/tutorials/federated_learning_for_text_generation
+      - title: "Tuning Recommended Aggregations for Learning"
+        path: /federated/tutorials/tuning_recommended_aggregators
+
+      - heading: Custom computations
       - title: "Building Your Own Federated Learning Algorithm"
         path: /federated/tutorials/building_your_own_federated_learning_algorithm
+
+      - heading: Simulation Runtime
+      - title: "High-performance simulations with TFF"
+        path: /federated/tutorials/simulations
+      - title: "TFF simulation with accelerators (GPU)"
+        path: /federated/tutorials/simulations_with_accelerators
+      - title: "Working with ClientData"
+        path: /federated/tutorials/working_with_client_data
+
+      - heading: Advanced tutorials
+      - title: "Implementing Custom Aggregators"
+        path: /federated/tutorials/custom_aggregators
+      - title: "Random noise generation"
+        path: /federated/tutorials/random_noise_generation
+      - title: "TFF for Federated Learning Research: Model and Update Compression"
+        path: /federated/tutorials/tff_for_federated_learning_research_compression
       - title: "Custom Federated Algorithms Part 1 - Introduction to the Federated Core"
         path: /federated/tutorials/custom_federated_algorithms_1
       - title: "Custom Federated Algorithms Part 2 - Implementing Federated Averaging"
         path: /federated/tutorials/custom_federated_algorithms_2
-      - title: "Tuning Recommended Aggregations for Learning"
-        path: /federated/tutorials/tuning_recommended_aggregators
-      - title: "Implementing Custom Aggregators"
-        path: /federated/tutorials/custom_aggregators
-      - title: "High-performance simulations with TFF"
-        path: /federated/tutorials/simulations
-      - title: "TFF for Federated Learning Research: Model and Update Compression"
-        path: /federated/tutorials/tff_for_federated_learning_research_compression
-      - title: "Working with ClientData"
-        path: /federated/tutorials/working_with_client_data
       - title: "Experimental support for JAX in TFF"
         path: /federated/experimental/tutorials/jax_support
-      - title: "TFF simulation with accelerators (GPU)"
-        path: /federated/tutorials/simulations_with_accelerators
-      - title: "Random noise generation"
-        path: /federated/tutorials/random_noise_generation
+
+
     - name: Guide
       contents:
       # The first item serves as the landing page and transitively leads to all the remaining

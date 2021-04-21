@@ -21,9 +21,12 @@ landing_page:
           <a href="https://arxiv.org/abs/1811.03604" class="external">prediction models for mobile keyboards</a>
           without uploading sensitive typing data to servers.</p>
           <p>TFF enables developers to simulate the included federated learning algorithms on their
-          models and data, as well as to experiment with novel algorithms. The building blocks
-          provided by TFF can also be used to implement non-learning computations, such as aggregated
-          analytics over decentralized data. TFF’s interfaces are organized in two layers:</p>
+          models and data, as well as to experiment with novel algorithms. Researchers will find
+          <a href="/federated/tff_for_research.md">starting points and complete examples</a>
+          for many kinds of research. The building blocks
+          provided by TFF can also be used to implement non-learning computations, such
+          as <a href="https://ai.googleblog.com/2020/05/federated-analytics-collaborative-data.html">federated analytics</a>.
+          TFF’s interfaces are organized in two main layers:</p>
       - heading: Federated Learning (FL) API
         description: >
           This layer offers a set of high-level interfaces that allow developers to apply the
@@ -47,9 +50,9 @@ landing_page:
           background: grey
       - description: >
           <p>TFF enables developers to declaratively express federated computations, so they could be
-          deployed to diverse runtime environments. Included with TFF is a single-machine
+          deployed to diverse runtime environments. Included with TFF is a performant multi-machine
           simulation runtime for experiments. Please visit the
-          <a href="/federated/tutorials/federated_learning_for_image_classification">tutorials</a>
+          <a href="/federated/tutorials/tutorials_overview.md">tutorials</a>
           and try it out yourself!</p>
           <p>For questions and support, find us at the
           <a href="https://stackoverflow.com/questions/tagged/tensorflow-federated">tensorflow-federated tag</a>
