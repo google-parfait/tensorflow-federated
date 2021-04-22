@@ -18,15 +18,25 @@ from tensorflow_federated.python.core.impl.context_stack import context_stack_im
 from tensorflow_federated.python.core.impl.executors import execution_context
 
 
-def create_test_execution_context(num_clients=None, clients_per_thread=1):
+def create_test_execution_context(num_clients=None,
+                                  clients_per_thread=1,
+                                  *,
+                                  default_num_clients: int = 0):
   """Creates an execution context that executes computations locally."""
   factory = executor_stacks.test_executor_factory(
-      num_clients=num_clients, clients_per_thread=clients_per_thread)
+      num_clients=num_clients,
+      clients_per_thread=clients_per_thread,
+      default_num_clients=default_num_clients)
   return execution_context.ExecutionContext(executor_fn=factory)
 
 
-def set_test_execution_context(num_clients=None, clients_per_thread=1):
+def set_test_execution_context(num_clients=None,
+                               clients_per_thread=1,
+                               *,
+                               default_num_clients: int = 0):
   """Sets an execution context that executes computations locally."""
   context = create_test_execution_context(
-      num_clients=num_clients, clients_per_thread=clients_per_thread)
+      num_clients=num_clients,
+      clients_per_thread=clients_per_thread,
+      default_num_clients=default_num_clients)
   context_stack_impl.context_stack.set_default_context(context)

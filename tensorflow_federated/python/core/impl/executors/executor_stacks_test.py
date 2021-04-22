@@ -368,22 +368,6 @@ class ExecutorStacksTest(parameterized.TestCase):
         {placements.CLIENTS: 10})
     executor_mock.assert_called_once()
 
-  @parameterized.named_parameters(
-      ('local_executor', executor_stacks.local_executor_factory),
-      ('sizing_executor', executor_stacks.sizing_executor_factory),
-      ('debug_executor', executor_stacks.thread_debugging_executor_factory),
-  )
-  def test_create_executor_raises_with_wrong_cardinalities(
-      self, executor_factory_fn):
-    executor_factory_impl = executor_factory_fn(num_clients=5)
-    cardinalities = {
-        placements.SERVER: 1,
-        None: 1,
-        placements.CLIENTS: 1,
-    }
-    with self.assertRaises(ValueError,):
-      executor_factory_impl.create_executor(cardinalities)
-
 
 class UnplacedExecutorFactoryTest(parameterized.TestCase):
 
@@ -503,16 +487,6 @@ class FederatingExecutorFactoryTest(absltest.TestCase):
     sizing_ex_list = federating_factory.sizing_executors
     self.assertIsInstance(sizing_ex_list, list)
     self.assertLen(sizing_ex_list, 5 + 6)
-
-  def test_create_executor_raises_mismatched_num_clients(self):
-    unplaced_factory = executor_stacks.UnplacedExecutorFactory(use_caching=True)
-    federating_factory = executor_stacks.FederatingExecutorFactory(
-        num_clients=3,
-        clients_per_thread=1,
-        unplaced_ex_factory=unplaced_factory,
-        use_sizing=True)
-    with self.assertRaisesRegex(ValueError, 'configured to return 3 clients'):
-      federating_factory.create_executor(cardinalities={placements.CLIENTS: 5})
 
 
 class MinimalLengthFlatStackFnTest(parameterized.TestCase):

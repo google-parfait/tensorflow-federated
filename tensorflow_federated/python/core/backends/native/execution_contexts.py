@@ -13,6 +13,8 @@
 # limitations under the License.
 """Execution contexts for the native backend."""
 
+from typing import Optional
+
 from tensorflow_federated.python.core.backends.native import compiler
 from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
 from tensorflow_federated.python.core.impl.executors import execution_context
@@ -24,7 +26,9 @@ def create_local_execution_context(num_clients=None,
                                    clients_per_thread=1,
                                    server_tf_device=None,
                                    client_tf_devices=tuple(),
-                                   reference_resolving_clients=False):
+                                   reference_resolving_clients=False,
+                                   *,
+                                   default_num_clients: int = 0):
   """Creates an execution context that executes computations locally."""
   factory = executor_stacks.local_executor_factory(
       num_clients=num_clients,
@@ -32,7 +36,8 @@ def create_local_execution_context(num_clients=None,
       clients_per_thread=clients_per_thread,
       server_tf_device=server_tf_device,
       client_tf_devices=client_tf_devices,
-      reference_resolving_clients=reference_resolving_clients)
+      reference_resolving_clients=reference_resolving_clients,
+      default_num_clients=default_num_clients)
 
   def _compiler(comp):
     native_form = compiler.transform_to_native_form(comp)
@@ -50,7 +55,9 @@ def set_local_execution_context(num_clients=None,
                                 clients_per_thread=1,
                                 server_tf_device=None,
                                 client_tf_devices=tuple(),
-                                reference_resolving_clients=False):
+                                reference_resolving_clients=False,
+                                *,
+                                default_num_clients: int = 0):
   """Sets an execution context that executes computations locally."""
   context = create_local_execution_context(
       num_clients=num_clients,
@@ -58,28 +65,35 @@ def set_local_execution_context(num_clients=None,
       clients_per_thread=clients_per_thread,
       server_tf_device=server_tf_device,
       client_tf_devices=client_tf_devices,
-      reference_resolving_clients=reference_resolving_clients)
+      reference_resolving_clients=reference_resolving_clients,
+      default_num_clients=default_num_clients)
   context_stack_impl.context_stack.set_default_context(context)
 
 
-def create_sizing_execution_context(num_clients: int = None,
+def create_sizing_execution_context(num_clients: Optional[int] = None,
                                     max_fanout: int = 100,
-                                    clients_per_thread: int = 1):
+                                    clients_per_thread: int = 1,
+                                    *,
+                                    default_num_clients: int = 0):
   """Creates an execution context that executes computations locally."""
   factory = executor_stacks.sizing_executor_factory(
       num_clients=num_clients,
       max_fanout=max_fanout,
-      clients_per_thread=clients_per_thread)
+      clients_per_thread=clients_per_thread,
+      default_num_clients=default_num_clients)
   return execution_context.ExecutionContext(
       executor_fn=factory, compiler_fn=compiler.transform_to_native_form)
 
 
 def create_thread_debugging_execution_context(num_clients=None,
-                                              clients_per_thread=1):
+                                              clients_per_thread=1,
+                                              *,
+                                              default_num_clients: int = 0):
   """Creates a simple execution context that executes computations locally."""
   factory = executor_stacks.thread_debugging_executor_factory(
       num_clients=num_clients,
       clients_per_thread=clients_per_thread,
+      default_num_clients=default_num_clients,
   )
 
   def _debug_compiler(comp):
@@ -91,10 +105,14 @@ def create_thread_debugging_execution_context(num_clients=None,
 
 
 def set_thread_debugging_execution_context(num_clients=None,
-                                           clients_per_thread=1):
+                                           clients_per_thread=1,
+                                           *,
+                                           default_num_clients: int = 0):
   """Sets an execution context that executes computations locally."""
   context = create_thread_debugging_execution_context(
-      num_clients=num_clients, clients_per_thread=clients_per_thread)
+      num_clients=num_clients,
+      clients_per_thread=clients_per_thread,
+      default_num_clients=default_num_clients)
   context_stack_impl.context_stack.set_default_context(context)
 
 

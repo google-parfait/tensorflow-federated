@@ -22,7 +22,9 @@ from tensorflow_federated.python.core.impl.executors import executor_stacks
 
 def test_executor_factory(
     num_clients: Optional[int] = None,
-    clients_per_thread: int = 1) -> executor_factory.ExecutorFactory:
+    clients_per_thread: int = 1,
+    *,
+    default_num_clients: int = 0) -> executor_factory.ExecutorFactory:
   """Constructs a test execution stack to execute local computations.
 
   This factory is similar to `tff.framework.thread_debugging_executor_factory`
@@ -33,8 +35,8 @@ def test_executor_factory(
   require unique implementations for the intrinsics provided by TFF.
 
   Args:
-    num_clients: The number of clients. If specified, the executor factory
-      function returned by `local_executor_factory` will be configured to have
+    num_clients: (Deprecated) The number of clients. If specified, the executor
+      factory returned by `local_executor_factory` will be configured to have
       exactly `num_clients` clients. If unspecified (`None`), then the function
       returned will attempt to infer cardinalities of all placements for which
       it is passed values.
@@ -43,6 +45,8 @@ def test_executor_factory(
       concurrency of the TFF runtime, which can be useful if client work is very
       lightweight or models are very large and multiple copies cannot fit in
       memory.
+    default_num_clients: The number of clients to run by default if cardinality
+      cannot be inferred from arguments.
 
   Returns:
     An `executor_factory.ExecutorFactory`.
@@ -51,10 +55,12 @@ def test_executor_factory(
       use_caching=False,
       can_resolve_references=True,
   )
+  num_clients = executor_stacks.normalize_num_clients_and_default_num_clients(
+      num_clients, default_num_clients)
   federating_executor_factory = executor_stacks.FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
-      num_clients=num_clients,
+      default_num_clients=default_num_clients,
       use_sizing=False,
       federated_strategy_factory=federated_strategy.TestFederatedStrategy
       .factory)

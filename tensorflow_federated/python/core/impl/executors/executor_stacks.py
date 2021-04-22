@@ -17,6 +17,7 @@ import asyncio
 from concurrent import futures
 import math
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+import warnings
 
 from absl import logging
 import attr
@@ -341,21 +342,17 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
   `sizing_executor.SizingExecutor`.
 
   This factory is initialized with:
-    * An integer number of client executors, indicating the number of client
-      executors that should be run in parallel. Setting this parameter to a low
-      number can aid with OOMs on accelerators, or speed up the computation in
-      the case of extremely lightweight client work.
+    * An integer number of clients per thread, indicating the number of client
+      executors that should be run in a single thread. Setting this parameter to
+      a high number can aid with OOMs on accelerators, or speed up the
+      computation in the case of extremely lightweight client work.
     * An `UnplacedExecutorFactory` to use to construct the executors for
       computations after they have had their placement ingested and stripped by
       the `FederatingExecutor`. That is, this factory produces the executors
       used to run client, server and unplaced computations.
-    * An optional number of clients. In the case that this parameter is
-      unspecified, this factory will be polymorphic to number of clients
-      requested, relying on inference of this value from a higher level to
-      populate the `cardinalities` parameter to its `create_executor` method.
-      In the case that this parameter is specified, the `create_executor`
-      method will check that the requested cardinalities is consistent with
-      this hardcoded parameter.
+    * A number of default clients. If client cardinalities cannot be inferred
+      from data, this value will be used as the default number of clients to
+      be supported by the returned executors.
     * A boolean `use_sizing` to indicate whether to wire instances of
       `sizing_executors.SizingExecutor` on top of the client stacks.
     * An optional instance of `LocalComputationFactory` to use to construct
@@ -368,7 +365,7 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
                *,
                clients_per_thread: int,
                unplaced_ex_factory: UnplacedExecutorFactory,
-               num_clients: Optional[int] = None,
+               default_num_clients: int = 0,
                use_sizing: bool = False,
                local_computation_factory: local_computation_factory_base
                .LocalComputationFactory = tensorflow_computation_factory
@@ -382,11 +379,10 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
         local_computation_factory_base.LocalComputationFactory)
     self._clients_per_thread = clients_per_thread
     self._unplaced_executor_factory = unplaced_ex_factory
-    if num_clients is not None:
-      py_typecheck.check_type(num_clients, int)
-      if num_clients <= 0:
-        raise ValueError('Number of clients must be positive.')
-    self._num_clients = num_clients
+    py_typecheck.check_type(default_num_clients, int)
+    if default_num_clients < 0:
+      raise ValueError('Number of clients must be nonnegative.')
+    self._default_num_clients = default_num_clients
     self._use_sizing = use_sizing
     if self._use_sizing:
       self._sizing_executors = []
@@ -408,18 +404,7 @@ class FederatingExecutorFactory(executor_factory.ExecutorFactory):
       self, cardinalities: executor_factory.CardinalitiesType) -> int:
     num_requested_clients = cardinalities.get(placements.CLIENTS)
     if num_requested_clients is None:
-      if self._num_clients is not None:
-        return self._num_clients
-      else:
-        return 0
-    if (self._num_clients is not None and
-        self._num_clients != num_requested_clients):
-      raise ValueError(
-          'FederatingStackFactory configured to return {} '
-          'clients, but encountered a request for {} clients.'
-          'If your computation accepts CLIENTS-placed arguments, it is '
-          'recommended to avoid setting the num_clients parameter in the TFF '
-          'runtime.'.format(self._num_clients, num_requested_clients))
+      return self._default_num_clients
     return num_requested_clients
 
   def create_executor(
@@ -613,6 +598,16 @@ class ComposingExecutorFactory(executor_factory.ExecutorFactory):
     return reference_resolving_executor.ReferenceResolvingExecutor(executors[0])
 
 
+def normalize_num_clients_and_default_num_clients(
+    num_clients: Optional[int], default_num_clients: int) -> int:
+  if num_clients is not None:
+    warnings.warn('num_clients is deprecated; please use default_num_clients '
+                  'instead.')
+    py_typecheck.check_type(num_clients, int)
+    return num_clients
+  return default_num_clients
+
+
 def local_executor_factory(
     num_clients=None,
     max_fanout=100,
@@ -623,7 +618,9 @@ def local_executor_factory(
     support_sequence_ops=False,
     leaf_executor_fn=eager_tf_executor.EagerTFExecutor,
     local_computation_factory=tensorflow_computation_factory
-    .TensorFlowComputationFactory()
+    .TensorFlowComputationFactory(),
+    *,
+    default_num_clients: int = 0,
 ) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally.
 
@@ -631,15 +628,14 @@ def local_executor_factory(
   executor.
 
   Args:
-    num_clients: The number of clients. If specified, the executor factory
-      function returned by `local_executor_factory` will be configured to have
-      exactly `num_clients` clients. If unspecified (`None`), then the function
-      returned will attempt to infer cardinalities of all placements for which
-      it is passed values.
+    num_clients: (Deprecated) The number of clients. If specified, the executor
+      factory returned by `local_executor_factory` will be configured to support
+      `num_clients` clients by default. Prefer setting `default_num_clients`
+      instead.
     max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
-      `num_clients > max_fanout`, the constructed executor stack will consist of
+      `num_cients > max_fanout`, the constructed executor stack will consist of
       multiple levels of aggregators. The height of the stack will be on the
-      order of `log(num_clients) / log(max_fanout)`.
+      order of `log(num_cients) / log(max_fanout)`.
     clients_per_thread: Integer number of clients for each of TFF's threads to
       run in sequence. Increasing `clients_per_thread` therefore reduces the
       concurrency of the TFF runtime, which can be useful if client work is very
@@ -662,6 +658,8 @@ def local_executor_factory(
       use to construct local computations used as parameters in certain
       federated operators (such as `tff.federated_sum`, etc.). Defaults to
       a TensorFlow computation factory that generates TensorFlow code.
+    default_num_clients: The number of clients to run by default if cardinality
+      cannot be inferred from arguments.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -675,10 +673,10 @@ def local_executor_factory(
   py_typecheck.check_type(client_tf_devices, (tuple, list))
   py_typecheck.check_type(max_fanout, int)
   py_typecheck.check_type(clients_per_thread, int)
-  if num_clients is not None:
-    py_typecheck.check_type(num_clients, int)
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
+  num_clients = normalize_num_clients_and_default_num_clients(
+      num_clients, default_num_clients)
   unplaced_ex_factory = UnplacedExecutorFactory(
       use_caching=False,
       support_sequence_ops=support_sequence_ops,
@@ -689,7 +687,7 @@ def local_executor_factory(
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
-      num_clients=num_clients,
+      default_num_clients=num_clients,
       use_sizing=False,
       local_computation_factory=local_computation_factory)
   flat_stack_fn = create_minimal_length_flat_stack_fn(
@@ -711,8 +709,9 @@ def local_executor_factory(
 def thread_debugging_executor_factory(
     num_clients=None,
     clients_per_thread=1,
-    leaf_executor_fn=eager_tf_executor.EagerTFExecutor
-) -> executor_factory.ExecutorFactory:
+    leaf_executor_fn=eager_tf_executor.EagerTFExecutor,
+    *,
+    default_num_clients: int = 0) -> executor_factory.ExecutorFactory:
   r"""Constructs a simplified execution stack to execute local computations.
 
   The constructed executors support a limited set of TFF's computations. In
@@ -744,11 +743,10 @@ def thread_debugging_executor_factory(
   execution, and where the TFF runtime infers data dependencies.
 
   Args:
-    num_clients: The number of clients. If specified, the executor factory
-      function returned by `local_executor_factory` will be configured to have
-      exactly `num_clients` clients. If unspecified (`None`), then the function
-      returned will attempt to infer cardinalities of all placements for which
-      it is passed values.
+    num_clients: (Deprecated) The number of clients. If specified, the executor
+      factory returned by `local_executor_factory` will be configured to support
+      `num_clients` clients by default. Prefer setting `default_num_clients`
+      instead.
     clients_per_thread: Integer number of clients for each of TFF's threads to
       run in sequence. Increasing `clients_per_thread` therefore reduces the
       concurrency of the TFF runtime, which can be useful if client work is very
@@ -758,6 +756,8 @@ def thread_debugging_executor_factory(
       is the eager TF executor (other possible options: XLA, IREE). Should
       accept the `device` keyword argument if the executor is to be configured
       with explicitly chosen devices.
+    default_num_clients: The number of clients to run by default if cardinality
+      cannot be inferred from arguments.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -767,8 +767,8 @@ def thread_debugging_executor_factory(
     ValueError: If the number of clients is specified and not one or larger.
   """
   py_typecheck.check_type(clients_per_thread, int)
-  if num_clients is not None:
-    py_typecheck.check_type(num_clients, int)
+  num_clients = normalize_num_clients_and_default_num_clients(
+      num_clients, default_num_clients)
   unplaced_ex_factory = UnplacedExecutorFactory(
       use_caching=False,
       can_resolve_references=False,
@@ -776,7 +776,7 @@ def thread_debugging_executor_factory(
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
-      num_clients=num_clients,
+      default_num_clients=num_clients,
       use_sizing=False)
 
   return ResourceManagingExecutorFactory(
@@ -784,19 +784,20 @@ def thread_debugging_executor_factory(
 
 
 def sizing_executor_factory(
-    num_clients: int = None,
+    num_clients: Optional[int] = None,
     max_fanout: int = 100,
     clients_per_thread: int = 1,
-    leaf_executor_fn=eager_tf_executor.EagerTFExecutor
+    leaf_executor_fn=eager_tf_executor.EagerTFExecutor,
+    *,
+    default_num_clients: int = 0,
 ) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally with sizing.
 
   Args:
-    num_clients: The number of clients. If specified, the executor factory
-      function returned by `sizing_executor_factory` will be configured to have
-      exactly `num_clients` clients. If unspecified (`None`), then the function
-      returned will attempt to infer cardinalities of all placements for which
-      it is passed values.
+    num_clients: (Deprecated) The number of clients. If specified, the executor
+      factory returned by `local_executor_factory` will be configured to support
+      `num_clients` clients by default. Prefer setting `default_num_clients`
+      instead.
     max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
       `num_clients > max_fanout`, the constructed executor stack will consist of
       multiple levels of aggregators. The height of the stack will be on the
@@ -808,8 +809,10 @@ def sizing_executor_factory(
       memory.
     leaf_executor_fn: A function that constructs leaf-level executors. Default
       is the eager TF executor (other possible options: XLA, IREE). Should
-      accept the `device` keyword argument if the executor is to be configured
-      with explicitly chosen devices.
+        accept the `device` keyword argument if the executor is to be configured
+        with explicitly chosen devices.
+    default_num_clients: The number of clients to run by default if cardinality
+      cannot be inferred from arguments.
 
   Returns:
     An instance of `executor_factory.ExecutorFactory` encapsulating the
@@ -820,8 +823,8 @@ def sizing_executor_factory(
   """
   py_typecheck.check_type(max_fanout, int)
   py_typecheck.check_type(clients_per_thread, int)
-  if num_clients is not None:
-    py_typecheck.check_type(num_clients, int)
+  num_clients = normalize_num_clients_and_default_num_clients(
+      num_clients, default_num_clients)
   if max_fanout < 2:
     raise ValueError('Max fanout must be greater than 1.')
   unplaced_ex_factory = UnplacedExecutorFactory(
@@ -829,7 +832,7 @@ def sizing_executor_factory(
   federating_executor_factory = FederatingExecutorFactory(
       clients_per_thread=clients_per_thread,
       unplaced_ex_factory=unplaced_ex_factory,
-      num_clients=num_clients,
+      default_num_clients=num_clients,
       use_sizing=True)
   flat_stack_fn = create_minimal_length_flat_stack_fn(
       max_fanout, federating_executor_factory)
@@ -955,8 +958,8 @@ class _CardinalitiesOrReadyListChanged():
     return cardinalities_changed or ready_list_changed
 
 
-def _configure_remote_workers(num_clients, remote_executors):
-  """"Configures `num_clients` across `remote_executors`."""
+def _configure_remote_workers(default_num_clients, remote_executors):
+  """"Configures `default_num_clients` across `remote_executors`."""
   loop, must_close_loop = _get_event_loop()
   available_executors = [ex for ex in remote_executors if ex.is_ready]
   logging.info('%s TFF workers available out of a total of %s.',
@@ -965,16 +968,15 @@ def _configure_remote_workers(num_clients, remote_executors):
     raise execution_context.RetryableError(
         'No workers are ready; try again to reconnect.')
   try:
-    remaining_clients = num_clients
+    remaining_clients = default_num_clients
     live_workers = []
     for ex_idx, ex in enumerate(available_executors):
       remaining_executors = len(available_executors) - ex_idx
-      num_clients_to_host = remaining_clients // remaining_executors
-      remaining_clients -= num_clients_to_host
-      if num_clients_to_host > 0:
-        _configure_remote_executor(ex,
-                                   {placements.CLIENTS: num_clients_to_host},
-                                   loop)
+      default_num_clients_to_host = remaining_clients // remaining_executors
+      remaining_clients -= default_num_clients_to_host
+      if default_num_clients_to_host > 0:
+        _configure_remote_executor(
+            ex, {placements.CLIENTS: default_num_clients_to_host}, loop)
         live_workers.append(ex)
   finally:
     if must_close_loop:
@@ -1008,7 +1010,7 @@ def remote_executor_factory(
     max_fanout: The maximum fanout at any point in the aggregation hierarchy. If
       `num_clients > max_fanout`, the constructed executor stack will consist of
       multiple levels of aggregators. The height of the stack will be on the
-      order of `log(num_clients) / log(max_fanout)`.
+      order of `log(default_num_clients) / log(max_fanout)`.
     default_num_clients: The number of clients to use for simulations where the
       number of clients cannot be inferred. Usually the number of clients will
       be inferred from the number of values passed to computations which accept
