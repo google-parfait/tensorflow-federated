@@ -84,8 +84,8 @@ def load_data(cache_dir=None):
         corresponds to the coarse label of the associated image. Labels are
         in the range [0-19].
     -   `'image'`: a `tf.Tensor` with `dtype=tf.uint8` and shape [32, 32, 3],
-        corresponding to the pixels of the handwritten digit, with values in
-        the range [0, 255].
+        containing the red/blue/green pixels of the image. Each pixel is a value
+        in the range [0, 255].
     -   `'label'`: a `tf.Tensor` with `dtype=tf.int64` and shape [1], the class
         label of the corresponding image. Labels are in the range [0-99].
 
