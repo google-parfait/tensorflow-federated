@@ -26,38 +26,31 @@ EXPECTED_ELEMENT_TYPE = collections.OrderedDict(
     label=tf.TensorSpec(shape=(), dtype=tf.int64))
 
 
-# Add a get_synthetic test analogous to other datasets.
-class LoadDataTest(tf.test.TestCase):
+class CIFAR100Test(tf.test.TestCase):
 
-  def test_load_train_data(self):
-    self.skipTest(
-        "CI infrastructure doesn't support downloading from GCS. Remove "
-        'skipTest to run test locally.')
-    cifar_train = cifar100.load_data(FLAGS.test_tmpdir)[0]
-    self.assertLen(cifar_train.client_ids, 500)
-    self.assertCountEqual(cifar_train.client_ids, [str(i) for i in range(500)])
-    self.assertEqual(cifar_train.element_type_structure, EXPECTED_ELEMENT_TYPE)
-    expected_coarse_labels = []
-    expected_labels = []
-    for i in range(20):
-      expected_coarse_labels += [i] * 2500
-    for i in range(100):
-      expected_labels += [i] * 500
-    coarse_labels = []
-    labels = []
-    for client_id in cifar_train.client_ids:
-      client_data = self.evaluate(
-          list(cifar_train.create_tf_dataset_for_client(client_id)))
-      self.assertLen(client_data, 100)
-      for x in client_data:
-        coarse_labels.append(x['coarse_label'])
-        labels.append(x['label'])
-    self.assertLen(coarse_labels, 50000)
-    self.assertLen(labels, 50000)
-    self.assertCountEqual(coarse_labels, expected_coarse_labels)
-    self.assertCountEqual(labels, expected_labels)
+  def test_get_synthetic(self):
+    client_data = cifar100.get_synthetic()
+    self.assertLen(client_data.client_ids, 1)
+    self.assertEqual(client_data.element_type_structure, EXPECTED_ELEMENT_TYPE)
 
-  def test_load_test_data(self):
+    data = self.evaluate(
+        list(
+            client_data.create_tf_dataset_for_client(
+                client_data.client_ids[0])))
+    coarse_labels = [x['coarse_label'] for x in data]
+    images = [x['image'] for x in data]
+    labels = [x['label'] for x in data]
+    self.assertLen(coarse_labels, 5)
+    self.assertCountEqual(coarse_labels, [4, 4, 4, 8, 10])
+
+    self.assertLen(labels, 5)
+    self.assertCountEqual(labels, [0, 51, 51, 88, 71])
+
+    self.assertLen(images, 5)
+    self.assertEqual(images[0].shape, (32, 32, 3))
+    self.assertEqual(images[-1].shape, (32, 32, 3))
+
+  def test_load_from_gcs(self):
     self.skipTest(
         "CI infrastructure doesn't support downloading from GCS. Remove "
         'skipTest to run test locally.')

@@ -46,23 +46,17 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":download",
+        ":from_tensor_slices_client_data",
         ":sql_client_data",
     ],
 )
 
 py_test(
     name = "cifar100_test",
-    size = "medium",
+    size = "small",
     srcs = ["cifar100_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    tags = [
-        "external",
-        "guitar",
-        "manual",
-        "nokokoro",
-        "notap",
-    ],
     deps = [":cifar100"],
 )
 
