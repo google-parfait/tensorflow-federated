@@ -263,8 +263,13 @@ def _make_wrapper(clipping_norm: Union[float,
 
     clipping_norm = clipping_norm_process.report(clipping_norm_state)
 
+    clients_clipping_norm = intrinsics.federated_broadcast(clipping_norm)
+
+    # TODO(b/163880757): Remove this when server-only metrics are supported.
+    clipping_norm = intrinsics.federated_mean(clients_clipping_norm)
+
     clipped_value, global_norm, was_clipped = intrinsics.federated_map(
-        clip_fn, (value, intrinsics.federated_broadcast(clipping_norm)))
+        clip_fn, (value, clients_clipping_norm))
 
     new_clipping_norm_state = clipping_norm_process.next(
         clipping_norm_state, global_norm)
