@@ -27,26 +27,27 @@ class MultiGPUTest(tf.test.TestCase):
     super().setUp()
     test_utils.create_logical_multi_gpus()
 
-  def test_check_dataset_reduce_in_multi_gpu_no_reduce_no_raise(self):
+  def test_check_dataset_reduce_for_multi_gpu_no_reduce_no_raise(self):
     with tf.Graph().as_default() as graph:
       tf.data.Dataset.range(10).map(lambda x: x + 1)
-    eager_tf_executor._check_dataset_reduce_in_multi_gpu(graph.as_graph_def())
+    eager_tf_executor._check_dataset_reduce_for_multi_gpu(graph.as_graph_def())
 
-  def test_check_dataset_reduce_in_multi_gpu(self):
+  def test_check_dataset_reduce_for_multi_gpu(self):
     with tf.Graph().as_default() as graph:
       tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
     with self.assertRaisesRegex(
         ValueError, 'Detected dataset reduce op in multi-GPU TFF simulation.*'):
-      eager_tf_executor._check_dataset_reduce_in_multi_gpu(graph.as_graph_def())
+      eager_tf_executor._check_dataset_reduce_for_multi_gpu(
+          graph.as_graph_def())
 
-  def test_check_dataset_reduce_in_multi_gpu_tf_device_no_raise(self):
+  def test_check_dataset_reduce_for_multi_gpu_tf_device_no_raise(self):
     logical_gpus = tf.config.list_logical_devices('GPU')
     with tf.Graph().as_default() as graph:
       with tf.device(logical_gpus[0].name):
         tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
-    eager_tf_executor._check_dataset_reduce_in_multi_gpu(graph.as_graph_def())
+    eager_tf_executor._check_dataset_reduce_for_multi_gpu(graph.as_graph_def())
 
-  def test_get_no_arg_wrapped_function_check_dataset_reduce_in_multi_gpu(self):
+  def test_get_no_arg_wrapped_function_check_dataset_reduce_for_multi_gpu(self):
 
     @computations.tf_computation
     def comp():

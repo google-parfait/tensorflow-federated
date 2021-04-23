@@ -26,6 +26,7 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.executors import eager_tf_executor
 from tensorflow_federated.python.core.impl.executors import executor_stacks
@@ -41,7 +42,7 @@ def _get_first_logical_device(
   return device
 
 
-class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
+class EmbedTfCompTest(test_case.TestCase, parameterized.TestCase):
 
   def test_embed_tensorflow_computation_with_int_arg_and_result(self):
 
@@ -338,11 +339,13 @@ class EmbedTfCompTest(tf.test.TestCase, parameterized.TestCase):
           param_type=None,
           device=_get_first_logical_device(device_type))
 
-  def test_check_dataset_reduce_in_multi_gpu_no_mgpu_no_raise(self):
+  def test_check_dataset_reduce_for_multi_gpu_raises(self):
     self._skip_in_multi_gpus()
     with tf.Graph().as_default() as graph:
       tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
-    eager_tf_executor._check_dataset_reduce_in_multi_gpu(graph.as_graph_def())
+    with self.assertRaises(ValueError):
+      eager_tf_executor._check_dataset_reduce_for_multi_gpu(
+          graph.as_graph_def())
 
 
 def _create_test_executor_factory():
@@ -350,7 +353,7 @@ def _create_test_executor_factory():
   return executor_stacks.ResourceManagingExecutorFactory(lambda _: executor)
 
 
-class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
+class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 
   def test_to_representation_for_type_with_int(self):
     value = 10
@@ -765,5 +768,112 @@ class EagerTFExecutorTest(tf.test.TestCase, parameterized.TestCase):
                           [2, 5, 10])
 
 
+class InsertSkipDatasetTest(test_case.TestCase):
+
+  def test_inserts_skip_dataset_in_main_graph(self):
+    self.skipTest('b/186155647')
+
+    @computations.tf_computation
+    def comp():
+      ds = tf.data.Dataset.range(5)
+      return ds.reduce(np.int64(0), lambda p, q: p + q)
+
+    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+    graph_def = serialization_utils.unpack_graph_def(
+        comp_proto.tensorflow.graph_def)
+    self.assert_graph_does_not_contain_ops(graph_def, {'SkipDataset'})
+    eager_tf_executor._add_skip_zero_before_finalize_dataset(graph_def)
+    self.assert_graph_contains_ops(graph_def, {'SkipDataset'})
+
+  def test_inserts_skip_dataset_in_function_lib(self):
+    self.skipTest('b/186155647')
+
+    @tf.function
+    def do_reduction(ds):
+      return ds.reduce(np.int64(0), lambda p, q: p + q)
+
+    @computations.tf_computation
+    def comp():
+      ds = tf.data.Dataset.range(5)
+      return do_reduction(ds)
+
+    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+    graph_def = serialization_utils.unpack_graph_def(
+        comp_proto.tensorflow.graph_def)
+    self.assert_graph_does_not_contain_ops(graph_def, {'SkipDataset'})
+    eager_tf_executor._add_skip_zero_before_finalize_dataset(graph_def)
+    self.assert_graph_contains_ops(graph_def, {'SkipDataset'})
+
+  @test_utils.skip_test_for_multi_gpu
+  def test_inserting_skip_leaves_semantics_unchanged_in_main_graph(self):
+
+    @computations.tf_computation
+    def comp():
+      ds = tf.data.Dataset.range(5)
+      return ds.reduce(np.int64(0), lambda p, q: p + q)
+
+    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+    graph_def = serialization_utils.unpack_graph_def(
+        comp_proto.tensorflow.graph_def)
+    eager_tf_executor._add_skip_zero_before_finalize_dataset(graph_def)
+
+    transformed_comp = pb.Computation(
+        tensorflow=pb.TensorFlow(
+            graph_def=serialization_utils.pack_graph_def(graph_def),
+            result=comp_proto.tensorflow.result))
+
+    original_fn = eager_tf_executor._get_wrapped_function_from_comp(
+        comp_proto,
+        must_pin_function_to_cpu=False,
+        param_type=None,
+        device=_get_first_logical_device('CPU'))
+
+    transformed_fn = eager_tf_executor._get_wrapped_function_from_comp(
+        transformed_comp,
+        must_pin_function_to_cpu=False,
+        param_type=None,
+        device=_get_first_logical_device('CPU'))
+
+    original_result = original_fn()
+    transformed_result = transformed_fn()
+
+    self.assertEqual(original_result, transformed_result)
+
+  def test_inserting_skip_leaves_semantics_unchanged_in_function_lib(self):
+
+    @tf.function
+    def reduce(ds):
+      state = np.int64(0)
+      for x in iter(ds):
+        state = state + x
+      return state
+
+    @computations.tf_computation
+    def comp():
+      ds = tf.data.Dataset.range(5)
+      return reduce(ds)
+
+    comp_proto = computation_impl.ComputationImpl.get_proto(comp)
+    graph_def = serialization_utils.unpack_graph_def(
+        comp_proto.tensorflow.graph_def)
+    eager_tf_executor._add_skip_zero_before_finalize_dataset(graph_def)
+
+    transformed_comp = pb.Computation(
+        tensorflow=pb.TensorFlow(
+            graph_def=serialization_utils.pack_graph_def(graph_def),
+            result=comp_proto.tensorflow.result))
+
+    transformed_fn = eager_tf_executor._get_wrapped_function_from_comp(
+        transformed_comp,
+        must_pin_function_to_cpu=False,
+        param_type=None,
+        device=_get_first_logical_device('CPU'))
+
+    transformed_result = transformed_fn()
+    expected_result = [10]
+
+    self.assertEqual(transformed_result, expected_result)
+
+
 if __name__ == '__main__':
-  tf.test.main()
+  test_case.main()

@@ -14,7 +14,7 @@
 """A simple executor that operates synchronously in eager TensorFlow mode."""
 
 import itertools
-from typing import Any, Iterable, MutableMapping, Optional
+from typing import Any, Iterable, List, MutableMapping, Optional, Sequence, Tuple
 
 import cachetools
 import tensorflow as tf
@@ -48,12 +48,9 @@ def _all_graph_def_nodes(
                          *[f.node_def for f in graph_def.library.function])
 
 
-def _check_dataset_reduce_in_multi_gpu(
+def _check_dataset_reduce_for_multi_gpu(
     graph_def: tf.compat.v1.GraphDef) -> None:
   """Detect if ReduceDataset Op is used in a multi-GPU simulation."""
-  gpu_devices = tf.config.list_logical_devices('GPU')
-  if len(gpu_devices) <= 1:
-    return
   has_dataset_reduce_node = False
   for node in _all_graph_def_nodes(graph_def):
     # If `tf.device` is explicitly used in the graph_def, the graph_def was
@@ -68,6 +65,103 @@ def _check_dataset_reduce_in_multi_gpu(
         '`use_experimental_simulation_loop=True` for `tff.learning`; or '
         'use `for ... in iter(dataset)` for your own dataset iteration.'
         'Reduce op will be functional after b/159180073.')
+
+
+def _make_zero_const_node(dtype, name) -> tf.compat.v1.NodeDef:
+  with tf.Graph().as_default() as g:
+    tf.constant(0, dtype=dtype, name=name)
+  nodes = g.as_graph_def().node
+  return nodes[0]
+
+
+def _get_const_and_skip_names(
+    existing_graphdef_node_names: Sequence[str]) -> Tuple[str, str]:
+  """Creates unique node names for const and skip ops to be inserted."""
+  desired_const_name = 'TFFInsertedZeroConstant'
+  desired_skip_name = 'TFFInsertedSkipDataset'
+  sorted_names = sorted(existing_graphdef_node_names)
+  last_node_name = sorted_names[-1]
+  if desired_const_name not in sorted_names:
+    const_name = desired_const_name
+  else:
+    # Inserting this prefix ensures that `const_name` will appear strictly
+    # lexically last, and so cannot conflict with any existing name in the
+    # graph. Similar below. This path should be almost never used.
+    const_name = 'z' * (len(last_node_name) + 1) + desired_const_name
+  if desired_skip_name not in sorted_names:
+    skip_name = desired_skip_name
+  else:
+    skip_name = 'z' * (len(last_node_name) + 1) + desired_skip_name
+  return const_name, skip_name
+
+
+def _add_skip_zero_to_finalize(
+    finalize_node: tf.compat.v1.NodeDef,
+    existing_graphdef_node_names: Sequence[str],
+    name_postfix='',
+    for_function=False,
+) -> List[tf.compat.v1.NodeDef]:
+  """Inserts a Skip(0) call before FinalizeDataset. Returns the new nodes."""
+  const_name, skip_name = _get_const_and_skip_names(
+      existing_graphdef_node_names)
+  zero_const = _make_zero_const_node(tf.int64, name=const_name + name_postfix)
+  skip_node = tf.compat.v1.NodeDef()
+  skip_node.name = skip_name + name_postfix
+  skip_node.op = 'SkipDataset'
+  if for_function:
+    const_name = zero_const.name + ':output:0'
+  else:
+    const_name = zero_const.name
+  skip_node.input.extend([finalize_node.input[0], const_name])
+  # FinalizeDataset is an identity operation on the dataset
+  # itself, and has a similar shape and type signature as Skip.
+  skip_node.attr['output_types'].CopyFrom(finalize_node.attr['output_types'])
+  skip_node.attr['output_shapes'].CopyFrom(finalize_node.attr['output_shapes'])
+  if for_function:
+    finalize_input_name = skip_node.name + ':handle:0'
+  else:
+    finalize_input_name = skip_node.name
+  new_finalize_inputs = [finalize_input_name] + finalize_node.input[1:]
+  del finalize_node.input[:]
+  finalize_node.input.extend(new_finalize_inputs)
+  return [zero_const, skip_node]
+
+
+def _insert_skip_after_all_finalizes(
+    node_defs: List[tf.compat.v1.NodeDef], name_postfix: str,
+    for_function: bool) -> List[tf.compat.v1.NodeDef]:
+  """Adds Skip(0) before all `FinalizeDataset` ops in `node_defs`."""
+  new_nodes = []
+  num_finalizes_found = 0
+  existing_graphdef_node_names = [x.name for x in node_defs]
+  for node in node_defs:
+    if node.op == 'FinalizeDataset':
+      added_nodes = _add_skip_zero_to_finalize(
+          node,
+          existing_graphdef_node_names=existing_graphdef_node_names,
+          for_function=for_function,
+          name_postfix=name_postfix + str(num_finalizes_found))
+      new_nodes.extend(added_nodes)
+      num_finalizes_found += 1
+    new_nodes.append(node)
+  return new_nodes
+
+
+def _add_skip_zero_before_finalize_dataset(graph_def: tf.compat.v1.NodeDef):
+  """Inserts Skip(0) operations before FinalizeDatasets in graph_def."""
+  new_node_collection = _insert_skip_after_all_finalizes(
+      graph_def.node, name_postfix='', for_function=False)
+  del graph_def.node[:]
+  graph_def.node.extend(new_node_collection)
+
+  for fn in graph_def.library.function:
+    # Functions with identical names cannot have conflicting definitions; so
+    # the names we give our generated ops must be deterministic with respect
+    # to function name.
+    new_fn_nodes = _insert_skip_after_all_finalizes(
+        fn.node_def, name_postfix=fn.signature.name, for_function=True)
+    del fn.node_def[:]
+    fn.node_def.extend(new_fn_nodes)
 
 
 def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
@@ -98,7 +192,15 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
     """
     graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
     # TODO(b/159180073): clean raise after fixing dataset reduce.
-    _check_dataset_reduce_in_multi_gpu(graph_def)
+    num_gpu_devices = len(tf.config.list_logical_devices('GPU'))
+    if num_gpu_devices > 0:
+      # FinalizeDataset has a GPU kernel, so Placer makes an incorrect placement
+      # decision in certain GPU-enabled cases, causing segfaults. We insert a
+      # SkipDataset no-op here which provides Placer with necessary information
+      # to avoid the incorrect placement decision.
+      _add_skip_zero_before_finalize_dataset(graph_def)
+    if num_gpu_devices > 1:
+      _check_dataset_reduce_for_multi_gpu(graph_def)
 
     init_op = comp.tensorflow.initialize_op
     if init_op:

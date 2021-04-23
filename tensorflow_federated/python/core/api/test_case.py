@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Base class for TFF test cases."""
+from typing import List, Set
 
 from absl.testing import absltest
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_types
+
+
+def _filter_node_list_to_ops(nodedefs: List[tf.compat.v1.NodeDef],
+                             ops_to_find: Set[str]) -> List[str]:
+  found_ops = []
+  for node in nodedefs:
+    if node.op in ops_to_find:
+      found_ops.append(node.op)
+  return found_ops
 
 
 class TestCase(tf.test.TestCase, absltest.TestCase):
@@ -80,6 +90,32 @@ class TestCase(tf.test.TestCase, absltest.TestCase):
     for xe, ye in zip(xl, yl):
       if xe != ye:
         self.fail('Mismatching elements {} and {}.'.format(str(xe), str(ye)))
+
+  def assert_graph_contains_ops(self, graphdef: tf.compat.v1.GraphDef,
+                                ops: Set[str]):
+    found_ops = _filter_node_list_to_ops(graphdef.node, ops)
+    remaining_unfound_ops = set(ops) - set(found_ops)
+    for function in graphdef.library.function:
+      ops_in_function = _filter_node_list_to_ops(function.node_def,
+                                                 remaining_unfound_ops)
+      remaining_unfound_ops = remaining_unfound_ops - set(ops_in_function)
+    if remaining_unfound_ops:
+      self.fail(f'Expected to encounter the ops {ops}, but failed to find '
+                f'{remaining_unfound_ops}.')
+
+  def assert_graph_does_not_contain_ops(self, graphdef: tf.compat.v1.GraphDef,
+                                        forbidden_ops: Set[str]):
+    found_ops = _filter_node_list_to_ops(graphdef.node, forbidden_ops)
+    if found_ops:
+      self.fail(
+          f'Ops {forbidden_ops} are forbidden, but encountered {found_ops} '
+          'in GraphDef.')
+    for function in graphdef.library.function:
+      found_ops = _filter_node_list_to_ops(function.node_def, forbidden_ops)
+      if found_ops:
+        self.fail(
+            f'Ops {forbidden_ops} are forbidden, but encountered {found_ops} in GraphDef.'
+        )
 
 
 def main():
