@@ -27,40 +27,99 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.test import static_assert
 
+_MIN_MAX_TEST_DTYPES = [('int16', tf.int16), ('int32', tf.int32),
+                        ('int64', tf.int64), ('float16', tf.float16),
+                        ('float32', tf.float32), ('float64', tf.float64),
+                        ('bfloat16', tf.bfloat16)]
 
-class FederatedMinTest(test_case.TestCase):
 
-  def test_federated_min_single_value(self):
+class FederatedMinTest(test_case.TestCase, parameterized.TestCase):
 
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+  @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
+  def test_federated_min_scalar(self, dtype):
+
+    @computations.federated_computation(computation_types.at_clients(dtype))
     def call_federated_min(value):
       return primitives.federated_min(value)
 
-    value = call_federated_min([1.0, 2.0, 5.0])
-    self.assertEqual(value, 1.0)
+    self.assertEqual(
+        computation_types.at_server(dtype),
+        call_federated_min.type_signature.result)
 
-  def test_federated_min_on_nested_scalars(self):
-    tuple_type = collections.OrderedDict(x=tf.float32, y=tf.float32)
+    value = call_federated_min([
+        tf.cast(1.0, dtype),
+        tf.cast(2.0, dtype),
+        tf.cast(5.0, dtype),
+    ])
+    self.assertAllClose(value, 1.0)
 
-    @computations.federated_computation(
-        computation_types.FederatedType(tuple_type, placements.CLIENTS))
+  @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
+  def test_federated_min_struct(self, dtype):
+    struct_type = computation_types.at_clients(
+        computation_types.to_type([dtype, (dtype, [2])]))
+
+    @computations.federated_computation(struct_type)
     def call_federated_min(value):
       return primitives.federated_min(value)
 
-    test_type = collections.namedtuple('NestedScalars', ['x', 'y'])
-    value = call_federated_min(
-        [test_type(0.0, 1.0),
-         test_type(-1.0, 5.0),
-         test_type(2.0, -10.0)])
-    self.assertEqual(value, collections.OrderedDict(x=-1.0, y=-10.0))
+    self.assertEqual(
+        computation_types.at_server(struct_type.member),
+        call_federated_min.type_signature.result)
+
+    value = call_federated_min([
+        [tf.cast(1.0, dtype), tf.cast([2.0, 8.0], dtype)],
+        [tf.cast(2.0, dtype), tf.cast([6.0, -12.0], dtype)],
+        [tf.cast(5.0, dtype), tf.cast([-1.0, 0.0], dtype)],
+    ])
+    self.assertAllClose(value, [1.0, [-1.0, -12.0]])
+
+  @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
+  def test_federated_min_named_struct(self, dtype):
+    struct_type = computation_types.at_clients(
+        computation_types.to_type(collections.OrderedDict(x=dtype, y=dtype)))
+
+    @computations.federated_computation(struct_type)
+    def call_federated_min(value):
+      return primitives.federated_min(value)
+
+    self.assertEqual(
+        computation_types.at_server(struct_type.member),
+        call_federated_min.type_signature.result)
+
+    value = call_federated_min([
+        collections.OrderedDict(x=tf.cast(1.0, dtype), y=tf.cast(2.0, dtype)),
+        collections.OrderedDict(x=tf.cast(2.0, dtype), y=tf.cast(6.0, dtype)),
+        collections.OrderedDict(x=tf.cast(5.0, dtype), y=tf.cast(-1.0, dtype)),
+    ])
+    self.assertAllClose(value, collections.OrderedDict(x=1.0, y=-1.0))
+
+  @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
+  def test_federated_min_nested_struct(self, dtype):
+    struct_type = computation_types.at_clients(
+        computation_types.to_type([[dtype, dtype], dtype]))
+
+    @computations.federated_computation(struct_type)
+    def call_federated_min(value):
+      return primitives.federated_min(value)
+
+    self.assertEqual(
+        computation_types.at_server(struct_type.member),
+        call_federated_min.type_signature.result)
+
+    value = call_federated_min([
+        [[tf.cast(1.0, dtype), tf.cast(2.0, dtype)],
+         tf.cast(8.0, dtype)],
+        [[tf.cast(2.0, dtype), tf.cast(6.0, dtype)],
+         tf.cast(-12.0, dtype)],
+        [[tf.cast(5.0, dtype), tf.cast(-1.0, dtype)],
+         tf.cast(0.0, dtype)],
+    ])
+    self.assertAllClose(value, [[1.0, -1.0], -12.0])
 
   def test_federated_min_wrong_type(self):
-    with self.assertRaisesRegex(TypeError,
-                                r'Type must be int32 or float32. Got: .*'):
+    with self.assertRaisesRegex(TypeError, 'Unsupported dtype.'):
 
-      @computations.federated_computation(
-          computation_types.FederatedType(tf.bool, placements.CLIENTS))
+      @computations.federated_computation(computation_types.at_clients(tf.bool))
       def call_federated_min(value):
         return primitives.federated_min(value)
 
@@ -70,86 +129,111 @@ class FederatedMinTest(test_case.TestCase):
     with self.assertRaisesRegex(
         TypeError, r'.* argument must be a tff.Value placed at CLIENTS'):
 
-      @computations.federated_computation(
-          computation_types.FederatedType(tf.int32, placements.SERVER))
+      @computations.federated_computation(computation_types.at_server(tf.int32))
       def call_federated_min(value):
         return primitives.federated_min(value)
 
       call_federated_min([1, 2, 3])
 
 
-class FederatedMaxTest(test_case.TestCase):
+class FederatedMaxTest(test_case.TestCase, parameterized.TestCase):
 
-  def test_federated_max_tensor_value(self):
+  @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
+  def test_federated_max_scalar(self, dtype):
 
-    @computations.federated_computation(
-        computation_types.FederatedType((tf.int32, [3]), placements.CLIENTS))
+    @computations.federated_computation(computation_types.at_clients(dtype))
     def call_federated_max(value):
       return primitives.federated_max(value)
 
-    client1 = np.array([1, -2, 3], dtype=np.int32)
-    client2 = np.array([0, 7, 1], dtype=np.int32)
-    value = call_federated_max([client1, client2])
-    self.assertCountEqual(value, [1, 7, 3])
+    self.assertEqual(
+        computation_types.at_server(dtype),
+        call_federated_max.type_signature.result)
 
-  def test_federated_max_single_value(self):
+    value = call_federated_max([
+        tf.cast(1.0, dtype),
+        tf.cast(2.0, dtype),
+        tf.cast(5.0, dtype),
+    ])
+    self.assertEqual(value, tf.cast(5.0, dtype))
 
-    @computations.federated_computation(
-        computation_types.FederatedType(tf.float32, placements.CLIENTS))
+  @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
+  def test_federated_max_struct(self, dtype):
+    struct_type = computation_types.at_clients(
+        computation_types.to_type([dtype, (dtype, [2])]))
+
+    @computations.federated_computation(struct_type)
     def call_federated_max(value):
       return primitives.federated_max(value)
 
-    value = call_federated_max([6.0, 4.0, 1.0, 7.0])
-    self.assertEqual(value, 7.0)
+    self.assertEqual(
+        computation_types.at_server(struct_type.member),
+        call_federated_max.type_signature.result)
+
+    value = call_federated_max([
+        [tf.cast(1.0, dtype), tf.cast([2.0, 8.0], dtype)],
+        [tf.cast(2.0, dtype), tf.cast([6.0, -12.0], dtype)],
+        [tf.cast(5.0, dtype), tf.cast([-1.0, 0.0], dtype)],
+    ])
+    self.assertAllClose(value, [5.0, [6.0, 8.0]])
+
+  @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
+  def test_federated_max_named_struct(self, dtype):
+    struct_type = computation_types.at_clients(
+        computation_types.to_type(collections.OrderedDict(x=dtype, y=dtype)))
+
+    @computations.federated_computation(struct_type)
+    def call_federated_max(value):
+      return primitives.federated_max(value)
+
+    self.assertEqual(
+        computation_types.at_server(struct_type.member),
+        call_federated_max.type_signature.result)
+
+    value = call_federated_max([
+        collections.OrderedDict(x=tf.cast(1.0, dtype), y=tf.cast(2.0, dtype)),
+        collections.OrderedDict(x=tf.cast(2.0, dtype), y=tf.cast(6.0, dtype)),
+        collections.OrderedDict(x=tf.cast(5.0, dtype), y=tf.cast(-1.0, dtype)),
+    ])
+    self.assertAllClose(value, collections.OrderedDict(x=5.0, y=6.0))
+
+  @parameterized.named_parameters(_MIN_MAX_TEST_DTYPES)
+  def test_federated_max_nested_struct(self, dtype):
+    struct_type = computation_types.at_clients(
+        computation_types.to_type([[dtype, dtype], dtype]))
+
+    @computations.federated_computation(struct_type)
+    def call_federated_max(value):
+      return primitives.federated_max(value)
+
+    self.assertEqual(
+        computation_types.at_server(struct_type.member),
+        call_federated_max.type_signature.result)
+
+    value = call_federated_max([
+        [[tf.cast(1.0, dtype), tf.cast(2.0, dtype)],
+         tf.cast(8.0, dtype)],
+        [[tf.cast(2.0, dtype), tf.cast(6.0, dtype)],
+         tf.cast(-12.0, dtype)],
+        [[tf.cast(5.0, dtype), tf.cast(-1.0, dtype)],
+         tf.cast(0.0, dtype)],
+    ])
+    self.assertAllClose(value, [[5.0, 6.0], 8.0])
 
   def test_federated_max_wrong_type(self):
-    with self.assertRaisesRegex(TypeError,
-                                r'Type must be int32 or float32. Got: .*'):
+    with self.assertRaisesRegex(TypeError, 'Unsupported dtype.'):
 
-      @computations.federated_computation(
-          computation_types.FederatedType(tf.bool, placements.CLIENTS))
+      @computations.federated_computation(computation_types.at_clients(tf.bool))
       def call_federated_max(value):
         return primitives.federated_max(value)
 
       call_federated_max([True, False])
-
-  def test_federated_max_on_nested_scalars(self):
-    tuple_type = collections.OrderedDict(a=tf.int32, b=tf.int32)
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tuple_type, placements.CLIENTS))
-    def call_federated_max(value):
-      return primitives.federated_max(value)
-
-    test_type = collections.namedtuple('NestedScalars', ['a', 'b'])
-    value = call_federated_max(
-        [test_type(1, 5), test_type(2, 3),
-         test_type(1, 8)])
-    self.assertEqual(value, collections.OrderedDict(a=2, b=8))
-
-  def test_federated_max_nested_tensor_value(self):
-    tuple_type = collections.OrderedDict(a=(tf.int32, [2]), b=(tf.int32, [3]))
-
-    @computations.federated_computation(
-        computation_types.FederatedType(tuple_type, placements.CLIENTS))
-    def call_federated_max(value):
-      return primitives.federated_max(value)
-
-    test_type = collections.namedtuple('NestedScalars', ['a', 'b'])
-    client1 = test_type(
-        np.array([4, 5], dtype=np.int32), np.array([1, -2, 3], dtype=np.int32))
-    client2 = test_type(
-        np.array([9, 0], dtype=np.int32), np.array([5, 1, -2], dtype=np.int32))
-    value = call_federated_max([client1, client2])
-    self.assertCountEqual(value['a'], [9, 5])
-    self.assertCountEqual(value['b'], [5, 1, 3])
 
   def test_federated_max_wrong_placement(self):
     with self.assertRaisesRegex(
         TypeError, r'.*argument must be a tff.Value placed at CLIENTS.*'):
 
       @computations.federated_computation(
-          computation_types.FederatedType(tf.float32, placements.SERVER))
+          computation_types.at_server(tf.float32))
       def call_federated_max(value):
         return primitives.federated_max(value)
 

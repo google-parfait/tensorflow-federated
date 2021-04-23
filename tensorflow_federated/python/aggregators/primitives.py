@@ -35,9 +35,11 @@ def _validate_value_on_clients(value):
         .format(value.type_signature))
 
 
-def _validate_dtype_is_numeric(dtype):
-  if dtype not in [tf.int32, tf.float32]:
-    raise TypeError('Type must be int32 or float32. ' 'Got: {!s}'.format(dtype))
+def _validate_dtype_is_min_max_compatible(dtype):
+  if not (dtype.is_integer or dtype.is_floating):
+    raise TypeError(
+        f'Unsupported dtype. The dtype for min and max must be either an '
+        f'integer or floating:. Got: {dtype}.')
 
 
 def _federated_reduce_with_func(value, tf_func, zeros):
@@ -47,8 +49,7 @@ def _federated_reduce_with_func(value, tf_func, zeros):
   applying a simple aggregation (like minimum or maximum aggregations).
 
   Args:
-    value: A `tff.Value` placed on the `tff.CLIENTS`, that is a `tf.int32` or
-      `tf.float32`.
+    value: A `tff.Value` placed on the `tff.CLIENTS`.
     tf_func: A function to be applied to the accumulated values. Must be a
       binary operation where both parameters are of type `U` and the return type
       is also `U`.
@@ -58,21 +59,18 @@ def _federated_reduce_with_func(value, tf_func, zeros):
   Returns:
     A representation on the `tff.SERVER` of the result of aggregating `value`.
   """
-  @computations.tf_computation(value.type_signature.member,
-                               value.type_signature.member)
+  value_type = value.type_signature.member
+
+  @computations.tf_computation(value_type, value_type)
   def accumulate(current, value):
     return tf.nest.map_structure(tf_func, current, value)
 
-  @computations.tf_computation(value.type_signature.member,
-                               value.type_signature.member)
-  def merge(a, b):
-    return tf.nest.map_structure(tf_func, a, b)
-
-  @computations.tf_computation(value.type_signature.member)
+  @computations.tf_computation(value_type)
   def report(value):
     return value
 
-  return intrinsics.federated_aggregate(value, zeros, accumulate, merge, report)
+  return intrinsics.federated_aggregate(value, zeros, accumulate, accumulate,
+                                        report)
 
 
 def _initial_values(initial_value_fn, member_type):
@@ -91,47 +89,63 @@ def _initial_values(initial_value_fn, member_type):
   @computations.tf_computation
   def zeros_fn():
     if member_type.is_struct():
-      structure.map_structure(lambda v: _validate_dtype_is_numeric(v.dtype),
-                              member_type)
+      structure.map_structure(
+          lambda v: _validate_dtype_is_min_max_compatible(v.dtype), member_type)
       return structure.map_structure(
           lambda v: tf.fill(v.shape, value=initial_value_fn(v)), member_type)
-    _validate_dtype_is_numeric(member_type.dtype)
+    _validate_dtype_is_min_max_compatible(member_type.dtype)
     return tf.fill(member_type.shape, value=initial_value_fn(member_type))
 
   return zeros_fn()
 
 
 def federated_min(value):
-  """Aggregation to find the minimum value from the `tff.CLIENTS`.
+  """Computes the minimum at `tff.SERVER` of a `value` placed at `tff.CLIENTS`.
+
+  The minimum is computed element-wise, for each scalar and every scalar in a
+  tensor contained in `value`.
+
+  In the degenerate scenario that the `value` is aggregated over an empty set
+  of `tff.CLIENTS`, the tensor constituents of the result are set to the
+  maximum of the underlying numeric data type.
 
   Args:
-    value: A `tff.Value` placed on the `tff.CLIENTS`.
+    value: A value of a TFF federated type placed at the tff.CLIENTS.
 
   Returns:
-    In the degenerate scenario that the `value` is aggregated over an empty set
-    of `tff.CLIENTS`, the tensor constituents of the result are set to the
-    maximum of the underlying numeric data type.
+    A representation of the min of the member constituents of `value` placed at
+    `tff.SERVER`.
   """
   _validate_value_on_clients(value)
   member_type = value.type_signature.member
-  zeros = _initial_values(lambda v: v.dtype.max, member_type)
+  # Explicit cast because v.dtype.max returns a Python constant, which could be
+  # implicitly converted to a tensor of different dtype by TensorFlow.
+  zeros = _initial_values(lambda v: tf.cast(v.dtype.max, v.dtype), member_type)
   return _federated_reduce_with_func(value, tf.minimum, zeros)
 
 
 def federated_max(value):
-  """Aggregation to find the maximum value from the `tff.CLIENTS`.
+  """Computes the maximum at `tff.SERVER` of a `value` placed at `tff.CLIENTS`.
+
+  The maximum is computed element-wise, for each scalar and every scalar in a
+  tensor contained in `value`.
+
+  In the degenerate scenario that the `value` is aggregated over an empty set
+  of `tff.CLIENTS`, the tensor constituents of the result are set to the
+  minimum of the underlying numeric data type.
 
   Args:
-    value: A `tff.Value` placed on the `tff.CLIENTS`.
+    value: A value of a TFF federated type placed at the tff.CLIENTS.
 
   Returns:
-    In the degenerate scenario that the `value` is aggregated over an empty set
-    of `tff.CLIENTS`, the tensor constituents of the result are set to the
-    minimum of the underlying numeric data type.
+    A representation of the min of the member constituents of `value` placed at
+    `tff.SERVER`.
   """
   _validate_value_on_clients(value)
   member_type = value.type_signature.member
-  zeros = _initial_values(lambda v: v.dtype.min, member_type)
+  # Explicit cast because v.dtype.min returns a Python constant, which could be
+  # implicitly converted to a tensor of different dtype by TensorFlow.
+  zeros = _initial_values(lambda v: tf.cast(v.dtype.min, v.dtype), member_type)
   return _federated_reduce_with_func(value, tf.maximum, zeros)
 
 
