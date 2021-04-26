@@ -184,11 +184,10 @@ def state_with_new_model_weights(
 def _apply_delta(
     *,
     optimizer: tf.keras.optimizers.Optimizer,
-    model: model_lib.Model,
+    model_variables: model_utils.ModelWeights,
     delta,
 ) -> None:
   """Applies `delta` to `model` using `optimizer`."""
-  model_variables = model_utils.ModelWeights.from_model(model)
   tf.nest.assert_same_structure(delta, model_variables.trainable)
   grads_and_vars = tf.nest.map_structure(
       lambda x, v: (-1.0 * x, v), tf.nest.flatten(delta),
@@ -199,7 +198,7 @@ def _apply_delta(
 
 
 def _eagerly_create_optimizer_variables(
-    *, model: model_lib.Model,
+    *, model_variables: model_utils.ModelWeights,
     optimizer: tf.keras.optimizers.Optimizer) -> List[tf.Variable]:
   """Forces eager construction of the optimizer variables.
 
@@ -207,7 +206,7 @@ def _eagerly_create_optimizer_variables(
   variables so we can read their initial values for the initial state).
 
   Args:
-    model: A `tff.learning.Model`.
+    model_variables: A `tff.learning.ModelWeights` structure of `tf.Variables`.
     optimizer: A `tf.keras.optimizers.Optimizer`.
 
   Returns:
@@ -215,10 +214,12 @@ def _eagerly_create_optimizer_variables(
   """
   delta_tensor_spec = tf.nest.map_structure(
       lambda v: tf.TensorSpec.from_tensor(v.read_value()),
-      model_utils.ModelWeights.from_model(model).trainable)
+      model_variables.trainable)
   # Trace the function, which forces eager variable creation.
   tf.function(_apply_delta).get_concrete_function(
-      optimizer=optimizer, model=model, delta=delta_tensor_spec)
+      optimizer=optimizer,
+      model_variables=model_variables,
+      delta=delta_tensor_spec)
   return optimizer.variables()
 
 
@@ -265,12 +266,12 @@ def _build_initialize_computation(
       A `tuple` of `tff.learning.framework.ModelWeights` and a `list` of
       `tf.Variable`s for the global optimizer state.
     """
-    model = model_fn()
+    model_variables = model_utils.ModelWeights.from_model(model_fn())
     optimizer = server_optimizer_fn()
     # We must force variable creation for momentum and adaptive optimizers.
     optimizer_vars = _eagerly_create_optimizer_variables(
-        model=model, optimizer=optimizer)
-    return model_utils.ModelWeights.from_model(model), optimizer_vars,
+        model_variables=model_variables, optimizer=optimizer)
+    return model_variables, optimizer_vars,
 
   @computations.federated_computation()
   def initialize_computation():
@@ -333,7 +334,9 @@ def _build_one_round_computation(
     whimsy_optimizer = server_optimizer_fn()
     # We must force variable creation for momentum and adaptive optimizers.
     _eagerly_create_optimizer_variables(
-        model=whimsy_model_for_metadata, optimizer=whimsy_optimizer)
+        model_variables=model_utils.ModelWeights.from_model(
+            whimsy_model_for_metadata),
+        optimizer=whimsy_optimizer)
     optimizer_variable_type = type_conversions.type_from_tensors(
         whimsy_optimizer.variables())
 
@@ -343,11 +346,14 @@ def _build_one_round_computation(
   def server_update(global_model, mean_model_delta, optimizer_state):
     """Updates the global model with the mean model update from clients."""
     with tf.init_scope():
-      model = model_fn()
+      # Create a structure of variables that the server optimizer can update.
+      model_variables = tf.nest.map_structure(
+          lambda t: tf.Variable(initial_value=tf.zeros(t.shape, t.dtype)),
+          global_model)
       optimizer = server_optimizer_fn()
       # We must force variable creation for momentum and adaptive optimizers.
-      _eagerly_create_optimizer_variables(model=model, optimizer=optimizer)
-    model_variables = model_utils.ModelWeights.from_model(model)
+      _eagerly_create_optimizer_variables(
+          model_variables=model_variables, optimizer=optimizer)
     optimizer_variables = optimizer.variables()
     # Set the variables to the current global model, the optimizer will
     # update these variables.
@@ -362,7 +368,10 @@ def _build_one_round_computation(
     finite_weights_delta, _ = tensor_utils.zero_all_if_any_non_finite(
         mean_model_delta)
     # Update the global model variables with the delta as a pseudo-gradient.
-    _apply_delta(optimizer=optimizer, model=model, delta=finite_weights_delta)
+    _apply_delta(
+        optimizer=optimizer,
+        model_variables=model_variables,
+        delta=finite_weights_delta)
     return model_variables, optimizer_variables
 
   dataset_type = computation_types.SequenceType(
