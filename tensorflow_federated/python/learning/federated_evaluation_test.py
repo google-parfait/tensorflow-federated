@@ -373,6 +373,15 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
     else:
       mock_method.assert_called()
 
+  def test_construction_calls_model_fn(self):
+    # Assert that the the process building does not call `model_fn` too many
+    # times. `model_fn` can potentially be expensive (loading weights,
+    # processing, etc).
+    mock_model_fn = mock.Mock(side_effect=TestModel)
+    federated_evaluation.build_federated_evaluation(mock_model_fn)
+    # TODO(b/186451541): reduce the number of calls to model_fn.
+    self.assertEqual(mock_model_fn.call_count, 2)
+
 
 if __name__ == '__main__':
   execution_contexts.set_local_execution_context()

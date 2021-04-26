@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+from unittest import mock
 
 from absl.testing import parameterized
 import numpy as np
@@ -448,6 +449,17 @@ class PersonalizationEvalTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllEqual(len(results['baseline_metrics']['loss']), 1)
     self.assertAllEqual(len(results['batch_size_1']['test_outputs']['loss']), 1)
     self.assertAllEqual(len(results['batch_size_2']['test_outputs']['loss']), 1)
+
+  def test_construction_calls_model_fn(self):
+    # Assert that the the process building does not call `model_fn` too many
+    # times. `model_fn` can potentially be expensive (loading weights,
+    # processing, etc).
+    mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
+    p13n_fn_dict = _create_p13n_fn_dict(learning_rate=1.0)
+    p13n_eval.build_personalization_eval(
+        mock_model_fn, p13n_fn_dict, _evaluate_fn, max_num_clients=1)
+    # TODO(b/186451541): reduce the number of calls to model_fn.
+    self.assertEqual(mock_model_fn.call_count, 3)
 
 
 if __name__ == '__main__':

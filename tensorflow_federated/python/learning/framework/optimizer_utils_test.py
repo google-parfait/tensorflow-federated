@@ -14,6 +14,7 @@
 
 import collections
 import functools
+from unittest import mock
 
 from absl.testing import parameterized
 import numpy as np
@@ -241,6 +242,18 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             ),
             result=(server_state_type, metrics_type)),
         iterative_process.next.type_signature)
+
+  def test_construction_calls_model_fn(self):
+    # Assert that the the process building does not call `model_fn` too many
+    # times. `model_fn` can potentially be expensive (loading weights,
+    # processing, etc).
+    mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
+    optimizer_utils.build_model_delta_optimizer_process(
+        model_fn=mock_model_fn,
+        model_to_client_delta_fn=DummyClientDeltaFn,
+        server_optimizer_fn=tf.keras.optimizers.SGD)
+    # TODO(b/186451541): reduce the number of calls to model_fn.
+    self.assertEqual(mock_model_fn.call_count, 4)
 
   def test_initial_weights_pulled_from_model(self):
 

@@ -341,6 +341,16 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
       self.assertRegex(
           str(w[0].message), 'aggregation_process .* is deprecated')
 
+  def test_construction_calls_model_fn(self):
+    # Assert that the the process building does not call `model_fn` too many
+    # times. `model_fn` can potentially be expensive (loading weights,
+    # processing, etc).
+    mock_model_fn = mock.Mock(side_effect=model_examples.LinearRegression)
+    federated_averaging.build_federated_averaging_process(
+        model_fn=mock_model_fn, client_optimizer_fn=tf.keras.optimizers.SGD)
+    # TODO(b/186451541): reduce the number of calls to model_fn.
+    self.assertEqual(mock_model_fn.call_count, 4)
+
 
 if __name__ == '__main__':
   execution_contexts.set_test_execution_context()
