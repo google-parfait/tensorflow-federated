@@ -47,20 +47,6 @@ class MultiGPUTest(tf.test.TestCase):
         tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
     eager_tf_executor._check_dataset_reduce_for_multi_gpu(graph.as_graph_def())
 
-  def test_get_no_arg_wrapped_function_check_dataset_reduce_for_multi_gpu(self):
-
-    @computations.tf_computation
-    def comp():
-      return tf.data.Dataset.range(10).reduce(np.int64(0), lambda p, q: p + q)
-
-    with self.assertRaisesRegex(
-        ValueError, 'Detected dataset reduce op in multi-GPU TFF simulation.*'):
-      eager_tf_executor._get_wrapped_function_from_comp(
-          computation_impl.ComputationImpl.get_proto(comp),
-          must_pin_function_to_cpu=False,
-          param_type=None,
-          device=None)
-
   def test_get_no_arg_wrapped_function_multi_gpu_no_reduce(self):
 
     @computations.tf_computation

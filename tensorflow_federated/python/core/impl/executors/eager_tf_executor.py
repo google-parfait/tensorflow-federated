@@ -191,18 +191,6 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
       Result of importing graphdef backing `comp`.
     """
     graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
-    # TODO(b/159180073): clean raise after fixing dataset reduce.
-    num_gpu_devices = len(tf.config.list_logical_devices('GPU'))
-    if num_gpu_devices > 0:
-      # FinalizeDataset has a GPU kernel, so Placer makes an incorrect placement
-      # decision in certain GPU-enabled cases, causing segfaults. We insert a
-      # SkipDataset no-op here which provides Placer with necessary information
-      # to avoid the incorrect placement decision.
-      # TODO(b/186439691): Remove when Placer is fixed.
-      _add_skip_zero_before_finalize_dataset(graph_def)
-    if num_gpu_devices > 1:
-      _check_dataset_reduce_for_multi_gpu(graph_def)
-
     init_op = comp.tensorflow.initialize_op
     if init_op:
       graph_def = tensorflow_utils.add_control_deps_for_init_op(
@@ -331,6 +319,30 @@ def _call_embedded_tf(*, arg, param_fns, result_fns, result_type, wrapped_fn,
     return structure.pack_sequence_as(result_type, result_elements)
 
 
+def _ensure_comp_runtime_compatible(comp: pb.Computation) -> pb.Computation:
+  """Ensures `comp` is compatible with eager runtime backing EagerExecutor."""
+  graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
+  # TODO(b/159180073): clean raise after fixing dataset reduce.
+  num_gpu_devices = len(tf.config.list_logical_devices('GPU'))
+  if num_gpu_devices > 0:
+    # FinalizeDataset has a GPU kernel, so Placer makes an incorrect placement
+    # decision in certain GPU-enabled cases, causing segfaults. We insert a
+    # SkipDataset no-op here which provides Placer with necessary information
+    # to avoid the incorrect placement decision.
+    # TODO(b/186439691): Remove when Placer is fixed.
+    _add_skip_zero_before_finalize_dataset(graph_def)
+  if num_gpu_devices > 1:
+    _check_dataset_reduce_for_multi_gpu(graph_def)
+
+  return pb.Computation(
+      type=comp.type,
+      tensorflow=pb.TensorFlow(
+          graph_def=serialization_utils.pack_graph_def(graph_def),
+          initialize_op=comp.tensorflow.initialize_op,
+          parameter=comp.tensorflow.parameter,
+          result=comp.tensorflow.result))
+
+
 def embed_tensorflow_computation(comp, type_spec=None, device=None):
   """Embeds a TensorFlow computation for use in the eager context.
 
@@ -352,6 +364,7 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
   # move there, once stable.
 
   py_typecheck.check_type(comp, pb.Computation)
+  comp = _ensure_comp_runtime_compatible(comp)
   comp_type = type_serialization.deserialize_type(comp.type)
   type_spec = computation_types.to_type(type_spec)
   if type_spec is not None:
