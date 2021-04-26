@@ -29,16 +29,6 @@ from tensorflow_federated.python.core import templates
 from tensorflow_federated.python.core import test
 from tensorflow_federated.python.core import types
 from tensorflow_federated.python.core.api.computation_base import Computation
-from tensorflow_federated.python.core.api.computation_types import at_clients as type_at_clients
-from tensorflow_federated.python.core.api.computation_types import at_server as type_at_server
-from tensorflow_federated.python.core.api.computation_types import FederatedType
-from tensorflow_federated.python.core.api.computation_types import FunctionType
-from tensorflow_federated.python.core.api.computation_types import SequenceType
-from tensorflow_federated.python.core.api.computation_types import StructType
-from tensorflow_federated.python.core.api.computation_types import StructWithPythonType
-from tensorflow_federated.python.core.api.computation_types import TensorType
-from tensorflow_federated.python.core.api.computation_types import to_type
-from tensorflow_federated.python.core.api.computation_types import Type
 from tensorflow_federated.python.core.api.computations import check_returns_type
 from tensorflow_federated.python.core.api.computations import federated_computation
 from tensorflow_federated.python.core.api.computations import tf_computation
@@ -59,6 +49,16 @@ from tensorflow_federated.python.core.impl.federated_context.intrinsics import s
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import sequence_sum
 from tensorflow_federated.python.core.impl.federated_context.value_impl import to_value
 from tensorflow_federated.python.core.impl.federated_context.value_impl import Value
+from tensorflow_federated.python.core.impl.types.computation_types import at_clients as type_at_clients
+from tensorflow_federated.python.core.impl.types.computation_types import at_server as type_at_server
+from tensorflow_federated.python.core.impl.types.computation_types import FederatedType
+from tensorflow_federated.python.core.impl.types.computation_types import FunctionType
+from tensorflow_federated.python.core.impl.types.computation_types import SequenceType
+from tensorflow_federated.python.core.impl.types.computation_types import StructType
+from tensorflow_federated.python.core.impl.types.computation_types import StructWithPythonType
+from tensorflow_federated.python.core.impl.types.computation_types import TensorType
+from tensorflow_federated.python.core.impl.types.computation_types import to_type
+from tensorflow_federated.python.core.impl.types.computation_types import Type
 from tensorflow_federated.python.core.impl.types.placements import CLIENTS
 from tensorflow_federated.python.core.impl.types.placements import SERVER
 from tensorflow_federated.python.core.impl.types.type_conversions import structure_from_tensor_type_tree

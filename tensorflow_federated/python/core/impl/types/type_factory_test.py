@@ -15,7 +15,7 @@
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_factory
 
 

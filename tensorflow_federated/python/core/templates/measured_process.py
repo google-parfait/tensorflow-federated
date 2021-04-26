@@ -18,7 +18,7 @@ from typing import Optional
 import attr
 
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import errors
 from tensorflow_federated.python.core.templates import iterative_process
 

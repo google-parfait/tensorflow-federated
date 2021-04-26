@@ -18,8 +18,8 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.backends.native import execution_contexts
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
 
 TEST_DATA = {

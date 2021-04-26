@@ -18,12 +18,12 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import test_utils
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_stacks
 from tensorflow_federated.python.core.impl.executors import executor_test_utils
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def _create_tff_parallel_clients_with_dataset_reduce():

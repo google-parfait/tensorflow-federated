@@ -19,8 +19,8 @@ from typing import Tuple
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.types import computation_types
 
 SEQUENCE_LENGTH = 80  # from McMahan et al AISTATS 2017
 # Vocabulary re-used from the Federated Learning for Text Generation tutorial.

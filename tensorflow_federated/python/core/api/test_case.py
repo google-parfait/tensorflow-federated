@@ -17,7 +17,7 @@ from typing import List, Set
 from absl.testing import absltest
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def _filter_node_list_to_ops(nodedefs: List[tf.compat.v1.NodeDef],

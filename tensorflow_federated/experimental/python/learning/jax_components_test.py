@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import collections
+
 from absl.testing import absltest
 import jax
 import numpy as np
 
 from tensorflow_federated.experimental.python.learning import jax_components
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.backends.xla import execution_contexts
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class JaxComponentsTest(absltest.TestCase):

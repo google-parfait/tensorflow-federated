@@ -19,8 +19,8 @@ from typing import Callable, List
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def build_to_ids_fn(word_vocab: List[str],

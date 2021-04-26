@@ -15,8 +15,8 @@
 import iree.compiler.tf
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.backends.iree import computation_module
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class ComputationModuleTest(tf.test.TestCase):

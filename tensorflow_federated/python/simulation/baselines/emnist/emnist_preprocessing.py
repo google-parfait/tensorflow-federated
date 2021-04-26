@@ -18,8 +18,8 @@ import collections
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.types import computation_types
 
 MAX_CLIENT_DATASET_SIZE = 418
 

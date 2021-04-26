@@ -17,13 +17,13 @@ import re
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.backends.iree import backend_info
 from tensorflow_federated.python.core.backends.iree import compiler
 from tensorflow_federated.python.core.backends.iree import computation_module
 from tensorflow_federated.python.core.backends.iree import runtime
 from tensorflow_federated.python.core.impl.computation import computation_impl
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class CompilerTest(tf.test.TestCase):

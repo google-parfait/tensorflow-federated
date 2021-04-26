@@ -30,9 +30,9 @@ py_library(
         "//tensorflow_federated/experimental/python/core/api:computations",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/templates:iterative_process",
@@ -46,7 +46,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":jax_components",
-        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/backends/xla:execution_contexts",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )

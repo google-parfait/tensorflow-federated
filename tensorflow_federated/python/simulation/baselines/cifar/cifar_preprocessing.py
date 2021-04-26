@@ -19,8 +19,8 @@ from typing import Callable, Sequence, Tuple, Union
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import computations
+from tensorflow_federated.python.core.impl.types import computation_types
 
 CIFAR_SHAPE = (32, 32, 3)
 TOTAL_FEATURE_SIZE = 32 * 32 * 3

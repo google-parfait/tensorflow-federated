@@ -40,7 +40,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":computation_wrapper_instances",
-        "//tensorflow_federated/python/core/api:computation_types",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )

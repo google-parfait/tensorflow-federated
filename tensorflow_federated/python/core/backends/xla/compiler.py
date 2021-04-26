@@ -18,9 +18,9 @@ import numpy as np
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.backends.xla import xla_serialization
 from tensorflow_federated.python.core.impl.compiler import local_computation_factory_base
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 
 

@@ -17,8 +17,8 @@ import collections
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.impl.executors import cardinality_carrying_base
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
 

@@ -18,12 +18,12 @@ import attr
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import golden
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.computation import computation_impl
 from tensorflow_federated.python.core.impl.context_stack import get_context_stack
 from tensorflow_federated.python.core.impl.context_stack import runtime_error_context
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper
 from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances

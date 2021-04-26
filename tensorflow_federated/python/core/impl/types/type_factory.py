@@ -12,7 +12,7 @@
 # limitations under the License.
 """A library of contruction functions for computation type structures."""
 
-from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 def reduction_op(

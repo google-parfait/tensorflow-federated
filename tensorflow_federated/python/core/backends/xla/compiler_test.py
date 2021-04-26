@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import collections
+
 from absl.testing import absltest
 from jax.lib.xla_bridge import xla_client
 import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
 from tensorflow_federated.python.common_libs import structure
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.backends.xla import compiler
 from tensorflow_federated.python.core.backends.xla import runtime
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 class CompilerTest(absltest.TestCase):

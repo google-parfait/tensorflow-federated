@@ -16,8 +16,7 @@
 import abc
 from typing import Union
 
-
-from tensorflow_federated.python.core.api import computation_types
+from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.templates import aggregation_process
 
 ValueType = Union[computation_types.TensorType, computation_types.StructType]

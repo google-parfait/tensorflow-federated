@@ -45,48 +45,6 @@ py_library(
 )
 
 py_library(
-    name = "computation_types",
-    srcs = ["computation_types.py"],
-    srcs_version = "PY3",
-    deps = [
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:placements",
-        "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
-    ],
-)
-
-py_test(
-    name = "computation_types_test",
-    size = "small",
-    srcs = ["computation_types_test.py"],
-    args = [
-        "--golden",
-        "$(location computation_types_test_goldens/constructor_argument_normalization_error.expected)",
-        "--golden",
-        "$(location computation_types_test_goldens/container_types_full_repr.expected)",
-        "--golden",
-        "$(location computation_types_test_goldens/long_formatted_with_diff.expected)",
-        "--golden",
-        "$(location computation_types_test_goldens/short_compact_repr.expected)",
-    ],
-    data = [
-        "computation_types_test_goldens/constructor_argument_normalization_error.expected",
-        "computation_types_test_goldens/container_types_full_repr.expected",
-        "computation_types_test_goldens/long_formatted_with_diff.expected",
-        "computation_types_test_goldens/short_compact_repr.expected",
-    ],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":computation_types",
-        "//tensorflow_federated/python/common_libs:golden",
-        "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:placements",
-    ],
-)
-
-py_library(
     name = "computations",
     srcs = ["computations.py"],
     srcs_version = "PY3",
@@ -97,7 +55,7 @@ py_library(
     name = "test_case",
     srcs = ["test_case.py"],
     srcs_version = "PY3",
-    deps = [":computation_types"],
+    deps = ["//tensorflow_federated/python/core/impl/types:computation_types"],
 )
 
 py_test(
@@ -107,7 +65,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":computation_types",
         ":test_case",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
     ],
 )

@@ -17,7 +17,7 @@ py_library(
     srcs = ["__init__.py"],
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
-        "//tensorflow_federated/python/core/api:computation_types",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
         "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:type_serialization",

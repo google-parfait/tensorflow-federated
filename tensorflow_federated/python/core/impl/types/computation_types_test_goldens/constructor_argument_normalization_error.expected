@@ -1,7 +1,7 @@
 Traceback (most recent call last):
-  File "python/core/api/computation_types_test.py", in test_constructor_argument_normalization_error
+  File "python/core/impl/types/computation_types_test.py", in test_constructor_argument_normalization_error
     computation_types.TensorType()
-  File "python/core/api/computation_types.py", in __call__
+  File "python/core/impl/types/computation_types.py", in __call__
     ) from None
 TypeError: Invalid arguments to `TensorType` constructor:
 TensorType() missing 1 required positional argument: 'dtype'

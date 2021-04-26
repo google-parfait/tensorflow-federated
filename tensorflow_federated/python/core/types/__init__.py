@@ -13,7 +13,7 @@
 # limitations under the License.
 """Libraries for interacting with the type of a computation."""
 
-from tensorflow_federated.python.core.api.computation_types import *
+from tensorflow_federated.python.core.impl.types.computation_types import *
 from tensorflow_federated.python.core.impl.types.type_analysis import contains
 from tensorflow_federated.python.core.impl.types.type_analysis import count
 from tensorflow_federated.python.core.impl.types.type_analysis import is_structure_of_floats

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tensorflow_federated.python.core.api import computation_types
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.impl.types import computation_types
 
 
 empty_struct = computation_types.StructType([])
