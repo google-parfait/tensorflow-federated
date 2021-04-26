@@ -198,6 +198,7 @@ def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
       # decision in certain GPU-enabled cases, causing segfaults. We insert a
       # SkipDataset no-op here which provides Placer with necessary information
       # to avoid the incorrect placement decision.
+      # TODO(b/186439691): Remove when Placer is fixed.
       _add_skip_zero_before_finalize_dataset(graph_def)
     if num_gpu_devices > 1:
       _check_dataset_reduce_for_multi_gpu(graph_def)
