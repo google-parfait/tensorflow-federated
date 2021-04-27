@@ -34,6 +34,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/backends",
         "//tensorflow_federated/python/core/framework",
+        "//tensorflow_federated/python/core/impl/federated_context:data",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/federated_context:value_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",

@@ -25,6 +25,32 @@ py_library(
 )
 
 py_library(
+    name = "data",
+    srcs = ["data.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":value_impl",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_test(
+    name = "data_test",
+    srcs = ["data_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":data",
+        ":value_impl",
+        "//tensorflow_federated/python/core/api:test_case",
+        "//tensorflow_federated/python/core/impl/compiler:building_blocks",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
     name = "federated_computation_context",
     srcs = ["federated_computation_context.py"],
     srcs_version = "PY3",
