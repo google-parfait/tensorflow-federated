@@ -14,6 +14,7 @@
 """Defines functions and classes for building and manipulating TFF types."""
 
 import abc
+import atexit
 import collections
 import difflib
 import enum
@@ -307,6 +308,21 @@ class _ValueWithHash():
 # during destruction.
 _intern_pool: Dict[typing.Type[Any], Dict[Any, Any]] = (
     collections.defaultdict(lambda: weakref.WeakValueDictionary({})))
+
+
+def clear_intern_pool():
+  # We must clear our `WeakKeyValueDictionary`s at the end of the program to
+  # prevent Python from deleting the standard library out from under us before
+  # removing the  entries from the dictionary. Yes, this is cursed.
+  #
+  # If this isn't done, Python will call `__eq__` on our types after
+  # `abc.ABCMeta` has already been deleted from the world, resulting in
+  # exceptions after main.
+  global _intern_pool
+  _intern_pool = None
+
+
+atexit.register(clear_intern_pool)
 
 
 class _Intern(abc.ABCMeta):
@@ -1061,6 +1077,21 @@ class _PossiblyDisallowedChildren:
 # with `WeakKeyDictionary`. We want to use a `WeakKeyDictionary` so that
 # cache entries are destroyed once the types they index no longer exist.
 _possibly_disallowed_children_cache = weakref.WeakKeyDictionary({})
+
+
+def clear_disallowed_cache():
+  # We must clear our `WeakKeyValueDictionary`s at the end of the program to
+  # prevent Python from deleting the standard library out from under us before
+  # removing the  entries from the dictionary. Yes, this is cursed.
+  #
+  # If this isn't done, Python will call `__eq__` on our types after
+  # `abc.ABCMeta` has already been deleted from the world, resulting in
+  # exceptions after main.
+  global _possibly_disallowed_children_cache
+  _possibly_disallowed_children_cache = None
+
+
+atexit.register(clear_disallowed_cache)
 
 
 def _possibly_disallowed_children(
