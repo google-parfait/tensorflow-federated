@@ -771,7 +771,6 @@ class EagerTFExecutorTest(test_case.TestCase, parameterized.TestCase):
 class InsertSkipDatasetTest(test_case.TestCase):
 
   def test_inserts_skip_dataset_in_main_graph(self):
-    self.skipTest('b/186155647')
 
     @computations.tf_computation
     def comp():
@@ -781,12 +780,12 @@ class InsertSkipDatasetTest(test_case.TestCase):
     comp_proto = computation_impl.ComputationImpl.get_proto(comp)
     graph_def = serialization_utils.unpack_graph_def(
         comp_proto.tensorflow.graph_def)
+    self.assert_graph_contains_ops(graph_def, {'FinalizeDataset'})
     self.assert_graph_does_not_contain_ops(graph_def, {'SkipDataset'})
     eager_tf_executor._add_skip_zero_before_finalize_dataset(graph_def)
     self.assert_graph_contains_ops(graph_def, {'SkipDataset'})
 
   def test_inserts_skip_dataset_in_function_lib(self):
-    self.skipTest('b/186155647')
 
     @tf.function
     def do_reduction(ds):
@@ -800,6 +799,7 @@ class InsertSkipDatasetTest(test_case.TestCase):
     comp_proto = computation_impl.ComputationImpl.get_proto(comp)
     graph_def = serialization_utils.unpack_graph_def(
         comp_proto.tensorflow.graph_def)
+    self.assert_graph_contains_ops(graph_def, {'FinalizeDataset'})
     self.assert_graph_does_not_contain_ops(graph_def, {'SkipDataset'})
     eager_tf_executor._add_skip_zero_before_finalize_dataset(graph_def)
     self.assert_graph_contains_ops(graph_def, {'SkipDataset'})
