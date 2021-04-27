@@ -40,10 +40,8 @@ def create_local_execution_context(num_clients=None,
       default_num_clients=default_num_clients)
 
   def _compiler(comp):
-    native_form = compiler.transform_to_native_form(comp)
-    if not reference_resolving_clients:
-      return compiler.transform_mathematical_functions_to_tensorflow(
-          native_form)
+    native_form = compiler.transform_to_native_form(
+        comp, transform_math_to_tf=not reference_resolving_clients)
     return native_form
 
   return execution_context.ExecutionContext(
@@ -97,8 +95,7 @@ def create_thread_debugging_execution_context(num_clients=None,
   )
 
   def _debug_compiler(comp):
-    native_form = compiler.transform_to_native_form(comp)
-    return compiler.transform_mathematical_functions_to_tensorflow(native_form)
+    return compiler.transform_to_native_form(comp, transform_math_to_tf=True)
 
   return execution_context.ExecutionContext(
       executor_fn=factory, compiler_fn=_debug_compiler)

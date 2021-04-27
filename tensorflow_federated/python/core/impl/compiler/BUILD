@@ -613,6 +613,7 @@ py_library(
         ":building_block_analysis",
         ":building_block_factory",
         ":building_blocks",
+        ":compiled_computation_transforms",
         ":intrinsic_defs",
         ":transformation_utils",
         ":tree_analysis",

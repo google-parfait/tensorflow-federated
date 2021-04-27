@@ -1292,7 +1292,7 @@ def _remap_graph_inputs(graph, list_of_indices, tuple_type):
 
 
 class TensorFlowOptimizer(transformation_utils.TransformSpec):
-  """Applies TF graph optimizations to `building_blocks.CompiledComputations`.
+  """Applies TF graph optimizations to `building_blocks.CompiledComputation`s.
 
   This `transformation_utils.TransformSpec` does not alter the TFF structure of
   the computations on which it is called; rather, it calls out to TensorFlow
@@ -1310,3 +1310,27 @@ class TensorFlowOptimizer(transformation_utils.TransformSpec):
     if not self.should_transform(comp):
       return comp, False
     return optimize_tensorflow_comp(comp, self._config_proto), True
+
+
+class DisableCallOpGrappler(transformation_utils.TransformSpec):
+  """Disables grappler in Call ops in `building_blocks.CompiledComputation`s.
+
+  This overwrites the `config_proto` key of the `NodeDef.attr` field of nodes
+  in a `tf.compat.v1.GraphDef` to ensure that Grappler is disabled at runtime.
+
+  This `transformation_utils.TransformSpec` does not alter the TFF structure of
+  the computations on which it is called.
+  """
+
+  def should_transform(self, comp):
+    return (comp.is_compiled_computation() and
+            comp.proto.WhichOneof('computation') == 'tensorflow')
+
+  def transform(self, comp):
+    if not self.should_transform(comp):
+      return comp, False
+    py_typecheck.check_type(comp, building_blocks.CompiledComputation)
+    new_comp_proto = tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
+        comp.proto)
+    return building_blocks.CompiledComputation(
+        new_comp_proto, type_signature=comp.type_signature), True

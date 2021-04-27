@@ -147,7 +147,7 @@ def _insert_skip_after_all_finalizes(
   return new_nodes
 
 
-def _add_skip_zero_before_finalize_dataset(graph_def: tf.compat.v1.NodeDef):
+def _add_skip_zero_before_finalize_dataset(graph_def: tf.compat.v1.GraphDef):
   """Inserts Skip(0) operations before FinalizeDatasets in graph_def."""
   new_node_collection = _insert_skip_after_all_finalizes(
       graph_def.node, name_postfix='', for_function=False)
@@ -321,7 +321,8 @@ def _call_embedded_tf(*, arg, param_fns, result_fns, result_type, wrapped_fn,
 
 def _ensure_comp_runtime_compatible(comp: pb.Computation) -> pb.Computation:
   """Ensures `comp` is compatible with eager runtime backing EagerExecutor."""
-  graph_def = serialization_utils.unpack_graph_def(comp.tensorflow.graph_def)
+  original_tf = comp.tensorflow
+  graph_def = serialization_utils.unpack_graph_def(original_tf.graph_def)
   # TODO(b/159180073): clean raise after fixing dataset reduce.
   num_gpu_devices = len(tf.config.list_logical_devices('GPU'))
   if num_gpu_devices > 0:
@@ -338,9 +339,11 @@ def _ensure_comp_runtime_compatible(comp: pb.Computation) -> pb.Computation:
       type=comp.type,
       tensorflow=pb.TensorFlow(
           graph_def=serialization_utils.pack_graph_def(graph_def),
-          initialize_op=comp.tensorflow.initialize_op,
-          parameter=comp.tensorflow.parameter,
-          result=comp.tensorflow.result))
+          initialize_op=original_tf.initialize_op
+          if original_tf.initialize_op else None,
+          parameter=original_tf.parameter
+          if original_tf.HasField('parameter') else None,
+          result=original_tf.result))
 
 
 def embed_tensorflow_computation(comp, type_spec=None, device=None):
