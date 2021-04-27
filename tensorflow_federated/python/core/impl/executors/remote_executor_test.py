@@ -51,7 +51,7 @@ def test_context():
   server_pool = logging_pool.pool(max_workers=1)
   server = grpc.server(server_pool)
   server.add_insecure_port('[::]:{}'.format(port))
-  target_factory = executor_stacks.local_executor_factory(num_clients=3)
+  target_factory = executor_stacks.local_executor_factory(default_num_clients=3)
   tracers = []
 
   def _tracer_fn(cardinalities):

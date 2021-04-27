@@ -109,7 +109,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('local_executor_none_clients', executor_stacks.local_executor_factory()),
       ('local_executor_three_clients',
-       executor_stacks.local_executor_factory(num_clients=3)),
+       executor_stacks.local_executor_factory(default_num_clients=3)),
   )
   def test_with_temperature_sensor_example(self, executor):
 

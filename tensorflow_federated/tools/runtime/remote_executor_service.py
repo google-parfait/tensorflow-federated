@@ -32,7 +32,7 @@ flags.DEFINE_integer('fanout', '100',
 def main(argv):
   del argv
   executor_factory = tff.framework.local_executor_factory(
-      num_clients=FLAGS.clients, max_fanout=FLAGS.fanout)
+      default_num_clients=FLAGS.clients, max_fanout=FLAGS.fanout)
   if FLAGS.private_key:
     if FLAGS.certificate_chain:
       with open(FLAGS.private_key, 'rb') as f:
