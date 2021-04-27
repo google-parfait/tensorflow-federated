@@ -68,7 +68,8 @@ def infer_cardinalities(value, type_spec):
       a federated type which is not `all_equal` but the yet-to-be-embedded
       `value` is not represented as a Python `list`.
   """
-  py_typecheck.check_not_none(value)
+  if value is None:
+    return {}
   py_typecheck.check_type(type_spec, computation_types.Type)
   if isinstance(value, cardinality_carrying_base.CardinalityCarrying):
     return value.cardinality
