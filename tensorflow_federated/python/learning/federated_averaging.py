@@ -22,8 +22,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 """
 
 import collections
-import enum
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Optional
 import warnings
 
 import tensorflow as tf
@@ -33,6 +32,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
@@ -40,25 +40,16 @@ from tensorflow_federated.python.learning.framework import optimizer_utils
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-class ClientWeighting(enum.Enum):
-  """Enum for built-in methods for weighing clients."""
-  UNIFORM = 1
-  NUM_EXAMPLES = 2
-
-
-ClientWeightFnType = Callable[[Any], tf.Tensor]
-
-
 class ClientFedAvg(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated Averaging."""
 
-  def __init__(self,
-               model: model_lib.Model,
-               optimizer: tf.keras.optimizers.Optimizer,
-               client_weighting: Union[
-                   ClientWeighting,
-                   ClientWeightFnType] = ClientWeighting.NUM_EXAMPLES,
-               use_experimental_simulation_loop: bool = False):
+  def __init__(
+      self,
+      model: model_lib.Model,
+      optimizer: tf.keras.optimizers.Optimizer,
+      client_weighting: client_weight_lib.ClientWeightType = client_weight_lib
+      .ClientWeighting.NUM_EXAMPLES,
+      use_experimental_simulation_loop: bool = False):
     """Creates the client computation for Federated Averaging.
 
     Note: All variable creation required for the client computation (e.g. model
@@ -79,12 +70,7 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     self._model = model_utils.enhance(model)
     self._optimizer = optimizer
     py_typecheck.check_type(self._model, model_utils.EnhancedModel)
-
-    if (not isinstance(client_weighting, ClientWeighting) and
-        not callable(client_weighting)):
-      raise TypeError(f'`client_weighting` must be either instance of '
-                      f'`ClientWeighting` or callable. '
-                      f'Found type {type(client_weighting)}.')
+    client_weight_lib.check_is_client_weighting_or_callable(client_weighting)
     self._client_weighting = client_weighting
 
     self._dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
@@ -132,9 +118,9 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
     if has_non_finite_delta > 0:
       # TODO(b/176171842): Zeroing has no effect with unweighted aggregation.
       weights_delta_weight = tf.constant(0.0)
-    elif self._client_weighting is ClientWeighting.NUM_EXAMPLES:
+    elif self._client_weighting is client_weight_lib.ClientWeighting.NUM_EXAMPLES:
       weights_delta_weight = tf.cast(num_examples_sum, tf.float32)
-    elif self._client_weighting is ClientWeighting.UNIFORM:
+    elif self._client_weighting is client_weight_lib.ClientWeighting.UNIFORM:
       weights_delta_weight = tf.constant(1.0)
     else:
       weights_delta_weight = self._client_weighting(model_output)
@@ -155,8 +141,7 @@ def build_federated_averaging_process(
     server_optimizer_fn: Callable[
         [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
     *,  # Require named (non-positional) parameters for the following kwargs:
-    client_weighting: Optional[Union[ClientWeighting,
-                                     ClientWeightFnType]] = None,
+    client_weighting: Optional[client_weight_lib.ClientWeightType] = None,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
@@ -253,12 +238,12 @@ def build_federated_averaging_process(
   if isinstance(model_update_aggregation_factory,
                 factory.UnweightedAggregationFactory):
     if client_weighting is None:
-      client_weighting = ClientWeighting.UNIFORM
-    elif client_weighting is not ClientWeighting.UNIFORM:
+      client_weighting = client_weight_lib.ClientWeighting.UNIFORM
+    elif client_weighting is not client_weight_lib.ClientWeighting.UNIFORM:
       raise ValueError('Cannot use non-uniform client weighting with '
                        'unweighted aggregation.')
-  elif not client_weighting:
-    client_weighting = ClientWeighting.NUM_EXAMPLES
+  elif client_weighting is None:
+    client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
 
   if aggregation_process is not None:
     warnings.warn(
