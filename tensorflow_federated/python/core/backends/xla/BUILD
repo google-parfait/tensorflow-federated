@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -24,6 +25,7 @@ py_library(
     srcs = ["compiler.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":xla_serialization",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -40,11 +42,13 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":compiler",
         ":runtime",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -67,6 +71,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":execution_contexts",
         ":xla_serialization",
         "//tensorflow_federated/python/core/api:computations",
@@ -76,6 +81,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -84,6 +90,7 @@ py_library(
     srcs = ["executor.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":runtime",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -106,10 +113,12 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":executor",
         ":xla_serialization",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -118,6 +127,7 @@ py_library(
     srcs = ["xla_serialization.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -134,10 +144,12 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":xla_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@absl_py//absl/testing:absltest",
         "@com_google_protobuf//:protobuf_python",
     ],
 )
@@ -147,6 +159,7 @@ py_library(
     srcs = ["runtime.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":xla_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/common_libs:py_typecheck",
@@ -163,9 +176,11 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":runtime",
         ":xla_serialization",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@absl_py//absl/testing:absltest",
     ],
 )

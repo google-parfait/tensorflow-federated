@@ -60,6 +60,7 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":context_stack_test_utils",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -86,6 +87,7 @@ py_test(
     deps = [
         ":context_stack_impl",
         ":get_context_stack",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -116,6 +118,7 @@ py_test(
         ":context_stack_impl",
         ":context_stack_test_utils",
         ":set_default_context",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 

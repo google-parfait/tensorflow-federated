@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -35,6 +36,7 @@ py_test(
     deps = [
         ":jax_computation_context",
         "//tensorflow_federated/python/core/api:computations",
+        "@absl_py//absl/testing:absltest",
     ],
 )
 
@@ -43,6 +45,7 @@ py_library(
     srcs = ["jax_serialization.py"],
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":jax_computation_context",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
@@ -61,6 +64,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        requirement("jax"),
         ":jax_serialization",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
         "//tensorflow_federated/python/core/backends/xla:xla_serialization",
@@ -68,5 +72,6 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
+        "@absl_py//absl/testing:absltest",
     ],
 )

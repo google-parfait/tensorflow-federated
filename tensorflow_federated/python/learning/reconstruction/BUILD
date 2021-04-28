@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = ["//visibility:private"])
@@ -8,6 +9,7 @@ py_library(
     name = "model",
     srcs = ["model.py"],
     srcs_version = "PY3",
+    deps = [requirement("attrs")],
 )
 
 py_library(
@@ -17,6 +19,7 @@ py_library(
     deps = [
         ":model",
         "//tensorflow_federated/python/learning:model_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -29,6 +32,7 @@ py_test(
         ":keras_utils",
         ":reconstruction_utils",
         "//tensorflow_federated/python/learning:model_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -41,6 +45,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/learning:keras_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -52,5 +57,6 @@ py_test(
     deps = [
         ":keras_utils",
         ":model",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

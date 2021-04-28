@@ -25,7 +25,10 @@ py_test(
     srcs = ["backend_info_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":backend_info"],
+    deps = [
+        ":backend_info",
+        "@absl_py//absl/testing:absltest",
+    ],
 )
 
 py_library(
@@ -40,6 +43,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_serialization",
         "//tensorflow_federated/python/core/impl/utils:tensorflow_utils",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -56,6 +60,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -78,6 +83,7 @@ py_test(
     deps = [
         ":computation_module",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -115,6 +121,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
         "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -140,5 +147,6 @@ py_test(
         ":computation_module",
         ":runtime",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
