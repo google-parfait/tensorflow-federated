@@ -92,6 +92,53 @@ py_library(
 )
 
 py_library(
+    name = "data_backend_base",
+    srcs = ["data_backend_base.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+    ],
+)
+
+py_library(
+    name = "data_executor",
+    srcs = ["data_executor.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":data_backend_base",
+        ":executor_base",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
+        "//tensorflow_federated/python/common_libs:tracing",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
+    ],
+)
+
+py_test(
+    name = "data_executor_test",
+    size = "small",
+    srcs = ["data_executor_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":data_backend_base",
+        ":data_executor",
+        ":eager_tf_executor",
+        ":execution_context",
+        ":executor_stacks",
+        "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/core/api:computations",
+        "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
+        "//tensorflow_federated/python/core/impl/federated_context:data",
+        "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/core/impl/types:type_serialization",
+    ],
+)
+
+py_library(
     name = "federated_composing_strategy",
     srcs = ["federated_composing_strategy.py"],
     srcs_version = "PY3",
