@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
@@ -85,9 +86,9 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
     model = self.create_model()
     dataset = self.create_dataset()
     if weighted:
-      client_weighting = federated_averaging.ClientWeighting.NUM_EXAMPLES
+      client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
     else:
-      client_weighting = federated_averaging.ClientWeighting.UNIFORM
+      client_weighting = client_weight_lib.ClientWeighting.UNIFORM
     client_tf = federated_averaging.ClientFedAvg(
         model,
         tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs),
@@ -174,8 +175,8 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
       prev_loss = train_metrics['loss']
 
   @parameterized.named_parameters([
-      ('unweighted', federated_averaging.ClientWeighting.UNIFORM),
-      ('example_weighted', federated_averaging.ClientWeighting.NUM_EXAMPLES),
+      ('unweighted', client_weight_lib.ClientWeighting.UNIFORM),
+      ('example_weighted', client_weight_lib.ClientWeighting.NUM_EXAMPLES),
       ('custom_weighted', lambda _: tf.constant(1.5)),
   ])
   @test_utils.skip_test_for_multi_gpu
