@@ -331,7 +331,7 @@ class FederatingExecutor(executor_base.Executor):
     * An instance of `placements.PlacementLiteral`.
 
     * An instance of `pb.Computation` if of one of the following kinds:
-      intrinsic, lambda, tensorflow, or xla.
+      intrinsic, lambda, tensorflow, xla, or data.
 
     * A Python `list` if `type_spec` is a federated type.
 
@@ -376,7 +376,7 @@ class FederatingExecutor(executor_base.Executor):
       else:
         type_spec.check_assignable_from(deserialized_type)
       which_computation = value.WhichOneof('computation')
-      if which_computation in ['lambda', 'tensorflow', 'xla']:
+      if which_computation in ['lambda', 'tensorflow', 'xla', 'data']:
         return self._strategy.ingest_value(value, type_spec)
       elif which_computation == 'intrinsic':
         if value.intrinsic.uri in FederatingExecutor._FORWARDED_INTRINSICS:
