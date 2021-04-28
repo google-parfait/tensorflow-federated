@@ -25,6 +25,7 @@ from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import federated_sgd
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model_examples
@@ -57,41 +58,42 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
         ],
         non_trainable=[0.0])
 
-  @parameterized.named_parameters(('non-simulation', False),
-                                  ('simulation', True))
+  @parameterized.named_parameters(
+      ('non-simulation_weighted', False, True),
+      ('non-simulation_unweighted', False, False),
+      ('simulation_weighted', True, True),
+      ('simulation_unweighted', True, False),
+  )
   @test_utils.skip_test_for_multi_gpu
-  def test_client_tf(self, simulation):
+  def test_client_tf(self, simulation, weighted):
     model = self.model()
     dataset = self.dataset()
+    if weighted:
+      client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
+    else:
+      client_weighting = client_weight_lib.ClientWeighting.UNIFORM
     client_tf = federated_sgd.ClientSgd(
-        model, use_experimental_simulation_loop=simulation)
+        model,
+        client_weighting=client_weighting,
+        use_experimental_simulation_loop=simulation)
     client_outputs = self.evaluate(client_tf(dataset, self.initial_weights()))
 
     # Both trainable parameters should have gradients, and we don't return the
     # non-trainable 'c'. Model deltas for squared error:
     self.assertAllClose(client_outputs.weights_delta, [[[1.0], [0.0]], 1.0])
-    self.assertAllClose(client_outputs.weights_delta_weight, 8.0)
+    if weighted:
+      self.assertAllClose(client_outputs.weights_delta_weight, 8.0)
+    else:
+      self.assertAllClose(client_outputs.weights_delta_weight, 1.0)
 
-    self.assertEqual(
+    self.assertDictContainsSubset(
         client_outputs.model_output, {
             'num_examples': 8,
             'num_examples_float': 8.0,
             'num_batches': 3,
             'loss': 0.5,
         })
-    self.assertEqual(client_outputs.optimizer_output, {
-        'client_weight': 8.0,
-        'has_non_finite_delta': 0,
-    })
-
-  def test_client_tf_custom_batch_weight(self):
-    model = self.model()
-    dataset = self.dataset()
-    client_tf = federated_sgd.ClientSgd(
-        model, batch_weight_fn=lambda batch: 2.0 * tf.reduce_sum(batch.x))
-    client_outputs = client_tf(dataset, self.initial_weights())
-    self.assertEqual(self.evaluate(client_outputs.weights_delta_weight),
-                     16.0)  # 2 * 8
+    self.assertEqual(client_outputs.optimizer_output['has_non_finite_delta'], 0)
 
   @parameterized.named_parameters(('_inf', np.inf), ('_nan', np.nan))
   def test_non_finite_aggregation(self, bad_value):
@@ -126,10 +128,16 @@ class FederatedSgdTest(test_case.TestCase, parameterized.TestCase):
 
 class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
 
+  @parameterized.named_parameters([
+      ('unweighted', client_weight_lib.ClientWeighting.UNIFORM),
+      ('example_weighted', client_weight_lib.ClientWeighting.NUM_EXAMPLES),
+      ('custom_weighted', lambda _: tf.constant(1.5)),
+  ])
   @test_utils.skip_test_for_multi_gpu
-  def test_orchestration_execute(self):
+  def test_orchestration_execute(self, client_weighting):
     iterative_process = federated_sgd.build_federated_sgd_process(
-        model_fn=model_examples.LinearRegression)
+        model_fn=model_examples.LinearRegression,
+        client_weighting=client_weighting)
 
     # Some data points along [x_1 + 2*x_2 + 3 = y], expecting to learn
     # kernel = [1, 2], bias = [3].

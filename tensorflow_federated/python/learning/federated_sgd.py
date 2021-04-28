@@ -21,7 +21,7 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
     https://arxiv.org/abs/1602.05629
 """
 
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 import warnings
 
 import tensorflow as tf
@@ -31,6 +31,7 @@ from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
@@ -41,10 +42,12 @@ from tensorflow_federated.python.tensorflow_libs import tensor_utils
 class ClientSgd(optimizer_utils.ClientDeltaFn):
   """Client TensorFlow logic for Federated SGD."""
 
-  def __init__(self,
-               model: model_lib.Model,
-               batch_weight_fn: Optional[Callable[[Any], tf.Tensor]] = None,
-               use_experimental_simulation_loop: bool = False):
+  def __init__(
+      self,
+      model: model_lib.Model,
+      client_weighting: client_weight_lib.ClientWeightType = client_weight_lib
+      .ClientWeighting.NUM_EXAMPLES,
+      use_experimental_simulation_loop: bool = False):
     """Constructs the client computation for Federated SGD.
 
     Note: All variable creation required for the client computation (e.g. model
@@ -53,16 +56,15 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 
     Args:
       model: A `learning.Model` for which gradients are computed.
-      batch_weight_fn: A function that takes a batch (as passed to forward_pass)
-        and returns a float32 weight. If not provided, the default uses the size
-        of the batch (as measured by the batch dimension of the predictions
-        returned by forward_pass).
+      client_weighting: A value of `tff.learning.ClientWeighting` that
+        specifies a built-in weighting method, or a callable that takes the
+        output of `model.report_local_outputs` and returns a tensor that
+        provides the weight in the federated average of model deltas.
       use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
     """
-    if batch_weight_fn is not None:
-      py_typecheck.check_callable(batch_weight_fn)
-    self._batch_weight_fn = batch_weight_fn
+    client_weight_lib.check_is_client_weighting_or_callable(client_weighting)
+    self._client_weighting = client_weighting
 
     self._model = model_utils.enhance(model)
     py_typecheck.check_type(self._model, model_utils.EnhancedModel)
@@ -91,16 +93,17 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 
     def reduce_fn(state, batch):
       """Runs forward_pass on batch and sums the weighted gradients."""
-      flat_accumulated_grads, batch_weight_sum = state
+      flat_accumulated_grads, num_examples_sum = state
 
       with tf.GradientTape() as tape:
         output = model.forward_pass(batch)
       flat_grads = tape.gradient(output.loss, flat_trainable_weights)
-
-      if self._batch_weight_fn is not None:
-        batch_weight = self._batch_weight_fn(batch)
+      if output.num_examples is None:
+        num_examples = tf.shape(output.predictions, out_type=tf.int64)[0]
       else:
-        batch_weight = tf.cast(tf.shape(output.predictions)[0], tf.float32)
+        num_examples = tf.cast(output.num_examples, tf.int64)
+
+      batch_weight = tf.cast(num_examples, tf.float32)
 
       flat_accumulated_grads = tuple(
           accumulator + batch_weight * grad
@@ -110,29 +113,38 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
       # doubling the number of required variables here (e.g. keeping two copies
       # of all gradients). If you're looking to optimize memory usage this might
       # be a place to look.
-      return (flat_accumulated_grads, batch_weight_sum + batch_weight)
+      return (flat_accumulated_grads, num_examples_sum + num_examples)
 
     def _zero_initial_state():
-      """Create a tuple of (tuple of gradient accumulators, batch weight sum)."""
+      """Create a tuple of (gradient accumulators, batch weight, num examples)."""
       return (tuple(tf.zeros_like(w) for w in flat_trainable_weights),
-              tf.constant(0.0))
+              tf.constant(0, dtype=tf.int64))
 
-    flat_grad_sums, batch_weight_sum = self._dataset_reduce_fn(
+    flat_grad_sums, num_examples_sum = self._dataset_reduce_fn(
         reduce_fn=reduce_fn,
         dataset=dataset,
         initial_state_fn=_zero_initial_state)
     grad_sums = tf.nest.pack_sequence_as(model.weights.trainable,
                                          flat_grad_sums)
+    num_examples_as_float = tf.cast(num_examples_sum, tf.float32)
 
     # For SGD, the delta is just the negative of the average gradient:
     weights_delta = tf.nest.map_structure(
-        lambda gradient: -1.0 * gradient / batch_weight_sum, grad_sums)
+        lambda gradient: -1.0 * gradient / num_examples_as_float, grad_sums)
+
+    model_output = model.report_local_outputs()
+
     weights_delta, has_non_finite_delta = (
         tensor_utils.zero_all_if_any_non_finite(weights_delta))
     if has_non_finite_delta > 0:
       weights_delta_weight = tf.constant(0.0)
+    elif self._client_weighting is client_weight_lib.ClientWeighting.NUM_EXAMPLES:
+      weights_delta_weight = num_examples_as_float
+    elif self._client_weighting is client_weight_lib.ClientWeighting.UNIFORM:
+      weights_delta_weight = tf.constant(1.0)
     else:
-      weights_delta_weight = batch_weight_sum
+      weights_delta_weight = self._client_weighting(model_output)
+
     return optimizer_utils.ClientOutput(
         weights_delta, weights_delta_weight, model.report_local_outputs(),
         tensor_utils.to_odict({
@@ -150,8 +162,8 @@ def build_federated_sgd_process(
     model_fn: Callable[[], model_lib.Model],
     server_optimizer_fn: Callable[
         [], tf.keras.optimizers.Optimizer] = DEFAULT_SERVER_OPTIMIZER_FN,
-    client_weight_fn: Callable[[Any], tf.Tensor] = None,
-    *,
+    *,  # Require named (non-positional) parameters for the following kwargs:
+    client_weighting: Optional[client_weight_lib.ClientWeightType] = None,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     aggregation_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
@@ -213,10 +225,11 @@ def build_federated_sgd_process(
     server_optimizer_fn: A no-arg function that returns a `tf.Optimizer`. The
       `apply_gradients` method of this optimizer is used to apply client updates
       to the server model.
-    client_weight_fn: Optional function that takes the output of
+    client_weighting: A value of `tff.learning.ClientWeighting` that specifies a
+      built-in weighting method, or a callable that takes the output of
       `model.report_local_outputs` and returns a tensor that provides the weight
-      in the federated average of the aggregated gradients. If not provided, the
-      default is the total number of examples processed on device.
+      in the federated average of model deltas. If `None`, defaults to weighting
+      by number of examples.
     broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`.
@@ -237,6 +250,16 @@ def build_federated_sgd_process(
     A `tff.templates.IterativeProcess`.
   """
 
+  if isinstance(model_update_aggregation_factory,
+                factory.UnweightedAggregationFactory):
+    if client_weighting is None:
+      client_weighting = client_weight_lib.ClientWeighting.UNIFORM
+    elif client_weighting is not client_weight_lib.ClientWeighting.UNIFORM:
+      raise ValueError('Cannot use non-uniform client weighting with '
+                       'unweighted aggregation.')
+  elif client_weighting is None:
+    client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
+
   if aggregation_process is not None:
     warnings.warn(
         'The aggregation_process argument to '
@@ -252,7 +275,7 @@ def build_federated_sgd_process(
   def client_sgd_avg(model_fn: Callable[[], model_lib.Model]) -> ClientSgd:
     return ClientSgd(
         model_fn(),
-        client_weight_fn,
+        client_weighting=client_weighting,
         use_experimental_simulation_loop=use_experimental_simulation_loop)
 
   iter_proc = optimizer_utils.build_model_delta_optimizer_process(

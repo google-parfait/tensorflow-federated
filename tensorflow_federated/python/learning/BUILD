@@ -24,6 +24,7 @@ py_library(
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated:__pkg__"],
     deps = [
+        ":client_weight_lib",
         ":federated_averaging",
         ":federated_evaluation",
         ":federated_sgd",
@@ -38,10 +39,18 @@ py_library(
 )
 
 py_library(
+    name = "client_weight_lib",
+    srcs = ["client_weight_lib.py"],
+    srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+)
+
+py_library(
     name = "federated_averaging",
     srcs = ["federated_averaging.py"],
     srcs_version = "PY3",
     deps = [
+        ":client_weight_lib",
         ":model",
         ":model_utils",
         "//tensorflow_federated/python/aggregators:factory",
@@ -63,6 +72,7 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":client_weight_lib",
         ":federated_averaging",
         ":keras_utils",
         ":model_examples",
@@ -124,6 +134,7 @@ py_library(
     srcs = ["federated_sgd.py"],
     srcs_version = "PY3",
     deps = [
+        ":client_weight_lib",
         ":model",
         ":model_utils",
         "//tensorflow_federated/python/aggregators:factory",
@@ -145,6 +156,7 @@ py_cpu_gpu_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":client_weight_lib",
         ":federated_sgd",
         ":keras_utils",
         ":model_examples",
