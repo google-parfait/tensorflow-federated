@@ -287,9 +287,9 @@ class ExecutorStacksTest(parameterized.TestCase):
       ('sizing_executor_none_clients',
        executor_stacks.sizing_executor_factory()),
       ('local_executor_three_clients',
-       executor_stacks.local_executor_factory(num_clients=3)),
+       executor_stacks.local_executor_factory(default_num_clients=3)),
       ('sizing_executor_three_clients',
-       executor_stacks.sizing_executor_factory(num_clients=3)),
+       executor_stacks.sizing_executor_factory(default_num_clients=3)),
   )
   @test_utils.skip_test_for_multi_gpu
   def test_execution_of_temperature_sensor_example(self, executor):
@@ -331,11 +331,12 @@ class ExecutorStacksTest(parameterized.TestCase):
       ('debug_executor_none_clients',
        executor_stacks.thread_debugging_executor_factory()),
       ('local_executor_one_client',
-       executor_stacks.local_executor_factory(num_clients=1)),
+       executor_stacks.local_executor_factory(default_num_clients=1)),
       ('sizing_executor_one_client',
-       executor_stacks.sizing_executor_factory(num_clients=1)),
+       executor_stacks.sizing_executor_factory(default_num_clients=1)),
       ('debug_executor_one_client',
-       executor_stacks.thread_debugging_executor_factory(num_clients=1)),
+       executor_stacks.thread_debugging_executor_factory(
+           default_num_clients=1)),
   )
   def test_execution_of_tensorflow(self, executor):
 
