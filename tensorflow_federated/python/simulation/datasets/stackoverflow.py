@@ -18,7 +18,6 @@ import json
 import os.path
 from typing import Optional
 
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import download
@@ -215,100 +214,90 @@ def get_synthetic():
      `tff.simulation.datasets.stackoverflow.load_data`.
   """
   return from_tensor_slices_client_data.TestClientData(
-      _SYNTHETIC_STACKOVERFLOW_DATA)
+      create_synthetic_data_dictionary())
 
 
-_SYNTHETIC_STACKOVERFLOW_DATA = {
-    'synthetic_1':
-        collections.OrderedDict(
-            creation_date=[
-                b'2010-01-08 09:34:05 UTC',
-                b'2008-08-10 08:28:52.1 UTC',
-                b'2008-08-10 08:28:52.1 UTC',
-            ],
-            score=np.asarray([
-                172,
-                80,
-                80,
-            ]).astype(np.int64),
-            tags=[
-                b'sql|sql-server|aggregate-functions|median',
-                b'css|cross-browser|rounded-corners|css3',
-                b'css|cross-browser|rounded-corners|css3',
-            ],
-            title=[
-                b'function to calculate median in sql server',
-                b'creating rounded corners using css',
-                b'creating rounded corners using css',
-            ],
-            tokens=[
-                b"if you're using sql 2005 or better this is a nice , simple-ish median calculation for a single column in a table :",
-                b'css3 does finally define the',
-                b"which is exactly how you'd want it to work .",
-            ],
-            type=[
-                b'answer',
-                b'question',
-                b'answer',
-            ]),
-    'synthetic_2':
-        collections.OrderedDict(
-            creation_date=[
-                b'2008-08-05 19:01:55.2 UTC',
-                b'2010-07-15 18:15:58.5 UTC',
-                b'2010-07-15 18:15:58.5 UTC',
-            ],
-            score=np.asarray([
-                3,
-                12,
-                -1,
-            ]).astype(np.int64),
-            tags=[
-                b'git|svn|version-control|language-agnostic|dvcs',
-                b'android|android-emulator|monkey',
-                b'android|android-emulator|monkey',
-            ],
-            title=[
-                b'getting started with version control',
-                b'writing to / system / framework in emulator',
-                b'writing to / system / framework in emulator',
-            ],
-            tokens=[
-                b'if you are on mac osx , i found <URL> " > versions to be an incredible ( free ) gui front-end to svn .',
-                b'edit :',
-                b'thanks .',
-            ],
-            type=[
-                b'answer',
-                b'question',
-                b'question',
-            ],
-        ),
-    'synthetic_3':
-        collections.OrderedDict(
-            creation_date=[
-                b'2008-10-30 16:49:26.9 UTC',
-                b'2008-10-30 16:49:26.9 UTC',
-            ],
-            score=np.asarray([
-                1,
-                1,
-            ]).astype(np.int64),
-            tags=[
-                b'vb . net|design-patterns|iterator|yield',
-                b'vb . net|design-patterns|iterator|yield',
-            ],
-            title=[
-                b'iterator pattern in vb . net ( c # would use yield ! )',
-                b'iterator pattern in vb . net ( c # would use yield ! )',
-            ],
-            tokens=[
-                b'edit :',
-                b'the spec is available here .',
-            ],
-            type=[
-                b'answer',
-                b'answer',
-            ],
-        )
-}
+def create_synthetic_data_dictionary():
+  return {
+      'synthetic_1':
+          collections.OrderedDict(
+              creation_date=[
+                  b'2010-01-08 09:34:05 UTC',
+                  b'2008-08-10 08:28:52.1 UTC',
+                  b'2008-08-10 08:28:52.1 UTC',
+              ],
+              score=tf.constant([172, 80, 80], dtype=tf.int64),
+              tags=[
+                  b'sql|sql-server|aggregate-functions|median',
+                  b'css|cross-browser|rounded-corners|css3',
+                  b'css|cross-browser|rounded-corners|css3',
+              ],
+              title=[
+                  b'function to calculate median in sql server',
+                  b'creating rounded corners using css',
+                  b'creating rounded corners using css',
+              ],
+              tokens=[
+                  b"if you're using sql 2005 or better this is a nice , simple-ish median calculation for a single column in a table :",
+                  b'css3 does finally define the',
+                  b"which is exactly how you'd want it to work .",
+              ],
+              type=[
+                  b'answer',
+                  b'question',
+                  b'answer',
+              ]),
+      'synthetic_2':
+          collections.OrderedDict(
+              creation_date=[
+                  b'2008-08-05 19:01:55.2 UTC',
+                  b'2010-07-15 18:15:58.5 UTC',
+                  b'2010-07-15 18:15:58.5 UTC',
+              ],
+              score=tf.constant([3, 12, -1], dtype=tf.int64),
+              tags=[
+                  b'git|svn|version-control|language-agnostic|dvcs',
+                  b'android|android-emulator|monkey',
+                  b'android|android-emulator|monkey',
+              ],
+              title=[
+                  b'getting started with version control',
+                  b'writing to / system / framework in emulator',
+                  b'writing to / system / framework in emulator',
+              ],
+              tokens=[
+                  b'if you are on mac osx , i found <URL> " > versions to be an incredible ( free ) gui front-end to svn .',
+                  b'edit :',
+                  b'thanks .',
+              ],
+              type=[
+                  b'answer',
+                  b'question',
+                  b'question',
+              ],
+          ),
+      'synthetic_3':
+          collections.OrderedDict(
+              creation_date=[
+                  b'2008-10-30 16:49:26.9 UTC',
+                  b'2008-10-30 16:49:26.9 UTC',
+              ],
+              score=tf.constant([1, 1], dtype=tf.int64),
+              tags=[
+                  b'vb . net|design-patterns|iterator|yield',
+                  b'vb . net|design-patterns|iterator|yield',
+              ],
+              title=[
+                  b'iterator pattern in vb . net ( c # would use yield ! )',
+                  b'iterator pattern in vb . net ( c # would use yield ! )',
+              ],
+              tokens=[
+                  b'edit :',
+                  b'the spec is available here .',
+              ],
+              type=[
+                  b'answer',
+                  b'answer',
+              ],
+          )
+  }

@@ -24,7 +24,6 @@ import os.path
 import tempfile
 
 from absl.testing import absltest
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
@@ -181,7 +180,7 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
       tf_dataset = data.create_tf_dataset_for_client(client_id)
       self.assertIsInstance(tf_dataset, tf.data.Dataset)
 
-      actual_num_examples = tf_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+      actual_num_examples = tf_dataset.reduce(0, lambda x, _: x + 1)
       self.assertEqual(
           self.evaluate(actual_num_examples), expected_num_examples)
 
@@ -205,7 +204,7 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
     expected_num_examples = len(FAKE_TEST_DATA)
     tf_dataset = data.create_tf_dataset_from_all_clients()
     self.assertIsInstance(tf_dataset, tf.data.Dataset)
-    actual_num_examples = tf_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+    actual_num_examples = tf_dataset.reduce(0, lambda x, _: x + 1)
     self.assertEqual(self.evaluate(actual_num_examples), expected_num_examples)
 
   def test_dataset_computation(self):
@@ -220,7 +219,7 @@ class FilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
       tf_dataset = data.dataset_computation(client_id)
       self.assertIsInstance(tf_dataset, tf.data.Dataset)
 
-      actual_num_examples = tf_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+      actual_num_examples = tf_dataset.reduce(0, lambda x, _: x + 1)
       self.assertEqual(
           self.evaluate(actual_num_examples), expected_num_examples)
 
@@ -307,7 +306,7 @@ class PreprocessFilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
     expected_num_examples = len(FAKE_TEST_DATA)
     tf_dataset = data.create_tf_dataset_from_all_clients()
     self.assertIsInstance(tf_dataset, tf.data.Dataset)
-    actual_num_examples = tf_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+    actual_num_examples = tf_dataset.reduce(0, lambda x, _: x + 1)
     self.assertEqual(self.evaluate(actual_num_examples), expected_num_examples)
 
   def test_preprocess_with_take_and_create_tf_dataset(self):
@@ -316,7 +315,7 @@ class PreprocessFilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
     for client_id in data.client_ids:
       client_dataset = data.create_tf_dataset_for_client(client_id)
       self.assertIsInstance(client_dataset, tf.data.Dataset)
-      num_examples = client_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+      num_examples = client_dataset.reduce(0, lambda x, _: x + 1)
       self.assertEqual(num_examples, 1)
 
   def test_preprocess_with_take_and_dataset_computation(self):
@@ -325,7 +324,7 @@ class PreprocessFilePerUserClientDataTest(tf.test.TestCase, absltest.TestCase):
     for client_id in data.client_ids:
       client_dataset = data.dataset_computation(client_id)
       self.assertIsInstance(client_dataset, tf.data.Dataset)
-      num_examples = client_dataset.reduce(np.int32(0), lambda x, _: x + 1)
+      num_examples = client_dataset.reduce(0, lambda x, _: x + 1)
       self.assertEqual(num_examples, 1)
 
   def test_dataset_from_large_number_of_clients(self):

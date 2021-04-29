@@ -15,7 +15,6 @@
 
 import collections
 
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import download
@@ -141,16 +140,15 @@ def _get_synthetic_digits_data():
     `tff.simulation.datasets.emnist.load_data`, with keys (in lexicographic
     order) `label` and `pixels`.
   """
-  data = np.array(_SYNTHETIC_DIGITS_DATA)
+  data = _SYNTHETIC_DIGITS_DATA
   img_list = []
   for img_array in data:
-    img_array = img_array.astype(np.float32) / 9.0
+    img_array = tf.constant(img_array, dtype=tf.float32) / 9.0
     img_list.append(img_array)
-  assert len(img_list) == 10
-  return collections.OrderedDict([
-      ('label', list(range(10))),
-      ('pixels', img_list),
-  ])
+  pixels = tf.stack(img_list, axis=0)
+  labels = tf.constant(range(10), dtype=tf.int32)
+
+  return collections.OrderedDict(label=labels, pixels=pixels)
 
 
 # pyformat: disable
