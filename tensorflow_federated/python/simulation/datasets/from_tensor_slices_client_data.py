@@ -13,6 +13,8 @@
 # limitations under the License.
 """A simple ClientData based on in-memory tensor slices."""
 
+import copy
+
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -56,6 +58,7 @@ class TestClientData(serializable_client_data.SerializableClientData):
         TensorFlow data types.
     """
     py_typecheck.check_type(tensor_slices_dict, dict)
+    tensor_slices_dict = copy.deepcopy(tensor_slices_dict)
     structures = list(tensor_slices_dict.values())
     example_structure = structures[0]
     # The structure should not be a namedtuple.

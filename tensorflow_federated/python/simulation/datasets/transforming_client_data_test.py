@@ -15,7 +15,6 @@
 import re
 
 from absl.testing import absltest
-import numpy as np
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
@@ -23,19 +22,41 @@ from tensorflow_federated.python.simulation.datasets import transforming_client_
 
 TEST_DATA = {
     'CLIENT A': {
-        'x': np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4'),
-        'y': np.asarray([4.0, 5.0, 6.0], dtype='f4'),
-        'z': np.asarray(['a', 'b', 'c'], dtype='S'),
+        'x': [[1, 2], [3, 4], [5, 6]],
+        'y': [4.0, 5.0, 6.0],
+        'z': ['a', 'b', 'c'],
     },
     'CLIENT B': {
-        'x': np.asarray([[10, 11]], dtype='i4'),
-        'y': np.asarray([7.0], dtype='f4'),
-        'z': np.asarray(['d'], dtype='S'),
+        'x': [[10, 11]],
+        'y': [7.0],
+        'z': ['d'],
     },
     'CLIENT C': {
-        'x': np.asarray([[100, 101], [200, 201]], dtype='i4'),
-        'y': np.asarray([8.0, 9.0], dtype='f4'),
-        'z': np.asarray(['e', 'f'], dtype='S'),
+        'x': [[100, 101], [200, 201]],
+        'y': [8.0, 9.0],
+        'z': ['e', 'f'],
+    },
+}
+
+TEST_CLIENT_DATA = from_tensor_slices_client_data.TestClientData(TEST_DATA)
+
+# Client data class with only integers, in order to test exact correctness for
+# transformations.
+INTEGER_TEST_DATA = {
+    'CLIENT A': {
+        'x': [[1, 2], [3, 4], [5, 6]],
+        'y': [4, 5, 6],
+        'z': [7, 8, 9],
+    },
+    'CLIENT B': {
+        'x': [[10, 11]],
+        'y': [7],
+        'z': [8],
+    },
+    'CLIENT C': {
+        'x': [[100, 101], [200, 201]],
+        'y': [8, 9],
+        'z': [10, 11],
     },
 }
 
@@ -44,8 +65,7 @@ def _test_transform_cons(raw_client_id, index):
   del raw_client_id
 
   def fn(data):
-    data['x'] = data['x'] + 10 * index
-    return data
+    return {'x': data['x'] + 10 * index, 'y': data['y'], 'z': data['z']}
 
   return fn
 
@@ -53,10 +73,9 @@ def _test_transform_cons(raw_client_id, index):
 class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
 
   def test_client_ids_property(self):
-    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     num_transformed_clients = 7
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform_cons, num_transformed_clients)
+        TEST_CLIENT_DATA, _test_transform_cons, num_transformed_clients)
     client_ids = transformed_client_data.client_ids
     self.assertLen(client_ids, num_transformed_clients)
     for client_id in client_ids:
@@ -65,17 +84,15 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
     self.assertTrue(transformed_client_data._has_pseudo_clients)
 
   def test_default_num_transformed_clients(self):
-    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform_cons)
+        TEST_CLIENT_DATA, _test_transform_cons)
     client_ids = transformed_client_data.client_ids
     self.assertLen(client_ids, len(TEST_DATA))
     self.assertFalse(transformed_client_data._has_pseudo_clients)
 
   def test_fail_on_bad_client_id(self):
-    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform_cons, 7)
+        TEST_CLIENT_DATA, _test_transform_cons, 7)
     # The following three should be valid.
     transformed_client_data.create_tf_dataset_for_client('CLIENT A_1')
     transformed_client_data.create_tf_dataset_for_client('CLIENT B_1')
@@ -90,45 +107,54 @@ class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
       transformed_client_data.create_tf_dataset_for_client('CLIENT B_2')
 
   def test_create_tf_dataset_for_client(self):
-    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
+    tensor_slices_dataset = from_tensor_slices_client_data.TestClientData(
+        INTEGER_TEST_DATA)
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform_cons, 9)
+        tensor_slices_dataset, _test_transform_cons, 9)
     for client_id in transformed_client_data.client_ids:
-      tf_dataset = transformed_client_data.create_tf_dataset_for_client(
+      actual_dataset = transformed_client_data.create_tf_dataset_for_client(
           client_id)
-      self.assertIsInstance(tf_dataset, tf.data.Dataset)
+      self.assertIsInstance(actual_dataset, tf.data.Dataset)
       pattern = r'^(.*)_(\d*)$'
       match = re.search(pattern, client_id)
       client = match.group(1)
       index = int(match.group(2))
-      for i, actual in enumerate(tf_dataset):
-        actual = self.evaluate(actual)
-        expected = {k: v[i].copy() for k, v in TEST_DATA[client].items()}
-        expected['x'] += 10 * index
-        self.assertCountEqual(actual, expected)
-        for k, v in actual.items():
-          self.assertAllEqual(v, expected[k])
+      base_client_dataset = tensor_slices_dataset.create_tf_dataset_for_client(
+          client)
+      expected_dataset = base_client_dataset.map(
+          _test_transform_cons(client, index))
+      self.assertAllClose(
+          list(actual_dataset.as_numpy_iterator()),
+          list(expected_dataset.as_numpy_iterator()))
 
   def test_create_tf_dataset_from_all_clients(self):
-    client_data = from_tensor_slices_client_data.TestClientData(TEST_DATA)
+    flat_data = {'CLIENT A': [1], 'CLIENT B': [2], 'CLIENT C': [3]}
+
+    def get_transform_fn(client_id, index):
+      del client_id
+      return lambda batch: batch * index
+
     num_transformed_clients = 9
+    flat_client_data = from_tensor_slices_client_data.TestClientData(flat_data)
     transformed_client_data = transforming_client_data.TransformingClientData(
-        client_data, _test_transform_cons, num_transformed_clients)
+        flat_client_data, get_transform_fn, num_transformed_clients)
     expansion_factor = num_transformed_clients // len(TEST_DATA)
-    tf_dataset = transformed_client_data.create_tf_dataset_from_all_clients()
-    self.assertIsInstance(tf_dataset, tf.data.Dataset)
+    actual_dataset = transformed_client_data.create_tf_dataset_from_all_clients(
+    )
+    self.assertIsInstance(actual_dataset, tf.data.Dataset)
+    actual_examples = [batch.numpy() for batch in actual_dataset]
+
     expected_examples = []
-    for expected_data in TEST_DATA.values():
+    for client in flat_client_data.client_ids:
       for index in range(expansion_factor):
-        for i in range(len(expected_data['x'])):
-          example = {k: v[i].copy() for k, v in expected_data.items()}
-          example['x'] += 10 * index
-          expected_examples.append(example)
-    for actual in tf_dataset:
-      actual = self.evaluate(actual)
-      expected = expected_examples.pop(0)
-      self.assertCountEqual(actual, expected)
-    self.assertEmpty(expected_examples)
+        base_client_dataset = flat_client_data.create_tf_dataset_for_client(
+            client)
+        transformed_dataset = base_client_dataset.map(
+            get_transform_fn(client, index))
+        transformed_examples = [batch.numpy() for batch in transformed_dataset]
+        expected_examples += transformed_examples
+
+    self.assertCountEqual(actual_examples, expected_examples)
 
 
 if __name__ == '__main__':

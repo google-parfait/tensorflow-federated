@@ -35,11 +35,12 @@ class StackoverflowTest(absltest.TestCase):
 
   def test_get_synthetic(self):
     client_data = stackoverflow.get_synthetic()
+    synthetic_data_dictionary = stackoverflow.create_synthetic_data_dictionary()
     self.assertCountEqual(client_data.client_ids,
-                          stackoverflow._SYNTHETIC_STACKOVERFLOW_DATA.keys())
+                          synthetic_data_dictionary.keys())
     self.assertEqual(client_data.element_type_structure, EXPECTED_ELEMENT_TYPE)
     dataset = client_data.create_tf_dataset_for_client(
-        next(iter(stackoverflow._SYNTHETIC_STACKOVERFLOW_DATA.keys())))
+        next(iter(synthetic_data_dictionary.keys())))
     self.assertEqual(dataset.element_spec, EXPECTED_ELEMENT_TYPE)
 
   def test_load_word_counts(self):

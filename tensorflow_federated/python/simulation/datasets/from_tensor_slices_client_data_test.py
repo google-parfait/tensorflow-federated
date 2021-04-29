@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import collections
+import copy
 
-import numpy as np
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.core.api import computation_base
@@ -32,8 +33,7 @@ CLIENT_ID_NOT_IN_TEST_DATA = 'CLIENT D'
 TEST_DATA_NOT_DICT = [[[1, 2]], [[1.0, 2.0]]]
 ExampleNamedTuple = collections.namedtuple('ExampleNamedTuple', 'x')
 TEST_DATA_WITH_NAMEDTUPLES = {
-    'CLIENT A':
-        ExampleNamedTuple(x=np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4'),),
+    'CLIENT A': ExampleNamedTuple(x=[[1, 2], [3, 4], [5, 6]]),
 }
 TEST_DATA_WITH_INCONSISTENT_TYPE = {
     'CLIENT A': [[1, 2]],
@@ -48,41 +48,41 @@ TEST_DATA_WITH_TUPLES = {
 TEST_DATA_WITH_ORDEREDDICTS = {
     'CLIENT A':
         collections.OrderedDict(
-            x=np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4'),
-            y=np.asarray([4.0, 5.0, 6.0], dtype='f4'),
-            z=np.asarray(['a', 'b', 'c'], dtype='S'),
+            x=[[1, 2], [3, 4], [5, 6]],
+            y=[4.0, 5.0, 6.0],
+            z=['a', 'b', 'c'],
         ),
     'CLIENT B':
         collections.OrderedDict(
-            x=np.asarray([[10, 11]], dtype='i4'),
-            y=np.asarray([7.0], dtype='f4'),
-            z=np.asarray(['d'], dtype='S'),
+            x=[[10, 11]],
+            y=[7.0],
+            z=['d'],
         ),
     'CLIENT C':
         collections.OrderedDict(
-            x=np.asarray([[100, 101], [200, 201]], dtype='i4'),
-            y=np.asarray([8.0, 9.0], dtype='f4'),
-            z=np.asarray(['e', 'f'], dtype='S'),
+            x=[[100, 101], [200, 201]],
+            y=[8.0, 9.0],
+            z=['e', 'f'],
         ),
     'CLIENT C2':
         collections.OrderedDict(
-            x=np.asarray([[100, 101], [202, 203]], dtype='i4'),
-            y=np.asarray([100.0, 200.0], dtype='f4'),
-            z=np.asarray(['abc', 'def'], dtype='S'),
+            x=[[100, 101], [202, 203]],
+            y=[100.0, 200.0],
+            z=['abc', 'def'],
         ),
 }
 TEST_DATA_WITH_PART_LIST_AND_PART_DICT = {
     'CLIENT A':
         collections.OrderedDict(
-            x=np.asarray([[1, 2], [3, 4], [5, 6]], dtype='i4'),
-            y=np.asarray([4.0, 5.0, 6.0], dtype='f4'),
-            z=np.asarray(['a', 'b', 'c'], dtype='S'),
+            x=[[1, 2], [3, 4], [5, 6]],
+            y=[4.0, 5.0, 6.0],
+            z=['a', 'b', 'c'],
         ),
     'CLIENT B': [[1.0, 2.0]],
 }
 
 
-class TestClientDataTest(tf.test.TestCase):
+class TestClientDataTest(tf.test.TestCase, parameterized.TestCase):
 
   def assertSameDatasets(self, a_dataset, b_dataset):
     self.assertEqual(len(a_dataset), len(b_dataset))
@@ -101,6 +101,16 @@ class TestClientDataTest(tf.test.TestCase):
     self.assertAllEqual(a_dict.keys(), b_dict.keys())
     for key in a_dict:
       self.assertAllEqual(a_dict[key].numpy(), b_dict[key].numpy())
+
+  @parameterized.named_parameters(
+      ('list_data', TEST_DATA),
+      ('tuple_data', TEST_DATA_WITH_TUPLES),
+      ('ordered_dict_data', TEST_DATA_WITH_ORDEREDDICTS),
+  )
+  def test_constructor_does_not_modify_in_place(self, tensor_slices_dict):
+    copy_of_tensor_slices_dict = copy.deepcopy(tensor_slices_dict)
+    from_tensor_slices_client_data.TestClientData(tensor_slices_dict)
+    self.assertSameStructure(tensor_slices_dict, copy_of_tensor_slices_dict)
 
   def test_basic(self):
     tensor_slices_dict = {'a': [1, 2, 3], 'b': [4, 5]}
@@ -235,7 +245,7 @@ class TestClientDataTest(tf.test.TestCase):
       # Check that everything in tf_dataset is an exact match for the contents
       # of expected_data at the corresponding index.
       for expected, actual in zip(expected_data, tf_dataset):
-        self.assertAllEqual(np.asarray(expected), actual.numpy())
+        self.assertAllEqual(expected, actual.numpy())
 
   def test_dataset_computation_where_client_data_is_tuples(self):
     client_data = from_tensor_slices_client_data.TestClientData(
@@ -264,7 +274,7 @@ class TestClientDataTest(tf.test.TestCase):
       # Check that everything in tf_dataset is an exact match for the contents
       # of expected_data at the corresponding index.
       for expected, actual in zip(expected_data, tf_dataset):
-        self.assertAllEqual(np.asarray(expected), actual.numpy())
+        self.assertAllEqual(expected, actual.numpy())
 
   def test_dataset_computation_where_client_data_is_ordered_dicts(self):
     client_data = from_tensor_slices_client_data.TestClientData(
