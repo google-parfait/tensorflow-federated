@@ -30,6 +30,8 @@ from tensorflow_federated.python.core.impl.executors.eager_tf_executor import Ea
 from tensorflow_federated.python.core.impl.executors.execution_context import ExecutionContext
 from tensorflow_federated.python.core.impl.executors.executor_base import Executor
 from tensorflow_federated.python.core.impl.executors.executor_factory import ExecutorFactory
+from tensorflow_federated.python.core.impl.executors.executor_serialization import deserialize_value
+from tensorflow_federated.python.core.impl.executors.executor_serialization import serialize_value
 from tensorflow_federated.python.core.impl.executors.executor_service import ExecutorService
 from tensorflow_federated.python.core.impl.executors.executor_stacks import local_executor_factory
 from tensorflow_federated.python.core.impl.executors.executor_stacks import remote_executor_factory
