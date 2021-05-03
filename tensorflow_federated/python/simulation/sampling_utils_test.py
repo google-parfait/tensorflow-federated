@@ -45,17 +45,16 @@ class SamplingTest(tf.test.TestCase, parameterized.TestCase):
           'replace': True
       })
   def test_build_uniform_sampling_fn_with_random_seed(self, a, replace):
-    size = 10
     random_seed = 1
     round_num = 5
 
     sample_fn_1 = sampling_utils.build_uniform_sampling_fn(
-        a, size, replace=replace, random_seed=random_seed)
-    sample_1 = sample_fn_1(round_num)
+        a, replace=replace, random_seed=random_seed)
+    sample_1 = sample_fn_1(round_num, size=10)
 
     sample_fn_2 = sampling_utils.build_uniform_sampling_fn(
-        a, size, replace=replace, random_seed=random_seed)
-    sample_2 = sample_fn_2(round_num)
+        a, replace=replace, random_seed=random_seed)
+    sample_2 = sample_fn_2(round_num, size=10)
 
     self.assertEqual(sample_1, sample_2)
 
@@ -78,16 +77,13 @@ class SamplingTest(tf.test.TestCase, parameterized.TestCase):
           'replace': True
       })
   def test_build_sampling_fn_without_random_seed(self, a, replace):
-    size = 10
     round_num = 5
 
-    sample_fn_1 = sampling_utils.build_uniform_sampling_fn(
-        a, size, replace=replace)
-    sample_1 = sample_fn_1(round_num)
+    sample_fn_1 = sampling_utils.build_uniform_sampling_fn(a, replace=replace)
+    sample_1 = sample_fn_1(round_num, size=10)
 
-    sample_fn_2 = sampling_utils.build_uniform_sampling_fn(
-        a, size, replace=replace)
-    sample_2 = sample_fn_2(round_num)
+    sample_fn_2 = sampling_utils.build_uniform_sampling_fn(a, replace=replace)
+    sample_2 = sample_fn_2(round_num, size=10)
 
     self.assertNotEqual(sample_1, sample_2)
 

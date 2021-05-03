@@ -34,16 +34,14 @@ T = TypeVar('T')
 
 def build_uniform_sampling_fn(
     sample_range: Sequence[T],
-    size: int,
     replace: bool = False,
-    random_seed: Optional[int] = None) -> Callable[[int], List[T]]:
+    random_seed: Optional[int] = None) -> Callable[[int, int], List[T]]:
   """Builds the function for sampling from the input iterator at each round.
 
   Args:
     sample_range: A 1-D array-like sequence, to be used as input to
     `np.random.choice`. Samples are generated randomly from the elements of the
     sequence.
-    size: The number of samples to return each round.
     replace: A boolean indicating whether the sampling is done with replacement
       (True) or without replacement (False).
     random_seed: If random_seed is set as an integer, then we use it as a random
@@ -55,8 +53,9 @@ def build_uniform_sampling_fn(
       training process.
 
   Returns:
-    A function that takes as input an integer `round_num` and returns a list of
-    elements sampled (pseudo-)randomly from the input `sample_range`.
+    A function that takes as input an integer `round_num` and integer `size` and
+    returns a list of `size` elements sampled (pseudo-)randomly from the input
+    `sample_range`.
   """
   if isinstance(random_seed, int):
     mlcg_start = np.random.RandomState(random_seed).randint(1, MLCG_MODULUS - 1)
@@ -65,7 +64,7 @@ def build_uniform_sampling_fn(
       return pow(MLCG_MULTIPLIER, round_num,
                  MLCG_MODULUS) * mlcg_start % MLCG_MODULUS
 
-  def sample(round_num, random_seed):
+  def sample(round_num, size, random_seed):
     if isinstance(random_seed, int):
       random_state = np.random.RandomState(get_pseudo_random_int(round_num))
     else:
@@ -100,8 +99,7 @@ def build_uniform_client_sampling_fn(
     A function that takes as input an integer `round_num` and returns a a list
     of ids corresponding to the uniformly sampled clients.
   """
-  return build_uniform_sampling_fn(
-      dataset.client_ids,
-      size=clients_per_round,
-      replace=False,
-      random_seed=random_seed)
+  return functools.partial(
+      build_uniform_sampling_fn(
+          dataset.client_ids, replace=False, random_seed=random_seed),
+      size=clients_per_round)
