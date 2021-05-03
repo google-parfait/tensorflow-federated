@@ -324,6 +324,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":client_data",
+        ":serializable_client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -337,7 +338,7 @@ py_test(
     deps = [
         ":from_tensor_slices_client_data",
         ":transforming_client_data",
-        "@absl_py//absl/testing:absltest",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
