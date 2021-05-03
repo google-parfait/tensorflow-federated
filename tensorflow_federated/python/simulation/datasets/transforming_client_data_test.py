@@ -12,150 +12,161 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import re
 
-from absl.testing import absltest
 import tensorflow as tf
 
+from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.datasets import from_tensor_slices_client_data
 from tensorflow_federated.python.simulation.datasets import transforming_client_data
 
 TEST_DATA = {
-    'CLIENT A': {
-        'x': [[1, 2], [3, 4], [5, 6]],
-        'y': [4.0, 5.0, 6.0],
-        'z': ['a', 'b', 'c'],
-    },
-    'CLIENT B': {
-        'x': [[10, 11]],
-        'y': [7.0],
-        'z': ['d'],
-    },
-    'CLIENT C': {
-        'x': [[100, 101], [200, 201]],
-        'y': [8.0, 9.0],
-        'z': ['e', 'f'],
-    },
+    'CLIENT A':
+        collections.OrderedDict(
+            x=[[1, 2], [3, 4], [5, 6]],
+            y=[4.0, 5.0, 6.0],
+            z=['a', 'b', 'c'],
+        ),
+    'CLIENT B':
+        collections.OrderedDict(
+            x=[[10, 11]],
+            y=[7.0],
+            z=['d'],
+        ),
+    'CLIENT C':
+        collections.OrderedDict(
+            x=[[100, 101], [200, 201]],
+            y=[8.0, 9.0],
+            z=['e', 'f'],
+        ),
 }
 
 TEST_CLIENT_DATA = from_tensor_slices_client_data.TestClientData(TEST_DATA)
 
-# Client data class with only integers, in order to test exact correctness for
-# transformations.
-INTEGER_TEST_DATA = {
-    'CLIENT A': {
-        'x': [[1, 2], [3, 4], [5, 6]],
-        'y': [4, 5, 6],
-        'z': [7, 8, 9],
-    },
-    'CLIENT B': {
-        'x': [[10, 11]],
-        'y': [7],
-        'z': [8],
-    },
-    'CLIENT C': {
-        'x': [[100, 101], [200, 201]],
-        'y': [8, 9],
-        'z': [10, 11],
-    },
-}
 
-
-def _test_transform_cons(raw_client_id, index):
-  del raw_client_id
+def _make_transform_expanded(client_id):
+  index_str = tf.strings.split(client_id, sep='_', maxsplit=1)[0]
+  index = tf.cast(tf.strings.to_number(index_str), tf.int32)
 
   def fn(data):
-    return {'x': data['x'] + 10 * index, 'y': data['y'], 'z': data['z']}
+    return collections.OrderedDict([('x', data['x'] + 10 * index),
+                                    ('y', data['y']), ('z', data['z'])])
 
   return fn
 
 
-class TransformingClientDataTest(tf.test.TestCase, absltest.TestCase):
+def _make_transform_raw(client_id):
+  del client_id
+
+  def fn(data):
+    data['x'] = data['x'] + 10
+    return data
+
+  return fn
+
+
+NUM_EXPANDED_CLIENTS = 3
+
+
+def test_expand_client_id(client_id):
+  return [str(i) + '_' + client_id for i in range(NUM_EXPANDED_CLIENTS)]
+
+
+def test_reduce_client_id(client_id):
+  return tf.strings.split(client_id, sep='_')[1]
+
+
+TRANSFORMED_CLIENT_DATA = transforming_client_data.TransformingClientData(
+    TEST_CLIENT_DATA, _make_transform_expanded, test_expand_client_id,
+    test_reduce_client_id)
+
+
+class TransformingClientDataTest(tf.test.TestCase):
 
   def test_client_ids_property(self):
-    num_transformed_clients = 7
-    transformed_client_data = transforming_client_data.TransformingClientData(
-        TEST_CLIENT_DATA, _test_transform_cons, num_transformed_clients)
-    client_ids = transformed_client_data.client_ids
+    num_transformed_clients = len(TEST_DATA) * NUM_EXPANDED_CLIENTS
+    client_ids = TRANSFORMED_CLIENT_DATA.client_ids
     self.assertLen(client_ids, num_transformed_clients)
     for client_id in client_ids:
       self.assertIsInstance(client_id, str)
     self.assertListEqual(client_ids, sorted(client_ids))
-    self.assertTrue(transformed_client_data._has_pseudo_clients)
 
   def test_default_num_transformed_clients(self):
     transformed_client_data = transforming_client_data.TransformingClientData(
-        TEST_CLIENT_DATA, _test_transform_cons)
+        TEST_CLIENT_DATA, _make_transform_raw)
     client_ids = transformed_client_data.client_ids
-    self.assertLen(client_ids, len(TEST_DATA))
-    self.assertFalse(transformed_client_data._has_pseudo_clients)
+    self.assertCountEqual(client_ids, TEST_DATA.keys())
 
   def test_fail_on_bad_client_id(self):
-    transformed_client_data = transforming_client_data.TransformingClientData(
-        TEST_CLIENT_DATA, _test_transform_cons, 7)
     # The following three should be valid.
-    transformed_client_data.create_tf_dataset_for_client('CLIENT A_1')
-    transformed_client_data.create_tf_dataset_for_client('CLIENT B_1')
-    transformed_client_data.create_tf_dataset_for_client('CLIENT A_2')
-    # This should not be valid: no corresponding client.
-    with self.assertRaisesRegex(
-        ValueError, 'client_id must be a valid string from client_ids.'):
-      transformed_client_data.create_tf_dataset_for_client('CLIENT D_0')
-    # This should not be valid: index out of range.
-    with self.assertRaisesRegex(
-        ValueError, 'client_id must be a valid string from client_ids.'):
-      transformed_client_data.create_tf_dataset_for_client('CLIENT B_2')
+    TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('0_CLIENT A')
+    TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('1_CLIENT B')
+    TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('0_CLIENT C')
 
-  def test_create_tf_dataset_for_client(self):
-    tensor_slices_dataset = from_tensor_slices_client_data.TestClientData(
-        INTEGER_TEST_DATA)
-    transformed_client_data = transforming_client_data.TransformingClientData(
-        tensor_slices_dataset, _test_transform_cons, 9)
-    for client_id in transformed_client_data.client_ids:
-      actual_dataset = transformed_client_data.create_tf_dataset_for_client(
-          client_id)
+    # This should not be valid: no prefix.
+    with self.assertRaisesRegex(ValueError,
+                                'is not a client in this ClientData'):
+      TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('CLIENT A')
+
+    # This should not be valid: no corresponding client.
+    with self.assertRaisesRegex(ValueError,
+                                'is not a client in this ClientData'):
+      TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('0_CLIENT D')
+
+    # This should not be valid: index out of range.
+    with self.assertRaisesRegex(ValueError,
+                                'is not a client in this ClientData'):
+      TRANSFORMED_CLIENT_DATA.create_tf_dataset_for_client('3_CLIENT B')
+
+  def test_dataset_computation(self):
+    for client_id in TRANSFORMED_CLIENT_DATA.client_ids:
+      actual_dataset = TRANSFORMED_CLIENT_DATA.dataset_computation(client_id)
       self.assertIsInstance(actual_dataset, tf.data.Dataset)
-      pattern = r'^(.*)_(\d*)$'
+      pattern = r'^(\d*)_(.*)$'
       match = re.search(pattern, client_id)
-      client = match.group(1)
-      index = int(match.group(2))
-      base_client_dataset = tensor_slices_dataset.create_tf_dataset_for_client(
+      client = match.group(2)
+      base_client_dataset = TEST_CLIENT_DATA.create_tf_dataset_for_client(
           client)
       expected_dataset = base_client_dataset.map(
-          _test_transform_cons(client, index))
-      self.assertAllClose(
-          list(actual_dataset.as_numpy_iterator()),
-          list(expected_dataset.as_numpy_iterator()))
+          _make_transform_expanded(client_id))
+      for actual_client_data, expected_client_data in zip(
+          actual_dataset.as_numpy_iterator(),
+          expected_dataset.as_numpy_iterator()):
+        for actual_datum, expected_datum in zip(actual_client_data,
+                                                expected_client_data):
+          self.assertEqual(actual_datum, expected_datum)
 
   def test_create_tf_dataset_from_all_clients(self):
-    flat_data = {'CLIENT A': [1], 'CLIENT B': [2], 'CLIENT C': [3]}
 
-    def get_transform_fn(client_id, index):
-      del client_id
-      return lambda batch: batch * index
+    # Expands `CLIENT {N}` into N clients which add range(N) to the feature.
+    def expand_client_id(client_id):
+      return [client_id + '-' + str(i) for i in range(int(client_id[-1]))]
 
-    num_transformed_clients = 9
-    flat_client_data = from_tensor_slices_client_data.TestClientData(flat_data)
+    def make_transform_fn(client_id):
+      split_client_id = tf.strings.split(client_id, '-')
+      index = tf.cast(tf.strings.to_number(split_client_id[1]), tf.int32)
+      return lambda x: x + index
+
+    reduce_client_id = lambda client_id: tf.strings.split(client_id, sep='-')[0]
+
+    # pyformat: disable
+    raw_data = {
+        'CLIENT 1': [0],        # expanded to [0]
+        'CLIENT 2': [1, 3, 5],  # expanded to [1, 3, 5], [2, 4, 6]
+        'CLIENT 3': [7, 10]     # expanded to [7, 10], [8, 11], [9, 12]
+    }
+    # pyformat: enable
+    client_data = from_tensor_slices_client_data.TestClientData(raw_data)
     transformed_client_data = transforming_client_data.TransformingClientData(
-        flat_client_data, get_transform_fn, num_transformed_clients)
-    expansion_factor = num_transformed_clients // len(TEST_DATA)
-    actual_dataset = transformed_client_data.create_tf_dataset_from_all_clients(
-    )
-    self.assertIsInstance(actual_dataset, tf.data.Dataset)
-    actual_examples = [batch.numpy() for batch in actual_dataset]
+        client_data, make_transform_fn, expand_client_id, reduce_client_id)
 
-    expected_examples = []
-    for client in flat_client_data.client_ids:
-      for index in range(expansion_factor):
-        base_client_dataset = flat_client_data.create_tf_dataset_for_client(
-            client)
-        transformed_dataset = base_client_dataset.map(
-            get_transform_fn(client, index))
-        transformed_examples = [batch.numpy() for batch in transformed_dataset]
-        expected_examples += transformed_examples
-
-    self.assertCountEqual(actual_examples, expected_examples)
+    flat_data = transformed_client_data.create_tf_dataset_from_all_clients()
+    self.assertIsInstance(flat_data, tf.data.Dataset)
+    all_features = [batch.numpy() for batch in flat_data]
+    self.assertCountEqual(all_features, range(13))
 
 
 if __name__ == '__main__':
+  execution_contexts.set_local_execution_context()
   tf.test.main()
