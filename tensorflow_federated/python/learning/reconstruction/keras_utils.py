@@ -176,10 +176,11 @@ class _KerasModel(model_lib.Model):
     else:
       y_true = batch_input[1]
 
-    return model_lib.BatchOutput(
-        predictions=predictions,
-        labels=y_true,
-        num_examples=tf.shape(tf.nest.flatten(inputs)[0])[0])
+    return collections.OrderedDict([(model_lib.ForwardPassKeys.PREDICTIONS,
+                                     predictions),
+                                    (model_lib.ForwardPassKeys.LABELS, y_true),
+                                    (model_lib.ForwardPassKeys.NUM_EXAMPLES,
+                                     tf.shape(tf.nest.flatten(inputs)[0])[0])])
 
 
 class MeanLossMetric(tf.keras.metrics.Mean):

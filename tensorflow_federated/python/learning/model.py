@@ -14,25 +14,21 @@
 """Abstractions for models used in federated learning."""
 
 import abc
-import attr
 
 
-@attr.s(frozen=True, slots=True, eq=False)
-class BatchOutput():
-  """A structure that holds the output of a `tff.learning.Model`.
-
-  Note: All fields are optional (may be None).
+class ForwardPassKeys():
+  """An enumeration of keys in the output dictionary from `tff.learning.Model.forward_pass`.
 
   Attributes:
-    loss: The scalar mean loss on the examples in the batch. If the model
-      has multiple losses, it is the sum of all the individual losses.
-    predictions: Tensor of predictions on the examples. The first dimension
-      must be the same size (the size of the batch).
-    num_examples: Number of examples seen in the batch.
+    LOSS: The scalar mean loss on the examples in the batch. If the model has
+      multiple losses, it is the sum of all the individual losses.
+    PREDICTIONS: Tensor of predictions on the examples. The first dimension must
+      be the same size (the size of the batch).
+    NUM_EXAMPLES: Number of examples seen in the batch.
   """
-  loss = attr.ib()
-  predictions = attr.ib()
-  num_examples = attr.ib()
+  LOSS = 'loss'
+  PREDICTIONS = 'predictions'
+  NUM_EXAMPLES = 'num_examples'
 
 
 class Model(object, metaclass=abc.ABCMeta):
@@ -130,8 +126,9 @@ class Model(object, metaclass=abc.ABCMeta):
         dropout or batch normalization is handled.
 
     Returns:
-      A `BatchOutput` object. The object must include the `loss` tensor if the
-      model will be trained via a gradient-based algorithm.
+      A `collections.OrdereDict` object with keys from `ForwardPassKeys`. The
+      object must include the `ForwardPassKeys.LOSS` key with a tensor value if
+      the model will be trained via a gradient-based algorithm.
     """
     pass
 

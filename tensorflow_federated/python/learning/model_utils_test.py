@@ -63,14 +63,14 @@ class ModelUtilsTest(test_case.TestCase):
         return 1
 
       def forward_pass(self, batch, training=True):
-        return 'Not BatchOutput'
+        return 'Not OrderedDict'
 
     bad_model = model_utils.enhance(BadModel())
     self.assertRaisesRegex(TypeError, 'Variable',
                            lambda: bad_model.trainable_variables)
     self.assertRaisesRegex(TypeError, 'Iterable',
                            lambda: bad_model.local_variables)
-    self.assertRaisesRegex(TypeError, 'BatchOutput',
+    self.assertRaisesRegex(TypeError, 'OrderedDict',
                            lambda: bad_model.forward_pass(1))
 
 

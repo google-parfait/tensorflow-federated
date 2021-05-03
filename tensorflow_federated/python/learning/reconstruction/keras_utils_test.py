@@ -150,9 +150,9 @@ class KerasUtilsTest(tf.test.TestCase):
 
     batch_output = recon_model.forward_pass(batch_input)
 
-    self.assertIsInstance(batch_output, model_lib.BatchOutput)
-    self.assertEqual(batch_output.num_examples, 10)
-    self.assertAllEqual(batch_output.labels,
+    self.assertIsInstance(batch_output, collections.OrderedDict)
+    self.assertEqual(batch_output[model_lib.ForwardPassKeys.NUM_EXAMPLES], 10)
+    self.assertAllEqual(batch_output[model_lib.ForwardPassKeys.LABELS],
                         tf.zeros(shape=[10, 1], dtype=tf.int32))
 
     # Change num_examples and labels.
@@ -162,9 +162,9 @@ class KerasUtilsTest(tf.test.TestCase):
 
     batch_output = recon_model.forward_pass(batch_input)
 
-    self.assertIsInstance(batch_output, model_lib.BatchOutput)
-    self.assertEqual(batch_output.num_examples, 5)
-    self.assertAllEqual(batch_output.labels,
+    self.assertIsInstance(batch_output, collections.OrderedDict)
+    self.assertEqual(batch_output[model_lib.ForwardPassKeys.NUM_EXAMPLES], 5)
+    self.assertAllEqual(batch_output[model_lib.ForwardPassKeys.LABELS],
                         tf.ones(shape=[5, 1], dtype=tf.int32))
 
   def test_from_keras_model_forward_pass_list_input(self):
@@ -185,9 +185,9 @@ class KerasUtilsTest(tf.test.TestCase):
 
     batch_output = recon_model.forward_pass(batch_input)
 
-    self.assertIsInstance(batch_output, model_lib.BatchOutput)
-    self.assertEqual(batch_output.num_examples, 10)
-    self.assertAllEqual(batch_output.labels,
+    self.assertIsInstance(batch_output, collections.OrderedDict)
+    self.assertEqual(batch_output[model_lib.ForwardPassKeys.NUM_EXAMPLES], 10)
+    self.assertAllEqual(batch_output[model_lib.ForwardPassKeys.LABELS],
                         tf.zeros(shape=[10, 1], dtype=tf.int32))
 
   def test_from_keras_model_forward_pass_fails_bad_input_keys(self):

@@ -379,10 +379,12 @@ class _KerasModel(model_lib.Model):
     # case that we have a model supporting masking.
     for metric in self.get_metrics():
       metric.update_state(y_true=y_true, y_pred=predictions)
-    return model_lib.BatchOutput(
-        loss=batch_loss,
-        predictions=predictions,
-        num_examples=tf.shape(tf.nest.flatten(inputs)[0])[0])
+    return collections.OrderedDict([
+        (model_lib.ForwardPassKeys.LOSS, batch_loss),
+        (model_lib.ForwardPassKeys.PREDICTIONS, predictions),
+        (model_lib.ForwardPassKeys.NUM_EXAMPLES,
+         tf.shape(tf.nest.flatten(inputs)[0])[0])
+    ])
 
   @tf.function
   def forward_pass(self, batch_input, training=True):

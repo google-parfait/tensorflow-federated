@@ -68,10 +68,11 @@ class TestModel(model.Model):
     self._variables.num_over.assign_add(num_over)
     loss = tf.constant(0.0)
     predictions = tf.zeros_like(batch['temp'])
-    return model.BatchOutput(
-        loss=loss,
-        predictions=predictions,
-        num_examples=tf.shape(predictions)[0])
+    return collections.OrderedDict([
+        (model.ForwardPassKeys.LOSS, loss),
+        (model.ForwardPassKeys.PREDICTIONS, predictions),
+        (model.ForwardPassKeys.NUM_EXAMPLES, tf.shape(predictions)[0])
+    ])
 
   def report_local_outputs(self):
     return collections.OrderedDict(num_over=self._variables.num_over)

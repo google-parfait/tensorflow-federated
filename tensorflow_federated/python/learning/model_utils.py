@@ -181,7 +181,8 @@ class EnhancedModel(model_lib.Model):
 
   def forward_pass(self, batch_input, training=True):
     return py_typecheck.check_type(
-        self._model.forward_pass(batch_input, training), model_lib.BatchOutput)
+        self._model.forward_pass(batch_input, training),
+        collections.OrderedDict)
 
   def report_local_outputs(self):
     return self._model.report_local_outputs()

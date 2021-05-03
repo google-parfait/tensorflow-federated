@@ -90,17 +90,19 @@ class LinearRegression(model.Model):
     self._num_batches.assign_add(1)
 
     average_loss = total_loss / tf.cast(num_examples, tf.float32)
-    return model.BatchOutput(
-        loss=average_loss, predictions=predictions, num_examples=num_examples)
+    return collections.OrderedDict([
+        (model.ForwardPassKeys.LOSS, average_loss),
+        (model.ForwardPassKeys.PREDICTIONS, predictions),
+        (model.ForwardPassKeys.NUM_EXAMPLES, num_examples),
+    ])
 
   @tf.function
   def report_local_outputs(self):
-    return collections.OrderedDict([
-        ('num_examples', self._num_examples),
-        ('num_examples_float', tf.cast(self._num_examples, tf.float32)),
-        ('num_batches', self._num_batches),
-        ('loss', self._loss_sum / tf.cast(self._num_examples, tf.float32)),
-    ])
+    return collections.OrderedDict(
+        num_examples=self._num_examples,
+        num_examples_float=tf.cast(self._num_examples, tf.float32),
+        num_batches=self._num_batches,
+        loss=self._loss_sum / tf.cast(self._num_examples, tf.float32))
 
   @property
   def federated_output_computation(self):

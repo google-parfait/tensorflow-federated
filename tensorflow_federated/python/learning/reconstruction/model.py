@@ -15,22 +15,19 @@
 
 import abc
 
-import attr
 
+class ForwardPassKeys():
+  """An enumeration of keys in the output dictionary from `tff.learning.Model.forward_pass`.
 
-@attr.s(eq=False, frozen=True, slots=True)
-class BatchOutput(object):
-  """A structure that holds the output of a `tff.learning.reconstruction.Model`.
-
-  Note: All fields are optional (may be None).
-
-  -   `predictions`: Tensor of predictions on the examples.
-  -   `labels`: Tensor of labels for the examples.
-  -   `num_examples`: tf.int32 scalar number of examples seen in the batch.
+  Attributes:
+    LOSS: The scalar mean loss on the examples in the batch. If the model has
+      multiple losses, it is the sum of all the individual losses.
+    LABELS: Tensor of labels for the examples.
+    NUM_EXAMPLES: Number of examples seen in the batch.
   """
-  predictions = attr.ib()
-  labels = attr.ib()
-  num_examples = attr.ib()
+  PREDICTIONS = 'predictions'
+  LABELS = 'labels'
+  NUM_EXAMPLES = 'num_examples'
 
 
 class Model(object, metaclass=abc.ABCMeta):
@@ -134,6 +131,7 @@ class Model(object, metaclass=abc.ABCMeta):
         dropout or batch normalization is handled.
 
     Returns:
-      A `BatchOutput` object.
+      A `collections.OrderedDict` object with `ForwardPassKeys` keys and
+      structures of tensor values.
     """
     pass
