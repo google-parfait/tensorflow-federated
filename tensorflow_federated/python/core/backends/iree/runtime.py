@@ -100,7 +100,7 @@ class ComputationCallable(typed_object.TypedObject):
     # things simpler while we look for ways to support true local variables
     # in IREE and eliminate any kind of global state.
     context = iree.runtime.SystemContext(config=self._config)
-    context.add_module(self._vm_module)
+    context.add_vm_module(self._vm_module)
     callable_fn = getattr(context.modules.module, self._function_name)
     return callable_fn(*args, **kwargs)
 
