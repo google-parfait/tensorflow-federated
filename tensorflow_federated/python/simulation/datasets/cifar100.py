@@ -73,8 +73,8 @@ def load_data(cache_dir=None):
   multinomial distribution.
 
   Data set sizes:
-  -   train: 500,000 examples
-  -   test: 100,000 examples
+  -   train: 50,000 examples
+  -   test: 10,000 examples
 
   The `tf.data.Datasets` returned by
   `tff.simulation.datasets.ClientData.create_tf_dataset_for_client` will yield
