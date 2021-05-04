@@ -18,8 +18,6 @@ from typing import Callable, List, Optional, Sequence, TypeVar
 
 import numpy as np
 
-from tensorflow_federated.python.simulation.datasets import client_data
-
 
 #  Settings for a multiplicative linear congruential generator (aka Lehmer
 #  generator) suggested in 'Random Number Generators: Good
@@ -73,33 +71,3 @@ def build_uniform_sampling_fn(
         sample_range, size=size, replace=replace).tolist()
 
   return functools.partial(sample, random_seed=random_seed)
-
-
-def build_uniform_client_sampling_fn(
-    dataset: client_data.ClientData,
-    clients_per_round: int,
-    random_seed: Optional[int] = None) -> Callable[[int], List[str]]:
-  """Builds a function that (pseudo-)randomly samples clients.
-
-  The function uniformly samples a number of clients (without replacement within
-  a given round, but with replacement across rounds) and returns their ids.
-
-  Args:
-    dataset: A `tff.simulation.datasets.ClientData` object.
-    clients_per_round: The number of client participants in each round.
-    random_seed: If random_seed is set as an integer, then we use it as a random
-      seed for which clients are sampled at each round. In this case, we set a
-      random seed before sampling clients according to a multiplicative linear
-      congruential generator (aka Lehmer generator, see 'The Art of Computer
-      Programming, Vol. 3' by Donald Knuth for reference). This does not affect
-      model initialization, shuffling, or other such aspects of the federated
-      training process. Note that this will alter the global numpy random seed.
-
-  Returns:
-    A function that takes as input an integer `round_num` and returns a a list
-    of ids corresponding to the uniformly sampled clients.
-  """
-  return functools.partial(
-      build_uniform_sampling_fn(
-          dataset.client_ids, replace=False, random_seed=random_seed),
-      size=clients_per_round)

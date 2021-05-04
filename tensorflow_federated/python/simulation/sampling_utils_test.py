@@ -16,7 +16,6 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import sampling_utils
-from tensorflow_federated.python.simulation.datasets import client_data
 
 
 def create_tf_dataset_for_client(client_id):
@@ -86,52 +85,6 @@ class SamplingTest(tf.test.TestCase, parameterized.TestCase):
     sample_2 = sample_fn_2(round_num, size=10)
 
     self.assertNotEqual(sample_1, sample_2)
-
-  def test_client_sampling_with_one_client(self):
-    tff_dataset = client_data.ConcreteClientData([2],
-                                                 create_tf_dataset_for_client)
-    client_sampling_fn = sampling_utils.build_uniform_client_sampling_fn(
-        tff_dataset, clients_per_round=1)
-    client_ids = client_sampling_fn(round_num=7)
-    self.assertEqual(client_ids, [2])
-
-  def test_client_sampling_fn_with_random_seed(self):
-    tff_dataset = client_data.ConcreteClientData([0, 1, 2, 3, 4],
-                                                 create_tf_dataset_for_client)
-
-    client_sampling_fn_1 = sampling_utils.build_uniform_client_sampling_fn(
-        tff_dataset, clients_per_round=1, random_seed=363)
-    client_ids_1 = client_sampling_fn_1(round_num=5)
-
-    client_sampling_fn_2 = sampling_utils.build_uniform_client_sampling_fn(
-        tff_dataset, clients_per_round=1, random_seed=363)
-    client_ids_2 = client_sampling_fn_2(round_num=5)
-
-    self.assertEqual(client_ids_1, client_ids_2)
-
-  def test_different_random_seed_give_different_clients(self):
-    tff_dataset = client_data.ConcreteClientData(
-        list(range(100)), create_tf_dataset_for_client)
-
-    client_sampling_fn_1 = sampling_utils.build_uniform_client_sampling_fn(
-        tff_dataset, clients_per_round=50, random_seed=1)
-    client_ids_1 = client_sampling_fn_1(round_num=1001)
-
-    client_sampling_fn_2 = sampling_utils.build_uniform_client_sampling_fn(
-        tff_dataset, clients_per_round=50, random_seed=2)
-    client_ids_2 = client_sampling_fn_2(round_num=1001)
-
-    self.assertNotEqual(client_ids_1, client_ids_2)
-
-  def test_client_sampling_fn_without_random_seed(self):
-    tff_dataset = client_data.ConcreteClientData(
-        list(range(100)), create_tf_dataset_for_client)
-    client_sampling_fn = sampling_utils.build_uniform_client_sampling_fn(
-        tff_dataset, clients_per_round=50)
-    client_ids_1 = client_sampling_fn(round_num=0)
-
-    client_ids_2 = client_sampling_fn(round_num=0)
-    self.assertNotEqual(client_ids_1, client_ids_2)
 
 
 if __name__ == '__main__':
