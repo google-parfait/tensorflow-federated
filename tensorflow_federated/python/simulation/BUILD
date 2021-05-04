@@ -106,7 +106,6 @@ py_library(
     name = "sampling_utils",
     srcs = ["sampling_utils.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_federated/python/simulation/datasets:client_data"],
 )
 
 py_test(
@@ -115,10 +114,7 @@ py_test(
     srcs = ["sampling_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":sampling_utils",
-        "//tensorflow_federated/python/simulation/datasets:client_data",
-    ],
+    deps = [":sampling_utils"],
 )
 
 py_library(
