@@ -15,9 +15,12 @@
 
 from typing import Optional
 
+from tensorflow_federated.proto.v0 import iterative_process_pb2
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.core.api import computation_base
+from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_instances
 from tensorflow_federated.python.core.templates import errors
 
 
@@ -185,3 +188,23 @@ class IterativeProcess:
   def state_type(self) -> computation_types.Type:
     """The `tff.Type` of the state of the process."""
     return self._state_type
+
+  def to_proto(self) -> iterative_process_pb2.IterativeProcess:
+    initialize_fn_proto = self._initialize_fn.to_building_block().proto
+    next_fn_proto = self._next_fn.to_building_block().proto
+    return iterative_process_pb2.IterativeProcess(
+        initialize_fn=initialize_fn_proto, next_fn=next_fn_proto)
+
+  @classmethod
+  def from_proto(
+      cls, iterative_process_proto: iterative_process_pb2.IterativeProcess
+  ) -> 'IterativeProcess':
+    initialize_building_blocks = building_blocks.ComputationBuildingBlock.from_proto(
+        iterative_process_proto.initialize_fn)
+    next_building_blocks = building_blocks.ComputationBuildingBlock.from_proto(
+        iterative_process_proto.next_fn)
+    return cls(
+        initialize_fn=computation_wrapper_instances
+        .building_block_to_computation(initialize_building_blocks),
+        next_fn=computation_wrapper_instances.building_block_to_computation(
+            next_building_blocks))
