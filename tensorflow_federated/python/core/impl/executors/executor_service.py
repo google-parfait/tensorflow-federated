@@ -98,7 +98,7 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       request: executor_pb2.SetCardinalitiesRequest,
       context: grpc.ServicerContext,
   ) -> executor_pb2.SetCardinalitiesResponse:
-    """Sets the cartinality for the executor service."""
+    """Sets the cardinality for the executor service."""
     py_typecheck.check_type(request, executor_pb2.SetCardinalitiesRequest)
     try:
       cardinalities_dict = executor_serialization.deserialize_cardinalities(
