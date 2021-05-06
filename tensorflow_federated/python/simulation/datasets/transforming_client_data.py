@@ -74,7 +74,7 @@ class TransformingClientData(serializable_client_data.SerializableClientData):
     if expand_client_id is None:
       self._client_ids = raw_client_ids
       # pylint: disable=unnecessary-lambda
-      self._reduce_client_id = lambda s: tf.constant(s)
+      self._reduce_client_id = lambda s: tf.convert_to_tensor(s)
       # pylint: enable=unnecessary-lambda
     else:
       self._client_ids = []
