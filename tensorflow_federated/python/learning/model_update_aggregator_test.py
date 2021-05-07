@@ -16,12 +16,18 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.aggregators import factory
+from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
+from tensorflow_federated.python.core.backends.mapreduce import form_utils
+from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import aggregation_process
+from tensorflow_federated.python.core.templates import iterative_process
 from tensorflow_federated.python.learning import model_update_aggregator
 
 _float_type = computation_types.TensorType(tf.float32)
+_float_matrix_type = computation_types.TensorType(tf.float32, [200, 300])
 
 
 class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
@@ -128,6 +134,77 @@ class ModelUpdateAggregatorTest(test_case.TestCase, parameterized.TestCase):
     process = factory_.create(_float_type)
     self.assertIsInstance(process, aggregation_process.AggregationProcess)
     self.assertFalse(process.is_weighted)
+
+
+class CompilerIntegrationTest(test_case.TestCase, parameterized.TestCase):
+  """Integration tests making sure compiler does not end up confused.
+
+  These tests compile the aggregator into MapReduceForm and check that the
+  amount of aggregated scalars roughly match the expectations, thus making sure
+  the compiler does not accidentally introduce duplicates.
+  """
+
+  def _check_aggregated_scalar_count(self,
+                                     aggregator,
+                                     max_scalars,
+                                     min_scalars=0):
+    aggregator = _mrfify_aggregator(aggregator)
+    mrf = form_utils.get_map_reduce_form_for_iterative_process(aggregator)
+    num_aggregated_scalars = type_analysis.count_tensors_in_type(
+        mrf.work.type_signature.result)['parameters']
+    self.assertLess(num_aggregated_scalars, max_scalars)
+    self.assertGreaterEqual(num_aggregated_scalars, min_scalars)
+    return mrf
+
+  def test_robust_aggregator(self):
+    aggregator = model_update_aggregator.robust_aggregator().create(
+        _float_matrix_type, _float_type)
+    self._check_aggregated_scalar_count(aggregator, 60000 * 1.01, 60000)
+
+  def test_dp_aggregator(self):
+    aggregator = model_update_aggregator.dp_aggregator(
+        0.01, 10).create(_float_matrix_type)
+    self._check_aggregated_scalar_count(aggregator, 60000 * 1.01, 60000)
+
+  def test_secure_aggregator(self):
+    aggregator = model_update_aggregator.secure_aggregator().create(
+        _float_matrix_type, _float_type)
+    mrf = self._check_aggregated_scalar_count(aggregator, 60000 * 1.01, 60000)
+
+    # The MapReduceForm should be using secure aggregation.
+    self.assertTrue(mrf.securely_aggregates_tensors)
+
+  def test_compression_aggregator(self):
+    aggregator = model_update_aggregator.compression_aggregator().create(
+        _float_matrix_type, _float_type)
+    # Default compression should reduce the size aggregated by more than 60%.
+    self._check_aggregated_scalar_count(aggregator, 60000 * 0.4)
+
+
+def _mrfify_aggregator(aggregator):
+  """Makes aggregator compatible with MapReduceForm."""
+
+  if aggregator.is_weighted:
+
+    @computations.federated_computation(
+        aggregator.next.type_signature.parameter[0],
+        computation_types.at_clients(
+            (aggregator.next.type_signature.parameter[1].member,
+             aggregator.next.type_signature.parameter[2].member)))
+    def next_fn(state, value):
+      output = aggregator.next(state, value[0], value[1])
+      return output.state, intrinsics.federated_zip(
+          (output.result, output.measurements))
+  else:
+
+    @computations.federated_computation(aggregator.next.type_signature.parameter
+                                       )
+    def next_fn(state, value):
+      output = aggregator.next(state, value)
+      return output.state, intrinsics.federated_zip(
+          (output.result, output.measurements))
+
+  return iterative_process.IterativeProcess(aggregator.initialize, next_fn)
 
 
 if __name__ == '__main__':
