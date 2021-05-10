@@ -194,7 +194,6 @@ def main(argv):
       np.random.choice(
           federated_p13n_data, num_clients_do_p13n_eval, replace=False))
   p13n_metrics = p13n_eval(server_state.model, sampled_p13n_data)
-  p13n_metrics = p13n_metrics._asdict(recursive=True)  # Convert to a dict.
   # Specifically, `p13n_metrics` is an `OrderedDict` that maps
   # key 'baseline_metrics' to the evaluation metrics of the initial global
   # model (computed by `baseline_evaluate_fn` argument in `p13n_eval`), and
