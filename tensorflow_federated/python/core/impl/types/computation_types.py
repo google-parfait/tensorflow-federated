@@ -299,15 +299,12 @@ class _ValueWithHash():
 # when new objects are requested with the same `__init__` arguments as
 # existing object instances.
 #
-# A `WeakValueDictionary` is used here so that interned instances are not
-# stored for any longer than their usual lifetimes.
-#
 # Implementation note: this double-map is used rather than a single map
 # stored as a field of each class because some class objects themselves would
 # begin destruction before the map fields of other classes, causing errors
 # during destruction.
 _intern_pool: Dict[typing.Type[Any], Dict[Any, Any]] = (
-    collections.defaultdict(lambda: weakref.WeakValueDictionary({})))
+    collections.defaultdict(lambda: {}))
 
 
 def clear_intern_pool():
