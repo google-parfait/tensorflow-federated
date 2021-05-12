@@ -37,9 +37,9 @@ py_library(
     srcs_version = "PY3",
     deps = [
         requirement("attrs"),
+        ":placements",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
-        "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

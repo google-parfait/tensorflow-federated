@@ -19,7 +19,7 @@ import collections
 import difflib
 import enum
 import typing
-from typing import Any, Dict, Optional, Type as TypingType, TypeVar
+from typing import Any, Dict, Optional, Sequence, Type as TypingType, TypeVar
 import weakref
 
 import attr
@@ -394,6 +394,14 @@ def _is_dtype_spec(dtype):
           isinstance(dtype, np.dtype))
 
 
+@attr.s(auto_attribs=True, frozen=True, slots=True, eq=True)
+class _TensorShapeContainer:
+  """Container type to hold normalized TensorShape information."""
+  has_rank: bool
+  # shape_tuple must be non-None if has_rank is True.
+  shape_tuple: Optional[Sequence[int]] = None
+
+
 class TensorType(Type, metaclass=_Intern):
   """An implementation of `tff.Type` representing types of tensors in TFF."""
 
@@ -410,11 +418,17 @@ class TensorType(Type, metaclass=_Intern):
       shape = tf.TensorShape([])
     elif not isinstance(shape, tf.TensorShape):
       shape = tf.TensorShape(shape)
-    return (dtype, shape)
+
+    if shape.rank is None:
+      shape_container = _TensorShapeContainer(has_rank=False)
+    else:
+      shape_container = _TensorShapeContainer(
+          has_rank=True, shape_tuple=tuple(shape.as_list()))
+    return (dtype, shape_container)
 
   @staticmethod
-  def _hash_normalized_args(dtype, shape):
-    return _hash_dtype_and_shape(dtype, shape)
+  def _hash_normalized_args(dtype, shape_container):
+    return hash((dtype, shape_container))
 
   def __init__(self, dtype, shape=None):
     """Constructs a new instance from the given `dtype` and `shape`.
@@ -422,13 +436,20 @@ class TensorType(Type, metaclass=_Intern):
     Args:
       dtype: An instance of `tf.DType` or one of the Numpy numeric types.
       shape: An optional instance of `tf.TensorShape` or an argument that can be
-        passed to its constructor (such as a `list` or a `tuple`), or `None` for
+        passed to its constructor (such as a `list` or a `tuple`). `None` yields
         the default scalar shape.
 
     Raises:
       TypeError: if arguments are of the wrong types.
     """
     self._dtype = dtype
+    # We mapped the `shape` argument to a `_TensorShapeContainer` in
+    # `_normalize_init_args`.
+    if not shape.has_rank:
+      shape = tf.TensorShape(None)
+    else:
+      shape = tf.TensorShape(shape.shape_tuple)
+
     self._shape = shape
     self._hash = None
     _check_well_formed(self)
