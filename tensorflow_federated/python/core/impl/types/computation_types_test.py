@@ -73,6 +73,18 @@ class TensorTypeTest(absltest.TestCase):
     self.assertEqual(t.dtype, tf.int32)
     self.assertEqual(t.shape, tf.TensorShape(None))
 
+  def test_differentiates_unknown_rank_from_unknown_dim(self):
+    unknown_rank_type = computation_types.TensorType(tf.int32,
+                                                     tf.TensorShape(None))
+    unknown_dim_type = computation_types.TensorType(tf.int32,
+                                                    tf.TensorShape([None]))
+    self.assertNotEqual(unknown_rank_type, unknown_dim_type)
+
+  def test_interns_tensortype_with_none_dims(self):
+    t = computation_types.TensorType(tf.int32, tf.TensorShape([None]))
+    t1 = computation_types.TensorType(tf.int32, tf.TensorShape([None]))
+    self.assertIs(t, t1)
+
   def test_dtype_and_shape(self):
     t = computation_types.TensorType(tf.int32, [10])
     self.assertEqual(t.dtype, tf.int32)
