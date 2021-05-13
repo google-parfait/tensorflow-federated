@@ -97,16 +97,16 @@ library.
 #### TFF Simulation
 
 [simulation](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation)
-Libraries for running Federated Learning simulations.
+Libraries for running TensorFlow Federated simulations.
 
 [simulation/baselines](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation/baselines)
-Baselines for running Federated Learning simulations.
+Baselines for running TensorFlow Federated simulations.
 
 [simulation/datasets](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation/datasets)
-Datasets for running Federated Learning simulations.
+Datasets for running TensorFlow Federated simulations.
 
 [simulation/models](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/simulation/models)
-Models for running Federated Learning simulations.
+Models for running TensorFlow Federated simulations.
 
 #### TFF Learning
 
@@ -115,6 +115,11 @@ Libraries for using Federated Learning algorithms.
 
 [learning/framework](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/learning/framework)
 Libraries for developing Federated Learning algorithms.
+
+#### TFF Analytics
+
+[analytics](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/analytics)
+Libraries for using Federated Analytics algorithms.
 
 #### TFF Aggregators
 
@@ -128,15 +133,6 @@ TensorFlow Federated core library.
 
 [core/backends](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends)
 Backends for constructing, compiling, and executing computations.
-
-[core/native](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/native)
-Libraries for interacting with native backends.
-
-[core/mapreduce](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/mapreduce)
-Libraries for interacting with MapReduce-like backends.
-
-[core/iree](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/backends/iree)
-Libraries for interacting with IREE backends.
 
 [core/templates](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/core/templates)
 Templates for commonly used computations.
