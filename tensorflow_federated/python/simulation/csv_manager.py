@@ -318,5 +318,14 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
         self._clear_rounds_after(round_num - 1)
 
   @property
+  def latest_round_num(self):
+    """The last round number passed to `update_metrics`.
+
+    If not metrics have been written, this will be `None`, otherwise it will
+    be a nonnegative integer.
+    """
+    return self._latest_round_num
+
+  @property
   def metrics_filename(self) -> str:
     return self._metrics_file
