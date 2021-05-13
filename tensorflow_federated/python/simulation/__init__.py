@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Libraries for running Federated Learning simulations."""
+"""Libraries for running TensorFlow Federated simulations."""
 
 from tensorflow_federated.python.simulation import datasets
 from tensorflow_federated.python.simulation import models
