@@ -2078,6 +2078,20 @@ class TensorFlowOptimizerTest(test_case.TestCase):
     transformed_comp, mutated = tf_optimizer.transform(compiled_computation)
     self.assertTrue(mutated)
     self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
+    self.assertTrue(transformed_comp.proto.tensorflow.HasField('parameter'))
+    self.assertFalse(transformed_comp.proto.tensorflow.initialize_op)
+
+  def test_transform_compiled_computation_returns_compiled_computation_without_empty_fields(
+      self):
+    compiled_computation = building_block_factory.create_compiled_no_arg_empty_tuple_computation(
+    )
+    config = tf.compat.v1.ConfigProto()
+    tf_optimizer = compiled_computation_transforms.TensorFlowOptimizer(config)
+    transformed_comp, mutated = tf_optimizer.transform(compiled_computation)
+    self.assertTrue(mutated)
+    self.assertIsInstance(transformed_comp, building_blocks.CompiledComputation)
+    self.assertFalse(transformed_comp.proto.tensorflow.HasField('parameter'))
+    self.assertFalse(transformed_comp.proto.tensorflow.initialize_op)
 
   def test_transform_compiled_computation_semantic_equivalence(self):
     tuple_type = computation_types.TensorType(tf.int32)

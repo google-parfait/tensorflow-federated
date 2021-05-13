@@ -60,6 +60,20 @@ def unique_name_generator(comp: building_blocks.ComputationBuildingBlock,
 
 
 @functools.lru_cache()
+def create_compiled_no_arg_empty_tuple_computation(
+) -> building_blocks.CompiledComputation:
+  """Returns graph representing a function that returns an empty tuple.
+
+  Returns:
+    An instance of `building_blocks.CompiledComputation`, a noarg function
+    which returns an empty tuple.
+  """
+  proto, type_signature = tensorflow_computation_factory.create_empty_tuple()
+  return building_blocks.CompiledComputation(
+      proto, type_signature=type_signature)
+
+
+@functools.lru_cache()
 def create_compiled_empty_tuple() -> building_blocks.Call:
   """Returns called graph representing the empty tuple.
 
@@ -68,9 +82,7 @@ def create_compiled_empty_tuple() -> building_blocks.Call:
     which returns an empty tuple. This function is an instance of
     `building_blocks.CompiledComputation`.
   """
-  proto, type_signature = tensorflow_computation_factory.create_empty_tuple()
-  compiled = building_blocks.CompiledComputation(
-      proto, type_signature=type_signature)
+  compiled = create_compiled_no_arg_empty_tuple_computation()
   return building_blocks.Call(compiled, None)
 
 
