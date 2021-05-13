@@ -731,12 +731,14 @@ def optimize_tensorflow_comp(tf_computation, config_proto):
   optimized_graph_spec = graph_optimizations.optimize_graph_spec(
       graph_spec_obj, config_proto)
   graph_def = serialization_utils.pack_graph_def(optimized_graph_spec.graph_def)
-
+  original_tf = tf_proto.tensorflow
   tf_result_proto = pb.TensorFlow(
       graph_def=graph_def,
-      initialize_op=optimized_graph_spec.init_op,
-      parameter=tf_proto.tensorflow.parameter,
-      result=tf_proto.tensorflow.result)
+      initialize_op=(original_tf.initialize_op
+                     if original_tf.initialize_op else None),
+      parameter=(original_tf.parameter
+                 if original_tf.HasField('parameter') else None),
+      result=original_tf.result)
   optimized_proto = pb.Computation(
       type=tf_proto.type, tensorflow=tf_result_proto)
   return building_blocks.CompiledComputation(
