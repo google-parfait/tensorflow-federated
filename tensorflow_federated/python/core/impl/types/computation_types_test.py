@@ -697,6 +697,31 @@ class ToTypeTest(absltest.TestCase):
     self.assertEqual(t.foo.dtype, tf.int32)
     self.assertEqual(t.foo.shape, tf.TensorShape([]))
 
+  def test_ragged_tensor_spec(self):
+    ragged_tensor = tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4])
+    ragged_tensor_spec = tf.RaggedTensorSpec.from_value(ragged_tensor)
+    t = computation_types.to_type(ragged_tensor_spec)
+    self.assertEqual(t.python_container, tf.RaggedTensor)
+    self.assertEqual(
+        t.flat_values,
+        computation_types.TensorType(tf.int32, tf.TensorShape(None)))
+    self.assertEqual(
+        t.nested_row_splits,
+        computation_types.StructWithPythonType(
+            [(None, computation_types.TensorType(tf.int64, [None]))], tuple))
+
+  def test_sparse_tensor_spec(self):
+    # sparse_tensor = [0, 2, 0, 0, 0]
+    sparse_tensor = tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5])
+    sparse_tensor_spec = tf.SparseTensorSpec.from_value(sparse_tensor)
+    t = computation_types.to_type(sparse_tensor_spec)
+    self.assertIsInstance(t, computation_types.StructWithPythonType)
+    self.assertEqual(t.python_container, tf.SparseTensor)
+    self.assertEqual(t.indices,
+                     computation_types.TensorType(tf.int64, [None, 1]))
+    self.assertEqual(t.values, computation_types.TensorType(tf.int32, [None]))
+    self.assertEqual(t.dense_shape, computation_types.TensorType(tf.int64, [1]))
+
 
 class RepresentationTest(absltest.TestCase):
 
