@@ -16,6 +16,7 @@ import collections
 
 from absl.testing import absltest
 import attr
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 
@@ -443,6 +444,20 @@ class StructTest(absltest.TestCase):
                                                                ('d', 40)])),
         recursive=True)
     self.assertEqual(str(x), '<x=<a=10,b=20>,y=<c=30,d=40>>')
+
+  def test_from_container_ragged_tensor(self):
+    x = structure.from_container(
+        tf.RaggedTensor.from_row_splits([0, 0, 0, 0], [0, 1, 4]),
+        recursive=True)
+    self.assertEqual(
+        str(x), '<flat_values=[0 0 0 0],'
+        'nested_row_splits=<tf.Tensor([0 1 4], shape=(3,), '
+        'dtype=int64)>>')
+
+  def test_from_container_sparse_tensor(self):
+    x = structure.from_container(
+        tf.SparseTensor(indices=[[1]], values=[2], dense_shape=[5]))
+    self.assertEqual(str(x), '<indices=[[1]],values=[2],dense_shape=[5]>')
 
   def test_to_container_recursive(self):
 

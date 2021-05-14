@@ -488,6 +488,17 @@ def from_container(value: Any, recursive=False) -> Struct:
         return Struct((None, _convert(v, True)) for v in value)
       else:
         return Struct((None, v) for v in value)
+    elif isinstance(value, tf.RaggedTensor):
+      if recursive:
+        nested_row_splits = _convert(value.nested_row_splits, True)
+      else:
+        nested_row_splits = value.nested_row_splits
+      return Struct([('flat_values', value.flat_values),
+                     ('nested_row_splits', nested_row_splits)])
+    elif isinstance(value, tf.SparseTensor):
+      # Each element is a tensor
+      return Struct([('indices', value.indices), ('values', value.values),
+                     ('dense_shape', value.dense_shape)])
     elif must_be_container:
       raise TypeError('Unable to convert a Python object of type {} into '
                       'an `Struct`. Object: {}'.format(

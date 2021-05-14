@@ -125,6 +125,7 @@ py_test(
         requirement("attrs"),
         ":structure",
         "@absl_py//absl/testing:absltest",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 

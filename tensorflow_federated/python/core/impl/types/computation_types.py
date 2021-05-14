@@ -1053,6 +1053,31 @@ def to_type(spec) -> Type:
         'mappings.'.format(py_typecheck.type_string(type(spec))))
   elif isinstance(spec, structure.Struct):
     return StructType(structure.to_elements(spec))
+  elif isinstance(spec, tf.RaggedTensorSpec):
+    if spec.flat_values_spec is not None:
+      flat_values_type = to_type(spec.flat_values_spec)
+    else:
+      if spec.shape is not None:
+        flat_values_shape = tf.TensorShape(None)
+      else:
+        flat_values_shape = [None] + spec.shape[spec.ragged_rank + 1:]
+      flat_values_type = TensorType(spec.dtype, flat_values_shape)
+    nested_row_splits_type = StructWithPythonType(
+        ([(None, TensorType(spec.row_splits_dtype, [None]))] *
+         spec.ragged_rank), tuple)
+    return StructWithPythonType([('flat_values', flat_values_type),
+                                 ('nested_row_splits', nested_row_splits_type)],
+                                tf.RaggedTensor)
+  elif isinstance(spec, tf.SparseTensorSpec):
+    dtype = spec.dtype
+    shape = spec.shape
+    unknown_num_values = None
+    rank = None if shape is None else shape.rank
+    return StructWithPythonType([
+        ('indices', TensorType(tf.int64, [unknown_num_values, rank])),
+        ('values', TensorType(dtype, [unknown_num_values])),
+        ('dense_shape', TensorType(tf.int64, [rank])),
+    ], tf.SparseTensor)
   else:
     raise TypeError(
         'Unable to interpret an argument of type {} as a type spec.'.format(
@@ -1120,6 +1145,8 @@ def _possibly_disallowed_children(
     return cached
   disallowed = _PossiblyDisallowedChildren(None, None, None)
   for child_type in type_signature.children():
+    if child_type is None:
+      raise ValueError(type_signature)
     if child_type.is_federated():
       disallowed = attr.evolve(disallowed, federated=child_type)
     elif child_type.is_function():
