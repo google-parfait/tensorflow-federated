@@ -77,7 +77,7 @@ There are a number of ways to contribute depending on what you're interested in:
     infrastructure.
 
 Please be sure to review the
-[contribution guidelines](CONTRIBUTING.md#code-style-guidelines-and-best-practices)
+[contribution guidelines](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/CONTRIBUTING.md#code-style-guidelines-and-best-practices)
 for guidelines on how to contribute.
 
 ## Compatibility
