@@ -32,7 +32,7 @@ class RuntimeTest(tf.test.TestCase):
     self.assertIsInstance(c1, iree.runtime.Config)
     c2 = runtime._get_default_config_for_driver('vulkan')
     self.assertIs(c1, c2)
-    c3 = runtime._get_default_config_for_driver('vmla')
+    c3 = runtime._get_default_config_for_driver('vmvx')
     self.assertIsInstance(c3, iree.runtime.Config)
     self.assertIsNot(c2, c3)
 

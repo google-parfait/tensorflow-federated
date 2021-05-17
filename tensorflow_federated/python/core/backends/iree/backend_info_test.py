@@ -23,10 +23,10 @@ class BackendInfoTest(absltest.TestCase):
     self.assertEqual(backend_info.VULKAN_SPIRV.driver_name, 'vulkan')
     self.assertEqual(backend_info.VULKAN_SPIRV.target_name, 'vulkan-spirv')
 
-  def test_vmla(self):
-    self.assertIsInstance(backend_info.VMLA, backend_info.BackendInfo)
-    self.assertEqual(backend_info.VMLA.driver_name, 'vmla')
-    self.assertEqual(backend_info.VMLA.target_name, 'vmla')
+  def test_vmvx(self):
+    self.assertIsInstance(backend_info.VMVX, backend_info.BackendInfo)
+    self.assertEqual(backend_info.VMVX.driver_name, 'vmvx')
+    self.assertEqual(backend_info.VMVX.target_name, 'vmvx')
 
 
 if __name__ == '__main__':
