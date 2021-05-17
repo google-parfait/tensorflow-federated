@@ -45,6 +45,6 @@ class BackendInfo(object):
     return self._target_name
 
 
-VMLA = BackendInfo('vmla', 'vmla')
+VMVX = BackendInfo('vmvx', 'vmvx')
 
 VULKAN_SPIRV = BackendInfo('vulkan', 'vulkan-spirv')
