@@ -1,3 +1,43 @@
+# Release 0.19.0
+
+## Major Features and Improvements
+
+*   Introduced new intrinsics: `federated_select` and `federated_secure_select`.
+*   New `tff.structure_from_tensor_type_tree` to help manipulate structures of
+    `tff.TensorType` into structures of values.
+*   Many new `tff.aggregators` factory implementations.
+*   Introduced `tf.data` concept for data URIs.
+*   New `tff.type` package with utilities for working with `tff.Type` values.
+*   Initial experimental support for `tff.jax_computation`.
+*   Extend `tff.tf_computation` support to `SpareTensor` and `RaggedTensor`.
+
+## Breaking Changes
+
+*   Update gRPC dependency to 1.34.
+*   Moved `ClientData` interface and implementations to
+    `tff.simulation.datasets`.
+*   Renamed `tff.utils.update_state` to `tff.structure.update_struct`.
+*   Removed the `tff.utils` namespace, all symbols have migrated, many to
+    `tff.aggregators`.
+*   Moved infinite EMNIST dataset to federated research repository.
+*   Removes `rpc_mode` argument to remote executors, along with streaming mode.
+*   Removes deprecated `tff.federated_apply`.
+*   Removes `tff.federated_reduce`, all usages can use
+    `tff.federated_aggregate`.
+*   Removes `HDF5ClientData` and `h5py` pip dependency.
+*   Removes `setattr` functionality on `tff.ValueImpl`.
+
+## Bug Fixes
+
+*   Improved `tf.GraphDef` comparisons.
+*   Force close generators used for sending functions to computation wrappers,
+    avoiding race conditions in Colab.
+*   Fix tracing libraries asyncio usage to be Python3.9 compatible.
+*   Fix issue with destruction of type intern pool destructing and `abc`.
+*   Fix type interning for tensors with unknown dimensions.
+*   Fix `ClientData.create_dataset_from_all_clients` consuming unreasonable
+    amounts of memory/compute time.
+
 # Release 0.18.0
 
 ## Major Features and Improvements

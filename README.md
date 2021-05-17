@@ -93,7 +93,8 @@ versa.
 
 TensorFlow Federated                                                  | TensorFlow
 --------------------------------------------------------------------- | ----------
-[0.18.0](https://github.com/tensorflow/federated/tree/v0.17.0)        | [tensorflow 2.4.0](https://pypi.org/project/tensorflow/2.4.0/)
+[0.19.0](https://github.com/tensorflow/federated/tree/v0.19.0)        | [tensorflow 2.5.0](https://pypi.org/project/tensorflow/2.5.0/)
+[0.18.0](https://github.com/tensorflow/federated/tree/v0.18.0)        | [tensorflow 2.4.0](https://pypi.org/project/tensorflow/2.4.0/)
 [0.17.0](https://github.com/tensorflow/federated/tree/v0.17.0)        | [tensorflow 2.3.0](https://pypi.org/project/tensorflow/2.3.0/)
 [0.16.1](https://github.com/tensorflow/federated/tree/v0.16.1)        | [tensorflow 2.2.0](https://pypi.org/project/tensorflow/2.2.0/)
 [0.16.0](https://github.com/tensorflow/federated/tree/v0.16.0)        | [tensorflow 2.2.0](https://pypi.org/project/tensorflow/2.2.0/)
