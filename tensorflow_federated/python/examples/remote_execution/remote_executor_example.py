@@ -39,57 +39,18 @@ flags.DEFINE_integer('n_clients', 10, 'Number of clients.')
 flags.DEFINE_integer('n_rounds', 3, 'Number of rounds.')
 
 
-def preprocess(dataset):
-
-  def element_fn(element):
-    return collections.OrderedDict([
-        ('x', tf.reshape(element['pixels'], [-1])),
-        ('y', tf.reshape(element['label'], [1])),
-    ])
-
-  return dataset.repeat(NUM_EPOCHS).map(element_fn).batch(BATCH_SIZE)
-
-
-def make_federated_data(client_data, client_ids):
-  return [
-      preprocess(client_data.create_tf_dataset_for_client(x))
-      for x in client_ids
-  ]
+def build_synthetic_emnist():
+  return tf.data.Dataset.from_tensor_slices(
+      collections.OrderedDict(
+          x=np.random.normal(size=[100, 28 * 28]),
+          y=np.random.uniform(low=0, high=9, size=[100]).astype(np.int32),
+      )).repeat(NUM_EPOCHS).batch(BATCH_SIZE)
 
 
 NUM_EPOCHS = 10
 BATCH_SIZE = 20
-
-
-def make_remote_executor(inferred_cardinalities):
-  """Make remote executor."""
-
-  def create_worker_stack(ex):
-    ex = tff.framework.ThreadDelegatingExecutor(ex)
-    return tff.framework.ReferenceResolvingExecutor(ex)
-
-  client_ex = []
-  num_clients = inferred_cardinalities.get(tff.CLIENTS, None)
-  if num_clients:
-    print('Inferred that there are {} clients'.format(num_clients))
-  else:
-    print('No CLIENTS placement provided')
-
-  for _ in range(num_clients or 0):
-    channel = grpc.insecure_channel('{}:{}'.format(FLAGS.host, FLAGS.port))
-    remote_ex = tff.framework.RemoteExecutor(channel)
-    worker_stack = create_worker_stack(remote_ex)
-    client_ex.append(worker_stack)
-
-  federating_strategy_factory = tff.framework.FederatedResolvingStrategy.factory(
-      {
-          tff.SERVER: create_worker_stack(tff.framework.EagerTFExecutor()),
-          tff.CLIENTS: client_ex,
-      })
-  unplaced_ex = create_worker_stack(tff.framework.EagerTFExecutor())
-  federating_ex = tff.framework.FederatingExecutor(federating_strategy_factory,
-                                                   unplaced_ex)
-  return tff.framework.ReferenceResolvingExecutor(federating_ex)
+GRPC_OPTIONS = [('grpc.max_message_length', 20 * 1024 * 1024),
+                ('grpc.max_receive_message_length', 20 * 1024 * 1024)]
 
 
 def main(argv):
@@ -100,17 +61,11 @@ def main(argv):
 
   np.random.seed(0)
 
-  emnist_train, _ = tff.simulation.datasets.emnist.load_data()
-
-  sample_clients = emnist_train.client_ids[0:FLAGS.n_clients]
-
-  federated_train_data = make_federated_data(emnist_train, sample_clients)
-
-  example_dataset = emnist_train.create_tf_dataset_for_client(
-      emnist_train.client_ids[0])
-
-  preprocessed_example_dataset = preprocess(example_dataset)
-  input_spec = preprocessed_example_dataset.element_spec
+  federated_train_data = [
+      build_synthetic_emnist() for _ in range(FLAGS.n_clients)
+  ]
+  example_dataset = federated_train_data[0]
+  input_spec = example_dataset.element_spec
 
   def model_fn():
     model = tf.keras.models.Sequential([
@@ -128,9 +83,11 @@ def main(argv):
       model_fn,
       client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.02))
 
-  factory = tff.framework.ResourceManagingExecutorFactory(make_remote_executor)
-  context = tff.framework.ExecutionContext(factory)
+  context = tff.backends.native.create_remote_execution_context(channels=[
+      grpc.insecure_channel(f'{FLAGS.host}:{FLAGS.port}', options=GRPC_OPTIONS)
+  ])
   tff.framework.set_default_context(context)
+  print('Set default context.')
 
   state = iterative_process.initialize()
 

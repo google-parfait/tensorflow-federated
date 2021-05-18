@@ -29,6 +29,10 @@ flags.DEFINE_integer('fanout', '100',
                      'max fanout in the hierarchy of local executors')
 
 
+GRPC_OPTIONS = [('grpc.max_message_length', 20 * 1024 * 1024),
+                ('grpc.max_receive_message_length', 20 * 1024 * 1024)]
+
+
 def main(argv):
   del argv
   executor_factory = tff.framework.local_executor_factory(
@@ -49,7 +53,7 @@ def main(argv):
   else:
     credentials = None
   tff.simulation.run_server(executor_factory, FLAGS.threads, FLAGS.port,
-                            credentials)
+                            credentials, GRPC_OPTIONS)
 
 
 if __name__ == '__main__':
