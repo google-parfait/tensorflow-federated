@@ -384,6 +384,11 @@ class TensorflowWrapperTest(test_case.TestCase):
       def _():
         raise DummyError()
 
+  def test_error_on_non_callable_non_type(self):
+    with golden.check_raises_traceback(
+        'non_callable_non_type_traceback.expected', TypeError):
+      computation_wrapper_instances.tensorflow_wrapper(5)
+
   def test_stack_resets_on_none_returned(self):
     stack = get_context_stack.get_context_stack()
     self.assertIsInstance(stack.current,

@@ -433,7 +433,17 @@ class ComputationWrapper(object):
       # "success" case below.
       if tff_internal_types is not None:
         raise TypeError(f'Expected a function to wrap, found {args}.')
-      provided_types = tuple(map(computation_types.to_type, args))
+
+      provided_types = []
+      if args:
+        # Special-case error if the first argument is a non-type, since the user
+        # may have forgotten to `lambda` wrap a value.
+        try:
+          provided_types.append(computation_types.to_type(args[0]))
+        except TypeError:
+          raise TypeError(f'Expected a function or a type, found {args[0]}.')
+        if len(args) > 1:
+          provided_types.extend(map(computation_types.to_type, args[1:]))
       return functools.partial(self.__call__, tff_internal_types=provided_types)
     # If the first argument on the list is a Python function, instance method,
     # or a tf.function, this is the one that's being wrapped. This is the case
