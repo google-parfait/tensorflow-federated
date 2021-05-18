@@ -13,8 +13,6 @@
 # limitations under the License.
 """Common functions needed across executor classes."""
 
-import collections
-
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.executors import cardinality_carrying_base
@@ -44,6 +42,16 @@ def merge_cardinalities(existing, to_add):
       raise ValueError('Conflicting cardinalities for {}: {} vs {}'.format(
           key, val, cardinalities[key]))
   return cardinalities
+
+
+class InvalidNonAllEqualValueError(TypeError):
+
+  def __init__(self, value, type_spec):
+    message = (
+        f'Expected non-all-equal value with placement {type_spec.placement} '
+        f'to be a `list` or `tuple`, found a value of Python type '
+        f'{type(value)}:\n{value}')
+    super().__init__(message)
 
 
 def infer_cardinalities(value, type_spec):
@@ -76,7 +84,8 @@ def infer_cardinalities(value, type_spec):
   if type_spec.is_federated():
     if type_spec.all_equal:
       return {}
-    py_typecheck.check_type(value, collections.abc.Sized)
+    if not isinstance(value, (list, tuple)):
+      raise InvalidNonAllEqualValueError(value, type_spec)
     return {type_spec.placement: len(value)}
   elif type_spec.is_struct():
     structure_value = structure.from_container(value, recursive=False)
