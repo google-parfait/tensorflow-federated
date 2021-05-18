@@ -137,6 +137,12 @@ class InferCardinalitiesTest(absltest.TestCase):
                                                     placements.CLIENTS))
           ]))
 
+  def test_raises_invalid_non_all_equal_value_error(self):
+    with self.assertRaises(cardinalities_utils.InvalidNonAllEqualValueError):
+      cardinalities_utils.infer_cardinalities(
+          tf.constant(5),
+          computation_types.at_clients(computation_types.TensorType(tf.int32)))
+
 
 class MergeCardinalitiesTest(absltest.TestCase):
 
