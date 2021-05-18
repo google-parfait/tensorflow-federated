@@ -15,7 +15,7 @@
 
 import inspect
 
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Dict, Callable
 
 from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.common_libs import py_typecheck
@@ -28,18 +28,19 @@ from tensorflow_federated.python.core.templates import measured_process
 
 def add_measurements(
     inner_agg_factory: factory.AggregationFactory,
-    measurement_fn: Optional[Callable[..., Dict[str, Any]]],
+    measurement_fn: Callable[..., Dict[str, Any]],
 ) -> factory.AggregationFactory:
   """Wraps `AggregationFactory` to report additional measurements.
 
   The function `measurement_fn` is a python callable that will be called on
-  `value` (if `inner_agg_factory` is unweighted) or `(value, weight)`
-  (if `inner_agg_factory` is weighted) in the `next` function of the
-  `AggregationProcess` produced by the returned factory to generate additional
-  measurements. It must be traceable by TFF and expect `tff.Value` objects
-  placed at `CLIENTS` as inputs, and return `collections.OrderedDicts` mapping
-  string names to tensor values placed at `SERVER` which will be added to the
-  measurement dict produced by the `inner_agg_factory`.
+  `value` (if `inner_agg_factory` is an `UnweightedAggregationFactory`) or
+  `(value, weight)` (if `inner_agg_factory` is a `WeightedAggregationFactory`)
+  in the `next` function of the `AggregationProcess` produced by the returned
+  factory to generate additional measurements. It must be traceable by TFF and
+  expect `tff.Value` objects placed at `CLIENTS` as inputs, and return
+  `collections.OrderedDicts` mapping string names to tensor values placed at
+  `SERVER`, which will be added to the measurement dict produced by the
+  `inner_agg_factory`.
 
   Args:
     inner_agg_factory: The factory to wrap and add measurements.
