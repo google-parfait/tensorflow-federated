@@ -175,12 +175,14 @@ def build_federated_averaging_process(
       `tff.learning.ModelWeights` containing the state's model weights.
 
   Each time the `next` method is called, the server model is broadcast to each
-  client using a broadcast function. For each client, one epoch of local
-  training is performed via the `tf.keras.optimizers.Optimizer.apply_gradients`
-  method of the client optimizer. Each client computes the difference between
-  the client model after training and the initial broadcast model. These model
-  deltas are then aggregated at the server using some aggregation function. The
-  aggregate model delta is applied at the server by using the
+  client using a broadcast function. For each client, local training on one
+  pass of the pre-processed client dataset (multiple epochs are possible if the
+  dataset is pre-processed with `repeat` operation) is performed via the
+  `tf.keras.optimizers.Optimizer.apply_gradients` method of the client
+  optimizer. Each client computes the difference between the client model after
+  training and the initial broadcast model. These model deltas are then
+  aggregated at the server using some aggregation function. The aggregate model
+  delta is applied at the server by using the
   `tf.keras.optimizers.Optimizer.apply_gradients` method of the server
   optimizer.
 
