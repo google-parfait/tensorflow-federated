@@ -45,15 +45,10 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
 
   def test_serialize_deserialize_tensor_value_with_different_dtype(self):
     x = tf.constant(10.0)
-    value_proto, value_type = executor_serialization.serialize_value(
-        x, computation_types.TensorType(tf.int32))
-    self.assertIsInstance(value_proto, executor_pb2.Value)
-    self.assert_types_identical(value_type,
-                                computation_types.TensorType(tf.int32))
-    y, type_spec = executor_serialization.deserialize_value(value_proto)
-    self.assert_types_identical(type_spec,
-                                computation_types.TensorType(tf.int32))
-    self.assertEqual(y, 10)
+    with self.assertRaisesRegex(executor_serialization.ValueSerializationError,
+                                'EagerTensor and int32'):
+      executor_serialization.serialize_value(
+          x, computation_types.TensorType(tf.int32))
 
   def test_serialize_deserialize_tensor_value_with_nontrivial_shape(self):
     x = tf.constant([10, 20, 30])
@@ -69,14 +64,14 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
 
   def test_serialize_sequence_bad_element_type(self):
     x = tf.data.Dataset.range(5).map(lambda x: x * 2)
-    with self.assertRaisesRegex(
-        TypeError, r'Cannot serialize dataset .* int64\* .* float32\*.*'):
+    with self.assertRaisesRegex(executor_serialization.ValueSerializationError,
+                                r'MapDataset and float32\*'):
       _ = executor_serialization.serialize_value(
           x, computation_types.SequenceType(tf.float32))
 
   def test_serialize_sequence_not_a_dataset(self):
-    with self.assertRaisesRegex(
-        TypeError, r'Cannot serialize Python type int as .* float32\*'):
+    with self.assertRaisesRegex(executor_serialization.ValueSerializationError,
+                                r'int and float32\*'):
       _ = executor_serialization.serialize_value(
           5, computation_types.SequenceType(tf.float32))
 
@@ -188,7 +183,7 @@ class ExecutorServiceUtilsTest(test_case.TestCase):
 
   def test_serialize_deserialize_tensor_value_with_bad_shape(self):
     x = tf.constant([10, 20, 30])
-    with self.assertRaises(TypeError):
+    with self.assertRaises(executor_serialization.ValueSerializationError):
       executor_serialization.serialize_value(x, tf.int32)
 
   def test_serialize_deserialize_computation_value(self):

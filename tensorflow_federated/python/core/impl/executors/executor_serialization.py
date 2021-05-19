@@ -50,6 +50,16 @@ _DeserializeReturnType = Tuple[Any, computation_types.Type]
 _DEFAULT_MAX_SERIALIZED_SEQUENCE_SIZE_BYTES = 20 * (1024**2)  # 20 MB
 
 
+class ValueSerializationError(Exception):
+  """Error raised during value serialization."""
+
+  def __init__(self, value, type_spec):
+    super().__init__(
+        'Unable to serialize value with Python type '
+        f'{py_typecheck.type_string(type(value))} and '
+        f'{type_spec if type_spec is not None else "unknown"} TFF type.')
+
+
 class DatasetSerializationError(Exception):
   """Error raised during Dataset serialization or deserialization."""
   pass
@@ -72,7 +82,8 @@ def _serialize_tensor_value(
   """Serializes a tensor value into `executor_pb2.Value`.
 
   Args:
-    value: A Numpy array or other object understood by `tf.make_tensor_proto`.
+    value: A `tf.Tensor`, `np.ndarray`, or other object understood by
+      `tf.make_tensor_proto`.
     type_spec: A `tff.TensorType`.
 
   Returns:
@@ -87,8 +98,8 @@ def _serialize_tensor_value(
     ValueError: If the value is malformed.
   """
   if isinstance(value, tf.Tensor):
-    value = value.numpy()
-  if isinstance(value, np.ndarray):
+    tensor_proto = tf.make_tensor_proto(value, verify_shape=False)
+  elif isinstance(value, np.ndarray):
     tensor_proto = tf.make_tensor_proto(
         value, dtype=type_spec.dtype, verify_shape=False)
   else:
@@ -239,30 +250,30 @@ def serialize_value(
     ValueError: If the value is malformed.
   """
   type_spec = computation_types.to_type(type_spec)
-  if isinstance(value, computation_pb2.Computation):
-    return _serialize_computation(value, type_spec)
-  elif isinstance(value, computation_impl.ComputationImpl):
-    return _serialize_computation(
-        computation_impl.ComputationImpl.get_proto(value),
-        executor_utils.reconcile_value_with_type_spec(value, type_spec))
-  elif type_spec is None:
-    raise TypeError('A type hint is required when serializing a value which '
-                    'is not a TFF computation. Asked to serialized value {v} '
-                    ' of type {t} with None type spec.'.format(
-                        v=value, t=type(value)))
-  elif type_spec.is_tensor():
-    return _serialize_tensor_value(value, type_spec)
-  elif type_spec.is_sequence():
-    return _serialize_sequence_value(value, type_spec)
-  elif type_spec.is_struct():
-    return _serialize_struct_type(value, type_spec)
-  elif type_spec.is_federated():
-    return _serialize_federated_value(value, type_spec)
+  try:
+    if isinstance(value, computation_pb2.Computation):
+      return _serialize_computation(value, type_spec)
+    elif isinstance(value, computation_impl.ComputationImpl):
+      return _serialize_computation(
+          computation_impl.ComputationImpl.get_proto(value),
+          executor_utils.reconcile_value_with_type_spec(value, type_spec))
+    elif type_spec is None:
+      raise TypeError('A type hint is required when serializing a value which '
+                      'is not a TFF computation. Asked to serialized value {v} '
+                      ' of type {t} with None type spec.'.format(
+                          v=value, t=type(value)))
+    elif type_spec.is_tensor():
+      return _serialize_tensor_value(value, type_spec)
+    elif type_spec.is_sequence():
+      return _serialize_sequence_value(value, type_spec)
+    elif type_spec.is_struct():
+      return _serialize_struct_type(value, type_spec)
+    elif type_spec.is_federated():
+      return _serialize_federated_value(value, type_spec)
+  except (TypeError, ValueError, DatasetSerializationError) as e:
+    raise ValueSerializationError(value, type_spec) from e
   else:
-    raise ValueError(
-        'Unable to serialize value with Python type {} and {} TFF type.'.format(
-            str(py_typecheck.type_string(type(value))),
-            str(type_spec) if type_spec is not None else 'unknown'))
+    raise ValueSerializationError(value, type_spec)
 
 
 @tracing.trace
@@ -344,8 +355,7 @@ def _deserialize_dataset_from_zipped_saved_model(serialized_bytes):
       ds = loaded.dataset_fn()
   except Exception as e:  # pylint: disable=broad-except
     raise DatasetSerializationError(
-        'Error deserializing tff.Sequence value. Inner error: {!s}'.format(
-            e)) from e
+        f'Error deserializing `tff.Sequence` value. Inner error: {e!s}') from e
   finally:
     tf.io.gfile.rmtree(temp_dir)
     tf.io.gfile.remove(temp_zip)
