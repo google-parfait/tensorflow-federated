@@ -198,9 +198,11 @@ def build_federated_sgd_process(
 
   Each time the `next` method is called, the server model is broadcast to each
   client using a broadcast function. Each client sums the gradients at each
-  batch in the client's local dataset. These gradient sums are then aggregated
-  at the server using an aggregation function. The aggregate gradients are
-  applied at the server by using the
+  batch in the client's local dataset without updating the model to calculate
+  the batch gradient on client, and averages the gradient based on its number of
+  examples. These averaged batch gradients are then aggregated at the server
+  using an aggregation function. The aggregate gradients are applied at the
+  server by using the
   `tf.keras.optimizers.Optimizer.apply_gradients` method of the server
   optimizer.
 
