@@ -1057,10 +1057,15 @@ def to_type(spec) -> Type:
     if spec.flat_values_spec is not None:
       flat_values_type = to_type(spec.flat_values_spec)
     else:
-      if spec.shape is not None:
-        flat_values_shape = tf.TensorShape(None)
-      else:
-        flat_values_shape = [None] + spec.shape[spec.ragged_rank + 1:]
+      # We could provide a more specific shape here if `spec.shape is not None`:
+      # `flat_values_shape = [None] + spec.shape[spec.ragged_rank + 1:]`
+      # However, we can't go back from this type into a `tf.RaggedTensorSpec`,
+      # meaning that round-tripping a `tf.RaggedTensorSpec` through
+      # `type_conversions.type_to_tf_structure(computation_types.to_type(spec))`
+      # would *not* be a no-op: it would clear away the extra shape information,
+      # leading to compilation errors. This round-trip is tested in
+      # `type_conversions_test.py` to ensure correctness.
+      flat_values_shape = tf.TensorShape(None)
       flat_values_type = TensorType(spec.dtype, flat_values_shape)
     nested_row_splits_type = StructWithPythonType(
         ([(None, TensorType(spec.row_splits_dtype, [None]))] *
