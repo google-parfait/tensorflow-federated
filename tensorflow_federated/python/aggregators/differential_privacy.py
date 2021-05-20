@@ -146,15 +146,15 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
           f'`clipped_count_stddev` you may want to increase it. Or you may '
           f'need more `clients_per_round`.')
 
-    query = tfp.QuantileAdaptiveClipAverageQuery(
+    query = tfp.QuantileAdaptiveClipSumQuery(
         initial_l2_norm_clip=initial_l2_norm_clip,
         noise_multiplier=value_noise_multiplier,
-        denominator=clients_per_round,
         target_unclipped_quantile=target_unclipped_quantile,
         learning_rate=learning_rate,
         clipped_count_stddev=clipped_count_stddev,
         expected_num_records=clients_per_round,
         geometric_update=True)
+    query = tfp.NormalizedQuery(query, denominator=clients_per_round)
 
     return cls(query)
 
