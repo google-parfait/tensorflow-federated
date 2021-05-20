@@ -46,11 +46,6 @@ class ProcessTypeError(Exception):
   pass
 
 
-class DisjointArgumentError(Exception):
-  """Error raised when two disjoint arguments are specified (only one allowed)."""
-  pass
-
-
 @attr.s(eq=False, frozen=True)
 class ClientOutput(object):
   """Structure for outputs returned from clients during federated optimization.
@@ -424,8 +419,7 @@ def _build_one_round_computation(
     client_outputs = intrinsics.federated_map(
         _compute_local_training_and_client_delta,
         (federated_dataset, broadcast_output.result))
-    # TODO(b/181243799): Ensure AggregationProcess and call is_weighted.
-    if len(aggregation_process.next.type_signature.parameter) == 3:
+    if aggregation_process.is_weighted:
       aggregation_output = aggregation_process.next(
           server_state.delta_aggregate_state, client_outputs.weights_delta,
           client_outputs.weights_delta_weight)
@@ -495,58 +489,12 @@ def _is_valid_broadcast_process(
           next_type.result.result.placement is placements.CLIENTS)
 
 
-def _is_valid_model_update_aggregation_process(
-    process: measured_process.MeasuredProcess) -> bool:
-  """Validates a `MeasuredProcess` adheres to the aggregation signature.
-
-  A valid aggregation process is one whose argument is placed at `SERVER` and
-  whose output is placed at `CLIENTS`.
-
-  Args:
-    process: A measured process to validate.
-
-  Returns:
-    `True` iff the process is a validate aggregation process, otherwise `False`.
-  """
-  next_type = process.next.type_signature
-  input_client_value_type = next_type.parameter[1]
-  result_server_value_type = next_type.result[1]
-  return (isinstance(process, measured_process.MeasuredProcess) and
-          _is_valid_stateful_process(process) and
-          input_client_value_type.placement is placements.CLIENTS and
-          result_server_value_type.placement is placements.SERVER and
-          input_client_value_type.member == result_server_value_type.member)
-
-
 # ============================================================================
-
-NONE_SERVER_TYPE = computation_types.FederatedType((), placements.SERVER)
 
 
 @computations.federated_computation()
 def _empty_server_initialization():
   return intrinsics.federated_value((), placements.SERVER)
-
-
-def build_stateless_mean(
-    *, model_delta_type: Union[computation_types.StructType,
-                               computation_types.TensorType]
-) -> measured_process.MeasuredProcess:
-  """Builds a `MeasuredProcess` that wraps` tff.federated_mean`."""
-
-  @computations.federated_computation(
-      NONE_SERVER_TYPE,
-      computation_types.FederatedType(model_delta_type, placements.CLIENTS),
-      computation_types.FederatedType(tf.float32, placements.CLIENTS))
-  def stateless_mean(state, value, weight):
-    empty_metrics = intrinsics.federated_value((), placements.SERVER)
-    return measured_process.MeasuredProcessOutput(
-        state=state,
-        result=intrinsics.federated_mean(value, weight=weight),
-        measurements=empty_metrics)
-
-  return measured_process.MeasuredProcess(
-      initialize_fn=_empty_server_initialization, next_fn=stateless_mean)
 
 
 def build_stateless_broadcaster(
@@ -556,7 +504,7 @@ def build_stateless_broadcaster(
   """Builds a `MeasuredProcess` that wraps `tff.federated_broadcast`."""
 
   @computations.federated_computation(
-      NONE_SERVER_TYPE,
+      computation_types.FederatedType((), placements.SERVER),
       computation_types.FederatedType(model_weights_type, placements.SERVER),
   )
   def stateless_broadcast(state, value):
@@ -570,8 +518,6 @@ def build_stateless_broadcaster(
       initialize_fn=_empty_server_initialization, next_fn=stateless_broadcast)
 
 
-# TODO(b/170208719): remove `aggregation_process` after migration to
-# `model_update_aggregation_factory`.
 def build_model_delta_optimizer_process(
     model_fn: _ModelConstructor,
     model_to_client_delta_fn: Callable[[Callable[[], model_lib.Model]],
@@ -579,7 +525,6 @@ def build_model_delta_optimizer_process(
     server_optimizer_fn: _OptimizerConstructor,
     *,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
-    aggregation_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
         factory.AggregationFactory] = None,
 ) -> iterative_process.IterativeProcess:
@@ -603,26 +548,18 @@ def build_model_delta_optimizer_process(
       `(input_values@SERVER -> output_values@CLIENT)`. If set to default None,
       the server model is broadcast to the clients using the default
       tff.federated_broadcast.
-    aggregation_process: A `tff.templates.MeasuredProcess` that aggregates the
-      model updates on the clients back to the server. It must support the
-      signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
-      `None` if `model_update_aggregation_factory` is not `None.`
     model_update_aggregation_factory: An optional
       `tff.aggregators.WeightedAggregationFactory` that contstructs
       `tff.templates.AggregationProcess` for aggregating the client model
       updates on the server. If `None`, uses a default constructed
-      `tff.aggregators.MeanFactory`, creating a stateless mean aggregation. Must
-      be `None` if `aggregation_process` is not `None.`
+      `tff.aggregators.MeanFactory`, creating a stateless mean aggregation.
 
   Returns:
     A `tff.templates.IterativeProcess`.
 
   Raises:
-    ProcessTypeError: if `broadcast_process` or `aggregation_process` do not
-      conform to the signature of broadcast (SERVER->CLIENTS) or aggregation
-      (CLIENTS->SERVER).
-    DisjointArgumentError: if both `aggregation_process` and
-      `model_update_aggregation_factory` are not `None`.
+    ProcessTypeError: if `broadcast_process` does not conform to the signature
+      of broadcast (SERVER->CLIENTS).
   """
   py_typecheck.check_callable(model_fn)
   py_typecheck.check_callable(model_to_client_delta_fn)
@@ -639,48 +576,26 @@ def build_model_delta_optimizer_process(
         'signature (<state@S, input@S> -> <state@S, result@C, measurements@S>).'
         ' Got: {t}'.format(t=broadcast_process.next.type_signature))
 
-  if (model_update_aggregation_factory is not None and
-      aggregation_process is not None):
-    raise DisjointArgumentError(
-        'Must specify only one of `model_update_aggregation_factory` and '
-        '`AggregationProcess`.')
-
-  if aggregation_process is None:
-    if model_update_aggregation_factory is None:
-      model_update_aggregation_factory = mean.MeanFactory()
-    py_typecheck.check_type(model_update_aggregation_factory,
-                            factory.AggregationFactory.__args__)
-    if isinstance(model_update_aggregation_factory,
-                  factory.WeightedAggregationFactory):
-      aggregation_process = model_update_aggregation_factory.create(
-          model_weights_type.trainable,
-          computation_types.TensorType(tf.float32))
-    else:
-      aggregation_process = model_update_aggregation_factory.create(
-          model_weights_type.trainable)
-    process_signature = aggregation_process.next.type_signature
-    input_client_value_type = process_signature.parameter[1]
-    result_server_value_type = process_signature.result[1]
-    if input_client_value_type.member != result_server_value_type.member:
-      raise TypeError('`model_update_aggregation_factory` does not produce a '
-                      'compatible `AggregationProcess`. The processes must '
-                      'retain the type structure of the inputs on the '
-                      f'server, but got {input_client_value_type.member} != '
-                      f'{result_server_value_type.member}.')
+  if model_update_aggregation_factory is None:
+    model_update_aggregation_factory = mean.MeanFactory()
+  py_typecheck.check_type(model_update_aggregation_factory,
+                          factory.AggregationFactory.__args__)
+  if isinstance(model_update_aggregation_factory,
+                factory.WeightedAggregationFactory):
+    aggregation_process = model_update_aggregation_factory.create(
+        model_weights_type.trainable, computation_types.TensorType(tf.float32))
   else:
-    next_num_args = len(aggregation_process.next.type_signature.parameter)
-    if next_num_args not in [2, 3]:
-      raise ValueError(
-          f'`next` function of `aggregation_process` must take two (for '
-          f'unweighted aggregation) or three (for weighted aggregation) '
-          f'arguments. Found {next_num_args}.')
-
-  if not _is_valid_model_update_aggregation_process(aggregation_process):
-    raise ProcessTypeError(
-        'aggregation_process type signature does not conform to expected '
-        'signature (<state@S, model_udpate@C> -> <state@S, model_update@S, '
-        'measurements@S>). Got: {t}'.format(
-            t=aggregation_process.next.type_signature))
+    aggregation_process = model_update_aggregation_factory.create(
+        model_weights_type.trainable)
+  process_signature = aggregation_process.next.type_signature
+  input_client_value_type = process_signature.parameter[1]
+  result_server_value_type = process_signature.result[1]
+  if input_client_value_type.member != result_server_value_type.member:
+    raise TypeError('`model_update_aggregation_factory` does not produce a '
+                    'compatible `AggregationProcess`. The processes must '
+                    'retain the type structure of the inputs on the '
+                    f'server, but got {input_client_value_type.member} != '
+                    f'{result_server_value_type.member}.')
 
   initialize_computation = _build_initialize_computation(
       model_fn=model_fn,

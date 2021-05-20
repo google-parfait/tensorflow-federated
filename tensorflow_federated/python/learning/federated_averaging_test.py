@@ -14,17 +14,14 @@
 
 import collections
 from unittest import mock
-import warnings
 from absl.testing import parameterized
 
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.common_libs import test_utils
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.test import execution_contexts
-from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.learning import client_weight_lib
 from tensorflow_federated.python.learning import federated_averaging
 from tensorflow_federated.python.learning import keras_utils
@@ -326,21 +323,6 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
     state = process.initialize()
     state, metrics = process.next(state, [ds] * num_clients)
     self.assertNotEmpty(metrics['aggregation'])
-
-  def test_aggregation_process_deprecation(self):
-    aggregation_process = mean.MeanFactory().create(
-        computation_types.to_type([(tf.float32, (2, 1)), tf.float32]),
-        computation_types.TensorType(tf.float32))
-    with warnings.catch_warnings(record=True) as w:
-      warnings.simplefilter('always')
-      federated_averaging.build_federated_averaging_process(
-          model_fn=model_examples.LinearRegression,
-          client_optimizer_fn=lambda: tf.keras.optimizers.SGD(0.1),
-          aggregation_process=aggregation_process)
-      self.assertNotEmpty(w)
-      self.assertEqual(w[0].category, DeprecationWarning)
-      self.assertRegex(
-          str(w[0].message), 'aggregation_process .* is deprecated')
 
   def test_construction_calls_model_fn(self):
     # Assert that the the process building does not call `model_fn` too many

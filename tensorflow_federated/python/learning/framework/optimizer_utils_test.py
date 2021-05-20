@@ -20,6 +20,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.aggregators import factory
 from tensorflow_federated.python.aggregators import mean
 from tensorflow_federated.python.aggregators import sampling
 from tensorflow_federated.python.aggregators import sum_factory
@@ -31,6 +32,7 @@ from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 from tensorflow_federated.python.core.impl.types import type_analysis
+from tensorflow_federated.python.core.templates import aggregation_process
 from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_utils
@@ -104,30 +106,29 @@ def _build_test_measured_broadcast(
       initialize_fn=initialize_comp, next_fn=next_comp)
 
 
-def _build_test_measured_mean(
-    model_update_type: computation_types.StructType
-) -> measured_process.MeasuredProcess:
-  """Builds a test `MeasuredProcess` that has state and metrics."""
+class TestMeasuredMeanFactory(factory.WeightedAggregationFactory):
 
-  @computations.federated_computation()
-  def initialize_comp():
-    return intrinsics.federated_value(0, placements.SERVER)
+  def create(self, value_type, weight_type):
 
-  @computations.federated_computation(
-      computation_types.FederatedType(tf.int32, placements.SERVER),
-      computation_types.FederatedType(model_update_type, placements.CLIENTS),
-      computation_types.FederatedType(tf.float32, placements.CLIENTS))
-  def next_comp(state, value, weight):
-    return measured_process.MeasuredProcessOutput(
-        state=intrinsics.federated_map(_add_one, state),
-        result=intrinsics.federated_mean(value, weight),
-        measurements=intrinsics.federated_zip(
-            collections.OrderedDict(
-                num_clients=intrinsics.federated_sum(
-                    intrinsics.federated_value(1, placements.CLIENTS)))))
+    @computations.federated_computation()
+    def initialize_comp():
+      return intrinsics.federated_value(0, placements.SERVER)
 
-  return measured_process.MeasuredProcess(
-      initialize_fn=initialize_comp, next_fn=next_comp)
+    @computations.federated_computation(
+        computation_types.FederatedType(tf.int32, placements.SERVER),
+        computation_types.FederatedType(value_type, placements.CLIENTS),
+        computation_types.FederatedType(weight_type, placements.CLIENTS))
+    def next_comp(state, value, weight):
+      return measured_process.MeasuredProcessOutput(
+          state=intrinsics.federated_map(_add_one, state),
+          result=intrinsics.federated_mean(value, weight),
+          measurements=intrinsics.federated_zip(
+              collections.OrderedDict(
+                  num_clients=intrinsics.federated_sum(
+                      intrinsics.federated_value(1, placements.CLIENTS)))))
+
+    return aggregation_process.AggregationProcess(
+        initialize_fn=initialize_comp, next_fn=next_comp)
 
 
 class UtilsTest(test_case.TestCase):
@@ -330,14 +331,17 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
   def test_construction_with_aggregation_process(self):
     model_update_type = model_utils.weights_type_from_model(
         model_examples.LinearRegression).trainable
-    aggregation_process = _build_test_measured_mean(model_update_type)
+    aggregator = TestMeasuredMeanFactory()
     iterative_process = optimizer_utils.build_model_delta_optimizer_process(
         model_fn=model_examples.LinearRegression,
         model_to_client_delta_fn=DummyClientDeltaFn,
         server_optimizer_fn=tf.keras.optimizers.SGD,
-        aggregation_process=aggregation_process)
+        model_update_aggregation_factory=aggregator)
 
-    aggregation_state_type = aggregation_process.initialize.type_signature.result
+    agg_process = aggregator.create(model_update_type,
+                                    computation_types.TensorType(tf.float32))
+
+    aggregation_state_type = agg_process.initialize.type_signature.result
     initialize_type = iterative_process.initialize.type_signature
     self.assertEqual(
         computation_types.FederatedType(
@@ -354,11 +358,10 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             next_type.result[0].member.delta_aggregate_state,
             placements.SERVER), aggregation_state_type)
 
-    aggregation_metrics_type = aggregation_process.next.type_signature.result.measurements
+    agg_metrics_type = agg_process.next.type_signature.result.measurements
     self.assertEqual(
         computation_types.FederatedType(next_type.result[1].member.aggregation,
-                                        placements.SERVER),
-        aggregation_metrics_type)
+                                        placements.SERVER), agg_metrics_type)
 
   def test_construction_with_broadcast_process(self):
     model_weights_type = model_utils.weights_type_from_model(
@@ -398,8 +401,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
         server_optimizer_fn=functools.partial(
             tf.keras.optimizers.SGD, learning_rate=learning_rate),
         broadcast_process=_build_test_measured_broadcast(model_weights_type),
-        aggregation_process=_build_test_measured_mean(
-            model_weights_type.trainable))
+        model_update_aggregation_factory=TestMeasuredMeanFactory())
 
     ds = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict([

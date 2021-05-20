@@ -104,6 +104,7 @@ py_cpu_gpu_test(
     srcs_version = "PY3",
     deps = [
         ":optimizer_utils",
+        "//tensorflow_federated/python/aggregators:factory",
         "//tensorflow_federated/python/aggregators:mean",
         "//tensorflow_federated/python/aggregators:sampling",
         "//tensorflow_federated/python/aggregators:sum_factory",
@@ -115,6 +116,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/templates:aggregation_process",
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
