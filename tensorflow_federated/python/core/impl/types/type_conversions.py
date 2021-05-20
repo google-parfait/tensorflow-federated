@@ -283,20 +283,44 @@ def type_to_tf_structure(type_spec: computation_types.Type):
       raise ValueError('Tuple elements inconsistently named.')
     if type_spec.python_container is None:
       if named:
-        output = collections.OrderedDict(element_outputs)
+        return collections.OrderedDict(element_outputs)
       else:
-        output = tuple(v for _, v in element_outputs)
+        return tuple(v for _, v in element_outputs)
     else:
       container_type = type_spec.python_container
       if (py_typecheck.is_named_tuple(container_type) or
           py_typecheck.is_attrs(container_type)):
-        output = container_type(**dict(element_outputs))
+        return container_type(**dict(element_outputs))
+      elif container_type is tf.RaggedTensor:
+        flat_values = type_spec.flat_values
+        nested_row_splits = type_spec.nested_row_splits
+        return tf.RaggedTensorSpec(
+            shape=None,
+            dtype=flat_values.dtype,
+            ragged_rank=len(nested_row_splits),
+            row_splits_dtype=nested_row_splits[0].dtype,
+            flat_values_spec=tf.TensorSpec(flat_values.shape,
+                                           flat_values.dtype))
+      elif container_type is tf.SparseTensor:
+        # We can't generally infer the shape from the type of the tensors, but
+        # we *can* infer the rank based on the shapes of `indices` or
+        # `dense_shape`.
+        if (type_spec.indices.shape is not None and
+            type_spec.indices.shape.dims[1] is not None):
+          rank = type_spec.indices.shape.dims[1]
+          shape = tf.TensorShape([None] * rank)
+        elif (type_spec.dense_shape.shape is not None and
+              type_spec.dense_shape.shape.dims[0] is not None):
+          rank = type_spec.dense_shape.shape.dims[0]
+          shape = tf.TensorShape([None] * rank)
+        else:
+          shape = None
+        return tf.SparseTensorSpec(shape=shape, dtype=type_spec.values.dtype)
       elif named:
-        output = container_type(element_outputs)
+        return container_type(element_outputs)
       else:
-        output = container_type(
+        return container_type(
             e if e[0] is not None else e[1] for e in element_outputs)
-    return output
   else:
     raise ValueError('Unsupported type {}.'.format(
         py_typecheck.type_string(type(type_spec))))
