@@ -285,6 +285,7 @@ py_library(
 
 py_test(
     name = "model_update_aggregator_test",
+    timeout = "long",
     srcs = ["model_update_aggregator_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
