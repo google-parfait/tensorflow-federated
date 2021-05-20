@@ -15,6 +15,7 @@
 
 import collections
 import csv
+import enum
 import os.path
 import shutil
 import tempfile
@@ -28,6 +29,12 @@ import tree
 from tensorflow_federated.python.simulation import metrics_manager
 
 _QUOTING = csv.QUOTE_NONNUMERIC
+
+
+@enum.unique
+class SaveMode(enum.Enum):
+  APPEND = 'append'
+  WRITE = 'write'
 
 
 def _create_if_not_exists(path):
@@ -74,45 +81,6 @@ def _write_to_csv(metrics: List[Dict[str, Any]], file_name: str,
   shutil.rmtree(tmp_dir)
 
 
-def _append_to_csv(metrics_to_append: Dict[str, Any], file_name: str):
-  """Appends `metrics` to a CSV.
-
-  Here, the CSV is assumed to have first row representing the CSV's fieldnames.
-  If `metrics` contains keys not in the CSV fieldnames, the CSV is re-written
-  in order using the union of the fieldnames and `metrics.keys`.
-
-  Args:
-    metrics_to_append: A dictionary of metrics.
-    file_name: The CSV file_name.
-
-  Returns:
-    A list of fieldnames for the updated CSV.
-  """
-  new_fieldnames = metrics_to_append.keys()
-  with tf.io.gfile.GFile(file_name, 'a+') as csv_file:
-    reader = csv.DictReader(csv_file, quoting=_QUOTING)
-    current_fieldnames = reader.fieldnames
-
-    if current_fieldnames is None:
-      writer = csv.DictWriter(
-          csv_file, fieldnames=list(new_fieldnames), quoting=_QUOTING)
-      writer.writeheader()
-      writer.writerow(metrics_to_append)
-      return new_fieldnames
-    elif new_fieldnames <= set(current_fieldnames):
-      writer = csv.DictWriter(
-          csv_file, fieldnames=current_fieldnames, quoting=_QUOTING)
-      writer.writerow(metrics_to_append)
-      return current_fieldnames
-    else:
-      metrics = list(reader)
-
-  expanded_fieldnames = set(current_fieldnames).union(new_fieldnames)
-  metrics.append(metrics_to_append)
-  _write_to_csv(metrics, file_name, expanded_fieldnames)
-  return expanded_fieldnames
-
-
 def _flatten_nested_dict(struct: Mapping[str, Any]) -> Dict[str, Any]:
   """Flattens a given nested structure of tensors, sorting by flattened keys.
 
@@ -136,7 +104,7 @@ def _flatten_nested_dict(struct: Mapping[str, Any]) -> Dict[str, Any]:
 class CSVMetricsManager(metrics_manager.MetricsManager):
   """Utility class for saving/loading experiment metrics via a CSV file."""
 
-  def __init__(self, csv_filepath: str):
+  def __init__(self, csv_filepath: str, save_mode: SaveMode = SaveMode.APPEND):
     """Returns an initialized `CSVMetricsManager`.
 
     This class will maintain metrics in a CSV file in the filesystem. The path
@@ -146,13 +114,21 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
     for round numbers later than the restart round number. This ensures that no
     duplicate rows of data exist in the CSV.
 
-    In order to reduce metric writing time, metrics passed to `save_metrics`
-    are appended to the underlying CSV file (as long as they do not introduce
-    any new key values). This may be incompatible with zipped files, such as
-    `.bz2` formats, or encoded directories.
+    The metrics saving mode can be `SaveMode.APPEND` AND `SaveMode.WRITE`. In
+    append mode, metrics will be appended at each call to `save_metrics` if no
+    new keys are added. While potentially more efficient, it is incompatible
+    with zipped files, such as `.bz2` formats, or encoded directories. This mode
+    also reverts to write mode whenever it encounters new metrics keys, so it
+    should not be used in cases where new metrics are being added frequently.
+
+    In write mode (or when append mode encounters new keys), each time
+    `save_metrics` is called, this will read the entire CSV, and overwrite it
+    atomically with additional metrics. This can be slower, but is compatible
+    with zipped file formats.
 
     Args:
       csv_filepath: A string specifying the file to write and read metrics from.
+      save_mode: A `SaveMode` specifying the save mode for metrics.
 
     Raises:
       ValueError: If `csv_filepath` is an empty string.
@@ -163,6 +139,11 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
     if not csv_filepath:
       raise ValueError('Empty string passed for csv_filepath argument.')
 
+    if not isinstance(save_mode, SaveMode):
+      raise ValueError(
+          'The save mode must be an instance of `tff.simulation.SaveMode`.')
+
+    self._save_mode = save_mode
     self._metrics_file = csv_filepath
     if not tf.io.gfile.exists(self._metrics_file):
       tf.io.gfile.makedirs(os.path.dirname(self._metrics_file))
@@ -183,6 +164,51 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
       self._latest_round_num = None
     else:
       self._latest_round_num = current_metrics[-1]['round_num']
+
+  def _save_metrics_to_csv(self, metrics_to_save: Dict[str, Any]):
+    """Logs `metrics` to a CSV.
+
+    If `metrics` contains keys not in the CSV fieldnames, or the manager is in
+    write mode, then the CSV is re-written atomically in order using the union
+    of the fieldnames and `metrics.keys`. Otherwise, the metrics are appended.
+
+    Args:
+      metrics_to_save: A dictionary of metrics.
+
+    Returns:
+      A set of fieldnames for the updated CSV.
+    """
+    new_fieldnames = metrics_to_save.keys()
+    with tf.io.gfile.GFile(self._metrics_file, 'a+') as csv_file:
+      reader = csv.DictReader(csv_file, quoting=_QUOTING)
+
+      if reader.fieldnames is None:
+        current_fieldnames = set([])
+      else:
+        current_fieldnames = set(reader.fieldnames)
+
+      has_new_fields = current_fieldnames < new_fieldnames
+      if self._save_mode == SaveMode.APPEND and not has_new_fields:
+        writer = csv.DictWriter(
+            csv_file, fieldnames=current_fieldnames, quoting=_QUOTING)
+        try:
+          writer.writerow(metrics_to_save)
+        except (tf.errors.PermissionDeniedError, csv.Error) as e:
+          raise RuntimeError(
+              'Could not append metrics to {}, encountered the following error:'
+              '\n{}\n If the file is compressed or encoded in some way, please '
+              'use write mode instead of append mode in CSVMetricsManager.'
+              .format(self._metrics_file, e))
+        return current_fieldnames
+      else:
+        # If we're not in append mode, or have a new field we haven't
+        # encountered before, we must read the entire contents to add
+        # the new row.
+        metrics = list(reader)
+    expanded_fieldnames = set(current_fieldnames).union(new_fieldnames)
+    metrics.append(metrics_to_save)
+    _write_to_csv(metrics, self._metrics_file, expanded_fieldnames)
+    return expanded_fieldnames
 
   def save_metrics(self, metrics: Mapping[str, Any], round_num: int) -> None:
     """Updates the stored metrics data with metrics for a specific round.
@@ -232,7 +258,7 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
     # be used if a restart occurs, to identify which metrics to trim in the
     # clear_metrics() method.
     flat_metrics_as_list['round_num'] = round_num
-    _append_to_csv(flat_metrics_as_list, self._metrics_file)
+    self._save_metrics_to_csv(flat_metrics_as_list)
     self._latest_round_num = round_num
 
   def get_metrics(self) -> Tuple[Sequence[str], List[Dict[str, Any]]]:

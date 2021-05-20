@@ -75,6 +75,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":csv_manager",
+        "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

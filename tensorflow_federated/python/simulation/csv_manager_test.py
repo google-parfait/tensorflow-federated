@@ -15,7 +15,9 @@
 import collections
 import csv
 import os
+from unittest import mock
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_federated.python.simulation import csv_manager
@@ -45,11 +47,15 @@ def _create_scalar_metrics_with_extra_column():
   return metrics
 
 
-class CSVMetricsManager(tf.test.TestCase):
+class CSVMetricsManager(tf.test.TestCase, parameterized.TestCase):
 
-  def test_scalar_metrics_are_appended(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_scalar_metrics_are_saved(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     _, metrics = csv_mngr.get_metrics()
     self.assertEmpty(metrics)
 
@@ -61,9 +67,13 @@ class CSVMetricsManager(tf.test.TestCase):
     _, metrics = csv_mngr.get_metrics()
     self.assertLen(metrics, 2)
 
-  def test_nonscalar_metrics_are_appended(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_nonscalar_metrics_are_saved(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     _, metrics = csv_mngr.get_metrics()
     self.assertEmpty(metrics)
 
@@ -96,24 +106,36 @@ class CSVMetricsManager(tf.test.TestCase):
     self.assertAllEqual(expected_dict['a/b'], flattened_data['a/b'])
     self.assertAllEqual(expected_dict['a/c'], flattened_data['a/c'])
 
-  def test_column_names(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_column_names(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics(), 0)
     fieldnames, _ = csv_mngr.get_metrics()
     self.assertCountEqual(['a/b', 'a/c', 'round_num'], fieldnames)
 
-  def test_column_names_with_list(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_column_names_with_list(self, save_mode):
     metrics_to_append = {'a': [3, 4, 5], 'b': 6}
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(metrics_to_append, 0)
     fieldnames, _ = csv_mngr.get_metrics()
     self.assertCountEqual(['a/0', 'a/1', 'a/2', 'b', 'round_num'], fieldnames)
 
-  def test_save_metrics_adds_column_if_previously_unseen_metric_added(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_save_metrics_adds_column_if_new_metric_added(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics(), 0)
     fieldnames, metrics = csv_mngr.get_metrics()
     self.assertCountEqual(fieldnames, ['round_num', 'a/b', 'a/c'])
@@ -124,28 +146,40 @@ class CSVMetricsManager(tf.test.TestCase):
     self.assertCountEqual(fieldnames, ['round_num', 'a/b', 'a/c', 'a/d'])
     self.assertEqual(metrics[0]['a/d'], '')
 
-  def test_save_metrics_adds_empty_str_if_previous_column_not_provided(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_save_adds_empty_str_if_fieldname_not_present(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics_with_extra_column(), 0)
     csv_mngr.save_metrics(_create_scalar_metrics(), 1)
     _, metrics = csv_mngr.get_metrics()
     self.assertEqual(metrics[1]['a/d'], '')
 
-  def test_csvfile_is_saved(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_csvfile_is_created(self, save_mode):
     temp_dir = os.path.join(self.get_temp_dir(), 'test_dir')
     csv_file = os.path.join(temp_dir, 'metrics.csv')
-    csv_manager.CSVMetricsManager(csv_file)
+    csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     self.assertEqual(set(os.listdir(temp_dir)), set(['metrics.csv']))
 
-  def test_reload_of_csvfile(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_reload_of_csvfile(self, save_mode):
     temp_dir = os.path.join(self.get_temp_dir(), 'test_dir')
     csv_file = os.path.join(temp_dir, 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics(), 0)
     csv_mngr.save_metrics(_create_scalar_metrics(), 5)
 
-    new_csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    new_csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     fieldnames, metrics = new_csv_mngr.get_metrics()
     self.assertCountEqual(fieldnames, ['round_num', 'a/b', 'a/c'])
     self.assertLen(metrics, 2, 'There should be 2 rows (for rounds 0 and 5).')
@@ -154,29 +188,45 @@ class CSVMetricsManager(tf.test.TestCase):
 
     self.assertEqual(set(os.listdir(temp_dir)), set(['metrics.csv']))
 
-  def test_save_metrics_raises_value_error_if_round_num_is_negative(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_save_metrics_raises_if_round_num_is_negative(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     with self.assertRaises(ValueError):
       csv_mngr.save_metrics(_create_scalar_metrics(), -1)
 
-  def test_save_metrics_raises_value_error_if_round_num_is_out_of_order(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_save_metrics_raises_if_round_num_is_out_of_order(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics(), 1)
     with self.assertRaises(ValueError):
       csv_mngr.save_metrics(_create_scalar_metrics(), 0)
 
-  def test_clear_metrics_raises_value_error_if_round_num_is_negative(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_clear_metrics_raises_if_round_num_is_negative(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics(), 0)
     with self.assertRaises(ValueError):
       csv_mngr.clear_metrics(round_num=-1)
 
-  def test_clear_metrics_removes_rounds_after_input_arg(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_clear_metrics_removes_rounds_after_input_arg(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics(), 0)
     csv_mngr.save_metrics(_create_scalar_metrics(), 5)
     csv_mngr.save_metrics(_create_scalar_metrics(), 10)
@@ -192,9 +242,13 @@ class CSVMetricsManager(tf.test.TestCase):
                      'Last metrics retained are for round 5.')
     self.assertEqual(5, csv_mngr._latest_round_num)
 
-  def test_clear_metrics_removes_rounds_equal_to_input_arg(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_clear_metrics_removes_rounds_equal_to_input_arg(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics(), 0)
     csv_mngr.save_metrics(_create_scalar_metrics(), 5)
     csv_mngr.save_metrics(_create_scalar_metrics(), 10)
@@ -210,9 +264,13 @@ class CSVMetricsManager(tf.test.TestCase):
                      'Last metrics retained are for round 0.')
     self.assertEqual(0, csv_mngr._latest_round_num)
 
-  def test_clear_metrics_with_round_zero_removes_all_metrics(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_clear_metrics_with_round_zero_removes_all_metrics(self, save_mode):
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics(), 0)
     csv_mngr.save_metrics(_create_scalar_metrics(), 5)
     csv_mngr.save_metrics(_create_scalar_metrics(), 10)
@@ -224,10 +282,14 @@ class CSVMetricsManager(tf.test.TestCase):
     self.assertEmpty(metrics)
     self.assertIsNone(csv_mngr._latest_round_num)
 
-  def test_rows_are_cleared_is_reflected_in_saved_file(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_rows_are_cleared_is_reflected_in_saved_file(self, save_mode):
     temp_dir = os.path.join(self.get_temp_dir(), 'test_dir')
     csv_file = os.path.join(temp_dir, 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics(), 0)
     csv_mngr.save_metrics(_create_scalar_metrics(), 5)
     csv_mngr.save_metrics(_create_scalar_metrics(), 10)
@@ -244,7 +306,11 @@ class CSVMetricsManager(tf.test.TestCase):
     # calls to `save_metrics` with round_nums less <= 7.
     self.assertEqual(num_lines_after, 3)
 
-  def test_constructor_raises_value_error_if_csvfile_is_invalid(self):
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_constructor_raises_if_csvfile_is_invalid(self, save_mode):
     metrics_missing_round_num = _create_scalar_metrics()
     temp_dir = self.get_temp_dir()
     # This csvfile is 'invalid' in that it was not originally created by an
@@ -259,17 +325,83 @@ class CSVMetricsManager(tf.test.TestCase):
     with self.assertRaises(ValueError):
       csv_manager.CSVMetricsManager(invalid_csvfile)
 
-  def test_get_metrics_with_nonscalars_returns_list_of_lists(self):
+  def test_constructor_raises_if_save_mode_is_invalid(self):
+    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    with self.assertRaises(ValueError):
+      csv_manager.CSVMetricsManager(csv_file, save_mode='invalid_mode')
+
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_get_metrics_with_nonscalars_returns_list_of_lists(self, save_mode):
     metrics_to_append = {
         'a': tf.ones([1], dtype=tf.int32),
         'b': tf.zeros([2, 2], dtype=tf.int32)
     }
     csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
-    csv_mngr = csv_manager.CSVMetricsManager(csv_file)
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(metrics_to_append, 0)
     _, metrics = csv_mngr.get_metrics()
     self.assertEqual(metrics[0]['a'], '[1]')
     self.assertEqual(metrics[0]['b'], '[[0, 0], [0, 0]]')
+
+  @mock.patch('tensorflow_federated.python.simulation.'
+              'csv_manager._write_to_csv')
+  @mock.patch('csv.DictReader')
+  @mock.patch('csv.DictWriter')
+  def test_save_in_append_mode_appends_and_does_not_read_metrics(
+      self, mock_dict_writer, mock_dict_reader, mock_write_to_csv):
+    mock_reader = mock.MagicMock()
+    mock_reader.fieldnames = ['round_num']
+    mock_reader.__iter__.return_value = [{'round_num': 0}]
+    mock_dict_reader.return_value = mock_reader
+
+    mock_writer = mock.MagicMock()
+    mock_dict_writer.return_value = mock_writer
+
+    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_mngr = csv_manager.CSVMetricsManager(
+        csv_file, save_mode=csv_manager.SaveMode.APPEND)
+    # After construction, list(csv.DictReader) should be called once, and
+    # _write_to_csv should have no calls.
+    self.assertEqual(mock_reader.__iter__.call_count, 1)
+    self.assertEqual(mock_write_to_csv.call_count, 0)
+
+    # After saving, list(csv.DictReader) should be called still just once, and
+    # _write_to_csv should have no calls.
+    csv_mngr.save_metrics({}, 1)
+    self.assertEqual(mock_reader.__iter__.call_count, 1)
+    self.assertEqual(mock_write_to_csv.call_count, 0)
+
+  @mock.patch('tensorflow_federated.python.simulation.'
+              'csv_manager._write_to_csv')
+  @mock.patch('csv.DictReader')
+  @mock.patch('csv.DictWriter')
+  def test_save_in_write_mode_reads_and_writes_metrics(self, mock_dict_writer,
+                                                       mock_dict_reader,
+                                                       mock_write_to_csv):
+    mock_reader = mock.MagicMock()
+    mock_reader.fieldnames = ['round_num']
+    mock_reader.__iter__.return_value = [{'round_num': 0}]
+    mock_dict_reader.return_value = mock_reader
+
+    mock_writer = mock.MagicMock()
+    mock_dict_writer.return_value = mock_writer
+
+    csv_file = os.path.join(self.get_temp_dir(), 'metrics.csv')
+    csv_mngr = csv_manager.CSVMetricsManager(
+        csv_file, save_mode=csv_manager.SaveMode.WRITE)
+    # After construction, list(csv.DictReader) should be called once, and
+    # _write_to_csv should have no calls.
+    self.assertEqual(mock_reader.__iter__.call_count, 1)
+    self.assertEqual(mock_write_to_csv.call_count, 0)
+
+    # After saving, list(csv.DictReader) should be called twice, and
+    # _write_to_csv should have one calls.
+    csv_mngr.save_metrics({}, 1)
+    self.assertEqual(mock_reader.__iter__.call_count, 2)
+    self.assertEqual(mock_write_to_csv.call_count, 1)
 
 
 if __name__ == '__main__':
