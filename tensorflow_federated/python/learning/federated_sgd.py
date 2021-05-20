@@ -22,7 +22,6 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 """
 
 from typing import Callable, Optional
-import warnings
 
 import tensorflow as tf
 
@@ -156,8 +155,6 @@ class ClientSgd(optimizer_utils.ClientDeltaFn):
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=0.1)
 
 
-# TODO(b/170208719): Remove `aggregation_process` after migration to
-# `model_update_aggregation_factory`.
 def build_federated_sgd_process(
     model_fn: Callable[[], model_lib.Model],
     server_optimizer_fn: Callable[
@@ -165,7 +162,6 @@ def build_federated_sgd_process(
     *,  # Require named (non-positional) parameters for the following kwargs:
     client_weighting: Optional[client_weight_lib.ClientWeightType] = None,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
-    aggregation_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
         factory.WeightedAggregationFactory] = None,
     use_experimental_simulation_loop: bool = False,
@@ -213,12 +209,6 @@ def build_federated_sgd_process(
   with a learning rate of 0.1. More sophisticated federated SGD procedures may
   use different learning rates or server optimizers.
 
-  WARNING: `aggregation_process` argument is deprecated and will be removed in
-  a future version. Use `model_update_aggregation_factory` instead. See
-  https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators
-  and https://www.tensorflow.org/federated/tutorials/custom_aggregators
-  tutorials for details of use of `tff.aggregators` module.
-
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`. This method
       must *not* capture TensorFlow tensors or variables and use them. The model
@@ -235,16 +225,11 @@ def build_federated_sgd_process(
     broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENT)`.
-    aggregation_process: a `tff.templates.MeasuredProcess` that aggregates the
-      model updates on the clients back to the server. It must support the
-      signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
-      `None` if `model_update_aggregation_factory` is not `None.`
     model_update_aggregation_factory: An optional
       `tff.aggregators.WeightedAggregationFactory` that constructs
       `tff.templates.AggregationProcess` for aggregating the client model
       updates on the server. If `None`, uses a default constructed
-      `tff.aggregators.MeanFactory`, creating a stateless mean aggregation. Must
-      be `None` if `aggregation_process` is not `None.`
+      `tff.aggregators.MeanFactory`, creating a stateless mean aggregation.
     use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
 
@@ -262,18 +247,6 @@ def build_federated_sgd_process(
   elif client_weighting is None:
     client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
 
-  if aggregation_process is not None:
-    warnings.warn(
-        'The aggregation_process argument to '
-        'tff.learning.build_federated_averaging_process is deprecated and will '
-        'be removed in a future version. Use model_update_aggregation_factory '
-        'instead. See '
-        'https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators'
-        ' and '
-        'https://www.tensorflow.org/federated/tutorials/custom_aggregators '
-        'tutorials for details of use of tff.aggregators module.',
-        DeprecationWarning)
-
   def client_sgd_avg(model_fn: Callable[[], model_lib.Model]) -> ClientSgd:
     return ClientSgd(
         model_fn(),
@@ -285,7 +258,6 @@ def build_federated_sgd_process(
       model_to_client_delta_fn=client_sgd_avg,
       server_optimizer_fn=server_optimizer_fn,
       broadcast_process=broadcast_process,
-      aggregation_process=aggregation_process,
       model_update_aggregation_factory=model_update_aggregation_factory)
 
   server_state_type = iter_proc.state_type.member

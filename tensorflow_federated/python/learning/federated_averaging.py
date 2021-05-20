@@ -23,7 +23,6 @@ Communication-Efficient Learning of Deep Networks from Decentralized Data
 
 import collections
 from typing import Callable, Optional
-import warnings
 
 import tensorflow as tf
 
@@ -133,8 +132,6 @@ class ClientFedAvg(optimizer_utils.ClientDeltaFn):
 DEFAULT_SERVER_OPTIMIZER_FN = lambda: tf.keras.optimizers.SGD(learning_rate=1.0)
 
 
-# TODO(b/170208719): Remove `aggregation_process` after migration to
-# `model_update_aggregation_factory`.
 def build_federated_averaging_process(
     model_fn: Callable[[], model_lib.Model],
     client_optimizer_fn: Callable[[], tf.keras.optimizers.Optimizer],
@@ -143,7 +140,6 @@ def build_federated_averaging_process(
     *,  # Require named (non-positional) parameters for the following kwargs:
     client_weighting: Optional[client_weight_lib.ClientWeightType] = None,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
-    aggregation_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
         factory.WeightedAggregationFactory] = None,
     use_experimental_simulation_loop: bool = False
@@ -193,12 +189,6 @@ def build_federated_averaging_process(
   sophisticated federated averaging procedures may use different learning rates
   or server optimizers.
 
-  WARNING: `aggregation_process` argument is deprecated and will be removed in
-  a future version. Use `model_update_aggregation_factory` instead. See
-  https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators
-  and https://www.tensorflow.org/federated/tutorials/custom_aggregators
-  tutorials for details of use of `tff.aggregators` module.
-
   Args:
     model_fn: A no-arg function that returns a `tff.learning.Model`. This method
       must *not* capture TensorFlow tensors or variables and use them. The model
@@ -218,16 +208,11 @@ def build_federated_averaging_process(
       `(input_values@SERVER -> output_values@CLIENT)`. If set to default None,
       the server model is broadcast to the clients using the default
       tff.federated_broadcast.
-    aggregation_process: a `tff.templates.MeasuredProcess` that aggregates the
-      model updates on the clients back to the server. It must support the
-      signature `({input_values}@CLIENTS-> output_values@SERVER)`. Must be
-      `None` if `model_update_aggregation_factory` is not `None.`
     model_update_aggregation_factory: An optional
       `tff.aggregators.WeightedAggregationFactory` or
       `tff.aggregators.UnweightedAggregationFactory` that constructs
       `tff.templates.AggregationProcess` for aggregating the client model
-      updates on the server. If `None`, uses `tff.aggregators.MeanFactory`. Must
-      be `None` if `aggregation_process` is not `None.`
+      updates on the server. If `None`, uses `tff.aggregators.MeanFactory`.
     use_experimental_simulation_loop: Controls the reduce loop function for
         input dataset. An experimental reduce loop is used for simulation.
         It is currently necessary to set this flag to True for performant GPU
@@ -247,18 +232,6 @@ def build_federated_averaging_process(
   elif client_weighting is None:
     client_weighting = client_weight_lib.ClientWeighting.NUM_EXAMPLES
 
-  if aggregation_process is not None:
-    warnings.warn(
-        'The aggregation_process argument to '
-        'tff.learning.build_federated_averaging_process is deprecated and will '
-        'be removed in a future version. Use model_update_aggregation_factory '
-        'instead. See '
-        'https://www.tensorflow.org/federated/tutorials/tuning_recommended_aggregators'
-        ' and '
-        'https://www.tensorflow.org/federated/tutorials/custom_aggregators '
-        'tutorials for details of use of tff.aggregators module.',
-        DeprecationWarning)
-
   def client_fed_avg(model_fn: Callable[[], model_lib.Model]) -> ClientFedAvg:
     return ClientFedAvg(model_fn(), client_optimizer_fn(), client_weighting,
                         use_experimental_simulation_loop)
@@ -268,7 +241,6 @@ def build_federated_averaging_process(
       model_to_client_delta_fn=client_fed_avg,
       server_optimizer_fn=server_optimizer_fn,
       broadcast_process=broadcast_process,
-      aggregation_process=aggregation_process,
       model_update_aggregation_factory=model_update_aggregation_factory)
 
   server_state_type = iter_proc.state_type.member
