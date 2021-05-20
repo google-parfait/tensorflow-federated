@@ -187,9 +187,8 @@ class DifferentiallyPrivateFactory(factory.UnweightedAggregationFactory):
     _check_float_positive(clients_per_round, 'clients_per_round')
     _check_float_positive(clip, 'clip')
 
-    query = tfp.GaussianAverageQuery(
-        l2_norm_clip=clip,
-        sum_stddev=clip * noise_multiplier,
+    query = tfp.NormalizedQuery(
+        tfp.GaussianSumQuery(l2_norm_clip=clip, stddev=clip * noise_multiplier),
         denominator=clients_per_round)
 
     return cls(query)
