@@ -170,7 +170,6 @@ py_library(
         ":computation_types",
         ":placements",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/common_libs:structure",
     ],
 )
