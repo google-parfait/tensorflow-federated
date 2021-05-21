@@ -81,6 +81,15 @@ class LearningProcessTest(test_case.TestCase):
     except:  # pylint: disable=bare-except
       self.fail('Could not construct a valid LearningProcess.')
 
+  def test_learning_process_can_be_reconstructed(self):
+    process = learning_process.LearningProcess(test_init_fn, test_next_fn,
+                                               test_report_fn)
+    try:
+      learning_process.LearningProcess(process.initialize, process.next,
+                                       process.report)
+    except:  # pylint: disable=bare-except
+      self.fail('Could not reconstruct the LearningProcess.')
+
   def test_construction_with_empty_state_does_not_raise(self):
 
     @computations.federated_computation()
