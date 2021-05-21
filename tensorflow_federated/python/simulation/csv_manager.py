@@ -187,8 +187,8 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
       else:
         current_fieldnames = set(reader.fieldnames)
 
-      has_new_fields = current_fieldnames < new_fieldnames
-      if self._save_mode == SaveMode.APPEND and not has_new_fields:
+      has_no_new_fields = (new_fieldnames <= current_fieldnames)
+      if self._save_mode == SaveMode.APPEND and has_no_new_fields:
         writer = csv.DictWriter(
             csv_file, fieldnames=current_fieldnames, quoting=_QUOTING)
         try:
