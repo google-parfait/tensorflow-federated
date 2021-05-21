@@ -193,7 +193,7 @@ class LearningProcess(iterative_process.IterativeProcess):
     Returns:
       A `tff.Computation`.
     """
-    return super().next
+    return super().initialize
 
   @property
   def next(self) -> computation_base.Computation:
