@@ -19,7 +19,6 @@ import weakref
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
-from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
@@ -119,7 +118,8 @@ def deserialize_type(
   function types is implemented.
 
   Args:
-    type_proto: An instance of pb.Type or None.
+    type_proto: An object that supports same interface as `pb.Type` (e.g.
+      pybind backend C++ `Type` protocol buffer messages), or `None`.
 
   Returns:
     The corresponding instance of computation_types.Type (or None if the
@@ -132,7 +132,6 @@ def deserialize_type(
   """
   if type_proto is None:
     return None
-  py_typecheck.check_type(type_proto, pb.Type)
   type_variant = type_proto.WhichOneof('type')
   if type_variant is None:
     return None
