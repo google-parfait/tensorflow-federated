@@ -178,7 +178,7 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
     Returns:
       A set of fieldnames for the updated CSV.
     """
-    new_fieldnames = metrics_to_save.keys()
+    new_fieldnames = set(metrics_to_save.keys())
     with tf.io.gfile.GFile(self._metrics_file, 'a+') as csv_file:
       reader = csv.DictReader(csv_file, quoting=_QUOTING)
 
@@ -190,7 +190,7 @@ class CSVMetricsManager(metrics_manager.MetricsManager):
       has_no_new_fields = (new_fieldnames <= current_fieldnames)
       if self._save_mode == SaveMode.APPEND and has_no_new_fields:
         writer = csv.DictWriter(
-            csv_file, fieldnames=current_fieldnames, quoting=_QUOTING)
+            csv_file, fieldnames=reader.fieldnames, quoting=_QUOTING)
         try:
           writer.writerow(metrics_to_save)
         except (tf.errors.PermissionDeniedError, csv.Error) as e:

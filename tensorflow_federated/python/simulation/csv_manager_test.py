@@ -144,7 +144,21 @@ class CSVMetricsManager(tf.test.TestCase, parameterized.TestCase):
     csv_mngr.save_metrics(_create_scalar_metrics_with_extra_column(), 1)
     fieldnames, metrics = csv_mngr.get_metrics()
     self.assertCountEqual(fieldnames, ['round_num', 'a/b', 'a/c', 'a/d'])
-    self.assertEqual(metrics[0]['a/d'], '')
+    expected_round_0_metrics = {
+        'round_num': 0,
+        'a/b': 1.0,
+        'a/c': 2.0,
+        'a/d': ''
+    }
+    self.assertDictEqual(metrics[0], expected_round_0_metrics)
+
+    expected_round_1_metrics = {
+        'round_num': 1,
+        'a/b': 1.0,
+        'a/c': 2.0,
+        'a/d': 3.0
+    }
+    self.assertDictEqual(metrics[1], expected_round_1_metrics)
 
   @parameterized.named_parameters(
       ('append_mode', csv_manager.SaveMode.APPEND),
@@ -161,7 +175,35 @@ class CSVMetricsManager(tf.test.TestCase, parameterized.TestCase):
     csv_mngr.save_metrics({'a/d': 3}, 1)
     fieldnames, metrics = csv_mngr.get_metrics()
     self.assertCountEqual(fieldnames, ['round_num', 'a/b', 'a/c', 'a/d'])
-    self.assertEqual(metrics[0]['a/d'], '')
+    expected_round_0_metrics = {
+        'round_num': 0,
+        'a/b': 1.0,
+        'a/c': 2.0,
+        'a/d': ''
+    }
+    self.assertDictEqual(metrics[0], expected_round_0_metrics)
+
+    expected_round_1_metrics = {'round_num': 1, 'a/b': '', 'a/c': '', 'a/d': 3}
+    self.assertDictEqual(metrics[1], expected_round_1_metrics)
+
+  @parameterized.named_parameters(
+      ('append_mode', csv_manager.SaveMode.APPEND),
+      ('write_mode', csv_manager.SaveMode.WRITE),
+  )
+  def test_save_metrics_with_alternating_fieldnames(self, save_mode):
+    csv_file = os.path.join(self.get_temp_dir(), 'test_dir', 'metrics.csv')
+    csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
+    csv_mngr.save_metrics({'a': 1}, 0)
+    csv_mngr.save_metrics({'b': 3}, 1)
+    csv_mngr.save_metrics({'a': 2}, 2)
+    fieldnames, metrics = csv_mngr.get_metrics()
+    self.assertCountEqual(fieldnames, ['round_num', 'a', 'b'])
+    expected_round_0_metrics = {'round_num': 0, 'a': 1, 'b': ''}
+    self.assertDictEqual(metrics[0], expected_round_0_metrics)
+    expected_round_1_metrics = {'round_num': 1, 'a': '', 'b': 3}
+    self.assertDictEqual(metrics[1], expected_round_1_metrics)
+    expected_round_2_metrics = {'round_num': 2, 'a': 2, 'b': ''}
+    self.assertDictEqual(metrics[2], expected_round_2_metrics)
 
   @parameterized.named_parameters(
       ('append_mode', csv_manager.SaveMode.APPEND),
@@ -172,8 +214,24 @@ class CSVMetricsManager(tf.test.TestCase, parameterized.TestCase):
     csv_mngr = csv_manager.CSVMetricsManager(csv_file, save_mode=save_mode)
     csv_mngr.save_metrics(_create_scalar_metrics_with_extra_column(), 0)
     csv_mngr.save_metrics(_create_scalar_metrics(), 1)
-    _, metrics = csv_mngr.get_metrics()
-    self.assertEqual(metrics[1]['a/d'], '')
+    fieldnames, metrics = csv_mngr.get_metrics()
+    self.assertCountEqual(fieldnames, ['round_num', 'a/b', 'a/c', 'a/d'])
+
+    expected_round_0_metrics = {
+        'round_num': 0,
+        'a/b': 1.0,
+        'a/c': 2.0,
+        'a/d': 3.0
+    }
+    self.assertDictEqual(metrics[0], expected_round_0_metrics)
+
+    expected_round_1_metrics = {
+        'round_num': 1,
+        'a/b': 1.0,
+        'a/c': 2.0,
+        'a/d': ''
+    }
+    self.assertDictEqual(metrics[1], expected_round_1_metrics)
 
   @parameterized.named_parameters(
       ('append_mode', csv_manager.SaveMode.APPEND),
