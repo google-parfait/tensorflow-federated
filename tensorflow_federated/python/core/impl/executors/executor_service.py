@@ -156,13 +156,13 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
         function_val = self._values[function_id]
         argument_val = self._values[argument_id] if argument_id else None
 
-      async def _processing():
+      async def _process_create_call():
         function = await asyncio.wrap_future(function_val)
         argument = await asyncio.wrap_future(
             argument_val) if argument_val is not None else None
         return await self.executor.create_call(function, argument)
 
-      coro = _processing()
+      coro = _process_create_call()
       result_fut = self._run_coro_threadsafe_with_tracing(coro)
       result_id = str(uuid.uuid4())
       with self._lock:
@@ -187,14 +187,15 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
           str(elem.name) if elem.name else None for elem in request.element
       ]
 
-      async def _processing():
+      async def _process_create_struct():
         elem_values = await asyncio.gather(
             *[asyncio.wrap_future(v) for v in elem_futures])
         elements = list(zip(elem_names, elem_values))
         struct = structure.Struct(elements)
         return await self.executor.create_struct(struct)
 
-      result_fut = self._run_coro_threadsafe_with_tracing(_processing())
+      result_fut = self._run_coro_threadsafe_with_tracing(
+          _process_create_struct())
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
@@ -215,11 +216,12 @@ class ExecutorService(executor_pb2_grpc.ExecutorServicer):
       with self._lock:
         source_fut = self._values[request.source_ref.id]
 
-      async def _processing():
+      async def _process_create_selection():
         source = await asyncio.wrap_future(source_fut)
         return await self.executor.create_selection(source, request.index)
 
-      result_fut = self._run_coro_threadsafe_with_tracing(_processing())
+      result_fut = self._run_coro_threadsafe_with_tracing(
+          _process_create_selection())
       result_id = str(uuid.uuid4())
       with self._lock:
         self._values[result_id] = result_fut
