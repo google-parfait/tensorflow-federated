@@ -13,6 +13,7 @@
 # limitations under the License.
 """An executor that delegates to the XLA compiler."""
 
+import jax
 from jax.lib.xla_bridge import xla_client
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -155,7 +156,7 @@ class XlaExecutor(executor_base.Executor):
     if device is not None:
       raise ValueError(
           'Explicitly specifying a device is currently not supported.')
-    self._backend = xla_client.get_local_backend(None)
+    self._backend = jax.lib.xla_bridge.get_backend()
 
   @tracing.trace(span=True)
   async def create_value(self, value, type_spec=None):

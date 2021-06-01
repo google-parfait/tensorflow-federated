@@ -15,7 +15,7 @@
 import collections
 
 from absl.testing import absltest
-from jax.lib.xla_bridge import xla_client
+import jax
 import numpy as np
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -139,7 +139,7 @@ class CompilerTest(absltest.TestCase):
   def _run_comp(self, comp_pb, comp_type, arg=None):
     self.assertIsInstance(comp_pb, pb.Computation)
     self.assertIsInstance(comp_type, computation_types.FunctionType)
-    backend = xla_client.get_local_backend(None)
+    backend = jax.lib.xla_bridge.get_backend()
     comp_callable = runtime.ComputationCallable(comp_pb, comp_type, backend)
     arg_list = []
     if arg is not None:

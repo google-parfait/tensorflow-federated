@@ -16,6 +16,7 @@ import asyncio
 import collections
 
 from absl.testing import absltest
+import jax
 from jax.lib.xla_bridge import xla_client
 import numpy as np
 
@@ -29,7 +30,7 @@ class ExecutorTest(absltest.TestCase):
 
   def setUp(self):
     super(ExecutorTest, self).setUp()
-    self._backend = xla_client.get_local_backend()
+    self._backend = jax.lib.xla_bridge.get_backend()
 
   def test_to_representation_for_type_with_int32_constant(self):
     rep = executor.to_representation_for_type(10, np.int32)

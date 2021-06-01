@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
+import jax
 from jax.lib.xla_bridge import xla_client
 import numpy as np
 
@@ -47,7 +48,7 @@ class RuntimeTest(absltest.TestCase):
     comp_type = computation_types.FunctionType(None, np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(
         xla_comp, [], comp_type)
-    backend = xla_client.get_local_backend(None)
+    backend = jax.lib.xla_bridge.get_backend()
     comp_callable = runtime.ComputationCallable(comp_pb, comp_type, backend)
     self.assertIsInstance(comp_callable, runtime.ComputationCallable)
     self.assertEqual(str(comp_callable.type_signature), '( -> int32)')
@@ -66,7 +67,7 @@ class RuntimeTest(absltest.TestCase):
     comp_type = computation_types.FunctionType((np.int32, np.int32), np.int32)
     comp_pb = xla_serialization.create_xla_tff_computation(
         xla_comp, [0, 1], comp_type)
-    backend = xla_client.get_local_backend(None)
+    backend = jax.lib.xla_bridge.get_backend()
     comp_callable = runtime.ComputationCallable(comp_pb, comp_type, backend)
     self.assertIsInstance(comp_callable, runtime.ComputationCallable)
     self.assertEqual(
