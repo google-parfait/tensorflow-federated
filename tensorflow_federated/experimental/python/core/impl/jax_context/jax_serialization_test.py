@@ -152,6 +152,21 @@ class JaxSerializationTest(absltest.TestCase):
         '}\n')
     self.assertEqual(str(comp_pb.xla.result), 'tensor {\n' '  index: 0\n' '}\n')
 
+  def test_serialize_jax_with_nested_struct_arg(self):
+
+    def traced_fn(x, y):
+      return x[0] + y
+
+    param_type = computation_types.StructType([
+        (None, computation_types.StructType([(None, np.int32)])),
+        (None, np.int32)
+    ])
+    arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
+    ctx_stack = context_stack_impl.context_stack
+    with self.assertRaises(AttributeError):
+      _ = jax_serialization.serialize_jax_computation(traced_fn, arg_fn,
+                                                      param_type, ctx_stack)
+
   def test_nested_structure_type_signature_roundtrip(self):
 
     def traced_fn(x):
