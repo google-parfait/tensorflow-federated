@@ -49,7 +49,6 @@ py_library(
         "//tensorflow_federated/python/core/backends/xla:xla_serialization",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/types:computation_types",
-        "//tensorflow_federated/python/core/impl/types:type_conversions",
         "//tensorflow_federated/python/core/impl/types:typed_object",
     ],
 )

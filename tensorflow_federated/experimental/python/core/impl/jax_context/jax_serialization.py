@@ -22,7 +22,6 @@ from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.backends.xla import xla_serialization
 from tensorflow_federated.python.core.impl.context_stack import context_stack_base
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import type_conversions
 from tensorflow_federated.python.core.impl.types import typed_object
 
 
@@ -139,22 +138,13 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
   args, kwargs = arg_fn(packed_arg)
 
   # While the fake parameters are fed via args/kwargs during serialization,
-  # it is possible for them to get reorderd in the actual generate XLA code.
-  # We use here the same flatenning function as that one, which is used by
-  # the JAX serializer to determine the orderding and allow it to be captured
+  # it is possible for them to get reordered in the actual generated XLA code.
+  # We use here the same flattening function as that one, which is used by
+  # the JAX serializer to determine the ordering and allow it to be captured
   # in the parameter binding. We do not need to do anything special for the
   # results, since the results, if multiple, are always returned as a tuple.
   flattened_obj, _ = jax.tree_util.tree_flatten((args, kwargs))
   tensor_indexes = list(np.argsort([x.tensor_index for x in flattened_obj]))
-
-  def _adjust_arg(x):
-    if isinstance(x, structure.Struct):
-      return type_conversions.type_to_py_container(x, x.type_signature)
-    else:
-      return x
-
-  args = [_adjust_arg(x) for x in args]
-  kwargs = {k: _adjust_arg(v) for k, v in kwargs.items()}
 
   context = jax_computation_context.JaxComputationContext()
   with context_stack.install(context):
@@ -175,3 +165,10 @@ def serialize_jax_computation(traced_fn, arg_fn, parameter_type, context_stack):
   return xla_serialization.create_xla_tff_computation(compiled_xla,
                                                       tensor_indexes,
                                                       computation_type)
+
+
+# Registers TFF's Struct as a node that Jax's tree-traversal utilities can walk
+# through.
+jax.tree_util.register_pytree_node(
+    structure.Struct, lambda struct: (structure.flatten(struct), struct),
+    lambda data, struct: structure.pack_sequence_as(data, list(struct)))
