@@ -109,7 +109,7 @@ in the
 [README](https://github.com/tensorflow/federated/blob/master/tensorflow_federated/python/examples/simple_fedavg/README.md).
 
 A more general implementation of Federated Averaging can be found
-[here](https://github.com/google-research/federated/blob/master/optimization/shared/fed_avg_schedule.py).
+[here](https://github.com/google-research/federated/blob/master/optimization/fed_avg_schedule.py).
 This implementation allows for more sophisticated optimization techniques,
 including learning rate scheduling and the use of different optimizers on both
 the server and client. Code that applies this generalized Federated Averaging to
