@@ -14,7 +14,6 @@ package_group(
         "//tensorflow_federated/python/simulation/...",
 
         # Other non-learning federated algorithm dependencies
-        "//tensorflow_federated/python/core/utils/...",
         "//tensorflow_federated/experimental/...",
     ],
 )

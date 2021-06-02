@@ -10,7 +10,6 @@ package_group(
         # Core Dependencies
         "//tensorflow_federated/python/core/backends/...",
         "//tensorflow_federated/python/core/templates/...",
-        "//tensorflow_federated/python/core/utils/...",
         "//tensorflow_federated/python/core/test/...",
         "//tensorflow_federated/python/core/types/...",
 
