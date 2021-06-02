@@ -163,9 +163,12 @@ class JaxSerializationTest(absltest.TestCase):
     ])
     arg_fn = function_utils.create_argument_unpacking_fn(traced_fn, param_type)
     ctx_stack = context_stack_impl.context_stack
-    with self.assertRaises(AttributeError):
-      _ = jax_serialization.serialize_jax_computation(traced_fn, arg_fn,
-                                                      param_type, ctx_stack)
+    comp_pb = jax_serialization.serialize_jax_computation(
+        traced_fn, arg_fn, param_type, ctx_stack)
+    self.assertIsInstance(comp_pb, pb.Computation)
+    self.assertEqual(comp_pb.WhichOneof('computation'), 'xla')
+    type_spec = type_serialization.deserialize_type(comp_pb.type)
+    self.assertEqual(str(type_spec), '(<<int32>,int32> -> int32)')
 
   def test_nested_structure_type_signature_roundtrip(self):
 
