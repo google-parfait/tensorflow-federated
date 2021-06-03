@@ -629,6 +629,22 @@ message TensorFlow {
       // means of encoding data sets in the serialized graph representation.
     }
   }
+
+  // An optional id that can be used to identify identical TensorFlow messages
+  // without having to compare the (potentially large) `graph_def` fields.
+  //
+  // This field is not intended to be set during comptuation
+  // construction/tracing. Rather, it is designed as a final compilation pass
+  // that allows execution stacks to "cache" the graphs across invoke calls,
+  // avoiding costly graph parsing every invocation.
+  //
+  // The id is NOT required to be unique across machines, meaning two machines
+  // producing the same graph_def may have the same ids. If these machines
+  // should not be talking to the same execution stack.
+  //
+  // NOTE: the default value of 0 has the same meaning as having the field
+  // unset, and having no id. Any code setting this value should exclude zero.
+  optional uint64 id = 5;
 }
 
 // A representation of an intrinsic function. Intrinsics are functions that are

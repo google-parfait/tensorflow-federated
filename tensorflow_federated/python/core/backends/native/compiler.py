@@ -59,8 +59,10 @@ def transform_to_native_form(
       logging.debug(call_dominant_form.formatted_representation())
     call_dominant_form, _ = tree_transformations.transform_tf_call_ops_to_disable_grappler(
         call_dominant_form)
-    return computation_wrapper_instances.building_block_to_computation(
+    form_with_ids, _ = tree_transformations.transform_tf_add_ids(
         call_dominant_form)
+    return computation_wrapper_instances.building_block_to_computation(
+        form_with_ids)
   except ValueError as e:
     logging.debug('Compilation for native runtime failed with error %s', e)
     logging.debug('computation: %s',
