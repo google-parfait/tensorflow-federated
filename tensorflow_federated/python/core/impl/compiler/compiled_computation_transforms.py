@@ -13,6 +13,8 @@
 # limitations under the License.
 """Holds library of transformations for on compiled computations."""
 
+import ctypes
+
 import tensorflow as tf
 
 from tensorflow_federated.proto.v0 import computation_pb2 as pb
@@ -1334,5 +1336,37 @@ class DisableCallOpGrappler(transformation_utils.TransformSpec):
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     new_comp_proto = tensorflow_computation_transformations.disable_grappler_for_partitioned_calls(
         comp.proto)
+    return building_blocks.CompiledComputation(
+        new_comp_proto, type_signature=comp.type_signature), True
+
+
+class AddUniqueIDs(transformation_utils.TransformSpec):
+  """Populates unique IDs for compiled computations.
+
+  This overwrites the `tensorlfow.id` field (and in the future other compiled
+  computations) with a unique ID. The IDs produced should be determinstic and
+  reproducible when the transform is applied to the same computation.
+
+  This `transformation_utils.TransformSpec` does not alter the TFF structure of
+  the computations on which it is called.
+  """
+
+  def should_transform(self, comp):
+    return (comp.is_compiled_computation() and
+            comp.proto.WhichOneof('computation') == 'tensorflow')
+
+  def transform(self, comp):
+    if not self.should_transform(comp):
+      return comp, False
+    py_typecheck.check_type(comp, building_blocks.CompiledComputation)
+    new_tf_proto = pb.TensorFlow()
+    new_tf_proto.CopyFrom(comp.proto.tensorflow)
+    hash_value = hash(
+        serialization_utils.unpack_graph_def(
+            comp.proto.tensorflow.graph_def).SerializeToString(
+                deterministic=True))
+    new_tf_proto.id = ctypes.c_uint64(hash_value).value
+    new_comp_proto = pb.Computation(
+        type=comp.proto.type, tensorflow=new_tf_proto)
     return building_blocks.CompiledComputation(
         new_comp_proto, type_signature=comp.type_signature), True
