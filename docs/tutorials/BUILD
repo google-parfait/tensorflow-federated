@@ -13,6 +13,7 @@ exports_files([
     "random_noise_generation.ipynb",
     "simulations.ipynb",
     "simulations_with_accelerators.ipynb",
+    "sparse_federated_learning.ipynb",
     "tuning_recommended_aggregators.ipynb",
     "tff_for_federated_learning_research_compression.ipynb",
     "working_with_client_data.ipynb",
