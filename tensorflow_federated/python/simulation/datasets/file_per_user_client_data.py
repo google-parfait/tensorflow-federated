@@ -20,11 +20,11 @@ from typing import Callable, Mapping
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.simulation.datasets import serializable_client_data
+from tensorflow_federated.python.simulation.datasets import client_data
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 
-class FilePerUserClientData(serializable_client_data.SerializableClientData):
+class FilePerUserClientData(client_data.SerializableClientData):
   """A `tff.simulation.datasets.ClientData` that maps a set of files to a dataset.
 
   This mapping is restricted to one file per user.

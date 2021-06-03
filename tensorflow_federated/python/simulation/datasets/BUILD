@@ -230,6 +230,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":client_data",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -240,7 +241,7 @@ py_library(
     srcs = ["file_per_user_client_data.py"],
     srcs_version = "PY3",
     deps = [
-        ":serializable_client_data",
+        ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -267,7 +268,7 @@ py_library(
     srcs = ["from_tensor_slices_client_data.py"],
     srcs_version = "PY3",
     deps = [
-        ":serializable_client_data",
+        ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -294,7 +295,7 @@ py_library(
     srcs = ["sql_client_data.py"],
     srcs_version = "PY3",
     deps = [
-        ":serializable_client_data",
+        ":client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@absl_py//absl/logging",
         "@org_tensorflow//tensorflow:tensorflow_py",
@@ -321,7 +322,6 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":client_data",
-        ":serializable_client_data",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
@@ -336,32 +336,6 @@ py_test(
         ":from_tensor_slices_client_data",
         ":transforming_client_data",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_library(
-    name = "serializable_client_data",
-    srcs = ["serializable_client_data.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":client_data",
-        "//tensorflow_federated/python/common_libs:py_typecheck",
-        "//tensorflow_federated/python/core/api:computations",
-        "@org_tensorflow//tensorflow:tensorflow_py",
-    ],
-)
-
-py_test(
-    name = "serializable_client_data_test",
-    size = "small",
-    srcs = ["serializable_client_data_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":serializable_client_data",
-        "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "@absl_py//absl/testing:absltest",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )

@@ -20,7 +20,7 @@ import sqlite3
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.simulation.datasets import serializable_client_data
+from tensorflow_federated.python.simulation.datasets import client_data
 
 
 class DatabaseFormatError(Exception):
@@ -83,7 +83,7 @@ def _fetch_client_ids(database_filepath: str,
   return map(lambda x: x[0], result)
 
 
-class SqlClientData(serializable_client_data.SerializableClientData):
+class SqlClientData(client_data.SerializableClientData):
   """A `tff.simulation.datasets.ClientData` backed by an SQL file.
 
   This class expects that the SQL file has an `examples` table where each

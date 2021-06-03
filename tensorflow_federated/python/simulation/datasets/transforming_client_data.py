@@ -19,10 +19,9 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.simulation.datasets import client_data
-from tensorflow_federated.python.simulation.datasets import serializable_client_data
 
 
-class TransformingClientData(serializable_client_data.SerializableClientData):
+class TransformingClientData(client_data.SerializableClientData):
   """Transforms client data, potentially expanding by adding pseudo-clients.
 
   Each client of the base_client_data is "expanded" into some number of
@@ -35,12 +34,11 @@ class TransformingClientData(serializable_client_data.SerializableClientData):
   "client_A-1".
   """
 
-  def __init__(
-      self,
-      base_client_data: serializable_client_data.SerializableClientData,
-      make_transform_fn: Callable[[str], Callable[[Any], Any]],
-      expand_client_id: Optional[Callable[[str], List[str]]] = None,
-      reduce_client_id: Optional[Callable[[str], str]] = None):
+  def __init__(self,
+               base_client_data: client_data.SerializableClientData,
+               make_transform_fn: Callable[[str], Callable[[Any], Any]],
+               expand_client_id: Optional[Callable[[str], List[str]]] = None,
+               reduce_client_id: Optional[Callable[[str], str]] = None):
     """Initializes the TransformingClientData.
 
     Args:
