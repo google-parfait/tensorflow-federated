@@ -4,7 +4,6 @@ load("@rules_python//python:defs.bzl", "py_library")
 package_group(
     name = "core_visibility",
     includes = [
-        "//tensorflow_federated/python/learning:learning_visibility",
         "//tensorflow_federated/python/simulation:simulation_visibility",
     ],
     packages = [

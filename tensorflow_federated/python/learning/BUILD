@@ -1,19 +1,7 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-# Packages that have visibility into the `learning` package.
-package_group(name = "learning_visibility")
-
-package_group(
-    name = "default_visibility",
-    includes = [":learning_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/learning/...",
-    ],
-)
-
-package(default_visibility = [":default_visibility"])
+package(default_visibility = ["//tensorflow_federated/python/learning:__subpackages__"])
 
 licenses(["notice"])
 
