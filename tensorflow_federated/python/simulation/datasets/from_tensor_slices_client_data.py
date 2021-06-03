@@ -18,7 +18,7 @@ import copy
 import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import py_typecheck
-from tensorflow_federated.python.simulation.datasets import serializable_client_data
+from tensorflow_federated.python.simulation.datasets import client_data
 
 
 def isnamedtuple(example_structure):
@@ -26,7 +26,7 @@ def isnamedtuple(example_structure):
       example_structure, '_fields')
 
 
-class TestClientData(serializable_client_data.SerializableClientData):
+class TestClientData(client_data.SerializableClientData):
   """"A `tff.simulation.datasets.ClientData` intended for test purposes.
 
   The implementation is based on `tf.data.Dataset.from_tensor_slices.` This
