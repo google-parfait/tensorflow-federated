@@ -46,6 +46,7 @@ class UnweightedAggregationFactory(abc.ABC):
     Returns:
       A `tff.templates.AggregationProcess`.
     """
+    raise NotImplementedError
 
 
 class WeightedAggregationFactory(abc.ABC):
@@ -75,6 +76,7 @@ class WeightedAggregationFactory(abc.ABC):
     Returns:
       A `tff.templates.AggregationProcess`.
     """
+    raise NotImplementedError
 
 
 AggregationFactory = Union[UnweightedAggregationFactory,
