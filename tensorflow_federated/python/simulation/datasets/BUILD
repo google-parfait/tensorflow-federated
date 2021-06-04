@@ -70,8 +70,8 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":client_data",
         ":dataset_utils",
+        ":from_tensor_slices_client_data",
     ],
 )
 
