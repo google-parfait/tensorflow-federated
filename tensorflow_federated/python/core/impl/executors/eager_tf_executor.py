@@ -49,6 +49,7 @@ def _all_graph_def_nodes(
                          *[f.node_def for f in graph_def.library.function])
 
 
+# TODO(b/159180073): remove this check after enabling reduce op for multi-GPU
 def _check_dataset_reduce_for_multi_gpu(
     graph_def: tf.compat.v1.GraphDef) -> None:
   """Detect if ReduceDataset Op is used in a multi-GPU simulation."""
@@ -63,9 +64,10 @@ def _check_dataset_reduce_for_multi_gpu(
   if has_dataset_reduce_node:
     raise ValueError(
         'Detected dataset reduce op in multi-GPU TFF simulation: '
-        '`use_experimental_simulation_loop=True` for `tff.learning`; or '
-        'use `for ... in iter(dataset)` for your own dataset iteration.'
-        'Reduce op will be functional after b/159180073.')
+        '`use_experimental_simulation_loop=True` for `tff.learning`; or use '
+        '`for ... in iter(dataset)` for your own dataset iterations. See '
+        'https://www.tensorflow.org/federated/tutorials/simulations_with_accelerators'
+        ' for examples.')
 
 
 def _get_wrapped_function_from_comp(comp, must_pin_function_to_cpu, param_type,
