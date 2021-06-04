@@ -48,6 +48,16 @@ documentation can be found in the [TFF guides](../get_started.md).
     subtlities with using randomness in decentralized computations, and proposes
     best practices and recommend patterns.
 
+*   [Sending Different Data To Particular Clients With tff.federated_select](federated_select.ipynb)
+    introduces the `tff.federated_select` operator and gives a simple example of
+    a custom federated algorithm that sends different data to different clients.
+
+*   [Client-efficient large-model federated learning via federated_select and
+    sparse aggregation](sparse_federated_learning.ipynb) shows how TFF can be
+    used to train a very large model where each client device only downloads and
+    updates a small part of the model, using `tff.federated_select` and sparse
+    aggregation.
+
 *   [TFF for Federated Learning Research: Model and Update Compression](tff_for_federated_learning_research_compression.ipynb)
     demonstrates how custom aggregations building on the
     [tensor_encoding API](https://github.com/tensorflow/model-optimization/tree/master/tensorflow_model_optimization/python/core/internal/tensor_encoding)

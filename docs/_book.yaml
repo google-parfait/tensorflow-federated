@@ -28,9 +28,9 @@ upper_tabs:
         path: /federated/tutorials/building_your_own_federated_learning_algorithm
 
       - heading: Simulation Runtime
-      - title: "High-performance simulations with TFF"
+      - title: "High-performance Simulations with TFF"
         path: /federated/tutorials/simulations
-      - title: "TFF simulation with accelerators (GPU)"
+      - title: "TFF Simulation with Accelerators (GPU)"
         path: /federated/tutorials/simulations_with_accelerators
       - title: "Working with ClientData"
         path: /federated/tutorials/working_with_client_data
@@ -38,8 +38,12 @@ upper_tabs:
       - heading: Advanced tutorials
       - title: "Implementing Custom Aggregators"
         path: /federated/tutorials/custom_aggregators
-      - title: "Random noise generation"
+      - title: "Random Noise Generation"
         path: /federated/tutorials/random_noise_generation
+      - title: "Sending Different Data To Particular Clients With tff.federated_select"
+        path: /federated/tutorials/federated_select
+      - title: "Client-efficient large-model federated learning via federated_select and sparse aggregation"
+        path: /federated/tutorials/sparse_federated_learning
       - title: "TFF for Federated Learning Research: Model and Update Compression"
         path: /federated/tutorials/tff_for_federated_learning_research_compression
       - title: "Custom Federated Algorithms Part 1 - Introduction to the Federated Core"
