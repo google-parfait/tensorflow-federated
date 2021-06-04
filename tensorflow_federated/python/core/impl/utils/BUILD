@@ -50,12 +50,20 @@ py_test(
     name = "tensorflow_utils_test",
     size = "small",
     srcs = ["tensorflow_utils_test.py"],
+    args = [
+        "--golden",
+        "$(location tensorflow_utils_test_goldens/capture_result_with_sequence_of_dicts.expected)",
+    ],
+    data = [
+        "tensorflow_utils_test_goldens/capture_result_with_sequence_of_dicts.expected",
+    ],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
         requirement("attrs"),
         ":tensorflow_utils",
         "//tensorflow_federated/proto/v0:computation_py_pb2",
+        "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/common_libs:serialization_utils",
         "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/common_libs:test_utils",
