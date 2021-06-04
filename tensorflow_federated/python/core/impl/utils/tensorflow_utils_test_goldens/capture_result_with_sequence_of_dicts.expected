@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "python/core/impl/utils/tensorflow_utils_test.py", in test_capture_result_with_sequence_of_dicts_fails
+    self._checked_capture_result(ds)
+  File "python/core/impl/utils/tensorflow_utils_test.py", in _checked_capture_result
+    result, graph)
+  File "python/core/impl/utils/tensorflow_utils.py", in capture_result_from_graph
+    f'which is not a valid TFF type: {str(e)}') from None
+TypeError: Dataset has `element_spec` which is not a valid TFF type.
+Found `element_spec`: {'A': TensorSpec(shape=(), dtype=tf.int32, name=None), 'B': TensorSpec(shape=(), dtype=tf.int32, name=None)}
+which is not a valid TFF type: Unsupported mapping type dict. Use collections.OrderedDict for mappings.
