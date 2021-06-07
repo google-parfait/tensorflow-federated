@@ -26,6 +26,7 @@ py_library(
     srcs = ["compiler.py"],
     srcs_version = "PY3",
     deps = [
+        "//tensorflow_federated/python/common_libs:tracing",
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/impl/compiler:building_blocks",
         "//tensorflow_federated/python/core/impl/compiler:transformations",
