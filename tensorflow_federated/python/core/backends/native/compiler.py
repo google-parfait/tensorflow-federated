@@ -15,6 +15,7 @@
 
 from absl import logging
 
+from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.impl.compiler import building_blocks
 from tensorflow_federated.python.core.impl.compiler import transformations
@@ -47,20 +48,32 @@ def transform_to_native_form(
       proto)
   try:
     logging.debug('Compiling TFF computation to CDF.')
-    call_dominant_form, _ = transformations.transform_to_call_dominant(
-        computation_building_block)
+    with tracing.span(
+        'transform_to_native_form', 'transform_to_call_dominant', span=True):
+      call_dominant_form, _ = transformations.transform_to_call_dominant(
+          computation_building_block)
     logging.debug('Computation compiled to:')
     logging.debug(call_dominant_form.formatted_representation())
     if transform_math_to_tf:
       logging.debug('Compiling local computations to TensorFlow.')
-      call_dominant_form, _ = transformations.compile_local_computation_to_tensorflow(
-          call_dominant_form)
+      with tracing.span(
+          'transform_to_native_form',
+          'compile_local_computation_to_tensorflow',
+          span=True):
+        call_dominant_form, _ = transformations.compile_local_computation_to_tensorflow(
+            call_dominant_form)
       logging.debug('Computation compiled to:')
       logging.debug(call_dominant_form.formatted_representation())
-    call_dominant_form, _ = tree_transformations.transform_tf_call_ops_to_disable_grappler(
-        call_dominant_form)
-    form_with_ids, _ = tree_transformations.transform_tf_add_ids(
-        call_dominant_form)
+    with tracing.span(
+        'transform_to_native_form',
+        'transform_tf_call_ops_disable_grappler',
+        span=True):
+      call_dominant_form, _ = tree_transformations.transform_tf_call_ops_to_disable_grappler(
+          call_dominant_form)
+    with tracing.span(
+        'transform_to_native_form', 'transform_tf_add_ids', span=True):
+      form_with_ids, _ = tree_transformations.transform_tf_add_ids(
+          call_dominant_form)
     return computation_wrapper_instances.building_block_to_computation(
         form_with_ids)
   except ValueError as e:

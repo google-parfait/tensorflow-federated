@@ -53,7 +53,9 @@ def pack_graph_def(graph_def):
   py_typecheck.check_type(graph_def, tf.compat.v1.GraphDef)
   _check_no_graph_level_seed(graph_def)
   any_pb = any_pb2.Any()
-  any_pb.Pack(graph_def)
+  # Perform deterministic Any packing by setting the fields explicitly.
+  any_pb.type_url = 'type.googleapis.com/' + graph_def.DESCRIPTOR.full_name
+  any_pb.value = graph_def.SerializeToString(deterministic=True)
   return any_pb
 
 

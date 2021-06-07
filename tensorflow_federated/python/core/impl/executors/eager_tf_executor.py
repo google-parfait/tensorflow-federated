@@ -237,6 +237,7 @@ def _ensure_comp_runtime_compatible(comp: pb.Computation) -> pb.Computation:
   return comp
 
 
+@tracing.trace
 def embed_tensorflow_computation(comp, type_spec=None, device=None):
   """Embeds a TensorFlow computation for use in the eager context.
 

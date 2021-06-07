@@ -1361,10 +1361,7 @@ class AddUniqueIDs(transformation_utils.TransformSpec):
     py_typecheck.check_type(comp, building_blocks.CompiledComputation)
     new_tf_proto = pb.TensorFlow()
     new_tf_proto.CopyFrom(comp.proto.tensorflow)
-    hash_value = hash(
-        serialization_utils.unpack_graph_def(
-            comp.proto.tensorflow.graph_def).SerializeToString(
-                deterministic=True))
+    hash_value = hash(comp.proto.tensorflow.graph_def.value)
     new_tf_proto.id = ctypes.c_uint64(hash_value).value
     new_comp_proto = pb.Computation(
         type=comp.proto.type, tensorflow=new_tf_proto)
