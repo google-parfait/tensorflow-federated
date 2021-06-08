@@ -56,9 +56,16 @@ class Struct(object):
   __slots__ = ('_hash', '_element_array', '_name_to_index', '_name_array',
                '_elements_cache')
 
-  # TODO(b/113112108): Define more magic methods for convenience in handling
-  # `Struct`s. Possibly move out to a more generic location or replace
-  # with pre-existing type if a sufficiently widely used one can be found.
+  @classmethod
+  def named(cls, **kwargs) -> 'Struct':
+    """Constructs a new `Struct` with all named elements."""
+    return cls(tuple(kwargs.items()))
+
+  @classmethod
+  def unnamed(cls, *args) -> 'Struct':
+    """Constructs a new `Struct` with all unnamed elements."""
+    return cls(tuple((None, v) for v in args))
+
   def __init__(self, elements: Iterable[Tuple[Optional[str], Any]]):
     """Constructs a new `Struct` with the given elements.
 
