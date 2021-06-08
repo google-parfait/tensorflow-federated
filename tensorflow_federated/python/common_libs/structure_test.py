@@ -23,6 +23,14 @@ from tensorflow_federated.python.common_libs import structure
 
 class StructTest(absltest.TestCase):
 
+  def test_new_named(self):
+    x = structure.Struct.named(a=1, b=4)
+    self.assertSequenceEqual(structure.to_elements(x), [('a', 1), ('b', 4)])
+
+  def test_new_unnamed(self):
+    x = structure.Struct.unnamed(1, 4)
+    self.assertSequenceEqual(structure.to_elements(x), [(None, 1), (None, 4)])
+
   def test_construction_from_list(self):
     v = [('a', 1), ('b', 2), (None, 3)]
     x = structure.Struct(v)
@@ -133,23 +141,22 @@ class StructTest(absltest.TestCase):
       structure.Struct([('foo', 20), ('foo', 30)])
 
     with self.assertRaisesRegex(ValueError, '_asdict.*reserved'):
-      structure.Struct([('_asdict', 40)])
+      structure.Struct.named(_asdict=40)
 
     with self.assertRaisesRegex(ValueError, '_element_array.*reserved'):
-      structure.Struct([('_element_array', 40)])
+      structure.Struct.named(_element_array=40)
 
     with self.assertRaisesRegex(ValueError, '_name_to_index.*reserved'):
-      structure.Struct([('_name_to_index', 40)])
+      structure.Struct.named(_name_to_index=40)
 
     with self.assertRaisesRegex(ValueError, '_name_array.*reserved'):
-      structure.Struct([('_name_array', 40)])
+      structure.Struct.named(_name_array=40)
 
     with self.assertRaisesRegex(ValueError, '_hash.*reserved'):
-      structure.Struct([('_hash', 40)])
+      structure.Struct.named(_hash=40)
 
   def test_immutable(self):
-    v = [('foo', 'a string'), ('bar', 1), ('baz', [1.0, 2.0, 3.0])]
-    t = structure.Struct(v)
+    t = structure.Struct.named(foo='a string', bar=1, baz=[1.0, 2.0, 3.0])
 
     # Expect that we can read by name the values.
     self.assertEqual(t.foo, 'a string')
@@ -213,32 +220,32 @@ class StructTest(absltest.TestCase):
 
   def test_equality_named(self):
     # identity
-    t1 = structure.Struct([('a', 1), ('b', 2)])
+    t1 = structure.Struct.named(a=1, b=2)
     self.assertTrue(t1.__eq__(t1))
     self.assertFalse(t1.__ne__(t1))
     # different type
     self.assertFalse(t1.__eq__(None))
     self.assertTrue(t1.__ne__(None))
     # copy
-    t2 = structure.Struct([('a', 1), ('b', 2)])
+    t2 = structure.Struct.named(a=1, b=2)
     self.assertTrue(t1.__eq__(t2))
     self.assertTrue(t2.__eq__(t1))
     self.assertFalse(t1.__ne__(t2))
     self.assertFalse(t2.__ne__(t1))
     # different ordering
-    t3 = structure.Struct([('b', 2), ('a', 1)])
+    t3 = structure.Struct.named(b=2, a=1)
     self.assertFalse(t1.__eq__(t3))
     self.assertFalse(t3.__eq__(t1))
     self.assertTrue(t1.__ne__(t3))
     self.assertTrue(t3.__ne__(t1))
     # different names
-    t4 = structure.Struct([('c', 1), ('d', 2)])
+    t4 = structure.Struct.named(c=1, d=2)
     self.assertFalse(t1.__eq__(t4))
     self.assertFalse(t4.__eq__(t1))
     self.assertTrue(t1.__ne__(t4))
     self.assertTrue(t4.__ne__(t1))
     # different values
-    t5 = structure.Struct([('a', 10), ('b', 10)])
+    t5 = structure.Struct.named(a=10, b=10)
     self.assertFalse(t1.__eq__(t5))
     self.assertFalse(t5.__eq__(t1))
     self.assertTrue(t1.__ne__(t5))
@@ -261,8 +268,7 @@ class StructTest(absltest.TestCase):
     self.assertEqual(hash(x2), hash(x3))
 
   def test_slicing_behavior(self):
-    v = [(None, i) for i in range(0, 50, 10)]
-    x = structure.Struct(v)
+    x = structure.Struct.unnamed(*tuple(range(0, 50, 10)))
     self.assertEqual(x[:], tuple(range(0, 50, 10)))
     self.assertEqual(x[::-1], tuple(reversed(range(0, 50, 10))))
     self.assertEqual(x[:-1], tuple(range(0, 40, 10)))
@@ -270,48 +276,37 @@ class StructTest(absltest.TestCase):
     self.assertEqual(x[-1:], (40,))
 
   def test_getitem_key(self):
-    v = [('foo', 10), ('bar', 20)]
-    x = structure.Struct(v)
+    x = structure.Struct.named(foo=10, bar=20)
     self.assertEqual(x['foo'], 10)
     self.assertEqual(x['bar'], 20)
     with self.assertRaises(AttributeError):
       _ = x['badkey']
 
   def test_getitem_key_builtin_attribute_raises(self):
-    v = [('foo', 10), ('bar', 20)]
-    x = structure.Struct(v)
+    x = structure.Struct.named(foo=10, bar=20)
     with self.assertRaises(AttributeError):
       _ = x['__getattr__']
 
   def test_getitem_bad_bounds(self):
-    v = [(None, i) for i in range(0, 50, 10)]
-    x = structure.Struct(v)
+    x = structure.Struct.unnamed(*tuple(range(0, 50, 10)))
     with self.assertRaises(IndexError):
       _ = x[10]
 
   def test_pack_sequence_as_fails_non_struct(self):
-    x = structure.Struct([
-        ('a', 10),
-        ('b', {
-            'd': 20
-        }),
-        ('c', 30),
-    ])
+    x = structure.Struct.named(a=10, b=dict(d=20), c=30)
     y = [10, 20, 30]
     with self.assertRaisesRegex(TypeError, 'Cannot pack sequence'):
       _ = structure.pack_sequence_as(x, y)
 
   def test_flatten_and_pack_sequence_as(self):
-    x = structure.Struct([
-        ('a', 10),
-        ('b',
-         structure.Struct([
-             ('x', structure.Struct([('p', 40)])),
-             ('y', 30),
-             ('z', structure.Struct([('q', 50), ('r', 60)])),
-         ])),
-        ('c', 20),
-    ])
+    x = structure.Struct.named(
+        a=10,
+        b=structure.Struct.named(
+            x=structure.Struct.named(p=40),
+            y=30,
+            z=structure.Struct.named(q=50, r=60)),
+        c=20,
+    )
     y = structure.flatten(x)
     self.assertEqual(y, [10, 40, 30, 50, 60, 20])
     z = structure.pack_sequence_as(x, y)
@@ -320,71 +315,52 @@ class StructTest(absltest.TestCase):
   def test_is_same_structure_check_types(self):
     self.assertTrue(
         structure.is_same_structure(
-            structure.Struct([('a', 10)]), structure.Struct([('a', 20)])))
+            structure.Struct.named(a=10), structure.Struct.named(a=20)))
     self.assertTrue(
         structure.is_same_structure(
-            structure.Struct([
-                ('a', 10),
-                ('b', structure.Struct([('z', 5)])),
-            ]),
-            structure.Struct([
-                ('a', 20),
-                ('b', structure.Struct([('z', 50)])),
-            ])))
+            structure.Struct.named(
+                a=10,
+                b=structure.Struct.named(z=5),
+            ), structure.Struct.named(a=20, b=structure.Struct.named(z=50))))
     self.assertFalse(
         structure.is_same_structure(
-            structure.Struct([('x', {
-                'y': 4
-            })]), structure.Struct([('x', {
-                'y': 5,
-                'z': 6
-            })])))
+            structure.Struct.named(x=dict(y=4)),
+            structure.Struct.named(x=dict(y=5, z=6))))
     self.assertTrue(
         structure.is_same_structure(
-            structure.Struct([('x', {
-                'y': 5
-            })]), structure.Struct([('x', {
-                'y': 6
-            })])))
+            structure.Struct.named(x=dict(y=5)),
+            structure.Struct.named(x=dict(y=6))))
     with self.assertRaises(TypeError):
       structure.is_same_structure(
-          {'x': 5.0},  # not an Struct
-          structure.Struct([('x', 5.0)]))
+          {'x': 5.0},  # not a Struct
+          structure.Struct.named(x=5.0))
 
   def test_map_structure(self):
-    x = structure.Struct([
-        ('a', 10),
-        ('b',
-         structure.Struct([
-             ('x', structure.Struct([('p', 40)])),
-             ('y', 30),
-             ('z', structure.Struct([('q', 50), ('r', 60)])),
-         ])),
-        ('c', 20),
-    ])
-    y = structure.Struct([
-        ('a', 1),
-        ('b',
-         structure.Struct([
-             ('x', structure.Struct([('p', 4)])),
-             ('y', 3),
-             ('z', structure.Struct([('q', 5), ('r', 6)])),
-         ])),
-        ('c', 2),
-    ])
+    x = structure.Struct.named(
+        a=10,
+        b=structure.Struct.named(
+            x=structure.Struct.named(p=40),
+            y=30,
+            z=structure.Struct.named(q=50, r=60)),
+        c=20)
+    y = structure.Struct.named(
+        a=1,
+        b=structure.Struct.named(
+            x=structure.Struct.named(p=4),
+            y=3,
+            z=structure.Struct.named(q=5, r=6)),
+        c=2)
 
+    add = lambda v1, v2: v1 + v2
     self.assertEqual(
-        structure.map_structure(lambda x, y: x + y, x, y),
-        structure.Struct([
-            ('a', 11),
-            ('b',
-             structure.Struct([
-                 ('x', structure.Struct([('p', 44)])),
-                 ('y', 33),
-                 ('z', structure.Struct([('q', 55), ('r', 66)])),
-             ])),
-            ('c', 22),
-        ]))
+        structure.map_structure(add, x, y),
+        structure.Struct.named(
+            a=11,
+            b=structure.Struct.named(
+                x=structure.Struct.named(p=44),
+                y=33,
+                z=structure.Struct.named(q=55, r=66)),
+            c=22))
 
   def test_from_container_with_none(self):
     with self.assertRaises(TypeError):
@@ -485,7 +461,7 @@ class StructTest(absltest.TestCase):
       structure.from_container(3)
 
   def test_name_to_index_map_empty_unnamed_struct(self):
-    unnamed_struct = structure.Struct([(None, 10), (None, 20)])
+    unnamed_struct = structure.Struct.unnamed(10, 20)
     self.assertEmpty(structure.name_to_index_map(unnamed_struct))
 
   def test_name_to_index_map_partially_named_struct(self):
@@ -496,7 +472,7 @@ class StructTest(absltest.TestCase):
     self.assertEqual(name_to_index_dict, expected_name_to_index_map)
 
   def test_name_to_index_map_fully_named_struct(self):
-    partially_named_struct = structure.Struct([('b', 10), ('a', 20)])
+    partially_named_struct = structure.Struct.named(b=10, a=20)
 
     name_to_index_dict = structure.name_to_index_map(partially_named_struct)
     expected_name_to_index_map = {'b': 0, 'a': 1}
@@ -504,11 +480,11 @@ class StructTest(absltest.TestCase):
 
   def test_update_struct(self):
     with self.subTest('fully_named'):
-      state = structure.Struct([('a', 1), ('b', 2), ('c', 3)])
+      state = structure.Struct.named(a=1, b=2, c=3)
       state = structure.update_struct(state, c=7)
-      self.assertEqual(state, structure.Struct([('a', 1), ('b', 2), ('c', 7)]))
+      self.assertEqual(state, structure.Struct.named(a=1, b=2, c=7))
       state = structure.update_struct(state, a=8)
-      self.assertEqual(state, structure.Struct([('a', 8), ('b', 2), ('c', 7)]))
+      self.assertEqual(state, structure.Struct.named(a=8, b=2, c=7))
     with self.subTest('partially_named'):
       state = structure.Struct([(None, 1), ('b', 2), (None, 3)])
       state = structure.update_struct(state, b=7)
@@ -517,18 +493,14 @@ class StructTest(absltest.TestCase):
       with self.assertRaises(KeyError):
         structure.update_struct(state, a=8)
     with self.subTest('nested'):
-      state = structure.Struct([('a', {'a1': 1, 'a2': 2}), ('b', 2), ('c', 3)])
+      state = structure.Struct.named(a=dict(a1=1, a2=2), b=2, c=3)
       state = structure.update_struct(state, a=7)
-      self.assertEqual(state, structure.Struct([('a', 7), ('b', 2), ('c', 3)]))
-      state = structure.update_struct(state, a={'foo': 1, 'bar': 2})
-      self.assertEqual(
-          state,
-          structure.Struct([('a', {
-              'foo': 1,
-              'bar': 2
-          }), ('b', 2), ('c', 3)]))
+      self.assertEqual(state, structure.Struct.named(a=7, b=2, c=3))
+      state = structure.update_struct(state, a=dict(foo=1, bar=2))
+      self.assertEqual(state,
+                       structure.Struct.named(a=dict(foo=1, bar=2), b=2, c=3))
     with self.subTest('unnamed'):
-      state = structure.Struct((None, i) for i in range(3))
+      state = structure.Struct.unnamed(*tuple(range(3)))
       with self.assertRaises(KeyError):
         structure.update_struct(state, a=1)
       with self.assertRaises(KeyError):
