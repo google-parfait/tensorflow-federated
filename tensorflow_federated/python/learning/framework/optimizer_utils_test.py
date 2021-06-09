@@ -434,7 +434,7 @@ class ModelDeltaOptimizerTest(test_case.TestCase, parameterized.TestCase):
             'num_examples': 6,
         },
         stat=collections.OrderedDict(num_examples=3.0))
-    self.assertEqual(str(expected_outputs), str(outputs))
+    self.assertAllEqual(expected_outputs, outputs)
 
 
 if __name__ == '__main__':
