@@ -194,6 +194,12 @@ def capture_result_from_graph(result, graph):
       # We have a tf.Variable-like result, get a proper tensor to fetch.
       with graph.as_default():
         result = result.read_value()
+    else:
+      # Otherwise we insert an identity. TensorFlow does not allow the same
+      # tensor to appear in both feeds and fetches, which can occur if the
+      # tff.Computation is only performing a selection from a structure.
+      with graph.as_default():
+        result = tf.identity(result)
     # `tf.is_tensor` returns true for some things that are not actually single
     # `tf.Tensor`s, including `tf.SparseTensor`s and `tf.RaggedTensor`s.
     if isinstance(result, tf.RaggedTensor):

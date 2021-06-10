@@ -33,16 +33,20 @@ from tensorflow_federated.python.core.impl.utils import tensorflow_utils
 class GraphUtilsTest(test_case.TestCase):
 
   def _assert_binding_matches_type_and_value(self, binding, type_spec, val,
-                                             graph):
+                                             graph, is_output):
     """Asserts that 'bindings' matches the given type, value, and graph."""
     self.assertIsInstance(binding, pb.TensorFlow.Binding)
     self.assertIsInstance(type_spec, computation_types.Type)
     binding_oneof = binding.WhichOneof('binding')
     if binding_oneof == 'tensor':
       self.assertTrue(tf.is_tensor(val))
-      if not isinstance(val, tf.Variable):
-        # We insert a read_value() op for Variables, which produces
-        # a name we don't control. Otherwise, names should match:
+      if is_output:
+        # Output tensor names must not match, because `val` might also be in the
+        # input binding, causing the same tensor to appear in the `feeds` and
+        # `fetches` of the `Session.run()` wich is disallowed by TensorFlow.
+        self.assertNotEqual(binding.tensor.tensor_name, val.name)
+      else:
+        # Input binding names are expected to match
         self.assertEqual(binding.tensor.tensor_name, val.name)
       self.assertIsInstance(type_spec, computation_types.TensorType)
       self.assertEqual(type_spec.dtype, val.dtype.base_dtype)
@@ -70,9 +74,20 @@ class GraphUtilsTest(test_case.TestCase):
           val = [v for _, v in sorted(val.items())]
       for idx, e in enumerate(structure.to_elements(type_spec)):
         self._assert_binding_matches_type_and_value(binding.struct.element[idx],
-                                                    e[1], val[idx], graph)
+                                                    e[1], val[idx], graph,
+                                                    is_output)
     else:
       self.fail('Unknown binding.')
+
+  def _assert_input_binding_matches_type_and_value(self, binding, type_spec,
+                                                   val, graph):
+    self._assert_binding_matches_type_and_value(
+        binding, type_spec, val, graph, is_output=False)
+
+  def _assert_output_binding_matches_type_and_value(self, binding, type_spec,
+                                                    val, graph):
+    self._assert_binding_matches_type_and_value(
+        binding, type_spec, val, graph, is_output=True)
 
   def _assert_captured_result_eq_dtype(self, type_spec, binding, dtype):
     self.assertIsInstance(type_spec, computation_types.TensorType)
@@ -94,8 +109,12 @@ class GraphUtilsTest(test_case.TestCase):
     graph = tf.compat.v1.get_default_graph()
     type_spec, binding = tensorflow_utils.capture_result_from_graph(
         result, graph)
-    self._assert_binding_matches_type_and_value(binding, type_spec, result,
-                                                graph)
+    # If the input is a tensor (but not a tf.Variable), ensure that an identity
+    # operation was added.
+    if tf.is_tensor(result) and not hasattr(result, 'read_value'):
+      self.assertNotEqual(result.name, binding.tensor.tensor_name)
+    self._assert_output_binding_matches_type_and_value(binding, type_spec,
+                                                       result, graph)
     return type_spec
 
   def _checked_stamp_parameter(self, name, spec, graph=None):
@@ -103,9 +122,8 @@ class GraphUtilsTest(test_case.TestCase):
     if graph is None:
       graph = tf.compat.v1.get_default_graph()
     val, binding = tensorflow_utils.stamp_parameter_in_graph(name, spec, graph)
-    self._assert_binding_matches_type_and_value(binding,
-                                                computation_types.to_type(spec),
-                                                val, graph)
+    self._assert_input_binding_matches_type_and_value(
+        binding, computation_types.to_type(spec), val, graph)
     return val
 
   def test_stamp_parameter_in_graph_with_scalar_int_explicit_graph(self):
@@ -395,8 +413,10 @@ class GraphUtilsTest(test_case.TestCase):
           collections.OrderedDict([('foo', tf.constant(30, name='C')),
                                    ('bar', tf.constant(40, name='D'))]), graph)
     result = tensorflow_utils.compute_map_from_bindings(source, target)
-    self.assertEqual(
-        str(result), 'OrderedDict([(\'A:0\', \'C:0\'), (\'B:0\', \'D:0\')])')
+    self.assertAllEqual(
+        result,
+        collections.OrderedDict([('Identity:0', 'Identity_2:0'),
+                                 ('Identity_1:0', 'Identity_3:0')]))
 
   def test_compute_map_from_bindings_with_sequence(self):
     source = pb.TensorFlow.Binding(
@@ -412,7 +432,7 @@ class GraphUtilsTest(test_case.TestCase):
           collections.OrderedDict([('foo', tf.constant(10, name='A')),
                                    ('bar', tf.constant(20, name='B'))]), graph)
     result = tensorflow_utils.extract_tensor_names_from_binding(binding)
-    self.assertEqual(str(sorted(result)), '[\'A:0\', \'B:0\']')
+    self.assertEqual(result, ['Identity:0', 'Identity_1:0'])
 
   def test_extract_tensor_names_from_binding_with_sequence(self):
     binding = pb.TensorFlow.Binding(
