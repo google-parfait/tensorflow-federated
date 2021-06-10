@@ -15,6 +15,8 @@ digraph {
 
   // TFF
   tff -> simulation [arrowhead="none", style="invisible"]
+  tff -> learning [arrowhead="none", style="invisible"]
+  tff -> analytics [arrowhead="none", style="invisible"]
 
   tff [href="#tff" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
 
@@ -22,8 +24,7 @@ digraph {
   simulation -> simulation_baselines
   simulation -> simulation_datasets
   simulation -> simulation_models
-  simulation_datasets -> learning [arrowhead="none", style="invisible"]
-  simulation_datasets -> analytics [arrowhead="none", style="invisible"]
+  simulation_datasets -> aggregators [arrowhead="none", style="invisible"]
 
   subgraph cluster_simulation {
     graph [label="Simulation", href="#tff-simulation" target="_parent"]
@@ -146,10 +147,8 @@ digraph {
   // Layout
   {rank=same; examples, tests, research}
   {rank=same; tff}
-  {rank=same; simulation}
-  {rank=same; simulation_baselines, simulation_datasets, simulation_models}
-  {rank=same; learning, analytics}
-  {rank=same; learning_framework}
+  {rank=same; simulation, learning, analytics}
+  {rank=same; simulation_baselines, simulation_datasets, simulation_models, learning_framework}
   {rank=same; aggregators}
   {rank=same; core_backends, core_test}
   {rank=same; core_templates}
