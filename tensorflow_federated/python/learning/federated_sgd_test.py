@@ -199,10 +199,12 @@ class FederatedSGDTffTest(test_case.TestCase, parameterized.TestCase):
 
     server_state = iterative_process.initialize()
     prev_loss = np.inf
-    for _ in range(0):
+    num_iterations = 3
+    for _ in range(num_iterations):
       server_state, metrics = iterative_process.next(server_state, federated_ds)
-      self.assertLess(metrics.train.loss, prev_loss)
-      prev_loss = metrics.train.loss
+      new_loss = metrics['train']['loss']
+      self.assertLess(new_loss, prev_loss)
+      prev_loss = new_loss
 
   @test_utils.skip_test_for_multi_gpu
   def test_execute_empty_data(self):
