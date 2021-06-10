@@ -54,7 +54,8 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
     tf_ops_in_graph = building_block_analysis.count_tensorflow_ops_in(
         building_block)
-    self.assertEqual(tf_ops_in_graph, 3)
+    # Expect 4 ops: two constants, one addition, and an identity on the result.
+    self.assertEqual(tf_ops_in_graph, 4)
 
   def test_counts_correct_number_of_ops_swith_function(self):
 
@@ -71,7 +72,16 @@ class CountTensorFlowOpsTest(absltest.TestCase):
     building_block = foo.to_building_block()
     tf_ops_in_graph = building_block_analysis.count_tensorflow_ops_in(
         building_block)
-    self.assertEqual(tf_ops_in_graph, 6)
+    # Exepect 7 ops:
+    #    Inside the tf.function:
+    #      - one constant
+    #      - one addition
+    #      - one identity on the result
+    #    Inside the tff_computation:
+    #      - one placeholder
+    #      - two partition calls
+    #      - one identity on the tff_computation result
+    self.assertEqual(tf_ops_in_graph, 7)
 
 
 class CountTensorFlowVariablesTest(absltest.TestCase):
@@ -210,10 +220,13 @@ class GetDevicePlacementInTest(absltest.TestCase):
     building_block = building_blocks.ComputationBuildingBlock.from_proto(proto)
     device_placements = building_block_analysis.get_device_placement_in(
         building_block)
-    all_device_placements = list(device_placements.keys())
-    self.assertLen(all_device_placements, 1)
-    self.assertIn('CPU', all_device_placements[0])
-    self.assertGreater(device_placements[all_device_placements[0]], 0)
+    all_device_placements = list(sorted(device_placements.keys()))
+    # Expect two placements, the explicit 'cpu' from above, and the empty
+    # placement of the `tf.identity` op add to the captured result.
+    self.assertLen(all_device_placements, 2)
+    self.assertEqual('', sorted(all_device_placements)[0])
+    self.assertIn('CPU', sorted(all_device_placements)[1])
+    self.assertGreater(device_placements[all_device_placements[1]], 0)
 
   def test_gets_some_explicit_some_none_placement(self):
     with tf.Graph().as_default() as g:
