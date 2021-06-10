@@ -1228,24 +1228,18 @@ class StructCalledGraphsTest(test_case.TestCase, parameterized.TestCase):
         building_block_factory.create_compiled_identity(id_applied_const_type),
         called_const)
     tuple_with_identical_args = building_blocks.Struct(
-        [id_applied_const, id_applied_const])
+        [id_applied_const, id_applied_const, id_applied_const])
 
-    called_float_type = computation_types.TensorType(tf.float32)
-    called_float = building_block_factory.create_tensorflow_constant(
-        called_float_type, 1.0)
-    called_int_type = computation_types.TensorType(tf.int32)
-    called_int = building_block_factory.create_tensorflow_constant(
-        called_int_type, 1)
-    id_applied_float_type = computation_types.TensorType(tf.float32)
-    id_applied_float = building_blocks.Call(
-        building_block_factory.create_compiled_identity(id_applied_float_type),
-        called_float)
-    id_applied_int_type = computation_types.TensorType(tf.int32)
-    id_applied_int = building_blocks.Call(
-        building_block_factory.create_compiled_identity(id_applied_int_type),
-        called_int)
-    tuple_with_distinct_args = building_blocks.Struct(
-        [id_applied_float, id_applied_int])
+    called_identities = []
+    for dtype in [tf.float32, tf.int32, tf.int64]:
+      called_dtype = computation_types.TensorType(dtype)
+      called_scalar = building_block_factory.create_tensorflow_constant(
+          called_dtype, 1)
+      id_applied_scalar = building_blocks.Call(
+          building_block_factory.create_compiled_identity(called_dtype),
+          called_scalar)
+      called_identities.append(id_applied_scalar)
+    tuple_with_distinct_args = building_blocks.Struct(called_identities)
 
     tuple_parser = compiled_computation_transforms.StructCalledGraphs()
     identical_tuple_parsed, _ = tuple_parser.transform(
