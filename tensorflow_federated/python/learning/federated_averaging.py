@@ -141,7 +141,7 @@ def build_federated_averaging_process(
     client_weighting: Optional[client_weight_lib.ClientWeightType] = None,
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
     model_update_aggregation_factory: Optional[
-        factory.WeightedAggregationFactory] = None,
+        factory.AggregationFactory] = None,
     use_experimental_simulation_loop: bool = False
 ) -> iterative_process.IterativeProcess:
   """Builds an iterative process that performs federated averaging.
