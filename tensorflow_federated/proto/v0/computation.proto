@@ -616,14 +616,14 @@ message TensorFlow {
 
   // A representation of a sequence declared in the type signature.
   message SequenceBinding {
-    // Previously was `iterator_string_handle_name`, but now only
-    // `variant_tensor_name` is supported.
-    reserved 1;
+    // Previously used for `iterator_string_handle_name`, `variant_tensor_name`.
+    reserved 1, 2;
 
     oneof binding {
-      // The name of the variant tensor that represents the data set created
-      // using `tf.data.experimental.from_variant`.
-      string variant_tensor_name = 2;
+      // The name of the string tensor containing a serialized
+      // `tensorflow::GraphDef` that represents the data set created using
+      // `tf.raw_ops.DatasetToGraphV2`.
+      string graph_def_tensor_name = 3;
 
       // Note: This structure will likely evolve and get extended with other
       // means of encoding data sets in the serialized graph representation.

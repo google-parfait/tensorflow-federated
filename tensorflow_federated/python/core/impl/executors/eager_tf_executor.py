@@ -296,7 +296,12 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
         param_fns.append(lambda x: x)
       else:
         py_typecheck.check_type(spec, computation_types.SequenceType)
-        param_fns.append(tf.data.experimental.to_variant)
+
+        def dataset_to_graph(x):
+          return tf.raw_ops.DatasetToGraphV2(
+              input_dataset=tf.data.experimental.to_variant(x))
+
+        param_fns.append(dataset_to_graph)
 
   result_fns = []
   for spec in structure.flatten(result_type):
@@ -307,7 +312,8 @@ def embed_tensorflow_computation(comp, type_spec=None, device=None):
       tf_structure = type_conversions.type_to_tf_structure(spec.element)
 
       def fn(x, tf_structure=tf_structure):
-        return tf.data.experimental.from_variant(x, tf_structure)
+        return tf.data.experimental.from_variant(
+            tf.raw_ops.DatasetFromGraph(graph_def=x), tf_structure)
 
       result_fns.append(fn)
 

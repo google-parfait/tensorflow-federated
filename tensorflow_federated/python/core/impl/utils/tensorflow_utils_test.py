@@ -55,12 +55,12 @@ class GraphUtilsTest(test_case.TestCase):
       self.assertIsInstance(val,
                             type_conversions.TF_DATASET_REPRESENTATION_TYPES)
       sequence_oneof = binding.sequence.WhichOneof('binding')
-      self.assertEqual(sequence_oneof, 'variant_tensor_name')
+      self.assertEqual(sequence_oneof, 'graph_def_tensor_name')
       variant_tensor = graph.get_tensor_by_name(
-          binding.sequence.variant_tensor_name)
+          binding.sequence.graph_def_tensor_name)
       op = str(variant_tensor.op.type)
       self.assertTrue((op == 'Placeholder') or ('Dataset' in op))
-      self.assertEqual(variant_tensor.dtype, tf.variant)
+      self.assertEqual(variant_tensor.dtype, tf.string)
       self.assertIsInstance(type_spec, computation_types.SequenceType)
       self.assertEqual(
           computation_types.to_type(val.element_spec), type_spec.element)
@@ -420,9 +420,9 @@ class GraphUtilsTest(test_case.TestCase):
 
   def test_compute_map_from_bindings_with_sequence(self):
     source = pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo'))
+        sequence=pb.TensorFlow.SequenceBinding(graph_def_tensor_name='foo'))
     target = pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='bar'))
+        sequence=pb.TensorFlow.SequenceBinding(graph_def_tensor_name='bar'))
     result = tensorflow_utils.compute_map_from_bindings(source, target)
     self.assertEqual(str(result), 'OrderedDict([(\'foo\', \'bar\')])')
 
@@ -436,7 +436,7 @@ class GraphUtilsTest(test_case.TestCase):
 
   def test_extract_tensor_names_from_binding_with_sequence(self):
     binding = pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo'))
+        sequence=pb.TensorFlow.SequenceBinding(graph_def_tensor_name='foo'))
     result = tensorflow_utils.extract_tensor_names_from_binding(binding)
     self.assertEqual(str(sorted(result)), '[\'foo\']')
 
@@ -465,12 +465,16 @@ class GraphUtilsTest(test_case.TestCase):
     type_spec = computation_types.SequenceType(
         collections.OrderedDict([('X', tf.int32), ('Y', tf.int32)]))
     binding = pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo'))
+        sequence=pb.TensorFlow.SequenceBinding(graph_def_tensor_name='foo'))
     data_set = tf.data.Dataset.from_tensors({
         'X': tf.constant(1),
         'Y': tf.constant(2)
     })
-    output_map = {'foo': tf.data.experimental.to_variant(data_set)}
+    output_map = {
+        'foo':
+            tf.raw_ops.DatasetToGraphV2(
+                input_dataset=tf.data.experimental.to_variant(data_set))
+    }
     result = tensorflow_utils.assemble_result_from_graph(
         type_spec, binding, output_map)
     self.assertIsInstance(result,
@@ -489,12 +493,16 @@ class GraphUtilsTest(test_case.TestCase):
     type_spec = computation_types.SequenceType(
         named_tuple_type(tf.int32, tf.int32))
     binding = pb.TensorFlow.Binding(
-        sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name='foo'))
+        sequence=pb.TensorFlow.SequenceBinding(graph_def_tensor_name='foo'))
     data_set = tf.data.Dataset.from_tensors({
         'X': tf.constant(1),
         'Y': tf.constant(2)
     })
-    output_map = {'foo': tf.data.experimental.to_variant(data_set)}
+    output_map = {
+        'foo':
+            tf.raw_ops.DatasetToGraphV2(
+                input_dataset=tf.data.experimental.to_variant(data_set))
+    }
     result = tensorflow_utils.assemble_result_from_graph(
         type_spec, binding, output_map)
     self.assertIsInstance(result,
@@ -986,25 +994,27 @@ class GraphUtilsTest(test_case.TestCase):
         }],
         [('x', computation_types.TensorType(tf.int32, tf.TensorShape([None])))])
 
-  def test_make_dataset_from_variant_tensor_constructs_dataset(self):
+  def test_make_dataset_from_graph_def_tensor_constructs_dataset(self):
     with tf.Graph().as_default():
-      ds = tensorflow_utils.make_dataset_from_variant_tensor(
-          tf.data.experimental.to_variant(tf.data.Dataset.range(5)), tf.int64)
+      ds = tensorflow_utils.make_dataset_from_graph_def_tensor(
+          tf.raw_ops.DatasetToGraphV2(
+              input_dataset=tf.data.experimental.to_variant(
+                  tf.data.Dataset.range(5))), tf.int64)
       self.assertIsInstance(ds, tf.data.Dataset)
       result = ds.reduce(np.int64(0), lambda x, y: x + y)
       with tf.compat.v1.Session() as sess:
         self.assertEqual(sess.run(result), 10)
 
-  def test_make_dataset_from_variant_tensor_fails_with_bad_tensor(self):
+  def test_make_dataset_from_graph_def_tensor_fails_with_bad_tensor(self):
     with self.assertRaises(TypeError):
       with tf.Graph().as_default():
-        tensorflow_utils.make_dataset_from_variant_tensor(
+        tensorflow_utils.make_dataset_from_graph_def_tensor(
             tf.constant(10), tf.int32)
 
-  def test_make_dataset_from_variant_tensor_fails_with_bad_type(self):
+  def test_make_dataset_from_graph_def_tensor_fails_with_bad_type(self):
     with self.assertRaises(TypeError):
       with tf.Graph().as_default():
-        tensorflow_utils.make_dataset_from_variant_tensor(
+        tensorflow_utils.make_dataset_from_graph_def_tensor(
             tf.data.experimental.to_variant(tf.data.Dataset.range(5)), 'a')
 
   def test_to_node_name(self):

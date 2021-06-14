@@ -528,10 +528,10 @@ def _repack_binding_with_new_name(binding, name_map):
         ]))
   elif binding.WhichOneof('binding') == 'sequence':
     sequence_oneof = binding.sequence.WhichOneof('binding')
-    if sequence_oneof == 'variant_tensor_name':
+    if sequence_oneof == 'graph_def_tensor_name':
       return pb.TensorFlow.Binding(
-          sequence=pb.TensorFlow.SequenceBinding(variant_tensor_name=name_map[
-              binding.sequence.variant_tensor_name]))
+          sequence=pb.TensorFlow.SequenceBinding(graph_def_tensor_name=name_map[
+              binding.sequence.graph_def_tensor_name]))
     else:
       raise ValueError(
           'Unsupported sequence binding \'{}\'.'.format(sequence_oneof))

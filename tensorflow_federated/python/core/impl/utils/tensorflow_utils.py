@@ -110,24 +110,25 @@ def stamp_parameter_in_graph(parameter_name, parameter_type, graph):
                 struct=pb.TensorFlow.StructBinding(element=element_bindings)))
   elif parameter_type.is_sequence():
     with graph.as_default():
-      variant_tensor = tf.compat.v1.placeholder(tf.variant, shape=[])
-      ds = make_dataset_from_variant_tensor(variant_tensor,
-                                            parameter_type.element)
+      graph_def_tensor = tf.compat.v1.placeholder(tf.string, shape=[])
+      ds = make_dataset_from_graph_def_tensor(graph_def_tensor,
+                                              parameter_type.element)
     return (ds,
             pb.TensorFlow.Binding(
                 sequence=pb.TensorFlow.SequenceBinding(
-                    variant_tensor_name=variant_tensor.name)))
+                    graph_def_tensor_name=graph_def_tensor.name)))
   else:
     raise ValueError(
         'Parameter type component {!r} cannot be stamped into a TensorFlow '
         'graph.'.format(parameter_type))
 
 
-def make_dataset_from_variant_tensor(variant_tensor, type_spec):
-  """Constructs a `tf.data.Dataset` from a variant tensor and type spec.
+def make_dataset_from_graph_def_tensor(graph_def_tensor, type_spec):
+  """Constructs a `tf.data.Dataset` from a string tensor and type spec.
 
   Args:
-    variant_tensor: The variant tensor that represents the dataset.
+    graph_def_tensor: The string tensor containing a serialized `tf.GraphDef`
+      that represents the dataset.
     type_spec: The type spec of elements of the data set, either an instance of
       `types.Type` or something convertible to it.
 
@@ -137,18 +138,19 @@ def make_dataset_from_variant_tensor(variant_tensor, type_spec):
   Raises:
     TypeError: If the arguments are of the wrong types.
   """
-  if not tf.is_tensor(variant_tensor):
+  if not tf.is_tensor(graph_def_tensor):
     raise TypeError(
-        'Expected `variant_tensor` to be a tensor, found {}.'.format(
-            py_typecheck.type_string(type(variant_tensor))))
-  if variant_tensor.dtype != tf.variant:
+        'Expected `graph_def_tensor` to be a tensor, found {}.'.format(
+            py_typecheck.type_string(type(graph_def_tensor))))
+  if graph_def_tensor.dtype != tf.string:
     raise TypeError(
-        'Expected `variant_tensor` to be of a variant type, found {}.'.format(
-            variant_tensor.dtype))
-  return tf.data.experimental.from_variant(
-      variant_tensor,
-      structure=(type_conversions.type_to_tf_structure(
-          computation_types.to_type(type_spec))))
+        'Expected `graph_def_tensor` to be of a string type, found {}.'.format(
+            graph_def_tensor.dtype))
+  dataset = tf.data.experimental.from_variant(
+      tf.raw_ops.DatasetFromGraph(graph_def=graph_def_tensor),
+      structure=type_conversions.type_to_tf_structure(
+          computation_types.to_type(type_spec)))
+  return dataset
 
 
 def capture_result_from_graph(result, graph):
@@ -268,7 +270,8 @@ def capture_result_from_graph(result, graph):
                 struct=pb.TensorFlow.StructBinding(
                     element=[e[1] for e in element_type_binding_pairs])))
   elif isinstance(result, type_conversions.TF_DATASET_REPRESENTATION_TYPES):
-    variant_tensor = tf.data.experimental.to_variant(result)
+    graph_def_tensor = tf.raw_ops.DatasetToGraphV2(
+        input_dataset=tf.data.experimental.to_variant(result))
     element_structure = result.element_spec
     try:
       element_type = computation_types.to_type(element_structure)
@@ -280,7 +283,7 @@ def capture_result_from_graph(result, graph):
     return (computation_types.SequenceType(element_type),
             pb.TensorFlow.Binding(
                 sequence=pb.TensorFlow.SequenceBinding(
-                    variant_tensor_name=variant_tensor.name)))
+                    graph_def_tensor_name=graph_def_tensor.name)))
   else:
     raise TypeError('Cannot capture a result of an unsupported type {}.'.format(
         py_typecheck.type_string(type(result))))
@@ -321,10 +324,10 @@ def compute_map_from_bindings(source, target):
       raise ValueError(
           'Source and target sequence bindings mismatch: {} vs. {}'.format(
               sequence_oneof, target.sequence.WhichOneof('binding')))
-    if sequence_oneof == 'variant_tensor_name':
+    if sequence_oneof == 'graph_def_tensor_name':
       return collections.OrderedDict([
-          (str(source.sequence.variant_tensor_name),
-           str(target.sequence.variant_tensor_name)),
+          (str(source.sequence.graph_def_tensor_name),
+           str(target.sequence.graph_def_tensor_name)),
       ])
     else:
       raise ValueError('Unsupported sequence binding {}'.format(sequence_oneof))
@@ -358,8 +361,8 @@ def extract_tensor_names_from_binding(binding):
     return [str(binding.tensor.tensor_name)]
   elif binding_oneof == 'sequence':
     sequence_oneof = binding.sequence.WhichOneof('binding')
-    if sequence_oneof == 'variant_tensor_name':
-      return [str(binding.sequence.variant_tensor_name)]
+    if sequence_oneof == 'graph_def_tensor_name':
+      return [str(binding.sequence.graph_def_tensor_name)]
     else:
       raise ValueError('Unsupported sequence binding {}'.format(sequence_oneof))
   elif binding_oneof == 'struct':
@@ -448,10 +451,10 @@ def assemble_result_from_graph(type_spec, binding, output_map):
           'Expected a sequence binding, found {}.'.format(binding_oneof))
     else:
       sequence_oneof = binding.sequence.WhichOneof('binding')
-      if sequence_oneof == 'variant_tensor_name':
-        variant_tensor = output_map[binding.sequence.variant_tensor_name]
-        return make_dataset_from_variant_tensor(variant_tensor,
-                                                type_spec.element)
+      if sequence_oneof == 'graph_def_tensor_name':
+        graph_def__tensor = output_map[binding.sequence.graph_def_tensor_name]
+        return make_dataset_from_graph_def_tensor(graph_def__tensor,
+                                                  type_spec.element)
       else:
         raise ValueError(
             'Unsupported sequence binding \'{}\'.'.format(sequence_oneof))
