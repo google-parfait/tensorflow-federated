@@ -13,7 +13,10 @@
 # limitations under the License.
 """Library of compiler functions for usage in the native execution context."""
 
+from typing import Optional
+
 from absl import logging
+import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import tracing
 from tensorflow_federated.python.core.api import computation_base
@@ -26,7 +29,9 @@ from tensorflow_federated.python.core.impl.wrappers import computation_wrapper_i
 
 def transform_to_native_form(
     comp: computation_base.Computation,
-    transform_math_to_tf: bool = False) -> computation_base.Computation:
+    transform_math_to_tf: bool = False,
+    grappler_config: Optional[tf.compat.v1.ConfigProto] = None
+) -> computation_base.Computation:
   """Compiles a computation for execution in the TFF native runtime.
 
   This function transforms the proto underlying `comp` by transforming it
@@ -38,6 +43,9 @@ def transform_to_native_form(
     transform_math_to_tf: Whether to additional transform math to TensorFlow
       graphs. Necessary if running on a execution state without
       ReferenceResolvingExecutors underneath FederatingExecutors.
+    grappler_config: Configuration for Grappler optimizations to perform on the
+      TensorFlow computations. If `None`, Grappler will not be run and no
+      optimizations wil be applied.
 
   Returns:
     A new `computation_base.Computation` representing the compiled version of
@@ -64,16 +72,21 @@ def transform_to_native_form(
             call_dominant_form)
       logging.debug('Computation compiled to:')
       logging.debug(call_dominant_form.formatted_representation())
+    if grappler_config is not None:
+      with tracing.span(
+          'transform_to_native_form', 'optimize_tf_graphs', span=True):
+        call_dominant_form, _ = transformations.optimize_tensorflow_graphs(
+            call_dominant_form, grappler_config)
     with tracing.span(
         'transform_to_native_form',
         'transform_tf_call_ops_disable_grappler',
         span=True):
-      call_dominant_form, _ = tree_transformations.transform_tf_call_ops_to_disable_grappler(
+      disabled_grapler_form, _ = tree_transformations.transform_tf_call_ops_to_disable_grappler(
           call_dominant_form)
     with tracing.span(
         'transform_to_native_form', 'transform_tf_add_ids', span=True):
       form_with_ids, _ = tree_transformations.transform_tf_add_ids(
-          call_dominant_form)
+          disabled_grapler_form)
     return computation_wrapper_instances.building_block_to_computation(
         form_with_ids)
   except ValueError as e:

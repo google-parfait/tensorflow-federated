@@ -34,6 +34,7 @@ py_library(
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/wrappers:computation_wrapper_instances",
         "@absl_py//absl/logging",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
