@@ -21,6 +21,32 @@ py_library(
 )
 
 py_library(
+    name = "task",
+    srcs = ["task.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":task_data",
+        "//tensorflow_federated/python/core/api:computation_base",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/simulation/datasets:client_data",
+    ],
+)
+
+py_test(
+    name = "task_test",
+    srcs = ["task_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":task",
+        ":task_data",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/simulation/datasets:client_data",
+    ],
+)
+
+py_library(
     name = "task_data",
     srcs = ["task_data.py"],
     srcs_version = "PY3",
