@@ -315,7 +315,7 @@ def _ensure_structure(obj):
 _SECURE_QUANTIZED_SUM_ALLOWED_DTYPES = (tf.int32, tf.int64, tf.float32,
                                         tf.float64)
 
-# The largest integer value provided to federated_secure_sum operator.
+# The largest integer value provided to federated_secure_sum_bitwidth operator.
 _SECAGG_MAX = 2**32 - 1
 
 
@@ -466,14 +466,15 @@ def _client_tensor_shift_for_secure_sum(value, lower_bound, upper_bound):
   """Mapping to be applied to every tensor before secure sum.
 
   This operation is performed on `tff.CLIENTS` to prepare values to format
-  compatible with `tff.federated_secure_sum` operator.
+  compatible with `tff.federated_secure_sum_bitwidth` operator.
 
   This clips elements of `value` to `[lower_bound, upper_bound]`, shifts and
   scales it to range `[0, 2**32-1]` and casts it to `tf.int64`. The specific
   operation depends on dtype of `value`.
 
   Args:
-    value: A Tensor to be shifted for compatibility with `federated_secure_sum`.
+    value: A Tensor to be shifted for compatibility with
+      `federated_secure_sum_bitwidth`.
     lower_bound: The smallest value expected in `value`.
     upper_bound: The largest value expected in `value`.
 
@@ -522,7 +523,7 @@ def _server_tensor_shift_for_secure_sum(num_summands, value, lower_bound,
   """Mapping to be applied to every tensor after secure sum.
 
   This operation is performed on `tff.SERVER` to dequantize outputs of the
-  `tff.federated_secure_sum` operator.
+  `tff.federated_secure_sum_bitwidth` operator.
 
   It is reverse of `_client_tensor_shift_for_secure_sum` taking into account
   that `num_summands` elements were summed, so the inverse shift needs to be
@@ -598,7 +599,8 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   corresponding Tensor in `client_value`.
 
   This method converts each Tensor in provided `client_value` to appropriate
-  format and uses the `tff.federated_secure_sum` operator to realize the sum.
+  format and uses the `tff.federated_secure_sum_bitwidth` operator to realize
+  the sum.
 
   The dtype of Tensors in provided `client_value` can be one of `[tf.int32,
   tf.int64, tf.float32, tf.float64]`.
@@ -714,7 +716,7 @@ def secure_quantized_sum(client_value, lower_bound, upper_bound):
   else:
     bitwidths = structure.map_structure(lambda t: 32, secagg_value_type)
 
-  value = intrinsics.federated_secure_sum(value, bitwidth=bitwidths)
+  value = intrinsics.federated_secure_sum_bitwidth(value, bitwidth=bitwidths)
   value = intrinsics.federated_map(
       server_shift, (value, lower_bound, upper_bound, num_summands))
   return value

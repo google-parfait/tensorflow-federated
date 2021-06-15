@@ -105,8 +105,9 @@ class TestFederatedStrategy(
   """A strategy for resolving federated types and intrinsics.
 
   This strategy extends the `tff.framework.FederatedResolvingStrategy` and
-  provides an insecure implemention of the `tff.federated_secure_sum` intrinsic,
-  which can be useful for testing federated algorithms that use this intrinsic.
+  provides an insecure implementation of the `tff.federated_secure_sum_bitwidth`
+  intrinsic, which can be useful for testing federated algorithms that use this
+  intrinsic.
   """
 
   @tracing.trace
@@ -200,11 +201,11 @@ class TestFederatedStrategy(
       return await self.compute_federated_map(map_arg)
 
   @tracing.trace
-  async def compute_federated_secure_sum(
+  async def compute_federated_secure_sum_bitwidth(
       self, arg: federated_resolving_strategy.FederatedResolvingStrategyValue
   ) -> federated_resolving_strategy.FederatedResolvingStrategyValue:
     logging.warning(
-        'The implementation of the `tff.federated_secure_sum` intrinsic '
+        'The implementation of the `tff.federated_secure_sum_bitwidth` intrinsic '
         'provided by the `tff.backends.test` runtime uses no cryptography.')
     py_typecheck.check_type(arg.internal_representation, structure.Struct)
     py_typecheck.check_len(arg.internal_representation, 2)
@@ -216,13 +217,13 @@ class TestFederatedStrategy(
     summands_type = arg.type_signature[0].member
     if not type_analysis.is_structure_of_integers(summands_type):
       raise TypeError(
-          'Cannot compute `federated_secure_sum` on summands that are not '
+          'Cannot compute `federated_secure_sum_bitwidth` on summands that are not '
           'TensorType or StructType of TensorType. Got {t}'.format(
               t=repr(summands_type)))
     if (summands_type.is_struct() and
         not structure.is_same_structure(summands_type, bitwidth)):
       raise TypeError(
-          'Cannot compute `federated_secure_sum` if summands and bitwidth are '
+          'Cannot compute `federated_secure_sum_bitwidth` if summands and bitwidth are '
           'not the same structure. Got summands={s}, bitwidth={b}'.format(
               s=repr(summands_type), b=repr(bitwidth.type_signature)))
 

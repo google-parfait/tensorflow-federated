@@ -543,7 +543,7 @@ class FederatedComposingStrategy(federating_executor.FederatingStrategy):
     return await self.compute_federated_aggregate(aggregate_args)
 
   @tracing.trace
-  async def compute_federated_secure_sum(
+  async def compute_federated_secure_sum_bitwidth(
       self,
       arg: FederatedComposingStrategyValue) -> FederatedComposingStrategyValue:
     raise NotImplementedError('The secure sum intrinsic is not implemented.')

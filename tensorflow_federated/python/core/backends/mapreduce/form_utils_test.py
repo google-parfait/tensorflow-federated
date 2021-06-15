@@ -76,7 +76,8 @@ def get_iterative_process_for_sum_example():
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    secure_update = intrinsics.federated_secure_sum_bitwidth(
+        client_updates[1], 8)
     s6 = intrinsics.federated_zip(
         [server_state, [unsecure_update, secure_update]])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
@@ -130,7 +131,8 @@ def get_iterative_process_with_nested_broadcasts():
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    secure_update = intrinsics.federated_secure_sum_bitwidth(
+        client_updates[1], 8)
     s6 = intrinsics.federated_zip(
         [server_state, [unsecure_update, secure_update]])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
@@ -173,7 +175,8 @@ def get_iterative_process_for_sum_example_with_no_prepare():
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    secure_update = intrinsics.federated_secure_sum_bitwidth(
+        client_updates[1], 8)
     s6 = intrinsics.federated_zip(
         [server_state, [unsecure_update, secure_update]])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
@@ -215,7 +218,8 @@ def get_iterative_process_for_sum_example_with_no_broadcast():
     # No call to `federated_broadcast`.
     client_updates = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    secure_update = intrinsics.federated_secure_sum_bitwidth(
+        client_updates[1], 8)
     s6 = intrinsics.federated_zip(
         [server_state, [unsecure_update, secure_update]])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
@@ -261,7 +265,7 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates = intrinsics.federated_map(work, c3)
     # No call to `federated_aggregate`.
-    secure_update = intrinsics.federated_secure_sum(client_updates, 8)
+    secure_update = intrinsics.federated_secure_sum_bitwidth(client_updates, 8)
     s6 = intrinsics.federated_zip([server_state, secure_update])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output
@@ -269,10 +273,12 @@ def get_iterative_process_for_sum_example_with_no_federated_aggregate():
   return iterative_process.IterativeProcess(init_fn, next_fn)
 
 
-def get_iterative_process_for_sum_example_with_no_federated_secure_sum():
+def get_iterative_process_for_sum_example_with_no_federated_secure_sum_bitwidth(
+):
   """Returns an iterative process for a sum example.
 
-  This iterative process does not have a call to `federated_secure_sum`.
+  This iterative process does not have a call to
+  `federated_secure_sum_bitwidth`.
   """
 
   @computations.federated_computation
@@ -306,7 +312,7 @@ def get_iterative_process_for_sum_example_with_no_federated_secure_sum():
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates)
-    # No call to `federated_secure_sum`.
+    # No call to `federated_secure_sum_bitwidth`.
     s6 = intrinsics.federated_zip([server_state, unsecure_update])
     new_server_state, server_output = intrinsics.federated_map(update, s6)
     return new_server_state, server_output
@@ -347,7 +353,8 @@ def get_iterative_process_for_sum_example_with_no_update():
     c3 = intrinsics.federated_zip([client_data, client_input])
     client_updates = intrinsics.federated_map(work, c3)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    secure_update = intrinsics.federated_secure_sum_bitwidth(
+        client_updates[1], 8)
     new_server_state = intrinsics.federated_zip(
         [unsecure_update, secure_update])
     # No call to `federated_map` with an `update` function.
@@ -392,7 +399,8 @@ def get_iterative_process_for_sum_example_with_no_server_state():
     # No call to `federated_broadcast`.
     client_updates = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    secure_update = intrinsics.federated_secure_sum_bitwidth(
+        client_updates[1], 8)
     s5 = intrinsics.federated_zip([unsecure_update, secure_update])
     # Empty server state.
     new_server_state = intrinsics.federated_value([], placements.SERVER)
@@ -406,7 +414,7 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
   """Returns an iterative process for a sum example.
 
   This iterative process does not have a call to `federated_aggregate` or
-  `federated_secure_sum` and as a result it should fail to compile to
+  `federated_secure_sum_bitwidth` and as a result it should fail to compile to
   `forms.MapReduceForm`.
   """
 
@@ -429,7 +437,7 @@ def get_iterative_process_for_sum_example_with_no_aggregation():
     del client_data
     # No call to `federated_aggregate`.
     unsecure_update = intrinsics.federated_value(1, placements.SERVER)
-    # No call to `federated_secure_sum`.
+    # No call to `federated_secure_sum_bitwidth`.
     secure_update = intrinsics.federated_value(1, placements.SERVER)
     s6 = intrinsics.federated_zip(
         [server_state, [unsecure_update, secure_update]])
@@ -468,7 +476,8 @@ def get_iterative_process_for_minimal_sum_example():
     # No call to `federated_broadcast`.
     client_updates = intrinsics.federated_map(work, client_data)
     unsecure_update = intrinsics.federated_sum(client_updates[0])
-    secure_update = intrinsics.federated_secure_sum(client_updates[1], 8)
+    secure_update = intrinsics.federated_secure_sum_bitwidth(
+        client_updates[1], 8)
     new_server_state = intrinsics.federated_zip(
         [unsecure_update, secure_update])
     # No call to `federated_map` with an `update` function.
@@ -489,8 +498,8 @@ def get_example_cf_compatible_iterative_processes():
        get_iterative_process_for_sum_example_with_no_broadcast()),
       ('sum_example_with_no_federated_aggregate',
        get_iterative_process_for_sum_example_with_no_federated_aggregate()),
-      ('sum_example_with_no_federated_secure_sum',
-       get_iterative_process_for_sum_example_with_no_federated_secure_sum()),
+      ('sum_example_with_no_federated_secure_sum_bitwidth',
+       get_iterative_process_for_sum_example_with_no_federated_secure_sum_bitwidth()),
       ('sum_example_with_no_update',
        get_iterative_process_for_sum_example_with_no_update()),
       ('sum_example_with_no_server_state',
@@ -577,7 +586,7 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
     before_aggregate, after_aggregate = form_utils._create_before_and_after_aggregate_for_no_federated_aggregate(
         next_tree)
 
-    before_federated_secure_sum, after_federated_secure_sum = (
+    before_federated_secure_sum_bitwidth, after_federated_secure_sum_bitwidth = (
         transformations.force_align_and_split_by_intrinsics(
             next_tree, [intrinsic_defs.FEDERATED_SECURE_SUM.uri]))
     self.assertIsInstance(before_aggregate, building_blocks.Lambda)
@@ -602,7 +611,8 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
     unbound_refs_in_before_agg_result = transformation_utils.get_map_of_unbound_references(
         before_aggregate.result[1])[before_aggregate.result[1]]
     unbound_refs_in_before_secure_sum_result = transformation_utils.get_map_of_unbound_references(
-        before_federated_secure_sum.result)[before_federated_secure_sum.result]
+        before_federated_secure_sum_bitwidth.result)[
+            before_federated_secure_sum_bitwidth.result]
 
     whimsy_data = building_blocks.Data('data',
                                        computation_types.AbstractType('T'))
@@ -612,7 +622,7 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
         before_aggregate.result[1])
     blk_binding_refs_in_before_secure_sum = building_blocks.Block([
         (name, whimsy_data) for name in unbound_refs_in_before_secure_sum_result
-    ], before_federated_secure_sum.result)
+    ], before_federated_secure_sum_bitwidth.result)
 
     self.assertTrue(
         tree_analysis.trees_equal(blk_binding_refs_in_before_agg,
@@ -623,7 +633,7 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
     actual_after_aggregate_tree, _ = tree_transformations.uniquify_reference_names(
         after_aggregate.result.function)
     expected_after_aggregate_tree, _ = tree_transformations.uniquify_reference_names(
-        after_federated_secure_sum)
+        after_federated_secure_sum_bitwidth)
     self.assertTrue(
         tree_analysis.trees_equal(actual_after_aggregate_tree,
                                   expected_after_aggregate_tree))
@@ -642,13 +652,14 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
 class CreateBeforeAndAfterAggregateForNoSecureSumTest(test_case.TestCase):
 
   def test_returns_tree(self):
-    ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum()
+    ip = get_iterative_process_for_sum_example_with_no_federated_secure_sum_bitwidth(
+    )
     next_tree = building_blocks.ComputationBuildingBlock.from_proto(
         ip.next._computation_proto)
     next_tree, _ = intrinsic_reductions.replace_intrinsics_with_bodies(
         next_tree)
 
-    before_aggregate, after_aggregate = form_utils._create_before_and_after_aggregate_for_no_federated_secure_sum(
+    before_aggregate, after_aggregate = form_utils._create_before_and_after_aggregate_for_no_federated_secure_sum_bitwidth(
         next_tree)
 
     before_federated_aggregate, after_federated_aggregate = (
@@ -956,7 +967,7 @@ class GetMapReduceFormForIterativeProcessTest(MapReduceFormTestCase,
     with self.assertRaisesRegex(
         ValueError,
         r'Expected .* containing at least one `federated_aggregate` or '
-        r'`federated_secure_sum`'):
+        r'`federated_secure_sum_bitwidth`'):
       form_utils.get_map_reduce_form_for_iterative_process(ip)
 
   def test_returns_map_reduce_form_with_indirection_to_intrinsic(self):
@@ -1260,6 +1271,6 @@ class AsFunctionOfSomeSubparametersTest(test_case.TestCase):
 
 if __name__ == '__main__':
   # The reference context is used here because it is currently the only context
-  # which implements the `tff.federated_secure_sum` intrinsic.
+  # which implements the `tff.federated_secure_sum_bitwidth` intrinsic.
   reference_context.set_reference_context()
   test_case.main()

@@ -175,7 +175,7 @@ def secure_aggregator(
   ensuring that the server cannot see individual updates until sufficient number
   of updates have been added together. For details, see Bonawitz et al. (2017)
   https://dl.acm.org/doi/abs/10.1145/3133956.3133982. In TFF, this is realized
-  using the `tff.federated_secure_sum` operator.
+  using the `tff.federated_secure_sum_bitwidth` operator.
 
   Args:
     zeroing: Whether to enable adaptive zeroing for data corruption mitigation.

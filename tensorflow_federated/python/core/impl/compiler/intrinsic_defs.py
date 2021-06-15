@@ -347,7 +347,7 @@ FEDERATED_MEAN = IntrinsicDef(
 # Type signature: <{V}@CLIENTS,B> -> V@SERVER
 FEDERATED_SECURE_SUM = IntrinsicDef(
     'FEDERATED_SECURE_SUM',
-    'federated_secure_sum',
+    'federated_secure_sum_bitwidth',
     computation_types.FunctionType(
         parameter=[
             computation_types.at_clients(computation_types.AbstractType('V')),

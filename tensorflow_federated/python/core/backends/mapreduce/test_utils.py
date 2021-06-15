@@ -127,7 +127,7 @@ def get_federated_sum_example(*,
   """Constructs `forms.MapReduceForm` which performs a sum aggregation.
 
   Args:
-    secure_sum: Whether to use `federated_secure_sum`. Defaults to
+    secure_sum: Whether to use `federated_secure_sum_bitwidth`. Defaults to
       `federated_sum`.
 
   Returns:

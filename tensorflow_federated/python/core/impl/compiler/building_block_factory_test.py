@@ -622,14 +622,15 @@ class CreateFederatedSecureSumTest(absltest.TestCase):
         bitwidth_type, name='b')
 
     with self.assertRaises(TypeError):
-      building_block_factory.create_federated_secure_sum(None, bitwidth)
+      building_block_factory.create_federated_secure_sum_bitwidth(
+          None, bitwidth)
 
   def test_raises_type_error_with_none_bitwidth(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
     value = building_blocks.Data('v', value_type)
 
     with self.assertRaises(TypeError):
-      building_block_factory.create_federated_secure_sum(value, None)
+      building_block_factory.create_federated_secure_sum_bitwidth(value, None)
 
   def test_returns_federated_sum(self):
     value_type = computation_types.FederatedType(tf.int32, placements.CLIENTS)
@@ -637,9 +638,10 @@ class CreateFederatedSecureSumTest(absltest.TestCase):
     bitwidth_type = computation_types.TensorType(tf.int32)
     bitwidth = building_block_factory.create_tensorflow_constant(
         bitwidth_type, 8, 'b')
-    comp = building_block_factory.create_federated_secure_sum(value, bitwidth)
+    comp = building_block_factory.create_federated_secure_sum_bitwidth(
+        value, bitwidth)
     self.assertEqual(comp.compact_representation(),
-                     'federated_secure_sum(<v,comp#b()>)')
+                     'federated_secure_sum_bitwidth(<v,comp#b()>)')
     self.assertEqual(comp.type_signature.compact_representation(),
                      'int32@SERVER')
 

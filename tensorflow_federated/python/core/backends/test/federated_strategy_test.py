@@ -48,7 +48,8 @@ def create_test_executor(
   return federating_executor.FederatingExecutor(factory, create_bottom_stack())
 
 
-def create_intrinsic_def_federated_secure_sum(value_type, bitwidth_type):
+def create_intrinsic_def_federated_secure_sum_bitwidth(value_type,
+                                                       bitwidth_type):
   value = intrinsic_defs.FEDERATED_SECURE_SUM
   type_signature = computation_types.FunctionType([
       computation_types.at_clients(value_type),
@@ -135,13 +136,13 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
                   ]))),
       ),
   )
-  def test_returns_value_with_intrinsic_def_federated_secure_sum(
+  def test_returns_value_with_intrinsic_def_federated_secure_sum_bitwidth(
       self, client_values, bitwidth, expected_result):
     executor = create_test_executor()
     value_type = computation_types.at_clients(
         type_conversions.infer_type(client_values[0]))
     bitwidth_type = type_conversions.infer_type(bitwidth)
-    comp, comp_type = create_intrinsic_def_federated_secure_sum(
+    comp, comp_type = create_intrinsic_def_federated_secure_sum_bitwidth(
         value_type.member, bitwidth_type)
 
     comp = self.run_sync(executor.create_value(comp, comp_type))

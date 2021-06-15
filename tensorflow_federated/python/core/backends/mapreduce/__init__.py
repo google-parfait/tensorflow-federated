@@ -97,8 +97,8 @@ The logic of `next` in `MapReduceForm` is factored into seven
 variable components `prepare`, `work`, `zero`, `accumulate`, `merge`,
 `report`, and `update` (in addition to `initialize` that produces the server
 state component for the initial round and `bitwidth` that specifies runtime
-parameters for `federated_secure_sum`). The pseudocode below uses common
-syntactic shortcuts (such as implicit zipping) for brevity.
+parameters for `federated_secure_sum_bitwidth`). The pseudocode below uses
+common syntactic shortcuts (such as implicit zipping) for brevity.
 
 For a concise representation of the logic embedded in the discussion below,
 specifying the manner in which an instance `mrf` of `MapReduceForm` maps to
@@ -123,8 +123,8 @@ def next(server_state, client_data):
 
   # `client_updates` is a two-tuple, whose first index should be aggregated
   # with TFF's `federated_aggregate` and whose second index should be passed
-  # to TFF's `federated_secure_sum`.  The  updates are aggregated across the
-  # system into a single global update at the server.
+  # to TFF's `federated_secure_sum_bitwidth`.  The  updates are aggregated
+  # across the system into a single global update at the server.
 
   simple_agg = (
     tff.federated_aggregate(client_updates[0], zero(), accumulate, merge,
@@ -164,14 +164,14 @@ directly to the parameters of that operator).
   containing the client update to be aggregated (across all the clients). The
   first index of this two-tuple will be passed to an aggregation parameterized
   by the blocks of TensorFlow below (`zero`, `accumulate`, `merge`, and
-  `report`), and the second index will be passed to `federated_secure_sum`.
-  Its type signature is `(<D,C> -> <U,V>)`.
+  `report`), and the second index will be passed to
+  `federated_secure_sum_bitwidth`. Its type signature is `(<D,C> -> <U,V>)`.
 
 * `bitwidth` is the TensorFlow computation that produces an integer specifying
   the bitwidth for inputs to secure sum. `bitwidth` will be used by the system
   to compute appropriate parameters for the secure sum protocol. Exactly how
   this computation is performed is left to the runtime implementation of
-  `federated_secure_sum`.
+  `federated_secure_sum_bitwidth`.
 
 * `zero` is the TensorFlow computation that produces the initial state of
   accumulators that are used to combine updates collected from subsets of the

@@ -380,8 +380,8 @@ class MapReduceForm(object):
   @property
   def securely_aggregates_tensors(self) -> bool:
     """Whether the `MapReduceForm` uses secure aggregation."""
-    # Tensors aggregated over `federated_secure_sum` are output in the second
-    # tuple element from `work()`.
+    # Tensors aggregated over `federated_secure_sum_bitwidth` are output in the
+    # second tuple element from `work()`.
     work_result_type = self.work.type_signature.result
     assert len(work_result_type) == 2
     return not work_result_type[1].is_equivalent_to(

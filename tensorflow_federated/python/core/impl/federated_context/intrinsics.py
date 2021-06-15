@@ -387,7 +387,7 @@ def federated_sum(value):
   """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
 
   To sum integer values with stronger privacy properties, consider using
-  `tff.federated_secure_sum`.
+  `tff.federated_secure_sum_bitwidth`.
 
   Args:
     value: A value of a TFF federated type placed at the `tff.CLIENTS`.
@@ -619,7 +619,7 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
   return value_impl.Value(comp)
 
 
-def federated_secure_sum(value, bitwidth):
+def federated_secure_sum_bitwidth(value, bitwidth):
   """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
 
   This function computes a sum such that it should not be possible for the
@@ -628,7 +628,7 @@ def federated_secure_sum(value, bitwidth):
   runtime environment the computation is compiled for or executed on. See
   https://research.google/pubs/pub47246/ for more information.
 
-  Not all executors support `tff.federated_secure_sum()`; consult the
+  Not all executors support `tff.federated_secure_sum_bitwidth()`; consult the
   documentation for the specific executor or executor stack you plan on using
   for the specific of how it's handled by that executor.
 
@@ -641,13 +641,13 @@ def federated_secure_sum(value, bitwidth):
 
   ```python
   value = tff.federated_value(1, tff.CLIENTS)
-  result = tff.federated_secure_sum(value, 2)
+  result = tff.federated_secure_sum_bitwidth(value, 2)
 
   value = tff.federated_value([1, 1], tff.CLIENTS)
-  result = tff.federated_secure_sum(value, [2, 4])
+  result = tff.federated_secure_sum_bitwidth(value, [2, 4])
 
   value = tff.federated_value([1, [1, 1]], tff.CLIENTS)
-  result = tff.federated_secure_sum(value, [2, [4, 8]])
+  result = tff.federated_secure_sum_bitwidth(value, [2, [4, 8]])
   ```
 
   Note: To sum non-integer values or to sum integers with fewer constraints and
@@ -678,14 +678,14 @@ def federated_secure_sum(value, bitwidth):
   if not type_analysis.is_valid_bitwidth_type_for_value_type(
       bitwidth_type, value_member_type):
     raise TypeError(
-        'Expected `federated_secure_sum` parameter `bitwidth` to match '
+        'Expected `federated_secure_sum_bitwidth` parameter `bitwidth` to match '
         'the structure of `value`, with one integer bitwidth per tensor in '
         '`value`. Found `value` of `{}` and `bitwidth` of `{}`.'.format(
             value_member_type, bitwidth_type))
   if bitwidth_type.is_tensor() and value_member_type.is_struct():
     bitwidth_value = value_impl.to_value(
         structure.map_structure(lambda _: bitwidth, value_member_type), None)
-  comp = building_block_factory.create_federated_secure_sum(
+  comp = building_block_factory.create_federated_secure_sum_bitwidth(
       value.comp, bitwidth_value.comp)
   comp = _bind_comp_as_reference(comp)
   return value_impl.Value(comp)

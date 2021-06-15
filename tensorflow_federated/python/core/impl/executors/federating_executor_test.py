@@ -586,10 +586,10 @@ class FederatingExecutorCreateCallTest(executor_test_utils.AsyncTestCase,
     with self.assertRaises(ValueError):
       self.run_sync(executor.create_call(comp))
 
-  def test_raises_not_implemented_error_with_intrinsic_def_federated_secure_sum(
+  def test_raises_not_implemented_error_with_intrinsic_def_federated_secure_sum_bitwidth(
       self):
     executor = create_test_executor()
-    comp, comp_type = executor_test_utils.create_whimsy_intrinsic_def_federated_secure_sum(
+    comp, comp_type = executor_test_utils.create_whimsy_intrinsic_def_federated_secure_sum_bitwidth(
     )
     arg_1 = [10, 11, 12]
     arg_1_type = computation_types.at_clients(tf.int32, all_equal=False)

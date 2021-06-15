@@ -928,12 +928,12 @@ class ReferenceContextTest(test_case.TestCase, parameterized.TestCase):
         str(foo.type_signature), '({int32}@CLIENTS -> int32@SERVER)')
     self.assertEqual(foo([1, 2, 3]), 6)
 
-  def test_federated_secure_sum_with_list_of_integers(self):
+  def test_federated_secure_sum_bitwidth_with_list_of_integers(self):
 
     @computations.federated_computation(
         computation_types.FederatedType(tf.int32, placements.CLIENTS))
     def foo(x):
-      return intrinsics.federated_secure_sum(x, 8)
+      return intrinsics.federated_secure_sum_bitwidth(x, 8)
 
     self.assertEqual(foo.type_signature.compact_representation(),
                      '({int32}@CLIENTS -> int32@SERVER)')

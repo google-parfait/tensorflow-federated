@@ -29,7 +29,7 @@ def no_aggregation():
 def secure_aggregation():
   data_at_clients = intrinsics.federated_value(1, placements.CLIENTS)
   bitwidth = 1
-  return intrinsics.federated_secure_sum(data_at_clients, bitwidth)
+  return intrinsics.federated_secure_sum_bitwidth(data_at_clients, bitwidth)
 
 
 @computations.federated_computation
