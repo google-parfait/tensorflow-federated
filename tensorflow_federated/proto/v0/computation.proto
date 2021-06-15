@@ -625,6 +625,10 @@ message TensorFlow {
       // using `tf.data.experimental.from_variant`.
       string variant_tensor_name = 2;
 
+      // The name of the string tensor that represents the data set created
+      // using `tf.raw_ops.DatasetFromGraph`.
+      string graph_def_tensor_name = 3;
+
       // Note: This structure will likely evolve and get extended with other
       // means of encoding data sets in the serialized graph representation.
     }
