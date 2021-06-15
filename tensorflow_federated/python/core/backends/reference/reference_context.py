@@ -588,9 +588,9 @@ class ReferenceContext(context_base.Context):
   context is plugged in as the handler of computation invocations at the top
   level of the context stack.
 
-  Note: The `tff.federated_secure_sum()` intrinsic is implemented using a
-  non-secure algorithm in order to enable testing of the semantics of federated
-  computaitons using the  secure sum intrinsic.
+  Note: The `tff.federated_secure_sum_bitwidth()` intrinsic is implemented using
+  a non-secure algorithm in order to enable testing of the semantics of
+  federated computations using the  secure sum intrinsic.
   """
 
   def __init__(self):
@@ -633,7 +633,7 @@ class ReferenceContext(context_base.Context):
         intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri:
             self._federated_map_all_equal,
         intrinsic_defs.FEDERATED_SECURE_SUM.uri:
-            self._federated_secure_sum,
+            self._federated_secure_sum_bitwidth,
         intrinsic_defs.FEDERATED_SUM.uri:
             self._federated_sum,
         intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri:
@@ -984,7 +984,7 @@ class ReferenceContext(context_base.Context):
                                                   placements.SERVER, True)
     return ComputedValue(result_val, result_type)
 
-  def _federated_secure_sum(self, arg, context):
+  def _federated_secure_sum_bitwidth(self, arg, context):
     py_typecheck.check_type(arg.type_signature, computation_types.StructType)
     py_typecheck.check_len(arg.type_signature, 2)
     value = ComputedValue(arg.value[0], arg.type_signature[0])

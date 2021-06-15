@@ -622,8 +622,8 @@ def local_executor_factory(
 ) -> executor_factory.ExecutorFactory:
   """Constructs an executor factory to execute computations locally.
 
-  Note: The `tff.federated_secure_sum()` intrinsic is not implemented by this
-  executor.
+  Note: The `tff.federated_secure_sum_bitwidth()` intrinsic is not implemented
+  by this executor.
 
   Args:
     default_num_clients: The number of clients to run by default if cardinality

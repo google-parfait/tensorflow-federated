@@ -115,7 +115,7 @@ def get_iterative_process_for_map_reduce_form(
     c6 = c4[1]
     s3 = intrinsics.federated_aggregate(c5, mrf.zero(), mrf.accumulate,
                                         mrf.merge, mrf.report)
-    s4 = intrinsics.federated_secure_sum(c6, mrf.bitwidth())
+    s4 = intrinsics.federated_secure_sum_bitwidth(c6, mrf.bitwidth())
     s5 = intrinsics.federated_zip([s3, s4])
     s6 = intrinsics.federated_zip([s1, s5])
     s7 = intrinsics.federated_map(mrf.update, s6)
@@ -376,39 +376,41 @@ def _split_ast_on_aggregate(bb):
   """Splits an AST on reduced aggregation intrinsics.
 
   Args:
-    bb: An AST containing `federated_aggregate` or `federated_secure_sum`
-      aggregations.
+    bb: An AST containing `federated_aggregate` or
+      `federated_secure_sum_bitwidth` aggregations.
 
   Returns:
     Two ASTs, the first of which maps comp's input to the arguments
-    to `federated_aggregate` and `federated_secure_sum`, and the second of which
-    maps comp's input and the output of `federated_aggregate` and
-    `federated_secure_sum` to comp's output.
+    to `federated_aggregate` and `federated_secure_sum_bitwidth`, and the
+    second of which maps comp's input and the output of `federated_aggregate`
+    and `federated_secure_sum_bitwidth` to comp's output.
   """
   contains_federated_aggregate = tree_analysis.contains_called_intrinsic(
       bb, intrinsic_defs.FEDERATED_AGGREGATE.uri)
-  contains_federated_secure_sum = tree_analysis.contains_called_intrinsic(
+  contains_federated_secure_sum_bitwidth = tree_analysis.contains_called_intrinsic(
       bb, intrinsic_defs.FEDERATED_SECURE_SUM.uri)
-  if not (contains_federated_aggregate or contains_federated_secure_sum):
+  if not (contains_federated_aggregate or
+          contains_federated_secure_sum_bitwidth):
     raise ValueError(
         'Expected an `tff.templates.IterativeProcess` containing at least one '
-        '`federated_aggregate` or `federated_secure_sum`, found none.')
+        '`federated_aggregate` or `federated_secure_sum_bitwidth`, found none.')
 
-  if contains_federated_aggregate and contains_federated_secure_sum:
+  if contains_federated_aggregate and contains_federated_secure_sum_bitwidth:
     before_aggregate, after_aggregate = (
         transformations.force_align_and_split_by_intrinsics(
             bb, [
                 intrinsic_defs.FEDERATED_AGGREGATE.uri,
                 intrinsic_defs.FEDERATED_SECURE_SUM.uri,
             ]))
-  elif contains_federated_secure_sum:
+  elif contains_federated_secure_sum_bitwidth:
     assert not contains_federated_aggregate
     before_aggregate, after_aggregate = (
         _create_before_and_after_aggregate_for_no_federated_aggregate(bb))
   else:
-    assert contains_federated_aggregate and not contains_federated_secure_sum
+    assert contains_federated_aggregate and not contains_federated_secure_sum_bitwidth
     before_aggregate, after_aggregate = (
-        _create_before_and_after_aggregate_for_no_federated_secure_sum(bb))
+        _create_before_and_after_aggregate_for_no_federated_secure_sum_bitwidth(
+            bb))
   return before_aggregate, after_aggregate
 
 
@@ -513,7 +515,8 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
   return before_aggregate, after_aggregate
 
 
-def _create_before_and_after_aggregate_for_no_federated_secure_sum(tree):
+def _create_before_and_after_aggregate_for_no_federated_secure_sum_bitwidth(
+    tree):
   r"""Creates a before and after aggregate computations for the given `tree`.
 
   Lambda
@@ -919,7 +922,8 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
   return zero, accumulate, merge, report
 
 
-def _extract_federated_secure_sum_functions(before_aggregate, grappler_config):
+def _extract_federated_secure_sum_bitwidth_functions(before_aggregate,
+                                                     grappler_config):
   """Extracts secure sum from `before_aggregate`.
 
   This function is intended to be used by
@@ -941,13 +945,14 @@ def _extract_federated_secure_sum_functions(before_aggregate, grappler_config):
     transformations.MapReduceFormCompilationError: If we extract an AST of the
       wrong type.
   """
-  federated_secure_sum_index_in_before_aggregate_result = 1
-  federated_secure_sum = transformations.select_output_from_lambda(
-      before_aggregate, federated_secure_sum_index_in_before_aggregate_result)
-  bitwidth_index_in_federated_secure_sum_result = 1
+  federated_secure_sum_bitwidth_index_in_before_aggregate_result = 1
+  federated_secure_sum_bitwidth = transformations.select_output_from_lambda(
+      before_aggregate,
+      federated_secure_sum_bitwidth_index_in_before_aggregate_result)
+  bitwidth_index_in_federated_secure_sum_bitwidth_result = 1
   bitwidth_tff = transformations.select_output_from_lambda(
-      federated_secure_sum,
-      bitwidth_index_in_federated_secure_sum_result).result
+      federated_secure_sum_bitwidth,
+      bitwidth_index_in_federated_secure_sum_bitwidth_result).result
 
   return transformations.consolidate_and_extract_local_processing(
       bitwidth_tff, grappler_config)
@@ -1388,8 +1393,8 @@ def get_map_reduce_form_for_iterative_process(
   _check_type_equal(merge.type_signature, type_info['merge_type'])
   _check_type_equal(report.type_signature, type_info['report_type'])
 
-  bitwidth = _extract_federated_secure_sum_functions(before_aggregate,
-                                                     grappler_config)
+  bitwidth = _extract_federated_secure_sum_bitwidth_functions(
+      before_aggregate, grappler_config)
   _check_type_equal(bitwidth.type_signature, type_info['bitwidth_type'])
 
   update = _extract_update(after_aggregate, grappler_config)

@@ -204,7 +204,7 @@ class FederatingStrategy(abc.ABC):
     raise NotImplementedError()
 
   @abc.abstractmethod
-  async def compute_federated_secure_sum(
+  async def compute_federated_secure_sum_bitwidth(
       self, arg: executor_value_base.ExecutorValue
   ) -> executor_value_base.ExecutorValue:
     """Returns an embedded call for a federated secure sum."""

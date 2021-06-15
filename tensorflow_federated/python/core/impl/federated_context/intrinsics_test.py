@@ -166,33 +166,33 @@ class FederatedSecureSumTest(IntrinsicTestBase):
   def test_type_signature_with_int(self):
     value = intrinsics.federated_value(1, placements.CLIENTS)
     bitwidth = 8
-    result = intrinsics.federated_secure_sum(value, bitwidth)
+    result = intrinsics.federated_secure_sum_bitwidth(value, bitwidth)
     self.assert_value(result, 'int32@SERVER')
 
   def test_type_signature_with_structure_of_ints(self):
     value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
     bitwidth = [8, [4, 2]]
-    result = intrinsics.federated_secure_sum(value, bitwidth)
+    result = intrinsics.federated_secure_sum_bitwidth(value, bitwidth)
     self.assert_value(result, '<int32,<int32,int32>>@SERVER')
 
   def test_type_signature_with_structure_of_ints_scalar_bitwidth(self):
     value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
     bitwidth = 8
-    result = intrinsics.federated_secure_sum(value, bitwidth)
+    result = intrinsics.federated_secure_sum_bitwidth(value, bitwidth)
     self.assert_value(result, '<int32,<int32,int32>>@SERVER')
 
   def test_type_signature_with_one_tensor_and_bitwidth(self):
     value = intrinsics.federated_value(
         np.ndarray(shape=(5, 37), dtype=np.int16), placements.CLIENTS)
     bitwidth = 2
-    result = intrinsics.federated_secure_sum(value, bitwidth)
+    result = intrinsics.federated_secure_sum_bitwidth(value, bitwidth)
     self.assert_value(result, 'int16[5,37]@SERVER')
 
   def test_type_signature_with_structure_of_tensors_and_bitwidths(self):
     np_array = np.ndarray(shape=(5, 37), dtype=np.int16)
     value = intrinsics.federated_value((np_array, np_array), placements.CLIENTS)
     bitwidth = (2, 2)
-    result = intrinsics.federated_secure_sum(value, bitwidth)
+    result = intrinsics.federated_secure_sum_bitwidth(value, bitwidth)
     self.assert_value(result, '<int16[5,37],int16[5,37]>@SERVER')
 
   def test_raises_type_error_with_value_float(self):
@@ -200,21 +200,21 @@ class FederatedSecureSumTest(IntrinsicTestBase):
     bitwidth = intrinsics.federated_value(1, placements.SERVER)
 
     with self.assertRaises(TypeError):
-      intrinsics.federated_secure_sum(value, bitwidth)
+      intrinsics.federated_secure_sum_bitwidth(value, bitwidth)
 
   def test_raises_type_error_with_bitwith_int_at_server(self):
     value = intrinsics.federated_value(1, placements.CLIENTS)
     bitwidth = intrinsics.federated_value(1, placements.SERVER)
 
     with self.assertRaises(TypeError):
-      intrinsics.federated_secure_sum(value, bitwidth)
+      intrinsics.federated_secure_sum_bitwidth(value, bitwidth)
 
   def test_raises_type_error_with_different_structures(self):
     value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
     bitwidth = [8, 4, 2]
 
     with self.assertRaises(TypeError):
-      intrinsics.federated_secure_sum(value, bitwidth)
+      intrinsics.federated_secure_sum_bitwidth(value, bitwidth)
 
 
 class FederatedSelectTest(parameterized.TestCase, IntrinsicTestBase):

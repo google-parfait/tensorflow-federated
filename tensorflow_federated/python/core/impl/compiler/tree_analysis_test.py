@@ -716,7 +716,8 @@ trivial_mean = test_utils.create_whimsy_called_federated_mean(unit)
 trivial_sum = test_utils.create_whimsy_called_federated_sum(unit)
 # TODO(b/120439632) Enable once federated_mean accepts structured weights.
 # trivial_weighted_mean = ...
-trivial_secure_sum = test_utils.create_whimsy_called_federated_secure_sum(unit)
+trivial_secure_sum = test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+    unit)
 
 
 class ContainsAggregationShared(parameterized.TestCase):
@@ -767,7 +768,8 @@ simple_mean = test_utils.create_whimsy_called_federated_mean()
 simple_sum = test_utils.create_whimsy_called_federated_sum()
 simple_weighted_mean = test_utils.create_whimsy_called_federated_mean(
     tf.float32, tf.float32)
-simple_secure_sum = test_utils.create_whimsy_called_federated_secure_sum()
+simple_secure_sum = test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
+)
 
 
 class ContainsSecureAggregation(parameterized.TestCase):
@@ -789,7 +791,7 @@ class ContainsSecureAggregation(parameterized.TestCase):
     self.assert_one_aggregation(simple_secure_sum)
 
   def test_returns_str_on_nested_secure_aggregation(self):
-    comp = test_utils.create_whimsy_called_federated_secure_sum(
+    comp = test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
         (tf.int32, tf.int32))
     self.assert_one_aggregation(comp)
 

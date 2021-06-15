@@ -233,12 +233,12 @@ def create_whimsy_called_federated_mean(value_type=tf.float32,
   return building_block_factory.create_federated_mean(values, weights)
 
 
-def create_whimsy_called_federated_secure_sum(value_type=tf.int32):
+def create_whimsy_called_federated_secure_sum_bitwidth(value_type=tf.int32):
   r"""Returns a whimsy called secure sum.
 
                        Call
                       /    \
-  federated_secure_sum      [data, data]
+  federated_secure_sum_bitwidth      [data, data]
 
   Args:
     value_type: The type of the value.
@@ -247,7 +247,8 @@ def create_whimsy_called_federated_secure_sum(value_type=tf.int32):
                                                    placements.CLIENTS)
   value = building_blocks.Data('data', federated_type)
   bitwidth = building_blocks.Data('data', value_type)
-  return building_block_factory.create_federated_secure_sum(value, bitwidth)
+  return building_block_factory.create_federated_secure_sum_bitwidth(
+      value, bitwidth)
 
 
 def create_whimsy_called_federated_sum(value_type=tf.int32):

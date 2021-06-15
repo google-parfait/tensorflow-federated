@@ -527,12 +527,12 @@ class FederatedResolvingStrategy(federating_executor.FederatingStrategy):
                                                all_equal=True))
 
   @tracing.trace
-  async def compute_federated_secure_sum(
+  async def compute_federated_secure_sum_bitwidth(
       self,
       arg: FederatedResolvingStrategyValue) -> FederatedResolvingStrategyValue:
     raise NotImplementedError(
-        '`tff.federated_secure_sum()` is not implemented in this executor. '
-        'For a fake implementation of `federated_secure_sum` suitable for '
+        '`tff.federated_secure_sum_bitwidth()` is not implemented in this executor. '
+        'For a fake implementation of `federated_secure_sum_bitwidth` suitable for '
         'testing, consider using the test executor context by adding the '
         'following during initialization: '
         '`tff.backends.test.set_test_execution_context()`')

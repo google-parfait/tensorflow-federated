@@ -329,10 +329,10 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
-  def test_returns_trees_with_one_federated_secure_sum(self):
-    federated_secure_sum = compiler_test_utils.create_whimsy_called_federated_secure_sum(
+  def test_returns_trees_with_one_federated_secure_sum_bitwidth(self):
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     )
-    called_intrinsics = building_blocks.Struct([federated_secure_sum])
+    called_intrinsics = building_blocks.Struct([federated_secure_sum_bitwidth])
     comp = building_blocks.Lambda('a', tf.int32, called_intrinsics)
     uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
 
@@ -344,12 +344,12 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
-  def test_returns_trees_with_two_federated_secure_sums(self):
-    federated_secure_sum = compiler_test_utils.create_whimsy_called_federated_secure_sum(
+  def test_returns_trees_with_two_federated_secure_sum_bitwidths(self):
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     )
     called_intrinsics = building_blocks.Struct([
-        federated_secure_sum,
-        federated_secure_sum,
+        federated_secure_sum_bitwidth,
+        federated_secure_sum_bitwidth,
     ])
     comp = building_blocks.Lambda('a', tf.int32, called_intrinsics)
     uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
@@ -362,17 +362,17 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
-  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_aggregate_only(
+  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_bitwidth_for_federated_aggregate_only(
       self):
     federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = compiler_test_utils.create_whimsy_called_federated_secure_sum(
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     )
     called_intrinsics = building_blocks.Struct([
         federated_aggregate,
-        federated_secure_sum,
+        federated_secure_sum_bitwidth,
     ])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [intrinsic_defs.FEDERATED_AGGREGATE.uri]
@@ -385,17 +385,17 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
-  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_secure_sum_only(
+  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_bitwidth_for_federated_secure_sum_bitwidth_only(
       self):
     federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = compiler_test_utils.create_whimsy_called_federated_secure_sum(
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     )
     called_intrinsics = building_blocks.Struct([
         federated_aggregate,
-        federated_secure_sum,
+        federated_secure_sum_bitwidth,
     ])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
@@ -408,17 +408,17 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
-  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_aggregate_first(
+  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_bitwidth_for_federated_aggregate_first(
       self):
     federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = compiler_test_utils.create_whimsy_called_federated_secure_sum(
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     )
     called_intrinsics = building_blocks.Struct([
         federated_aggregate,
-        federated_secure_sum,
+        federated_secure_sum_bitwidth,
     ])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
@@ -434,17 +434,17 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
-  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_for_federated_secure_sum_first(
+  def test_returns_trees_with_one_federated_aggregate_and_one_federated_secure_sum_bitwidth_for_federated_secure_sum_bitwidth_first(
       self):
     federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = compiler_test_utils.create_whimsy_called_federated_secure_sum(
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     )
     called_intrinsics = building_blocks.Struct([
         federated_aggregate,
-        federated_secure_sum,
+        federated_secure_sum_bitwidth,
     ])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
@@ -460,18 +460,18 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
-  def test_returns_trees_with_two_federated_aggregates_and_one_federated_secure_sum(
+  def test_returns_trees_with_two_federated_aggregates_and_one_federated_secure_sum_bitwidth(
       self):
     federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = compiler_test_utils.create_whimsy_called_federated_secure_sum(
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     )
     called_intrinsics = building_blocks.Struct([
         federated_aggregate,
         federated_aggregate,
-        federated_secure_sum,
+        federated_secure_sum_bitwidth,
     ])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
@@ -487,18 +487,18 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
-  def test_returns_trees_with_one_federated_aggregate_and_two_federated_secure_sums(
+  def test_returns_trees_with_one_federated_aggregate_and_two_federated_secure_sum_bitwidths(
       self):
     federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = compiler_test_utils.create_whimsy_called_federated_secure_sum(
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     )
     called_intrinsics = building_blocks.Struct([
         federated_aggregate,
-        federated_secure_sum,
-        federated_secure_sum,
+        federated_secure_sum_bitwidth,
+        federated_secure_sum_bitwidth,
     ])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
@@ -514,17 +514,17 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
-  def test_returns_trees_with_two_federated_secure_sums_and_one_federated_aggregate(
+  def test_returns_trees_with_two_federated_secure_sum_bitwidths_and_one_federated_aggregate(
       self):
     federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = compiler_test_utils.create_whimsy_called_federated_secure_sum(
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     )
     called_intrinsics = building_blocks.Struct([
-        federated_secure_sum,
-        federated_secure_sum,
+        federated_secure_sum_bitwidth,
+        federated_secure_sum_bitwidth,
         federated_aggregate,
     ])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
@@ -541,16 +541,16 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     self.assertIsInstance(after, building_blocks.Lambda)
     self.assertFalse(tree_analysis.contains_called_intrinsic(after, uri))
 
-  def test_returns_trees_with_one_federated_secure_sum_and_two_federated_aggregates(
+  def test_returns_trees_with_one_federated_secure_sum_bitwidth_and_two_federated_aggregates(
       self):
     federated_aggregate = compiler_test_utils.create_whimsy_called_federated_aggregate(
         accumulate_parameter_name='a',
         merge_parameter_name='b',
         report_parameter_name='c')
-    federated_secure_sum = compiler_test_utils.create_whimsy_called_federated_secure_sum(
+    federated_secure_sum_bitwidth = compiler_test_utils.create_whimsy_called_federated_secure_sum_bitwidth(
     )
     called_intrinsics = building_blocks.Struct([
-        federated_secure_sum,
+        federated_secure_sum_bitwidth,
         federated_aggregate,
         federated_aggregate,
     ])

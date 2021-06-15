@@ -877,7 +877,7 @@ def create_federated_mean(
     return building_blocks.Call(intrinsic, value)
 
 
-def create_federated_secure_sum(
+def create_federated_secure_sum_bitwidth(
     value: building_blocks.ComputationBuildingBlock,
     bitwidth: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
   r"""Creates a called secure sum.
