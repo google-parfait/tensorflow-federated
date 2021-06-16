@@ -69,6 +69,7 @@ class StructTest(absltest.TestCase):
     self.assertNotEqual(x, structure.Struct([('foo', 10)]))
     self.assertEqual(structure.to_elements(x), v)
     self.assertEqual(structure.to_odict(x), collections.OrderedDict())
+    self.assertEqual(structure.to_odict_or_tuple(x), collections.OrderedDict())
     self.assertEqual(repr(x), 'Struct([])')
     self.assertEqual(str(x), '<>')
 
@@ -88,6 +89,7 @@ class StructTest(absltest.TestCase):
     self.assertEqual(structure.to_elements(x), v)
     self.assertEqual(repr(x), 'Struct([(None, 10)])')
     self.assertEqual(str(x), '<10>')
+    self.assertEqual(structure.to_odict_or_tuple(x), tuple([10]))
     with self.assertRaisesRegex(ValueError, 'unnamed'):
       structure.to_odict(x)
 
@@ -110,6 +112,7 @@ class StructTest(absltest.TestCase):
     self.assertEqual(repr(x), 'Struct([(\'foo\', 20)])')
     self.assertEqual(str(x), '<foo=20>')
     self.assertEqual(structure.to_odict(x), collections.OrderedDict(v))
+    self.assertEqual(structure.to_odict_or_tuple(x), collections.OrderedDict(v))
 
   def test_multiple_named_and_unnamed(self):
     v = [(None, 10), ('foo', 20), ('bar', 30)]
@@ -135,6 +138,8 @@ class StructTest(absltest.TestCase):
     self.assertEqual(str(x), '<10,foo=20,bar=30>')
     with self.assertRaisesRegex(ValueError, 'unnamed'):
       structure.to_odict(x)
+    with self.assertRaisesRegex(ValueError, 'named and unnamed'):
+      structure.to_odict_or_tuple(x)
 
   def test_bad_names(self):
     with self.assertRaisesRegex(ValueError, 'duplicated.*foo'):
@@ -551,6 +556,58 @@ class StructTest(absltest.TestCase):
       structure.update_struct([1, 2, 3], a=8)
     with self.assertRaisesRegex(KeyError, 'does not contain a field'):
       structure.update_struct({'z': 1}, a=8)
+
+  def test_to_ordered_dict_or_tuple(self):
+
+    def odict(**kwargs):
+      return collections.OrderedDict(sorted(list(kwargs.items())))
+
+    # Nested OrderedDicts.
+    s = odict(a=1, b=2, c=odict(d=3, e=odict(f=4, g=5)))
+    x = structure.from_container(s, recursive=True)
+    self.assertEqual(s, structure.to_odict_or_tuple(x))
+
+    # Single OrderedDict.
+    s = odict(a=1, b=2)
+    x = structure.from_container(s)
+    self.assertEqual(structure.to_odict_or_tuple(x), s)
+
+    # Single empty OrderedDict.
+    s = odict()
+    x = structure.from_container(s)
+    self.assertEqual(structure.to_odict_or_tuple(x), s)
+
+    # Nested tuples.
+    s = tuple([1, 2, tuple([3, tuple([4, 5])])])
+    x = structure.from_container(s, recursive=True)
+    self.assertEqual(s, structure.to_odict_or_tuple(x))
+
+    # Single tuple.
+    s = tuple([1, 2])
+    x = structure.from_container(s)
+    self.assertEqual(structure.to_odict_or_tuple(x), s)
+
+    # Struct from a single empty tuple should be converted to an empty
+    # OrderedDict.
+    s = tuple()
+    x = structure.from_container(s)
+    self.assertEqual(structure.to_odict_or_tuple(x), collections.OrderedDict())
+
+    # Mixed OrderedDicts and tuples.
+    s = odict(a=1, b=2, c=tuple([3, odict(d=4, e=5)]))
+    x = structure.from_container(s, recursive=True)
+    self.assertEqual(s, structure.to_odict_or_tuple(x))
+
+    # Mixed OrderedDicts and tuples with recursive=False.
+    s = odict(a=1, b=2, c=tuple([3, odict(d=4, e=5)]))
+    x = structure.from_container(s, recursive=False)
+    self.assertEqual(s, structure.to_odict_or_tuple(x, recursive=False))
+
+    # Struct with named and unnamed elements should raise error.
+    s = [(None, 10), ('foo', 20), ('bar', 30)]
+    x = structure.Struct(s)
+    with self.assertRaisesRegex(ValueError, 'named and unnamed'):
+      structure.to_odict_or_tuple(x)
 
 
 if __name__ == '__main__':

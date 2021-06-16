@@ -285,6 +285,42 @@ def to_odict(struct: Struct, recursive=False):
     return _to_odict(to_elements(struct))
 
 
+def to_odict_or_tuple(struct: Struct, recursive=True):
+  """Returns `struct` as an `OrderedDict` or `tuple`, if possible.
+
+  If all elements of `struct` have names, convert `struct` to an
+  `OrderedDict`. If no element has a name, convert `struct` to a `tuple`. If
+  `struct` has both named and unnamed elements, raise an error.
+
+  Args:
+    struct: A `Struct`.
+    recursive: Whether to convert nested `Struct`s recursively.
+
+  Raises:
+    ValueError: If `struct` (or any nested `Struct` when `recursive=True`)
+      contains both named and unnamed elements.
+  """
+  py_typecheck.check_type(struct, Struct)
+
+  def _to_odict_or_tuple(elements):
+    field_is_named = tuple(name is not None for name, _ in elements)
+    has_names = any(field_is_named)
+    is_all_named = all(field_is_named)
+    if is_all_named:
+      return collections.OrderedDict(elements)
+    elif not has_names:
+      return tuple(value for _, value in elements)
+    else:
+      raise ValueError(
+          'Cannot convert an `Struct` with both named and unnamed '
+          'entries to an OrderedDict or tuple: {!r}'.format(struct))
+
+  if recursive:
+    return to_container_recursive(struct, _to_odict_or_tuple)
+  else:
+    return _to_odict_or_tuple(to_elements(struct))
+
+
 def flatten(struct):
   """Returns a list of values in a possibly recursively nested `Struct`.
 
