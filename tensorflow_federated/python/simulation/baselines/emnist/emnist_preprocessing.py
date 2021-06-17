@@ -14,6 +14,7 @@
 """Preprocessing library for EMNIST prediction tasks."""
 
 import collections
+from typing import Optional
 
 import tensorflow as tf
 
@@ -36,22 +37,29 @@ def _reshape_for_autoencoder(element):
 def create_preprocess_fn(
     num_epochs: int,
     batch_size: int,
-    shuffle_buffer_size: int = MAX_CLIENT_DATASET_SIZE,
+    max_elements: Optional[int] = None,
+    shuffle_buffer_size: Optional[int] = None,
     emnist_task: str = 'digit_recognition',
     num_parallel_calls: tf.Tensor = tf.data.experimental.AUTOTUNE
 ) -> computation_base.Computation:
   """Creates a preprocessing function for EMNIST client datasets.
 
   The preprocessing shuffles, repeats, batches, and then reshapes, using
-  the `shuffle`, `repeat`, `batch`, and `map` attributes of a
+  the `shuffle`, `take`, `repeat`, `batch`, and `map` attributes of a
   `tf.data.Dataset`, in that order.
 
   Args:
     num_epochs: An integer representing the number of epochs to repeat the
       client datasets.
     batch_size: An integer representing the batch size on clients.
-    shuffle_buffer_size: An integer representing the shuffle buffer size on
-      clients. If set to a number <= 1, no shuffling occurs.
+    max_elements: An optional integer governing the maximum number of examples
+      used by each client. Must be `None` or a positive integer. If set to
+      `None`, all examples are used, otherwise a maximum of `max_elements` are
+      used for each client dataset.
+    shuffle_buffer_size: An optional integer representing the shuffle buffer
+      size on clients. Must be `None` or a positive integer. If set to `1`, no
+      shuffling occurs. If set to `None`, this will be set to `418`, the largest
+      number of elements in any EMNIST client dataset.
     emnist_task: A string indicating the EMNIST task being performed. Must be
       one of 'digit_recognition' or 'autoencoder'. If the former, then elements
       are mapped to tuples of the form (pixels, label), if the latter then
@@ -64,6 +72,18 @@ def create_preprocess_fn(
   """
   if num_epochs < 1:
     raise ValueError('num_epochs must be a positive integer.')
+  if batch_size < 1:
+    raise ValueError('batch_size must be a positive integer.')
+  if max_elements is not None and max_elements <= 0:
+    raise ValueError('max_elements must be `None` or a positive integer.')
+  if shuffle_buffer_size is not None and shuffle_buffer_size <= 0:
+    raise ValueError(
+        'shuffle_buffer_size must be `None` or a positive integer.')
+
+  if max_elements is None:
+    max_elements = -1
+  if shuffle_buffer_size is None:
+    shuffle_buffer_size = MAX_CLIENT_DATASET_SIZE
 
   if emnist_task == 'digit_recognition':
     mapping_fn = _reshape_for_digit_recognition
@@ -83,8 +103,9 @@ def create_preprocess_fn(
   def preprocess_fn(dataset):
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size)
-    return dataset.repeat(num_epochs).batch(
-        batch_size, drop_remainder=False).map(
-            mapping_fn, num_parallel_calls=num_parallel_calls)
+    dataset = dataset.take(max_elements)
+    dataset = dataset.repeat(num_epochs)
+    dataset = dataset.batch(batch_size, drop_remainder=False)
+    return dataset.map(mapping_fn, num_parallel_calls=num_parallel_calls)
 
   return preprocess_fn

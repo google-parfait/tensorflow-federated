@@ -21,6 +21,12 @@ py_library(
 )
 
 py_library(
+    name = "client_spec",
+    srcs = ["client_spec.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
     name = "task_data",
     srcs = ["task_data.py"],
     srcs_version = "PY3",
