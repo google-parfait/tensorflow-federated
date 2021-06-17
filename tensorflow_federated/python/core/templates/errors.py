@@ -31,3 +31,11 @@ class TemplateNotMeasuredProcessOutputError(TypeError):
 
 class TemplateNextFnNumArgsError(TypeError):
   """`TypeError` for `next_fn` not having expected number of input arguments."""
+
+
+class TemplateNotFederatedError(TypeError):
+  """`TypeError` for template functions not being federated."""
+
+
+class TemplatePlacementError(TypeError):
+  """`TypeError` for template types not being placed as expected."""
