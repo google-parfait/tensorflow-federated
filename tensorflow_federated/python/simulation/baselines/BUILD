@@ -1,3 +1,4 @@
+load("@pip//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package_group(
@@ -18,6 +19,13 @@ py_library(
     srcs = ["__init__.py"],
     srcs_version = "PY3",
     visibility = ["//tensorflow_federated/python/simulation:__pkg__"],
+)
+
+py_library(
+    name = "client_spec",
+    srcs = ["client_spec.py"],
+    srcs_version = "PY3",
+    deps = [requirement("attrs")],
 )
 
 py_library(

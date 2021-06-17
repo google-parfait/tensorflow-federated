@@ -3,7 +3,10 @@ load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 # Packages that have visibility into the `learning` package.
-package_group(name = "learning_visibility")
+package_group(
+    name = "learning_visibility",
+    packages = ["//tensorflow_federated/python/simulation/baselines/..."],
+)
 
 package_group(
     name = "default_visibility",

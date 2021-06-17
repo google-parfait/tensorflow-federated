@@ -5,7 +5,7 @@ package_group(
     includes = ["//tensorflow_federated/python/simulation:simulation_visibility"],
     packages = [
         # Subpackages
-        "//tensorflow_federated/python/simulation/baselines/emnist/...",
+        "//tensorflow_federated/python/simulation/baselines/...",
     ],
 )
 
@@ -59,6 +59,38 @@ py_test(
     deps = [
         ":emnist_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
+    name = "emnist_tasks",
+    srcs = ["emnist_tasks.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":emnist_models",
+        ":emnist_preprocessing",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//tensorflow_federated/python/simulation/baselines:task_data",
+        "//tensorflow_federated/python/simulation/datasets:emnist",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "emnist_tasks_test",
+    srcs = ["emnist_tasks_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":emnist_tasks",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//tensorflow_federated/python/simulation/baselines:task_data",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
