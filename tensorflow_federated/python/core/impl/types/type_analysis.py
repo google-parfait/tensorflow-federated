@@ -397,31 +397,28 @@ def check_is_structure_of_integers(type_spec):
             type_spec))
 
 
-def is_valid_bitwidth_type_for_value_type(
-    bitwidth_type: computation_types.Type,
-    value_type: computation_types.Type) -> bool:
-  """Whether or not `bitwidth_type` is a valid bitwidth type for `value_type`."""
+def is_single_integer_or_matches_structure(
+    type_sig: computation_types.Type,
+    shape_type: computation_types.Type) -> bool:
+  """If `type_sig` is an integer or integer structure matching `shape_type`."""
 
-  py_typecheck.check_type(bitwidth_type, computation_types.Type)
-  py_typecheck.check_type(value_type, computation_types.Type)
+  py_typecheck.check_type(type_sig, computation_types.Type)
+  py_typecheck.check_type(shape_type, computation_types.Type)
 
-  if bitwidth_type.is_tensor():
-    # This condition applies to both `value_type` being a tensor or structure,
+  if type_sig.is_tensor():
+    # This condition applies to both `shape_type` being a tensor or structure,
     # as the same integer bitwidth can be used for all values in the structure.
-    return bitwidth_type.dtype.is_integer and (
-        bitwidth_type.shape.num_elements() == 1)
-  elif value_type.is_struct() and bitwidth_type.is_struct():
-    bitwidth_name_and_types = list(structure.iter_elements(bitwidth_type))
-    value_name_and_types = list(structure.iter_elements(value_type))
-    if len(bitwidth_name_and_types) != len(value_name_and_types):
+    return type_sig.dtype.is_integer and (type_sig.shape.num_elements() == 1)
+  elif shape_type.is_struct() and type_sig.is_struct():
+    bitwidth_name_and_types = list(structure.iter_elements(type_sig))
+    shape_name_and_types = list(structure.iter_elements(shape_type))
+    if len(type_sig) != len(shape_name_and_types):
       return False
-    for (inner_bitwidth_name,
-         inner_bitwidth_type), (inner_value_name, inner_value_type) in zip(
-             bitwidth_name_and_types, value_name_and_types):
-      if inner_bitwidth_name != inner_value_name:
+    for (inner_name, type_sig), (inner_shape_name, inner_shape_type) in zip(
+        bitwidth_name_and_types, shape_name_and_types):
+      if inner_name != inner_shape_name:
         return False
-      if not is_valid_bitwidth_type_for_value_type(inner_bitwidth_type,
-                                                   inner_value_type):
+      if not is_single_integer_or_matches_structure(type_sig, inner_shape_type):
         return False
     return True
   else:

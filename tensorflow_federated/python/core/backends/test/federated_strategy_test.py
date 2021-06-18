@@ -50,7 +50,7 @@ def create_test_executor(
 
 def create_intrinsic_def_federated_secure_sum_bitwidth(value_type,
                                                        bitwidth_type):
-  value = intrinsic_defs.FEDERATED_SECURE_SUM
+  value = intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH
   type_signature = computation_types.FunctionType([
       computation_types.at_clients(value_type),
       bitwidth_type,

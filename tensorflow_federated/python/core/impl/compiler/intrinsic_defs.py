@@ -342,11 +342,27 @@ FEDERATED_MEAN = IntrinsicDef(
     aggregation_kind=AggregationKind.DEFAULT)
 
 # Computes the sum of client values on the server, securely. Only supported for
-# numeric types, or nested structures made up of numeric computation_types.
+# integers or nested structures of integers.
 #
-# Type signature: <{V}@CLIENTS,B> -> V@SERVER
+# Type signature: <{V}@CLIENTS,M> -> V@SERVER
 FEDERATED_SECURE_SUM = IntrinsicDef(
     'FEDERATED_SECURE_SUM',
+    'federated_secure_sum',
+    computation_types.FunctionType(
+        parameter=[
+            computation_types.at_clients(computation_types.AbstractType('V')),
+            computation_types.AbstractType('M'),
+        ],
+        result=computation_types.at_server(
+            computation_types.AbstractType('V'))),
+    aggregation_kind=AggregationKind.SECURE)
+
+# Computes the sum of client values on the server, securely. Only supported for
+# integers or nested structures of integers.
+#
+# Type signature: <{V}@CLIENTS,B> -> V@SERVER
+FEDERATED_SECURE_SUM_BITWIDTH = IntrinsicDef(
+    'FEDERATED_SECURE_SUM_BITWIDTH',
     'federated_secure_sum_bitwidth',
     computation_types.FunctionType(
         parameter=[

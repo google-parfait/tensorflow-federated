@@ -632,7 +632,7 @@ class ReferenceContext(context_base.Context):
             self._federated_map,
         intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri:
             self._federated_map_all_equal,
-        intrinsic_defs.FEDERATED_SECURE_SUM.uri:
+        intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri:
             self._federated_secure_sum_bitwidth,
         intrinsic_defs.FEDERATED_SUM.uri:
             self._federated_sum,

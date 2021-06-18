@@ -165,6 +165,62 @@ class FederatedSecureSumTest(IntrinsicTestBase):
 
   def test_type_signature_with_int(self):
     value = intrinsics.federated_value(1, placements.CLIENTS)
+    max_value = 1
+    result = intrinsics.federated_secure_sum(value, max_value)
+    self.assert_value(result, 'int32@SERVER')
+
+  def test_type_signature_with_structure_of_ints(self):
+    value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
+    max_value = [8, [4, 2]]
+    result = intrinsics.federated_secure_sum(value, max_value)
+    self.assert_value(result, '<int32,<int32,int32>>@SERVER')
+
+  def test_type_signature_with_structure_of_ints_scalar_max_value(self):
+    value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
+    max_value = 8
+    result = intrinsics.federated_secure_sum(value, max_value)
+    self.assert_value(result, '<int32,<int32,int32>>@SERVER')
+
+  def test_type_signature_with_one_tensor_and_max_value(self):
+    value = intrinsics.federated_value(
+        np.ndarray(shape=(5, 37), dtype=np.int16), placements.CLIENTS)
+    max_value = 2
+    result = intrinsics.federated_secure_sum(value, max_value)
+    self.assert_value(result, 'int16[5,37]@SERVER')
+
+  def test_type_signature_with_structure_of_tensors_and_max_values(self):
+    np_array = np.ndarray(shape=(5, 37), dtype=np.int16)
+    value = intrinsics.federated_value((np_array, np_array), placements.CLIENTS)
+    max_value = (2, 2)
+    result = intrinsics.federated_secure_sum(value, max_value)
+    self.assert_value(result, '<int16[5,37],int16[5,37]>@SERVER')
+
+  def test_raises_type_error_with_value_float(self):
+    value = intrinsics.federated_value(1.0, placements.CLIENTS)
+    max_value = intrinsics.federated_value(1, placements.SERVER)
+
+    with self.assertRaises(TypeError):
+      intrinsics.federated_secure_sum(value, max_value)
+
+  def test_raises_type_error_with_max_value_int_at_server(self):
+    value = intrinsics.federated_value(1, placements.CLIENTS)
+    max_value = intrinsics.federated_value(1, placements.SERVER)
+
+    with self.assertRaises(TypeError):
+      intrinsics.federated_secure_sum(value, max_value)
+
+  def test_raises_type_error_with_different_structures(self):
+    value = intrinsics.federated_value([1, [1, 1]], placements.CLIENTS)
+    max_value = [8, 4, 2]
+
+    with self.assertRaises(TypeError):
+      intrinsics.federated_secure_sum(value, max_value)
+
+
+class FederatedSecureSumBitwidthTest(IntrinsicTestBase):
+
+  def test_type_signature_with_int(self):
+    value = intrinsics.federated_value(1, placements.CLIENTS)
     bitwidth = 8
     result = intrinsics.federated_secure_sum_bitwidth(value, bitwidth)
     self.assert_value(result, 'int32@SERVER')
@@ -202,7 +258,7 @@ class FederatedSecureSumTest(IntrinsicTestBase):
     with self.assertRaises(TypeError):
       intrinsics.federated_secure_sum_bitwidth(value, bitwidth)
 
-  def test_raises_type_error_with_bitwith_int_at_server(self):
+  def test_raises_type_error_with_bitwidth_int_at_server(self):
     value = intrinsics.federated_value(1, placements.CLIENTS)
     bitwidth = intrinsics.federated_value(1, placements.SERVER)
 

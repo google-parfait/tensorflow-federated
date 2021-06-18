@@ -877,10 +877,45 @@ def create_federated_mean(
     return building_blocks.Call(intrinsic, value)
 
 
+def create_federated_secure_sum(
+    value: building_blocks.ComputationBuildingBlock,
+    max_input: building_blocks.ComputationBuildingBlock
+) -> building_blocks.Call:
+  r"""Creates a called secure sum.
+
+            Call
+           /    \
+  Intrinsic      [Comp, Comp]
+
+  Args:
+    value: A `building_blocks.ComputationBuildingBlock` to use as the value.
+    max_input: A `building_blocks.ComputationBuildingBlock` to use as the
+      `max_input` value.
+
+  Returns:
+    A `building_blocks.Call`.
+
+  Raises:
+    TypeError: If any of the types do not match.
+  """
+  py_typecheck.check_type(value, building_blocks.ComputationBuildingBlock)
+  py_typecheck.check_type(max_input, building_blocks.ComputationBuildingBlock)
+  result_type = computation_types.FederatedType(value.type_signature.member,
+                                                placements.SERVER)
+  intrinsic_type = computation_types.FunctionType([
+      type_conversions.type_to_non_all_equal(value.type_signature),
+      max_input.type_signature,
+  ], result_type)
+  intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+                                        intrinsic_type)
+  values = building_blocks.Struct([value, max_input])
+  return building_blocks.Call(intrinsic, values)
+
+
 def create_federated_secure_sum_bitwidth(
     value: building_blocks.ComputationBuildingBlock,
     bitwidth: building_blocks.ComputationBuildingBlock) -> building_blocks.Call:
-  r"""Creates a called secure sum.
+  r"""Creates a called secure sum using bitwidth.
 
             Call
            /    \
@@ -905,8 +940,8 @@ def create_federated_secure_sum_bitwidth(
       type_conversions.type_to_non_all_equal(value.type_signature),
       bitwidth.type_signature,
   ], result_type)
-  intrinsic = building_blocks.Intrinsic(intrinsic_defs.FEDERATED_SECURE_SUM.uri,
-                                        intrinsic_type)
+  intrinsic = building_blocks.Intrinsic(
+      intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri, intrinsic_type)
   values = building_blocks.Struct([value, bitwidth])
   return building_blocks.Call(intrinsic, values)
 

@@ -41,6 +41,10 @@ from tensorflow_federated.python.core.impl.federated_context.intrinsics import f
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_map
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_mean
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_secure_select
+# TODO(b/191188806): Make this public once it is fully supported by MRF and
+# the test runtime.
+# from tensorflow_federated.python.core.impl.
+# federated_context.intrinsics import federated_secure_sum
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_secure_sum_bitwidth
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_select
 from tensorflow_federated.python.core.impl.federated_context.intrinsics import federated_sum

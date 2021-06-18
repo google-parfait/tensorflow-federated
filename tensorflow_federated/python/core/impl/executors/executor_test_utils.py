@@ -327,7 +327,7 @@ def create_whimsy_intrinsic_def_federated_mean():
 
 
 def create_whimsy_intrinsic_def_federated_secure_sum_bitwidth():
-  value = intrinsic_defs.FEDERATED_SECURE_SUM
+  value = intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH
   type_signature = computation_types.FunctionType([
       computation_types.at_clients(tf.int32),
       tf.int32,

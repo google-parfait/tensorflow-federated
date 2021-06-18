@@ -388,7 +388,7 @@ def _split_ast_on_aggregate(bb):
   contains_federated_aggregate = tree_analysis.contains_called_intrinsic(
       bb, intrinsic_defs.FEDERATED_AGGREGATE.uri)
   contains_federated_secure_sum_bitwidth = tree_analysis.contains_called_intrinsic(
-      bb, intrinsic_defs.FEDERATED_SECURE_SUM.uri)
+      bb, intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri)
   if not (contains_federated_aggregate or
           contains_federated_secure_sum_bitwidth):
     raise ValueError(
@@ -400,7 +400,7 @@ def _split_ast_on_aggregate(bb):
         transformations.force_align_and_split_by_intrinsics(
             bb, [
                 intrinsic_defs.FEDERATED_AGGREGATE.uri,
-                intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+                intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
             ]))
   elif contains_federated_secure_sum_bitwidth:
     assert not contains_federated_aggregate
@@ -443,16 +443,16 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
 
   In the first AST, the second element returned by `Lambda`, `Comp`, is the
   result of the before aggregate returned by force aligning and splitting `tree`
-  by `intrinsic_defs.FEDERATED_SECURE_SUM.uri` and the first element returned by
-  `Lambda` is an empty structure that represents the argument to the federated
-  aggregate intrinsic. Therefore, the first AST has a type signature satisfying
-  the requirements of before aggregate.
+  by `intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri` and the first element
+  returned by `Lambda` is an empty structure that represents the argument to the
+  federated aggregate intrinsic. Therefore, the first AST has a type signature
+  satisfying the requirements of before aggregate.
 
   In the second AST, `Comp` is the after aggregate returned by force aligning
-  and splitting `tree` by intrinsic_defs.FEDERATED_SECURE_SUM.uri; `Lambda` has
-  a type signature satisfying the requirements of after aggregate; and the
-  argument passed to `Comp` is a selection from the parameter of `Lambda` which
-  intentionally drops `s3` on the floor.
+  and splitting `tree` by intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri;
+  `Lambda` has a type signature satisfying the requirements of after aggregate;
+  and the argument passed to `Comp` is a selection from the parameter of
+  `Lambda` which intentionally drops `s3` on the floor.
 
   This function is intended to be used by
   `get_map_reduce_form_for_iterative_process` to create before and after
@@ -475,7 +475,7 @@ def _create_before_and_after_aggregate_for_no_federated_aggregate(tree):
 
   before_aggregate, after_aggregate = (
       transformations.force_align_and_split_by_intrinsics(
-          tree, [intrinsic_defs.FEDERATED_SECURE_SUM.uri]))
+          tree, [intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri]))
 
   def _create_empty_function(type_elements):
     ref_name = next(name_generator)
@@ -557,10 +557,11 @@ def _create_before_and_after_aggregate_for_no_federated_secure_sum_bitwidth(
   This function is intended to be used by
   `get_map_reduce_form_for_iterative_process` to create before and after
   broadcast computations for the given `tree` when there is no
-  `intrinsic_defs.FEDERATED_SECURE_SUM` in `tree`. As a result, this function
-  does not assert that there is no `intrinsic_defs.FEDERATED_SECURE_SUM` in
-  `tree` and it does not assert that `tree` has the expected structure, the
-  caller is expected to perform these checks before calling this function.
+  `intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH` in `tree`. As a result, this
+  function does not assert that there is no
+  `intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH` in `tree` and it does not
+  assert that `tree` has the expected structure, the caller is expected to
+  perform these checks before calling this function.
 
   Args:
     tree: An instance of `building_blocks.ComputationBuildingBlock`.
