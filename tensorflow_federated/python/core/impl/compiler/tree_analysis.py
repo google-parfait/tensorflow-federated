@@ -165,7 +165,7 @@ def check_contains_only_reducible_intrinsics(comp):
       intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
       intrinsic_defs.FEDERATED_MAP.uri,
       intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
-      intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+      intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
       intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri,
       intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri,
       intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,

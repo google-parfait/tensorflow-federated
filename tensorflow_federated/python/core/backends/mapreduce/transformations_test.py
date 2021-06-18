@@ -334,7 +334,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     )
     called_intrinsics = building_blocks.Struct([federated_secure_sum_bitwidth])
     comp = building_blocks.Lambda('a', tf.int32, called_intrinsics)
-    uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
+    uri = [intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri]
 
     before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
@@ -352,7 +352,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         federated_secure_sum_bitwidth,
     ])
     comp = building_blocks.Lambda('a', tf.int32, called_intrinsics)
-    uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
+    uri = [intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri]
 
     before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
@@ -398,7 +398,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
         federated_secure_sum_bitwidth,
     ])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
-    uri = [intrinsic_defs.FEDERATED_SECURE_SUM.uri]
+    uri = [intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri]
 
     before, after = transformations.force_align_and_split_by_intrinsics(
         comp, uri)
@@ -423,7 +423,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
     ]
 
     before, after = transformations.force_align_and_split_by_intrinsics(
@@ -448,7 +448,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     ])
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
-        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
     ]
 
@@ -476,7 +476,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
     ]
 
     before, after = transformations.force_align_and_split_by_intrinsics(
@@ -503,7 +503,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
     ]
 
     before, after = transformations.force_align_and_split_by_intrinsics(
@@ -530,7 +530,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
     ]
 
     before, after = transformations.force_align_and_split_by_intrinsics(
@@ -557,7 +557,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
     ]
 
     before, after = transformations.force_align_and_split_by_intrinsics(
@@ -577,7 +577,7 @@ class ForceAlignAndSplitByIntrinsicTest(absltest.TestCase):
     comp = building_blocks.Lambda('d', tf.int32, called_intrinsics)
     uri = [
         intrinsic_defs.FEDERATED_AGGREGATE.uri,
-        intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+        intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
     ]
 
     with self.assertRaises(ValueError):

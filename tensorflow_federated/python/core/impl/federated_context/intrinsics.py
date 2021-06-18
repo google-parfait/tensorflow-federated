@@ -619,6 +619,75 @@ def _federated_select(client_keys, max_key, server_val, select_fn, secure):
   return value_impl.Value(comp)
 
 
+def federated_secure_sum(value, max_input):
+  """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
+
+  This function computes a sum such that it should not be possible for the
+  server to learn any clients individual value. The specific algorithm and
+  mechanism used to compute the secure sum may vary depending on the target
+  runtime environment the computation is compiled for or executed on. See
+  https://research.google/pubs/pub47246/ for more information.
+
+  Not all executors support `tff.federated_secure_sum()`; consult the
+  documentation for the specific executor or executor stack you plan on using
+  for the specific of how it's handled by that executor.
+
+  The `max_input` argument is the maximum value (inclusive) that may appear in
+  `value`. Lower values may allow for improved communication efficiency.
+  Attempting to return a `value` higher than `max_input` is invalid, and will
+  result in a failure at the given client.
+
+  Example:
+
+  ```python
+  value = tff.federated_value(1, tff.CLIENTS)
+  result = tff.federated_secure_sum(value, 1)
+
+  value = tff.federated_value((1, 2), tff.CLIENTS)
+  result = tff.federated_secure_sum(value, (1, 2))
+  ```
+
+  Note: To sum non-integer values or to sum integers with fewer constraints and
+  weaker privacy properties, consider using `federated_sum`.
+
+  Args:
+    value: An integer or nested structure of integers placed at `tff.CLIENTS`,
+      in the range `[0, max_input]`.
+    max_input: A Python integer or nested structure of integers matching the
+      structure of `value`. If integer `max_value` is used with a nested
+      `value`, the same integer is used for each tensor in `value`.
+
+  Returns:
+    A representation of the sum of the member constituents of `value` placed
+    on the `tff.SERVER`.
+
+  Raises:
+    TypeError: If the argument is not a federated TFF value placed at
+      `tff.CLIENTS`.
+  """
+  value = value_impl.to_value(value, None)
+  value = value_utils.ensure_federated_value(value, placements.CLIENTS,
+                                             'value to be summed')
+  type_analysis.check_is_structure_of_integers(value.type_signature)
+  max_input_value = value_impl.to_value(max_input, None)
+  value_member_type = value.type_signature.member
+  max_input_type = max_input_value.type_signature
+  if not type_analysis.is_single_integer_or_matches_structure(
+      max_input_type, value_member_type):
+    raise TypeError(
+        'Expected `federated_secure_sum` parameter `max_input` to match '
+        'the structure of `value`, with one integer max per tensor in '
+        '`value`. Found `value` of `{}` and `max_input` of `{}`.'.format(
+            value_member_type, max_input_type))
+  if max_input_type.is_tensor() and value_member_type.is_struct():
+    max_input_value = value_impl.to_value(
+        structure.map_structure(lambda _: max_input, value_member_type), None)
+  comp = building_block_factory.create_federated_secure_sum(
+      value.comp, max_input_value.comp)
+  comp = _bind_comp_as_reference(comp)
+  return value_impl.Value(comp)
+
+
 def federated_secure_sum_bitwidth(value, bitwidth):
   """Computes a sum at `tff.SERVER` of a `value` placed on the `tff.CLIENTS`.
 
@@ -675,7 +744,7 @@ def federated_secure_sum_bitwidth(value, bitwidth):
   bitwidth_value = value_impl.to_value(bitwidth, None)
   value_member_type = value.type_signature.member
   bitwidth_type = bitwidth_value.type_signature
-  if not type_analysis.is_valid_bitwidth_type_for_value_type(
+  if not type_analysis.is_single_integer_or_matches_structure(
       bitwidth_type, value_member_type):
     raise TypeError(
         'Expected `federated_secure_sum_bitwidth` parameter `bitwidth` to match '

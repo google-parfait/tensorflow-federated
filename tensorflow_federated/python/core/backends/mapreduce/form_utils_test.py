@@ -588,7 +588,7 @@ class CreateBeforeAndAfterAggregateForNoFederatedAggregateTest(
 
     before_federated_secure_sum_bitwidth, after_federated_secure_sum_bitwidth = (
         transformations.force_align_and_split_by_intrinsics(
-            next_tree, [intrinsic_defs.FEDERATED_SECURE_SUM.uri]))
+            next_tree, [intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri]))
     self.assertIsInstance(before_aggregate, building_blocks.Lambda)
     self.assertIsInstance(before_aggregate.result, building_blocks.Struct)
     self.assertLen(before_aggregate.result, 2)
@@ -756,7 +756,7 @@ class GetTypeInfoTest(test_case.TestCase):
         transformations.force_align_and_split_by_intrinsics(
             after_broadcast, [
                 intrinsic_defs.FEDERATED_AGGREGATE.uri,
-                intrinsic_defs.FEDERATED_SECURE_SUM.uri,
+                intrinsic_defs.FEDERATED_SECURE_SUM_BITWIDTH.uri,
             ]))
 
     type_info = form_utils._get_type_info(initialize_tree, before_broadcast,

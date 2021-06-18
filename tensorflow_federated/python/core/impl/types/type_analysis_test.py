@@ -340,7 +340,7 @@ class IsStructureOfIntegersTest(parameterized.TestCase):
     self.assertFalse(type_analysis.is_structure_of_integers(type_spec))
 
 
-class IsValidBitwidthTypeForValueType(parameterized.TestCase):
+class IsSingleIntegerOrMatchesStructure(parameterized.TestCase):
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -364,10 +364,10 @@ class IsValidBitwidthTypeForValueType(parameterized.TestCase):
        computation_types.StructType([tf.int32, tf.int32])),
   )
   # pyformat: enable
-  def test_returns_true(self, bitwidth_type, value_type):
+  def test_returns_true(self, type_sig, shape_type):
     self.assertTrue(
-        type_analysis.is_valid_bitwidth_type_for_value_type(
-            bitwidth_type, value_type))
+        type_analysis.is_single_integer_or_matches_structure(
+            type_sig, shape_type))
 
   # pyformat: disable
   @parameterized.named_parameters(
@@ -382,10 +382,10 @@ class IsValidBitwidthTypeForValueType(parameterized.TestCase):
        computation_types.StructType([('y', tf.int32)])),
   )
   # pyformat: enable
-  def test_returns_false(self, bitwidth_type, value_type):
+  def test_returns_false(self, type_sig, shape_type):
     self.assertFalse(
-        type_analysis.is_valid_bitwidth_type_for_value_type(
-            bitwidth_type, value_type))
+        type_analysis.is_single_integer_or_matches_structure(
+            type_sig, shape_type))
 
 
 class IsAnonTupleWithPyContainerTest(absltest.TestCase):
