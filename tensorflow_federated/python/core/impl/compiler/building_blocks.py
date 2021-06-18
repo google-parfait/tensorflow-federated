@@ -132,7 +132,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def check_reference(self):
     """Check that this is a 'Reference'."""
     if not self.is_reference():
-      UnexpectedBlockError(Reference, self)
+      raise UnexpectedBlockError(Reference, self)
 
   def is_reference(self):
     """Returns whether or not this block is a `Reference`."""
@@ -141,7 +141,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def check_selection(self):
     """Check that this is a 'Selection'."""
     if not self.is_selection():
-      UnexpectedBlockError(Selection, self)
+      raise UnexpectedBlockError(Selection, self)
 
   def is_selection(self):
     """Returns whether or not this block is a `Selection`."""
@@ -150,7 +150,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def check_struct(self):
     """Check that this is a `Struct`."""
     if not self.is_struct():
-      UnexpectedBlockError(Struct, self)
+      raise UnexpectedBlockError(Struct, self)
 
   def is_struct(self):
     """Returns whether or not this block is a `Struct`."""
@@ -159,7 +159,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def check_call(self):
     """Check that this is a 'Call'."""
     if not self.is_call():
-      UnexpectedBlockError(Call, self)
+      raise UnexpectedBlockError(Call, self)
 
   def is_call(self):
     """Returns whether or not this block is a `Call`."""
@@ -168,7 +168,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def check_lambda(self):
     """Check that this is a 'Lambda'."""
     if not self.is_lambda():
-      UnexpectedBlockError(Lambda, self)
+      raise UnexpectedBlockError(Lambda, self)
 
   def is_lambda(self):
     """Returns whether or not this block is a `Lambda`."""
@@ -177,7 +177,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def check_block(self):
     """Check that this is a 'Block'."""
     if not self.is_block():
-      UnexpectedBlockError(Block, self)
+      raise UnexpectedBlockError(Block, self)
 
   def is_block(self):
     """Returns whether or not this block is a `Block`."""
@@ -186,7 +186,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def check_intrinsic(self):
     """Check that this is an 'Intrinsic'."""
     if not self.is_intrinsic():
-      UnexpectedBlockError(Intrinsic, self)
+      raise UnexpectedBlockError(Intrinsic, self)
 
   def is_intrinsic(self):
     """Returns whether or not this block is an `Intrinsic`."""
@@ -195,7 +195,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def check_data(self):
     """Check that this is a 'Data'."""
     if not self.is_data():
-      UnexpectedBlockError(Data, self)
+      raise UnexpectedBlockError(Data, self)
 
   def is_data(self):
     """Returns whether or not this block is a `Data`."""
@@ -204,7 +204,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def check_compiled_computation(self):
     """Check that this is a 'CompiledComputation'."""
     if not self.is_compiled_computation():
-      UnexpectedBlockError(CompiledComputation, self)
+      raise UnexpectedBlockError(CompiledComputation, self)
 
   def is_compiled_computation(self):
     """Returns whether or not this block is a `CompiledComputation`."""
@@ -213,7 +213,7 @@ class ComputationBuildingBlock(typed_object.TypedObject, metaclass=abc.ABCMeta):
   def check_placement(self):
     """Check that this is a 'Placement'."""
     if not self.is_placement():
-      UnexpectedBlockError(Placement, self)
+      raise UnexpectedBlockError(Placement, self)
 
   def is_placement(self):
     """Returns whether or not this block is a `Placement`."""
