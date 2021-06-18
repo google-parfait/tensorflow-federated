@@ -25,6 +25,8 @@ from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.templates import measured_process
 from tensorflow_federated.python.learning import federated_evaluation
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
@@ -32,6 +34,14 @@ from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 from tensorflow_federated.python.learning.framework import encoding_utils
 from tensorflow_model_optimization.python.core.internal import tensor_encoding as te
+
+
+# Convenience aliases.
+FederatedType = computation_types.FederatedType
+FunctionType = computation_types.FunctionType
+SequenceType = computation_types.SequenceType
+StructType = computation_types.StructType
+TensorType = computation_types.TensorType
 
 
 class TestModel(model.Model):
@@ -156,8 +166,7 @@ def _model_fn_from_keras():
       keras_model,
       input_spec=collections.OrderedDict(
           x=tf.TensorSpec(shape=(None, 1), dtype=tf.float32),
-          y=tf.TensorSpec(shape=(None, 1), dtype=tf.float32),
-      ),
+          y=tf.TensorSpec(shape=(None, 1), dtype=tf.float32)),
       loss=tf.keras.losses.MeanSquaredError(),
       metrics=[tf.keras.metrics.Accuracy()])
 
@@ -203,8 +212,10 @@ def _build_expected_test_quant_model_eval_signature():
           collections.OrderedDict(
               temp=computation_types.TensorType(
                   shape=(None,), dtype=tf.float32))))
-  return_type = collections.OrderedDict(
-      num_same=computation_types.at_server(tf.float32))
+  return_type = computation_types.at_server(
+      collections.OrderedDict(
+          eval=collections.OrderedDict(num_same=tf.float32),
+          stat=collections.OrderedDict(num_examples=tf.int64)))
   return computation_types.FunctionType(
       parameter=collections.OrderedDict(
           server_model_weights=weights_parameter_type,
@@ -217,26 +228,42 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
   @test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation(self):
     evaluate = federated_evaluation.build_federated_evaluation(TestModel)
-    self.assertEqual(
-        str(evaluate.type_signature),
-        '(<server_model_weights=<trainable=<float32>,non_trainable=<>>@SERVER,'
-        'federated_dataset={<temp=float32[?]>*}@CLIENTS> -> '
-        '<num_over=float32@SERVER>)')
+    model_weights_type = model_utils.weights_type_from_model(TestModel)
+    self.assert_types_equivalent(
+        evaluate.type_signature,
+        FunctionType(
+            parameter=StructType([
+                ('server_model_weights',
+                 computation_types.at_server(model_weights_type)),
+                ('federated_dataset',
+                 computation_types.at_clients(
+                     SequenceType(
+                         StructType([
+                             ('temp',
+                              TensorType(dtype=tf.float32, shape=[None]))
+                         ])))),
+            ]),
+            result=computation_types.at_server(
+                collections.OrderedDict(
+                    eval=collections.OrderedDict(num_over=tf.float32),
+                    stat=collections.OrderedDict(num_examples=tf.int64)))))
 
     def _temp_dict(temps):
       return {'temp': np.array(temps, dtype=np.float32)}
 
     result = evaluate(
-        collections.OrderedDict([
-            ('trainable', [5.0]),
-            ('non_trainable', []),
-        ]), [
+        collections.OrderedDict(trainable=[5.0], non_trainable=[]), [
             [_temp_dict([1.0, 10.0, 2.0, 7.0]),
              _temp_dict([6.0, 11.0])],
             [_temp_dict([9.0, 12.0, 13.0])],
             [_temp_dict([1.0]), _temp_dict([22.0, 23.0])],
         ])
-    self.assertEqual(result, collections.OrderedDict(num_over=9.0))
+    self.assertEqual(
+        result,
+        collections.OrderedDict(
+            eval=collections.OrderedDict(num_over=9.0),
+            stat=collections.OrderedDict(num_examples=12),
+        ))
 
   @test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_quantized_conservatively(self):
@@ -257,24 +284,26 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
       return {'temp': np.array(temps, dtype=np.float32)}
 
     result = evaluate(
-        collections.OrderedDict([
-            ('trainable', [[5.0, 10.0, 5.0, 7.0]]),
-            ('non_trainable', []),
-        ]), [
-            [
-                _temp_dict([1.0, 10.0, 2.0, 7.0]),
-                _temp_dict([6.0, 11.0, 5.0, 8.0])
-            ],
-            [_temp_dict([9.0, 12.0, 13.0, 7.0])],
-            [
-                _temp_dict([1.0, 22.0, 23.0, 24.0]),
-                _temp_dict([5.0, 10.0, 5.0, 7.0])
-            ],
-        ])
+        collections.OrderedDict(
+            trainable=[[5.0, 10.0, 5.0, 7.0]], non_trainable=[]), [
+                [
+                    _temp_dict([1.0, 10.0, 2.0, 7.0]),
+                    _temp_dict([6.0, 11.0, 5.0, 8.0])
+                ],
+                [_temp_dict([9.0, 12.0, 13.0, 7.0])],
+                [
+                    _temp_dict([1.0, 22.0, 23.0, 24.0]),
+                    _temp_dict([5.0, 10.0, 5.0, 7.0])
+                ],
+            ])
     # This conservative quantization should not be too lossy.
     # When comparing the data examples to trainable, there are 8 times
     # where the index and value match.
-    self.assertEqual(result, collections.OrderedDict(num_same=8.0))
+    self.assertEqual(
+        result,
+        collections.OrderedDict(
+            eval=collections.OrderedDict(num_same=8.0),
+            stat=collections.OrderedDict(num_examples=20)))
 
   @test_utils.skip_test_for_multi_gpu
   def test_federated_evaluation_quantized_aggressively(self):
@@ -295,25 +324,55 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
       return {'temp': np.array(temps, dtype=np.float32)}
 
     result = evaluate(
-        collections.OrderedDict([
-            ('trainable', [[5.0, 10.0, 5.0, 7.0]]),
-            ('non_trainable', []),
-        ]), [
-            [
-                _temp_dict([1.0, 10.0, 2.0, 7.0]),
-                _temp_dict([6.0, 11.0, 5.0, 8.0])
-            ],
-            [_temp_dict([9.0, 12.0, 13.0, 7.0])],
-            [
-                _temp_dict([1.0, 22.0, 23.0, 24.0]),
-                _temp_dict([5.0, 10.0, 5.0, 7.0])
-            ],
-        ])
+        collections.OrderedDict(
+            trainable=[[5.0, 10.0, 5.0, 7.0]], non_trainable=[]), [
+                [
+                    _temp_dict([1.0, 10.0, 2.0, 7.0]),
+                    _temp_dict([6.0, 11.0, 5.0, 8.0])
+                ],
+                [_temp_dict([9.0, 12.0, 13.0, 7.0])],
+                [
+                    _temp_dict([1.0, 22.0, 23.0, 24.0]),
+                    _temp_dict([5.0, 10.0, 5.0, 7.0])
+                ],
+            ])
     # This very aggressive quantization should be so lossy that some of the
     # data is changed during encoding so the number that are equal between
     # the original and the final result should not be 8 as it is in the
     # conservative quantization test above.
-    self.assertLess(result['num_same'], 8.0)
+    self.assertContainsSubset(result.keys(), ['eval', 'stat'])
+    self.assertContainsSubset(result['eval'].keys(), ['num_same'])
+    self.assertLess(result['eval']['num_same'], 8.0)
+    self.assertContainsSubset(result['stat'].keys(), ['num_examples'])
+    self.assertEqual(result['stat']['num_examples'], 20)
+
+  @test_utils.skip_test_for_multi_gpu
+  def test_federated_evaluation_fails_stateful_broadcast(self):
+    # Create a test stateful measured process that doesn't do anything useful.
+
+    @computations.federated_computation
+    def init_fn():
+      return intrinsics.federated_eval(
+          computations.tf_computation(
+              lambda: tf.zeros(shape=[], dtype=tf.float32)), placements.SERVER)
+
+    @computations.federated_computation(
+        computation_types.at_server(tf.float32),
+        computation_types.at_clients(tf.int32))
+    def next_fn(state, value):
+      return measured_process.MeasuredProcessOutput(state, value, state)
+
+    broadcaster = measured_process.MeasuredProcess(init_fn, next_fn)
+    with self.assertRaisesRegex(ValueError, 'stateful broadcast'):
+      federated_evaluation.build_federated_evaluation(
+          TestModelQuant, broadcast_process=broadcaster)
+
+  @test_utils.skip_test_for_multi_gpu
+  def test_federated_evaluation_fails_non_measured_process_broadcast(self):
+    broadcaster = computations.tf_computation(lambda x: x)
+    with self.assertRaisesRegex(ValueError, '`MeasuredProcess`'):
+      federated_evaluation.build_federated_evaluation(
+          TestModelQuant, broadcast_process=broadcaster)
 
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))
@@ -327,10 +386,9 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
         model_utils.ModelWeights.from_model(_model_fn_from_keras()))
 
     def _input_dict(temps):
-      return collections.OrderedDict([
-          ('x', np.reshape(np.array(temps, dtype=np.float32), (-1, 1))),
-          ('y', np.reshape(np.array(temps, dtype=np.float32), (-1, 1))),
-      ])
+      return collections.OrderedDict(
+          x=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)),
+          y=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)))
 
     result = evaluate_comp(
         initial_weights,
@@ -339,8 +397,11 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
          [_input_dict([1.0]), _input_dict([22.0, 23.0])]])
     # Expect 100% accuracy and no loss because we've constructed the identity
     # function and have the same x's and y's for training data.
-    self.assertDictEqual(result,
-                         collections.OrderedDict(accuracy=1.0, loss=0.0))
+    self.assertDictEqual(
+        result,
+        collections.OrderedDict(
+            eval=collections.OrderedDict(accuracy=1.0, loss=0.0),
+            stat=collections.OrderedDict(num_examples=12)))
 
   @parameterized.named_parameters(('non-simulation', False),
                                   ('simulation', True))
@@ -357,10 +418,9 @@ class FederatedEvaluationTest(test_case.TestCase, parameterized.TestCase):
         model_utils.ModelWeights.from_model(_model_fn_from_keras()))
 
     def _input_dict(temps):
-      return collections.OrderedDict([
-          ('x', np.reshape(np.array(temps, dtype=np.float32), (-1, 1))),
-          ('y', np.reshape(np.array(temps, dtype=np.float32), (-1, 1))),
-      ])
+      return collections.OrderedDict(
+          x=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)),
+          y=np.reshape(np.array(temps, dtype=np.float32), (-1, 1)))
 
     evaluate_comp(
         initial_weights,

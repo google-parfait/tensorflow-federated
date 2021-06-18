@@ -14,23 +14,40 @@
 """A simple implementation of federated evaluation."""
 
 import collections
-from typing import Optional
+from typing import Callable, Optional
 
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
-from tensorflow_federated.python.core.impl.types import placements
+from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.templates import measured_process
+from tensorflow_federated.python.learning import model as model_lib
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
 
 
+# Convenience aliases.
+SequenceType = computation_types.SequenceType
+
+
+def _is_stateful(process: measured_process.MeasuredProcess) -> bool:
+  """Determine if a MeasuredProcess has a non-empty state."""
+
+  def federated_empty_struct(type_spec: computation_types.Type) -> bool:
+    return type_spec.is_struct() or type_spec.is_federated()
+
+  return not type_analysis.contains_only(
+      process.initialize.type_signature.result, federated_empty_struct)
+
+
 def build_federated_evaluation(
-    model_fn,
+    model_fn: Callable[[], model_lib.Model],
     broadcast_process: Optional[measured_process.MeasuredProcess] = None,
-    use_experimental_simulation_loop: bool = False):
+    use_experimental_simulation_loop: bool = False,
+) -> computation_base.Computation:
   """Builds the TFF computation for federated evaluation of the given model.
 
   Args:
@@ -40,7 +57,7 @@ def build_federated_evaluation(
       the same pre-constructed model each call will result in an error.
     broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
-      `(input_values@SERVER -> output_values@CLIENT)` and have empty state. If
+      `(input_values@SERVER -> output_values@CLIENTS)` and have empty state. If
       set to default None, the server model is broadcast to the clients using
       the default tff.federated_broadcast.
     use_experimental_simulation_loop: Controls the reduce loop function for
@@ -51,6 +68,15 @@ def build_federated_evaluation(
     model parameters and federated data, and returns the evaluation metrics
     as aggregated by `tff.learning.Model.federated_output_computation`.
   """
+  if broadcast_process is not None:
+    if not isinstance(broadcast_process, measured_process.MeasuredProcess):
+      raise ValueError('`broadcast_process` must be a `MeasuredProcess`, got '
+                       f'{type(broadcast_process)}.')
+    if _is_stateful(broadcast_process):
+      raise ValueError(
+          'Cannot create a federated evaluation with a stateful '
+          'broadcast process, must be stateless, has state: '
+          f'{broadcast_process.initialize.type_signature.result!r}')
   # Construct the model first just to obtain the metadata and define all the
   # types needed to define the computations that follow.
   # TODO(b/124477628): Ideally replace the need for stamping throwaway models
@@ -60,8 +86,7 @@ def build_federated_evaluation(
     model_weights_type = model_utils.weights_type_from_model(model)
     batch_type = computation_types.to_type(model.input_spec)
 
-  @computations.tf_computation(model_weights_type,
-                               computation_types.SequenceType(batch_type))
+  @computations.tf_computation(model_weights_type, SequenceType(batch_type))
   @tf.function
   def client_eval(incoming_model_weights, dataset):
     """Returns local outputs after evaluting `model_weights` on `dataset`."""
@@ -71,25 +96,30 @@ def build_federated_evaluation(
     tf.nest.map_structure(lambda v, t: v.assign(t), model_weights,
                           incoming_model_weights)
 
-    def reduce_fn(prev_loss, batch):
+    def reduce_fn(num_examples, batch):
       model_output = model.forward_pass(batch, training=False)
-      return prev_loss + tf.cast(model_output.loss, tf.float64)
+      if model_output.num_examples is None:
+        # Compute shape from the size of the predictions if model didn't use the
+        # batch size.
+        return num_examples + tf.shape(
+            model_output.predictions, out_type=tf.int64)[0]
+      else:
+        return num_examples + tf.cast(model_output.num_examples, tf.int64)
 
     dataset_reduce_fn = dataset_reduce.build_dataset_reduce_fn(
         use_experimental_simulation_loop)
-    dataset_reduce_fn(
+    num_examples = dataset_reduce_fn(
         reduce_fn=reduce_fn,
         dataset=dataset,
-        initial_state_fn=lambda: tf.constant(0, dtype=tf.float64))
-    return collections.OrderedDict(local_outputs=model.report_local_outputs())
+        initial_state_fn=lambda: tf.zeros([], dtype=tf.int64))
+    return collections.OrderedDict(
+        local_outputs=model.report_local_outputs(), num_examples=num_examples)
 
   @computations.federated_computation(
-      computation_types.FederatedType(model_weights_type, placements.SERVER),
-      computation_types.FederatedType(
-          computation_types.SequenceType(batch_type), placements.CLIENTS))
+      computation_types.at_server(model_weights_type),
+      computation_types.at_clients(SequenceType(batch_type)))
   def server_eval(server_model_weights, federated_dataset):
     if broadcast_process is not None:
-      # TODO(b/179091838): Confirm that the process has no state.
       # TODO(b/179091838): Zip the measurements from the broadcast_process with
       # the result of `model.federated_output_computation` below to avoid
       # dropping these metrics.
@@ -102,6 +132,11 @@ def build_federated_evaluation(
           intrinsics.federated_broadcast(server_model_weights),
           federated_dataset
       ])
-    return model.federated_output_computation(client_outputs.local_outputs)
+    model_metrics = model.federated_output_computation(
+        client_outputs.local_outputs)
+    statistics = collections.OrderedDict(
+        num_examples=intrinsics.federated_sum(client_outputs.num_examples))
+    return intrinsics.federated_zip(
+        collections.OrderedDict(eval=model_metrics, stat=statistics))
 
   return server_eval
