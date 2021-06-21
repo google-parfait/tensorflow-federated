@@ -47,6 +47,38 @@ py_test(
 )
 
 py_library(
+    name = "cifar100_tasks",
+    srcs = ["cifar100_tasks.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":cifar_preprocessing",
+        ":resnet_models",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "//tensorflow_federated/python/simulation/baselines:task_data",
+        "//tensorflow_federated/python/simulation/datasets:cifar100",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_test(
+    name = "cifar100_tasks_test",
+    srcs = ["cifar100_tasks_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":cifar100_tasks",
+        "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "resnet_models",
     srcs = ["resnet_models.py"],
     srcs_version = "PY3",

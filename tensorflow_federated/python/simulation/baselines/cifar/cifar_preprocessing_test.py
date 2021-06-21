@@ -34,10 +34,39 @@ def _compute_length_of_dataset(ds):
 
 class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_preprocess_fn_with_negative_epochs_raises(self):
+  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
+                                  ('negative_value2', -2))
+  def test_preprocess_fn_with_nonpositive_epochs_raises(self, num_epochs):
     with self.assertRaisesRegex(ValueError,
                                 'num_epochs must be a positive integer'):
-      cifar_preprocessing.create_preprocess_fn(num_epochs=-2, batch_size=1)
+      cifar_preprocessing.create_preprocess_fn(
+          num_epochs=num_epochs, batch_size=1)
+
+  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
+                                  ('negative_value2', -2))
+  def test_preprocess_fn_with_nonpositive_batch_size_raises(self, batch_size):
+    with self.assertRaisesRegex(ValueError,
+                                'batch_size must be a positive integer'):
+      cifar_preprocessing.create_preprocess_fn(
+          num_epochs=1, batch_size=batch_size)
+
+  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
+                                  ('negative_value2', -2))
+  def test_preprocess_fn_with_nonpositive_max_elements_raises(
+      self, max_elements):
+    with self.assertRaisesRegex(
+        ValueError, 'max_elements must be `None` or a positive integer'):
+      cifar_preprocessing.create_preprocess_fn(
+          num_epochs=1, batch_size=1, max_elements=max_elements)
+
+  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
+                                  ('negative_value2', -2))
+  def test_preprocess_fn_with_nonpositive_shuffle_buffer_raises(
+      self, shuffle_buffer_size):
+    with self.assertRaisesRegex(
+        ValueError, 'shuffle_buffer_size must be `None` or a positive integer'):
+      cifar_preprocessing.create_preprocess_fn(
+          num_epochs=1, batch_size=1, shuffle_buffer_size=shuffle_buffer_size)
 
   def test_raises_non_iterable_crop(self):
     with self.assertRaisesRegex(TypeError, 'crop_shape must be an iterable'):
@@ -110,6 +139,23 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(cropped_example[0].shape, crop_shape)
     self.assertAllClose(x, cropped_example[0], rtol=1e-03)
     self.assertEqual(cropped_example[1], 0)
+
+  @parameterized.named_parameters(
+      ('max_elements1', 1),
+      ('max_elements3', 3),
+      ('max_elements7', 7),
+      ('max_elements11', 11),
+      ('max_elements18', 18),
+  )
+  def test_ds_length_with_max_elements(self, max_elements):
+    repeat_size = 10
+    ds = tf.data.Dataset.from_tensor_slices(TEST_DATA).repeat(repeat_size)
+    preprocess_fn = cifar_preprocessing.create_preprocess_fn(
+        num_epochs=1, batch_size=1, max_elements=max_elements)
+    preprocessed_ds = preprocess_fn(ds)
+    self.assertEqual(
+        _compute_length_of_dataset(preprocessed_ds),
+        min(repeat_size, max_elements))
 
 
 if __name__ == '__main__':
