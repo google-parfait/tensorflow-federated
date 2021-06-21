@@ -73,6 +73,7 @@ py_library(
         ":emnist_preprocessing",
         "//tensorflow_federated/python/learning:keras_utils",
         "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "//tensorflow_federated/python/simulation/baselines:task_data",
         "//tensorflow_federated/python/simulation/datasets:emnist",
@@ -88,9 +89,8 @@ py_test(
     deps = [
         ":emnist_tasks",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
-        "//tensorflow_federated/python/learning:model",
+        "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
-        "//tensorflow_federated/python/simulation/baselines:task_data",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],

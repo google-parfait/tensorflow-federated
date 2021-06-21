@@ -20,6 +20,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.learning import keras_utils
 from tensorflow_federated.python.learning import model
+from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
 from tensorflow_federated.python.simulation.baselines.emnist import emnist_models
@@ -88,8 +89,7 @@ def create_digit_recognition_task(
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
     model_id: Union[str, DigitRecognitionModel] = 'cnn_dropout',
     only_digits: bool = False,
-    use_synthetic_data: bool = False
-) -> Tuple[task_data.BaselineTaskDatasets, _ModelFn]:
+    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
   """Creates a baseline task for digit recognition on EMNIST.
 
   The goal of the task is to minimize the sparse categorical crossentropy
@@ -130,8 +130,7 @@ def create_digit_recognition_task(
       avoid downloading the entire EMNIST dataset.
 
   Returns:
-    A `tff.simulation.baselines.BaselineTaskDatasets` and a no-arg callable
-      returning a `tff.learning.Model`.
+    A `tff.simulation.baselines.BaselineTask`.
   """
   if use_synthetic_data:
     synthetic_data = emnist.get_synthetic()
@@ -163,15 +162,14 @@ def create_digit_recognition_task(
         input_spec=task_datasets.element_type_structure,
         metrics=metrics)
 
-  return task_datasets, model_fn
+  return baseline_task.BaselineTask(task_datasets, model_fn)
 
 
 def create_autoencoder_task(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
     only_digits: bool = False,
-    use_synthetic_data: bool = False
-) -> Tuple[task_data.BaselineTaskDatasets, _ModelFn]:
+    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
   """Creates a baseline task for autoencoding on EMNIST.
 
   This task involves performing autoencoding on the EMNIST dataset using a
@@ -198,8 +196,7 @@ def create_autoencoder_task(
       avoid downloading the entire EMNIST dataset.
 
   Returns:
-    A `tff.simulation.baselines.BaselineTaskDatasets` and a no-arg callable
-      returning a `tff.learning.Model`.
+    A `tff.simulation.baselines.BaselineTask`.
   """
   if use_synthetic_data:
     synthetic_data = emnist.get_synthetic()
@@ -234,4 +231,4 @@ def create_autoencoder_task(
         input_spec=task_datasets.element_type_structure,
         metrics=metrics)
 
-  return task_datasets, model_fn
+  return baseline_task.BaselineTask(task_datasets, model_fn)
