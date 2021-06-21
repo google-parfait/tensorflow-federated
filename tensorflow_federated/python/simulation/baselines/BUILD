@@ -55,6 +55,24 @@ py_library(
 )
 
 py_library(
+    name = "keras_metrics",
+    srcs = ["keras_metrics.py"],
+    srcs_version = "PY3",
+    deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
+)
+
+py_test(
+    name = "keras_metrics_test",
+    srcs = ["keras_metrics_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":keras_metrics",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
+)
+
+py_library(
     name = "task_data",
     srcs = ["task_data.py"],
     srcs_version = "PY3",
