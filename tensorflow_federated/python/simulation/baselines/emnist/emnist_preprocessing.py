@@ -45,7 +45,7 @@ def create_preprocess_fn(
   """Creates a preprocessing function for EMNIST client datasets.
 
   The preprocessing shuffles, repeats, batches, and then reshapes, using
-  the `shuffle`, `take`, `repeat`, `batch`, and `map` attributes of a
+  the `shuffle`, `repeat`, `take`, `batch`, and `map` attributes of a
   `tf.data.Dataset`, in that order.
 
   Args:
@@ -103,8 +103,8 @@ def create_preprocess_fn(
   def preprocess_fn(dataset):
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size)
-    dataset = dataset.take(max_elements)
     dataset = dataset.repeat(num_epochs)
+    dataset = dataset.take(max_elements)
     dataset = dataset.batch(batch_size, drop_remainder=False)
     return dataset.map(mapping_fn, num_parallel_calls=num_parallel_calls)
 
