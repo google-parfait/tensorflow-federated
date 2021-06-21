@@ -21,6 +21,29 @@ py_library(
 )
 
 py_library(
+    name = "baseline_task",
+    srcs = ["baseline_task.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":task_data",
+        "//tensorflow_federated/python/learning:model",
+    ],
+)
+
+py_test(
+    name = "baseline_task_test",
+    srcs = ["baseline_task_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":baseline_task",
+        ":task_data",
+        "//tensorflow_federated/python/learning:keras_utils",
+        "//tensorflow_federated/python/simulation/datasets:client_data",
+    ],
+)
+
+py_library(
     name = "client_spec",
     srcs = ["client_spec.py"],
     srcs_version = "PY3",
