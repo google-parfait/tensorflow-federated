@@ -14,7 +14,7 @@
 """Preprocessing library for CIFAR-100 classification tasks."""
 
 import collections
-from typing import Callable, Sequence, Tuple, Union
+from typing import Callable, Optional, Sequence, Tuple, Union
 
 import tensorflow as tf
 
@@ -76,19 +76,32 @@ def build_image_map(
 def create_preprocess_fn(
     num_epochs: int,
     batch_size: int,
-    shuffle_buffer_size: int = NUM_EXAMPLES_PER_CLIENT,
+    max_elements: Optional[int] = None,
+    shuffle_buffer_size: Optional[int] = None,
     crop_shape: Tuple[int, int, int] = CIFAR_SHAPE,
     distort_image=False,
     num_parallel_calls: int = tf.data.experimental.AUTOTUNE
 ) -> computation_base.Computation:
   """Creates a preprocessing function for CIFAR-100 client datasets.
 
+  The preprocessing shuffles, repeats, batches, and then reshapes, using
+  the `shuffle`, `take`, `repeat`, `map`, and `batch` attributes of a
+  `tf.data.Dataset`, in that order. The `map` function involves cropping
+  images to the size `crop_shape`.
+
   Args:
     num_epochs: An integer representing the number of epochs to repeat the
       client datasets.
     batch_size: An integer representing the batch size on clients.
-    shuffle_buffer_size: An integer representing the shuffle buffer size on
-      clients. If set to a number <= 1, no shuffling occurs.
+    max_elements: An optional integer governing the maximum number of examples
+      used by each client. Must be `None` or a positive integer. If set to
+      `None`, all examples are used, otherwise a maximum of `max_elements` are
+      used for each client dataset.
+    shuffle_buffer_size: An optional integer representing the shuffle buffer
+      size on clients. Must be `None` or a positive integer. If set to `1`, no
+      shuffling occurs. If set to `None`, this will be set to `100`, the number
+      of elements in each client's dataset in
+      `tff.simulation.datasets.cifar100`.
     crop_shape: A tuple (crop_height, crop_width, num_channels) specifying the
       desired crop shape for pre-processing. This tuple cannot have elements
       exceeding (32, 32, 3), element-wise. The element in the last index should
@@ -108,12 +121,24 @@ def create_preprocess_fn(
   """
   if num_epochs < 1:
     raise ValueError('num_epochs must be a positive integer.')
+  if batch_size < 1:
+    raise ValueError('batch_size must be a positive integer.')
+  if max_elements is not None and max_elements <= 0:
+    raise ValueError('max_elements must be `None` or a positive integer.')
+  if shuffle_buffer_size is not None and shuffle_buffer_size <= 0:
+    raise ValueError(
+        'shuffle_buffer_size must be `None` or a positive integer.')
   if not isinstance(crop_shape, collections.abc.Iterable):
     raise TypeError('Argument crop_shape must be an iterable.')
   crop_shape = tuple(crop_shape)
   if len(crop_shape) != 3:
     raise ValueError('The crop_shape must have length 3, corresponding to a '
                      'tensor of shape [height, width, channels].')
+
+  if max_elements is None:
+    max_elements = -1
+  if shuffle_buffer_size is None:
+    shuffle_buffer_size = NUM_EXAMPLES_PER_CLIENT
 
   # Features are intentionally sorted lexicographically by key for consistency
   # across datasets.
@@ -128,12 +153,12 @@ def create_preprocess_fn(
   def preprocess_fn(dataset):
     if shuffle_buffer_size > 1:
       dataset = dataset.shuffle(shuffle_buffer_size)
-    return (
-        dataset.repeat(num_epochs)
-        # We map before batching to ensure that the cropping occurs
-        # at an image level (eg. we do not perform the same crop on
-        # every image within a batch)
-        .map(image_map_fn,
-             num_parallel_calls=num_parallel_calls).batch(batch_size))
+    dataset = dataset.repeat(num_epochs)
+    dataset = dataset.take(max_elements)
+    # We map before batching to ensure that the cropping occurs
+    # at an image level (eg. we do not perform the same crop on
+    # every image within a batch)
+    dataset = dataset.map(image_map_fn, num_parallel_calls=num_parallel_calls)
+    return dataset.batch(batch_size)
 
   return preprocess_fn
