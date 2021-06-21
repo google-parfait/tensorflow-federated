@@ -50,6 +50,20 @@ py_library(
 )
 
 py_library(
+    name = "keras_metrics",
+    srcs = ["keras_metrics.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "keras_metrics_test",
+    srcs = ["keras_metrics_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":keras_metrics"],
+)
+
+py_library(
     name = "task_data",
     srcs = ["task_data.py"],
     srcs_version = "PY3",
