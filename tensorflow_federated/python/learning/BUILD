@@ -234,6 +234,7 @@ py_library(
     name = "model",
     srcs = ["model.py"],
     srcs_version = "PY3",
+    deps = ["//tensorflow_federated/python/core/api:computation_base"],
 )
 
 py_library(

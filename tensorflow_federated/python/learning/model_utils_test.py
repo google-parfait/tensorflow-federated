@@ -102,8 +102,14 @@ class TestModel(model_lib.Model):
         computation_types.TensorSpec(tf.float32, [1]),
     ))
 
-  def forward_pass(self, batch_input, training=True):
+  def predict_on_batch(self, batch_input, training=True):
+    del training  # Unused.
+    del batch_input  # Unused.
     return 1.0
+
+  def forward_pass(self, batch_input, training=True):
+    return model_lib.BatchOutput(
+        loss=0.0, predictions=self.predict_on_batch, num_examples=0)
 
   def report_local_outputs(self):
     return [self.num_examples.read_value()]

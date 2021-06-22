@@ -66,12 +66,12 @@ class LinearRegression(model.Model):
     return self._input_spec
 
   @tf.function
-  def _predict(self, x):
+  def predict_on_batch(self, x, training=True):
+    del training  # Unused.
     return tf.matmul(x, self._a) + self._b + self._c
 
   @tf.function
   def forward_pass(self, batch, training=True):
-    del training  # Unused.
     if isinstance(batch, dict):
       batch = self.make_batch(**batch)
     if not self._input_spec.y.is_compatible_with(batch.y):
@@ -80,7 +80,7 @@ class LinearRegression(model.Model):
     if not self._input_spec.x.is_compatible_with(batch.x):
       raise ValueError('Expected batch.x to be compatible with '
                        '{} but found {}'.format(self._input_spec.x, batch.x))
-    predictions = self._predict(batch.x)
+    predictions = self.predict_on_batch(batch.x, training)
     residuals = predictions - batch.y
     num_examples = tf.gather(tf.shape(predictions), 0)
     total_loss = 0.5 * tf.reduce_sum(tf.pow(residuals, 2))

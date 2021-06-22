@@ -14,7 +14,12 @@
 """Abstractions for models used in federated learning."""
 
 import abc
+from typing import Sequence
+
 import attr
+import tensorflow as tf
+
+from tensorflow_federated.python.core.api import computation_base
 
 
 @attr.s(frozen=True, slots=True, eq=False)
@@ -71,17 +76,17 @@ class Model(object, metaclass=abc.ABCMeta):
   """
 
   @abc.abstractproperty
-  def trainable_variables(self):
+  def trainable_variables(self) -> Sequence[tf.Variable]:
     """An iterable of `tf.Variable` objects, see class comment for details."""
     pass
 
   @abc.abstractproperty
-  def non_trainable_variables(self):
+  def non_trainable_variables(self) -> Sequence[tf.Variable]:
     """An iterable of `tf.Variable` objects, see class comment for details."""
     pass
 
   @abc.abstractproperty
-  def local_variables(self):
+  def local_variables(self) -> Sequence[tf.Variable]:
     """An iterable of `tf.Variable` objects, see class comment for details."""
     pass
 
@@ -99,16 +104,19 @@ class Model(object, metaclass=abc.ABCMeta):
     pass
 
   @abc.abstractmethod
-  def forward_pass(self, batch_input, training=True):
+  def forward_pass(self, batch_input, training=True) -> BatchOutput:
     """Runs the forward pass and returns results.
 
-    This method should not modify any variables that are part of the model
-    parameters, that is, variables that influence the predictions. Rather, this
-    is done by the training loop.
+    This method must be serializable in a `tff.tf_computation` or other backend
+    decorator. Any pure-Python or unserializable logic will not be runnable in
+    the federated system.
 
-    However, this method may update aggregated metrics computed across calls to
-    `forward_pass`; the final values of such metrics can be accessed via
-    `aggregated_outputs`.
+    This method should not modify any variables that are part of the model
+    parameters, that is, variables that influence the predictions (exceptions
+    being updated, rather than learned, parameters such as BatchNorm means and
+    variances). Rather, this is done by the training loop. However, this method
+    may update aggregated metrics computed across calls to `forward_pass`; the
+    final values of such metrics can be accessed via `aggregated_outputs`.
 
     Uses in TFF:
 
@@ -120,13 +128,13 @@ class Model(object, metaclass=abc.ABCMeta):
       * To implement Federated Averaging.
 
     Args:
-      batch_input: a nested structure that matches the structure of
+      batch_input: A nested structure that matches the structure of
         `Model.input_spec` and each tensor in `batch_input` satisfies
         `tf.TensorSpec.is_compatible_with()` for the corresponding
         `tf.TensorSpec` in `Model.input_spec`.
       training: If `True`, run the training forward pass, otherwise, run in
         evaluation mode. The semantics are generally the same as the `training`
-        argument to `keras.Model.__call__`; this might e.g. influence how
+        argument to `keras.Model.call`; this might e.g. influence how
         dropout or batch normalization is handled.
 
     Returns:
@@ -134,6 +142,38 @@ class Model(object, metaclass=abc.ABCMeta):
       model will be trained via a gradient-based algorithm.
     """
     pass
+
+  @abc.abstractmethod
+  def predict_on_batch(self, batch_input, training=True):
+    """Performs inference on a batch, produces predictions.
+
+    Unlike `forward_pass`, this function must _not_ mutate any variables
+    (including metrics) when `training=False`, as it must support conversion to
+    a TFLite flatbuffer for inference. When `training=True` this supports cases
+    such as BatchNorm mean and variance updates or dropout. In many cases this
+    method will be called from `forward_pass` to produce the predictions, and
+    `forward_pass` will further compute loss and metrics updates.
+
+    Args:
+      batch_input: A nested structure that matches the structure of
+        `Model.input_spec` and each tensor in `batch_input` satisfies
+        `tf.TensorSpec.is_compatible_with()` for the corresponding
+        `tf.TensorSpec` in `Model.input_spec`.
+      training: If `True`, allow updatable variables (e.g. BatchNorm variances
+        and means) to be updated. Otherwise, run in inferece only mode with no
+        variables mutated. The semantics are generally the same as the
+        `training` argument to `keras.Model.`; this might e.g. influence how
+        dropout or batch normalization is handled.
+
+    Returns:
+      The model's inference result. The value must be understood by the loss
+      function that will be used during training. In most cases this value will
+      be
+      the logits or probabilities of the last layer in the model, however
+      writers
+      are not restricted to these, the only requirement is their loss function
+      understands the result.
+    """
 
   @abc.abstractmethod
   def report_local_outputs(self):
@@ -163,7 +203,7 @@ class Model(object, metaclass=abc.ABCMeta):
     pass
 
   @abc.abstractproperty
-  def federated_output_computation(self):
+  def federated_output_computation(self) -> computation_base.Computation:
     """Performs federated aggregation of the `Model's` `local_outputs`.
 
     This is typically used to aggregate metrics across many clients, e.g. the

@@ -333,6 +333,9 @@ class _KerasModel(model_lib.Model):
   def input_spec(self):
     return self._input_spec
 
+  def predict_on_batch(self, batch_input, training=True):
+    return self._keras_model(batch_input, training=training)
+
   def _forward_pass(self, batch_input, training=True):
     if hasattr(batch_input, '_asdict'):
       batch_input = batch_input._asdict()
@@ -343,7 +346,7 @@ class _KerasModel(model_lib.Model):
     if inputs is None:
       raise KeyError('Received a batch_input that is missing required key `x`. '
                      'Instead have keys {}'.format(list(batch_input.keys())))
-    predictions = self._keras_model(inputs, training=training)
+    predictions = self.predict_on_batch(inputs, training)
 
     if isinstance(batch_input, collections.abc.Mapping):
       y_true = batch_input.get('y')
