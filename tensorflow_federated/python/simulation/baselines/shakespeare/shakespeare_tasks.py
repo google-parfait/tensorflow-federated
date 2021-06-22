@@ -35,26 +35,6 @@ _PreprocessFn = Callable[[tf.data.Dataset], tf.data.Dataset]
 _ModelFn = Callable[[], model.Model]
 
 
-def _get_preprocessing_functions(
-    train_client_spec: client_spec.ClientSpec,
-    eval_client_spec: client_spec.ClientSpec,
-    sequence_length) -> Tuple[_PreprocessFn, _PreprocessFn]:
-  """Creates train and eval preprocessing functions for a CIFAR-100 task."""
-  train_preprocess_fn = shakespeare_preprocessing.create_preprocess_fn(
-      num_epochs=train_client_spec.num_epochs,
-      batch_size=train_client_spec.batch_size,
-      max_elements=train_client_spec.max_elements,
-      shuffle_buffer_size=train_client_spec.shuffle_buffer_size,
-      sequence_length=sequence_length)
-  eval_preprocess_fn = shakespeare_preprocessing.create_preprocess_fn(
-      num_epochs=eval_client_spec.num_epochs,
-      batch_size=eval_client_spec.batch_size,
-      max_elements=eval_client_spec.max_elements,
-      shuffle_buffer_size=eval_client_spec.shuffle_buffer_size,
-      sequence_length=sequence_length)
-  return train_preprocess_fn, eval_preprocess_fn
-
-
 def create_character_prediction_task(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
@@ -97,8 +77,12 @@ def create_character_prediction_task(
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=32, shuffle_buffer_size=1)
-  train_preprocess_fn, eval_preprocess_fn = _get_preprocessing_functions(
-      train_client_spec, eval_client_spec, sequence_length)
+
+  train_preprocess_fn = shakespeare_preprocessing.create_preprocess_fn(
+      train_client_spec, sequence_length)
+  eval_preprocess_fn = shakespeare_preprocessing.create_preprocess_fn(
+      eval_client_spec, sequence_length)
+
   task_datasets = task_data.BaselineTaskDatasets(
       train_data=shakespeare_train,
       test_data=shakespeare_test,

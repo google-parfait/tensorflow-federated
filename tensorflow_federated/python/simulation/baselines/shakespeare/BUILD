@@ -46,6 +46,7 @@ py_library(
         "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/types:computation_types",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
@@ -59,6 +60,7 @@ py_test(
     deps = [
         ":shakespeare_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
+        "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@absl_py//absl/testing:parameterized",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
