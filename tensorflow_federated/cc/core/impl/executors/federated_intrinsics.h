@@ -1,0 +1,45 @@
+/* Copyright 2021, The TensorFlow Federated Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License
+==============================================================================*/
+
+#ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_FEDERATING_INTRINSICS_H_
+#define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_FEDERATING_INTRINSICS_H_
+
+#include "absl/status/statusor.h"
+
+namespace tensorflow_federated {
+
+const absl::string_view kFederatedMapAtClientsUri = "federated_map";
+const absl::string_view kFederatedEvalAtClientsUri =
+    "federated_eval_at_clients";
+const absl::string_view kFederatedZipAtClientsUri = "federated_zip_at_clients";
+const absl::string_view kFederatedAggregateUri = "federated_aggregate";
+
+enum class FederatedIntrinsic {
+  MAP,
+  ZIP,
+  BROADCAST,
+  VALUE_AT_CLIENTS,
+  VALUE_AT_SERVER,
+  EVAL_AT_CLIENTS,
+  EVAL_AT_SERVER,
+  AGGREGATE,
+};
+
+absl::StatusOr<FederatedIntrinsic> FederatedIntrinsicFromUri(
+    const absl::string_view uri);
+
+}  // namespace tensorflow_federated
+
+#endif  // THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTORS_FEDERATING_INTRINSICS_H_
