@@ -157,13 +157,10 @@ class CompilerTest(tf.test.TestCase):
     # need some form of looping support in lieu of `tf.data.Dataset.reduce()`.
     # self._assert_mlir_contains_pattern(
     #     mlir, ['func @fn(%arg0: tensor<f32>) -> tensor<f32>'])
-    # TODO(b/191072780): Re-enable once fixed.
-    with self.assertRaises(Exception) as error:
-      unused_result = runtime.compile_and_run_on_args(
-          module, backend_info.VULKAN_SPIRV,
-          parameter=np.float32(5.0))['result']
-    # self.assertEqual(result, 32.0)
-    print(error.exception)
+
+    result = runtime.compile_and_run_on_args(
+        module, backend_info.VULKAN_SPIRV, parameter=np.float32(5.0))['result']
+    self.assertEqual(result, 32.0)
 
   def test_import_tf_comp_fails_with_non_tf_comp(self):
 
