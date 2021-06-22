@@ -23,13 +23,13 @@ from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import keras_metrics
 from tensorflow_federated.python.simulation.baselines import task_data
-from tensorflow_federated.python.simulation.baselines.shakespeare import shakespeare_models
-from tensorflow_federated.python.simulation.baselines.shakespeare import shakespeare_preprocessing
+from tensorflow_federated.python.simulation.baselines.shakespeare import char_prediction_models
+from tensorflow_federated.python.simulation.baselines.shakespeare import char_prediction_preprocessing
 from tensorflow_federated.python.simulation.datasets import shakespeare
 
 # Vocabulary with out-of-vocabulary, padding, beginning-of-sentence, and
 # end-of-sentence tokens.
-VOCAB_LENGTH = len(shakespeare_preprocessing.CHAR_VOCAB) + 4
+VOCAB_LENGTH = len(char_prediction_preprocessing.CHAR_VOCAB) + 4
 DEFAULT_SEQUENCE_LENGTH = 20
 _PreprocessFn = Callable[[tf.data.Dataset], tf.data.Dataset]
 _ModelFn = Callable[[], model.Model]
@@ -69,32 +69,32 @@ def create_character_prediction_task(
 
   if use_synthetic_data:
     synthetic_data = shakespeare.get_synthetic()
-    shakespeare_train = synthetic_data
-    shakespeare_test = synthetic_data
+    char_prediction_train = synthetic_data
+    char_prediction_test = synthetic_data
   else:
-    shakespeare_train, shakespeare_test = shakespeare.load_data()
+    char_prediction_train, char_prediction_test = shakespeare.load_data()
 
   if eval_client_spec is None:
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=32, shuffle_buffer_size=1)
 
-  train_preprocess_fn = shakespeare_preprocessing.create_preprocess_fn(
+  train_preprocess_fn = char_prediction_preprocessing.create_preprocess_fn(
       train_client_spec, sequence_length)
-  eval_preprocess_fn = shakespeare_preprocessing.create_preprocess_fn(
+  eval_preprocess_fn = char_prediction_preprocessing.create_preprocess_fn(
       eval_client_spec, sequence_length)
 
   task_datasets = task_data.BaselineTaskDatasets(
-      train_data=shakespeare_train,
-      test_data=shakespeare_test,
+      train_data=char_prediction_train,
+      test_data=char_prediction_test,
       validation_data=None,
       train_preprocess_fn=train_preprocess_fn,
       eval_preprocess_fn=eval_preprocess_fn)
 
-  keras_model = shakespeare_models.create_recurrent_model(
+  keras_model = char_prediction_models.create_recurrent_model(
       vocab_size=VOCAB_LENGTH, sequence_length=sequence_length)
   loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-  pad_token, _, _, _ = shakespeare_preprocessing.get_special_tokens()
+  pad_token, _, _, _ = char_prediction_preprocessing.get_special_tokens()
   metrics = [
       keras_metrics.NumTokensCounter(masked_tokens=[pad_token]),
       keras_metrics.MaskedCategoricalAccuracy(masked_tokens=[pad_token])
