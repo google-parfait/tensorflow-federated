@@ -8,6 +8,7 @@ package_group(
     packages = [
         # Subpackages
         "//tensorflow_federated/python/core/impl/executors/...",
+        "//tensorflow_federated/python/core/impl/bindings_utils/...",
     ],
 )
 

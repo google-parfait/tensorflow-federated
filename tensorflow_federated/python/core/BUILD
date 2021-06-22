@@ -9,6 +9,7 @@ package_group(
     ],
     packages = [
         # TFF dependencies
+        "//tensorflow_federated/cc/core/...",
         "//tensorflow_federated/python/aggregators/...",
         "//tensorflow_federated/python/learning/...",
         "//tensorflow_federated/python/simulation/...",
