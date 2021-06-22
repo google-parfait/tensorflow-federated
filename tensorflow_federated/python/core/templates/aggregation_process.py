@@ -113,12 +113,14 @@ class AggregationProcess(measured_process.MeasuredProcess):
     next_types = (
         structure.flatten(next_fn.type_signature.parameter) +
         structure.flatten(next_fn.type_signature.result))
-    next_all_federated = all([t.is_federated() for t in next_types])
-    if not next_all_federated:
+    non_federated_types = [t for t in next_types if not t.is_federated()]
+    if non_federated_types:
+      offending_types_str = '\n- '.join(str(t) for t in non_federated_types)
       raise AggregationNotFederatedError(
           f'Provided `next_fn` must both be a *federated* computations, that '
           f'is, operate on `tff.FederatedType`s, but found\n'
-          f'next_fn with type signature:\n{next_fn.type_signature}')
+          f'next_fn with type signature:\n{next_fn.type_signature}\n'
+          f'The non-federated types are:\n {offending_types_str}.')
 
     if initialize_fn.type_signature.result.placement != placements.SERVER:
       raise AggregationPlacementError(
@@ -130,7 +132,7 @@ class AggregationProcess(measured_process.MeasuredProcess):
 
     next_fn_param = next_fn.type_signature.parameter
     next_fn_result = next_fn.type_signature.result
-    if not next_fn_param.is_struct() or len(next_fn_param) < 2:
+    if len(next_fn_param) < 2:
       raise errors.TemplateNextFnNumArgsError(
           f'The `next_fn` must have at least two input arguments, but found '
           f'the following input type: {next_fn_param}.')
