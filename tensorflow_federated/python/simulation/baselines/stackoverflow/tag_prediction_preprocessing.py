@@ -44,8 +44,9 @@ def build_to_ids_fn(word_vocab: List[str],
                                separator=' ')
     words = tf.strings.split(sentence)
     tokens = word_table.lookup(words)
-    tokens = tf.one_hot(tokens, word_vocab_size + 1)
-    tokens = tf.reduce_mean(tokens, axis=0)[:word_vocab_size]
+    token_sums = tf.reduce_sum(tf.one_hot(tokens, word_vocab_size), axis=0)
+    num_tokens = tf.reduce_sum(token_sums)
+    tokens = tf.math.divide_no_nan(token_sums, num_tokens)
 
     tags = example['tags']
     tags = tf.strings.split(tags, sep='|')

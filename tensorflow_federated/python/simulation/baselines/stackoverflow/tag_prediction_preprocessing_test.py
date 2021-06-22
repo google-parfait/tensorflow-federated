@@ -44,6 +44,15 @@ class ToIDsFnTest(tf.test.TestCase):
     processed = to_ids_fn(data)
     self.assertAllClose(self.evaluate(processed[0]), [1 / 3, 1 / 3, 1 / 3])
 
+  def test_word_tokens_to_ids_with_duplicates_without_oov(self):
+    word_vocab = ['A', 'B', 'C']
+    tag_vocab = ['D', 'E', 'F']
+    to_ids_fn = tag_prediction_preprocessing.build_to_ids_fn(
+        word_vocab, tag_vocab)
+    data = {'tokens': 'A B C A A C B B B', 'title': '', 'tags': ''}
+    processed = to_ids_fn(data)
+    self.assertAllClose(self.evaluate(processed[0]), [1 / 3, 4 / 9, 2 / 9])
+
   def test_word_tokens_to_ids_with_oov(self):
     word_vocab = ['A', 'B']
     tag_vocab = ['D', 'E', 'F']
@@ -51,7 +60,25 @@ class ToIDsFnTest(tf.test.TestCase):
         word_vocab, tag_vocab)
     data = {'tokens': 'A B C', 'title': '', 'tags': ''}
     processed = to_ids_fn(data)
-    self.assertAllClose(self.evaluate(processed[0]), [1 / 3, 1 / 3])
+    self.assertAllClose(self.evaluate(processed[0]), [1 / 2, 1 / 2])
+
+  def test_word_tokens_to_ids_with_duplicates_and_oov(self):
+    word_vocab = ['A', 'B']
+    tag_vocab = ['D', 'E', 'F']
+    to_ids_fn = tag_prediction_preprocessing.build_to_ids_fn(
+        word_vocab, tag_vocab)
+    data = {'tokens': 'A B C A C C A B', 'title': '', 'tags': ''}
+    processed = to_ids_fn(data)
+    self.assertAllClose(self.evaluate(processed[0]), [3 / 5, 2 / 5])
+
+  def test_word_tokens_all_oov(self):
+    word_vocab = ['A', 'B']
+    tag_vocab = ['D', 'E', 'F']
+    to_ids_fn = tag_prediction_preprocessing.build_to_ids_fn(
+        word_vocab, tag_vocab)
+    data = {'tokens': 'C D E F G', 'title': '', 'tags': ''}
+    processed = to_ids_fn(data)
+    self.assertAllClose(self.evaluate(processed[0]), [0, 0])
 
   def test_tag_tokens_to_ids_without_oov(self):
     word_vocab = ['A', 'B', 'C']
