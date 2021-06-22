@@ -81,6 +81,13 @@ py_test(
     name = "form_utils_test",
     size = "medium",
     srcs = ["form_utils_test.py"],
+    args = [
+        "--golden",
+        "$(location form_utils_test_goldens/type_info_for_sum_example.expected)",
+    ],
+    data = [
+        "form_utils_test_goldens/type_info_for_sum_example.expected",
+    ],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
@@ -88,6 +95,7 @@ py_test(
         ":forms",
         ":test_utils",
         ":transformations",
+        "//tensorflow_federated/python/common_libs:golden",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/reference:reference_context",

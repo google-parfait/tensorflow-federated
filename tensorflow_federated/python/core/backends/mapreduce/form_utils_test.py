@@ -18,6 +18,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_federated.python.common_libs import golden
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.api import test_case
 from tensorflow_federated.python.core.backends.mapreduce import form_utils
@@ -763,54 +764,18 @@ class GetTypeInfoTest(test_case.TestCase):
                                           after_broadcast, before_aggregate,
                                           after_aggregate)
 
-    actual = collections.OrderedDict([
-        (label, type_signature.compact_representation())
-        for label, type_signature in type_info.items()
-    ])
-    # Note: THE CONTENTS OF THIS DICTIONARY IS NOT IMPORTANT. The purpose of
-    # this test is not to assert that this value returned by
-    # `form_utils._get_type_info`, but instead to act as a signal when
-    # refactoring the code involved in compiling an
-    # `tff.templates.IterativeProcess` into a
-    # `tff.backends.mapreduce.MapReduceForm`. If you are sure this needs to be
-    # updated, one recommendation is to print 'k=\'v\',' while iterating over
-    # the k-v pairs of the ordereddict.
-    # pyformat: disable
-    expected = collections.OrderedDict(
-        initialize_type='( -> <int32,int32>)',
-        s1_type='<int32,int32>@SERVER',
-        c1_type='{int32}@CLIENTS',
-        prepare_type='(<int32,int32> -> <int32,int32>)',
-        s2_type='<int32,int32>@SERVER',
-        c2_type='<int32,int32>@CLIENTS',
-        c3_type='{<int32,<int32,int32>>}@CLIENTS',
-        work_type='(<int32,<int32,int32>> -> <int32,int32>)',
-        c4_type='{<int32,int32>}@CLIENTS',
-        c5_type='{int32}@CLIENTS',
-        c6_type='{int32}@CLIENTS',
-        zero_type='( -> int32)',
-        accumulate_type='(<int32,int32> -> int32)',
-        merge_type='(<int32,int32> -> int32)',
-        report_type='(int32 -> int32)',
-        s3_type='int32@SERVER',
-        bitwidth_type='( -> int32)',
-        s4_type='int32@SERVER',
-        s5_type='<int32,int32>@SERVER',
-        s6_type='<<int32,int32>,<int32,int32>>@SERVER',
-        update_type='(<<int32,int32>,<int32,int32>> -> <<int32,int32>,<>>)',
-        s7_type='<<int32,int32>,<>>@SERVER',
-        s8_type='<int32,int32>@SERVER',
-        s9_type='<>@SERVER',
-    )
-    # pyformat: enable
+    actual = '\n'.join(f'{label}: {type_signature.compact_representation()}'
+                       for label, type_signature in type_info.items())
+    notice = """\
+# Note: THE CONTENTS OF THIS DICTIONARY ARE NOT IMPORTANT.
+# The purpose of this test is not to assert that this value
+# returned by `form_utils._get_type_info`, but instead to act as a
+# signal when refactoring the code involved in compiling an
+# `tff.templates.IterativeProcess` into a
+# `tff.backends.mapreduce.MapReduceForm`.
 
-    items = zip(actual.items(), expected.items())
-    for (actual_key, actual_value), (expected_key, expected_value) in items:
-      self.assertEqual(actual_key, expected_key)
-      self.assertEqual(
-          actual_value, expected_value,
-          'The value of \'{}\' is not equal to the expected value'.format(
-              actual_key))
+"""
+    golden.check_string('type_info_for_sum_example.expected', notice + actual)
 
 
 class CheckMapReduceFormCompatibleWithIterativeProcessTest(
