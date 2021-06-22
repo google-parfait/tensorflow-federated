@@ -61,17 +61,47 @@ class SplitTargetTest(tf.test.TestCase):
 
 class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_preprocess_fn_with_negative_epochs_raises(self):
+  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
+                                  ('negative_value2', -2))
+  def test_preprocess_fn_with_nonpositive_epochs_raises(self, num_epochs):
     with self.assertRaisesRegex(ValueError,
                                 'num_epochs must be a positive integer'):
       shakespeare_preprocessing.create_preprocess_fn(
-          num_epochs=-2, batch_size=1)
+          num_epochs=num_epochs, batch_size=1)
 
-  def test_raises_negative_sequence_length(self):
+  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
+                                  ('negative_value2', -2))
+  def test_preprocess_fn_with_nonpositive_batch_size_raises(self, batch_size):
+    with self.assertRaisesRegex(ValueError,
+                                'batch_size must be a positive integer'):
+      shakespeare_preprocessing.create_preprocess_fn(
+          num_epochs=1, batch_size=batch_size)
+
+  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
+                                  ('negative_value2', -2))
+  def test_preprocess_fn_with_nonpositive_max_elements_raises(
+      self, max_elements):
+    with self.assertRaisesRegex(
+        ValueError, 'max_elements must be `None` or a positive integer'):
+      shakespeare_preprocessing.create_preprocess_fn(
+          num_epochs=1, batch_size=1, max_elements=max_elements)
+
+  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
+                                  ('negative_value2', -2))
+  def test_preprocess_fn_with_nonpositive_shuffle_buffer_raises(
+      self, shuffle_buffer_size):
+    with self.assertRaisesRegex(
+        ValueError, 'shuffle_buffer_size must be `None` or a positive integer'):
+      shakespeare_preprocessing.create_preprocess_fn(
+          num_epochs=1, batch_size=1, shuffle_buffer_size=shuffle_buffer_size)
+
+  @parameterized.named_parameters(('zero_value', 0), ('negative_value1', -1),
+                                  ('negative_value2', -2))
+  def test_raises_negative_sequence_length(self, sequence_length):
     with self.assertRaisesRegex(ValueError,
                                 'sequence_length must be a positive integer'):
       shakespeare_preprocessing.create_preprocess_fn(
-          num_epochs=1, batch_size=1, sequence_length=0)
+          num_epochs=1, batch_size=1, sequence_length=sequence_length)
 
   def test_preprocess_fn_produces_expected_outputs(self):
     pad, _, bos, eos = shakespeare_preprocessing.get_special_tokens()
@@ -124,7 +154,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
                                                         batch_size):
     test_sequence = 'test_sequence'
     ds = tf.data.Dataset.from_tensor_slices(
-        collections.OrderedDict(snippets=[test_sequence]))
+        collections.OrderedDict(snippets=['test_sequence']))
     preprocess_fn = shakespeare_preprocessing.create_preprocess_fn(
         num_epochs=num_epochs,
         batch_size=batch_size,
@@ -134,6 +164,24 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(
         _compute_length_of_dataset(preprocessed_ds),
         tf.cast(tf.math.ceil(num_epochs / batch_size), tf.int32))
+
+  @parameterized.named_parameters(
+      ('max_elements1', 1),
+      ('max_elements3', 3),
+      ('max_elements7', 7),
+      ('max_elements11', 11),
+      ('max_elements18', 18),
+  )
+  def test_ds_length_with_max_elements(self, max_elements):
+    repeat_size = 10
+    ds = tf.data.Dataset.from_tensor_slices(
+        collections.OrderedDict(snippets=['test_sequence'])).repeat(repeat_size)
+    preprocess_fn = shakespeare_preprocessing.create_preprocess_fn(
+        num_epochs=1, batch_size=1, max_elements=max_elements)
+    preprocessed_ds = preprocess_fn(ds)
+    self.assertEqual(
+        _compute_length_of_dataset(preprocessed_ds),
+        min(repeat_size, max_elements))
 
 
 if __name__ == '__main__':
