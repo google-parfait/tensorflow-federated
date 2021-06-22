@@ -251,7 +251,11 @@ py_library(
     name = "model",
     srcs = ["model.py"],
     srcs_version = "PY3",
-    deps = [requirement("attrs")],
+    deps = [
+        requirement("attrs"),
+        "//tensorflow_federated/python/core/api:computation_base",
+        "@org_tensorflow//tensorflow:tensorflow_py",
+    ],
 )
 
 py_library(

@@ -70,6 +70,10 @@ class TestModel(model.Model):
   def input_spec(self):
     return collections.OrderedDict(temp=tf.TensorSpec([None], tf.float32))
 
+  def predict_on_batch(self, batch, training=True):
+    del training  # Unused.
+    return tf.zeros_like(batch['temp'])
+
   def forward_pass(self, batch, training=True):
     assert not training
     num_over = tf.reduce_sum(
@@ -77,7 +81,7 @@ class TestModel(model.Model):
             tf.greater(batch['temp'], self._variables.max_temp), tf.float32))
     self._variables.num_over.assign_add(num_over)
     loss = tf.constant(0.0)
-    predictions = tf.zeros_like(batch['temp'])
+    predictions = self.predict_on_batch(batch, training)
     return model.BatchOutput(
         loss=loss,
         predictions=predictions,
@@ -123,6 +127,10 @@ class TestModelQuant(model.Model):
   def input_spec(self):
     return collections.OrderedDict(temp=tf.TensorSpec([None], tf.float32))
 
+  def predict_on_batch(self, batch, training=True):
+    del training  # Unused.
+    return tf.zeros_like(batch['temp'])
+
   def forward_pass(self, batch, training=True):
     """Unlike the TestModel implementation above, only tracks num_same."""
     assert not training
@@ -133,7 +141,7 @@ class TestModelQuant(model.Model):
     self._variables.num_same.assign_add(num_same)
     # We're not actually training anything, so just use 0 loss and predictions.
     loss = tf.constant(0.0)
-    predictions = tf.zeros_like(batch['temp'])
+    predictions = self.predict_on_batch(batch, training)
     return model.BatchOutput(
         loss=loss,
         predictions=predictions,

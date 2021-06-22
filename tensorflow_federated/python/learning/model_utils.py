@@ -179,6 +179,9 @@ class EnhancedModel(model_lib.Model):
   def input_spec(self):
     return self._model.input_spec
 
+  def predict_on_batch(self, batch_input, training=True):
+    return self._model.predict_on_batch(batch_input, training)
+
   def forward_pass(self, batch_input, training=True):
     return py_typecheck.check_type(
         self._model.forward_pass(batch_input, training), model_lib.BatchOutput)
