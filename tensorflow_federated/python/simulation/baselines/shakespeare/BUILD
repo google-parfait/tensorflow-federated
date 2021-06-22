@@ -21,26 +21,26 @@ py_library(
 )
 
 py_library(
-    name = "shakespeare_models",
-    srcs = ["shakespeare_models.py"],
+    name = "char_prediction_models",
+    srcs = ["char_prediction_models.py"],
     srcs_version = "PY3",
     deps = ["@org_tensorflow//tensorflow:tensorflow_py"],
 )
 
 py_test(
-    name = "shakespeare_models_test",
-    srcs = ["shakespeare_models_test.py"],
+    name = "char_prediction_models_test",
+    srcs = ["char_prediction_models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":shakespeare_models",
+        ":char_prediction_models",
         "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
 py_library(
-    name = "shakespeare_preprocessing",
-    srcs = ["shakespeare_preprocessing.py"],
+    name = "char_prediction_preprocessing",
+    srcs = ["char_prediction_preprocessing.py"],
     srcs_version = "PY3",
     deps = [
         "//tensorflow_federated/python/core/api:computation_base",
@@ -52,13 +52,13 @@ py_library(
 )
 
 py_test(
-    name = "shakespeare_preprocessing_test",
+    name = "char_prediction_preprocessing_test",
     size = "medium",
-    srcs = ["shakespeare_preprocessing_test.py"],
+    srcs = ["char_prediction_preprocessing_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":shakespeare_preprocessing",
+        ":char_prediction_preprocessing",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:client_spec",
         "@absl_py//absl/testing:parameterized",
@@ -67,12 +67,12 @@ py_test(
 )
 
 py_library(
-    name = "shakespeare_tasks",
-    srcs = ["shakespeare_tasks.py"],
+    name = "char_prediction_tasks",
+    srcs = ["char_prediction_tasks.py"],
     srcs_version = "PY3",
     deps = [
-        ":shakespeare_models",
-        ":shakespeare_preprocessing",
+        ":char_prediction_models",
+        ":char_prediction_preprocessing",
         "//tensorflow_federated/python/learning:keras_utils",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
@@ -85,12 +85,12 @@ py_library(
 )
 
 py_test(
-    name = "shakespeare_tasks_test",
-    srcs = ["shakespeare_tasks_test.py"],
+    name = "char_prediction_tasks_test",
+    srcs = ["char_prediction_tasks_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        ":shakespeare_tasks",
+        ":char_prediction_tasks",
         "//tensorflow_federated/python/core/backends/native:execution_contexts",
         "//tensorflow_federated/python/simulation/baselines:baseline_task",
         "//tensorflow_federated/python/simulation/baselines:client_spec",

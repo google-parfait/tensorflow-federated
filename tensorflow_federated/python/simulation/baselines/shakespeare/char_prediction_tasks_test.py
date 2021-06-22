@@ -18,7 +18,7 @@ import tensorflow as tf
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
-from tensorflow_federated.python.simulation.baselines.shakespeare import shakespeare_tasks
+from tensorflow_federated.python.simulation.baselines.shakespeare import char_prediction_tasks
 
 
 class ShakespeareTasksTest(tf.test.TestCase, parameterized.TestCase):
@@ -28,7 +28,7 @@ class ShakespeareTasksTest(tf.test.TestCase, parameterized.TestCase):
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=2, max_elements=5, shuffle_buffer_size=10)
-    baseline_task_spec = shakespeare_tasks.create_character_prediction_task(
+    baseline_task_spec = char_prediction_tasks.create_character_prediction_task(
         train_client_spec,
         eval_client_spec=eval_client_spec,
         use_synthetic_data=True)
@@ -37,7 +37,7 @@ class ShakespeareTasksTest(tf.test.TestCase, parameterized.TestCase):
   def test_constructs_without_eval_client_spec(self):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = shakespeare_tasks.create_character_prediction_task(
+    baseline_task_spec = char_prediction_tasks.create_character_prediction_task(
         train_client_spec, use_synthetic_data=True)
     self.assertIsInstance(baseline_task_spec, baseline_task.BaselineTask)
 
@@ -50,7 +50,7 @@ class ShakespeareTasksTest(tf.test.TestCase, parameterized.TestCase):
   def test_constructs_with_different_sequence_lengths(self, sequence_length):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
-    baseline_task_spec = shakespeare_tasks.create_character_prediction_task(
+    baseline_task_spec = char_prediction_tasks.create_character_prediction_task(
         train_client_spec,
         sequence_length=sequence_length,
         use_synthetic_data=True)
@@ -65,7 +65,7 @@ class ShakespeareTasksTest(tf.test.TestCase, parameterized.TestCase):
     train_client_spec = client_spec.ClientSpec(
         num_epochs=2, batch_size=10, max_elements=3, shuffle_buffer_size=5)
     with self.assertRaises(ValueError):
-      shakespeare_tasks.create_character_prediction_task(
+      char_prediction_tasks.create_character_prediction_task(
           train_client_spec,
           sequence_length=sequence_length,
           use_synthetic_data=True)
