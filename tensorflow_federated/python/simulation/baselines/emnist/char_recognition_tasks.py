@@ -47,7 +47,7 @@ def _get_character_recognition_model(model_id: Union[str,
     model_enum = CharacterRecognitionModel(model_id)
   except ValueError:
     raise ValueError('The model argument must be one of {}, found {}'.format(
-        model, _CHARACTER_RECOGNITION_MODELS))
+        _CHARACTER_RECOGNITION_MODELS, model_id))
 
   if model_enum == CharacterRecognitionModel.CNN_DROPOUT:
     keras_model = emnist_models.create_conv_dropout_model(
@@ -60,7 +60,7 @@ def _get_character_recognition_model(model_id: Union[str,
         only_digits=only_digits)
   else:
     raise ValueError('The model id must be one of {}, found {}'.format(
-        model_enum, _CHARACTER_RECOGNITION_MODELS))
+        _CHARACTER_RECOGNITION_MODELS, model_id))
   return keras_model
 
 

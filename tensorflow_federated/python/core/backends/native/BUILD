@@ -1,12 +1,14 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":native_packages",
+    "//tensorflow_federated/python/core:core_visibility",
+])
+
 package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
+    name = "native_packages",
     packages = ["//tensorflow_federated/python/core/backends/native/..."],
 )
-
-package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 
@@ -43,7 +45,7 @@ py_library(
     deps = [
         ":compiler",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/execution_contexts:synchronous_execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )

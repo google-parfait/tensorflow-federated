@@ -1,14 +1,18 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_python//python:defs.bzl", "py_binary")
 
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = [":tools_packages"])
+
+package_group(
+    name = "tools_packages",
+    packages = ["//tensorflow_federated/tools/..."],
+)
 
 licenses(["notice"])
 
 bzl_library(
     name = "build_defs_bzl",
     srcs = ["build_defs.bzl"],
-    visibility = ["//tensorflow_federated:__subpackages__"],
     deps = ["@rules_python//python:defs.bzl"],
 )
 

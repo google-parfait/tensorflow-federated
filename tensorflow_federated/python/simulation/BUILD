@@ -1,17 +1,19 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(name = "simulation_visibility")
+package(default_visibility = [
+    ":simulation_packages",
+    ":simulation_visibility",
+])
 
 package_group(
-    name = "default_visibility",
-    includes = [":simulation_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/simulation/...",
-    ],
+    name = "simulation_packages",
+    packages = ["//tensorflow_federated/python/simulation/..."],
 )
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "simulation_visibility",
+    includes = ["//tensorflow_federated/tools:tools_packages"],
+)
 
 licenses(["notice"])
 
@@ -61,6 +63,21 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":csv_manager"],
+)
+
+py_library(
+    name = "dictionary_manager",
+    srcs = ["dictionary_manager.py"],
+    srcs_version = "PY3",
+    deps = [":metrics_manager"],
+)
+
+py_test(
+    name = "dictionary_manager_test",
+    srcs = ["dictionary_manager_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":dictionary_manager"],
 )
 
 py_library(
@@ -122,6 +139,7 @@ py_library(
     srcs = ["server_utils.py"],
     srcs_version = "PY3",
     deps = [
+        "//tensorflow_federated/proto/v0:executor_py_pb2_grpc",
         "//tensorflow_federated/python/common_libs:py_typecheck",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_service",

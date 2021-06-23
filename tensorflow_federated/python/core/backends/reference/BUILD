@@ -1,18 +1,17 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":reference_packages",
+    "//tensorflow_federated/python/core:core_visibility",
+
+    # TODO(b/192368386): One backend should not depend on another backend.
+    "//tensorflow_federated/python/core/backends/mapreduce:mapreduce_packages",
+])
+
 package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/core/backends/reference/...",
-
-        # Backends dependencies
-        "//tensorflow_federated/python/core/backends/...",
-    ],
+    name = "reference_packages",
+    packages = ["//tensorflow_federated/python/core/backends/reference/..."],
 )
-
-package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

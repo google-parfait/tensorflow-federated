@@ -19,12 +19,11 @@ limitations under the License
 #include <memory>
 #include <variant>
 
+#include "net/grpc/public/include/grpcpp/impl/codegen/channel_interface.h"
+#include "net/grpc/public/include/grpcpp/impl/codegen/client_context.h"
+#include "net/grpc/public/include/grpcpp/impl/codegen/status.h"
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
-#include "grpc/include/grpcpp/create_channel.h"
-#include "grpc/include/grpcpp/impl/codegen/async_unary_call.h"
-#include "grpc/include/grpcpp/impl/codegen/client_context.h"
-#include "grpc/include/grpcpp/security/credentials.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/status_macros.h"
 #include "tensorflow_federated/cc/core/impl/executors/threading.h"

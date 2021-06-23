@@ -21,22 +21,31 @@ import tensorflow as tf
 
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.core.api import computations
-from tensorflow_federated.python.core.impl.executors import execution_context
+from tensorflow_federated.python.core.impl.context_stack import context_stack_impl
+from tensorflow_federated.python.core.impl.execution_contexts import synchronous_execution_context
 from tensorflow_federated.python.core.impl.executors import executor_stacks
-from tensorflow_federated.python.core.impl.executors import executor_test_utils
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.core.impl.types import computation_types
+
+
+def _install_executor_in_synchronous_context(executor_factory_instance):
+  context = synchronous_execution_context.ExecutionContext(
+      executor_factory_instance)
+  return context_stack_impl.context_stack.install(context)
 
 
 class RetryableErrorTest(absltest.TestCase):
 
   def test_is_retryable_error(self):
-    retryable_error = execution_context.RetryableError()
-    self.assertTrue(execution_context._is_retryable_error(retryable_error))
-    self.assertFalse(execution_context._is_retryable_error(TypeError()))
-    self.assertFalse(execution_context._is_retryable_error(1))
-    self.assertFalse(execution_context._is_retryable_error('a'))
-    self.assertFalse(execution_context._is_retryable_error(None))
+    retryable_error = executors_errors.RetryableError()
+    self.assertTrue(
+        synchronous_execution_context._is_retryable_error(retryable_error))
+    self.assertFalse(
+        synchronous_execution_context._is_retryable_error(TypeError()))
+    self.assertFalse(synchronous_execution_context._is_retryable_error(1))
+    self.assertFalse(synchronous_execution_context._is_retryable_error('a'))
+    self.assertFalse(synchronous_execution_context._is_retryable_error(None))
 
 
 class ExecutionContextIntegrationTest(parameterized.TestCase):
@@ -48,7 +57,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       return tf.constant(10)
 
     executor = executor_stacks.local_executor_factory()
-    with executor_test_utils.install_executor(executor):
+    with _install_executor_in_synchronous_context(executor):
       result = comp()
 
     self.assertEqual(result, 10)
@@ -60,7 +69,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       return tf.add(x, 10)
 
     executor = executor_stacks.local_executor_factory()
-    with executor_test_utils.install_executor(executor):
+    with _install_executor_in_synchronous_context(executor):
       result = comp(3)
 
     self.assertEqual(result, 13)
@@ -72,7 +81,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       return tf.multiply(tf.add(x, y), z)
 
     executor = executor_stacks.local_executor_factory()
-    with executor_test_utils.install_executor(executor):
+    with _install_executor_in_synchronous_context(executor):
       result = comp(3, 4, 5)
 
     self.assertEqual(result, 35)
@@ -84,7 +93,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       return ds.reduce(np.int32(0), lambda x, y: x + y)
 
     executor = executor_stacks.local_executor_factory()
-    with executor_test_utils.install_executor(executor):
+    with _install_executor_in_synchronous_context(executor):
       ds = tf.data.Dataset.range(10).map(lambda x: tf.cast(x, tf.int32))
       result = comp(ds)
 
@@ -100,7 +109,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       ])
 
     executor = executor_stacks.local_executor_factory()
-    with executor_test_utils.install_executor(executor):
+    with _install_executor_in_synchronous_context(executor):
       result = comp()
 
     self.assertIsInstance(result, collections.OrderedDict)
@@ -136,7 +145,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
                    intrinsics.federated_broadcast(threshold)])),
           intrinsics.federated_map(count_total, temperatures))
 
-    with executor_test_utils.install_executor(executor):
+    with _install_executor_in_synchronous_context(executor):
       to_float = lambda x: tf.cast(x, tf.float32)
       temperatures = [
           tf.data.Dataset.range(10).map(to_float),
@@ -157,7 +166,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     ten_ints = list(range(10))
 
     executor = executor_stacks.local_executor_factory()
-    with executor_test_utils.install_executor(executor):
+    with _install_executor_in_synchronous_context(executor):
       five = comp(five_ints)
       ten = comp(ten_ints)
 
@@ -177,7 +186,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
     ten_ints = list(range(10))
 
     executor = executor_stacks.local_executor_factory()
-    with executor_test_utils.install_executor(executor):
+    with _install_executor_in_synchronous_context(executor):
       with self.assertRaisesRegex(ValueError, 'Conflicting cardinalities'):
         comp([five_ints, ten_ints])
 
@@ -188,7 +197,7 @@ class ExecutionContextIntegrationTest(parameterized.TestCase):
       return x + y
 
     executor = executor_stacks.local_executor_factory()
-    with executor_test_utils.install_executor(executor):
+    with _install_executor_in_synchronous_context(executor):
       # pylint:disable=no-value-for-parameter
       result = foo(structure.Struct([(None, 2), (None, 3)]))
       # pylint:enable=no-value-for-parameter

@@ -1,11 +1,21 @@
 load("@rules_python//python:defs.bzl", "py_library")
 
-package_group(
-    name = "default_visibility",
-    packages = ["//tensorflow_federated/experimental/..."],
-)
+package(default_visibility = [
+    ":api_packages",
+    "//tensorflow_federated/experimental/python/core:core_visibility",
 
-package(default_visibility = [":default_visibility"])
+    # Namespace visibility
+    "//tensorflow_federated/experimental:__pkg__",
+
+    # TODO(b/181569610): Clean up circular dependency between the `api` and
+    # `impl` packages.
+    "//tensorflow_federated/experimental/python/core/impl:impl_packages",
+])
+
+package_group(
+    name = "api_packages",
+    packages = ["//tensorflow_federated/experimental/python/core/api/..."],
+)
 
 licenses(["notice"])
 

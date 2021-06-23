@@ -18,11 +18,11 @@ limitations under the License
 #include <memory>
 #include <optional>
 
+#include "net/grpc/public/include/grpcpp/impl/codegen/server_context.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "grpc/include/grpcpp/impl/codegen/server_context.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor.proto.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"

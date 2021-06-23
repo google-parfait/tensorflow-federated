@@ -1,25 +1,23 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-# Packages that have visibility into the `learning` package.
-package_group(
-    name = "learning_visibility",
-    packages = [
-        "//tensorflow_federated/experimental/python/learning/...",
-        "//tensorflow_federated/python/simulation/baselines/...",
-    ],
-)
+package(default_visibility = [
+    ":learning_packages",
+    ":learning_visibility",
+])
 
 package_group(
-    name = "default_visibility",
-    includes = [":learning_visibility"],
+    name = "learning_packages",
     packages = [
-        # Subpackages
+        "//tensorflow_federated/experimental/python/learning/...",
         "//tensorflow_federated/python/learning/...",
     ],
 )
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "learning_visibility",
+    includes = ["//tensorflow_federated/python/simulation:simulation_packages"],
+)
 
 licenses(["notice"])
 
@@ -40,6 +38,7 @@ py_library(
         ":personalization_eval",
         "//tensorflow_federated/python/learning/framework",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
+        "//tensorflow_federated/python/learning/optimizers",
         "//tensorflow_federated/python/learning/reconstruction",
     ],
 )
@@ -65,6 +64,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
         "//tensorflow_federated/python/learning/framework:optimizer_utils",
+        "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
@@ -74,6 +75,7 @@ py_cpu_gpu_test(
     timeout = "long",
     srcs = ["federated_averaging_test.py"],
     python_version = "PY3",
+    shard_count = 10,
     srcs_version = "PY3",
     deps = [
         ":client_weight_lib",
@@ -86,6 +88,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/api:test_case",
         "//tensorflow_federated/python/core/backends/test:execution_contexts",
         "//tensorflow_federated/python/learning/framework:dataset_reduce",
+        "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )
 

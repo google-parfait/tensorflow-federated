@@ -1,21 +1,22 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":framework_packages",
+    "//tensorflow_federated/python/learning:learning_visibility",
+    "//tensorflow_federated/python/learning/reconstruction:reconstruction_packages",
+
+    # TODO(b/151441025): This package is temporary and can be removed once the
+    # dependencies between `tff.learning` and `tff.learning.framework` are
+    # cleaned up.
+    "//tensorflow_federated/python/learning:__pkg__",
+    "//tensorflow_federated/experimental/python/learning:__pkg__",
+])
+
 package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/learning:learning_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/learning/framework/...",
-
-        # TODO(b/151441025): This package is temporary and can be removed once the
-        # dependencies between `tff.learning` and `tff.learning.framework` are
-        # cleaned up.
-        "//tensorflow_federated/python/learning/...",
-    ],
+    name = "framework_packages",
+    packages = ["//tensorflow_federated/python/learning/framework/..."],
 )
-
-package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 
@@ -254,6 +255,8 @@ py_library(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model",
         "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/optimizers:keras_optimizer",
+        "//tensorflow_federated/python/learning/optimizers:optimizer",
         "//tensorflow_federated/python/tensorflow_libs:tensor_utils",
     ],
 )
@@ -262,6 +265,7 @@ py_cpu_gpu_test(
     name = "optimizer_utils_test",
     srcs = ["optimizer_utils_test.py"],
     python_version = "PY3",
+    shard_count = 10,
     srcs_version = "PY3",
     deps = [
         ":optimizer_utils",
@@ -281,6 +285,7 @@ py_cpu_gpu_test(
         "//tensorflow_federated/python/core/templates:measured_process",
         "//tensorflow_federated/python/learning:model_examples",
         "//tensorflow_federated/python/learning:model_utils",
+        "//tensorflow_federated/python/learning/optimizers:sgdm",
     ],
 )
 

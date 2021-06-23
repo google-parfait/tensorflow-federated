@@ -1,15 +1,14 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/simulation:simulation_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/simulation/baselines/cifar/...",
-    ],
-)
+package(default_visibility = [
+    ":cifar100_packages",
+    "//tensorflow_federated/python/simulation:simulation_visibility",
+])
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "cifar100_packages",
+    packages = ["//tensorflow_federated/python/simulation/baselines/cifar100/..."],
+)
 
 licenses(["notice"])
 

@@ -45,7 +45,7 @@ def build_federated_evaluation(
       must *not* capture TensorFlow tensors or variables and use them. The model
       must be constructed entirely from scratch on each invocation, returning
       the same pre-constructed model each call will result in an error.
-    broadcast_process: a `tff.templates.MeasuredProcess` that broadcasts the
+    broadcast_process: A `tff.templates.MeasuredProcess` that broadcasts the
       model weights on the server to the clients. It must support the signature
       `(input_values@SERVER -> output_values@CLIENTS)` and have empty state. If
       set to default None, the server model is broadcast to the clients using

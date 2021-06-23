@@ -1,15 +1,14 @@
 load("@rules_python//python:defs.bzl", "py_library")
 
-package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/core/framework/...",
-    ],
-)
+package(default_visibility = [
+    ":framework_packages",
+    "//tensorflow_federated/python/core:core_visibility",
+])
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "framework_packages",
+    packages = ["//tensorflow_federated/python/core/framework/..."],
+)
 
 licenses(["notice"])
 
@@ -26,12 +25,12 @@ py_library(
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_base",
         "//tensorflow_federated/python/core/impl/context_stack:get_context_stack",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
+        "//tensorflow_federated/python/core/impl/execution_contexts:synchronous_execution_context",
         "//tensorflow_federated/python/core/impl/executors:caching_executor",
         "//tensorflow_federated/python/core/impl/executors:cardinality_carrying_base",
         "//tensorflow_federated/python/core/impl/executors:data_backend_base",
         "//tensorflow_federated/python/core/impl/executors:data_executor",
         "//tensorflow_federated/python/core/impl/executors:eager_tf_executor",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_base",
         "//tensorflow_federated/python/core/impl/executors:executor_factory",
         "//tensorflow_federated/python/core/impl/executors:executor_serialization",

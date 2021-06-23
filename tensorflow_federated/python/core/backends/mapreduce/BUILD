@@ -1,15 +1,14 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/core/backends/mapreduce/...",
-    ],
-)
+package(default_visibility = [
+    ":mapreduce_packages",
+    "//tensorflow_federated/python/core:core_visibility",
+])
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "mapreduce_packages",
+    packages = ["//tensorflow_federated/python/core/backends/mapreduce/..."],
+)
 
 licenses(["notice"])
 
@@ -166,7 +165,7 @@ py_test(
         "//tensorflow_federated/python/core/impl/compiler:transformations",
         "//tensorflow_federated/python/core/impl/compiler:tree_analysis",
         "//tensorflow_federated/python/core/impl/context_stack:set_default_context",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/execution_contexts:synchronous_execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",
