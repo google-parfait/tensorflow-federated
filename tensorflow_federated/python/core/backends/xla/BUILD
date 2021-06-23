@@ -1,13 +1,17 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(
-    name = "default_visibility",
-    packages = [
-        "//tensorflow_federated/...",
-    ],
-)
+package(default_visibility = [
+    ":xla_packages",
+    "//tensorflow_federated/python/core:core_visibility",
 
-package(default_visibility = [":default_visibility"])
+    # TODO(b/192369072): `core/impl` should not depend on `core/backends`.
+    "//tensorflow_federated/experimental/python/core/impl/jax_context:__subpackages__",
+])
+
+package_group(
+    name = "xla_packages",
+    packages = ["//tensorflow_federated/python/core/backends/xla/..."],
+)
 
 licenses(["notice"])
 
@@ -56,7 +60,7 @@ py_library(
         ":compiler",
         ":executor",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/execution_contexts:synchronous_execution_context",
         "//tensorflow_federated/python/core/impl/executors:executor_stacks",
     ],
 )
@@ -72,7 +76,7 @@ py_test(
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/computation:computation_impl",
         "//tensorflow_federated/python/core/impl/context_stack:context_stack_impl",
-        "//tensorflow_federated/python/core/impl/executors:execution_context",
+        "//tensorflow_federated/python/core/impl/execution_contexts:synchronous_execution_context",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:placements",

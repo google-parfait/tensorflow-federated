@@ -16,9 +16,8 @@ limitations under the License
 #ifndef THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_REMOTE_STACKS_H_
 #define THIRD_PARTY_TENSORFLOW_FEDERATED_CC_CORE_IMPL_EXECUTOR_STACKS_REMOTE_STACKS_H_
 
+#include "net/grpc/public/include/grpcpp/impl/codegen/channel_interface.h"
 #include "absl/strings/string_view.h"
-#include "grpc/include/grpcpp/channel.h"
-#include "grpc/include/grpcpp/impl/codegen/channel_interface.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/composing_executor.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"

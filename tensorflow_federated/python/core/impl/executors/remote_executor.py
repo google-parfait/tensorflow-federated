@@ -24,10 +24,10 @@ from tensorflow_federated.proto.v0 import executor_pb2_grpc
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.common_libs import structure
 from tensorflow_federated.python.common_libs import tracing
-from tensorflow_federated.python.core.impl.executors import execution_context
 from tensorflow_federated.python.core.impl.executors import executor_base
 from tensorflow_federated.python.core.impl.executors import executor_serialization
 from tensorflow_federated.python.core.impl.executors import executor_value_base
+from tensorflow_federated.python.core.impl.executors import executors_errors
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import placements
 
@@ -82,7 +82,7 @@ def _request(rpc_func, request):
     except grpc.RpcError as e:
       if _is_retryable_grpc_error(e):
         logging.info('Received retryable gRPC error: %s', e)
-        raise execution_context.RetryableError(e)
+        raise executors_errors.RetryableError(e)
       else:
         raise
 
@@ -181,7 +181,7 @@ class RemoteExecutor(executor_base.Executor):
     request = executor_pb2.ClearExecutorRequest()
     try:
       _request(self._stub.ClearExecutor, request)
-    except (grpc.RpcError, execution_context.RetryableError):
+    except (grpc.RpcError, executors_errors.RetryableError):
       logging.debug('RPC error caught during attempt to clear state on the '
                     'server; this likely indicates a broken connection, and '
                     'therefore there is no state to clear.')

@@ -12,3 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Libraries for optimization algorithms."""
+
+from tensorflow_federated.python.learning.optimizers.optimizer import Optimizer

@@ -1,14 +1,14 @@
 load("@rules_python//python:defs.bzl", "py_library")
 
-package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
-    packages = [
-        "//tensorflow_federated/python/core/types/...",
-    ],
-)
+package(default_visibility = [
+    ":types_packages",
+    "//tensorflow_federated/python/core:core_visibility",
+])
 
-package(default_visibility = [":default_visibility"])
+package_group(
+    name = "types_packages",
+    packages = ["//tensorflow_federated/python/core/types/..."],
+)
 
 licenses(["notice"])
 

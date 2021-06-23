@@ -1,18 +1,15 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":templates_packages",
+    "//tensorflow_federated/python/core:core_visibility",
+    "//tensorflow_federated/python/core/backends:backends_packages",
+])
+
 package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/core/templates/...",
-
-        # Core Dependencies
-        "//tensorflow_federated/python/core/backends/...",
-    ],
+    name = "templates_packages",
+    packages = ["//tensorflow_federated/python/core/templates/..."],
 )
-
-package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

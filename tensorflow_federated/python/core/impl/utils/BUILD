@@ -1,24 +1,25 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core/impl:impl_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/core/impl/utils/...",
+package(default_visibility = [
+    ":utils_packages",
+    "//tensorflow_federated/experimental/python/core/impl/jax_context:jax_context_packages",
+    "//tensorflow_federated/python/core/impl:impl_visibility",
+    "//tensorflow_federated/python/core/impl/bindings_utils:bindings_utils_packages",
+    "//tensorflow_federated/python/core/impl/compiler:compiler_packages",
+    "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    "//tensorflow_federated/python/core/impl/executors:executors_packages",
+    "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
+    "//tensorflow_federated/python/core/impl/tensorflow_context:tensorflow_context_packages",
+    "//tensorflow_federated/python/core/impl/wrappers:wrappers_packages",
+])
 
-        # Impl Dependencies
-        "//tensorflow_federated/python/core/impl/bindings_utils/...",
-        "//tensorflow_federated/python/core/impl/compiler/...",
-        "//tensorflow_federated/python/core/impl/executors/...",
-        "//tensorflow_federated/python/core/impl/executor_stacks/...",
-        "//tensorflow_federated/python/core/impl/federated_context/...",
-        "//tensorflow_federated/python/core/impl/tensorflow_context/...",
-        "//tensorflow_federated/python/core/impl/wrappers/...",
+package_group(
+    name = "utils_packages",
+    packages = [
+        "//tensorflow_federated/experimental/python/core/impl/utils/...",
+        "//tensorflow_federated/python/core/impl/utils/...",
     ],
 )
-
-package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

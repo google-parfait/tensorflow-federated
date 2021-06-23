@@ -1,6 +1,11 @@
 load("@rules_python//python:defs.bzl", "py_test")
 
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = [":test_packages"])
+
+package_group(
+    name = "test_packages",
+    packages = ["//tensorflow_federated/experimental/python/tests/..."],
+)
 
 licenses(["notice"])
 

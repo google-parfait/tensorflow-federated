@@ -19,15 +19,14 @@ limitations under the License
 #include <memory>
 #include <utility>
 
+#include "net/grpc/public/include/grpcpp/impl/codegen/server_context.h"
+#include "net/grpc/public/include/grpcpp/impl/codegen/status.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
-#include "grpc/include/grpcpp/grpcpp.h"
-#include "grpc/include/grpcpp/server_context.h"
-#include "grpc/include/grpcpp/support/status.h"
 #include "tensorflow_federated/cc/core/impl/executors/cardinalities.h"
 #include "tensorflow_federated/cc/core/impl/executors/executor.h"
 #include "tensorflow_federated/proto/v0/computation.proto.h"

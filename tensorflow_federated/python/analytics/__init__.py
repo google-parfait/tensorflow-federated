@@ -12,3 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Libraries for using Federated Analytics algorithms."""
+
+from tensorflow_federated.python.analytics import data_processing
+from tensorflow_federated.python.analytics import histogram_processing

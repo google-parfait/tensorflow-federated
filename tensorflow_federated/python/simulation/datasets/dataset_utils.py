@@ -16,18 +16,21 @@
 import tensorflow as tf
 
 
-def build_dataset_mixture(a, b, a_probability, op_seed=None):
+def build_dataset_mixture(a, b, a_probability, seed=None):
   """Build a new dataset that probabilistically returns examples.
 
   Args:
-    a: the first `tf.data.Dataset`.
-    b: the second `tf.data.Dataset`.
-    a_probability: the `float` probability to select the next example from the
+    a: The first `tf.data.Dataset`.
+    b: The second `tf.data.Dataset`.
+    a_probability: The `float` probability to select the next example from the
       `a` dataset.
-    op_seed: an optional `int` seed for the TensorFlow PRNG op. Strongly
-      recommended to only use in unittests. Note: only setting this seed will
-      not enable deterministic behavior, callers must also use
-      `tf.random.set_seed` to enable deterministic behavior.
+    seed: An optional `int` seed for creating a `tf.random.Generator`. If set to
+      `None`, the generator will be created via
+      `tf.random.Generator.from_non_deterministic_state`. Note that setting a
+      random seed alone is not enough to guarantee complete reproducibility of
+      results. For example, random number generation is not guaranteed to be
+      consistent across TensorFlow versions (see [TensorFlow version
+        compatibility](https://www.tensorflow.org/guide/versions#what_is_not_covered)).
 
   Returns:
     A `tf.data.Dataset` that returns examples from dataset `a` with probability
@@ -35,10 +38,14 @@ def build_dataset_mixture(a, b, a_probability, op_seed=None):
     a_probability)`. The dataset will yield the number of examples equal to the
     smaller of `a` or `b`.
   """
+  if seed is not None:
+    random_generator = tf.random.Generator.from_seed(seed)
+  else:
+    random_generator = tf.random.Generator.from_non_deterministic_state()
 
   def _random_pick_example(example_a, example_b):
-    if tf.random.uniform(
-        shape=(), minval=0.0, maxval=1.0, seed=op_seed) < a_probability:
+    if random_generator.uniform(
+        shape=(), minval=0.0, maxval=1.0) < a_probability:
       return example_a
     return example_b
 
@@ -54,10 +61,10 @@ def build_single_label_dataset(dataset, label_key, desired_label):
   This can be used for creating pathological non-iid (in label space) datasets.
 
   Args:
-    dataset: the base `tf.data.Dataset` that yields examples that are structures
+    dataset: The base `tf.data.Dataset` that yields examples that are structures
       of string key -> tensor value pairs.
-    label_key: the `str` key that holds the label for the example.
-    desired_label: the label value to restrict the resulting dataset to.
+    label_key: The `str` key that holds the label for the example.
+    desired_label: The label value to restrict the resulting dataset to.
 
   Returns:
     A `tf.data.Dataset` that is composed of only examples that have a label
@@ -82,8 +89,8 @@ def build_synthethic_iid_datasets(client_data, client_dataset_size):
   `client_data` (so any example in `client_data` may be produced by any client).
 
   Args:
-    client_data: a `tff.simulation.datasets.ClientData`.
-    client_dataset_size: the size of the `tf.data.Dataset` to yield from the
+    client_data: A `tff.simulation.datasets.ClientData`.
+    client_dataset_size: The size of the `tf.data.Dataset` to yield from the
       returned dataset.
 
   Returns:

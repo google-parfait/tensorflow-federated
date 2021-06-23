@@ -1,25 +1,24 @@
 load("@rules_python//python:defs.bzl", "py_library")
 
-# Packages that have visibility into the `core` package.
-package_group(
-    name = "core_visibility",
-    includes = [
-        "//tensorflow_federated/python/learning:learning_visibility",
-        "//tensorflow_federated/python/simulation:simulation_visibility",
-    ],
-    packages = [
-        # TFF dependencies
-        "//tensorflow_federated/python/aggregators/...",
-        "//tensorflow_federated/python/learning/...",
-        "//tensorflow_federated/python/simulation/...",
-        "//tensorflow_federated/python/analytics/...",
+package(default_visibility = ["//visibility:private"])
 
-        # Other non-learning federated algorithm dependencies
-        "//tensorflow_federated/experimental/...",
+package_group(
+    name = "core_packages",
+    packages = [
+        "//tensorflow_federated/experimental/python/core/...",
+        "//tensorflow_federated/python/core/...",
     ],
 )
 
-package(default_visibility = ["//visibility:private"])
+package_group(
+    name = "core_visibility",
+    includes = [
+        "//tensorflow_federated/python/aggregators:aggregators_packages",
+        "//tensorflow_federated/python/analytics:analytics_packages",
+        "//tensorflow_federated/python/learning:learning_packages",
+        "//tensorflow_federated/python/simulation:simulation_packages",
+    ],
+)
 
 licenses(["notice"])
 

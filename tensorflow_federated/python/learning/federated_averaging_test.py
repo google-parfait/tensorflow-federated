@@ -29,6 +29,15 @@ from tensorflow_federated.python.learning import model_examples
 from tensorflow_federated.python.learning import model_update_aggregator
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import dataset_reduce
+from tensorflow_federated.python.learning.optimizers import sgdm
+
+
+def _get_tff_optimizer(learning_rate=0.1):
+  return sgdm.SGD(learning_rate=learning_rate)
+
+
+def _get_keras_optimizer_fn(learning_rate=0.1):
+  return lambda: tf.keras.optimizers.SGD(learning_rate=learning_rate)
 
 
 class NumExamplesCounter(tf.keras.metrics.Sum):
@@ -88,7 +97,7 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
       client_weighting = client_weight_lib.ClientWeighting.UNIFORM
     client_tf = federated_averaging.ClientFedAvg(
         model,
-        tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs),
+        lambda: tf.keras.optimizers.SGD(learning_rate=0.1, **optimizer_kwargs),
         client_weighting=client_weighting,
         use_experimental_simulation_loop=simulation)
     client_outputs = self.evaluate(client_tf(dataset, self.initial_weights()))
@@ -113,7 +122,7 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
     dataset = self.create_dataset()
     client_tf = federated_averaging.ClientFedAvg(
         model,
-        tf.keras.optimizers.SGD(learning_rate=0.1),
+        lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
         client_weighting=lambda _: tf.constant(1.5))
     client_outputs = client_tf(dataset, self.initial_weights())
     self.assertEqual(self.evaluate(client_outputs.weights_delta_weight), 1.5)
@@ -123,7 +132,7 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
     model = self.create_model()
     dataset = self.create_dataset()
     client_tf = federated_averaging.ClientFedAvg(
-        model, tf.keras.optimizers.SGD(learning_rate=0.1))
+        model, lambda: tf.keras.optimizers.SGD(learning_rate=0.1))
     init_weights = self.initial_weights()
     init_weights.trainable[1] = bad_value
     client_outputs = client_tf(dataset, init_weights)
@@ -143,7 +152,7 @@ class FederatedAveragingClientWithModelTest(test_case.TestCase,
     dataset = self.create_dataset()
     client_tf = federated_averaging.ClientFedAvg(
         model,
-        tf.keras.optimizers.SGD(learning_rate=0.1),
+        lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
         use_experimental_simulation_loop=simulation)
     client_tf(dataset, self.initial_weights())
     if simulation:
@@ -172,15 +181,25 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
       prev_loss = train_metrics['loss']
 
   @parameterized.named_parameters([
-      ('unweighted', client_weight_lib.ClientWeighting.UNIFORM),
-      ('example_weighted', client_weight_lib.ClientWeighting.NUM_EXAMPLES),
-      ('custom_weighted', lambda _: tf.constant(1.5)),
+      ('unweighted_keras_opt', client_weight_lib.ClientWeighting.UNIFORM,
+       _get_keras_optimizer_fn),
+      ('example_weighted_keras_opt',
+       client_weight_lib.ClientWeighting.NUM_EXAMPLES, _get_keras_optimizer_fn),
+      ('custom_weighted_keras_opt', lambda _: tf.constant(1.5),
+       _get_keras_optimizer_fn),
+      ('unweighted_tff_opt', client_weight_lib.ClientWeighting.UNIFORM,
+       _get_tff_optimizer),
+      ('example_weighted_tff_opt',
+       client_weight_lib.ClientWeighting.NUM_EXAMPLES, _get_tff_optimizer),
+      ('custom_weighted_tff_opt', lambda _: tf.constant(1.5),
+       _get_tff_optimizer),
   ])
   @test_utils.skip_test_for_multi_gpu
-  def test_basic_orchestration_execute(self, client_weighting):
+  def test_basic_orchestration_execute(self, client_weighting,
+                                       client_optimizer):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.LinearRegression,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
+        client_optimizer_fn=client_optimizer(),
         client_weighting=client_weighting)
 
     ds = tf.data.Dataset.from_tensor_slices(
@@ -196,13 +215,22 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
         expected_num_examples=2 * num_clients)
 
   @parameterized.named_parameters([
-      ('functional_model',
-       model_examples.build_linear_regression_keras_functional_model),
-      ('sequential_model',
-       model_examples.build_linear_regression_keras_sequential_model),
+      ('functional_model_keras_opt',
+       model_examples.build_linear_regression_keras_functional_model,
+       _get_keras_optimizer_fn),
+      ('sequential_model_keras_opt',
+       model_examples.build_linear_regression_keras_sequential_model,
+       _get_keras_optimizer_fn),
+      ('functional_model_tff_opt',
+       model_examples.build_linear_regression_keras_functional_model,
+       _get_tff_optimizer),
+      ('sequential_model_tff_opt',
+       model_examples.build_linear_regression_keras_sequential_model,
+       _get_tff_optimizer),
   ])
   @test_utils.skip_test_for_multi_gpu
-  def test_orchestration_execute_from_keras(self, build_keras_model_fn):
+  def test_orchestration_execute_from_keras(self, build_keras_model_fn,
+                                            client_optimizer):
     ds = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
             x=[[1.0, 2.0], [3.0, 4.0]],
@@ -219,7 +247,7 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
 
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_fn,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.01))
+        client_optimizer_fn=client_optimizer(learning_rate=0.01))
 
     num_clients = 3
     self._run_test(
@@ -227,8 +255,12 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
         datasets=[ds] * num_clients,
         expected_num_examples=2 * num_clients)
 
+  @parameterized.named_parameters([
+      ('keras_opt', _get_keras_optimizer_fn),
+      ('tff_opt', _get_tff_optimizer),
+  ])
   @test_utils.skip_test_for_multi_gpu
-  def test_orchestration_execute_from_keras_with_lookup(self):
+  def test_orchestration_execute_from_keras_with_lookup(self, client_optimizer):
     ds = tf.data.Dataset.from_tensor_slices(
         collections.OrderedDict(
             x=[['R'], ['G'], ['B']], y=[[1.0], [2.0], [3.0]])).batch(2)
@@ -242,8 +274,7 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
           metrics=[NumExamplesCounter()])
 
     iterative_process = federated_averaging.build_federated_averaging_process(
-        model_fn=model_fn,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1))
+        model_fn=model_fn, client_optimizer_fn=client_optimizer())
 
     num_clients = 3
     self._run_test(
@@ -251,11 +282,15 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
         datasets=[ds] * num_clients,
         expected_num_examples=3 * num_clients)
 
+  @parameterized.named_parameters([
+      ('keras_opt', _get_keras_optimizer_fn),
+      ('tff_opt', _get_tff_optimizer),
+  ])
   @test_utils.skip_test_for_multi_gpu
-  def test_execute_empty_data(self):
+  def test_execute_empty_data(self, client_optimizer):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.LinearRegression,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1))
+        client_optimizer_fn=client_optimizer())
 
     # Results in empty dataset with correct types and shapes.
     ds = tf.data.Dataset.from_tensor_slices(
@@ -273,11 +308,15 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
     self.assertEqual(metric_outputs['train']['num_examples'], 0)
     self.assertTrue(tf.math.is_nan(metric_outputs['train']['loss']))
 
+  @parameterized.named_parameters([
+      ('keras_opt', _get_keras_optimizer_fn),
+      ('tff_opt', _get_tff_optimizer),
+  ])
   @test_utils.skip_test_for_multi_gpu
-  def test_get_model_weights(self):
+  def test_get_model_weights(self, client_optimizer):
     iterative_process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.LinearRegression,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1))
+        client_optimizer_fn=client_optimizer())
 
     num_clients = 3
     ds = tf.data.Dataset.from_tensor_slices(
@@ -301,16 +340,29 @@ class FederatedAveragingModelTffTest(test_case.TestCase,
                           iterative_process.get_model_weights(state).trainable)
 
   @parameterized.named_parameters([
-      ('robust', model_update_aggregator.robust_aggregator),
-      ('dp', lambda: model_update_aggregator.dp_aggregator(1e-3, 3)),
-      ('compression', model_update_aggregator.compression_aggregator),
-      ('secure', model_update_aggregator.secure_aggregator),
+      ('robust_tff_opt', model_update_aggregator.robust_aggregator,
+       _get_tff_optimizer),
+      ('robust_keras_opt', model_update_aggregator.robust_aggregator,
+       _get_keras_optimizer_fn),
+      ('dp_tff_opt', lambda: model_update_aggregator.dp_aggregator(1e-3, 3),
+       _get_tff_optimizer),
+      ('dp_keras_opt', lambda: model_update_aggregator.dp_aggregator(1e-3, 3),
+       _get_keras_optimizer_fn),
+      ('compression_tff_opt', model_update_aggregator.compression_aggregator,
+       _get_tff_optimizer),
+      ('compression_keras_opt', model_update_aggregator.compression_aggregator,
+       _get_keras_optimizer_fn),
+      ('secure_tff', model_update_aggregator.secure_aggregator,
+       _get_tff_optimizer),
+      ('secure_keras_opt', model_update_aggregator.secure_aggregator,
+       _get_keras_optimizer_fn),
   ])
   @test_utils.skip_test_for_multi_gpu
-  def test_recommended_aggregations_execute(self, default_aggregation):
+  def test_recommended_aggregations_execute(self, default_aggregation,
+                                            client_optimizer):
     process = federated_averaging.build_federated_averaging_process(
         model_fn=model_examples.LinearRegression,
-        client_optimizer_fn=lambda: tf.keras.optimizers.SGD(learning_rate=0.1),
+        client_optimizer_fn=client_optimizer(),
         model_update_aggregation_factory=default_aggregation())
 
     ds = tf.data.Dataset.from_tensor_slices(

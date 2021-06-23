@@ -56,10 +56,7 @@ class TensorFlowComputationFactory(
       self, type_spec: computation_types.Type) -> ComputationProtoAndType:
 
     def plus(a, b):
-      if type_spec.is_struct():
-        return structure.map_structure(tf.add, a, b)
-      else:
-        return tf.add(a, b)
+      return structure.map_structure(tf.add, a, b)
 
     return create_binary_operator(plus, type_spec)
 
@@ -67,10 +64,7 @@ class TensorFlowComputationFactory(
       self, type_spec: computation_types.Type) -> ComputationProtoAndType:
 
     def multiply(a, b):
-      if type_spec.is_struct():
-        return structure.map_structure(tf.multiply, a, b)
-      else:
-        return tf.multiply(a, b)
+      return structure.map_structure(tf.multiply, a, b)
 
     return create_binary_operator(multiply, type_spec)
 

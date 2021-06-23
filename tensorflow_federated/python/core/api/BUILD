@@ -1,28 +1,28 @@
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":api_packages",
+    "//tensorflow_federated/python/core:core_visibility",
+    "//tensorflow_federated/python/core/backends:backends_packages",
+    "//tensorflow_federated/python/core/templates:templates_packages",
+    "//tensorflow_federated/python/core/test:test_packages",
+    "//tensorflow_federated/python/core/types:types_packages",
+
+    # Namespace visibility
+    "//tensorflow_federated:__pkg__",
+
+    # TODO(b/181569610): Clean up circular dependency between the `api` and
+    # `impl` packages.
+    "//tensorflow_federated/python/core/impl:impl_packages",
+])
+
 package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core:core_visibility"],
+    name = "api_packages",
     packages = [
-        # Subpackages
+        "//tensorflow_federated/experimental/python/core/api/...",
         "//tensorflow_federated/python/core/api/...",
-
-        # Core Dependencies
-        "//tensorflow_federated/python/core/backends/...",
-        "//tensorflow_federated/python/core/templates/...",
-        "//tensorflow_federated/python/core/test/...",
-        "//tensorflow_federated/python/core/types/...",
-
-        # Namespace Dependencies
-        "//tensorflow_federated",
-
-        # TODO(b/181569610): Clean up circular dependency between the `api` and
-        # `impl` packages.
-        "//tensorflow_federated/python/core/impl/...",
     ],
 )
-
-package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 

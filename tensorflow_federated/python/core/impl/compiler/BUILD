@@ -1,23 +1,22 @@
 load("//tensorflow_federated/tools:build_defs.bzl", "py_cpu_gpu_test")
 load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
+package(default_visibility = [
+    ":compiler_packages",
+    "//tensorflow_federated/experimental/python/core/impl/jax_context:jax_context_packages",
+    "//tensorflow_federated/python/core/impl:impl_visibility",
+    "//tensorflow_federated/python/core/impl/computation:computation_packages",
+    "//tensorflow_federated/python/core/impl/execution_contexts:execution_contexts_packages",
+    "//tensorflow_federated/python/core/impl/executor_stacks:executor_stacks_packages",
+    "//tensorflow_federated/python/core/impl/executors:executors_packages",
+    "//tensorflow_federated/python/core/impl/federated_context:federated_context_packages",
+    "//tensorflow_federated/python/core/impl/wrappers:wrappers_packages",
+])
+
 package_group(
-    name = "default_visibility",
-    includes = ["//tensorflow_federated/python/core/impl:impl_visibility"],
-    packages = [
-        # Subpackages
-        "//tensorflow_federated/python/core/impl/compiler/...",
-
-        # Impl Dependencies
-        "//tensorflow_federated/python/core/impl/computation/...",
-        "//tensorflow_federated/python/core/impl/executors/...",
-        "//tensorflow_federated/python/core/impl/executor_stacks/...",
-        "//tensorflow_federated/python/core/impl/federated_context/...",
-        "//tensorflow_federated/python/core/impl/wrappers/...",
-    ],
+    name = "compiler_packages",
+    packages = ["//tensorflow_federated/python/core/impl/compiler/..."],
 )
-
-package(default_visibility = [":default_visibility"])
 
 licenses(["notice"])
 
@@ -322,8 +321,10 @@ py_library(
         ":intrinsic_defs",
         ":transformation_utils",
         "//tensorflow_federated/python/common_libs:py_typecheck",
+        "//tensorflow_federated/python/common_libs:structure",
         "//tensorflow_federated/python/core/impl/types:computation_types",
         "//tensorflow_federated/python/core/impl/types:type_analysis",
+        "//tensorflow_federated/python/core/impl/types:type_conversions",
     ],
 )
 
