@@ -22,8 +22,7 @@ from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.simulation.baselines import client_spec
-
-DEFAULT_SHUFFLE_BUFFER_SIZE = 1000
+from tensorflow_federated.python.simulation.baselines.stackoverflow import constants
 
 
 def build_to_ids_fn(word_vocab: List[str],
@@ -96,7 +95,7 @@ def create_preprocess_fn(
 
   shuffle_buffer_size = preprocess_spec.shuffle_buffer_size
   if shuffle_buffer_size is None:
-    shuffle_buffer_size = DEFAULT_SHUFFLE_BUFFER_SIZE
+    shuffle_buffer_size = constants.DEFAULT_SHUFFLE_BUFFER_SIZE
 
   # Features are intentionally sorted lexicographically by key for consistency
   # across datasets.

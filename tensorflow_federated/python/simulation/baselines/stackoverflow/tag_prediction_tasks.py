@@ -13,7 +13,7 @@
 # limitations under the License.
 """Library for creating tag prediction tasks on Stack Overflow."""
 
-from typing import Callable, Optional, Tuple
+from typing import Optional
 
 import tensorflow as tf
 
@@ -22,12 +22,9 @@ from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
+from tensorflow_federated.python.simulation.baselines.stackoverflow import constants
 from tensorflow_federated.python.simulation.baselines.stackoverflow import tag_prediction_preprocessing
 from tensorflow_federated.python.simulation.datasets import stackoverflow
-
-DEFAULT_WORD_VOCAB_SIZE = 10000
-DEFAULT_TAG_VOCAB_SIZE = 500
-_ModelFn = Callable[[], model.Model]
 
 
 def _build_logistic_regression_model(input_size: int, output_size: int):
@@ -40,10 +37,10 @@ def _build_logistic_regression_model(input_size: int, output_size: int):
 def create_tag_prediction_task(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
-    word_vocab_size: int = DEFAULT_WORD_VOCAB_SIZE,
-    tag_vocab_size: int = DEFAULT_TAG_VOCAB_SIZE,
+    word_vocab_size: int = constants.DEFAULT_WORD_VOCAB_SIZE,
+    tag_vocab_size: int = constants.DEFAULT_TAG_VOCAB_SIZE,
     use_synthetic_data: bool = False,
-) -> Tuple[task_data.BaselineTaskDatasets, _ModelFn]:
+) -> baseline_task.BaselineTask:
   """Creates a baseline task for next-word prediction on Stack Overflow.
 
   The goal of the task is to predict the tags associated to a post based on a
@@ -57,9 +54,11 @@ def create_tag_prediction_task(
       evaluation datasets will use a batch size of 64 with no extra
       preprocessing.
     word_vocab_size: Integer dictating the number of most frequent words in the
-      entire corpus to use for the task's vocabulary.
+      entire corpus to use for the task's vocabulary. By default, this is set
+      to `tff.simulation.baselines.stackoverflow.DEFAULT_WORD_VOCAB_SIZE`.
     tag_vocab_size: Integer dictating the number of most frequent tags in the
-      entire corpus to use for the task's labels.
+      entire corpus to use for the task's labels. By default, this is set to
+      `tff.simulation.baselines.stackoverflow.DEFAULT_TAG_VOCAB_SIZE`.
     use_synthetic_data: A boolean indicating whether to use synthetic Stack
       Overflow data. This option should only be used for testing purposes, in
       order to avoid downloading the entire Stack Overflow dataset.
