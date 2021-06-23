@@ -93,3 +93,32 @@ def check_weights_gradients_match(weights, gradients):
         f'same structure and the tensors must have the same shapes and dtypes. '
         f'Provided weights: {weights}\n'
         f'Provided gradients: {gradients}')
+
+
+def handle_indexed_slices_gradients(gradients):
+  """Converts any tf.IndexedSlices to tensors.
+
+  The `tf.IndexedSlices` class is used principally in the definition of
+  gradients for operations that have sparse gradients (e.g. `tf.gather`). See
+  also tf.GradientTape documentation. This method is an elementary utility
+  converting the slices to a tensor, which can be used to make an optimizer
+  immediately compatible with such gradients. All other values are left
+  unmodified.
+
+  Note however, this operation may be expensive in some situations. For more
+  details, see
+  https://github.com/tensorflow/tensorflow/blob/2b44549aca184ae0eb986a8bd46feef2b17004ab/tensorflow/python/framework/indexed_slices.py#L406
+
+  Args:
+    gradients: A collection of gradients to be used by an optimizer.
+
+  Returns:
+    The same collection with `tf.IndexedSlices` replaced by tensors.
+  """
+
+  def slices_to_tensor(value):
+    if isinstance(value, tf.IndexedSlices):
+      return tf.convert_to_tensor(value)
+    return value
+
+  return tf.nest.map_structure(slices_to_tensor, gradients)

@@ -53,6 +53,30 @@ class OptimizerChecksTest(test_case.TestCase, parameterized.TestCase):
     with self.assertRaises(ValueError):
       optimizer.check_weights_gradients_match(weights, gradients)
 
+  def test_handle_indexed_slices_single_value(self):
+    gradients = tf.IndexedSlices(
+        values=tf.constant([[0.0, 1.0], [1.0, 3.0]]),
+        indices=tf.constant([0, 2]),
+        dense_shape=tf.constant([4, 2]))
+    gradients = optimizer.handle_indexed_slices_gradients(gradients)
+    self.assertIsInstance(gradients, tf.Tensor)
+    self.assertAllClose([[0.0, 1.0], [0.0, 0.0], [1.0, 3.0], [0.0, 0.0]],
+                        gradients)
+
+  def test_handle_indexed_slices_struct(self):
+    tensor = tf.constant([4.0, 5.5])
+    slices = tf.IndexedSlices(
+        values=tf.constant([[0.0, 1.0], [1.0, 3.0]]),
+        indices=tf.constant([0, 2]),
+        dense_shape=tf.constant([4, 2]))
+    gradients = [tensor, slices]
+    gradients = optimizer.handle_indexed_slices_gradients(gradients)
+    self.assertIsInstance(gradients[0], tf.Tensor)
+    self.assertIsInstance(gradients[1], tf.Tensor)
+    self.assertAllClose(
+        [[4.0, 5.5], [[0.0, 1.0], [0.0, 0.0], [1.0, 3.0], [0.0, 0.0]]],
+        gradients)
+
 
 if __name__ == '__main__':
   test_case.main()

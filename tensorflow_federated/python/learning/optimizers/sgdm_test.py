@@ -76,6 +76,21 @@ class SGDTest(test_case.TestCase, parameterized.TestCase):
     tf.nest.map_structure(lambda w: self.assertTrue(all(tf.math.is_finite(w))),
                           weights)
 
+  def test_executes_with_indexed_slices(self):
+    # TF can represent gradients as tf.IndexedSlices. This test makes sure this
+    # case is supported by the optimizer.
+    weights = tf.ones([4, 2])
+    gradients = tf.IndexedSlices(
+        values=tf.constant([[1.0, 1.0], [1.0, 1.0]]),
+        indices=tf.constant([0, 2]),
+        dense_shape=tf.constant([4, 2]))
+    optimizer = sgdm.SGD(0.5)
+
+    state = optimizer.initialize(tf.TensorSpec([4, 2]))
+    _, weights = optimizer.next(state, weights, gradients)
+    self.assertAllClose([[0.5, 0.5], [1.0, 1.0], [0.5, 0.5], [1.0, 1.0]],
+                        weights)
+
   @parameterized.named_parameters(('no_momentum', None), ('momentum_0_5', 0.5))
   def test_convergence(self, momentum):
     init_w, fn, grad_fn = optimizer_test_utils.test_quadratic_problem()
