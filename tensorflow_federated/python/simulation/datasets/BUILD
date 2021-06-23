@@ -7,10 +7,6 @@ package_group(
         # Subpackages
         "//tensorflow_federated/python/simulation/datasets/...",
         "//tensorflow_federated/python/simulation/baselines/...",
-
-        # TODO(b/182305417): Delete this once the full deprecation period has
-        # passed.
-        "//tensorflow_federated/python/simulation",
     ],
 )
 
