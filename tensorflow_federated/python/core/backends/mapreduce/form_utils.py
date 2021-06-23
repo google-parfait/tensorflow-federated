@@ -901,6 +901,7 @@ def _extract_federated_aggregate_functions(before_aggregate, grappler_config):
   zero_index_in_federated_aggregate_result = 1
   zero_tff = transformations.select_output_from_lambda(
       federated_aggregate, zero_index_in_federated_aggregate_result).result
+  zero_tff = building_blocks.Lambda(None, None, zero_tff)
   accumulate_index_in_federated_aggregate_result = 2
   accumulate_tff = transformations.select_output_from_lambda(
       federated_aggregate,
@@ -954,6 +955,7 @@ def _extract_federated_secure_sum_bitwidth_functions(before_aggregate,
   bitwidth_tff = transformations.select_output_from_lambda(
       federated_secure_sum_bitwidth,
       bitwidth_index_in_federated_secure_sum_bitwidth_result).result
+  bitwidth_tff = building_blocks.Lambda(None, None, bitwidth_tff)
 
   return transformations.consolidate_and_extract_local_processing(
       bitwidth_tff, grappler_config)

@@ -29,7 +29,6 @@ from tensorflow_federated.python.core.impl.types import computation_types
 from tensorflow_federated.python.core.impl.types import type_analysis
 from tensorflow_federated.python.core.impl.types import type_transformations
 
-
 TransformReturnType = Tuple[building_blocks.ComputationBuildingBlock, bool]
 
 
@@ -1883,302 +1882,163 @@ def insert_called_tf_identity_at_leaves(comp):
       comp, _decorate_if_reference_without_graph)
 
 
-def unwrap_placement(comp):
-  """Strips `comp`'s placement, returning a single call to map, apply or value.
+def strip_placement(comp):
+  """Strips `comp`'s placement, returning a non-federated computation.
 
-  For this purpose it is necessary to assume that all processing under `comp`
-  is happening at a single placement.
-
-  The other assumptions on inputs of `unwrap_placement` are enumerated as
-  follows:
-
-  1. There is at most one unbound reference under `comp`, which is of federated
-     type.
-  2. The only intrinsics present here are apply or map, zip,
-     and federated_value_at_*.
-  3. The type signature of `comp` is federated.
-  4. There are no instances of `building_blocks.Data` of federated
-     type under `comp`; how these would be handled by a function such as this
-     is not entirely clear.
-
-  Under these conditions, `unwrap_placement` will produce a single call to
-  federated_map, federated_apply or federated_value, depending on the placement
-  and type signature of `comp`. Other than this single map or apply, no
-  intrinsics will remain under `comp`.
+  For this function to complete successfully `comp` must:
+  1) contain at most one federated placement.
+  2) not contain intrinsics besides `apply`, `map`, `zip`, and `federated_value`
+  3) not contain `building_blocks.Data` of federated type.
 
   Args:
     comp: Instance of `building_blocks.ComputationBuildingBlock` satisfying the
       assumptions above.
 
   Returns:
-    A modified version of `comp`, whose root is a single called
-    intrinsic, and containing no other intrinsics. Equivalent
-    to `comp`.
+    A modified version of `comp` containing no intrinsics nor any federated
+    types or values.
 
   Raises:
-    TypeError: If the lone unbound reference under `comp` is not of federated
-      type, `comp` itself is not of federated type, or `comp` is not a building
-      block.
-    ValueError: If we encounter a placement other than the one declared by
-      `comp.type_signature`, an intrinsic not present in the conditions above,
-       or `comp` contains more than one unbound reference.
+    TypeError: If `comp` is not a building block.
+    ValueError: If conditions (1), (2), or (3) above are unsatisfied.
   """
   py_typecheck.check_type(comp, building_blocks.ComputationBuildingBlock)
-  py_typecheck.check_type(comp.type_signature, computation_types.FederatedType)
-  single_placement = comp.type_signature.placement
-
-  tree_analysis.check_has_single_placement(comp, single_placement)
-
+  placement = None
   name_generator = building_block_factory.unique_name_generator(comp)
 
-  all_unbound_references = transformation_utils.get_map_of_unbound_references(
-      comp)
-  root_unbound_references = all_unbound_references[comp]
+  def _ensure_single_placement(new_placement):
+    nonlocal placement
+    if placement is None:
+      placement = new_placement
+    elif placement != new_placement:
+      raise ValueError(
+          'Attempted to `strip_placement` from computation containing '
+          'multiple different placements.\n'
+          f'Found placements `{placement}` and `{new_placement}` in '
+          f'comp:\n{comp.compact_representation()}')
 
-  if len(root_unbound_references) > 1:
-    raise ValueError(
-        '`unwrap_placement` can only handle computations with at most a single '
-        'unbound reference; you have passed in the computation {} with {} '
-        'unbound references.'.format(comp.compact_representation(),
-                                     len(root_unbound_references)))
+  def _remove_placement_from_type(type_spec):
+    if type_spec.is_federated():
+      _ensure_single_placement(type_spec.placement)
+      return type_spec.member, True
+    else:
+      return type_spec, False
 
-  if len(root_unbound_references) == 1:
-    unbound_reference_name = root_unbound_references.pop()
-  else:
-    unbound_reference_name = None
+  def _remove_reference_placement(comp):
+    """Unwraps placement from references and updates unbound reference info."""
+    new_type, _ = type_transformations.transform_type_postorder(
+        comp.type_signature, _remove_placement_from_type)
+    return building_blocks.Reference(comp.name, new_type)
 
-  def _rename_unbound_variable(comp, unbound_variable_name):
-    """Reads info about the unbound variable, and renames it uniquely.
+  def _identity_function(arg_type):
+    """Creates `lambda x: x` with argument type `arg_type`."""
+    arg_name = next(name_generator)
+    val = building_blocks.Reference(arg_name, arg_type)
+    lam = building_blocks.Lambda(arg_name, arg_type, val)
+    return lam
 
-    The unique rename is simply to preserve uniqueness of names if this
-    property is present in the argument to `unwrap_placement`, since we will
-    eventually be binding a new reference of non-federated type in place
-    of this federated unbound reference.
+  def _call_first_with_second_function(fn_type, arg_type):
+    """Creates `lambda x: x[0](x[1])` with the provided ."""
+    arg_name = next(name_generator)
+    tuple_ref = building_blocks.Reference(arg_name, [fn_type, arg_type])
+    fn = building_blocks.Selection(tuple_ref, index=0)
+    arg = building_blocks.Selection(tuple_ref, index=1)
+    called_fn = building_blocks.Call(fn, arg)
+    return building_blocks.Lambda(arg_name, tuple_ref.type_signature, called_fn)
 
-    Args:
-      comp: Instance of `building_blocks.ComputationBuildingBlock` with at most
-        a single unbound reference.
-      unbound_variable_name: The name of the lone unbound variable present under
-        `comp`.
+  def _call_function(arg_type):
+    """Creates `lambda x: x()` argument type `arg_type`."""
+    arg_name = next(name_generator)
+    arg_ref = building_blocks.Reference(arg_name, arg_type)
+    called_arg = building_blocks.Call(arg_ref, None)
+    return building_blocks.Lambda(arg_name, arg_type, called_arg)
 
-    Returns:
-      A tuple, whose first element a is possibly transformed version of `comp`
-      with its unbound variable renamed to a name which is globally unique
-      within `comp`, and its second element a tuple containing the new name
-      given to the unbound reference, and the type of this unbound reference.
-    """
-    unbound_reference_name_and_type_pair = [(None, None)]
+  def _replace_intrinsics_with_functions(comp):
+    """Helper to remove intrinsics from the AST."""
+    tys = comp.type_signature
 
-    class _UnboundVariableIdentifier(transformation_utils.BoundVariableTracker):
-      """transformation_utils.SymbolTree node for tracking unbound variables."""
+    # These functions have no runtime behavior and only exist to adjust
+    # placement. They are replaced here with  `lambda x: x`.
+    identities = [
+        intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
+        intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,
+        intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri,
+        intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri,
+    ]
+    if comp.uri in identities:
+      return _identity_function(tys.result.member)
 
-      def __init__(self, name, value):
-        super().__init__(name, value)
-        self.unbound = False
+    # These functions all `map` a value and are replaced with
+    # `lambda args: args[0](args[1])
+    maps = [
+        intrinsic_defs.FEDERATED_MAP.uri,
+        intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
+        intrinsic_defs.FEDERATED_APPLY.uri,
+    ]
+    if comp.uri in maps:
+      return _call_first_with_second_function(tys.parameter[0],
+                                              tys.parameter[1].member)
 
-      def __str__(self):
-        return ''
+    # `federated_eval`'s argument must simply be `call`ed and is replaced
+    # with `lambda x: x()`
+    evals = [
+        intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
+        intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri,
+    ]
+    if comp.uri in evals:
+      return _call_function(tys.parameter)
 
-      def update(self, x):
-        del x  # Unused
-        self.unbound = True
+    raise ValueError('Disallowed intrinsic: {}'.format(comp))
 
-    symbol_tree = transformation_utils.SymbolTree(_UnboundVariableIdentifier)
-    symbol_tree.ingest_variable_binding(unbound_variable_name, None)
-    symbol_tree.update_payload_with_name(unbound_variable_name)
+  def _remove_lambda_placement(comp):
+    """Removes placement from Lambda's parameter."""
+    if comp.parameter_name is None:
+      new_parameter_type = None
+    else:
+      new_parameter_type, _ = type_transformations.transform_type_postorder(
+          comp.parameter_type, _remove_placement_from_type)
+    return building_blocks.Lambda(comp.parameter_name, new_parameter_type,
+                                  comp.result)
 
-    def _should_transform(comp, symbol_tree):
-      return (comp.is_reference() and comp.name == unbound_variable_name and
-              symbol_tree.get_payload_with_name(comp.name).unbound)
+  def _simplify_calls(comp):
+    """Unwraps structures introduced by removing intrinsics."""
+    zip_or_value_removed = (
+        comp.function.result.is_reference() and
+        comp.function.result.name == comp.function.parameter_name)
+    if zip_or_value_removed:
+      return comp.argument
+    else:
+      map_removed = (
+          comp.function.result.is_call() and
+          comp.function.result.function.is_selection() and
+          comp.function.result.function.index == 0 and
+          comp.function.result.argument.is_selection() and
+          comp.function.result.argument.index == 1 and
+          comp.function.result.function.source.is_reference() and
+          comp.function.result.function.source.name
+          == comp.function.parameter_name and
+          comp.function.result.function.source.is_reference() and
+          comp.function.result.function.source.name
+          == comp.function.parameter_name and comp.argument.is_struct())
+      if map_removed:
+        return building_blocks.Call(comp.argument[0], comp.argument[1])
+    return comp
 
-    def _rename_unbound_variable(comp, symbol_tree):
-      """Updates the nonlocal tracker, and renames the unbound variable."""
-      if not _should_transform(comp, symbol_tree):
-        return comp, False
-      if unbound_reference_name_and_type_pair[0][1] is None:
-        name = next(name_generator)
-        unbound_reference_name_and_type_pair[0] = (name, comp.type_signature)
-      else:
-        name = unbound_reference_name_and_type_pair[0][0]
-      return building_blocks.Reference(name, comp.type_signature), True
+  def _transform(comp):
+    """Dispatches to helpers above."""
+    if comp.is_reference():
+      return _remove_reference_placement(comp), True
+    elif comp.is_intrinsic():
+      return _replace_intrinsics_with_functions(comp), True
+    elif comp.is_lambda():
+      return _remove_lambda_placement(comp), True
+    elif comp.is_call() and comp.function.is_lambda():
+      return _simplify_calls(comp), True
+    elif comp.is_data() and comp.type_signature.is_federated():
+      raise ValueError(f'Cannot strip placement from federated data: {comp}')
+    return comp, False
 
-    renamed_comp, _ = transformation_utils.transform_postorder_with_symbol_bindings(
-        comp, _rename_unbound_variable, symbol_tree)
-    return renamed_comp, unbound_reference_name_and_type_pair[0]
-
-  def _remove_placement(comp):
-    """Unwraps placement from `comp`.
-
-    `_remove_placement` embodies the main transform logic in
-    `unwrap_placement`, performing a pure AST transformation to replace
-    any nodes of federated type with equivalent non-federated versions.
-    Whether or not it is safe to do this is left to `unwrap_placement` to
-    handle.
-
-    One note on the implementation: the four cases in the internal `_transform`
-    switch here exactly case for the building blocks which explicitly take type
-    signatures as arguments to their constructors.
-
-    Args:
-      comp: Instance of `building_blocks.ComputationBuildingBlock` from which we
-        wish to remove placement.
-
-    Returns:
-      A transformed version of comp with its placements removed.
-
-    Raises:
-      NotImplementedError: In case a node of type
-        `building_blocks.Data` is encountered in the AST, as
-        handling of data objects is not yet implemented in TFF and so it is
-        unclear what this function should do in that case.
-    """
-
-    def _remove_placement_from_type(type_spec):
-      if type_spec.is_federated():
-        return type_spec.member, True
-      else:
-        return type_spec, False
-
-    def _remove_reference_placement(comp):
-      """Unwraps placement from references and updates unbound reference info."""
-      new_type, _ = type_transformations.transform_type_postorder(
-          comp.type_signature, _remove_placement_from_type)
-      return building_blocks.Reference(comp.name, new_type)
-
-    def _identity_function(arg_type):
-      """Creates `lambda x: x` with argument type `arg_type`."""
-      arg_name = next(name_generator)
-      val = building_blocks.Reference(arg_name, arg_type)
-      lam = building_blocks.Lambda(arg_name, arg_type, val)
-      return lam
-
-    def _call_first_with_second_function(fn_type, arg_type):
-      """Creates `lambda x: x[0](x[1])` with the provided ."""
-      arg_name = next(name_generator)
-      tuple_ref = building_blocks.Reference(arg_name, [fn_type, arg_type])
-      fn = building_blocks.Selection(tuple_ref, index=0)
-      arg = building_blocks.Selection(tuple_ref, index=1)
-      called_fn = building_blocks.Call(fn, arg)
-      return building_blocks.Lambda(arg_name, tuple_ref.type_signature,
-                                    called_fn)
-
-    def _call_function(arg_type):
-      """Creates `lambda x: x()` argument type `arg_type`."""
-      arg_name = next(name_generator)
-      arg_ref = building_blocks.Reference(arg_name, arg_type)
-      called_arg = building_blocks.Call(arg_ref, None)
-      return building_blocks.Lambda(arg_name, arg_type, called_arg)
-
-    def _replace_intrinsics_with_functions(comp):
-      """Helper to remove intrinsics from the AST."""
-      tys = comp.type_signature
-
-      # These functions have no runtime behavior and only exist to adjust
-      # placement. They are replaced here with  `lambda x: x`.
-      identities = [
-          intrinsic_defs.FEDERATED_ZIP_AT_SERVER.uri,
-          intrinsic_defs.FEDERATED_ZIP_AT_CLIENTS.uri,
-          intrinsic_defs.FEDERATED_VALUE_AT_SERVER.uri,
-          intrinsic_defs.FEDERATED_VALUE_AT_CLIENTS.uri,
-      ]
-      if comp.uri in identities:
-        return _identity_function(tys.result.member)
-
-      # These functions all `map` a value and are replaced with
-      # `lambda args: args[0](args[1])
-      maps = [
-          intrinsic_defs.FEDERATED_MAP.uri,
-          intrinsic_defs.FEDERATED_MAP_ALL_EQUAL.uri,
-          intrinsic_defs.FEDERATED_APPLY.uri,
-      ]
-      if comp.uri in maps:
-        return _call_first_with_second_function(tys.parameter[0],
-                                                tys.parameter[1].member)
-
-      # `federated_eval`'s argument must simply be `call`ed and is replaced
-      # with `lambda x: x()`
-      evals = [
-          intrinsic_defs.FEDERATED_EVAL_AT_SERVER.uri,
-          intrinsic_defs.FEDERATED_EVAL_AT_CLIENTS.uri,
-      ]
-      if comp.uri in evals:
-        return _call_function(tys.parameter)
-
-      raise ValueError('Disallowed intrinsic: {}'.format(comp))
-
-    def _remove_lambda_placement(comp):
-      """Removes placement from Lambda's parameter."""
-      if comp.parameter_name is None:
-        new_parameter_type = None
-      else:
-        new_parameter_type, _ = type_transformations.transform_type_postorder(
-            comp.parameter_type, _remove_placement_from_type)
-      return building_blocks.Lambda(comp.parameter_name, new_parameter_type,
-                                    comp.result)
-
-    def _simplify_calls(comp):
-      """Unwraps structures introduced by removing intrinsics."""
-      zip_or_value_removed = (
-          comp.function.result.is_reference() and
-          comp.function.result.name == comp.function.parameter_name)
-      if zip_or_value_removed:
-        return comp.argument
-      else:
-        map_removed = (
-            comp.function.result.is_call() and
-            comp.function.result.function.is_selection() and
-            comp.function.result.function.index == 0 and
-            comp.function.result.argument.is_selection() and
-            comp.function.result.argument.index == 1 and
-            comp.function.result.function.source.is_reference() and
-            comp.function.result.function.source.name ==
-            comp.function.parameter_name and
-            comp.function.result.function.source.is_reference() and
-            comp.function.result.function.source.name ==
-            comp.function.parameter_name and comp.argument.is_struct())
-        if map_removed:
-          return building_blocks.Call(comp.argument[0], comp.argument[1])
-      return comp
-
-    def _transform(comp):
-      """Dispatches to helpers above."""
-      if comp.is_reference():
-        return _remove_reference_placement(comp), True
-      elif comp.is_intrinsic():
-        return _replace_intrinsics_with_functions(comp), True
-      elif comp.is_lambda():
-        return _remove_lambda_placement(comp), True
-      elif comp.is_call() and comp.function.is_lambda():
-        return _simplify_calls(comp), True
-      elif comp.is_data() and comp.type_signature.is_federated():
-        # TODO(b/135126947): Design and implement Data constructs.
-        raise NotImplementedError
-      return comp, False
-
-    return transformation_utils.transform_postorder(comp, _transform)
-
-  if unbound_reference_name is None:
-    placement_removed, _ = _remove_placement(comp)
-    return building_block_factory.create_federated_value(
-        placement_removed, single_placement), True
-  else:
-    (unbound_variable_renamed,
-     unbound_reference_info) = _rename_unbound_variable(comp,
-                                                        unbound_reference_name)
-    (new_reference_name, unbound_reference_type) = unbound_reference_info
-    if not unbound_reference_type.is_federated():
-      raise TypeError(
-          'The lone unbound reference is not of federated type; this is '
-          'disallowed. The unbound type is {}'.format(unbound_reference_type))
-
-    placement_removed, _ = _remove_placement(unbound_variable_renamed)
-    ref_to_fed_arg = building_blocks.Reference(unbound_reference_name,
-                                               unbound_reference_type)
-    lambda_wrapping_placement_removal = building_blocks.Lambda(
-        new_reference_name, unbound_reference_type.member, placement_removed)
-    called_intrinsic = building_block_factory.create_federated_map_or_apply(
-        lambda_wrapping_placement_removal, ref_to_fed_arg)
-    return called_intrinsic, True
+  return transformation_utils.transform_postorder(comp, _transform)
 
 
 def transform_tf_call_ops_to_disable_grappler(comp):
