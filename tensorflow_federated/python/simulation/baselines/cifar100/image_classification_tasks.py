@@ -14,7 +14,7 @@
 """Library for creating baseline tasks on CIFAR-100."""
 
 import enum
-from typing import Callable, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import tensorflow as tf
 
@@ -39,8 +39,8 @@ class ResnetModel(enum.Enum):
 
 _NUM_CLASSES = 100
 _RESNET_MODELS = [e.value for e in ResnetModel]
-_PreprocessFn = Callable[[tf.data.Dataset], tf.data.Dataset]
-_ModelFn = Callable[[], model.Model]
+DEFAULT_CROP_HEIGHT = 24
+DEFAULT_CROP_WIDTH = 24
 
 
 def _get_resnet_model(model_id: Union[str, ResnetModel],
@@ -72,10 +72,9 @@ def create_image_classification_task(
     train_client_spec: client_spec.ClientSpec,
     eval_client_spec: Optional[client_spec.ClientSpec] = None,
     model_id: Union[str, ResnetModel] = 'resnet18',
-    crop_height: int = 24,
-    crop_width: int = 24,
-    use_synthetic_data: bool = False
-) -> Tuple[task_data.BaselineTaskDatasets, _ModelFn]:
+    crop_height: int = DEFAULT_CROP_HEIGHT,
+    crop_width: int = DEFAULT_CROP_WIDTH,
+    use_synthetic_data: bool = False) -> baseline_task.BaselineTask:
   """Creates a baseline task for image classification on CIFAR-100.
 
   The goal of the task is to minimize the sparse categorical crossentropy
@@ -94,9 +93,13 @@ def create_image_classification_task(
       architectures though, the batch normalization layers are replaced with
       group normalization.
     crop_height: An integer specifying the desired height for cropping images.
-      Must be between 1 and 32 (the height of uncropped CIFAR-100 images).
+      Must be between 1 and 32 (the height of uncropped CIFAR-100 images). By
+      default, this is set to
+      `tff.simulation.baselines.cifar100.DEFAULT_CROP_HEIGHT`.
     crop_width: An integer specifying the desired width for cropping images.
-      Must be between 1 and 32 (the width of uncropped CIFAR-100 images).
+      Must be between 1 and 32 (the width of uncropped CIFAR-100 images). By
+      default this is set to
+      `tff.simulation.baselines.cifar100.DEFAULT_CROP_WIDTH`.
     use_synthetic_data: A boolean indicating whether to use synthetic CIFAR-100
       data. This option should only be used for testing purposes, in order to
       avoid downloading the entire CIFAR-100 dataset.
