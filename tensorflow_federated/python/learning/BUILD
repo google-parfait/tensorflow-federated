@@ -243,6 +243,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":model",
+        "//tensorflow_federated/python/core/api:computation_base",
         "//tensorflow_federated/python/core/api:computations",
         "//tensorflow_federated/python/core/impl/federated_context:intrinsics",
     ],

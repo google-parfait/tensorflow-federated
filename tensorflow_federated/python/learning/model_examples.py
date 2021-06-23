@@ -15,9 +15,11 @@
 
 import collections
 import functools
+from typing import List
 
 import tensorflow as tf
 
+from tensorflow_federated.python.core.api import computation_base
 from tensorflow_federated.python.core.api import computations
 from tensorflow_federated.python.core.impl.federated_context import intrinsics
 from tensorflow_federated.python.learning import model
@@ -29,7 +31,7 @@ class LinearRegression(model.Model):
   # A tuple (x, y), where 'x' represent features, and 'y' represent labels.
   Batch = collections.namedtuple('Batch', ['x', 'y'])  # pylint: disable=invalid-name
 
-  def __init__(self, feature_dim=2):
+  def __init__(self, feature_dim: int = 2):
     # Define all the variables, similar to what Keras Layers and Models
     # do in build().
     self._feature_dim = feature_dim
@@ -49,15 +51,15 @@ class LinearRegression(model.Model):
         y=tf.TensorSpec([None, 1], tf.float32))
 
   @property
-  def trainable_variables(self):
+  def trainable_variables(self) -> List[tf.Variable]:
     return [self._a, self._b]
 
   @property
-  def non_trainable_variables(self):
+  def non_trainable_variables(self) -> List[tf.Variable]:
     return [self._c]
 
   @property
-  def local_variables(self):
+  def local_variables(self) -> List[tf.Variable]:
     return [self._num_examples, self._num_batches, self._loss_sum]
 
   @property
@@ -71,7 +73,7 @@ class LinearRegression(model.Model):
     return tf.matmul(x, self._a) + self._b + self._c
 
   @tf.function
-  def forward_pass(self, batch, training=True):
+  def forward_pass(self, batch, training=True) -> model.BatchOutput:
     if isinstance(batch, dict):
       batch = self.make_batch(**batch)
     if not self._input_spec.y.is_compatible_with(batch.y):
@@ -95,26 +97,22 @@ class LinearRegression(model.Model):
 
   @tf.function
   def report_local_outputs(self):
-    return collections.OrderedDict([
-        ('num_examples', self._num_examples),
-        ('num_examples_float', tf.cast(self._num_examples, tf.float32)),
-        ('num_batches', self._num_batches),
-        ('loss', self._loss_sum / tf.cast(self._num_examples, tf.float32)),
-    ])
+    return collections.OrderedDict(
+        num_examples=self._num_examples,
+        num_examples_float=tf.cast(self._num_examples, tf.float32),
+        num_batches=self._num_batches,
+        loss=self._loss_sum / tf.cast(self._num_examples, tf.float32))
 
   @property
-  def federated_output_computation(self):
+  def federated_output_computation(self) -> computation_base.Computation:
 
     @computations.federated_computation
     def fed_output(local_outputs):
       # TODO(b/124070381): Remove need for using num_examples_float here.
-      return {
-          'num_examples':
-              intrinsics.federated_sum(local_outputs.num_examples),
-          'loss':
-              intrinsics.federated_mean(
-                  local_outputs.loss, weight=local_outputs.num_examples_float),
-      }
+      return collections.OrderedDict(
+          loss=intrinsics.federated_mean(
+              local_outputs.loss, weight=local_outputs.num_examples_float),
+          num_examples=intrinsics.federated_sum(local_outputs.num_examples))
 
     return fed_output
 
