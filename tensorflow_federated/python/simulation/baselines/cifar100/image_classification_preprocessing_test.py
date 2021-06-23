@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from tensorflow_federated.python.core.backends.native import execution_contexts
 from tensorflow_federated.python.simulation.baselines import client_spec
-from tensorflow_federated.python.simulation.baselines.cifar import cifar_preprocessing
+from tensorflow_federated.python.simulation.baselines.cifar100 import image_classification_preprocessing
 
 
 TEST_DATA = collections.OrderedDict(
@@ -38,13 +38,14 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
   def test_raises_non_iterable_crop(self):
     preprocess_spec = client_spec.ClientSpec(num_epochs=1, batch_size=1)
     with self.assertRaisesRegex(TypeError, 'crop_shape must be an iterable'):
-      cifar_preprocessing.create_preprocess_fn(preprocess_spec, crop_shape=32)
+      image_classification_preprocessing.create_preprocess_fn(
+          preprocess_spec, crop_shape=32)
 
   def test_raises_iterable_length_2_crop(self):
     preprocess_spec = client_spec.ClientSpec(num_epochs=1, batch_size=1)
     with self.assertRaisesRegex(ValueError,
                                 'The crop_shape must have length 3'):
-      cifar_preprocessing.create_preprocess_fn(
+      image_classification_preprocessing.create_preprocess_fn(
           preprocess_spec, crop_shape=(32, 32))
 
   @parameterized.named_parameters(
@@ -60,7 +61,8 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
     preprocess_spec = client_spec.ClientSpec(
         num_epochs=num_epochs, batch_size=batch_size)
-    preprocess_fn = cifar_preprocessing.create_preprocess_fn(preprocess_spec)
+    preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
+        preprocess_spec)
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(
         _compute_length_of_dataset(preprocessed_ds),
@@ -79,7 +81,7 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA)
     preprocess_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=1, shuffle_buffer_size=1)
-    preprocess_fn = cifar_preprocessing.create_preprocess_fn(
+    preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
         preprocess_spec, crop_shape=crop_shape, distort_image=distort_image)
     preprocessed_ds = preprocess_fn(ds)
     expected_element_spec_shape = (None,) + crop_shape
@@ -100,7 +102,8 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.constant([[[1.0, -1.0, 0.0]]])  # Has shape (1, 1, 3), mean 0
     x = x / tf.math.reduce_std(x)  # x now has variance 1
     simple_example = collections.OrderedDict(image=x, label=0)
-    image_map = cifar_preprocessing.build_image_map(crop_shape, distort=False)
+    image_map = image_classification_preprocessing.build_image_map(
+        crop_shape, distort=False)
     cropped_example = image_map(simple_example)
 
     self.assertEqual(cropped_example[0].shape, crop_shape)
@@ -119,7 +122,8 @@ class PreprocessFnTest(tf.test.TestCase, parameterized.TestCase):
     ds = tf.data.Dataset.from_tensor_slices(TEST_DATA).repeat(repeat_size)
     preprocess_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=1, max_elements=max_elements)
-    preprocess_fn = cifar_preprocessing.create_preprocess_fn(preprocess_spec)
+    preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
+        preprocess_spec)
     preprocessed_ds = preprocess_fn(ds)
     self.assertEqual(
         _compute_length_of_dataset(preprocessed_ds),

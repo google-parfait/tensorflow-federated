@@ -23,8 +23,8 @@ from tensorflow_federated.python.learning import model
 from tensorflow_federated.python.simulation.baselines import baseline_task
 from tensorflow_federated.python.simulation.baselines import client_spec
 from tensorflow_federated.python.simulation.baselines import task_data
-from tensorflow_federated.python.simulation.baselines.cifar import cifar_preprocessing
-from tensorflow_federated.python.simulation.baselines.cifar import resnet_models
+from tensorflow_federated.python.simulation.baselines.cifar100 import image_classification_preprocessing
+from tensorflow_federated.python.simulation.baselines.cifar100 import resnet_models
 from tensorflow_federated.python.simulation.datasets import cifar100
 
 
@@ -119,9 +119,9 @@ def create_image_classification_task(
     eval_client_spec = client_spec.ClientSpec(
         num_epochs=1, batch_size=64, shuffle_buffer_size=1)
 
-  train_preprocess_fn = cifar_preprocessing.create_preprocess_fn(
+  train_preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
       train_client_spec, crop_shape=crop_shape)
-  eval_preprocess_fn = cifar_preprocessing.create_preprocess_fn(
+  eval_preprocess_fn = image_classification_preprocessing.create_preprocess_fn(
       eval_client_spec, crop_shape=crop_shape)
 
   task_datasets = task_data.BaselineTaskDatasets(
