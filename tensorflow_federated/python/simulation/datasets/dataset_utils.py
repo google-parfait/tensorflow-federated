@@ -88,7 +88,7 @@ def build_synthethic_iid_datasets(client_data, client_dataset_size):
 
   Returns:
     A `tf.data.Dataset` instance that yields iid client datasets sampled from
-  the global distribution.
+    the global distribution.
   """
   global_dataset = client_data.create_tf_dataset_from_all_clients()
   # Maximum of shuffle of 10,000 items. Limited by the input dataset.
