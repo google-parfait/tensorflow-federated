@@ -15,26 +15,26 @@ digraph {
 
   // TFF
   tff -> simulation [arrowhead="none", style="invisible"]
-  tff -> learning [arrowhead="none", style="invisible"]
-  tff -> analytics [arrowhead="none", style="invisible"]
+  tff -> simulation_baselines [arrowhead="none", style="invisible"]
 
   tff [href="#tff" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
 
-  // TFF Simulation
-  simulation -> simulation_baselines
-  simulation -> simulation_datasets
-  simulation -> simulation_models
-  simulation_datasets -> aggregators [arrowhead="none", style="invisible"]
+  // Simulation
+  simulation_baselines -> simulation_models
+  simulation_baselines -> simulation_datasets
+  simulation -> simulation_baselines [arrowhead="none", style="invisible"]
+  simulation_models -> learning [arrowhead="none", style="invisible"]
+  simulation_datasets -> analytics [arrowhead="none", style="invisible"]
 
   subgraph cluster_simulation {
     graph [label="Simulation", href="#tff-simulation" target="_parent"]
     simulation [href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     simulation_baselines [label="baselines", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
-    simulation_datasets [label="datasets", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
     simulation_models [label="models", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
+    simulation_datasets [label="datasets", href="#tff-simulation" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
-  // TFF Learning
+  // Learning
   learning -> learning_framework
   learning_framework -> aggregators [arrowhead="none", style="invisible"]
 
@@ -44,7 +44,7 @@ digraph {
     learning_framework [label="framework", href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
-  // TFF Analytics
+  // Analytics
   analytics -> aggregators [arrowhead="none", style="invisible"]
 
   subgraph cluster_analytics {
@@ -52,7 +52,7 @@ digraph {
     analytics [href="#tff-analytics" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
-  // TFF Aggregators
+  // Aggregators
   aggregators -> core_backends [arrowhead="none", style="invisible"]
   aggregators -> core_test [arrowhead="none", style="invisible"]
 
@@ -61,7 +61,7 @@ digraph {
     aggregators [href="#tff-learning" target="_parent", fillcolor="#E8F0FE", color="#7BAAF7"]
   }
 
-  // TFF Core
+  // Core
   core_backends -> core_api
   core_backends -> core_templates
   core_templates -> core_api
@@ -82,7 +82,7 @@ digraph {
   core_api -> impl_wrappers [arrowhead="none", style="invisible"]
   core_api -> impl_executors [arrowhead="none", style="invisible"]
 
-  // TFF Impl
+  // Impl
   impl_wrappers -> impl_tensorflow_context
   impl_wrappers -> impl_federated_context
   impl_wrappers -> impl_computation
@@ -130,7 +130,7 @@ digraph {
     impl_types [label="types", href="#tff-impl" target="_parent"]
   }
 
-  // TFF Proto
+  // Proto
   proto -> proto_v0
 
   subgraph cluster_proto {
@@ -147,8 +147,10 @@ digraph {
   // Layout
   {rank=same; examples, tests, research}
   {rank=same; tff}
-  {rank=same; simulation, learning, analytics}
-  {rank=same; simulation_baselines, simulation_datasets, simulation_models, learning_framework}
+  {rank=same; simulation, simulation_baselines}
+  {rank=same; simulation_models, simulation_datasets}
+  {rank=same; learning, analytics}
+  {rank=same; learning_framework}
   {rank=same; aggregators}
   {rank=same; core_backends, core_test}
   {rank=same; core_templates}
